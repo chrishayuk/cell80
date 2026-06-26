@@ -88,6 +88,12 @@ The loop an agent runs: **`search` → `inspect` → `run` → discard** — ove
 hold far more cells than belong in any context window. A good cell is one whose *manifest is
 smaller than its usefulness*.
 
+> **cell80 is not a faster Wasm — it's a manifest-addressable executable micro-tool format
+> for agents.** A `.cell` is closer to an *executable index card* than a plugin: a tiny
+> deterministic behaviour with a typed signature, a hash, a cost surface, a capability
+> policy, and bounded execution. A tool shouldn't need a server, a process, or a page of
+> schema if it's only 47 bytes of behaviour.
+
 ---
 
 ## Quick start

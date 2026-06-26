@@ -40,23 +40,54 @@ against `rustc` on the emulator (`tests/diff.rs`).
 - **Seed library** — `rustz80/cells/` (math/grid/scoring/validation/bench), all "excellent"
   tier (36–70 B, no caps), indexed + searchable.
 
+## Positioning
+
+> **cell80 is not a faster Wasm. It is a manifest-addressable executable micro-tool format
+> for agents.** A `.cell` is closer to an *executable index card* than a plugin: a tiny
+> deterministic behaviour with a typed signature, a hash, a cost surface, a capability
+> policy, and bounded execution. *A tool should not need a server, a process, or a page of
+> schema if it's only 47 bytes of behaviour.*
+
+The proof of the thesis isn't VM features — it's whether **an agent reliably retrieves and
+runs the right cell instead of writing Python**. That's the next gate.
+
 ## Next
 
-- [ ] **CellGraph / inter-cell composition** — wire cells into a small static graph
-  (planner→scorer→validator→decision; worker-swarm→reducer) that a session can run as one
-  step. The composition layer.
-- [ ] **Typed-state I/O over MCP** — `cell_run` currently takes register args; map named
-  JSON inputs → struct field addresses via the signature so *state* cells (e.g. `manhattan`)
-  are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
-- [ ] **Grow the standard cell library** toward ~100 across the remaining categories
-  (scoring/state/memory/data-structures/selection/sort/RNG/parsers/protocol).
-- [ ] **Signed `i16`** — unblocks the scoring/delta cells (`x_y_delta`, signed `lerp`, risk
-  deltas). Touches codegen/compares/div.
-- [ ] **`bench` / `verify` / `trace` CLI verbs** + a persisted index (richer ranking:
-  signature/capability/cost filters).
-- [ ] **Crate identity & publish** — settle names (`cell80-core`/`-compiler`/`-cartridge`/
-  `-cli`?) and publish to crates.io so `chuk-speccy` (and others) depend on released
-  versions rather than a git/path dep.
+The VM is proven; the open problem is **library semantics + discovery quality**. Ordered so
+single-cell retrieval works before composition, and the library grows by eval need:
+
+1. **Agent eval harness — the headline milestone.** Can an LLM `search → inspect → run` the
+   right cell instead of writing code? Concrete cases: pick `manhattan` for grid distance,
+   `range_check` for validation, `weighted_sum` for candidate scoring; compose
+   `abs_diff + weighted_sum + clamp`; detect that *no* cell fits and ask for/compile one;
+   prefer the safer/smaller/capability-free cell when two match; use reported `cycles` /
+   `trapped_ops` / touched-memory to choose between implementations. This proves the real
+   claim: *the consumer gets better because the cell is on the bus.*
+2. **Typed-state I/O over MCP** — the practical unlock. `cell_run` takes register args today;
+   map named JSON fields → struct addresses via the signature so *state* cells (e.g.
+   `manhattan`) are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
+3. **Persisted manifest index with richer ranking** — tags alone aren't enough: rank on
+   signature, input/output types, capability profile, cost profile, examples, and "negative
+   affordances" (what a cell is *not* for).
+4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
+5. **CellGraph / inter-cell composition** — wire cells into a small static graph
+   (planner→scorer→validator→decision; worker-swarm→reducer). *Only after single-cell
+   retrieval is reliable.*
+6. **Grow the standard cell library** — toward ~100 cells, but driven by what the evals
+   need, not by taxonomy.
+7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
+
+✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.2.0); `chuk-speccy` depends on the
+released versions.
+
+## Non-goals — keep it boring
+
+The magic is that a cell is tiny, inspectable, bounded, deterministic, and *almost boring*.
+The moment it looks like a mini-OS or a Wasm competitor it loses its shape. So, deliberately
+**out of scope**: filesystem / network / general syscalls, ports & ROMs as a feature,
+ambient authority, a growing instruction set or "general tiny computer" surface, and being a
+general sandboxed-compute runtime (that's Wasm's job). Heavy or general compute belongs in
+Wasm/native/Python; cell80 stays the *small contract*.
 
 ## Origin & relationship to chuk-speccy
 
