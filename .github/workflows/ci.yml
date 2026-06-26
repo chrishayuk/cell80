@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: fmt
+        run: cargo fmt --all -- --check
+      # Lint every target (lib, bins, tests, benches) — warnings fail the build.
+      # `--all-features` so the `cell` micro-VM runner is linted/tested.
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # The non-gated suite (the one ROM-boot test moved to chuk-speccy).
+      - name: test
+        run: cargo test --workspace --all-features
+      # The comparison benchmark is its own workspace (keeps wasmtime out of the lib build).
+      - name: cell-bench builds
+        run: cargo build --manifest-path cell-bench/Cargo.toml
+
+  python:
+    name: cell80-py + cell80-mcp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Build the PyO3 binding wheel, install it + the MCP package, run the tests.
+      - name: build cell80-py + run MCP tests
+        run: |
+          pip install maturin pytest
+          maturin build -m cell80-py/Cargo.toml --release -i python3.12
+          pip install cell80-py/target/wheels/cell80_py-*.whl
+          pip install ./cell80-mcp
+          cd cell80-mcp && CELL_LIBRARY="$PWD/../rustz80/cells" pytest -q

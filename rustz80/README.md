@@ -15,24 +15,25 @@ Not an LLVM backend and not real `core`: a `syn` frontend → a small typed IR �
 Z80 codegen (`HL` accumulator, `DE` secondary, a fixed RAM "register file"), plus a
 hand-written mul/div micro-runtime.
 
-`rustz80` is **generic** — it knows nothing about games or any SDK. The game layer
-(`impl Game`, the dialect prelude, the symbol map, the `speccy-compile` CLI) lives in
-[`chuk-speccy-sdk`](../speccy-sdk) behind its `compile` feature, built on this crate's
-generic API (`lower_program` with a caller-supplied `PreludeConfig`, `codegen_loop`,
-`to_tap`).
+`rustz80` is **generic** — it knows nothing about games or any SDK. The Spectrum game layer
+(`impl Game`, the dialect prelude, the symbol map, the `speccy-compile` CLI, and the
+emulator to boot the `.tap`) lives in
+[`chuk-speccy`](https://github.com/chrishayuk/chuk-speccy) (its SDK's `compile` feature),
+built on this crate's generic API (`lower_program` with a caller-supplied `PreludeConfig`,
+`codegen_loop`, `to_tap`). chuk-speccy depends on cell80 for that.
 
 ## Quick start
 
 ```bash
-# Compile a dialect program to a bootable tape (entry: a no-arg `fn main`):
-cargo run -p chuk-speccy-sdk --features compile --bin speccy-compile -- rustz80/samples/snake.rs -o snake.tap
+# Run a program headless on the cell micro-VM (deterministic, sandboxed):
+cargo run -p rustz80 --features cell --bin rustz80-cell -- run samples/showcase/rng32.rs
 
-# Boot it on the emulator (needs a 48K ROM at testroms/48.rom):
-cargo run --release --bin speccy-gui -- testroms/48.rom snake.tap
+# …or generate a bootable Spectrum tape via the library API:
+#   let tap: Vec<u8> = rustz80::compile_to_tap(src, "main", "GAME")?;
 ```
 
-`speccy-compile <input.rs> [-o out.tap] [--entry main] [--name GAME]`. Samples live
-in [`samples/`](./samples) (`snake.rs`, `pixels.rs`).
+Samples live in [`samples/`](./samples). The `speccy-compile` CLI and the emulator that
+boots the `.tap` are in [chuk-speccy](https://github.com/chrishayuk/chuk-speccy).
 
 ## The dialect
 
@@ -272,7 +273,8 @@ bounded, never a hang.
 
 ## The dial: one `impl Game`, two compilers
 
-The headline. Write an ordinary [`speccy-sdk`](../speccy-sdk/README.md) `Game` and the
+(The commands below run from the [chuk-speccy](https://github.com/chrishayuk/chuk-speccy)
+repo, whose SDK wraps this compiler.) Write an ordinary `speccy-sdk` `Game` and the
 *same file* compiles **both** ways:
 
 - **`rustc`** (host): a normal `impl Game for T { fn update(&mut self, …) }` — debug it.
@@ -283,7 +285,7 @@ The headline. Write an ordinary [`speccy-sdk`](../speccy-sdk/README.md) `Game` a
   `update`). The output boots on the real ROM.
 
 ```bash
-cargo run -p chuk-speccy-sdk --features compile --bin speccy-compile -- rustz80/samples/bounce.rs -o bounce.tap
+cargo run -p chuk-speccy-sdk --features compile --bin speccy-compile -- speccy-sdk/samples/bounce.rs -o bounce.tap
 cargo run --release --bin speccy-gui -- testroms/48.rom bounce.tap
 ```
 
@@ -295,7 +297,7 @@ intrinsic, mapped like the SDK). Games stay in the dialect subset (fixed state, 
 `Vec`/`String`).
 
 ```bash
-cargo run -p chuk-speccy-sdk --features compile --bin speccy-compile -- rustz80/samples/move.rs -o move.tap
+cargo run -p chuk-speccy-sdk --features compile --bin speccy-compile -- speccy-sdk/samples/move.rs -o move.tap
 cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 5/6/7/8 or Q/A/O/P
 ```
 
@@ -320,13 +322,12 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
 ## Tests
 
 ```bash
-cargo test -p rustz80                                   # differential + tap structure
-SPECTRUM_ROM="$PWD/testroms/48.rom" \
-  cargo test -p rustz80 -- --ignored                    # boot on the real ROM
+cargo test -p rustz80                  # differential oracle + .tap structure
+cargo test -p rustz80 --features cell  # + the cell micro-VM suite
 ```
 
 - `tests/diff.rs` — the oracle: each `check!` runs one Rust block under `rustc` and
-  through `rustz80` on the emulator and asserts they agree; plus multi-`fn` programs
+  through `rustz80` on a flat-RAM Z80 and asserts they agree; plus multi-`fn` programs
   for generics, tuples, structs/methods, and control flow.
 - `tests/snake.rs` — the whole dialect at once: a Snake checked against a Rust replica
   (state checksum + screen bitmap).
@@ -334,7 +335,9 @@ SPECTRUM_ROM="$PWD/testroms/48.rom" \
   `examples/` run the same sources against a rustc oracle).
 - `tests/coverage.rs` — the error/rejection arms, prelude routing, the frame-loop
   generator, and array-struct fields through `self` — the paths the above don't reach.
-- `tests/tap.rs` — `.tap` structure, and ROM-gated boot/animation of `samples/snake.rs`.
+- `tests/cell.rs` / `tests/cell_fuzz.rs` — the cell micro-VM (cartridge, host, index,
+  determinism + reset fuzzer); `tests/tap.rs` — `.tap` block structure (offline). The
+  *boot on a real Spectrum* test lives in [chuk-speccy](https://github.com/chrishayuk/chuk-speccy).
 
 Coverage (`cargo llvm-cov -p rustz80 --all-features -- --include-ignored`): **97% of
 lines, 95% of regions**, every source file ≥ 90% on both.

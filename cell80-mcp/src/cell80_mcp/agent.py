@@ -6,7 +6,7 @@ to speak MCP over stdio (the usual client transport); otherwise it listens on HT
 
 import os
 
-from chuk_mcp_cell.server import build_server
+from cell80_mcp.server import build_server
 
 
 def main() -> None:

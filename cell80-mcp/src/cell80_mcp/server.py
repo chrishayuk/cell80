@@ -16,7 +16,7 @@ import os
 
 from chuk_mcp_server import ChukMCPServer
 
-from chuk_mcp_cell.library import CellLibrary
+from cell80_mcp.library import CellLibrary
 
 _LIBRARY: CellLibrary | None = None
 
@@ -31,7 +31,7 @@ def library() -> CellLibrary:
 
 def build_server() -> ChukMCPServer:
     mcp = ChukMCPServer(
-        name="chuk-mcp-cell",
+        name="cell80-mcp",
         version="0.1.0",
         description="Discover and run deterministic micro-tools (cells): search, inspect, run.",
     )

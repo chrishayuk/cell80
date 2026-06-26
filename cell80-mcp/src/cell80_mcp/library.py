@@ -1,4 +1,4 @@
-"""The warm cell library — a thin Python wrapper over the PyO3 `cellz_py.CellHost`.
+"""The warm cell library — a thin Python wrapper over the PyO3 `cell80_py.CellHost`.
 
 It loads a directory of cells once (`.rs` sources, metadata from a `//!` header; or
 precompiled `.cell` cartridges), then serves `search` / `inspect` / `run`. `run` hides
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pathlib
 
-import cellz_py
+import cell80_py
 
 
 def _parse_header(src: str) -> tuple[str, list[str], str | None]:
@@ -36,7 +36,7 @@ class CellLibrary:
 
     def __init__(self, directory: str):
         self.directory = directory
-        self.host = cellz_py.CellHost()
+        self.host = cell80_py.CellHost()
         self._handles: dict[str, int] = {}
         self._ids: list[str] = []
         self._load(pathlib.Path(directory))
