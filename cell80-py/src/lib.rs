@@ -1,5 +1,5 @@
 //! PyO3 bindings: expose the `rustz80-cell` **host** to Python as a warm `CellHost` class —
-//! the persistent, in-process session an MCP server (`chuk-mcp-cell`) drives. The Rust side
+//! the persistent, in-process session an MCP server (`cell80-mcp`) drives. The Rust side
 //! compiles, runs, and caches warm runners; it returns plain dicts/ints/strings and leaves
 //! all MCP-shaping (tool schemas, content blocks) to the Python layer. Mirrors `zxspec_py`:
 //! a standalone crate (own workspace, cdylib), built with maturin.
@@ -149,7 +149,7 @@ impl CellHost {
 }
 
 #[pymodule]
-fn cellz_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn cell80_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CellHost>()?;
     Ok(())
 }

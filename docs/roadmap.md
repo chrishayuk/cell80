@@ -33,7 +33,7 @@ against `rustc` on the emulator (`tests/diff.rs`).
   (warm cached-runner sessions: `load → run* → unload`).
 - **CLI `rustz80-cell`** — `run` (source) · `compile` (→ `.cell`) · `exec` (`.cell`) ·
   `inspect` · `index` · `search` · `serve` (persistent stdio session).
-- **MCP front** — `cellz_py` (PyO3 `CellHost`) + `chuk-mcp-cell` (`chuk-mcp-server`:
+- **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`:
   `cell_search`/`cell_inspect`/`cell_list`/`cell_run`, a thin router over a warm host).
 - **Trustworthiness** — host-vs-cell field-state differential; determinism + reset fuzzer
   (`tests/cell_fuzz.rs`).

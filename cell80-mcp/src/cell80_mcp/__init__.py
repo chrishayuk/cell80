@@ -1,4 +1,4 @@
-"""chuk-mcp-cell — an MCP server over a warm library of deterministic micro-tools (cells).
+"""cell80-mcp — an MCP server over a warm library of deterministic micro-tools (cells).
 
 The architecture in one line: **millions of cells can be stored/indexed, but only a handful
 ever reach the model** — the agent `cell_search`es the library, `cell_inspect`s a few, and

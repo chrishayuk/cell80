@@ -7,8 +7,8 @@ import pathlib
 CELLS = pathlib.Path(__file__).resolve().parents[2] / "rustz80" / "cells"
 os.environ.setdefault("CELL_LIBRARY", str(CELLS))
 
-from chuk_mcp_cell import server  # noqa: E402
-from chuk_mcp_cell.library import CellLibrary  # noqa: E402
+from cell80_mcp import server  # noqa: E402
+from cell80_mcp.library import CellLibrary  # noqa: E402
 
 
 def test_library_search_inspect_run_warm():

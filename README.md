@@ -27,11 +27,11 @@ targets an authentic ZX Spectrum, so cell logic and retro-game logic share one t
 
 | crate | what it is |
 |-------|------------|
-| **`z80`** (`chuk-speccy-z80`) | a cycle-accurate Z80 CPU core (no_std-friendly, dependency-free) |
+| **`z80`** (`cell80-z80`) | a cycle-accurate Z80 CPU core (no_std-friendly, dependency-free) |
 | **`rustz80`** | a restricted-Rust → Z80 compiler: `syn` frontend → typed IR → Z80 codegen. The accepted subset is *also real Rust*, so every program is differential-tested against `rustc`. |
 | **`rustz80 --features cell`** | the **cell micro-VM**: compile + run on a flat-RAM Z80. `.cell` cartridges (manifest + typed I/O signature), a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, an index/search, a warm `CellHost`, and the `rustz80-cell` CLI (`run`/`compile`/`exec`/`inspect`/`index`/`search`/`serve`). |
-| **`cellz_py`** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
-| **`chuk-mcp-cell`** | an MCP server (`chuk-mcp-server`) over a warm cell library: `cell_search`/`cell_inspect`/`cell_list`/`cell_run` — a thin router, not a tool-per-cell. |
+| **`cell80-py`** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
+| **`cell80-mcp`** | an MCP server (`chuk-mcp-server`) over a warm cell library: `cell_search`/`cell_inspect`/`cell_list`/`cell_run` — a thin router, not a tool-per-cell. |
 | **`cell-bench`** | native-Rust / Wasmtime / cell / Python throughput + lifecycle comparison. |
 
 ## Quickstart

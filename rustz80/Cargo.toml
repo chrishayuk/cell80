@@ -3,17 +3,20 @@
 # against rustc on the emulator. Not an LLVM backend, no real `core`.
 [package]
 name = "rustz80"
-description = "A restricted Rust -> Z80 compiler: the dialect is also real Rust; emits a bootable .tap."
+description = "A restricted Rust -> Z80 compiler: the dialect is also real Rust; emits a bootable .tap, plus a deterministic flat-RAM cell micro-VM."
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+keywords = ["z80", "compiler", "spectrum", "codegen", "retro"]
+categories = ["compilers", "emulators"]
 
 [dependencies]
 syn = { version = "2", features = ["full", "extra-traits", "visit"] }
 # Only the `rustz80-cell` micro-VM runner needs the CPU; the compiler library itself
 # stays dependency-free (syn only). Opt in with `--features cell`.
-z80 = { package = "chuk-speccy-z80", version = "0.1.0", path = "../z80", optional = true }
+z80 = { package = "cell80-z80", version = "0.1.0", path = "../z80", optional = true }
 
 [features]
 # The headless deterministic runner (`rustz80-cell`): compile + run on a flat-RAM Z80.
@@ -31,6 +34,6 @@ required-features = ["cell"]
 
 [dev-dependencies]
 # Run the compiled bytes on the real CPU to differential-test against rustc.
-z80 = { package = "chuk-speccy-z80", version = "0.1.0", path = "../z80" }
+z80 = { package = "cell80-z80", version = "0.1.0", path = "../z80" }
 # The ROM-gated `.tap` boot test lives in `chuk-speccy` (where the full Spectrum +
 # ROM are) and depends on this crate — it tests compiled output on the real machine.

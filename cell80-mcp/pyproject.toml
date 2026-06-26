@@ -3,18 +3,18 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chuk-mcp-cell"
+name = "cell80-mcp"
 version = "0.1.0"
 description = "MCP server exposing a library of deterministic rustz80-cell micro-tools as LLM-drivable tools (search / inspect / run, over a warm host)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "chuk-mcp-server>=0.18",
-    "cellz-py",
+    "cell80-py",
 ]
 
 [project.scripts]
-chuk-mcp-cell = "chuk_mcp_cell.agent:main"
+cell80-mcp = "cell80_mcp.agent:main"
 
 [dependency-groups]
 dev = ["pytest>=8.3.5"]
@@ -24,7 +24,7 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["chuk_mcp_cell*"]
+include = ["cell80_mcp*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
