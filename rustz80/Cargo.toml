@@ -32,5 +32,5 @@ required-features = ["cell"]
 [dev-dependencies]
 # Run the compiled bytes on the real CPU to differential-test against rustc.
 z80 = { package = "chuk-speccy-z80", version = "0.1.0", path = "../z80" }
-# Boot a compiled `.tap` on the full machine (ROM-gated end-to-end test).
-spectrum = { package = "chuk-speccy-spectrum", version = "0.1.0", path = "../spectrum" }
+# The ROM-gated `.tap` boot test lives in `chuk-speccy` (where the full Spectrum +
+# ROM are) and depends on this crate — it tests compiled output on the real machine.
