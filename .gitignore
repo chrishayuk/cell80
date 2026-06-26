@@ -1,6 +1,17 @@
-/target
+# Rust build output (any workspace, incl. cellz_py / cell-bench sub-workspaces)
+target/
 Cargo.lock
 **/*.rs.bk
+
+# Python (cellz_py wheels, chuk-mcp-cell)
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.whl
+*.so
+.venv/
+.pytest_cache/
+
 .DS_Store
 /testroms
 
