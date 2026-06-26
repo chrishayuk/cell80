@@ -42,10 +42,12 @@ jobs:
         with:
           python-version: "3.12"
       # Build the PyO3 binding wheel, install it + the MCP package, run the tests.
+      # `--no-deps` for cell80-mcp: cell80-py is the local wheel (not on PyPI), and its
+      # other deps are installed explicitly here.
       - name: build cell80-py + run MCP tests
         run: |
-          pip install maturin pytest
+          pip install maturin pytest chuk-mcp-server
           maturin build -m cell80-py/Cargo.toml --release -i python3.12
           pip install cell80-py/target/wheels/cell80_py-*.whl
-          pip install ./cell80-mcp
+          pip install --no-deps ./cell80-mcp
           cd cell80-mcp && CELL_LIBRARY="$PWD/../rustz80/cells" pytest -q
