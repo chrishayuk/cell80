@@ -22,9 +22,13 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           for p in cell80-z80 rustz80; do
             echo "::group::publish $p"
-            cargo publish -p "$p"
+            if ! cargo publish -p "$p" 2>publish.err; then
+              cat publish.err
+              # Tolerate re-runs: skip a version that's already on crates.io; fail on anything else.
+              grep -q "already exists" publish.err && echo "$p already published — skipping" || exit 1
+            fi
             echo "::endgroup::"
           done
