@@ -1,0 +1,20 @@
+# Adoption tasks: a user request phrased naturally, plus the correct numeric answer.
+# One case per line: {id, prompt, expected, cell}.
+#   expected — the right integer answer (the model must end with 'ANSWER: <expected>').
+#   cell     — the cell that SHOULD solve it (reference only; the model isn't told this).
+# Prompts are deliberately phrased as a user would ask, not in the library's vocabulary,
+# so this measures retrieval AND adoption together. Keep numbers small + unambiguous so
+# correctness is mechanical.
+#
+# NOTE: `manhattan` is omitted on purpose — it's a typed-state cell (x1,y1,x2,y2 by name),
+# and named-field I/O over the tool surface is roadmap item 2 (not wired yet). `cell_run`
+# only takes positional register args today. Add a manhattan task once that lands.
+
+{"id": "gcd-1", "prompt": "What is the greatest common divisor of 48 and 36?", "expected": 12, "cell": "gcd"}
+{"id": "abs_diff-1", "prompt": "How far apart are the numbers 200 and 75?", "expected": 125, "cell": "abs_diff"}
+{"id": "clamp-1", "prompt": "Take the value 50 and constrain it to lie between 0 and 10. What do you get?", "expected": 10, "cell": "clamp"}
+{"id": "max-1", "prompt": "Which is larger, 17 or 42? Give the value.", "expected": 42, "cell": "max"}
+{"id": "min-1", "prompt": "Which is smaller, 17 or 42? Give the value.", "expected": 17, "cell": "min"}
+{"id": "range_check-1", "prompt": "Is the number 7 within the allowed limits of 1 to 10? Answer 1 for yes, 0 for no.", "expected": 1, "cell": "range_check"}
+{"id": "range_check-2", "prompt": "Is the number 25 within the allowed limits of 1 to 10? Answer 1 for yes, 0 for no.", "expected": 0, "cell": "range_check"}
+{"id": "weighted_sum-1", "prompt": "Score a candidate whose three feature values are 5, 1 and 9 using the standard weighted sum.", "expected": 34, "cell": "weighted_sum"}

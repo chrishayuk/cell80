@@ -35,3 +35,42 @@ pub trait Bus {
         0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A bus that does nothing — it relies on the default `host_trap` (the only method
+    /// with a body), so calling it here covers that default no-op path.
+    struct NopBus;
+    impl Bus for NopBus {
+        fn read(&mut self, _: u16) -> u8 {
+            0
+        }
+        fn write(&mut self, _: u16, _: u8) {}
+        fn input(&mut self, _: u16) -> u8 {
+            0
+        }
+        fn output(&mut self, _: u16, _: u8) {}
+        fn contend(&mut self, _: u16, _: u32) {}
+        fn tick(&mut self, _: u32) {}
+    }
+
+    #[test]
+    fn default_host_trap_is_a_noop() {
+        let mut bus = NopBus;
+        let mut regs = crate::Regs::default();
+        assert_eq!(bus.host_trap(&mut regs), 0);
+    }
+
+    #[test]
+    fn nop_bus_data_and_timing_paths_are_callable() {
+        let mut bus = NopBus;
+        assert_eq!(bus.read(0x1234), 0);
+        bus.write(0x1234, 0xAB);
+        assert_eq!(bus.input(0xFE), 0);
+        bus.output(0xFE, 0xAB);
+        bus.contend(0x4000, 4);
+        bus.tick(4);
+    }
+}

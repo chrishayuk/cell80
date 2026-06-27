@@ -111,21 +111,18 @@ impl Cpu {
             return;
         }
 
-        // EI enables interrupts only *after* the following instruction.
-        let was_ei_pending = self.ei_pending;
         // Q-quirk bookkeeping: remember the previous instruction's latch, then
         // reset. Any flag-writing op this instruction sets `q = F` again.
         self.q_prev = self.q;
         self.q = 0;
 
+        // EI sets IFF1/IFF2 immediately but inhibits the maskable-interrupt *accept*
+        // for exactly one instruction. The window is one instruction long, so clear it
+        // before executing — it stays set only if *this* instruction is itself EI.
+        self.ei_pending = false;
+
         let op = self.fetch_op(bus);
         self.exec(bus, op, Index::Hl);
-
-        if was_ei_pending {
-            self.ei_pending = false;
-            self.iff1 = true;
-            self.iff2 = true;
-        }
     }
 
     /// Try to accept a maskable interrupt (the ULA's `/INT`), called at an

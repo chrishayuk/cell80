@@ -1,0 +1,56 @@
+# Retrieval-precision dataset for the seed library (rustz80/cells).
+# One case per line: {id, query, expected, category}.
+#   expected   — acceptable cell id, or a list of acceptable ids.
+#   category   — "direct" (uses the cell's own vocabulary),
+#                "paraphrase" (natural rewording that avoids the cell's tag words),
+#                "adversarial" (deliberately tricky / known-brittle for token overlap).
+# The paraphrase + adversarial rows are the point: a .cell is only useful if findable
+# when the user does NOT speak the library's vocabulary. These gate roadmap item 3
+# (type-led index). Extend freely — keep at least a few paraphrases per cell.
+
+# ── abs_diff ──────────────────────────────────────────────────────────────────
+{"id": "abs_diff-direct-1", "query": "absolute difference between two numbers", "expected": "abs_diff", "category": "direct"}
+{"id": "abs_diff-direct-2", "query": "compute the absolute value of a minus b", "expected": "abs_diff", "category": "direct"}
+{"id": "abs_diff-para-1", "query": "how far apart are these two values", "expected": "abs_diff", "category": "paraphrase"}
+{"id": "abs_diff-para-2", "query": "the size of the gap between two numbers regardless of sign", "expected": "abs_diff", "category": "paraphrase"}
+
+# ── clamp ─────────────────────────────────────────────────────────────────────
+{"id": "clamp-direct-1", "query": "clamp a value to a range", "expected": "clamp", "category": "direct"}
+{"id": "clamp-direct-2", "query": "clamp x to the inclusive interval lo hi", "expected": "clamp", "category": "direct"}
+{"id": "clamp-para-1", "query": "limit a number so it never goes below a floor or above a ceiling", "expected": "clamp", "category": "paraphrase"}
+{"id": "clamp-para-2", "query": "constrain a value to stay within minimum and maximum", "expected": "clamp", "category": "paraphrase"}
+
+# ── gcd ───────────────────────────────────────────────────────────────────────
+{"id": "gcd-direct-1", "query": "greatest common divisor of two numbers", "expected": "gcd", "category": "direct"}
+{"id": "gcd-direct-2", "query": "gcd using euclid's algorithm", "expected": "gcd", "category": "direct"}
+{"id": "gcd-para-1", "query": "the largest integer that divides both numbers evenly", "expected": "gcd", "category": "paraphrase"}
+{"id": "gcd-para-2", "query": "highest common factor of two integers", "expected": "gcd", "category": "paraphrase"}
+
+# ── manhattan ─────────────────────────────────────────────────────────────────
+{"id": "manhattan-direct-1", "query": "manhattan distance between two grid points", "expected": "manhattan", "category": "direct"}
+{"id": "manhattan-direct-2", "query": "grid distance between two coordinates", "expected": "manhattan", "category": "direct"}
+{"id": "manhattan-para-1", "query": "taxicab distance moving only horizontally and vertically", "expected": "manhattan", "category": "paraphrase"}
+{"id": "manhattan-para-2", "query": "how many steps to walk between two tiles on a grid", "expected": "manhattan", "category": "paraphrase"}
+
+# ── max ───────────────────────────────────────────────────────────────────────
+{"id": "max-direct-1", "query": "maximum of two values", "expected": "max", "category": "direct"}
+{"id": "max-para-1", "query": "the larger of two numbers", "expected": "max", "category": "paraphrase"}
+{"id": "max-para-2", "query": "whichever of two values is greatest", "expected": "max", "category": "paraphrase"}
+
+# ── min ───────────────────────────────────────────────────────────────────────
+{"id": "min-direct-1", "query": "minimum of two values", "expected": "min", "category": "direct"}
+{"id": "min-para-1", "query": "the smaller of two numbers", "expected": "min", "category": "paraphrase"}
+{"id": "min-para-2", "query": "whichever of two values is least", "expected": "min", "category": "paraphrase"}
+
+# ── range_check ───────────────────────────────────────────────────────────────
+{"id": "range_check-direct-1", "query": "check whether a value is within a range", "expected": "range_check", "category": "direct"}
+{"id": "range_check-direct-2", "query": "return 1 if lo is at most x and x is at most hi", "expected": "range_check", "category": "direct"}
+{"id": "range_check-para-1", "query": "is this number within the allowed limits", "expected": "range_check", "category": "adversarial"}
+{"id": "range_check-para-2", "query": "validate that an input falls between two bounds", "expected": "range_check", "category": "paraphrase"}
+{"id": "range_check-para-3", "query": "test if a value is inside the permitted interval", "expected": "range_check", "category": "paraphrase"}
+
+# ── weighted_sum ──────────────────────────────────────────────────────────────
+{"id": "weighted_sum-direct-1", "query": "weighted sum of three inputs", "expected": "weighted_sum", "category": "direct"}
+{"id": "weighted_sum-direct-2", "query": "combine three values with fixed weights", "expected": "weighted_sum", "category": "direct"}
+{"id": "weighted_sum-para-1", "query": "score a candidate from three features", "expected": "weighted_sum", "category": "paraphrase"}
+{"id": "weighted_sum-para-2", "query": "a linear combination of three signals into one score", "expected": "weighted_sum", "category": "adversarial"}
