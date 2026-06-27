@@ -17,15 +17,20 @@ fn carry_helpers_round_trip() {
 }
 
 #[test]
-fn ei_enables_interrupts_only_after_the_next_instruction() {
+fn ei_sets_iff_immediately_but_delays_interrupt_accept_by_one_instruction() {
     let mut bus = FlatBus::new();
     bus.load(0x0000, &[0xFB, 0x00]); // EI ; NOP
     let mut cpu = Cpu::new();
 
-    cpu.step(&mut bus); // EI — enable is still pending, iff1 not yet set
-    assert!(!cpu.iff1, "EI must not enable until after the next instruction");
-    cpu.step(&mut bus); // NOP — now the pending enable lands
-    assert!(cpu.iff1 && cpu.iff2, "interrupts enabled after the instruction following EI");
+    cpu.step(&mut bus); // EI
+    assert!(cpu.iff1 && cpu.iff2, "EI sets IFF1/IFF2 immediately (hardware behaviour)");
+    assert!(
+        !cpu.interrupt(&mut bus),
+        "but a maskable interrupt is still inhibited for the one instruction after EI"
+    );
+
+    cpu.step(&mut bus); // NOP — the inhibit window closes
+    assert!(cpu.interrupt(&mut bus), "interrupt accepted after the instruction following EI");
 }
 
 #[test]

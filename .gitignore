@@ -18,5 +18,10 @@ htmlcov/
 .DS_Store
 /testroms
 
+# Fetched-on-demand correctness test data (the fetch.sh scripts stay tracked)
+z80-tests/sst/v1/
+z80-tests/zex/*.com
+z80-tests/zex/*.cim
+
 # generated dialect tapes (rustz80 speccy-compile output)
 /*.tap

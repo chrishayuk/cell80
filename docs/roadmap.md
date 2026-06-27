@@ -39,6 +39,13 @@ against `rustc` on the emulator (`tests/diff.rs`).
   and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
   *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
   field↔memory↔field seam as one property, not two halves (`tests/cell_fuzz.rs`).
+- **Z80 core conformance** — the foundation everything runs on passes the per-opcode
+  **SingleStepTests** vectors **1,530,000/1,530,000** (initial→final state + cycle counts for
+  every opcode/prefix incl. undocumented: base/CB/ED/DD/FD/DDCB/FDCB) and the **ZEXDOC**
+  exerciser ROM; both fetch-on-demand (`z80-tests/`, see its README). Building this caught
+  six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
+  LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
+  now fixed.
 - **Seed library** — `rustz80/cells/` (math/grid/scoring/validation/bench), all "excellent"
   tier (36–70 B, no caps), indexed + searchable.
 
