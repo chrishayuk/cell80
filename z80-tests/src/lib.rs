@@ -119,9 +119,8 @@ mod tests {
     #[test]
     #[ignore = "needs a ZEX ROM: run z80-tests/zex/fetch.sh (slow; use --release)"]
     fn zex() {
-        let path = std::env::var("ZEX_ROM").unwrap_or_else(|_| {
-            format!("{}/zex/zexdoc.com", env!("CARGO_MANIFEST_DIR"))
-        });
+        let path = std::env::var("ZEX_ROM")
+            .unwrap_or_else(|_| format!("{}/zex/zexdoc.com", env!("CARGO_MANIFEST_DIR")));
         let rom = std::fs::read(&path)
             .unwrap_or_else(|e| panic!("read ZEX ROM {path}: {e} — run z80-tests/zex/fetch.sh"));
         let out = run_zex(&rom, 50_000_000_000);
