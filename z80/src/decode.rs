@@ -145,9 +145,25 @@ impl Cpu {
             6 => {
                 // LD r[y], n
                 if y == MEM {
-                    let a = self.ptr_addr(bus, im);
-                    let n = self.imm8(bus);
-                    self.mem_write(bus, a, n);
+                    match im {
+                        Index::Hl => {
+                            let a = self.ptr_addr(bus, im);
+                            let n = self.imm8(bus);
+                            self.mem_write(bus, a, n);
+                        }
+                        _ => {
+                            // LD (IX/IY+d), n: read d then n back-to-back, 2T internal, then
+                            // write (19T) — *not* `ptr_addr`'s 5T, which is for the r,(IX+d)
+                            // read/write forms and over-charges this two-operand form.
+                            let base = self.hl_index(im);
+                            let d = self.imm8(bus) as i8 as i16 as u16;
+                            let addr = base.wrapping_add(d);
+                            self.regs.wz = addr;
+                            let n = self.imm8(bus);
+                            bus.tick(2);
+                            self.mem_write(bus, addr, n);
+                        }
+                    }
                 } else {
                     let n = self.imm8(bus);
                     self.r8_set_idx(y, im, n);
@@ -287,7 +303,15 @@ impl Cpu {
                     self.iff1 = false; // DI
                     self.iff2 = false;
                 }
-                7 => self.ei_pending = true, // EI (delayed enable)
+                7 => {
+                    // EI: IFF1/IFF2 are set *immediately*; only the maskable-interrupt
+                    // *accept* is delayed by one instruction (the `ei_pending` window,
+                    // cleared at the start of the next `step`). This matches hardware —
+                    // e.g. `EI; LD A,I` copies the freshly-set IFF2 into P/V.
+                    self.iff1 = true;
+                    self.iff2 = true;
+                    self.ei_pending = true;
+                }
                 _ => unreachable!(),
             },
             4 => {
@@ -315,11 +339,15 @@ impl Cpu {
                         }
                         1 => {
                             let op = self.fetch_op(bus); // DD prefix
+                            // The prefix is its own M1 cycle that writes no flags, so it
+                            // rolls the Q latch — a following SCF/CCF reads q_prev as 0.
+                            self.q_prev = self.q;
                             self.exec(bus, op, Index::Ix);
                         }
                         2 => self.exec_ed(bus), // ED prefix
                         3 => {
                             let op = self.fetch_op(bus); // FD prefix
+                            self.q_prev = self.q; // see DD above
                             self.exec(bus, op, Index::Iy);
                         }
                         _ => unreachable!(),
@@ -614,14 +642,17 @@ impl Cpu {
         if n & 0x08 != 0 {
             f |= XF;
         }
-        self.regs.f = f;
-        self.q = self.regs.f;
 
         if repeat && bc != 0 {
             bus.tick(5);
             self.regs.pc = self.regs.pc.wrapping_sub(2);
             self.regs.wz = self.regs.pc.wrapping_add(1);
+            // Undocumented (Patrik Rak): on a *repeated* iteration the XY flags come from
+            // the high byte of the (now decremented) PC, not from (A+v).
+            f = (f & !(YF | XF)) | ((self.regs.pc >> 8) as u8 & (YF | XF));
         }
+        self.regs.f = f;
+        self.q = self.regs.f;
     }
 
     fn block_cp<B: Bus>(&mut self, bus: &mut B, inc: bool, repeat: bool) {
@@ -654,8 +685,6 @@ impl Cpu {
         if n & 0x08 != 0 {
             f |= XF;
         }
-        self.regs.f = f;
-        self.q = self.regs.f;
         self.regs.wz = if inc {
             self.regs.wz.wrapping_add(1)
         } else {
@@ -666,7 +695,11 @@ impl Cpu {
             bus.tick(5);
             self.regs.pc = self.regs.pc.wrapping_sub(2);
             self.regs.wz = self.regs.pc.wrapping_add(1);
+            // Undocumented (Patrik Rak): a repeated iteration takes XY from PCh, not (A-v-H).
+            f = (f & !(YF | XF)) | ((self.regs.pc >> 8) as u8 & (YF | XF));
         }
+        self.regs.f = f;
+        self.q = self.regs.f;
     }
 
     fn block_in<B: Bus>(&mut self, bus: &mut B, inc: bool, repeat: bool) {
@@ -708,7 +741,34 @@ impl Cpu {
         if repeat && b != 0 {
             bus.tick(5);
             self.regs.pc = self.regs.pc.wrapping_sub(2);
+            self.regs.wz = self.regs.pc.wrapping_add(1);
+            self.regs.f = self.block_io_repeat_flags(f, v, k, b);
+            self.q = self.regs.f;
         }
+    }
+
+    /// Undocumented flag fixup for the *repeating* block-I/O ops (INIR/INDR/OTIR/OTDR)
+    /// when they loop (B != 0): the XY flags come from PCh, and H/P are recomputed from B
+    /// and the I/O sum `k` per Patrik Rak's rule. `self.regs.pc` must already be decremented.
+    fn block_io_repeat_flags(&self, mut f: u8, v: u8, k: u16, b: u8) -> u8 {
+        f = (f & !(YF | XF)) | ((self.regs.pc >> 8) as u8 & (YF | XF));
+        let (hf, p) = if k > 0xff {
+            if v & 0x80 != 0 {
+                ((b & 0x0f) == 0x00, b.wrapping_sub(1))
+            } else {
+                ((b & 0x0f) == 0x0f, b.wrapping_add(1))
+            }
+        } else {
+            (false, b)
+        };
+        f &= !(HF | PF);
+        if hf {
+            f |= HF;
+        }
+        if ((p & 7) ^ (k as u8 & 7) ^ b).count_ones() & 1 == 0 {
+            f |= PF;
+        }
+        f
     }
 
     fn block_out<B: Bus>(&mut self, bus: &mut B, inc: bool, repeat: bool) {
@@ -744,6 +804,9 @@ impl Cpu {
         if repeat && b != 0 {
             bus.tick(5);
             self.regs.pc = self.regs.pc.wrapping_sub(2);
+            self.regs.wz = self.regs.pc.wrapping_add(1);
+            self.regs.f = self.block_io_repeat_flags(f, v, k, b);
+            self.q = self.regs.f;
         }
     }
 
