@@ -58,18 +58,40 @@ runs the right cell instead of writing Python**. That's the next gate.
 The VM is proven; the open problem is **library semantics + discovery quality**. Ordered so
 single-cell retrieval works before composition, and the library grows by eval need:
 
-1. **Agent eval harness — the headline milestone.** Can an LLM `search → inspect → run` the
-   right cell instead of writing code? Concrete cases: pick `manhattan` for grid distance,
-   `range_check` for validation, `weighted_sum` for candidate scoring; compose
-   `abs_diff + weighted_sum + clamp`; detect that *no* cell fits and ask for/compile one;
-   prefer the safer/smaller/capability-free cell when two match; use reported `cycles` /
-   `trapped_ops` / touched-memory to choose between implementations. This proves the real
-   claim: *the consumer gets better because the cell is on the bus.*
+1. **Agent eval harness — the headline milestone. → underway (`cell-eval/`).** Can an LLM
+   `search → inspect → run` the right cell instead of writing code? Concrete cases: pick
+   `manhattan` for grid distance, `range_check` for validation, `weighted_sum` for candidate
+   scoring; compose `abs_diff + weighted_sum + clamp`; detect that *no* cell fits and ask
+   for/compile one; prefer the safer/smaller/capability-free cell when two match; use
+   reported `cycles` / `trapped_ops` / touched-memory to choose between implementations.
+   This proves the real claim: *the consumer gets better because the cell is on the bus.*
    **Measure two numbers, not one:** (a) end-to-end **adoption** ("did it use a cell at
    all") and (b) **retrieval precision** ("given the query, is the right cell in top-k").
    They fail for different reasons — low adoption is often weak *steering* (system-prompt
    cueing), not bad retrieval. Hold the steering fixed, vary the library, and read precision
    directly, so a one-line preamble fix doesn't get misdiagnosed as a week of index tuning.
+   - **Built so far** — `cell-eval/`, a standalone Python package driving the *same*
+     `CellLibrary` the MCP server exposes. **Retrieval eval** is deterministic and runnable
+     today (`cell-eval retrieval`): a paraphrase/adversarial dataset → precision@1 / hit@k /
+     MRR, with a fixed-steering split (direct vs paraphrase vs adversarial). **Adoption eval**
+     (`cell-eval adoption`) is a wired agent loop over an **OpenAI-compatible endpoint
+     (Ollama by default)** — cell tools as function calls, scoring adoption + correctness +
+     correct-via-cell; the steering prompt is a single held-fixed constant.
+   - **Retrieval baseline (seed lib, k=5):** overall **P@1 0.74 / hit@3 0.90 / MRR 0.82**,
+     but split it and the thesis-relevant number falls out: **direct P@1 1.00, paraphrase
+     0.53, adversarial 0.50.** Token-overlap is perfect on the library's own words and a
+     coin-flip under rewording — *"is this number within the allowed limits"* still misses
+     `range_check` entirely. The paraphrase brittleness is **deferred to SOMA** (handled as a
+     learning problem, not hand-tuned); this row is its regression guard, and the direct row
+     guards against search regressing outright.
+   - **Adoption baseline (gemma-4-26B-A4B via Ollama, 8 tasks):** **adoption 0.75, correct
+     1.00, correct-via-cell 0.75.** The two non-adoptions (`max` of 17/42; `25 within 1–10`)
+     were answered directly in one turn — the model shortcuts the cell when the arithmetic is
+     trivial, *not* a retrieval miss (when it did reach for a cell it found the right one every
+     time). This is exactly why the two numbers are tracked apart: correctness was perfect; the
+     gap is adoption (steering), not retrieval.
+   - **Next on this milestone** — push adoption past trivial-task shortcutting (steering /
+     harder tasks); add typed-state tasks once item 2 lands; grow the dataset as the library does.
 2. **Typed-state I/O over MCP** — the practical unlock. `cell_run` takes register args today;
    map named JSON fields → struct addresses via the signature so *state* cells (e.g.
    `manhattan`) are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
