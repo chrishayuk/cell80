@@ -65,16 +65,23 @@ single-cell retrieval works before composition, and the library grows by eval ne
    prefer the safer/smaller/capability-free cell when two match; use reported `cycles` /
    `trapped_ops` / touched-memory to choose between implementations. This proves the real
    claim: *the consumer gets better because the cell is on the bus.*
+   **Measure two numbers, not one:** (a) end-to-end **adoption** ("did it use a cell at
+   all") and (b) **retrieval precision** ("given the query, is the right cell in top-k").
+   They fail for different reasons — low adoption is often weak *steering* (system-prompt
+   cueing), not bad retrieval. Hold the steering fixed, vary the library, and read precision
+   directly, so a one-line preamble fix doesn't get misdiagnosed as a week of index tuning.
 2. **Typed-state I/O over MCP** — the practical unlock. `cell_run` takes register args today;
    map named JSON fields → struct addresses via the signature so *state* cells (e.g.
    `manhattan`) are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
-3. **Persisted manifest index with richer ranking + paraphrase robustness** — tags alone
-   aren't enough, and token-overlap is brittle: today *"is this number within the allowed
-   limits"* retrieves `gcd` (matched its `number` tag), not `range_check`. Retrieval is
-   load-bearing for the whole pitch and precision is the unsolved problem — determinism
-   doesn't save you from confidently running the *wrong* cell. Rank on signature, I/O types,
-   capability + cost profile, examples, and "negative affordances"; **stress-test on
-   paraphrased queries** as a gate (a `.cell` is only useful if its manifest is *findable*).
+3. **Type-led index (the escape hatch from paraphrase brittleness).** Token-overlap is
+   brittle — today *"is this number within the allowed limits"* retrieves `gcd` (its `number`
+   tag), not `range_check`. But unlike a KnnStore *fact* (surface form only), a cell carries a
+   **typed signature + capability/cost profile** — structured, verifiable metadata. "is this
+   within limits" is a boolean-output, three-integer-bound query, a structurally stronger
+   match for `range_check : (x,lo,hi)->bool` than `gcd : (a,b)->u16` *regardless of tags*. So
+   make the **typed signature the primary ranking signal and embeddings the tiebreaker**, not
+   the reverse — cell retrieval can beat fact retrieval *because the artifact is typed*. Gate
+   it on a **paraphrased-query** stress test (a `.cell` is only useful if findable).
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition** — wire cells into a small static graph
    (planner→scorer→validator→decision; worker-swarm→reducer). *Only after single-cell
@@ -85,6 +92,14 @@ single-cell retrieval works before composition, and the library grows by eval ne
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.2.0); `chuk-speccy` depends on the
 released versions.
+
+### Design rule for SOMA / RL: cost is a **gate**, not a gradient
+Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —
+**never as a reward-shaping term**. The moment cost enters the *reward*, the trap-routing
+gaming surface reopens *and* you're forced to pick the `trapped_ops` weight the ABI doc admits
+it can't make faithful (real-Z80 cost vs host-trap ≈4). Keeping cost a constraint sidesteps
+the weight choice entirely and keeps the gaming surface shut. Decide this before the first
+reward function ships, not after.
 
 ## Non-goals — keep it boring
 
