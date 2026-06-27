@@ -1,0 +1,133 @@
+# cell-eval — the cell80 agent eval harness
+
+The headline question for cell80 isn't whether the VM works (it does). It's whether
+**an agent reliably retrieves and runs the right `.cell` instead of writing code.** That
+is the thesis. This package measures it.
+
+It measures **two numbers, not one** — because they fail for different reasons:
+
+| number | question | needs a model? |
+|---|---|---|
+| **retrieval precision** | given a query, is the right cell in the top-k? | no — deterministic |
+| **adoption** | given a task, does an agent actually `search → inspect → run` a cell (and get it right) instead of doing the math itself? | yes — OpenAI-compatible endpoint |
+
+Low adoption is usually weak **steering** (the system prompt), not bad retrieval. So the
+harness **holds steering fixed** (one constant in `adoption.py`) and lets you vary the
+library/model — so a one-line preamble fix isn't misdiagnosed as a week of index tuning,
+and vice-versa.
+
+Both evals drive the same `CellLibrary` the MCP server exposes, so `search`/`inspect`/`run`
+go through the identical code path an agent gets over MCP — no separate mock surface.
+
+## Install
+
+```bash
+# from the repo root, in a venv with cell80_py built (see repo README):
+maturin develop -m cell80-py/Cargo.toml --release   # builds the engine
+pip install -e cell80-mcp/                           # the CellLibrary + MCP tools
+pip install -e 'cell-eval/[adoption]'                # this harness (drop [adoption] for retrieval-only)
+```
+
+## Retrieval eval (deterministic — run this anywhere)
+
+```bash
+cell-eval retrieval                 # human-readable
+cell-eval retrieval --k 3 --json    # structured
+cell-eval retrieval --fail-under 0.7   # exit 1 if P@1 below threshold (CI guard)
+cell-eval retrieval --library path/to/other/cells   # eval a different library
+```
+
+Dataset: [`datasets/retrieval.jsonl`](datasets/retrieval.jsonl) — one
+`{query, expected, category}` per line. Categories:
+
+- **direct** — the query uses the library's own vocabulary
+- **paraphrase** — a natural rewording that *avoids* the cell's tag words
+- **adversarial** — deliberately tricky for token-overlap ranking
+
+The paraphrase + adversarial rows are the point: *a `.cell` is only useful if findable when
+the user doesn't speak the library's vocabulary.*
+
+### Baseline (seed library, 8 cells, k=5)
+
+```
+OVERALL        P@1=0.74  hit@3=0.90  hit@5=0.94  MRR=0.82
+  direct       P@1=1.00  hit@3=1.00  hit@5=1.00  MRR=1.00
+  paraphrase   P@1=0.53  hit@3=0.87  hit@5=0.93  MRR=0.69
+  adversarial  P@1=0.50  hit@3=0.50  hit@5=0.50  MRR=0.50
+```
+
+The story in one line: **token-overlap search is perfect on the library's own words and
+falls to a coin-flip under paraphrase.** Concrete misses today:
+
+- *"is this number within the allowed limits"* → `[gcd, clamp]` — `range_check` not in top-k.
+- *"the largest integer that divides both numbers evenly"* → `[clamp]` — `gcd` not in top-k.
+- *"the smaller of two numbers"* → `[max, min, …]` — `min` at rank 2, beaten by `max`.
+
+This is the measured case for **roadmap item 3 (type-led index)**: rank on the typed
+signature first (`range_check : (x,lo,hi)->bool` *is* a boolean-output, three-bound query),
+embeddings as the tiebreaker. Re-run this eval to know if a change actually helped — the
+direct row is the regression guard, the paraphrase row is the score to move.
+
+## Adoption eval (LLM agent — OpenAI-compatible, Ollama by default)
+
+```bash
+# point at any model you've pulled in Ollama:
+cell-eval adoption --model qwen2.5
+cell-eval adoption --model llama3.1 --json
+
+# or any OpenAI-compatible endpoint:
+CELL_EVAL_BASE_URL=http://host:11434/v1 CELL_EVAL_MODEL=qwen2.5 cell-eval adoption
+```
+
+Config (env or flags):
+
+| env | default | meaning |
+|---|---|---|
+| `CELL_EVAL_BASE_URL` | `http://localhost:11434/v1` | OpenAI-compatible endpoint (Ollama) |
+| `CELL_EVAL_API_KEY`  | `ollama` | ignored by Ollama; the SDK needs *something* |
+| `CELL_EVAL_MODEL`    | — (required) | model name, e.g. `qwen2.5`, `llama3.1` |
+| `CELL_EVAL_MAX_TURNS`| `8` | tool-call rounds per task |
+
+> Use a tool-calling-capable model — the agent loop needs OpenAI-style function calling.
+
+Dataset: [`datasets/tasks.jsonl`](datasets/tasks.jsonl) — `{prompt, expected, cell}` per
+line; prompts are phrased as a user would ask, so this measures retrieval **and** adoption
+together. Three signals per task:
+
+- **adoption** — did it call `cell_run` at all (vs. answering from its head)?
+- **correct** — is the final `ANSWER: <n>` right?
+- **correct_via_cell** — correct *and* it ran a cell (the outcome we want).
+
+### Baseline (gemma-4-26B-A4B via Ollama, 8 tasks)
+
+```
+adoption=0.75   correct=1.00   correct_via_cell=0.75
+```
+
+Whenever the model reached for a cell it found and ran the right one (correct=1.00). The two
+non-adoptions — `max` of 17/42, and *"is 25 within 1–10"* — were answered directly in one
+turn: the model shortcuts the cell when the arithmetic is trivial. That's an **adoption**
+gap (steering / task difficulty), not a retrieval gap — which is the whole reason the two
+numbers are tracked apart. Use a tool-calling model: `gemma3` does **not** support tools in
+Ollama; `gemma-4-26B-A4B` does.
+
+## Layout
+
+```
+src/cell_eval/
+  library.py    locate the seed lib + open the real CellLibrary
+  retrieval.py  deterministic retrieval eval + report
+  metrics.py    precision@1, hit@k, MRR
+  tools.py      cell tools as OpenAI function schemas + dispatcher (mirrors MCP)
+  adoption.py   the fixed steering prompt + the agent loop (OpenAI-compatible)
+  report.py     human-readable rendering
+  __main__.py   `cell-eval retrieval | adoption`
+datasets/       retrieval.jsonl, tasks.jsonl
+tests/          deterministic; no network (the adoption network path is run by you)
+```
+
+## Known gaps (tracked on the roadmap)
+
+- **Typed-state cells** (e.g. `manhattan`, with named fields `x1,y1,x2,y2`) aren't in the
+  adoption tasks yet: `cell_run` takes positional register args, and named-field I/O over
+  the tool surface is **roadmap item 2**. Add a `manhattan` task once that lands.
