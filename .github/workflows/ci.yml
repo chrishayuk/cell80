@@ -67,7 +67,10 @@ jobs:
           pip install maturin pytest chuk-mcp-server openai
           maturin build -m cell80-py/Cargo.toml --release
           pip install cell80-py/target/wheels/cell80_py-*.whl
-          pip install --no-deps ./cell80-mcp ./cell-eval
+          pip install --no-deps ./cell80-mcp
+          # cell-eval is repo-coupled (its datasets + the seed cell library live in the
+          # tree), so install it editable — a site-packages copy can't find them.
+          pip install -e ./cell-eval --no-deps
           pytest -q cell80-mcp/tests cell-eval/tests
 
   # Publish the library + CLI crates to crates.io, in dependency order (rustz80 depends on
