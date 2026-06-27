@@ -339,8 +339,8 @@ impl Cpu {
                         }
                         1 => {
                             let op = self.fetch_op(bus); // DD prefix
-                            // The prefix is its own M1 cycle that writes no flags, so it
-                            // rolls the Q latch — a following SCF/CCF reads q_prev as 0.
+                                                         // The prefix is its own M1 cycle that writes no flags, so it
+                                                         // rolls the Q latch — a following SCF/CCF reads q_prev as 0.
                             self.q_prev = self.q;
                             self.exec(bus, op, Index::Ix);
                         }

@@ -23,14 +23,20 @@ fn ei_sets_iff_immediately_but_delays_interrupt_accept_by_one_instruction() {
     let mut cpu = Cpu::new();
 
     cpu.step(&mut bus); // EI
-    assert!(cpu.iff1 && cpu.iff2, "EI sets IFF1/IFF2 immediately (hardware behaviour)");
+    assert!(
+        cpu.iff1 && cpu.iff2,
+        "EI sets IFF1/IFF2 immediately (hardware behaviour)"
+    );
     assert!(
         !cpu.interrupt(&mut bus),
         "but a maskable interrupt is still inhibited for the one instruction after EI"
     );
 
     cpu.step(&mut bus); // NOP — the inhibit window closes
-    assert!(cpu.interrupt(&mut bus), "interrupt accepted after the instruction following EI");
+    assert!(
+        cpu.interrupt(&mut bus),
+        "interrupt accepted after the instruction following EI"
+    );
 }
 
 #[test]
@@ -38,7 +44,10 @@ fn interrupt_is_masked_when_disabled() {
     let mut bus = FlatBus::new();
     let mut cpu = Cpu::new();
     cpu.iff1 = false;
-    assert!(!cpu.interrupt(&mut bus), "a masked interrupt is not serviced");
+    assert!(
+        !cpu.interrupt(&mut bus),
+        "a masked interrupt is not serviced"
+    );
 }
 
 #[test]

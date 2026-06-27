@@ -37,7 +37,12 @@ struct TestBus {
 
 impl TestBus {
     fn new() -> Self {
-        Self { mem: vec![0; 0x1_0000], tstates: 0, port_in: VecDeque::new(), port_out: Vec::new() }
+        Self {
+            mem: vec![0; 0x1_0000],
+            tstates: 0,
+            port_in: VecDeque::new(),
+            port_out: Vec::new(),
+        }
     }
 }
 
@@ -61,10 +66,12 @@ impl Bus for TestBus {
 }
 
 fn u8f(v: &Value, k: &str) -> u8 {
-    v[k].as_u64().unwrap_or_else(|| panic!("missing u8 field {k}")) as u8
+    v[k].as_u64()
+        .unwrap_or_else(|| panic!("missing u8 field {k}")) as u8
 }
 fn u16f(v: &Value, k: &str) -> u16 {
-    v[k].as_u64().unwrap_or_else(|| panic!("missing u16 field {k}")) as u16
+    v[k].as_u64()
+        .unwrap_or_else(|| panic!("missing u16 field {k}")) as u16
 }
 fn boolf(v: &Value, k: &str) -> bool {
     v[k].as_u64().unwrap_or(0) != 0
@@ -90,8 +97,12 @@ fn setup(init: &Value, ports: Option<&Vec<Value>>) -> (Cpu, TestBus) {
         r.ix = u16f(init, "ix");
         r.iy = u16f(init, "iy");
         r.wz = u16f(init, "wz");
-        let (af, bc, de, hl) =
-            (u16f(init, "af_"), u16f(init, "bc_"), u16f(init, "de_"), u16f(init, "hl_"));
+        let (af, bc, de, hl) = (
+            u16f(init, "af_"),
+            u16f(init, "bc_"),
+            u16f(init, "de_"),
+            u16f(init, "hl_"),
+        );
         r.a_ = (af >> 8) as u8;
         r.f_ = af as u8;
         r.b_ = (bc >> 8) as u8;
@@ -147,10 +158,26 @@ fn diff(cpu: &Cpu, bus: &TestBus, fin: &Value, ports: Option<&Vec<Value>>) -> Ve
     chk("ix", r.ix as u64, u16f(fin, "ix") as u64);
     chk("iy", r.iy as u64, u16f(fin, "iy") as u64);
     chk("wz", r.wz as u64, u16f(fin, "wz") as u64);
-    chk("af_", ((r.a_ as u64) << 8) | r.f_ as u64, u16f(fin, "af_") as u64);
-    chk("bc_", ((r.b_ as u64) << 8) | r.c_ as u64, u16f(fin, "bc_") as u64);
-    chk("de_", ((r.d_ as u64) << 8) | r.e_ as u64, u16f(fin, "de_") as u64);
-    chk("hl_", ((r.h_ as u64) << 8) | r.l_ as u64, u16f(fin, "hl_") as u64);
+    chk(
+        "af_",
+        ((r.a_ as u64) << 8) | r.f_ as u64,
+        u16f(fin, "af_") as u64,
+    );
+    chk(
+        "bc_",
+        ((r.b_ as u64) << 8) | r.c_ as u64,
+        u16f(fin, "bc_") as u64,
+    );
+    chk(
+        "de_",
+        ((r.d_ as u64) << 8) | r.e_ as u64,
+        u16f(fin, "de_") as u64,
+    );
+    chk(
+        "hl_",
+        ((r.h_ as u64) << 8) | r.l_ as u64,
+        u16f(fin, "hl_") as u64,
+    );
     chk("iff1", cpu.iff1 as u64, boolf(fin, "iff1") as u64);
     chk("iff2", cpu.iff2 as u64, boolf(fin, "iff2") as u64);
     chk("im", cpu.im as u64, u8f(fin, "im") as u64);
@@ -171,7 +198,10 @@ fn diff(cpu: &Cpu, bus: &TestBus, fin: &Value, ports: Option<&Vec<Value>>) -> Ve
             .map(|p| (p[0].as_u64().unwrap() as u16, p[1].as_u64().unwrap() as u8))
             .collect();
         if bus.port_out != want_out {
-            d.push(format!("ports out: got {:x?}, want {want_out:x?}", bus.port_out));
+            d.push(format!(
+                "ports out: got {:x?}, want {want_out:x?}",
+                bus.port_out
+            ));
         }
     }
     d
@@ -197,7 +227,10 @@ fn single_step_tests() {
         );
         return;
     };
-    let max_cases = std::env::var("SST_MAX_CASES").ok().and_then(|s| s.parse().ok()).unwrap_or(usize::MAX);
+    let max_cases = std::env::var("SST_MAX_CASES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(usize::MAX);
     let check_cycles = std::env::var("SST_NO_CYCLES").is_err();
 
     let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
@@ -206,7 +239,11 @@ fn single_step_tests() {
         .filter(|p| p.extension().is_some_and(|e| e == "json"))
         .collect();
     files.sort();
-    assert!(!files.is_empty(), "no .json opcode files in {}", dir.display());
+    assert!(
+        !files.is_empty(),
+        "no .json opcode files in {}",
+        dir.display()
+    );
 
     let (mut total, mut failed) = (0usize, 0usize);
     let mut report: Vec<String> = Vec::new();
