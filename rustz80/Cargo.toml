@@ -16,7 +16,7 @@ categories = ["compilers", "emulators"]
 syn = { version = "2", features = ["full", "extra-traits", "visit"] }
 # Only the `rustz80-cell` micro-VM runner needs the CPU; the compiler library itself
 # stays dependency-free (syn only). Opt in with `--features cell`.
-z80 = { package = "cell80-z80", version = "0.2.0", path = "../z80", optional = true }
+z80 = { package = "cell80-z80", version = "0.3.0", path = "../z80", optional = true }
 
 [features]
 # The headless deterministic runner (`rustz80-cell`): compile + run on a flat-RAM Z80.
@@ -34,6 +34,6 @@ required-features = ["cell"]
 
 [dev-dependencies]
 # Run the compiled bytes on the real CPU to differential-test against rustc.
-z80 = { package = "cell80-z80", version = "0.2.0", path = "../z80" }
+z80 = { package = "cell80-z80", version = "0.3.0", path = "../z80" }
 # The ROM-gated `.tap` boot test lives in `chuk-speccy` (where the full Spectrum +
 # ROM are) and depends on this crate — it tests compiled output on the real machine.
