@@ -1,8 +1,13 @@
 //! Test harness crate for the `z80` core.
 //!
-//! The headline layer (per-opcode SingleStepTests JSON, then ZEXDOC/ZEXALL) is
-//! TODO(M0/M2). For now this provides [`FlatBus`] — the ~20-line RAM-only test
-//! double the JSON tests will run against — and a couple of smoke tests.
+//! Layers (see `README.md`):
+//! * `tests/single_step.rs` — per-opcode **SingleStepTests** vectors (the headline layer):
+//!   initial→final state + cycle counts for every opcode, fetched on demand.
+//! * the `zex` test below — **ZEXDOC/ZEXALL** exerciser ROMs run on [`run_zex`], coarse
+//!   end-to-end CRC acceptance.
+//! * `tests/opcode_sweep.rs` — a decode smoke (every opcode steps without panicking).
+//!
+//! This module provides [`FlatBus`] — the RAM-only test bus those layers run against.
 
 use z80::Bus;
 
@@ -105,14 +110,20 @@ mod tests {
     use super::*;
     use z80::Cpu;
 
-    /// Validate the core against a ZEX ROM. Off by default (needs the binary):
-    ///   ZEX_ROM=/path/to/zexdoc.com cargo test -p z80-tests --release -- \
-    ///       --ignored --nocapture zex
+    /// Coarse end-to-end acceptance: run a ZEXDOC/ZEXALL exerciser ROM and assert it
+    /// reports no CRC mismatch. Slow (billions of T-states) so it's `#[ignore]`d — fetch a
+    /// ROM and run it explicitly, in release:
+    ///   z80-tests/zex/fetch.sh                 # downloads zexdoc.com (git-ignored)
+    ///   cargo test -p z80-tests --release --lib zex -- --ignored --nocapture
+    /// The ROM is taken from `$ZEX_ROM` if set, else the fetched `z80-tests/zex/zexdoc.com`.
     #[test]
-    #[ignore = "set ZEX_ROM=/path/to/zexdoc.com (or zexall.com)"]
+    #[ignore = "needs a ZEX ROM: run z80-tests/zex/fetch.sh (slow; use --release)"]
     fn zex() {
-        let path = std::env::var("ZEX_ROM").expect("set ZEX_ROM to a .com test ROM");
-        let rom = std::fs::read(&path).expect("read ZEX ROM");
+        let path = std::env::var("ZEX_ROM").unwrap_or_else(|_| {
+            format!("{}/zex/zexdoc.com", env!("CARGO_MANIFEST_DIR"))
+        });
+        let rom = std::fs::read(&path)
+            .unwrap_or_else(|e| panic!("read ZEX ROM {path}: {e} — run z80-tests/zex/fetch.sh"));
         let out = run_zex(&rom, 50_000_000_000);
         print!("{out}");
         assert!(

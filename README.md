@@ -94,6 +94,22 @@ smaller than its usefulness*.
 > policy, and bounded execution. A tool shouldn't need a server, a process, or a page of
 > schema if it's only 47 bytes of behaviour.
 
+### Is the thesis true? Measure it.
+
+The pitch only matters if an agent *actually* retrieves and runs the right cell instead of
+writing the code itself. [`cell-eval`](./cell-eval) measures exactly that, as **two numbers
+that fail for different reasons**:
+
+- **retrieval precision** — deterministic, no model: given a query, is the right cell in the
+  top-k? (Reads index quality directly.)
+- **adoption** — an LLM agent loop over an **OpenAI-compatible / Ollama** endpoint: given a
+  task, did it `search → inspect → run` a cell, and get the right answer?
+
+First baselines on the seed library: retrieval **P@1 1.00** on direct queries (**0.53** under
+paraphrase — the open problem the index work targets); adoption **0.75** with **1.00**
+correctness on a local model. Steering is held fixed, so library changes and prompt changes
+never get conflated.
+
 ---
 
 ## Quick start
@@ -135,6 +151,10 @@ own RAM. On top of that:
 - **Honest about cost.** Reports carry `cycles` *and* `trapped_ops` — host traps (mul/div)
   are near-free in T-states, so they're counted separately, which means a reward function
   can't be gamed by routing work through them.
+- **Conformance-tested core.** The Z80 the cells run on passes the per-opcode
+  **SingleStepTests** suite — **1,530,000 / 1,530,000** cases across the full instruction set
+  (base/CB/ED/DD/FD/DDCB/FDCB), including cycle counts and the undocumented flags — plus the
+  **ZEXDOC** exerciser ROM. So "cycle-exact" is *measured*, not asserted ([`z80-tests/`](./z80-tests)).
 
 The whole trust surface is *64 KiB of RAM + a cycle budget* — small enough to audit, and
 the same for every cell.
@@ -252,10 +272,13 @@ cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  
 | **`rustz80 --features cell`** | the **cell micro-VM**: `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, and the `rustz80-cell` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
+| **[`cell-eval`](./cell-eval)** | the agent eval harness — retrieval precision + LLM adoption (does an agent run the right cell instead of writing code?). |
 | **[`cell-bench`](./cell-bench)** | the cross-runtime comparison (native / Wasmtime / cell / Python). |
+| **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
-The roadmap (`docs/roadmap.md`) tracks what's next: inter-cell composition (CellGraph),
-typed-state I/O over MCP, a larger standard cell library, and signed `i16`.
+The roadmap (`docs/roadmap.md`) tracks the active milestone — the agent eval harness above —
+and what's next: typed-state I/O over MCP, a type-led index (the fix for the paraphrase gap),
+inter-cell composition (CellGraph), a larger standard cell library, and signed `i16`.
 
 ---
 

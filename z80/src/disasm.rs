@@ -1,4 +1,4 @@
-//! A pure Z80 disassembler — the read-only mirror of [`crate::decode`].
+//! A pure Z80 disassembler — the read-only mirror of the `decode` module.
 //!
 //! It walks the same X/Y/Z/P/Q decomposition the executor does (so prefixes,
 //! `(IX+d)` substitution, DDCB layout, ED block ops and the undocumented slots

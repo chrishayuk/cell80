@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cell-eval"
+version = "0.1.0"
+description = "The cell80 agent eval harness — measures whether an agent retrieves and runs the right .cell instead of writing code. Two numbers: retrieval precision (deterministic) and adoption (LLM agent loop, OpenAI-compatible / Ollama)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # The real engine + the same CellLibrary the MCP server exposes, so the eval
+    # measures exactly what an agent gets over MCP (search / inspect / run).
+    "cell80-mcp",
+]
+
+# The adoption eval drives a model over an OpenAI-compatible endpoint (Ollama by
+# default). Kept optional so the deterministic retrieval eval has zero LLM deps.
+[project.optional-dependencies]
+adoption = ["openai>=1.0"]
+
+[project.scripts]
+cell-eval = "cell_eval.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3.5"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cell_eval*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

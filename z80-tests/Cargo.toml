@@ -10,5 +10,6 @@ publish = false
 [dependencies]
 z80 = { package = "cell80-z80", path = "../z80" }
 
-# TODO(M0): add a JSON dep (serde_json) and the SingleStepTests harness once
-# building online; ZEXDOC/ZEXALL runner lands alongside it.
+[dev-dependencies]
+# The SingleStepTests harness (tests/single_step.rs) parses the per-opcode JSON vectors.
+serde_json = "1"
