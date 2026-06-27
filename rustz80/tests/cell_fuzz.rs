@@ -3,7 +3,7 @@
 //! (behind `--features cell`). Seeded + reproducible (a fixed corpus, no external deps).
 #![cfg(feature = "cell")]
 
-use rustz80::cell::{CellConfig, CellPool, CellProgram, Halt, Runner, DEFAULT_CYCLES};
+use rustz80::cell::{CellConfig, CellPool, CellProgram, Halt, Runner, StateCell, DEFAULT_CYCLES};
 
 /// A tiny deterministic xorshift PRNG — so the corpus is reproducible (and `cargo test`
 /// stays free of `rand`).
@@ -57,6 +57,50 @@ type Snapshot = (u16, u64, Halt, Vec<(u16, u16)>);
 fn snapshot(r: &mut Runner, args: &[u16]) -> Snapshot {
     let rep = r.run(None, args, DEFAULT_CYCLES).unwrap();
     (rep.result, rep.cycles, rep.halt, rep.touched)
+}
+
+#[test]
+fn state_named_roundtrip_fuzz() {
+    // The B3 seam, end to end through the NAMED layer — the field-name↔Z80-memory mapping the
+    // JSON/MCP path rides on. For a struct cell over 500 random inputs: set inputs *by name*,
+    // confirm they round-trip through memory *by name* (the input half), run, then read outputs
+    // *by name* and check against a host oracle (the output half) — the whole loop as one
+    // property, not the two halves separately. Also re-bind-free reuse (no leak between runs).
+    let src = "struct S { a: u16, b: u16, sum: u16, diff: u16, prod: u16, big: u16 }
+               impl S {
+                   fn run(&mut self) -> u16 {
+                       self.sum = self.a.wrapping_add(self.b);
+                       self.diff = self.a.wrapping_sub(self.b);
+                       self.prod = self.a.wrapping_mul(self.b);
+                       if self.a > self.b { self.big = self.a; } else { self.big = self.b; }
+                       self.sum
+                   }
+               }";
+    let mut cell = StateCell::bind(src, "S", None).unwrap();
+    let mut rng = Rng(0x5747_29f3_1b2d_c4e5);
+    for _ in 0..500 {
+        let a = (rng.next() & 0xFFFF) as u16;
+        let b = (rng.next() & 0xFFFF) as u16;
+        cell.set("a", a).unwrap(); // queued; applied to memory by run()
+        cell.set("b", b).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        // input half: the queued inputs landed in memory and read back by name unchanged
+        assert_eq!(
+            cell.get("a"),
+            Some(a),
+            "input `a` did not round-trip by name"
+        );
+        assert_eq!(
+            cell.get("b"),
+            Some(b),
+            "input `b` did not round-trip by name"
+        );
+        // output half: every output (incl. one written last) read back by name == host oracle
+        assert_eq!(cell.get("sum"), Some(a.wrapping_add(b)), "sum ({a},{b})");
+        assert_eq!(cell.get("diff"), Some(a.wrapping_sub(b)), "diff ({a},{b})");
+        assert_eq!(cell.get("prod"), Some(a.wrapping_mul(b)), "prod ({a},{b})");
+        assert_eq!(cell.get("big"), Some(a.max(b)), "big ({a},{b})");
+    }
 }
 
 #[test]

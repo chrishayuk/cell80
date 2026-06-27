@@ -169,8 +169,12 @@ by ~18×, exactly as it should; for a heavy algorithm, use Wasm. What the cell w
 - Plus what a table can't show: determinism, typed state read-back, capability gating, and a
   sandbox you can hold in your head.
 
-At ~0.24 µs/call (fast path) a cell does **~4 million evaluations/second** — comfortably
-inside an agent loop.
+The defensible sweet spot is **cold, long-tail retrieval** — instantiating a cell you've
+never seen, where setup dominates and the cell is cheapest (and which is exactly the
+retrieve-a-tool-you-rarely-use case). For a *hot* inner loop over a small fixed set, Wasm's
+warm advantage reasserts — at ~0.24 µs/call the cell still clears ~4M evals/s, but that's not
+the regime to choose it for. Pick the cell when the tool is **disposable and rarely-seen**,
+not when it's a hot kernel you'd keep resident.
 
 ---
 
@@ -210,6 +214,16 @@ JSON↔state surface an agent (or the MCP server) drives, with no raw addresses.
 outside the subset is a **clear compile error** — that error is the "this belongs in host
 code, not a cell" signal. The full language reference is in
 [`rustz80/README.md`](./rustz80/README.md) and [`docs/07`](./docs/07-rust-z80-compiler-spec.md).
+
+**The envelope is deliberately narrow** — integers (`u8`/`u16`/`u32`, no float/signed yet),
+fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: scoring,
+validators, range/move checks, small state machines, reducers, grid logic, RNGs, reward
+kernels. It is *not* "any tool an agent wants" (most of those want a float, a string, or a
+syscall — all compile errors here, by design). So the sharpest **near-term beachhead is
+deterministic, bounded, cycle-honest kernels** — move-validation and reward computation for
+rate-decoupled RL (e.g. SOMA) — where the integer envelope fits exactly and determinism is
+the whole point. The broad "tool substrate" vision is the direction; reward/validation
+kernels are the wedge.
 
 ---
 
