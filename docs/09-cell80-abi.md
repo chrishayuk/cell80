@@ -61,7 +61,16 @@ routines; only the `Cell` target traps.)
 **`trapped_ops`** is the honest companion: the count of cost-bearing traps (`mul`/`div`/fill)
 a run executed. A reward function should pair it with `cycles` — weight or refuse trap-heavy
 programs — rather than treat low `cycles` as cheap. (A program's compute footprint is then
-roughly `cycles + trapped_ops × <software-routine cost>`.) The memory footprint is bounded
+roughly `cycles + trapped_ops × <software-routine cost>`.)
+
+**This *exposes* the unfaithfulness; it does not close it.** Reporting two numbers means a
+consumer that wants a single scalar cost still has to choose the `<software-routine cost>`
+weight — and the honest weight differs by what you're modelling: the real-Z80 cost of a
+software `mul`/`div` (tens of T-states) versus the host-trap cost (≈4). cell80 deliberately
+leaves that choice to the cost model rather than baking one in; if you collapse to a scalar
+(e.g. for an RL reward), pick the weight that matches your fidelity target and state it.
+
+The memory footprint is bounded
 separately by `max_touched` (the write-budget); there is no separate cap to add. `halt`
 (`0x30`) is the explicit-stop trap and is *not* counted in `trapped_ops`; an unknown trap id
 is a no-op (also uncounted).

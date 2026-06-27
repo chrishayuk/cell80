@@ -35,8 +35,10 @@ against `rustc` on the emulator (`tests/diff.rs`).
   `inspect` · `index` · `search` · `serve` (persistent stdio session).
 - **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`:
   `cell_search`/`cell_inspect`/`cell_list`/`cell_run`, a thin router over a warm host).
-- **Trustworthiness** — host-vs-cell field-state differential; determinism + reset fuzzer
-  (`tests/cell_fuzz.rs`).
+- **Trustworthiness** — host-vs-cell field-state differential; determinism + reset fuzzer;
+  and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
+  *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
+  field↔memory↔field seam as one property, not two halves (`tests/cell_fuzz.rs`).
 - **Seed library** — `rustz80/cells/` (math/grid/scoring/validation/bench), all "excellent"
   tier (36–70 B, no caps), indexed + searchable.
 
@@ -66,9 +68,13 @@ single-cell retrieval works before composition, and the library grows by eval ne
 2. **Typed-state I/O over MCP** — the practical unlock. `cell_run` takes register args today;
    map named JSON fields → struct addresses via the signature so *state* cells (e.g.
    `manhattan`) are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
-3. **Persisted manifest index with richer ranking** — tags alone aren't enough: rank on
-   signature, input/output types, capability profile, cost profile, examples, and "negative
-   affordances" (what a cell is *not* for).
+3. **Persisted manifest index with richer ranking + paraphrase robustness** — tags alone
+   aren't enough, and token-overlap is brittle: today *"is this number within the allowed
+   limits"* retrieves `gcd` (matched its `number` tag), not `range_check`. Retrieval is
+   load-bearing for the whole pitch and precision is the unsolved problem — determinism
+   doesn't save you from confidently running the *wrong* cell. Rank on signature, I/O types,
+   capability + cost profile, examples, and "negative affordances"; **stress-test on
+   paraphrased queries** as a gate (a `.cell` is only useful if its manifest is *findable*).
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition** — wire cells into a small static graph
    (planner→scorer→validator→decision; worker-swarm→reducer). *Only after single-cell
