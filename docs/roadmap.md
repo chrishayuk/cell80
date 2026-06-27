@@ -115,6 +115,43 @@ single-cell retrieval works before composition, and the library grows by eval ne
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.2.0); `chuk-speccy` depends on the
 released versions.
 
+### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
+
+A second, *frontend*-side ask on the shared compiler, driven by chuk-speccy's authoring plane
+(its spec 08, track E): **the subset must widen so composable SDK kit types and assets compile
+*pure*** — one `impl Game` source → a host build **and** a bootable tape. The pure-Snake seam is
+closed today (`chuk-speccy-sdk/samples/snake_game.rs` compiles both ways and boots on the real
+ROM), but only inside a narrow envelope. Each item is a concrete blocker found while shaping the
+SDK kit; the `file:line` is `rustz80` 0.2.0. These sit **below the agent-tool arc above** (the
+eval is the gate, not VM/compiler features) but are tracked here since the compiler lives here.
+
+- **Nested struct fields + field-of-field access** (`self.sprite.x`, a game-state field that is
+  itself a struct). Blocked at `lower/layout.rs:103` (a `Type::Path` field is always 1 slot — no
+  struct recursion) and `lower/expr.rs:235` (*"nested struct fields are not supported"*). This is
+  the gate on the whole composable kit — `Sprite`/`Actor`/`TileMap`/`Hud` as fields. Today only a
+  `[Struct; N]` element array carries sub-structure (`a[i].x` via `elem_field_addr`).
+- **Wider persisted struct fields — `u32` and signed `i16`.** Struct fields are 16-bit slots
+  (`layout.rs:103`); `u32` exists only as a *local* in the `HL:DE` pair, so it cannot persist in
+  state. This forced the pure Snake's `u32` xorshift `Rng` down to a `u16` xorshift, and blocks
+  signed state. (Pairs with **Next #7, signed `i16`** — same widening, for both cells and games.)
+- **`[u8; N]` byte-array fields.** Only `[u16; N]` (and `[Struct; N]`) array fields lay out
+  (`layout.rs:104`, `is_u16`); a byte array falls into the struct-element path and errors.
+  Unblocks compact byte buffers — tile rows, packed grids, string bytes — without 2× `u16` waste.
+- **`&CONST → addr` — a const-data section** (lay `const` bytes for tile bitmaps / strings into
+  the image and resolve `&TILE` / `&str` to that address, so a handle method receives a pointer).
+  The single biggest unlock: it lets `Frame::tile(&Tile)` and `Frame::text(&str)` route **by
+  address**, i.e. real sprite bitmaps **and a text HUD** in pure games, and gives the
+  `chuk-speccy-assets` tile pipeline a pure target. Today pure games draw only data-free solid
+  cells (`fill_cell`, colour passed by value).
+- **(convention, not a compiler feature) one struct definition, both sides of the dial.** A type
+  used in a *pure* game today must be prelude-provided, so the host can't also `use` it without a
+  redeclaration clash — pure samples are limited to the prelude's `Frame`/`Input`/`Colour`/
+  `Button` plus primitives and arrays. A shared-source mechanism (extending the game-sample
+  pattern) would let a `Sprite` be defined once and compile host **and** pure.
+
+Until these land, chuk-speccy's *pure* kit stays inside the envelope (solid-cell sprites, `u16`
+RNG, `[u16; N]` pools, no text HUD); its **host** SDK and asset tooling proceed independently.
+
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —
 **never as a reward-shaping term**. The moment cost enters the *reward*, the trap-routing
