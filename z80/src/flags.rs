@@ -59,3 +59,31 @@ const fn build_sz53p() -> [u8; 256] {
 pub const SZ53: [u8; 256] = build_sz53();
 /// SZ53 + parity, for logic ops and others that use P=parity.
 pub const SZ53P: [u8; 256] = build_sz53p();
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // The tables are `const`-evaluated, which coverage instrumentation can't see. Calling
+    // the builders/helpers at *runtime* both exercises them and proves the baked-in consts
+    // equal a fresh runtime build.
+    #[test]
+    fn tables_match_their_runtime_builders() {
+        assert_eq!(build_sz53(), SZ53);
+        assert_eq!(build_sz53p(), SZ53P);
+        for i in 0..=255u8 {
+            assert_eq!(SZ53[i as usize], sz53(i));
+        }
+    }
+
+    #[test]
+    fn parity_and_flag_bits_are_correct() {
+        assert!(parity(0)); //   0 set bits -> even -> PF set
+        assert!(!parity(0b1)); // 1 set bit  -> odd  -> PF clear
+        assert!(parity(0b1001)); // 2 set bits -> even
+        assert_eq!(SZ53[0x00] & ZF, ZF); // zero flag for 0
+        assert_eq!(SZ53[0x80] & SF, SF); // sign flag for high bit
+        assert_eq!(SZ53P[0xFF] & PF, PF); // 8 bits -> even parity
+        assert_eq!(SZ53P[0x01] & PF, 0); //  1 bit  -> odd, no PF
+    }
+}
