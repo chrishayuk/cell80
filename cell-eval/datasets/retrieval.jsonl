@@ -1,4 +1,4 @@
-# Retrieval-precision dataset for the seed library (rustz80/cells).
+# Retrieval-precision dataset for the seed library (cell80/cells).
 # One case per line: {id, query, expected, category}.
 #   expected   — acceptable cell id, or a list of acceptable ids.
 #   category   — "direct" (uses the cell's own vocabulary),

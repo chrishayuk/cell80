@@ -13,6 +13,7 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell index <dir>                 (list the cell library in <dir>)\n  \
      rustz80-cell search <query> <dir>        (rank library cells by relevance)\n  \
      rustz80-cell serve <dir>                 (persistent stdio session over a warm host)\n  \
+     rustz80-cell graph <graph.json> <dir> [--input k=v,...] [--cycles N] [--json]\n  \
      safety (sandboxed by default): [--allow-raw-memory] [--allow-ports] \
      [--max-code-bytes N] [--max-touched N]";
 
@@ -86,6 +87,7 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
         Some("index") => cmd_index(&args[1..]),
         Some("search") => cmd_search(&args[1..]),
         Some("serve") => cmd_serve(&args[1..]),
+        Some("graph") => cmd_graph(&args[1..]),
         Some(other) => Err(format!("unknown command `{other}`\n{USAGE}")),
         None => Err(USAGE.into()),
     }
@@ -165,7 +167,7 @@ fn index_dir(dir: &str) -> Result<CellIndex, String> {
     Ok(idx)
 }
 
-fn render(m: &crate::cell::Manifest) -> String {
+fn render(m: &crate::Manifest) -> String {
     format!(
         "  {} — {}  [{}]  ({})",
         m.id,
@@ -350,6 +352,48 @@ fn cmd_serve(args: &[String]) -> Result<String, String> {
     )
 }
 
+/// `graph <graph.json> <dir> [--input k=v,...] [--cycles N] [--json]` — load the cell library
+/// in `<dir>`, then validate + run the JSON `CellGraph` over it, printing the combined trace.
+fn cmd_graph(args: &[String]) -> Result<String, String> {
+    let mut it = args.iter();
+    let graph_file = it.next().ok_or(USAGE)?;
+    let dir = it.next().ok_or(USAGE)?;
+    let mut inputs = std::collections::HashMap::new();
+    let mut cycles = DEFAULT_CYCLES;
+    let mut json = false;
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--input" => {
+                let spec = it.next().ok_or("--input needs `k=v,...`")?;
+                for kv in spec.split(',').filter(|s| !s.is_empty()) {
+                    let (k, v) = kv
+                        .split_once('=')
+                        .ok_or_else(|| format!("bad --input `{kv}` (want `k=v`)"))?;
+                    let val = v
+                        .trim()
+                        .parse::<u64>()
+                        .map_err(|_| format!("bad --input value `{v}`"))?;
+                    inputs.insert(k.trim().to_string(), val);
+                }
+            }
+            "--cycles" => {
+                cycles = it
+                    .next()
+                    .ok_or("--cycles needs N")?
+                    .parse()
+                    .map_err(|_| "bad --cycles".to_string())?;
+            }
+            "--json" => json = true,
+            other => return Err(format!("unknown option `{other}`\n{USAGE}")),
+        }
+    }
+    let src = std::fs::read_to_string(graph_file).map_err(|e| format!("{graph_file}: {e}"))?;
+    let graph = CellGraph::from_json(&src)?;
+    let mut host = host_from_dir(dir)?;
+    let run = graph.run(&mut host, &inputs, cycles)?;
+    Ok(if json { run.to_json() } else { run.to_human() })
+}
+
 /// `compile <file.rs> -o <file.cell> [--entry] [--id] [--summary] [--tags] [safety]` —
 /// compile source to a `.cell` cartridge on disk; print the inspection summary.
 fn cmd_compile(args: &[String]) -> Result<String, String> {
@@ -527,7 +571,7 @@ fn cmd_exec(args: &[String]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cell::{Cartridge, CartridgeOpts, CellConfig};
+    use crate::{Cartridge, CartridgeOpts, CellConfig};
 
     fn host() -> CellHost {
         let mut h = CellHost::new();

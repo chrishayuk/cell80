@@ -1,10 +1,10 @@
 """Tests for the cell library + the MCP tool surface. Uses the seed library in
-`rustz80/cells` (relative to the repo root)."""
+`cell80/cells` (relative to the repo root)."""
 
 import os
 import pathlib
 
-CELLS = pathlib.Path(__file__).resolve().parents[2] / "rustz80" / "cells"
+CELLS = pathlib.Path(__file__).resolve().parents[2] / "cell80" / "cells"
 os.environ.setdefault("CELL_LIBRARY", str(CELLS))
 
 from cell80_mcp import server  # noqa: E402

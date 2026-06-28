@@ -2,7 +2,7 @@
 use super::config::check_caps;
 use super::report::sorted_symbols;
 use super::*;
-use crate::Program;
+use rustz80::Program;
 use std::collections::HashMap;
 
 /// A **compiled** cell: the result of parse + lower + codegen under a policy. Cheap to
@@ -29,7 +29,7 @@ impl CellProgram {
         check_caps(&file, &cfg)?;
         // The cell runs in Cell80 mode: `*`/`/`/`%` lower to `ED FE` host traps that the
         // bus services natively (no software mul/div runtime appended).
-        let prog = crate::compile_file(&file, crate::Target::Cell)?;
+        let prog = rustz80::compile_file(&file, rustz80::Target::Cell)?;
         if let Some(max) = cfg.max_code_bytes {
             if prog.code.len() > max {
                 return Err(format!(

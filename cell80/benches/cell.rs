@@ -9,7 +9,7 @@
 //! steps. (The runner allocates a fresh 64 KiB bus per run — negligible for the heavy
 //! steady-state rows, where the MHz figure is meaningful.)
 
-use rustz80::cell::{self, Runner};
+use cell80::{self as cell, Runner};
 use std::time::Instant;
 
 const BUDGET: u64 = 50_000_000; // high enough that nothing here hits it
@@ -72,8 +72,8 @@ fn main() {
             i = i + 1u16;
         }
         x as u16 }";
-    let rng32 = include_str!("../samples/showcase/rng32.rs");
-    let entities = include_str!("../samples/showcase/entities.rs");
+    let rng32 = include_str!("../../rustz80/samples/showcase/rng32.rs");
+    let entities = include_str!("../../rustz80/samples/showcase/entities.rs");
 
     println!("rustz80-cell — microseconds per cell, and emulated-Z80 throughput\n");
     println!(

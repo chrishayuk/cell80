@@ -56,7 +56,7 @@ def _cmd_adoption(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="cell-eval", description="cell80 agent eval harness")
-    p.add_argument("--library", default=None, help="cells dir (default: seed rustz80/cells)")
+    p.add_argument("--library", default=None, help="cells dir (default: seed cell80/cells)")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("retrieval", help="deterministic retrieval-precision eval")
