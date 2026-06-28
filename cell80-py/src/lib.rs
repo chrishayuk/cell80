@@ -7,10 +7,10 @@
 // pyo3's `?` ergonomics convert `PyErr -> PyErr` at each `?`, which clippy flags as a
 // useless conversion (the sibling `zxspec_py` carries the same noise); silence it here.
 #![allow(clippy::useless_conversion)]
+use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost as RsHost, Halt, Manifest};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
-use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig, CellHost as RsHost, Halt, Manifest};
 
 /// A stable lowercase tag for a halt reason (the Python layer surfaces it verbatim).
 fn halt_str(h: Halt) -> &'static str {
@@ -55,7 +55,9 @@ struct CellHost {
 impl CellHost {
     #[new]
     fn new() -> Self {
-        Self { host: RsHost::new() }
+        Self {
+            host: RsHost::new(),
+        }
     }
 
     /// Compile a dialect `.rs` source into the catalog. `entry` defaults to `run`/`main`.
@@ -101,7 +103,12 @@ impl CellHost {
 
     /// Rank the catalog by relevance to `query`; returns brief manifests, best first.
     #[pyo3(signature = (query, limit=10))]
-    fn search<'py>(&self, py: Python<'py>, query: &str, limit: usize) -> PyResult<Bound<'py, PyList>> {
+    fn search<'py>(
+        &self,
+        py: Python<'py>,
+        query: &str,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
         let list = PyList::empty_bound(py);
         for m in self.host.search(query, limit) {
             list.append(brief(py, m)?)?;

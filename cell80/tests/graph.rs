@@ -1,10 +1,9 @@
 //! `CellGraph` — static, host-routed composition: a 3-node graph end-to-end, plus the
 //! validation failures that must be caught *before* anything runs.
-#![cfg(feature = "cell")]
 
 use std::collections::HashMap;
 
-use rustz80::cell::{
+use cell80::{
     Cartridge, CartridgeOpts, CellConfig, CellGraph, CellHost, Feed, Port, DEFAULT_CYCLES,
 };
 
@@ -99,6 +98,43 @@ fn graph_runs_three_nodes_host_routed() {
     assert!(run.cycles > 0);
     // The runners were returned to the pool (nothing left loaded).
     assert_eq!(h.live_count(), 0);
+}
+
+#[test]
+fn graph_loads_from_json_and_runs() {
+    let mut h = host();
+    let json = r#"{
+      "id": "move_ranker.v1",
+      "nodes": { "dist": "manhattan", "score": "weighted_sum", "bounded": "clamp" },
+      "wires": [
+        {"to":"dist.x1","input":"x1"}, {"to":"dist.y1","input":"y1"},
+        {"to":"dist.x2","input":"x2"}, {"to":"dist.y2","input":"y2"},
+        {"to":"score.a","from":"dist.dist"},
+        {"to":"score.b","input":"risk"}, {"to":"score.c","input":"cost"},
+        {"to":"bounded.x","from":"score.result"},
+        {"to":"bounded.lo","const":0}, {"to":"bounded.hi","const":10}
+      ],
+      "outputs": { "ranked": "bounded.result" }
+    }"#;
+    let g = CellGraph::from_json(json).unwrap();
+    let inputs = HashMap::from([
+        ("x1".into(), 3),
+        ("y1".into(), 4),
+        ("x2".into(), 10),
+        ("y2".into(), 8),
+        ("risk".into(), 2),
+        ("cost".into(), 1),
+    ]);
+    let run = g.run(&mut h, &inputs, DEFAULT_CYCLES).unwrap();
+    assert_eq!(run.outputs, vec![("ranked".into(), 10)]);
+    assert!(run.to_json().contains("\"ranked\":10"));
+    assert!(run.to_human().contains("outputs: {ranked=10}"));
+
+    // Malformed JSON and a malformed port both error cleanly.
+    assert!(CellGraph::from_json("not json").is_err());
+    assert!(
+        CellGraph::from_json(r#"{"nodes":{"a":"clamp"},"wires":[{"to":"noportsep"}]}"#).is_err()
+    );
 }
 
 #[test]

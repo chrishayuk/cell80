@@ -5,7 +5,7 @@
 use super::program::{put_string, ImageReader};
 use super::report::sorted_symbols;
 use super::*;
-use crate::Signature;
+use rustz80::Signature;
 use std::hash::{Hash, Hasher};
 
 const MAGIC: &[u8; 4] = b"CELL";
@@ -102,7 +102,7 @@ impl Cartridge {
         };
         let mut h = std::collections::hash_map::DefaultHasher::new();
         src.hash(&mut h);
-        let signature = crate::entry_signature(src, &entry)?;
+        let signature = rustz80::entry_signature(src, &entry)?;
         let state_addrs = super::state_field_addrs(src, &entry)?;
         Ok(Cartridge {
             manifest: Manifest {

@@ -1,6 +1,6 @@
 """Entry point — serve the cell tools over stdio (for an MCP client) or HTTP.
 
-`CELL_LIBRARY` selects the directory of cells (default `rustz80/cells`). Set `CELL_STDIO=1`
+`CELL_LIBRARY` selects the directory of cells (default `cell80/cells`). Set `CELL_STDIO=1`
 to speak MCP over stdio (the usual client transport); otherwise it listens on HTTP.
 """
 

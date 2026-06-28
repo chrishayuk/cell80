@@ -25,11 +25,11 @@ built on this crate's generic API (`lower_program` with a caller-supplied `Prelu
 ## Quick start
 
 ```bash
-# Run a program headless on the cell micro-VM (deterministic, sandboxed):
-cargo run -p rustz80 --features cell --bin rustz80-cell -- run samples/showcase/rng32.rs
-
-# …or generate a bootable Spectrum tape via the library API:
+# Generate a bootable Spectrum tape via the library API:
 #   let tap: Vec<u8> = rustz80::compile_to_tap(src, "main", "GAME")?;
+
+# To RUN compiled programs headless on the deterministic cell micro-VM, use the
+# `cell80` crate (built on this compiler): cargo run -p cell80 --bin cell80 -- run prog.rs
 ```
 
 Samples live in [`samples/`](./samples). The `speccy-compile` CLI and the emulator that
@@ -124,159 +124,13 @@ The `bitmap` demo prints what it drew straight from the framebuffer:
 `tests/examples.rs` locks every showcase result, so a codegen regression fails
 `cargo test` even without running the demos.
 
-## Run headless — `rustz80-cell`
+## Running compiled programs → the `cell80` crate
 
-Compile and **run** a program on a flat-RAM Z80 — no ROM, no ULA, no I/O, no syscalls —
-and get back a structured report: the result (`HL`), T-states spent against a budget,
-code size, the symbol layout, the memory it touched, and whether it returned or hit the
-budget. Deterministic, bounded, side-effect-free — a *micro-VM* you can hand a snippet
-and measure (it's behind the `cell` feature, which pulls in the CPU):
-
-```bash
-cargo run -p rustz80 --features cell --bin rustz80-cell -- run samples/showcase/rng32.rs
-```
-```
-entry      run @ 0x8000
-result     11509 (0x2cf5)
-cycles     16215 / 2000000 T-states
-halt       returned
-code       471 bytes, 1 functions
-symbols    run@0x8000
-memory     0x9000-0x9007 (8B), 0xffea-0xffef (6B)
-```
-
-`--entry NAME` picks the function (default `run`, else `main`), `--args a,b,c` passes
-`u16`s in `HL`/`DE`/`BC` (decimal or `0x..`), `--cycles N` sets the budget, and `--json`
-emits one machine-readable line:
-
-```bash
-cargo run -p rustz80 --features cell --bin rustz80-cell -- run samples/showcase/entities.rs --json
-# {"entry":"run","result":2530,"cycles":14742,"halt":"returned","code_bytes":812,
-#  "functions":6,"symbols":{"run":32768,"Entities$8::add":33158,...},"memory_touched":[[36864,36939],...]}
-```
-
-The runner is library API ([`rustz80::cell::run`] → a `Report`); the binary is a thin
-shim. An infinite loop stops at the budget and reports `BUDGET EXCEEDED` rather than
-hanging.
-
-**Compile once, run many.** [`rustz80::cell::Runner`] owns a single bus and, between
-runs, resets only the bytes the previous run wrote — so a warm run pays for the
-computation, not a fresh allocation:
-
-```rust
-let mut cell = rustz80::cell::Runner::compile(src)?;
-let a = cell.run(None, &[2, 3], budget)?;   // run with HL=2, DE=3
-let b = cell.run(None, &[9, 4], budget)?;   // again — bus reset, no realloc
-```
-
-Benchmarked (`cargo bench -p rustz80 --features cell --bench cell`, Apple Silicon): a
-trivial cell warm-runs in **~0.3 µs**, realistic snippets (`rng32`, `entities`) in
-**~10–15 µs** after their one-time compile, and heavy compute loops emulate the Z80 at
-**hundreds of × real-hardware speed**. Reuse cut the small-cell run cost ~60× vs a cold
-one-shot (which was dominated by the 64 KiB bus allocation, not CPU work).
-
-**Compile once, instantiate cheap.** Cold setup is ~90% **syn parsing** (≈16 µs); the bus
-allocation is amortized-free. So separate the parse from the machine: compile to a
-cacheable [`CellProgram`] once, then spin up runners from it without re-parsing — a cached
-snippet's setup drops from ~19 µs to **~1.2 µs** (~16×):
-
-```rust
-let prog = rustz80::cell::CellProgram::compile(src)?;  // ~19 µs, cache by source hash
-let mut cell = rustz80::cell::Runner::new(&prog);       // ~1.2 µs — no re-parse
-```
-
-**Cacheable image (the cartridge).** A `CellProgram` serializes to a compact,
-self-contained image — code + symbols + policy, no syn, no source — so a tool can be
-cached by hash, shipped, and reloaded without compiling at all:
-
-```rust
-let image: Vec<u8> = prog.to_bytes();                  // ~71 bytes for the score cell
-let prog = rustz80::cell::CellProgram::from_bytes(&image)?;  // reload + run in ~1.2 µs (16× < compile)
-```
-
-**Batch the hot loop.** `run_many_fast(entry, &arg_sets, budget)` is the "score N
-candidates" path. For a **straight-line** cell it decodes once and replays on a stripped
-native-register executor (skipping the authentic CPU's per-instruction
-fetch/contention/refresh/flag work); the cycle count is input-independent so it's taken
-from one authentic calibration run, and results stay differential-checked against the
-authentic interpreter (non-straight-line cells fall back transparently). **~0.05 vs
-0.25 µs/call (~5×)** — the batch hot path lands ~4× off native-JIT Wasm:
-
-```rust
-let scores = cell.run_many_fast(None, &[&[3, 1], &[6, 5], &[10, 0]], budget)?;
-```
-
-**Pool short-lived cells.** For "spawn a fresh cell per candidate/task," a `CellPool`
-recycles the 64 KiB bus so each cell skips the ~1 µs allocation — a disposable cell
-(acquire + run + release) costs **~0.38 µs** vs ~1.06 µs cold:
-
-```rust
-let mut pool = rustz80::cell::CellPool::new();
-let mut cell = pool.acquire(&prog);   // recycles an idle bus, or allocs if none free
-let out = cell.run_fast(None, &[7, 5], budget)?;
-pool.release(cell);                    // back to the pool for the next acquire
-```
-
-**Fast path for tight loops.** `Runner::run_fast` returns just the result registers,
-cycles, and halt — no symbol-map clone / size report / memory-diff (no per-call
-allocations). Use `run` when you want the rich report, `run_fast` in the inner loop.
-
-**Cell80 mode.** The cell compiles to a small **Z80 superset** (target `Cell`): `*`/`/`/`%`
-that would call the software micro-runtime instead lower to the `ED FE` **host trap**, which
-the cell bus services with native `u16` arithmetic (the authentic `Spectrum48` target —
-`compile_program`/`.tap`/games — keeps the software routines, so real output stays real
-Z80). That makes a `var*var` multiply a few T-states instead of a loop: scoring 1000
-candidates, `run_fast` runs at **~0.24 µs/call** (and **~0.05 µs batched** via `run_many_fast`)
-— about 18× / 4× off native-JIT Wasm while the code is ~1070× smaller (47 B vs 50 KB) and
-cold setup ~5× lower. See [`cell-bench`](../cell-bench).
-
-**Typed inputs + results + state.** A cell takes typed **inputs** (`run_with_inputs`, or
-CLI `--set addr:ty=val`), returns all three result registers (`regs` = `[HL, DE, BC]`, so
-a `-> (u16, u16, u16)` tuple reads back fully), and — because the bus stays live after a
-run — exposes typed **state** read-back (`peek_u8/u16/u32`, `read_named`, CLI
-`--read name@addr:ty`). `rustz80::struct_layout(src, "State")` gives each field's slot
-offset, so a caller works in **field names, not raw addresses** — place a `State` struct
-at a known base, set its fields, run a method on it, read its fields:
-
-```rust
-struct State { x: u16, y: u16, score: u16 }
-impl State { fn run(&mut self) -> u16 { self.score = self.x + self.y * 10u16; self.score } }
-```
-```bash
-rustz80-cell run state.rs --entry State::run --args 0xb000 \
-    --set '0xb000:u16=3,0xb002:u16=4' --read 'score@0xb004:u16' --json
-# … "result":43,"reads":{"score":43}
-```
-
-That closes the agent loop: **set typed inputs → run the cell → read typed output/state →
-iterate** — source-shaped state, no Python/Docker/Wasm weight.
-
-**By field name (`StateCell`).** For the common "state struct in / out" shape, bind the
-struct and work in field names — the layout resolves the addresses:
-
-```rust
-let mut cell = rustz80::cell::StateCell::bind(src, "State", None)?; // entry: State::run
-cell.set("x", 10)?;
-cell.run(budget)?;
-let score = cell.get("score");   // typed, by name — the JSON↔state surface for agents/MCP
-```
-
-The same field-name surface runs **warm** on a host — `CellHost::run_state(handle, fields)`
-loads once and drives a state cell by name across calls (the addresses come from the
-cartridge manifest's `state_addrs`, so no source is needed; this is what `cell_run(fields=…)`
-drives over MCP). And cells **compose**: a `CellGraph` wires one cell's typed output into
-another's typed input — host-routed and **type-checked before any cell runs** (see the
-[cell80 README](../README.md)).
-
-**Safe by default.** A `CellConfig` gates the intrinsics and caps resources: `poke`/`peek`
-(raw memory) and `inport` (ports) are **capability-gated, off by default** for untrusted
-cells, with `max_code_bytes` / `max_touched` ceilings on top of the deterministic cycle
-budget. The CLI runs **sandboxed** unless you opt in (`--allow-raw-memory`,
-`--allow-ports`, `--max-code-bytes N`, `--max-touched N`); `Runner::compile` stays
-permissive for trusted/game code, or pass `CellConfig::sandboxed()` to
-`Runner::compile_with_config`. A run reports *why* it stopped (`halt`: returned /
-cycle-budget / memory-limit), so a model-generated program that misbehaves is rejected or
-bounded, never a hang.
+`rustz80` compiles; it doesn't run. To execute compiled programs **headless on a
+deterministic, sandboxed cell micro-VM** — `.cell` cartridges, a warm `CellHost`, typed-state
+I/O, host-routed `CellGraph` composition, and the `cell80` CLI — use the
+[`cell80`](../cell80) crate, which is built on this compiler's public API
+(`compile_file` / `struct_layout` / `entry_signature` / `Signature` / `Target` / `ORG`).
 
 ## The dial: one `impl Game`, two compilers
 
@@ -329,8 +183,8 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
 ## Tests
 
 ```bash
-cargo test -p rustz80                  # differential oracle + .tap structure
-cargo test -p rustz80 --features cell  # + the cell micro-VM suite
+cargo test -p rustz80   # differential oracle + .tap structure
+cargo test -p cell80    # the cell micro-VM suite (its own crate)
 ```
 
 - `tests/diff.rs` — the oracle: each `check!` runs one Rust block under `rustc` and
@@ -342,9 +196,10 @@ cargo test -p rustz80 --features cell  # + the cell micro-VM suite
   `examples/` run the same sources against a rustc oracle).
 - `tests/coverage.rs` — the error/rejection arms, prelude routing, the frame-loop
   generator, and array-struct fields through `self` — the paths the above don't reach.
-- `tests/cell.rs` / `tests/cell_fuzz.rs` — the cell micro-VM (cartridge, host, index,
-  determinism + reset fuzzer); `tests/tap.rs` — `.tap` block structure (offline). The
-  *boot on a real Spectrum* test lives in [chuk-speccy](https://github.com/chrishayuk/chuk-speccy).
+- `tests/tap.rs` — `.tap` block structure (offline). The *boot on a real Spectrum* test
+  lives in [chuk-speccy](https://github.com/chrishayuk/chuk-speccy). The cell micro-VM suite
+  (cartridge, host, index, graph, determinism + reset fuzzer) lives in the
+  [`cell80`](../cell80) crate.
 
-Coverage (`cargo llvm-cov -p rustz80 --all-features -- --include-ignored`): **97% of
-lines, 95% of regions**, every source file ≥ 90% on both.
+Coverage (`cargo llvm-cov -p rustz80 -- --include-ignored`): **~97% of lines**, every source
+file ≥ 90%.

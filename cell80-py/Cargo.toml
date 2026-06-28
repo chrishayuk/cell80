@@ -16,5 +16,5 @@ name = "cell80_py"
 crate-type = ["cdylib"]
 
 [dependencies]
-rustz80 = { path = "../rustz80", features = ["cell"] }
+cell80 = { path = "../cell80" }
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py311"] }

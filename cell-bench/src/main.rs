@@ -86,7 +86,7 @@ fn time_op(mut f: impl FnMut()) -> f64 {
 
 /// Where the cell's cold setup goes — and that caching the compiled program removes it.
 fn cold_breakdown() {
-    use rustz80::cell::{CellProgram, Runner};
+    use cell80::{CellProgram, Runner};
     let parse = time_op(|| {
         let _f: syn::File = black_box(syn::parse_str(CELL_SRC).unwrap());
     });
@@ -113,7 +113,7 @@ fn cold_breakdown() {
 /// instantiate → warm run → cold one-shot → batch) and where the µs go. A disposable
 /// tool's whole life, broken down.
 fn lifecycle() {
-    use rustz80::cell::{CellPool, CellProgram, Runner};
+    use cell80::{CellPool, CellProgram, Runner};
     const TINY: &str = "fn run() -> u16 { 0u16 }"; // isolates fixed per-call overhead
 
     // Build phases.
@@ -255,7 +255,7 @@ fn main() {
 
     // 3. rustz80-cell — warm Runner (compile once, run many): full Report vs the hot path.
     let (cell_pc, cell_fast_pc, cell_cold, cell_sum, cell_bytes) = {
-        use rustz80::cell::Runner;
+        use cell80::Runner;
         let t0 = Instant::now();
         let mut r = Runner::compile(CELL_SRC).expect("compile cell");
         let cold = t0.elapsed().as_secs_f64();

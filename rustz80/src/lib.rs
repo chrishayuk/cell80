@@ -15,8 +15,6 @@
 //! Not an LLVM backend, no real `core`: codegen uses `HL` as the accumulator, `DE`
 //! as secondary, and a fixed RAM scratch region as the "register file".
 
-#[cfg(feature = "cell")]
-pub mod cell;
 mod codegen;
 mod ir;
 mod lower;
@@ -84,8 +82,8 @@ pub fn compile_program(src: &str) -> Result<Program, String> {
 }
 
 /// Compile an already-parsed file for `target` — lets a caller that has parsed the source
-/// (e.g. the cell's capability scan) avoid a second parse, and pick the backend.
-pub(crate) fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
+/// (e.g. the `cell80` crate's capability scan) avoid a second parse, and pick the backend.
+pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
     let funcs = lower_program(file, &PreludeConfig::default())?;
     let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
     Ok(Program { code, symbols })

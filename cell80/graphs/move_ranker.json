@@ -1,0 +1,21 @@
+{
+  "id": "move_ranker.v1",
+  "nodes": {
+    "dist": "manhattan",
+    "score": "weighted_sum",
+    "bounded": "clamp"
+  },
+  "wires": [
+    { "to": "dist.x1", "input": "x1" },
+    { "to": "dist.y1", "input": "y1" },
+    { "to": "dist.x2", "input": "x2" },
+    { "to": "dist.y2", "input": "y2" },
+    { "to": "score.a", "from": "dist.dist" },
+    { "to": "score.b", "input": "risk" },
+    { "to": "score.c", "input": "cost" },
+    { "to": "bounded.x", "from": "score.result" },
+    { "to": "bounded.lo", "const": 0 },
+    { "to": "bounded.hi", "const": 10 }
+  ],
+  "outputs": { "ranked": "bounded.result" }
+}
