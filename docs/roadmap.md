@@ -120,7 +120,7 @@ grows by eval need:
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition — core built; this is the chase.** Wire cells into a
    small static graph (planner→scorer→validator→decision; worker-swarm→reducer).
-   - **Built** — `rustz80/src/cell/graph.rs`: a `CellGraph` (nodes = cells, wires = typed
+   - **Built** — `cell80/src/graph.rs`: a `CellGraph` (nodes = cells, wires = typed
      feeds from constants / external inputs / another node's output, named outputs). The host
      **validates the whole graph before a single cycle runs** — every wire's source-port type
      must match its destination-port type (the win that only typed artifacts allow), every
@@ -128,10 +128,14 @@ grows by eval need:
      nodes in topological order, routing typed values between them and recording a combined
      per-node trace. **Cells never see each other: the bus is the host's, no
      sockets/files/syscalls** (the non-goals hold). First slice runs end-to-end:
-     `manhattan → weighted_sum → clamp` (`tests/graph.rs`).
-   - **Next** — a JSON graph **manifest** + an agent-facing surface (`cell_graph_run` over
-     MCP / a `graph` CLI verb), so an agent authors and runs graphs as data; then a live
-     **CellBus** (publish typed event → route to interested cells → commit) and SOMA organs.
+     `manhattan → weighted_sum → clamp` (`cell80/tests/graph.rs`).
+   - **Agent surface — ✓ done.** A JSON graph **manifest** (`CellGraph::from_json`), drivable
+     three ways over the *same* warm host: the `cell80 graph` CLI verb, PyO3
+     `CellHost.run_graph`, and the MCP **`cell_graph_run`** tool. An agent authors and runs a
+     graph as data and gets back the outputs + a combined per-node trace.
+   - **Next** — a **composition eval** (does an agent *compose* cells, not just run one?), then
+     a live **CellBus** (publish typed event → route to interested cells → commit) and SOMA
+     organs.
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library** — toward ~100 cells, but driven by what the evals

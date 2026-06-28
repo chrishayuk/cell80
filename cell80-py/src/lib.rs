@@ -7,7 +7,7 @@
 // pyo3's `?` ergonomics convert `PyErr -> PyErr` at each `?`, which clippy flags as a
 // useless conversion (the sibling `zxspec_py` carries the same noise); silence it here.
 #![allow(clippy::useless_conversion)]
-use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost as RsHost, Halt, Manifest};
+use cell80::{Cartridge, CartridgeOpts, CellConfig, CellGraph, CellHost as RsHost, Halt, Manifest};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -179,6 +179,56 @@ impl CellHost {
             sd.set_item(name, val)?;
         }
         d.set_item("state", sd)?;
+        Ok(d)
+    }
+
+    /// Validate + run a JSON `CellGraph` manifest over this warm library, routing typed values
+    /// between cells (the host owns the bus; cells never see each other). `inputs` is the
+    /// external `{name: int}`. Returns `{id, outputs:{name:val}, cycles, trapped_ops,
+    /// trace:[{node, cell, inputs:{…}, result, cycles, trapped_ops}]}`.
+    #[pyo3(signature = (graph_json, inputs=None, cycles=2_000_000))]
+    fn run_graph<'py>(
+        &mut self,
+        py: Python<'py>,
+        graph_json: &str,
+        inputs: Option<&Bound<'py, PyDict>>,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let graph = CellGraph::from_json(graph_json).map_err(PyValueError::new_err)?;
+        let mut map = std::collections::HashMap::new();
+        if let Some(d) = inputs {
+            for (k, v) in d.iter() {
+                map.insert(k.extract::<String>()?, v.extract::<u64>()?);
+            }
+        }
+        let run = graph
+            .run(&mut self.host, &map, cycles)
+            .map_err(PyValueError::new_err)?;
+
+        let pairs = |items: &[(String, u64)]| -> PyResult<Bound<'py, PyDict>> {
+            let m = PyDict::new_bound(py);
+            for (k, v) in items {
+                m.set_item(k, v)?;
+            }
+            Ok(m)
+        };
+        let d = PyDict::new_bound(py);
+        d.set_item("id", &run.id)?;
+        d.set_item("outputs", pairs(&run.outputs)?)?;
+        d.set_item("cycles", run.cycles)?;
+        d.set_item("trapped_ops", run.trapped_ops)?;
+        let trace = PyList::empty_bound(py);
+        for t in &run.trace {
+            let td = PyDict::new_bound(py);
+            td.set_item("node", &t.node)?;
+            td.set_item("cell", &t.cell)?;
+            td.set_item("inputs", pairs(&t.inputs)?)?;
+            td.set_item("result", t.result)?;
+            td.set_item("cycles", t.cycles)?;
+            td.set_item("trapped_ops", t.trapped_ops)?;
+            trace.append(td)?;
+        }
+        d.set_item("trace", trace)?;
         Ok(d)
     }
 

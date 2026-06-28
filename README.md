@@ -250,10 +250,10 @@ kernels are the wedge.
 ## Connect it to an LLM (MCP)
 
 `cell80-mcp` exposes a warm library over MCP as a thin **router** — not a tool per cell.
-Four fixed tools (`cell_search` / `cell_inspect` / `cell_list` / `cell_run`) let a model
-find and run the few cells it wants while the library stays out of context. Built on the
-PyO3 binding `cell80-py` (the warm host as a Python class), the same Rust-core → PyO3 →
-Python-MCP shape as the rest of the ecosystem.
+A few fixed tools (`cell_search` / `cell_inspect` / `cell_list` / `cell_run` / `cell_graph_run`)
+let a model find, run, and *compose* the few cells it wants while the library stays out of
+context. Built on the PyO3 binding `cell80-py` (the warm host as a Python class), the same
+Rust-core → PyO3 → Python-MCP shape as the rest of the ecosystem.
 
 ```python
 cell_search("grid distance")     # → a few brief manifests
@@ -262,6 +262,9 @@ cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  
 # state cells drive by NAME — typed fields in, full state out (no raw addresses):
 cell_run("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
 #   → {result: 11, state: {x1: 3, y1: 4, x2: 10, y2: 8, dist: 11}, cycles, …}
+# COMPOSE cells into a host-routed, type-checked graph (one cell's output → another's input):
+cell_graph_run(move_ranker_graph, inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "risk": 2, "cost": 1})
+#   → {outputs: {ranked: 10}, trace: [dist→11, score→18, bounded→10], cycles, …}
 ```
 
 ---
