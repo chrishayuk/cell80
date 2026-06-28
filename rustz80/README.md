@@ -177,6 +177,9 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
 - **Library API**: `compile_program(src) -> Program { code, symbols }`,
   `compile_fn(src) -> Vec<u8>`, `to_tap(code, org, entry, name)`,
   `compile_to_tap(src, entry, name)`. Code is laid out from `ORG = 0x8000`.
+  `compile_file_pruned(file, target, prunable)` adds **dead-code elimination** — keep only the
+  functions reachable from the roots (any name not in `prunable`); the cell layer uses it to
+  prepend a shared-kernel prelude and drop the kernels a cell never calls.
 - **Tape boot**: `compile_to_tap` emits a `DI; CALL entry; EI; RET` trampoline at
   `ORG` and a BASIC autoloader (`CLEAR; LOAD "" CODE; RANDOMIZE USR`). The `DI` is
   load-bearing: the ROM's interrupt routine clobbers `BC`/`DE` (keyboard scan),

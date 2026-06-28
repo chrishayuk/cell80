@@ -46,7 +46,7 @@ Freeze it into a self-describing `.cell` cartridge:
 ```console
 $ cell80 compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
 $ cell80 inspect score.cell
-cell `score.v1`  (abi 1, compiler 0.5.0)
+cell `score.v1`  (abi 1, compiler 0.6.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
   signature: run(x: u16, y: u16) -> u16
@@ -79,9 +79,11 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 59 cells; query `distance between grid points` → 2 match(es):
-  manhattan — Manhattan distance between two grid points.  [grid, distance, spatial, score]  (Pts::run() -> u16)
-  abs_diff  — Absolute difference |a - b| between two values.  [math, distance, diff]  (run(a: u16, b: u16) -> u16)
+indexed 98 cells; query `distance between grid points` → 8 match(es):
+  chebyshev — Chebyshev (chessboard) distance between two grid points.  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
+  euclid_sq — Squared Euclidean distance between two grid points.       [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
+  manhattan — Manhattan distance between two grid points.               [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
+  ...                                                                   (abs_diff and 4 more, lower-ranked)
 ```
 
 The loop an agent runs: **`search` → `inspect` → `run` → discard** — over a library that may
@@ -107,10 +109,11 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval baseline on the 59-cell library: **direct P@1 0.91**, **paraphrase 0.40** — token
+Retrieval baseline on the 98-cell library: **direct P@1 0.92**, **paraphrase 0.45** — token
 overlap stays strong on the library's own words but degrades under rewording as confusable
-siblings multiply (six families: predicates, safe arithmetic, bounds, percent, ranking, bit
-ops). That gap *widening as the library grows* is exactly what the type-led index targets.
+siblings multiply (a dozen families: predicates, safe arithmetic, bounds, percent, ranking,
+bit ops, number theory, distance, encoding, hashing, …). That gap *holding open as the library
+grows* is exactly what the type-led index targets.
 Adoption/composition (measured earlier on the seed set, `granite4.1:3b`): **adoption 1.00 /
 correct 1.00**, **composition composed 0.50 / correct 0.83 — but `used_graph` 0.00**. That last
 number is the kind of finding only the eval surfaces: the small model *chains* cell calls
@@ -243,6 +246,12 @@ outside the subset is a **clear compile error** — that error is the "this belo
 code, not a cell" signal. The full language reference is in
 [`rustz80/README.md`](./rustz80/README.md) and [`docs/07`](./docs/07-rust-z80-compiler-spec.md).
 
+Cells stay **modular**, not copy-pasted: a small shared **kernel prelude** (`gcd`, `imin`,
+`imax`, `iabs_diff`, `isqrt`, `clamp_to`) is appended to every cell, so `lcm` just calls `gcd`
+and `chebyshev` calls `iabs_diff`/`imax`. **Dead-code elimination** then drops the kernels a
+cell doesn't use, so a cartridge only ever carries what it reaches — a cell that touches no
+kernel is byte-identical to having no prelude at all.
+
 **The envelope is deliberately narrow** — integers (`u8`/`u16`/`u32`, no float/signed yet),
 fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: a tiny
 deterministic integer **stdlib** (predicates, percentages, bounds, ranking, bit/flag ops —
@@ -292,11 +301,12 @@ cell_graph_run(move_ranker_graph, inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard-library first wave** (done — 59 cells across six families, plus the
-compiler ergonomics that make predicates/bitops one-liners), and the active chase —
-**host-routed `CellGraph` composition** (core built: cells wired into a static, type-checked
-graph the host validates before running) — then a type-led index, more library waves, a live
-CellBus, and signed `i16`.
+(done), the **standard library** (done — **98 cells** across ~12 families, plus the compiler
+ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
+elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
+the active chase — **host-routed `CellGraph` composition** (core built: cells wired into a
+static, type-checked graph the host validates before running) — then a type-led index, more
+library waves, a live CellBus, and signed `i16`.
 
 ---
 

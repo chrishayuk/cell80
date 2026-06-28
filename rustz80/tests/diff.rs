@@ -7,11 +7,16 @@
 // `check!` blocks are stringified into dialect source, so they must use the
 // dialect's long-form (`x = x + 1`, an explicit swap) — not Rust's `+=`/`swap`.
 // `needless_range_loop` is allowed deliberately: these tests exercise `for i in a..b`
-// index loops as the *subject under test*, not as a style to refactor away.
+// index loops as the *subject under test*, not as a style to refactor away. Likewise the
+// `&&`/`||` bound checks (`x > lo && x < hi`) and `% 2 == 0` are the dialect feature being
+// tested — not patterns to rewrite as `.contains()` / `.is_multiple_of()` (neither is in
+// the subset anyway).
 #![allow(
     clippy::assign_op_pattern,
     clippy::manual_swap,
-    clippy::needless_range_loop
+    clippy::needless_range_loop,
+    clippy::manual_range_contains,
+    clippy::manual_is_multiple_of
 )]
 
 /// A flat 64K RAM bus — enough to run a compiled function.
@@ -1307,11 +1312,11 @@ fn logical_and_or() {
     }); // 0
     check!({
         let x = 15u16;
-        ((x < 0u16) || (x > 10u16)) as u16
+        ((x == 0u16) || (x > 10u16)) as u16
     }); // 1
     check!({
         let x = 5u16;
-        ((x < 0u16) || (x > 10u16)) as u16
+        ((x == 0u16) || (x > 10u16)) as u16
     }); // 0
     // Chained `&&` (three operands).
     check!({
@@ -1332,7 +1337,7 @@ fn logical_and_or() {
     check!({
         let x = 50u16;
         let mut r = 9u16;
-        if x < 0u16 || x > 10u16 {
+        if x == 0u16 || x > 10u16 {
             r = 1u16;
         }
         r
