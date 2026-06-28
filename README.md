@@ -259,6 +259,9 @@ Python-MCP shape as the rest of the ecosystem.
 cell_search("grid distance")     # → a few brief manifests
 cell_inspect("manhattan")        # → Pts::run() -> u16, typed state
 cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  (warm)
+# state cells drive by NAME — typed fields in, full state out (no raw addresses):
+cell_run("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
+#   → {result: 11, state: {x1: 3, y1: 4, x2: 10, y2: 8, dist: 11}, cycles, …}
 ```
 
 ---

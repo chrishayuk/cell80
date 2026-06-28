@@ -64,12 +64,19 @@ class CellLibrary:
         return [m for i in self._ids if (m := self.host.manifest(i)) is not None]
 
     # ── run (warm, handles hidden) ────────────────────────────────────────────
-    def run(self, cell_id: str, args: list[int]) -> dict:
+    def _handle(self, cell_id: str) -> int:
         if cell_id not in self._handles:
             if self.host.manifest(cell_id) is None:
                 raise ValueError(f"no cell `{cell_id}`")
             self._handles[cell_id] = self.host.load(cell_id)
-        return self.host.run(self._handles[cell_id], list(args))
+        return self._handles[cell_id]
+
+    def run(self, cell_id: str, args: list[int]) -> dict:
+        return self.host.run(self._handle(cell_id), list(args))
+
+    def run_state(self, cell_id: str, fields: dict) -> dict:
+        """Drive a state cell by named fields → {result, state: {...}, cost...}."""
+        return self.host.run_state(self._handle(cell_id), dict(fields))
 
     def __len__(self) -> int:
         return len(self.host)

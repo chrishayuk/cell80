@@ -462,6 +462,24 @@ fn cell_host_warm_session() {
     );
     assert_eq!(host.live_count(), 2);
 
+    // The same state cell, driven BY NAME (run_state) — the JSON↔state surface, no raw
+    // addresses: write named inputs, run, read every field back in declaration order.
+    let (rep, out) = host
+        .run_state(hs, &[("x".into(), 4), ("y".into(), 5)], DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(rep.result, 9);
+    assert_eq!(
+        out,
+        vec![("x".into(), 4u64), ("y".into(), 5u64), ("sum".into(), 9u64)]
+    );
+    // Unknown field, and a free-fn cell (no named state), both error rather than panic.
+    assert!(host
+        .run_state(hs, &[("nope".into(), 1)], DEFAULT_CYCLES)
+        .is_err());
+    assert!(host
+        .run_state(h, &[("a".into(), 1)], DEFAULT_CYCLES)
+        .is_err());
+
     // Unload returns the bus to the pool; the freed handle slot is reused next load.
     host.unload(h).unwrap();
     assert_eq!(host.live_count(), 1);

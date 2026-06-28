@@ -39,6 +39,23 @@ def test_library_search_inspect_run_warm():
         pass
 
 
+def test_library_run_state_by_name():
+    lib = CellLibrary(str(CELLS))
+    # manhattan is a state cell: drive it by named fields, read the full state back.
+    r = lib.run_state("manhattan", {"x1": 3, "y1": 4, "x2": 10, "y2": 8})
+    assert r["result"] == 11  # |3-10| + |4-8|
+    assert r["state"]["dist"] == 11
+    assert r["state"]["x1"] == 3  # inputs read back too
+    # warm reuse with different inputs.
+    assert lib.run_state("manhattan", {"x1": 0, "y1": 0, "x2": 5, "y2": 2})["result"] == 7
+    # an unknown field errors (raised by the host).
+    try:
+        lib.run_state("manhattan", {"nope": 1})
+        assert False, "expected an error for an unknown field"
+    except Exception:
+        pass
+
+
 def test_mcp_surface_is_a_small_router():
     mcp = server.build_server()
     names = sorted(t.name for t in mcp.get_tools())

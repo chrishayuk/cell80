@@ -99,9 +99,13 @@ single-cell retrieval works before composition, and the library grows by eval ne
      gap is adoption (steering), not retrieval.
    - **Next on this milestone** — push adoption past trivial-task shortcutting (steering /
      harder tasks); add typed-state tasks once item 2 lands; grow the dataset as the library does.
-2. **Typed-state I/O over MCP** — the practical unlock. `cell_run` takes register args today;
-   map named JSON fields → struct addresses via the signature so *state* cells (e.g.
-   `manhattan`) are drivable by name. (The Rust + PyO3 + `StateCell` pieces exist.)
+2. **Typed-state I/O over MCP — ✓ done.** `cell_run` now takes a `fields` object ({name:int})
+   for state cells: named fields → struct addresses (baked into the manifest at compile time
+   as `state_addrs`, so a warm host or a peer cell drives by name with no source), run, and the
+   full post-run state read back. `manhattan` and friends are drivable by name end-to-end
+   (`CellHost::run_state` → PyO3 `run_state` → MCP `cell_run(fields=…)`), and manhattan is back
+   in the adoption tasks. **This is also the wiring substrate for the networked graph (edge 0):
+   a CellGraph edge is one cell's named output fed into another's named input.**
 3. **Type-led index (the escape hatch from paraphrase brittleness).** Token-overlap is
    brittle — today *"is this number within the allowed limits"* retrieves `gcd` (its `number`
    tag), not `range_check`. But unlike a KnnStore *fact* (surface form only), a cell carries a
