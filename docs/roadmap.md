@@ -15,7 +15,7 @@ RAM scratch register file, ORG 0x8000). Subset: `u8`/`u16`/`u32`, arithmetic, `i
 `poke`/`peek`/`inport`. The dialect is *also real Rust* → every program is differential-tested
 against `rustc` on the emulator (`tests/diff.rs`).
 
-**Cell micro-VM (`rustz80 --features cell`).**
+**Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
   host traps for mul/div/fill/halt; a NOP on real hardware, so it never contaminates
   Spectrum output).
@@ -31,7 +31,7 @@ against `rustc` on the emulator (`tests/diff.rs`).
 - **ABI v1 frozen** — `docs/09-cell80-abi.md`.
 - **Index + host** — `CellIndex` (search by token overlap over tags/id/summary); `CellHost`
   (warm cached-runner sessions: `load → run* → unload`).
-- **CLI `rustz80-cell`** — `run` (source) · `compile` (→ `.cell`) · `exec` (`.cell`) ·
+- **CLI `cell80`** — `run` (source) · `compile` (→ `.cell`) · `exec` (`.cell`) ·
   `inspect` · `index` · `search` · `serve` (persistent stdio session).
 - **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`:
   `cell_search`/`cell_inspect`/`cell_list`/`cell_run`, a thin router over a warm host).
@@ -46,7 +46,7 @@ against `rustc` on the emulator (`tests/diff.rs`).
   six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
   LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
   now fixed.
-- **Seed library** — `rustz80/cells/` (math/grid/scoring/validation/bench), all "excellent"
+- **Seed library** — `cell80/cells/` (math/grid/scoring/validation/bench), all "excellent"
   tier (36–70 B, no caps), indexed + searchable.
 
 ## Positioning

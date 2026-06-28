@@ -12,7 +12,7 @@ pub const STATE_BASE: u16 = 0xB000;
 /// method on the state (`impl State { fn run(&mut self) … }`), reached through `&mut self`.
 ///
 /// ```
-/// use rustz80::cell::{StateCell, DEFAULT_CYCLES};
+/// use cell80::{StateCell, DEFAULT_CYCLES};
 /// let src = "struct State { x: u16, score: u16 }
 ///            impl State { fn run(&mut self) -> u16 { self.score = self.x * 2u16; self.score } }";
 /// let mut cell = StateCell::bind(src, "State", None)?;
@@ -32,7 +32,7 @@ impl StateCell {
     /// Compile `src`, bind its `state` struct's scalar fields at [`STATE_BASE`], and target
     /// `entry` (default `"<state>::run"`).
     pub fn bind(src: &str, state: &str, entry: Option<&str>) -> Result<Self, String> {
-        let layout = crate::struct_layout(src, state)?;
+        let layout = rustz80::struct_layout(src, state)?;
         let mut addrs = HashMap::new();
         for f in &layout {
             if f.slots == 1 {
@@ -80,14 +80,14 @@ impl StateCell {
 /// Byte addresses of a state cell's **scalar** fields — `(name, addr)` at [`STATE_BASE`], in
 /// declaration order — so a warm host (or a `.cell`) can drive the cell *by name* without the
 /// source. Empty for a free-function entry (no `&mut self` state). Uses the exact compiler
-/// [`struct_layout`](crate::struct_layout); tolerant of a non-state entry (returns empty).
+/// [`struct_layout`](rustz80::struct_layout); tolerant of a non-state entry (returns empty).
 pub fn state_field_addrs(src: &str, entry: &str) -> Result<Vec<(String, u16)>, String> {
     // A state entry is `Struct::method`; the receiver struct name is the part before `::`.
     let state_struct = match entry.split_once("::") {
         Some((s, _)) => s,
         None => return Ok(Vec::new()),
     };
-    let layout = match crate::struct_layout(src, state_struct) {
+    let layout = match rustz80::struct_layout(src, state_struct) {
         Ok(l) => l,
         Err(_) => return Ok(Vec::new()), // not a known struct → no named state
     };

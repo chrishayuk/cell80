@@ -3,7 +3,7 @@
 //! outside the arithmetic subset it accepts).
 
 use super::SP_TOP;
-use crate::ORG;
+use rustz80::ORG;
 
 /// A decoded instruction — only the arithmetic opcode subset straight-line scoring
 /// cells emit. `rr` in `LdMem16`: 1=DE, 2=HL. `r` (8-bit): 0=B,1=C,2=D,3=E,4=H,5=L,7=A

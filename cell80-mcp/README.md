@@ -37,8 +37,8 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 maturin build -m ../cell80_py/Cargo.toml      # build the PyO3 binding wheel
 pip install ../cell80_py/target/wheels/cell80_py-*.whl
 pip install -e .
-CELL_LIBRARY=../rustz80/cells CELL_STDIO=1 cell80-mcp   # MCP over stdio
+CELL_LIBRARY=../cell80/cells CELL_STDIO=1 cell80-mcp   # MCP over stdio
 ```
 
-`CELL_LIBRARY` selects the cell directory (default `rustz80/cells`); without `CELL_STDIO`
+`CELL_LIBRARY` selects the cell directory (default `cell80/cells`); without `CELL_STDIO`
 it listens on HTTP (`CELL_HOST`/`CELL_PORT`).

@@ -31,7 +31,7 @@ fn run(x: u16, y: u16) -> u16 { x * x + y * y + x * 3 }
 Compile and run it on the cell VM — deterministic, sandboxed, headless:
 
 ```console
-$ rustz80-cell run score.rs --args 10,5 --json
+$ cell80 run score.rs --args 10,5 --json
 {"abi":1,"entry":"run","result":155,"regs":[155,125,5],"cycles":327,"trapped_ops":2,
  "halt":"returned","code_bytes":47,"functions":1,"memory_touched":[[36864,36867],[65516,65519]]}
 ```
@@ -44,8 +44,8 @@ differential testing.
 Freeze it into a self-describing `.cell` cartridge:
 
 ```console
-$ rustz80-cell compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
-$ rustz80-cell inspect score.cell
+$ cell80 compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
+$ cell80 inspect score.cell
 cell `score.v1`  (abi 1, compiler 0.4.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
@@ -78,7 +78,7 @@ cell80 makes the unit tiny enough to treat tools like data:
   retrieved cell runs in **~0.05–0.25 µs** — fast enough to call in an inner loop.
 
 ```console
-$ rustz80-cell search "distance between grid points" cells/
+$ cell80 search "distance between grid points" cells/
 indexed 8 cells; query `distance between grid points` → 2 match(es):
   manhattan — Manhattan distance between two grid points.  [grid, distance, spatial, score]  (Pts::run() -> u16)
   abs_diff  — Absolute difference |a - b| between two values.  [math, distance, diff]  (run(a: u16, b: u16) -> u16)
@@ -118,13 +118,13 @@ never get conflated.
 git clone https://github.com/chrishayuk/cell80 && cd cell80
 
 # run a cell from source
-cargo run -p rustz80 --features cell --bin rustz80-cell -- run rustz80/cells/gcd.rs --args 1071,462
+cargo run -p cell80 --bin cell80 -- run cell80/cells/gcd.rs --args 1071,462
 # → result 21
 
 # browse + search the seed library, then run one warm in a persistent session
-cargo run -p rustz80 --features cell --bin rustz80-cell -- index  rustz80/cells
-cargo run -p rustz80 --features cell --bin rustz80-cell -- search "validate a value in range" rustz80/cells
-printf 'load gcd\nrun 0 1071,462\nquit\n' | cargo run -q -p rustz80 --features cell --bin rustz80-cell -- serve rustz80/cells
+cargo run -p cell80 --bin cell80 -- index  cell80/cells
+cargo run -p cell80 --bin cell80 -- search "validate a value in range" cell80/cells
+printf 'load gcd\nrun 0 1071,462\nquit\n' | cargo run -q -p cell80 --bin cell80 -- serve cell80/cells
 ```
 
 CLI verbs: `run` (source) · `compile` (→ `.cell`) · `exec` (a `.cell`) · `inspect` ·
@@ -202,7 +202,7 @@ not when it's a hot kernel you'd keep resident.
 
 The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`, arithmetic, `if`/`while`/
 `for`/`loop`, arrays, `struct`/`enum`/`match`, functions and methods, `poke`/`peek`. A few
-of the seed cells (`rustz80/cells/`):
+of the seed cells (`cell80/cells/`):
 
 ```rust
 // gcd — Euclid's algorithm (a loop; div/mod are host traps in cell mode)
@@ -272,7 +272,7 @@ cell_run("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
 |-------|------------|
 | **[`cell80-z80`](./z80)** | a cycle-accurate Z80 CPU core (`no_std`-friendly, dependency-free). Import name `z80`. |
 | **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler: `syn` frontend → typed IR → Z80 codegen. Differential-tested against `rustc`. |
-| **`rustz80 --features cell`** | the **cell micro-VM**: `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, host-routed `CellGraph` composition, and the `rustz80-cell` CLI. |
+| **[`cell80`](./cell80)** | the **cell micro-VM + tooling** (built on `rustz80`): `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, typed-state I/O, host-routed `CellGraph` composition, and the `cell80` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
 | **[`cell-eval`](./cell-eval)** | the agent eval harness — retrieval precision + LLM adoption (does an agent run the right cell instead of writing code?). |
