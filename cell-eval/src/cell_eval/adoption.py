@@ -19,14 +19,17 @@ By default it talks to Ollama at http://localhost:11434/v1; override via env or 
 
 from __future__ import annotations
 
-import json
-import os
-import re
 from dataclasses import dataclass, field
 
+from .agent import AgentConfig, make_client, parse_answer, run_episode
 from .datasets import load_jsonl
 from .library import open_library
-from .tools import TOOLS, ToolTrace, dispatch
+from .tools import TOOLS
+
+# Back-compat aliases — the names this module has always exported (the loop + config moved
+# to `agent.py` so the composition eval can share them).
+AdoptionConfig = AgentConfig
+_parse_answer = parse_answer
 
 # ── steering (HOLD THIS FIXED across runs; see module docstring) ──────────────────
 SYSTEM_PROMPT = (
@@ -39,36 +42,6 @@ SYSTEM_PROMPT = (
     "Only compute a value yourself if no cell fits. "
     "End your reply with a final line exactly of the form 'ANSWER: <integer>'."
 )
-
-DEFAULT_BASE_URL = "http://localhost:11434/v1"  # Ollama's OpenAI-compatible endpoint
-DEFAULT_API_KEY = "ollama"  # Ollama ignores it, but the SDK requires a non-empty key
-
-_ANSWER_RE = re.compile(r"ANSWER:\s*(-?\d+)", re.IGNORECASE)
-
-
-@dataclass
-class AdoptionConfig:
-    model: str
-    base_url: str = DEFAULT_BASE_URL
-    api_key: str = DEFAULT_API_KEY
-    max_turns: int = 8
-    temperature: float = 0.0
-
-    @classmethod
-    def from_env(cls, model: str | None = None) -> "AdoptionConfig":
-        m = model or os.environ.get("CELL_EVAL_MODEL")
-        if not m:
-            raise ValueError(
-                "no model set — pass --model or set CELL_EVAL_MODEL "
-                "(e.g. a model you've pulled in Ollama like 'qwen2.5' or 'llama3.1')"
-            )
-        return cls(
-            model=m,
-            base_url=os.environ.get("CELL_EVAL_BASE_URL", DEFAULT_BASE_URL),
-            api_key=os.environ.get("CELL_EVAL_API_KEY", DEFAULT_API_KEY),
-            max_turns=int(os.environ.get("CELL_EVAL_MAX_TURNS", "8")),
-        )
-
 
 @dataclass
 class TaskResult:
@@ -124,66 +97,19 @@ class AdoptionReport:
         }
 
 
-def _parse_answer(text: str) -> int | None:
-    matches = _ANSWER_RE.findall(text or "")
-    return int(matches[-1]) if matches else None
-
-
 def _run_one(client, cfg: AdoptionConfig, lib, task: dict) -> TaskResult:
-    trace = ToolTrace()
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": task["prompt"]},
-    ]
-    answer, turns, error = None, 0, None
-    try:
-        for turns in range(1, cfg.max_turns + 1):
-            resp = client.chat.completions.create(
-                model=cfg.model,
-                messages=messages,
-                tools=TOOLS,
-                temperature=cfg.temperature,
-            )
-            msg = resp.choices[0].message
-            tool_calls = msg.tool_calls or []
-            # Echo the assistant turn back into the transcript.
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": msg.content or "",
-                    "tool_calls": [tc.model_dump() for tc in tool_calls] or None,
-                }
-            )
-            if not tool_calls:
-                answer = _parse_answer(msg.content or "")
-                break
-            for tc in tool_calls:
-                try:
-                    args = json.loads(tc.function.arguments or "{}")
-                except json.JSONDecodeError:
-                    args = {}
-                result = dispatch(lib, tc.function.name, args, trace)
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": json.dumps(result),
-                    }
-                )
-    except Exception as e:  # network / endpoint / SDK error — record, don't crash the run
-        error = f"{type(e).__name__}: {e}"
-
+    ep = run_episode(client, cfg, lib, task["prompt"], SYSTEM_PROMPT, TOOLS)
     expected = int(task["expected"])
     return TaskResult(
         task_id=str(task.get("id", task["prompt"])),
         prompt=task["prompt"],
         expected=expected,
-        answer=answer,
-        used_cell=bool(trace.cells_run),
-        cells_run=trace.cells_run,
-        correct=(answer == expected),
-        turns=turns,
-        error=error,
+        answer=ep.answer,
+        used_cell=bool(ep.trace.cells_run),
+        cells_run=ep.trace.cells_run,
+        correct=(ep.answer == expected),
+        turns=ep.turns,
+        error=ep.error,
     )
 
 
@@ -193,22 +119,12 @@ def run_adoption(
     model: str | None = None,
     config: AdoptionConfig | None = None,
 ) -> AdoptionReport:
-    """Run the adoption eval. Imports `openai` lazily so the package stays usable (and the
-    retrieval eval stays dependency-free) when the adoption extra isn't installed."""
-    try:
-        from openai import OpenAI
-    except ImportError as e:
-        raise RuntimeError(
-            "the adoption eval needs the OpenAI client — install with: "
-            "pip install 'cell-eval[adoption]'"
-        ) from e
-
+    """Run the adoption eval (needs an OpenAI-compatible endpoint; the client is built lazily
+    so the retrieval eval and offline tests stay dependency-free)."""
     cfg = config or AdoptionConfig.from_env(model)
     lib = open_library(library_dir)
-    client = OpenAI(base_url=cfg.base_url, api_key=cfg.api_key)
-    tasks = load_jsonl(dataset)
-
+    client = make_client(cfg)
     report = AdoptionReport(model=cfg.model, base_url=cfg.base_url)
-    for task in tasks:
+    for task in load_jsonl(dataset):
         report.tasks.append(_run_one(client, cfg, lib, task))
     return report

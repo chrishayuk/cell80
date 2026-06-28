@@ -8,63 +8,10 @@ import json
 import sys
 
 import pytest
+from _agentfake import FakeClient, _Msg, _ToolCall
 
 from cell_eval.adoption import AdoptionConfig, _run_one, run_adoption
 from cell_eval.library import open_library
-
-
-# ── a minimal stand-in for the OpenAI client's response objects ───────────────────
-class _Fn:
-    def __init__(self, name, args):
-        self.name = name
-        self.arguments = json.dumps(args)
-
-
-class _ToolCall:
-    _n = 0
-
-    def __init__(self, name, args):
-        _ToolCall._n += 1
-        self.id = f"call_{_ToolCall._n}"
-        self.function = _Fn(name, args)
-
-    def model_dump(self):
-        return {
-            "id": self.id,
-            "type": "function",
-            "function": {"name": self.function.name, "arguments": self.function.arguments},
-        }
-
-
-class _Msg:
-    def __init__(self, content=None, tool_calls=None):
-        self.content = content
-        self.tool_calls = tool_calls
-
-
-class _Resp:
-    def __init__(self, message):
-        self.choices = [type("C", (), {"message": message})()]
-
-
-class _Completions:
-    def __init__(self, script):
-        self._script = list(script)
-        self._i = 0
-
-    def create(self, **_):
-        item = self._script[self._i]
-        self._i += 1
-        if isinstance(item, Exception):
-            raise item
-        return _Resp(item)
-
-
-class FakeClient:
-    """Replays a scripted list of assistant turns (each an _Msg, or an Exception to raise)."""
-
-    def __init__(self, script):
-        self.chat = type("Chat", (), {"completions": _Completions(script)})()
 
 
 def test_run_one_search_inspect_run_answer():
