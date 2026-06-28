@@ -272,16 +272,17 @@ cell_run("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
 |-------|------------|
 | **[`cell80-z80`](./z80)** | a cycle-accurate Z80 CPU core (`no_std`-friendly, dependency-free). Import name `z80`. |
 | **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler: `syn` frontend → typed IR → Z80 codegen. Differential-tested against `rustc`. |
-| **`rustz80 --features cell`** | the **cell micro-VM**: `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, and the `rustz80-cell` CLI. |
+| **`rustz80 --features cell`** | the **cell micro-VM**: `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, host-routed `CellGraph` composition, and the `rustz80-cell` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
 | **[`cell-eval`](./cell-eval)** | the agent eval harness — retrieval precision + LLM adoption (does an agent run the right cell instead of writing code?). |
 | **[`cell-bench`](./cell-bench)** | the cross-runtime comparison (native / Wasmtime / cell / Python). |
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
-The roadmap (`docs/roadmap.md`) tracks the active milestone — the agent eval harness above —
-and what's next: typed-state I/O over MCP, a type-led index (the fix for the paraphrase gap),
-inter-cell composition (CellGraph), a larger standard cell library, and signed `i16`.
+The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
+(done), and the active chase — **host-routed `CellGraph` composition** (core built: cells
+wired into a static, type-checked graph the host validates before running) — then a type-led
+index, a larger standard cell library, a live CellBus, and signed `i16`.
 
 ---
 
