@@ -13,10 +13,11 @@ from cell80_mcp.library import CellLibrary  # noqa: E402
 
 def test_library_search_inspect_run_warm():
     lib = CellLibrary(str(CELLS))
-    assert len(lib) == 8
+    assert len(lib) == 98
 
-    # search ranks by relevance.
-    assert lib.search("grid distance", 3)[0]["id"] == "manhattan"
+    # search ranks by relevance. ("grid distance" now hits the whole distance family —
+    # manhattan/chebyshev/euclid_sq — so the cell-specific name disambiguates.)
+    assert lib.search("manhattan distance", 3)[0]["id"] == "manhattan"
     assert {"id", "summary", "tags", "signature"} <= set(lib.search("math", 1)[0])
 
     # inspect carries the typed signature.

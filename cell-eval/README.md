@@ -49,21 +49,24 @@ Dataset: [`datasets/retrieval.jsonl`](datasets/retrieval.jsonl) — one
 The paraphrase + adversarial rows are the point: *a `.cell` is only useful if findable when
 the user doesn't speak the library's vocabulary.*
 
-### Baseline (seed library, 8 cells, k=5)
+### Baseline (standard library, 98 cells, k=5)
 
 ```
-OVERALL        P@1=0.74  hit@3=0.90  hit@5=0.94  MRR=0.82
-  direct       P@1=1.00  hit@3=1.00  hit@5=1.00  MRR=1.00
-  paraphrase   P@1=0.53  hit@3=0.87  hit@5=0.93  MRR=0.69
-  adversarial  P@1=0.50  hit@3=0.50  hit@5=0.50  MRR=0.50
+OVERALL        P@1=0.69  hit@3=0.81  hit@5=0.85  MRR=0.75
+  direct       P@1=0.92  hit@3=0.97  hit@5=0.98  MRR=0.94
+  paraphrase   P@1=0.40  hit@3=0.58  hit@5=0.66  MRR=0.49
+  adversarial  P@1=0.35  hit@3=0.62  hit@5=0.73  MRR=0.49
 ```
 
-The story in one line: **token-overlap search is perfect on the library's own words and
-falls to a coin-flip under paraphrase.** Concrete misses today:
+The story in one line: **token-overlap search is near-perfect on the library's own words and
+a coin-flip under paraphrase** — and growing 8 → 98 cells made it *harder*, exactly as
+intended (more confusable siblings = a more honest benchmark). Concrete misses today are
+sibling collisions:
 
-- *"is this number within the allowed limits"* → `[gcd, clamp]` — `range_check` not in top-k.
-- *"the largest integer that divides both numbers evenly"* → `[clamp]` — `gcd` not in top-k.
-- *"the smaller of two numbers"* → `[max, min, …]` — `min` at rank 2, beaten by `max`.
+- *"is this number within the allowed limits"* → `is_le` / `bit_is_set` win — `range_check`
+  not in top-k (a boolean three-bound query, but the words don't overlap).
+- *"the largest integer that divides both numbers evenly"* → `gcd3` / `lcm` outrank `gcd`.
+- *"grid distance between two points"* → `chebyshev` / `euclid_sq` tie and beat `manhattan`.
 
 This is the measured case for **roadmap item 3 (type-led index)**: rank on the typed
 signature first (`range_check : (x,lo,hi)->bool` *is* a boolean-output, three-bound query),

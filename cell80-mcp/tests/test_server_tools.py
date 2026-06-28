@@ -19,7 +19,7 @@ def test_tool_bodies_cover_all_four_verbs():
     assert any(r["id"] == "gcd" for r in h["cell_search"]("greatest common divisor", 3)["results"])
     assert h["cell_inspect"]("gcd")["signature"] == "run(a: u16, b: u16) -> u16"
     assert "error" in h["cell_inspect"]("ghost")
-    assert len(h["cell_list"]()["cells"]) == 8
+    assert len(h["cell_list"]()["cells"]) == 98
     assert h["cell_run"]("gcd", [48, 36])["result"] == 12
     assert "result" in h["cell_run"]("gcd", None)  # None args → [] (the `args or []` branch)
     assert "error" in h["cell_run"]("ghost", [1])
