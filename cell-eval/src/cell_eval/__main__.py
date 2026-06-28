@@ -54,6 +54,24 @@ def _cmd_adoption(args) -> int:
     return 0
 
 
+def _cmd_composition(args) -> int:
+    from .composition import run_composition
+    from .report import render_composition
+
+    try:
+        report = run_composition(
+            dataset=args.dataset, library_dir=args.library, model=args.model
+        )
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval composition: {e}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report.as_dict(), indent=2))
+    else:
+        print(render_composition(report))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="cell-eval", description="cell80 agent eval harness")
     p.add_argument("--library", default=None, help="cells dir (default: seed cell80/cells)")
@@ -71,6 +89,12 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
     a.add_argument("--json", action="store_true")
     a.set_defaults(func=_cmd_adoption)
+
+    c = sub.add_parser("composition", help="LLM composition eval — does the agent wire cells?")
+    c.add_argument("--dataset", default="composition_tasks")
+    c.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
+    c.add_argument("--json", action="store_true")
+    c.set_defaults(func=_cmd_composition)
 
     args = p.parse_args(argv)
     return args.func(args)

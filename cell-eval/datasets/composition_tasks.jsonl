@@ -1,0 +1,12 @@
+# Composition tasks: each needs MORE THAN ONE cell wired together (one cell's output feeds
+# the next). The agent should compose via cell_graph_run rather than do the multi-step
+# arithmetic itself. One case per line: {id, prompt, expected, cells}.
+#   expected — the right final integer (the model ends with 'ANSWER: <expected>').
+#   cells    — the chain that should solve it (reference only; the model isn't told this).
+
+{"id": "move-ranker", "prompt": "On a grid, compute the manhattan distance from point (3,4) to point (10,8); then score that distance as distance + 2*risk + 3*cost with risk=2 and cost=1; then clamp the score to the range 0..10. What is the final value?", "expected": 10, "cells": ["manhattan", "weighted_sum", "clamp"]}
+{"id": "absdiff-clamp", "prompt": "Take the absolute difference between 200 and 75, then clamp the result to the range 0..100. What do you get?", "expected": 100, "cells": ["abs_diff", "clamp"]}
+{"id": "max-rangecheck", "prompt": "Take the larger of 17 and 42, then report 1 if that value is within the limits 1..40 and 0 otherwise.", "expected": 0, "cells": ["max", "range_check"]}
+{"id": "gcd-manhattan", "prompt": "Let g be the greatest common divisor of 48 and 36. Then compute the manhattan distance from (0,0) to the grid point (g, g).", "expected": 24, "cells": ["gcd", "manhattan"]}
+{"id": "score-clamp", "prompt": "Score the three feature values 5, 1 and 9 with the standard weighted sum, then clamp the score to the range 0..30.", "expected": 30, "cells": ["weighted_sum", "clamp"]}
+{"id": "min-absdiff", "prompt": "Take the smaller of 100 and 60, then compute its absolute difference from 20.", "expected": 40, "cells": ["min", "abs_diff"]}

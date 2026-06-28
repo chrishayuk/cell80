@@ -58,3 +58,27 @@ def render_adoption(report) -> str:
             f"  {mark} [{used}{cells}] {t.task_id}: got={t.answer} want={t.expected}"
         )
     return "\n".join(lines)
+
+
+def render_composition(report) -> str:
+    o = report.as_dict()["overall"]
+    lines = [
+        f"composition eval — model={report.model}  endpoint={report.base_url}",
+        "",
+        f"  n={o['n']}  composed={o['composed']:.2f}  used_graph={o['used_graph']:.2f}  "
+        f"correct={o['correct']:.2f}  correct_via_composition={o['correct_via_composition']:.2f}",
+        "",
+        "per task:",
+    ]
+    for t in report.tasks:
+        mark = "✓" if t.correct else "✗"
+        how = (
+            "graph"
+            if t.used_graph
+            else (f"chain:{len(set(t.cells_run))}" if t.composed else "no-compose")
+        )
+        cells = ("+" + ",".join(t.cells_run)) if t.cells_run else ""
+        lines.append(
+            f"  {mark} [{how}{cells}] {t.task_id}: got={t.answer} want={t.expected}"
+        )
+    return "\n".join(lines)
