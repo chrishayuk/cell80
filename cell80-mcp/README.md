@@ -30,6 +30,7 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 | `cell_list()` | every cell (brief) |
 | `cell_run(id, args=[])` | run a plain cell with `u16` register args → result + cost + halt |
 | `cell_run(id, fields={…})` | drive a **state** cell by name → result + full post-run `state` + cost |
+| `cell_graph_run(graph, inputs={…})` | **compose** cells: run a host-routed `CellGraph` (type-checked before running) → outputs + per-node trace |
 
 ## Run
 

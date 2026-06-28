@@ -8,6 +8,7 @@ tool + args and the host keeps it warm across calls.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import cell80_py
@@ -77,6 +78,12 @@ class CellLibrary:
     def run_state(self, cell_id: str, fields: dict) -> dict:
         """Drive a state cell by named fields → {result, state: {...}, cost...}."""
         return self.host.run_state(self._handle(cell_id), dict(fields))
+
+    def run_graph(self, graph, inputs: dict | None = None) -> dict:
+        """Validate + run a CellGraph (a manifest dict, or a JSON string) over the warm
+        library → {id, outputs, trace, cycles, trapped_ops}."""
+        g = graph if isinstance(graph, str) else json.dumps(graph)
+        return self.host.run_graph(g, dict(inputs or {}))
 
     def __len__(self) -> int:
         return len(self.host)

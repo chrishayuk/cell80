@@ -51,3 +51,22 @@ def test_agent_main_http(monkeypatch):
     monkeypatch.setenv("CELL_PORT", "9999")
     agent.main()
     assert calls == {"host": "1.2.3.4", "port": 9999}
+
+
+def test_cell_graph_run_handler_composes_and_validates():
+    h = _handlers()
+    graph = {
+        "id": "g",
+        "nodes": {"d": "manhattan", "b": "clamp"},
+        "wires": [
+            {"to": "d.x1", "input": "x1"}, {"to": "d.y1", "input": "y1"},
+            {"to": "d.x2", "input": "x2"}, {"to": "d.y2", "input": "y2"},
+            {"to": "b.x", "from": "d.dist"}, {"to": "b.lo", "const": 0}, {"to": "b.hi", "const": 5},
+        ],
+        "outputs": {"capped": "b.result"},
+    }
+    out = h["cell_graph_run"](graph, {"x1": 0, "y1": 0, "x2": 10, "y2": 0})
+    assert out["outputs"]["capped"] == 5  # dist 10 → clamp(10,0,5) = 5
+    # A structurally bad graph is reported as data, not raised.
+    bad = {"nodes": {"x": "clamp"}, "wires": [{"to": "x.bogus", "const": 1}], "outputs": {}}
+    assert "error" in h["cell_graph_run"](bad)
