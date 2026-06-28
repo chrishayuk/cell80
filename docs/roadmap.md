@@ -116,9 +116,22 @@ single-cell retrieval works before composition, and the library grows by eval ne
    the reverse — cell retrieval can beat fact retrieval *because the artifact is typed*. Gate
    it on a **paraphrased-query** stress test (a `.cell` is only useful if findable).
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
-5. **CellGraph / inter-cell composition** — wire cells into a small static graph
-   (planner→scorer→validator→decision; worker-swarm→reducer). *Only after single-cell
-   retrieval is reliable.*
+5. **CellGraph / inter-cell composition — core built; this is the chase.** Wire cells into a
+   small static graph (planner→scorer→validator→decision; worker-swarm→reducer).
+   - **Built** — `rustz80/src/cell/graph.rs`: a `CellGraph` (nodes = cells, wires = typed
+     feeds from constants / external inputs / another node's output, named outputs). The host
+     **validates the whole graph before a single cycle runs** — every wire's source-port type
+     must match its destination-port type (the win that only typed artifacts allow), every
+     value-cell input must be fed, ports must exist, and the graph must be acyclic — then runs
+     nodes in topological order, routing typed values between them and recording a combined
+     per-node trace. **Cells never see each other: the bus is the host's, no
+     sockets/files/syscalls** (the non-goals hold). First slice runs end-to-end:
+     `manhattan → weighted_sum → clamp` (`tests/graph.rs`).
+   - **Next** — a JSON graph **manifest** + an agent-facing surface (`cell_graph_run` over
+     MCP / a `graph` CLI verb), so an agent authors and runs graphs as data; then a live
+     **CellBus** (publish typed event → route to interested cells → commit) and SOMA organs.
+   *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
+   for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library** — toward ~100 cells, but driven by what the evals
    need, not by taxonomy.
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
