@@ -1,12 +1,11 @@
 //! Tests for the `rustz80-cell` micro-VM runner (behind `--features cell`). Without the
 //! feature this file compiles to nothing.
-#![cfg(feature = "cell")]
 
-use rustz80::cell::{self, Runner, Ty, DEFAULT_CYCLES};
+use cell80::{self as cell, Runner, Ty, DEFAULT_CYCLES};
 
 #[test]
 fn cell_program_compile_once_instantiate_cheap() {
-    use rustz80::cell::{CellConfig, CellProgram};
+    use cell80::{CellConfig, CellProgram};
     // Compile once → a cacheable program; instantiate many cheap runners (no re-parse).
     let prog = CellProgram::compile("fn run(a: u16, b: u16) -> u16 { a + b }").unwrap();
     assert!(prog.program().symbols.contains_key("run"));
@@ -27,7 +26,7 @@ fn cell_program_compile_once_instantiate_cheap() {
 
 #[test]
 fn state_cell_named_io() {
-    use rustz80::cell::StateCell;
+    use cell80::StateCell;
     // The agent surface: set named inputs → run → read named outputs, no raw addresses.
     let src = "struct State { x: u16, y: u16, score: u16 }
                impl State { fn run(&mut self) -> u16 { self.score = self.x * self.x + self.y; self.score } }";
@@ -55,7 +54,7 @@ fn state_cell_named_io() {
 #[test]
 fn report_json_is_abi_v1() {
     // The frozen v1 report schema: leads with the ABI version, then the documented keys.
-    use rustz80::cell::ABI_VERSION;
+    use cell80::ABI_VERSION;
     assert_eq!(ABI_VERSION, 1);
     let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a * b }").unwrap();
     let json = r.run(None, &[6, 7], DEFAULT_CYCLES).unwrap().to_json();
@@ -211,7 +210,7 @@ fn run_many_fast_matches_single() {
 
 #[test]
 fn cell_pool_reuses_buses() {
-    use rustz80::cell::{CellPool, CellProgram};
+    use cell80::{CellPool, CellProgram};
     let p1 = CellProgram::compile("fn run(a: u16) -> u16 { a + 1u16 }").unwrap();
     let p2 = CellProgram::compile("fn run(a: u16) -> u16 { a * 2u16 }").unwrap();
     let mut pool = CellPool::new();
@@ -322,7 +321,7 @@ fn run_many_fast_falls_back_for_branches() {
 
 #[test]
 fn cartridge_roundtrip_and_inspect() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig, ABI_VERSION};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, ABI_VERSION};
     let src = "fn run(a: u16, b: u16) -> u16 { a * b }";
     let cart = Cartridge::compile(
         src,
@@ -380,7 +379,7 @@ fn cartridge_roundtrip_and_inspect() {
 
 #[test]
 fn cell_host_warm_session() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig, CellHost};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
     let scalar = |id: &str, src: &str, summary: &str, tags: Vec<&str>| {
         Cartridge::compile(
             src,
@@ -498,7 +497,7 @@ fn cell_host_warm_session() {
 
 #[test]
 fn cli_exec_runs_a_compiled_cartridge() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
     let dir = std::env::temp_dir().join("rustz80_exec_test");
     std::fs::create_dir_all(&dir).unwrap();
     let cellfile = dir.join("ws.cell");
@@ -566,7 +565,7 @@ fn cli_exec_runs_a_compiled_cartridge() {
 
 #[test]
 fn cell_index_search_ranks_by_relevance() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig, CellIndex};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellIndex};
     let mut idx = CellIndex::new();
     assert!(idx.is_empty());
     for (id, tags) in [
@@ -624,7 +623,7 @@ fn cli_index_and_search_the_seed_library() {
 fn cli_index_mixed_dir_with_compiled_cells() {
     // A library dir may hold both `.rs` sources and pre-compiled `.cell` cartridges
     // (and ignores anything else) — covers loading a `.cell` from the index.
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
     let dir = std::env::temp_dir().join("rustz80_lib_mixed");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -657,7 +656,7 @@ fn cli_index_mixed_dir_with_compiled_cells() {
 
 #[test]
 fn cartridge_carries_typed_signature() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
     // fn-args signature, surviving the round-trip + surfaced in inspect.
     let c = Cartridge::compile(
         "fn run(a: u16, b: u16) -> u16 { a + b }",
@@ -709,7 +708,7 @@ fn cartridge_carries_typed_signature() {
 
 #[test]
 fn cartridge_permissive_and_empty_manifest_branches() {
-    use rustz80::cell::{Cartridge, CartridgeOpts, CellConfig};
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
     // Permissive (no ceilings → ∞/null) + empty summary/tags (→ "(no summary)" / "—").
     let cart = Cartridge::compile(
         "fn run() -> u16 { 0u16 }",
@@ -804,7 +803,7 @@ fn cli_compile_inspect_and_errors() {
 
 #[test]
 fn cell_image_roundtrip() {
-    use rustz80::cell::{CellConfig, CellProgram};
+    use cell80::{CellConfig, CellProgram};
     let src = "fn run(a: u16, b: u16) -> u16 { a * b }";
     let prog = CellProgram::compile_with_config(src, CellConfig::sandboxed()).unwrap();
     let bytes = prog.to_bytes();
@@ -833,7 +832,7 @@ fn cell_image_roundtrip() {
 
 #[test]
 fn cell80_halt_with_code() {
-    use rustz80::cell::Halt;
+    use cell80::Halt;
     // `halt(code)` stops the run early with a status code.
     let mut r = Runner::compile(
         "fn run(n: u16) -> u16 {
@@ -859,7 +858,7 @@ fn cell80_halt_with_code() {
 
 #[test]
 fn cell80_array_init_is_a_block_op() {
-    use rustz80::cell::{CellProgram, Runner};
+    use cell80::{CellProgram, Runner};
     // A big `[v; N]` init is one block op, not N unrolled stores — so the code stays tiny
     // (it would be ~hundreds of bytes unrolled). Result still correct.
     let src = "fn run() -> u16 { let a = [9u16; 256]; a[0] + a[255] }";
@@ -880,7 +879,7 @@ fn cell80_array_init_is_a_block_op() {
 
 #[test]
 fn cell80_traps_mul_div_natively() {
-    use rustz80::cell::{CellProgram, Runner};
+    use cell80::{CellProgram, Runner};
     let src = "fn run(a: u16, b: u16) -> u16 { a * b + a / b + a % b }";
 
     // Cell mode: `*`/`/`/`%` lower to ED FE host traps — no software runtime appended.
@@ -903,7 +902,7 @@ fn cell80_traps_mul_div_natively() {
 
 #[test]
 fn run_fast_matches_run() {
-    use rustz80::cell::Halt;
+    use cell80::Halt;
     // The hot path must agree with the full Report on result/regs/cycles/halt.
     let mut r = Runner::compile("fn run(a: u16, b: u16) -> (u16, u16) { (a * a + b, a) }").unwrap();
     let full = r.run(None, &[6, 5], DEFAULT_CYCLES).unwrap();
@@ -1087,7 +1086,7 @@ fn budget_exceeded_is_reported_not_panicked() {
 #[test]
 fn monomorphic_instances_appear_in_symbols() {
     // Two capacities → two instances in the symbol map.
-    let src = include_str!("../samples/showcase/entities.rs");
+    let src = include_str!("../../rustz80/samples/showcase/entities.rs");
     let r = cell::run(src, None, &[], DEFAULT_CYCLES).expect("run");
     assert_eq!(r.result, 2530);
     assert!(r.symbols.iter().any(|(n, _)| n == "Entities$4::add"));
@@ -1228,7 +1227,7 @@ fn run_cli_typed_read() {
 
 #[test]
 fn capabilities_gate_raw_memory_and_ports() {
-    use rustz80::cell::CellConfig;
+    use cell80::CellConfig;
     // `poke`/`peek` need raw memory; `inport` needs ports — denied by default.
     let pokes = "fn run() -> u16 { poke(40000u16, 1u8); peek(40000u16) as u16 }";
     let ports = "fn run() -> u16 { inport(0xFEu16) as u16 }";
@@ -1249,7 +1248,7 @@ fn capabilities_gate_raw_memory_and_ports() {
 
 #[test]
 fn safety_config_defaults_and_cli_flags() {
-    use rustz80::cell::{CellConfig, Halt};
+    use cell80::{CellConfig, Halt};
     // default() is the sandboxed policy.
     let d = CellConfig::default();
     assert!(!d.allow_raw_memory && !d.allow_ports && d.max_code_bytes.is_some());
@@ -1293,7 +1292,7 @@ fn safety_config_defaults_and_cli_flags() {
 
 #[test]
 fn limits_code_size_and_memory() {
-    use rustz80::cell::{CellConfig, Halt};
+    use cell80::{CellConfig, Halt};
     // A tiny code-size ceiling rejects at compile.
     let mut cfg = CellConfig::sandboxed();
     cfg.max_code_bytes = Some(4);

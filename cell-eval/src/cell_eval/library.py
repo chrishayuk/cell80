@@ -15,17 +15,17 @@ from cell80_mcp.library import CellLibrary
 
 
 def seed_library_dir() -> pathlib.Path:
-    """Find the seed cell library (`rustz80/cells`).
+    """Find the seed cell library (`cell80/cells`).
 
     Resolution order: `$CELL_LIBRARY`, then walk up from here looking for
-    `rustz80/cells` (works from a source checkout regardless of cwd).
+    `cell80/cells` (works from a source checkout regardless of cwd).
     """
     env = os.environ.get("CELL_LIBRARY")
     if env:
         return pathlib.Path(env)
     here = pathlib.Path(__file__).resolve()
     for parent in here.parents:
-        candidate = parent / "rustz80" / "cells"
+        candidate = parent / "cell80" / "cells"
         if candidate.is_dir():
             return candidate
     raise FileNotFoundError(

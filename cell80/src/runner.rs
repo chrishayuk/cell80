@@ -1,7 +1,7 @@
 //! The runnable machine — `Runner`, its `CellBus`, the exec core, and `CellPool`.
 use super::report::{coalesce, sorted_symbols};
 use super::*;
-use crate::{Program, ORG};
+use rustz80::{Program, ORG};
 
 /// The bus the CPU steps against — borrows the [`Runner`]'s reusable buffers, counts
 /// T-states, and records each *distinct* written address (for an O(touched) reset and
@@ -140,7 +140,7 @@ impl Runner {
 
     /// Like [`run`](Runner::run), but first writes typed `inputs` `(addr, ty, value)` into
     /// memory after the reset — so a cell whose state lives at a known base reads
-    /// caller-supplied values (resolve field addresses with [`crate::struct_layout`]).
+    /// caller-supplied values (resolve field addresses with [`rustz80::struct_layout`]).
     pub fn run_with_inputs(
         &mut self,
         entry: Option<&str>,

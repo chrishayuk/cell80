@@ -1,9 +1,8 @@
 //! Property/fuzz tests for the cell's headline guarantees — determinism and reset
 //! completeness — stated adversarially rather than as a few hand-written samples
 //! (behind `--features cell`). Seeded + reproducible (a fixed corpus, no external deps).
-#![cfg(feature = "cell")]
 
-use rustz80::cell::{CellConfig, CellPool, CellProgram, Halt, Runner, StateCell, DEFAULT_CYCLES};
+use cell80::{CellConfig, CellPool, CellProgram, Halt, Runner, StateCell, DEFAULT_CYCLES};
 
 /// A tiny deterministic xorshift PRNG — so the corpus is reproducible (and `cargo test`
 /// stays free of `rand`).

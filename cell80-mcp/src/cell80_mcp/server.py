@@ -25,7 +25,7 @@ def library() -> CellLibrary:
     """The process-wide warm library (lazily built from `$CELL_LIBRARY`)."""
     global _LIBRARY
     if _LIBRARY is None:
-        _LIBRARY = CellLibrary(os.environ.get("CELL_LIBRARY", "rustz80/cells"))
+        _LIBRARY = CellLibrary(os.environ.get("CELL_LIBRARY", "cell80/cells"))
     return _LIBRARY
 
 

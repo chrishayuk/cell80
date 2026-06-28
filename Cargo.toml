@@ -1,14 +1,15 @@
-# cell80 — a Z80 CPU core + a restricted-Rust → Z80 compiler + the cell micro-VM.
-# Dependency arrow is strictly: rustz80 -> z80. The cell runner (`rustz80 --features cell`)
-# runs compiled code on a flat-RAM Z80 with no ROM/ULA/I/O — a deterministic, sandboxed
-# "executable tool capsule." `cell80-py` (PyO3) and `cell-bench` keep their own workspaces.
+# cell80 — a Z80 CPU core + a restricted-Rust → Z80 compiler + the cell micro-VM layer.
+# Dependency arrow is strictly: cell80 -> rustz80 -> z80 (cell80 also uses z80 to run code).
+# `rustz80` is a pure compiler; `cell80` is the cell layer (micro-VM, .cell cartridges, warm
+# host, CellGraph, the `cell80` CLI) — a deterministic, sandboxed "executable tool capsule"
+# on a flat-RAM Z80 with no ROM/ULA/I/O. `cell80-py` (PyO3) keeps its own workspace.
 [workspace]
 resolver = "2"
-members = ["z80", "z80-tests", "rustz80"]
+members = ["z80", "z80-tests", "rustz80", "cell80"]
 
 [workspace.package]
 edition = "2021"
-version = "0.4.0"
+version = "0.5.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/chrishayuk/cell80"
 

@@ -73,6 +73,7 @@ pub struct NodeTrace {
 /// cost across all nodes.
 #[derive(Debug, Clone)]
 pub struct GraphRun {
+    pub id: String,
     pub outputs: Vec<(String, u64)>,
     pub trace: Vec<NodeTrace>,
     pub cycles: u64,
@@ -309,10 +310,149 @@ impl CellGraph {
             outputs.push((name.clone(), v));
         }
         Ok(GraphRun {
+            id: self.id.clone(),
             outputs,
             trace,
             cycles: total_cyc,
             trapped_ops: total_trap,
         })
+    }
+
+    /// Parse a graph from its JSON manifest:
+    /// ```json
+    /// { "id": "move_ranker.v1",
+    ///   "nodes": { "dist": "manhattan", "score": "weighted_sum" },
+    ///   "wires": [ { "to": "score.a", "from": "dist.dist" },
+    ///              { "to": "score.b", "input": "risk" },
+    ///              { "to": "score.c", "const": 3 } ],
+    ///   "outputs": { "ranked": "score.result" } }
+    /// ```
+    /// A wire's value comes from another node's output (`from`), an external input (`input`),
+    /// or a literal (`const`). `validate` still gates everything before a run.
+    pub fn from_json(s: &str) -> Result<Self, String> {
+        let v: serde_json::Value =
+            serde_json::from_str(s).map_err(|e| format!("graph JSON: {e}"))?;
+        let port = |s: &str| -> Result<Port, String> {
+            s.split_once('.')
+                .map(|(n, p)| Port::new(n, p))
+                .ok_or_else(|| format!("port `{s}` must be `node.port`"))
+        };
+
+        let id = v
+            .get("id")
+            .and_then(|x| x.as_str())
+            .unwrap_or("graph")
+            .to_string();
+
+        let nodes = v
+            .get("nodes")
+            .and_then(|x| x.as_object())
+            .ok_or("graph: `nodes` must be an object {node: cell}")?
+            .iter()
+            .map(|(n, c)| {
+                c.as_str()
+                    .map(|c| (n.clone(), c.to_string()))
+                    .ok_or_else(|| format!("node `{n}`: cell id must be a string"))
+            })
+            .collect::<Result<_, _>>()?;
+
+        let mut wires = Vec::new();
+        for w in v
+            .get("wires")
+            .and_then(|x| x.as_array())
+            .ok_or("graph: `wires` must be an array")?
+        {
+            let to = w
+                .get("to")
+                .and_then(|x| x.as_str())
+                .ok_or("wire: missing string `to`")?;
+            let feed = if let Some(f) = w.get("from").and_then(|x| x.as_str()) {
+                Feed::From(port(f)?)
+            } else if let Some(i) = w.get("input").and_then(|x| x.as_str()) {
+                Feed::Input(i.to_string())
+            } else if let Some(c) = w.get("const") {
+                Feed::Const(
+                    c.as_u64()
+                        .ok_or_else(|| format!("wire to `{to}`: `const` must be a u64"))?,
+                )
+            } else {
+                return Err(format!("wire to `{to}`: needs `from`, `input`, or `const`"));
+            };
+            wires.push((port(to)?, feed));
+        }
+
+        let outputs = match v.get("outputs").and_then(|x| x.as_object()) {
+            Some(o) => o
+                .iter()
+                .map(|(name, p)| {
+                    p.as_str()
+                        .ok_or_else(|| format!("output `{name}`: must be a `node.port` string"))
+                        .and_then(|s| port(s).map(|p| (name.clone(), p)))
+                })
+                .collect::<Result<_, _>>()?,
+            None => Vec::new(),
+        };
+
+        Ok(CellGraph {
+            id,
+            nodes,
+            wires,
+            outputs,
+        })
+    }
+}
+
+impl GraphRun {
+    /// A human-readable trace: one line per node (inputs → result + cost), then the outputs.
+    pub fn to_human(&self) -> String {
+        let mut s = format!(
+            "graph `{}` — {} node(s), {} cycles, {} trapped_ops\n",
+            self.id,
+            self.trace.len(),
+            self.cycles,
+            self.trapped_ops
+        );
+        for t in &self.trace {
+            let ins: Vec<String> = t.inputs.iter().map(|(k, v)| format!("{k}={v}")).collect();
+            s += &format!(
+                "  {} ({}): {{{}}} -> {}  [{}c {}t]\n",
+                t.node,
+                t.cell,
+                ins.join(", "),
+                t.result,
+                t.cycles,
+                t.trapped_ops
+            );
+        }
+        let outs: Vec<String> = self
+            .outputs
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect();
+        s += &format!("  outputs: {{{}}}", outs.join(", "));
+        s
+    }
+
+    /// The run as JSON: `{id, outputs, cycles, trapped_ops, trace:[{node,cell,inputs,result,…}]}`.
+    pub fn to_json(&self) -> String {
+        use serde_json::{json, Map, Value};
+        let map = |pairs: &[(String, u64)]| -> Map<String, Value> {
+            pairs.iter().map(|(k, v)| (k.clone(), json!(v))).collect()
+        };
+        let trace: Vec<Value> = self
+            .trace
+            .iter()
+            .map(|t| {
+                json!({
+                    "node": t.node, "cell": t.cell, "inputs": map(&t.inputs),
+                    "result": t.result, "cycles": t.cycles, "trapped_ops": t.trapped_ops,
+                })
+            })
+            .collect();
+        json!({
+            "id": self.id, "outputs": map(&self.outputs),
+            "cycles": self.cycles, "trapped_ops": self.trapped_ops, "trace": trace,
+        })
+        .to_string()
     }
 }
