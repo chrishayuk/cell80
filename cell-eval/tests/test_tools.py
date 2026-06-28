@@ -30,6 +30,16 @@ def test_dispatch_search_inspect_run_and_trace():
     assert trace.cells_run == ["gcd"]
     assert trace.run_results == [12]
 
+    # A state cell driven by named fields routes to run_state and returns the full state.
+    s = dispatch(
+        lib,
+        "cell_run",
+        {"id": "manhattan", "fields": {"x1": 3, "y1": 4, "x2": 10, "y2": 8}},
+        trace,
+    )
+    assert s["result"] == 11 and s["state"]["dist"] == 11
+    assert trace.cells_run == ["gcd", "manhattan"]
+
 
 def test_dispatch_errors_come_back_as_data():
     lib = open_library()

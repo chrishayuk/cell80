@@ -9,10 +9,12 @@
 use super::*;
 use std::collections::HashMap;
 
-/// A loaded cell: a warm runner plus the entry to invoke on it.
+/// A loaded cell: a warm runner plus the entry to invoke on it, and (for a state cell) the
+/// `(field, address)` map that lets it be driven by name.
 struct Loaded {
     runner: Runner,
     entry: String,
+    state_addrs: Vec<(String, u16)>,
 }
 
 /// A persistent host over a library of cells: discover (`search`/`manifest`), then
@@ -64,6 +66,7 @@ impl CellHost {
         let loaded = Loaded {
             runner: self.pool.acquire(&cart.program),
             entry: cart.manifest.entry.clone(),
+            state_addrs: cart.manifest.state_addrs.clone(),
         };
         // Reuse a freed handle slot if there is one.
         match self.live.iter().position(Option::is_none) {
@@ -104,6 +107,45 @@ impl CellHost {
         let l = self.loaded(handle)?;
         let entry = l.entry.clone();
         l.runner.run_fast(Some(&entry), args, budget)
+    }
+
+    /// Drive a **state cell by field name**: write the given `fields` into the state struct,
+    /// run the entry with `&mut self` at [`STATE_BASE`], and read **every** scalar state field
+    /// back. Returns the [`Report`] plus the post-run state as `(name, value)` in declaration
+    /// order. This is the JSON↔state surface an agent (or a peer cell in a graph) drives — no
+    /// raw addresses. Errors if the cell has no named state or a field name is unknown.
+    pub fn run_state(
+        &mut self,
+        handle: usize,
+        fields: &[(String, u64)],
+        budget: u64,
+    ) -> Result<(Report, Vec<(String, u64)>), String> {
+        let l = self.loaded(handle)?;
+        if l.state_addrs.is_empty() {
+            return Err("cell has no named state (not a state cell)".into());
+        }
+        let entry = l.entry.clone();
+        let addrs = l.state_addrs.clone();
+        // Resolve each named input to its address (typed u16 — the addressable slot width).
+        let mut inputs = Vec::with_capacity(fields.len());
+        for (name, val) in fields {
+            let addr = addrs
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, a)| *a)
+                .ok_or_else(|| format!("no state field `{name}`"))?;
+            inputs.push((addr, Ty::U16, *val));
+        }
+        let report = l
+            .runner
+            .run_with_inputs(Some(&entry), &[STATE_BASE], &inputs, budget)?;
+        // Read all fields back so the caller sees the full post-run state.
+        let reads: Vec<(String, u16, Ty)> = addrs
+            .iter()
+            .map(|(n, a)| (n.clone(), *a, Ty::U16))
+            .collect();
+        let state = l.runner.read_named(&reads);
+        Ok((report, state))
     }
 
     /// Read a named typed field from a loaded cell's post-run memory.

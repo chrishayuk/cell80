@@ -28,7 +28,8 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 | `cell_search(query, limit=10)` | rank the library by relevance → brief manifests |
 | `cell_inspect(id)` | full manifest: typed signature (params/ret/state), abi, hash |
 | `cell_list()` | every cell (brief) |
-| `cell_run(id, args=[])` | run a cell with `u16` register args → result + cost + halt |
+| `cell_run(id, args=[])` | run a plain cell with `u16` register args → result + cost + halt |
+| `cell_run(id, fields={…})` | drive a **state** cell by name → result + full post-run `state` + cost |
 
 ## Run
 
