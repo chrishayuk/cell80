@@ -76,3 +76,24 @@ impl StateCell {
         self.addrs.keys().map(String::as_str)
     }
 }
+
+/// Byte addresses of a state cell's **scalar** fields — `(name, addr)` at [`STATE_BASE`], in
+/// declaration order — so a warm host (or a `.cell`) can drive the cell *by name* without the
+/// source. Empty for a free-function entry (no `&mut self` state). Uses the exact compiler
+/// [`struct_layout`](crate::struct_layout); tolerant of a non-state entry (returns empty).
+pub fn state_field_addrs(src: &str, entry: &str) -> Result<Vec<(String, u16)>, String> {
+    // A state entry is `Struct::method`; the receiver struct name is the part before `::`.
+    let state_struct = match entry.split_once("::") {
+        Some((s, _)) => s,
+        None => return Ok(Vec::new()),
+    };
+    let layout = match crate::struct_layout(src, state_struct) {
+        Ok(l) => l,
+        Err(_) => return Ok(Vec::new()), // not a known struct → no named state
+    };
+    Ok(layout
+        .into_iter()
+        .filter(|f| f.slots == 1) // scalar (u8/u16) fields are addressable by name
+        .map(|f| (f.name, STATE_BASE + f.offset * 2))
+        .collect())
+}

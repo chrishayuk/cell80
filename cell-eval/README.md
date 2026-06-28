@@ -126,8 +126,10 @@ datasets/       retrieval.jsonl, tasks.jsonl
 tests/          deterministic; no network (the adoption network path is run by you)
 ```
 
-## Known gaps (tracked on the roadmap)
+## Typed-state cells
 
-- **Typed-state cells** (e.g. `manhattan`, with named fields `x1,y1,x2,y2`) aren't in the
-  adoption tasks yet: `cell_run` takes positional register args, and named-field I/O over
-  the tool surface is **roadmap item 2**. Add a `manhattan` task once that lands.
+State cells (e.g. `manhattan`, with named fields `x1,y1,x2,y2,dist`) are driven **by name**:
+`cell_run` takes a `fields` object `{name: int}` and returns the full post-run `state`. The
+harness wires this through automatically (`tools.dispatch` routes `fields` →
+`CellLibrary.run_state`), and `manhattan` is in the adoption tasks. This is roadmap item 2
+(done) — and the wiring substrate for the networked CellGraph.

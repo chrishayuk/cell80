@@ -63,11 +63,18 @@ def build_server() -> ChukMCPServer:
         return {"cells": lib.list()}
 
     @mcp.tool(
-        description="Run a cell by id with register args (u16 each); returns result + regs "
-        "+ cost (cycles, trapped_ops) + halt. The runner stays warm across calls.",
+        description="Run a cell by id. For a plain cell pass `args` (u16 ints, in signature "
+        "order). For a STATE cell — one whose manifest lists `state` fields, e.g. manhattan — "
+        "pass `fields` as {name: int} to drive it by name; the reply then includes the full "
+        "post-run `state`. Returns result + regs + cost (cycles, trapped_ops) + halt. The "
+        "runner stays warm across calls.",
     )
-    def cell_run(id: str, args: list[int] | None = None) -> dict:
+    def cell_run(
+        id: str, args: list[int] | None = None, fields: dict | None = None
+    ) -> dict:
         try:
+            if fields:
+                return lib.run_state(id, fields)
             return lib.run(id, args or [])
         except ValueError as e:
             return {"error": str(e)}
