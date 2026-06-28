@@ -137,8 +137,14 @@ grows by eval need:
      together, the agent given the `cell_graph_run` tool, scored on **composed /
      correct / correct-via-composition** (held-fixed steering, like adoption). The capstone —
      it measures whether the consumer *builds* a tool from several, not just *finds* one.
-   - **Next** — run the composition eval against a local model for a baseline; then a live
-     **CellBus** (publish typed event → route to interested cells → commit) and SOMA organs.
+   - **Baseline (granite4.1:3b):** composed **0.50**, **used_graph 0.00**, correct **0.83** —
+     and the same model scores **adoption 1.00 / correct 1.00** on single cells. The finding:
+     a small model **composes by *chaining* `cell_run`, never by authoring a graph** — the JSON
+     manifest is too much to construct. So the next composition lever is **graph-authoring
+     ergonomics** (steering / a simpler author surface), not the VM. *(SOMA territory — let the
+     model learn to author graphs rather than hand-tuning the prompt.)*
+   - **Next** — close the graph-authoring gap, then a live **CellBus** (publish typed event →
+     route to interested cells → commit) and SOMA organs.
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library** — toward ~100 cells, but driven by what the evals

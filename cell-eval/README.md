@@ -134,6 +134,19 @@ score it `dist + 2·risk + 3·cost`, then clamp to 0–10."* Three signals per t
 This is the proof the graph matters: the consumer doesn't just *find* a tool, it *builds* one
 from several.
 
+### Baseline (granite4.1:3b via Ollama, 6 tasks)
+
+```
+composed=0.50   used_graph=0.00   correct=0.83   correct_via_composition=0.50
+```
+
+The finding that only the eval surfaces: granite **composes by chaining `cell_run` calls**
+(chain:2, chain:3) and **never authors a graph** (`used_graph=0.00`) — the JSON graph
+manifest is too much for a 3B to construct from scratch. So composition happens, but not via
+`cell_graph_run`; closing that gap is a steering / tool-ergonomics problem, not a VM one.
+(For contrast, the *same* model scores **adoption 1.00 / correct 1.00** on the single-cell
+tasks — it's an eager, reliable tool-caller; the hard part is graph *authoring*, not tool use.)
+
 ## Layout
 
 ```
