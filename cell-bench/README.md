@@ -5,7 +5,7 @@ candidate states with `score(x, y) = x*x + y*y + x*3` — across four runtimes:
 
 - **native Rust** — the floor (inlined machine code);
 - **Wasmtime** — a production JIT Wasm runtime, warm instance;
-- **rustz80-cell** — the warm `Runner` (compile once, run many);
+- **cell80** — the warm `Runner` (compile once, run many);
 - **Python** — a `python3 -c` subprocess (the "let the agent run code to check something"
   pattern).
 
