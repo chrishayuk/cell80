@@ -251,18 +251,11 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
 /// Emit a comparison and a conditional jump to `target`, taken when the condition
 /// is **false** (used to skip an `if`/`while` body).
 pub(super) fn gen_cond_skip(a: &mut Asm, cond: &Cond, target: usize) {
-    const JP_NC: u8 = 0xD2;
-    const JP_C: u8 = 0xDA;
-    const JP_NZ: u8 = 0xC2;
-    const JP_Z: u8 = 0xCA;
-    // After `SBC HL,DE`: carry = (left < right), zero = (left == right).
-    let (left, right, jp_false) = match cond.cmp {
-        Cmp::Lt => (&cond.lhs, &cond.rhs, JP_NC),
-        Cmp::Ge => (&cond.lhs, &cond.rhs, JP_C),
-        Cmp::Eq => (&cond.lhs, &cond.rhs, JP_NZ),
-        Cmp::Ne => (&cond.lhs, &cond.rhs, JP_Z),
-        Cmp::Gt => (&cond.rhs, &cond.lhs, JP_NC), // a>b ≡ b<a
-        Cmp::Le => (&cond.rhs, &cond.lhs, JP_C),  // a<=b ≡ !(b<a)
+    let (swap, jp_false) = cmp_false_jump(cond.cmp);
+    let (left, right) = if swap {
+        (&cond.rhs, &cond.lhs)
+    } else {
+        (&cond.lhs, &cond.rhs)
     };
     gen_sub(a, left, right);
     a.jump(jp_false, target);

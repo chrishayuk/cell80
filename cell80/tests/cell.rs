@@ -105,6 +105,37 @@ fn report_counts_trapped_ops() {
 }
 
 #[test]
+fn logical_and_is_short_circuit() {
+    // `&&` must not evaluate its right operand once the left decides the result — proven
+    // via `trapped_ops`: the guarded `a / b` is a divide trap, so a true short-circuit
+    // skips it. `b != 0 && a / b > 1` with `b == 0` must run zero traps (and not divide
+    // by zero), while `b != 0` evaluates the divide.
+    let mut r = Runner::compile(
+        "fn run(b: u16, a: u16) -> u16 { let mut r = 0u16; if b != 0u16 && a / b > 1u16 { r = 1u16; } r }",
+    )
+    .unwrap();
+    let zero = r.run(None, &[0, 10], DEFAULT_CYCLES).unwrap();
+    assert_eq!(zero.result, 0); // guard false → body skipped
+    assert_eq!(zero.trapped_ops, 0, "`a / b` must be short-circuited away");
+    let live = r.run(None, &[3, 10], DEFAULT_CYCLES).unwrap();
+    assert_eq!(live.result, 1); // 3 != 0 && 10/3 = 3 > 1
+    assert_eq!(live.trapped_ops, 1, "the divide runs when the guard is true");
+}
+
+#[test]
+fn variable_shift_saturates_past_word() {
+    // A runtime shift amount ≥ 16 shifts a u16 entirely out to 0 (the cell's defined
+    // behaviour; rustc would panic, so this lives here, not in the differential suite).
+    let mut shl = Runner::compile("fn run(x: u16, s: u16) -> u16 { x << s }").unwrap();
+    assert_eq!(shl.run(None, &[1, 0], DEFAULT_CYCLES).unwrap().result, 1);
+    assert_eq!(shl.run(None, &[1, 15], DEFAULT_CYCLES).unwrap().result, 32768);
+    assert_eq!(shl.run(None, &[1, 16], DEFAULT_CYCLES).unwrap().result, 0);
+    let mut shr = Runner::compile("fn run(x: u16, s: u16) -> u16 { x >> s }").unwrap();
+    assert_eq!(shr.run(None, &[0x8000, 15], DEFAULT_CYCLES).unwrap().result, 1);
+    assert_eq!(shr.run(None, &[0xFFFF, 16], DEFAULT_CYCLES).unwrap().result, 0);
+}
+
+#[test]
 fn struct_field_state_matches_host() {
     // Closes the B3 seam against the host oracle (not against hardcoded literals): run a
     // struct program through the cell, snapshot EVERY field via `struct_layout`, and assert
@@ -597,7 +628,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("8 cells"));
+    assert!(listing.contains("range_check") && listing.contains("59 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header).
     let g = cell::run_cli(&[

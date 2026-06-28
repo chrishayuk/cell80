@@ -79,7 +79,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 8 cells; query `distance between grid points` → 2 match(es):
+indexed 59 cells; query `distance between grid points` → 2 match(es):
   manhattan — Manhattan distance between two grid points.  [grid, distance, spatial, score]  (Pts::run() -> u16)
   abs_diff  — Absolute difference |a - b| between two values.  [math, distance, diff]  (run(a: u16, b: u16) -> u16)
 ```
@@ -107,11 +107,15 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Baselines on the seed library: retrieval **P@1 1.00** direct / **0.53** paraphrase (the open
-problem the type-led index targets); on `granite4.1:3b`, **adoption 1.00 / correct 1.00**, and
-**composition: composed 0.50, correct 0.83 — but `used_graph` 0.00**. That last number is the
-kind of finding only the eval surfaces: the small model *chains* cell calls rather than
-authoring a graph manifest, so the next lever is graph-authoring ergonomics, not the VM.
+Retrieval baseline on the 59-cell library: **direct P@1 0.91**, **paraphrase 0.40** — token
+overlap stays strong on the library's own words but degrades under rewording as confusable
+siblings multiply (six families: predicates, safe arithmetic, bounds, percent, ranking, bit
+ops). That gap *widening as the library grows* is exactly what the type-led index targets.
+Adoption/composition (measured earlier on the seed set, `granite4.1:3b`): **adoption 1.00 /
+correct 1.00**, **composition composed 0.50 / correct 0.83 — but `used_graph` 0.00**. That last
+number is the kind of finding only the eval surfaces: the small model *chains* cell calls
+rather than authoring a graph manifest, so the next lever is graph-authoring ergonomics, not
+the VM.
 
 ---
 
@@ -203,9 +207,10 @@ not when it's a hot kernel you'd keep resident.
 
 ## Write a cell
 
-The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`, arithmetic, `if`/`while`/
-`for`/`loop`, arrays, `struct`/`enum`/`match`, functions and methods, `poke`/`peek`. A few
-of the seed cells (`cell80/cells/`):
+The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`, arithmetic, comparisons as
+values (`(a < b) as u16`) + `&&`/`||`, runtime bit shifts, `if`/`while`/`for`/`loop`, arrays,
+`struct`/`enum`/`match`, functions and methods, `poke`/`peek`. A few of the cells
+(`cell80/cells/`):
 
 ```rust
 // gcd — Euclid's algorithm (a loop; div/mod are host traps in cell mode)
@@ -239,9 +244,10 @@ code, not a cell" signal. The full language reference is in
 [`rustz80/README.md`](./rustz80/README.md) and [`docs/07`](./docs/07-rust-z80-compiler-spec.md).
 
 **The envelope is deliberately narrow** — integers (`u8`/`u16`/`u32`, no float/signed yet),
-fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: scoring,
-validators, range/move checks, small state machines, reducers, grid logic, RNGs, reward
-kernels. It is *not* "any tool an agent wants" (most of those want a float, a string, or a
+fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: a tiny
+deterministic integer **stdlib** (predicates, percentages, bounds, ranking, bit/flag ops —
+the [first wave](./docs/library-growth.md)), scoring, validators, range/move checks, small
+state machines, reducers, grid logic, RNGs, reward kernels. It is *not* "any tool an agent wants" (most of those want a float, a string, or a
 syscall — all compile errors here, by design). So the sharpest **near-term beachhead is
 deterministic, bounded, cycle-honest kernels** — move-validation and reward computation for
 rate-decoupled RL (e.g. SOMA) — where the integer envelope fits exactly and determinism is
@@ -286,9 +292,11 @@ cell_graph_run(move_ranker_graph, inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), and the active chase — **host-routed `CellGraph` composition** (core built: cells
-wired into a static, type-checked graph the host validates before running) — then a type-led
-index, a larger standard cell library, a live CellBus, and signed `i16`.
+(done), the **standard-library first wave** (done — 59 cells across six families, plus the
+compiler ergonomics that make predicates/bitops one-liners), and the active chase —
+**host-routed `CellGraph` composition** (core built: cells wired into a static, type-checked
+graph the host validates before running) — then a type-led index, more library waves, a live
+CellBus, and signed `i16`.
 
 ---
 

@@ -166,6 +166,45 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                 Width::DWord => unreachable!("u32 array/field elements are unsupported"),
             }
         }
+        // A comparison as a value → `1`/`0` in `HL`.
+        Expr::Cmp { cmp, lhs, rhs } => gen_cmp(a, *cmp, lhs, rhs),
+        // Short-circuit `&&` / `||` on bool operands.
+        Expr::Logic { and, lhs, rhs } => {
+            gen_expr(a, lhs); // HL = lhs (0/1)
+            a.byte(0x7D); // LD A,L
+            a.byte(0xB4); // OR H    -> Z set iff HL == 0
+            let end = a.label();
+            // `&&`: short-circuit to `end` when lhs is false (HL already 0).
+            // `||`: short-circuit to `end` when lhs is true  (HL already 1).
+            a.jump(if *and { 0xCA } else { 0xC2 }, end); // JP Z / JP NZ
+            gen_expr(a, rhs); // else the result is rhs (0/1)
+            a.place(end);
+        }
+        // Shift by a runtime amount: a counted `ADD HL,HL` / `SRL H;RR L` loop.
+        Expr::ShiftVar { left, e, amount, w } => {
+            gen_expr(a, e);
+            a.byte(0xE5); // PUSH HL  (value)
+            gen_expr(a, amount); // HL = amount
+            a.byte(0x7D); // LD A,L   (count = low byte)
+            a.byte(0xE1); // POP HL   (value)
+            a.byte(0xB7); // OR A     -> Z iff count == 0
+            let done = a.label();
+            let top = a.label();
+            a.jump(0xCA, done); // JP Z,done   (no shift)
+            a.place(top);
+            if *left {
+                a.byte(0x29); // ADD HL,HL          (<< 1)
+            } else {
+                a.byte(0xCB);
+                a.byte(0x3C); // SRL H
+                a.byte(0xCB);
+                a.byte(0x1D); // RR L               (>> 1, logical)
+            }
+            a.byte(0x3D); // DEC A
+            a.jump(0xC2, top); // JP NZ,top
+            a.place(done);
+            mask_to_width(a, *w);
+        }
         // `x as u16` — the low word of a `u32` value (the high word is discarded).
         Expr::Trunc32(e) => gen_expr32(a, e),
         // `halt(code)` — code in HL, then the HALT trap (no-op on real hardware).
@@ -484,4 +523,41 @@ pub(super) fn gen_sub(a: &mut Asm, left: &Expr, right: &Expr) {
     a.byte(0xB7); // OR A   (clear carry)
     a.byte(0xED);
     a.byte(0x52); // SBC HL, DE
+}
+
+/// The operand order and the conditional-jump opcode that is taken when a comparison is
+/// **false**. After `gen_sub(left, right)` (i.e. `SBC HL,DE`): carry = `left < right`,
+/// zero = `left == right`. `swap` flips the operands so `>`/`<=` reuse the `<`/`≥` test
+/// (`a > b ≡ b < a`). Shared by the branch form (`gen_cond_skip`) and the value form
+/// (`gen_cmp`).
+pub(super) fn cmp_false_jump(cmp: Cmp) -> (bool, u8) {
+    const JP_NC: u8 = 0xD2;
+    const JP_C: u8 = 0xDA;
+    const JP_NZ: u8 = 0xC2;
+    const JP_Z: u8 = 0xCA;
+    match cmp {
+        Cmp::Lt => (false, JP_NC),
+        Cmp::Ge => (false, JP_C),
+        Cmp::Eq => (false, JP_NZ),
+        Cmp::Ne => (false, JP_Z),
+        Cmp::Gt => (true, JP_NC), // a>b ≡ b<a
+        Cmp::Le => (true, JP_C),  // a<=b ≡ !(b<a)
+    }
+}
+
+/// Materialise a comparison as a `1`/`0` value in `HL` (a `bool`).
+pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr) {
+    let (swap, jp_false) = cmp_false_jump(cmp);
+    let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
+    gen_sub(a, left, right); // flags set; HL clobbered (overwritten below)
+    let false_l = a.label();
+    let end_l = a.label();
+    a.jump(jp_false, false_l);
+    a.byte(0x21); // LD HL, 1   (true)
+    a.word(1);
+    a.jump(0xC3, end_l); // JP end
+    a.place(false_l);
+    a.byte(0x21); // LD HL, 0   (false)
+    a.word(0);
+    a.place(end_l);
 }
