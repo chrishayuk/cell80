@@ -46,7 +46,7 @@ Freeze it into a self-describing `.cell` cartridge:
 ```console
 $ rustz80-cell compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
 $ rustz80-cell inspect score.cell
-cell `score.v1`  (abi 1, compiler 0.1.0)
+cell `score.v1`  (abi 1, compiler 0.4.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
   signature: run(x: u16, y: u16) -> u16

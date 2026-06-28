@@ -261,6 +261,13 @@ cell.run(budget)?;
 let score = cell.get("score");   // typed, by name — the JSON↔state surface for agents/MCP
 ```
 
+The same field-name surface runs **warm** on a host — `CellHost::run_state(handle, fields)`
+loads once and drives a state cell by name across calls (the addresses come from the
+cartridge manifest's `state_addrs`, so no source is needed; this is what `cell_run(fields=…)`
+drives over MCP). And cells **compose**: a `CellGraph` wires one cell's typed output into
+another's typed input — host-routed and **type-checked before any cell runs** (see the
+[cell80 README](../README.md)).
+
 **Safe by default.** A `CellConfig` gates the intrinsics and caps resources: `poke`/`peek`
 (raw memory) and `inport` (ports) are **capability-gated, off by default** for untrusted
 cells, with `max_code_bytes` / `max_touched` ceilings on top of the deterministic cycle

@@ -119,9 +119,14 @@ with a compiled `CellProgram` (and its serialized image).
 - `memory_touched` — contiguous written ranges, `[start, end_inclusive]`.
 - `reads` — named typed values requested via `--read` (else empty).
 
-## Image format (cartridge seed)
+## Image & cartridge format
 
-`CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained image (magic
-`CZ80`, version, code, symbols, policy) with no `syn` — the seed of the future `.cell`
-cartridge. A named, versioned, manifest-bearing artifact is the gate for the standalone
-spin-out (see roadmap B5/B6).
+`CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
+(magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
+`CELL`, format **v3**) wraps that image with its `Manifest` — id, summary, tags, entry,
+source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
+and (v3) `state_addrs`: each scalar state field's byte address at `STATE_BASE`, so a host or a
+peer cell in a graph drives the cell **by field name without the source**. `from_bytes` still
+reads v2 cartridges (no `state_addrs`). This named, versioned, manifest-bearing artifact is
+the object the CLI, a tool index, the MCP server, and a `CellGraph` pass around. (Note: the
+`.cell` *file* format version — v3 — is distinct from the runtime `ABI_VERSION` above, still 1.)

@@ -62,8 +62,10 @@ runs the right cell instead of writing Python**. That's the next gate.
 
 ## Next
 
-The VM is proven; the open problem is **library semantics + discovery quality**. Ordered so
-single-cell retrieval works before composition, and the library grows by eval need:
+The VM is proven; the open problem is **library semantics + discovery quality**. Numbered by
+theme, not strictly by sequence — composition (item 5) is the current chase, ahead of
+retrieval (item 3), because a static host-authored graph needs no retrieval. The library
+grows by eval need:
 
 1. **Agent eval harness — the headline milestone. → underway (`cell-eval/`).** Can an LLM
    `search → inspect → run` the right cell instead of writing code? Concrete cases: pick
