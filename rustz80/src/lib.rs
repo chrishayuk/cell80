@@ -16,6 +16,7 @@
 //! as secondary, and a fixed RAM scratch region as the "register file".
 
 mod codegen;
+mod dce;
 mod ir;
 mod lower;
 mod tap;
@@ -85,6 +86,23 @@ pub fn compile_program(src: &str) -> Result<Program, String> {
 /// (e.g. the `cell80` crate's capability scan) avoid a second parse, and pick the backend.
 pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
     let funcs = lower_program(file, &PreludeConfig::default())?;
+    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
+    Ok(Program { code, symbols })
+}
+
+/// Like [`compile_file`], but **dead-code-eliminates** down to the functions reachable from
+/// the entry `roots`. Whole-program compilers (games) don't know the entry until runtime, so
+/// they call [`compile_file`] (keep everything); the cell layer knows a cell's entry
+/// (`run`/`main`/`Type::run`) and passes it here, so a prepended shared-kernel prelude — and
+/// any other dead code — is pruned to exactly what that entry reaches. An empty `roots` is a
+/// no-op (identical to [`compile_file`]).
+pub fn compile_file_pruned(
+    file: &syn::File,
+    target: Target,
+    roots: &[&str],
+) -> Result<Program, String> {
+    let funcs = lower_program(file, &PreludeConfig::default())?;
+    let funcs = dce::prune(funcs, roots);
     let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
     Ok(Program { code, symbols })
 }
@@ -258,12 +276,17 @@ pub fn entry_signature(src: &str, entry: &str) -> Result<Signature, String> {
 /// Compile a program and wrap it as a bootable `.tap` that runs from `entry`
 /// (a function name, default `"main"`). The autoloader `CLEAR`s below [`ORG`],
 /// `LOAD`s the code there, and `RANDOMIZE USR`s the entry.
+///
+/// **Dead-code-eliminated**, rooted at `entry`: a tape carries only the functions the game
+/// actually reaches (and so only the `__mul16`/`__divmod16` runtime it actually needs) — which
+/// matters on a 48 K Spectrum, where carrying an SDK's unused helpers may not fit.
 pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, String> {
     let file: syn::File = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
     let funcs = lower_program(&file, &PreludeConfig::default())?;
     if !funcs.iter().any(|(n, _)| n == entry) {
         return Err(format!("no `{entry}` function"));
     }
+    let funcs = dce::prune(funcs, &[entry]);
     // Emit a DI/EI trampoline at ORG and boot into it (`USR ORG`).
     let (code, _) = codegen::codegen_program(&funcs, ORG, Some(entry), Target::Spectrum48);
     Ok(to_tap(&code, ORG, ORG, name))

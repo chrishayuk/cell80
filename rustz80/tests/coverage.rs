@@ -29,6 +29,98 @@ fn expr_rejections() {
 }
 
 #[test]
+fn dce_prunes_unreachable_from_roots() {
+    use rustz80::{compile_file_pruned, Target};
+    let file: syn::File = syn::parse_str(
+        "fn run(a: u16) -> u16 { used(a) }
+         fn used(a: u16) -> u16 { a + 1u16 }
+         fn dead(a: u16) -> u16 { a * a * a }",
+    )
+    .unwrap();
+    for (target, label) in [(Target::Cell, "cell"), (Target::Spectrum48, "spectrum")] {
+        // Rooted at `run`: `used` is reached, `dead` is not.
+        let pruned = compile_file_pruned(&file, target, &["run"]).unwrap();
+        assert!(pruned.symbols.contains_key("run") && pruned.symbols.contains_key("used"));
+        assert!(
+            !pruned.symbols.contains_key("dead"),
+            "unreachable fn must be pruned ({label})"
+        );
+        // Empty roots = keep everything (the whole-program / entry-agnostic default).
+        let all = compile_file_pruned(&file, target, &[]).unwrap();
+        assert!(all.symbols.contains_key("dead"));
+        // Dropping the only `*`-user also drops the Spectrum multiply runtime → a smaller image
+        // (the point on a 48K machine).
+        assert!(
+            pruned.code.len() < all.code.len(),
+            "DCE shrinks the image ({label})"
+        );
+    }
+}
+
+#[test]
+fn dce_walks_every_node_kind() {
+    use rustz80::{compile_file_pruned, Target};
+    // `helper` is *called* from inside a wide spread of statement/expression kinds; `dead`
+    // from none. DCE must find every call (so `helper` survives) and prune `dead`. If the
+    // reachability visitor missed a node kind, a call hidden there would go unseen — `helper`
+    // would be dropped and codegen would dangle. So this is the visitor's correctness guard
+    // *and* its coverage: array fill/index, while/for/loop bounds + `continue`, poke/peek/
+    // inport, u32 ops, a cmp-as-value, `&&`, a runtime shift, halt, and a tuple-returning call.
+    let syms = |src: &str, root: &str| {
+        let file: syn::File = syn::parse_str(src).unwrap();
+        compile_file_pruned(&file, Target::Cell, &[root])
+            .unwrap()
+            .symbols
+    };
+
+    let free = syms(
+        "fn helper(a: u16) -> u16 { a + 1u16 }
+         fn pair(a: u16) -> (u16, u16) { (a, helper(a)) }
+         fn dead(a: u16) -> u16 { a * 2u16 }
+         fn run(n: u16) -> u16 {
+             let mut arr = [helper(n); 3];
+             arr[0] = helper(arr[1]);
+             let mut s = 0u16; let mut i = 0u16;
+             while i < helper(3u16) { s = s + arr[i as usize]; i = i + 1u16; }
+             for j in 0u16..helper(2u16) { if j == 0u16 { continue; } s = s + j; }
+             loop { if i > 9u16 { break; } i = i + 1u16; }
+             poke(40000u16, helper(n) as u8);
+             let p = peek(40000u16) as u16;
+             let k = inport(0xFEu16) as u16;
+             let mut x: u32 = 1000u32; x = x ^ (x << 3u32);
+             let lo = (x as u16) + helper(0u16);
+             if helper(s) > 0u16 && s < 100u16 { halt(helper(1u16)); }
+             let (a, b) = pair(s);
+             s + p + k + lo + a + b + (n << i)
+         }",
+        "run",
+    );
+    assert!(free.contains_key("run") && free.contains_key("helper") && free.contains_key("pair"));
+    assert!(!free.contains_key("dead"), "unreachable fn must be pruned");
+
+    // Struct + method: self-field read/write, array fields, array-of-structs element fields,
+    // and a method calling another method on `self` (the `&self`/pointer-arg path).
+    let meth = syms(
+        "fn helper(a: u16) -> u16 { a + 1u16 }
+         fn dead(a: u16) -> u16 { a * 2u16 }
+         struct Cell { x: u16 }
+         struct St { v: u16, row: [u16; 2], cells: [Cell; 2] }
+         impl St {
+             fn bump(&mut self) { self.v = helper(self.v); }
+             fn run(&mut self) -> u16 {
+                 self.bump();
+                 self.row[0] = helper(self.row[1]);
+                 self.cells[0].x = helper(2u16);
+                 self.v + self.row[0] + self.cells[0].x
+             }
+         }",
+        "St::run",
+    );
+    assert!(meth.contains_key("St::run") && meth.contains_key("St::bump"));
+    assert!(meth.contains_key("helper") && !meth.contains_key("dead"));
+}
+
+#[test]
 fn struct_field_rejections() {
     // Reading / assigning a whole multi-slot field (tuple) as a scalar.
     bad_prog("struct S { p: (u16, u16) } fn run() -> u16 { let s = S { p: (1u16, 2u16) }; s.p }");

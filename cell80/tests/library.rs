@@ -5,7 +5,7 @@
 //! per-cell edge-case guard the contribution rule asks for; it complements the
 //! `cell-eval` retrieval/composition datasets (which exercise discovery + chaining).
 
-use cell80::{Runner, DEFAULT_CYCLES};
+use cell80::{Runner, StateCell, DEFAULT_CYCLES};
 use std::path::PathBuf;
 
 /// Read a library cell's source by id (`cells/<id>.rs`).
@@ -147,6 +147,93 @@ fn first_wave_cells_match_defined_behaviour() {
         ("mask_has_any", &[7, 8], 0),
         ("mask_union", &[12, 10], 14),
         ("mask_intersection", &[12, 10], 8),
+        // ── number theory (second wave) ──
+        ("lcm", &[4, 6], 12),
+        ("lcm", &[0, 5], 0),
+        ("gcd3", &[48, 36, 60], 12),
+        ("divides", &[3, 12], 1),
+        ("divides", &[5, 12], 0),
+        ("divides", &[0, 5], 0),
+        ("is_coprime", &[8, 9], 1),
+        ("is_coprime", &[8, 12], 0),
+        ("is_prime", &[97], 1),
+        ("is_prime", &[1], 0),
+        ("is_prime", &[2], 1),
+        ("is_prime", &[65535], 0),
+        ("isqrt", &[16], 4),
+        ("isqrt", &[17], 4),
+        ("isqrt", &[65535], 255),
+        ("is_square", &[65025], 1),
+        ("is_square", &[65535], 0),
+        ("is_square", &[0], 1),
+        ("digit_sum", &[123], 6),
+        ("digit_sum", &[65535], 24),
+        ("num_digits", &[0], 1),
+        ("num_digits", &[65535], 5),
+        ("factor_count", &[12], 6),
+        ("factor_count", &[36], 9),
+        ("factor_count", &[65535], 16),
+        ("triangular", &[10], 55),
+        ("triangular", &[361], 65341),
+        ("next_pow2", &[5], 8),
+        ("next_pow2", &[32768], 32768),
+        ("next_pow2", &[40000], 0),
+        ("is_pow2", &[8], 1),
+        ("is_pow2", &[6], 0),
+        ("is_pow2", &[0], 0),
+        ("pow_small", &[2, 10], 1024),
+        ("pow_small", &[2, 16], 65535),
+        ("pow_small", &[5, 0], 1),
+        ("cube_sat", &[40], 64000),
+        ("cube_sat", &[41], 65535),
+        ("pow_mod", &[3, 4, 5], 1),
+        ("pow_mod", &[7, 2, 5], 4),
+        ("pow_mod", &[5, 3, 0], 0),
+        // ── bit / encoding ──
+        ("low_byte", &[4660], 52),
+        ("high_byte", &[4660], 18),
+        ("swap_bytes", &[4660], 13330),
+        ("rotl16", &[1, 1], 2),
+        ("rotl16", &[32768, 1], 1),
+        ("rotl16", &[1, 16], 1),
+        ("rotr16", &[1, 1], 32768),
+        ("rotr16", &[2, 1], 1),
+        ("reverse_bits", &[1], 32768),
+        ("reverse_bits", &[65535], 65535),
+        ("leading_zeros", &[0], 16),
+        ("leading_zeros", &[32768], 0),
+        ("leading_zeros", &[255], 8),
+        ("trailing_zeros", &[0], 16),
+        ("trailing_zeros", &[8], 3),
+        ("bit_length", &[0], 0),
+        ("bit_length", &[256], 9),
+        ("bit_length", &[32768], 16),
+        ("mask_xor", &[12, 10], 6),
+        // ── hashing / checksum (deterministic — these lock the exact outputs) ──
+        ("hash_pair", &[1, 2], 49696),
+        ("hash_pair", &[0, 0], 0),
+        ("fnv1a_step", &[0, 65], 26195),
+        ("fnv1a_step", &[0, 256], 0), // byte masked to 0xFF, so == (0, 0)
+        ("crc8_step", &[0, 0], 0),
+        ("crc8_step", &[0, 1], 94),
+        ("mix16", &[0], 0),
+        ("mix16", &[1], 10688),
+        // ── stats / bucketing / conversion ──
+        ("mode3", &[5, 5, 3], 5),
+        ("mode3", &[3, 5, 5], 5),
+        ("mode3", &[1, 2, 3], 1),
+        ("majority3", &[5, 5, 3], 1),
+        ("majority3", &[1, 2, 3], 0),
+        ("midrange3", &[1, 2, 9], 5),
+        ("bucket3", &[5, 10, 20], 0),
+        ("bucket3", &[15, 10, 20], 1),
+        ("bucket3", &[25, 10, 20], 2),
+        ("quantize", &[47, 10], 4),
+        ("quantize", &[5, 0], 0),
+        ("percent_to_byte", &[100], 255),
+        ("percent_to_byte", &[50], 127),
+        ("byte_to_percent", &[255], 100),
+        ("byte_to_percent", &[127], 49),
     ];
 
     let mut failures = Vec::new();
@@ -157,4 +244,23 @@ fn first_wave_cells_match_defined_behaviour() {
         }
     }
     assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+}
+
+#[test]
+fn distance_state_cells_match_defined_behaviour() {
+    // The 4-point distance cells exceed the 3-arg convention, so they're state cells (a
+    // `Pts` struct, like `manhattan`): set the four coordinates by name, run, read the result.
+    fn dist(id: &str, x1: u16, y1: u16, x2: u16, y2: u16) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), "Pts", None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in [("x1", x1), ("y1", y1), ("x2", x2), ("y2", y2)] {
+            cell.set(f, v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+    // chebyshev = max(|dx|, |dy|); euclid_sq = dx² + dy².
+    assert_eq!(dist("chebyshev", 3, 4, 10, 9), 7); // max(7, 5)
+    assert_eq!(dist("chebyshev", 0, 0, 5, 2), 5);
+    assert_eq!(dist("euclid_sq", 0, 0, 3, 4), 25); // 9 + 16
+    assert_eq!(dist("euclid_sq", 1, 1, 4, 5), 25); // 9 + 16
 }

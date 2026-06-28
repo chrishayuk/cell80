@@ -14,8 +14,8 @@ keywords = ["z80", "agents", "sandbox", "micro-vm", "tools"]
 categories = ["emulators", "compilers"]
 
 [dependencies]
-rustz80 = { path = "../rustz80", version = "0.5.0" }
-z80 = { package = "cell80-z80", path = "../z80", version = "0.5.0" }
+rustz80 = { path = "../rustz80", version = "0.6.0" }
+z80 = { package = "cell80-z80", path = "../z80", version = "0.6.0" }
 serde_json = "1"
 # The capability scan walks the parsed AST; the cell layer parses + cap-checks before
 # handing the file to `rustz80::compile_file`.

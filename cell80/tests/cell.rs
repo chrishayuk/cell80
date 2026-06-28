@@ -136,6 +136,27 @@ fn variable_shift_saturates_past_word() {
 }
 
 #[test]
+fn prelude_kernels_are_shared_and_dce_pruned() {
+    use cell80::CellProgram;
+    // A cell may call a shared kernel (`gcd`) it never defines — it comes from the appended
+    // prelude. The cell stays "super modular": it doesn't re-implement the kernel.
+    let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { gcd(a, b) }").unwrap();
+    assert_eq!(r.run(None, &[48, 36], DEFAULT_CYCLES).unwrap().result, 12);
+    // DCE pulls in ONLY the reached kernel: `run` + `gcd` = 2 symbols (the other five
+    // prelude kernels — imin/imax/iabs_diff/isqrt/clamp_to — are pruned).
+    assert_eq!(r.program().symbols.len(), 2);
+
+    // A cell that calls two kernels carries exactly those two (+ its own `run`).
+    let two = CellProgram::compile("fn run(a: u16, b: u16) -> u16 { imin(a, b) + imax(a, b) }")
+        .unwrap();
+    assert_eq!(two.program().symbols.len(), 3);
+
+    // A cell that uses no kernel carries none — byte-identical to having no prelude at all.
+    let bare = CellProgram::compile("fn run(a: u16) -> u16 { a + 1u16 }").unwrap();
+    assert_eq!(bare.program().symbols.len(), 1); // just `run`
+}
+
+#[test]
 fn struct_field_state_matches_host() {
     // Closes the B3 seam against the host oracle (not against hardcoded literals): run a
     // struct program through the cell, snapshot EVERY field via `struct_layout`, and assert
@@ -628,12 +649,14 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("59 cells"));
+    assert!(listing.contains("range_check") && listing.contains("98 cells"));
 
-    // search surfaces the most relevant cell first (line 0 is the header).
+    // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
+    // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
+    // cell-specific name disambiguates.
     let g = cell::run_cli(&[
         "search".into(),
-        "grid distance to a target".into(),
+        "manhattan distance to a target".into(),
         dir.clone(),
     ])
     .unwrap();
