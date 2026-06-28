@@ -59,7 +59,44 @@ def test_library_run_state_by_name():
 def test_mcp_surface_is_a_small_router():
     mcp = server.build_server()
     names = sorted(t.name for t in mcp.get_tools())
-    assert names == ["cell_inspect", "cell_list", "cell_run", "cell_search"]
+    assert names == ["cell_graph_run", "cell_inspect", "cell_list", "cell_run", "cell_search"]
+
+
+# The move-ranker graph: manhattan -> weighted_sum -> clamp, host-routed.
+MOVE_RANKER = {
+    "id": "move_ranker.v1",
+    "nodes": {"dist": "manhattan", "score": "weighted_sum", "bounded": "clamp"},
+    "wires": [
+        {"to": "dist.x1", "input": "x1"},
+        {"to": "dist.y1", "input": "y1"},
+        {"to": "dist.x2", "input": "x2"},
+        {"to": "dist.y2", "input": "y2"},
+        {"to": "score.a", "from": "dist.dist"},
+        {"to": "score.b", "input": "risk"},
+        {"to": "score.c", "input": "cost"},
+        {"to": "bounded.x", "from": "score.result"},
+        {"to": "bounded.lo", "const": 0},
+        {"to": "bounded.hi", "const": 10},
+    ],
+    "outputs": {"ranked": "bounded.result"},
+}
+
+
+def test_library_run_graph_composes_cells():
+    lib = CellLibrary(str(CELLS))
+    inputs = {"x1": 3, "y1": 4, "x2": 10, "y2": 8, "risk": 2, "cost": 1}
+    run = lib.run_graph(MOVE_RANKER, inputs)
+    # dist=11 -> score = 11 + 2*2 + 1*3 = 18 -> clamp(18,0,10) = 10
+    assert run["outputs"]["ranked"] == 10
+    assert [t["result"] for t in run["trace"]] == [11, 18, 10]
+    assert run["cycles"] > 0
+    # An invalid graph (type mismatch / bad port) comes back as an error via the host.
+    bad = {"nodes": {"a": "clamp"}, "wires": [{"to": "a.nope", "const": 1}], "outputs": {}}
+    try:
+        lib.run_graph(bad)
+        assert False, "expected an error for a bad graph"
+    except Exception:
+        pass
 
 
 def test_missing_library_dir_raises():

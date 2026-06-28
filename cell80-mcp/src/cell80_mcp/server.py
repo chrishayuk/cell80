@@ -79,4 +79,18 @@ def build_server() -> ChukMCPServer:
         except ValueError as e:
             return {"error": str(e)}
 
+    @mcp.tool(
+        description="Compose cells: run a CellGraph. `graph` is a manifest "
+        "{id, nodes:{node:cell}, wires:[{to:'node.port', and one of from:'node.port' | "
+        "input:'name' | const:int}], outputs:{name:'node.port'}}; `inputs` is the external "
+        "{name:int}. The host wires one cell's typed output into another's typed input, "
+        "type-checks the WHOLE graph before running a cycle, runs nodes in topological order, "
+        "and returns {id, outputs, cycles, trapped_ops, trace}. Cells never see each other.",
+    )
+    def cell_graph_run(graph: dict, inputs: dict | None = None) -> dict:
+        try:
+            return lib.run_graph(graph, inputs or {})
+        except Exception as e:  # bad manifest / type mismatch / cycle → data, not a crash
+            return {"error": str(e)}
+
     return mcp
