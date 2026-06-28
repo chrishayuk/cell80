@@ -42,11 +42,7 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
         | Expr::Trunc32(e)
         | Expr::Shift32 { e, .. }
         | Expr::Halt(e) => calls_in_expr(e, out),
-        Expr::Lit(_)
-        | Expr::Var(_)
-        | Expr::AddrOf(_)
-        | Expr::Lit32(_)
-        | Expr::Var32(_) => {}
+        Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::Lit32(_) | Expr::Var32(_) => {}
     }
 }
 
@@ -143,5 +139,8 @@ pub(crate) fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, 
             }
         }
     }
-    funcs.into_iter().filter(|(n, _)| keep.contains(n)).collect()
+    funcs
+        .into_iter()
+        .filter(|(n, _)| keep.contains(n))
+        .collect()
 }

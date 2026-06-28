@@ -119,7 +119,10 @@ fn logical_and_is_short_circuit() {
     assert_eq!(zero.trapped_ops, 0, "`a / b` must be short-circuited away");
     let live = r.run(None, &[3, 10], DEFAULT_CYCLES).unwrap();
     assert_eq!(live.result, 1); // 3 != 0 && 10/3 = 3 > 1
-    assert_eq!(live.trapped_ops, 1, "the divide runs when the guard is true");
+    assert_eq!(
+        live.trapped_ops, 1,
+        "the divide runs when the guard is true"
+    );
 }
 
 #[test]
@@ -128,11 +131,20 @@ fn variable_shift_saturates_past_word() {
     // behaviour; rustc would panic, so this lives here, not in the differential suite).
     let mut shl = Runner::compile("fn run(x: u16, s: u16) -> u16 { x << s }").unwrap();
     assert_eq!(shl.run(None, &[1, 0], DEFAULT_CYCLES).unwrap().result, 1);
-    assert_eq!(shl.run(None, &[1, 15], DEFAULT_CYCLES).unwrap().result, 32768);
+    assert_eq!(
+        shl.run(None, &[1, 15], DEFAULT_CYCLES).unwrap().result,
+        32768
+    );
     assert_eq!(shl.run(None, &[1, 16], DEFAULT_CYCLES).unwrap().result, 0);
     let mut shr = Runner::compile("fn run(x: u16, s: u16) -> u16 { x >> s }").unwrap();
-    assert_eq!(shr.run(None, &[0x8000, 15], DEFAULT_CYCLES).unwrap().result, 1);
-    assert_eq!(shr.run(None, &[0xFFFF, 16], DEFAULT_CYCLES).unwrap().result, 0);
+    assert_eq!(
+        shr.run(None, &[0x8000, 15], DEFAULT_CYCLES).unwrap().result,
+        1
+    );
+    assert_eq!(
+        shr.run(None, &[0xFFFF, 16], DEFAULT_CYCLES).unwrap().result,
+        0
+    );
 }
 
 #[test]
@@ -147,8 +159,8 @@ fn prelude_kernels_are_shared_and_dce_pruned() {
     assert_eq!(r.program().symbols.len(), 2);
 
     // A cell that calls two kernels carries exactly those two (+ its own `run`).
-    let two = CellProgram::compile("fn run(a: u16, b: u16) -> u16 { imin(a, b) + imax(a, b) }")
-        .unwrap();
+    let two =
+        CellProgram::compile("fn run(a: u16, b: u16) -> u16 { imin(a, b) + imax(a, b) }").unwrap();
     assert_eq!(two.program().symbols.len(), 3);
 
     // A cell that uses no kernel carries none — byte-identical to having no prelude at all.

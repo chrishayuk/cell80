@@ -243,7 +243,11 @@ fn first_wave_cells_match_defined_behaviour() {
             failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]

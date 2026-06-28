@@ -72,8 +72,7 @@ impl CellProgram {
         // so a cell calls `gcd`/`iabs_diff`/… without re-implementing them, and the kernels it
         // doesn't use are pruned away.
         let combined = format!("{src}\n{CELL_PRELUDE}");
-        let file: syn::File =
-            syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
+        let file: syn::File = syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
         check_caps(&file, &cfg)?;
         let roots = entry_roots(&file);
         let root_refs: Vec<&str> = roots.iter().map(String::as_str).collect();
