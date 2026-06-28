@@ -73,7 +73,9 @@ boundary is literally the 1982-budget / 2026-capability line.
 runtime, expensive), `bool`, `char` as `u8`; `struct`, C-like / small-payload
 tagged `enum`, tuples, fixed arrays `[T; N]`; `fn` with a defined ABI (§4),
 `if/else`, `match`, `while`, `for` over ranges / array iter (→ counted loops),
-`loop`/`break`/`continue`; `&T`/`&mut T` as 16-bit pointers; `static`/`static mut`
+`loop`/`break`/`continue`; comparisons as `0`/`1` **values** (`(a < b) as u16`) plus
+short-circuit `&&`/`||`; bit shifts by a constant **or a runtime** amount (`x << bit`);
+`&T`/`&mut T` as 16-bit pointers; `static`/`static mut`
 for state; `wrapping_*` / explicit-overflow ops.
 
 **Out** (initially): heap / `alloc` / `Vec`/`Box`/`String`; `f32`/`f64`; trait
