@@ -637,7 +637,7 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        assert_eq!(h.len(), 8);
+        assert_eq!(h.len(), 59);
         assert_eq!(h.search("grid distance", 3)[0].id, "manhattan");
         assert!(host_from_dir("/no/such/dir").is_err());
     }

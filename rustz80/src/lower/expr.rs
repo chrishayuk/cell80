@@ -171,6 +171,33 @@ fn bin_op(op: &syn::BinOp) -> Result<BinOp, String> {
     })
 }
 
+/// The comparison op for a `syn` binop, if it is one (the value form of `<`/`<=`/…).
+fn cmp_op(op: &syn::BinOp) -> Option<Cmp> {
+    Some(match op {
+        syn::BinOp::Lt(_) => Cmp::Lt,
+        syn::BinOp::Le(_) => Cmp::Le,
+        syn::BinOp::Gt(_) => Cmp::Gt,
+        syn::BinOp::Ge(_) => Cmp::Ge,
+        syn::BinOp::Eq(_) => Cmp::Eq,
+        syn::BinOp::Ne(_) => Cmp::Ne,
+        _ => return None,
+    })
+}
+
+/// `&&` → `Some(true)`, `||` → `Some(false)`, else `None`.
+fn logic_op(op: &syn::BinOp) -> Option<bool> {
+    match op {
+        syn::BinOp::And(_) => Some(true),
+        syn::BinOp::Or(_) => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether `e` is an integer literal (a constant shift amount uses the unrolled path).
+fn is_int_literal(e: &syn::Expr) -> bool {
+    matches!(e, syn::Expr::Lit(l) if matches!(l.lit, syn::Lit::Int(_)))
+}
+
 /// A shift amount — must be an integer literal (variable shifts are unsupported).
 fn lit_shift_amount(e: &syn::Expr) -> Result<u8, String> {
     if let syn::Expr::Lit(l) = e {
@@ -185,9 +212,37 @@ fn lit_shift_amount(e: &syn::Expr) -> Result<u8, String> {
 /// type); `| & ^` on a `u32` operand produce a 32-bit op; `u32` arithmetic (`+ - * /`)
 /// is not supported yet.
 fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
+    // A comparison used as a value (`(a < b) as u16`, `let f = a == b;`) materialises to
+    // a `0`/`1` bool. In condition position a comparison stays a tight `Cond` (handled by
+    // `lower_cond`), so this only fires when a comparison is a real value.
+    if let Some(cmp) = cmp_op(&b.op) {
+        let lhs = Box::new(lower_expr(&b.left, ctx)?.0);
+        let rhs = Box::new(lower_expr(&b.right, ctx)?.0);
+        return Ok((Expr::Cmp { cmp, lhs, rhs }, Width::Byte));
+    }
+    // Short-circuit `&&` / `||` on bool operands → a `0`/`1` value.
+    if let Some(and) = logic_op(&b.op) {
+        let lhs = Box::new(lower_expr(&b.left, ctx)?.0);
+        let rhs = Box::new(lower_expr(&b.right, ctx)?.0);
+        return Ok((Expr::Logic { and, lhs, rhs }, Width::Byte));
+    }
     let op = bin_op(&b.op)?;
     if matches!(op, BinOp::Shl | BinOp::Shr) {
         let (le, lw) = lower_expr(&b.left, ctx)?;
+        // A runtime (non-literal) 16-bit shift amount → a counted shift loop. `u32`
+        // shifts and literal amounts keep the unrolled constant path below.
+        if lw != Width::DWord && !is_int_literal(&b.right) {
+            let amount = Box::new(lower_expr(&b.right, ctx)?.0);
+            return Ok((
+                Expr::ShiftVar {
+                    left: matches!(op, BinOp::Shl),
+                    e: Box::new(le),
+                    amount,
+                    w: lw,
+                },
+                lw,
+            ));
+        }
         let k = lit_shift_amount(&b.right)?;
         if lw == Width::DWord {
             return Ok((

@@ -72,6 +72,31 @@ pub enum Expr {
     /// Load a value (zero-extended for `Width::Byte`) at the byte address in `expr` —
     /// used to read a field of a struct-array element at a computed address.
     LoadAt(Box<Expr>, Width),
+    /// A comparison as a **value**: `lhs <cmp> rhs` materialised to `1`/`0` in `HL`
+    /// (a `bool`, `Width::Byte`). In condition position a comparison stays a [`Cond`]
+    /// (a direct branch); this node is the value form, e.g. `(a < b) as u16`.
+    Cmp {
+        cmp: Cmp,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    /// Short-circuit logical op on boolean (`0`/`1`) operands: `&&` (`and = true`) or
+    /// `||` (`and = false`). The right operand is only evaluated when the left doesn't
+    /// already decide the result (Rust short-circuit semantics).
+    Logic {
+        and: bool,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    /// Shift by a **runtime** amount: `e << amount` (`left = true`) or `e >> amount`.
+    /// The amount's low byte is the count (a count ≥ 16 shifts a `u16` out to `0`);
+    /// a *literal* amount uses [`BinOp::Shl`]/[`BinOp::Shr`] (unrolled) instead.
+    ShiftVar {
+        left: bool,
+        e: Box<Expr>,
+        amount: Box<Expr>,
+        w: Width,
+    },
 
     // --- 32-bit (`u32`) nodes — evaluated into the `HL:DE` pair by `gen_expr32` ---
     /// A `u32` literal.
@@ -89,7 +114,9 @@ pub enum Expr {
     Halt(Box<Expr>),
 }
 
-/// A boolean condition (a single comparison — no `&&`/`||` in Stage 0).
+/// A boolean condition driving a branch: a comparison `lhs <cmp> rhs`. A compound or
+/// non-comparison condition (`a && b`, `flag`) lowers to `<expr> != 0` — the bool
+/// `<expr>` (an [`Expr::Cmp`]/[`Expr::Logic`]) materialised to `0`/`1`, then tested.
 #[derive(Debug, Clone)]
 pub struct Cond {
     pub cmp: Cmp,

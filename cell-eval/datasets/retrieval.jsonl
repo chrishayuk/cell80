@@ -54,3 +54,82 @@
 {"id": "weighted_sum-direct-2", "query": "combine three values with fixed weights", "expected": "weighted_sum", "category": "direct"}
 {"id": "weighted_sum-para-1", "query": "score a candidate from three features", "expected": "weighted_sum", "category": "paraphrase"}
 {"id": "weighted_sum-para-2", "query": "a linear combination of three signals into one score", "expected": "weighted_sum", "category": "adversarial"}
+
+# --- first library wave (predicates, safe arithmetic, bounds, percent, ranking, bitops) ---
+{"id": "eq-direct-1", "query": "return 1 if two numbers are equal", "expected": "eq", "category": "direct"}
+{"id": "neq-direct-1", "query": "return 1 if two numbers are not equal", "expected": "neq", "category": "direct"}
+{"id": "is_lt-direct-1", "query": "predicate strictly less than", "expected": "is_lt", "category": "direct"}
+{"id": "is_le-direct-1", "query": "predicate less than or equal at most", "expected": "is_le", "category": "direct"}
+{"id": "is_gt-direct-1", "query": "predicate strictly greater than", "expected": "is_gt", "category": "direct"}
+{"id": "is_ge-direct-1", "query": "predicate greater than or equal at least", "expected": "is_ge", "category": "direct"}
+{"id": "is_zero-direct-1", "query": "predicate is the value zero", "expected": "is_zero", "category": "direct"}
+{"id": "nonzero-direct-1", "query": "predicate is the value nonzero", "expected": "nonzero", "category": "direct"}
+{"id": "is_even-direct-1", "query": "predicate is the number even", "expected": "is_even", "category": "direct"}
+{"id": "is_odd-direct-1", "query": "predicate is the number odd", "expected": "is_odd", "category": "direct"}
+{"id": "add_sat-direct-1", "query": "saturating add capped at max", "expected": "add_sat", "category": "direct"}
+{"id": "sub_sat-direct-1", "query": "saturating subtract floored at zero", "expected": "sub_sat", "category": "direct"}
+{"id": "mul_sat-direct-1", "query": "saturating multiply product", "expected": "mul_sat", "category": "direct"}
+{"id": "safe_div-direct-1", "query": "integer divide returning zero on divide by zero", "expected": "safe_div", "category": "direct"}
+{"id": "safe_mod-direct-1", "query": "remainder modulo safe zero divisor", "expected": "safe_mod", "category": "direct"}
+{"id": "ceil_div-direct-1", "query": "integer ceiling division quotient", "expected": "ceil_div", "category": "direct"}
+{"id": "avg2-direct-1", "query": "average of two values midpoint", "expected": "avg2", "category": "direct"}
+{"id": "square-direct-1", "query": "saturating square of a number", "expected": "square", "category": "direct"}
+{"id": "between_exclusive-direct-1", "query": "strictly between exclusive bounds", "expected": "between_exclusive", "category": "direct"}
+{"id": "wrap-direct-1", "query": "wrap value modulo into cycle", "expected": "wrap", "category": "direct"}
+{"id": "normalize_0_100-direct-1", "query": "rescale value to 0..100 percentage", "expected": "normalize_0_100", "category": "direct"}
+{"id": "snap_down-direct-1", "query": "round down to nearest multiple floor grid", "expected": "snap_down", "category": "direct"}
+{"id": "snap_up-direct-1", "query": "snap a value up to the next step boundary", "expected": "snap_up", "category": "direct"}
+{"id": "round_to_multiple-direct-1", "query": "round to the nearest multiple", "expected": "round_to_multiple", "category": "direct"}
+{"id": "percent-direct-1", "query": "percentage of a whole", "expected": "percent", "category": "direct"}
+{"id": "permille-direct-1", "query": "parts per thousand permille", "expected": "permille", "category": "direct"}
+{"id": "ratio_255-direct-1", "query": "ratio scaled to a byte fraction 255", "expected": "ratio_255", "category": "direct"}
+{"id": "scale_percent-direct-1", "query": "take a percent of a value", "expected": "scale_percent", "category": "direct"}
+{"id": "increase_percent-direct-1", "query": "increase value by a percent markup", "expected": "increase_percent", "category": "direct"}
+{"id": "discount_percent-direct-1", "query": "decrease value by a percent discount", "expected": "discount_percent", "category": "direct"}
+{"id": "within_percent-direct-1", "query": "within a percent tolerance of target", "expected": "within_percent", "category": "direct"}
+{"id": "min3-direct-1", "query": "smallest of three values", "expected": "min3", "category": "direct"}
+{"id": "max3-direct-1", "query": "largest of three values", "expected": "max3", "category": "direct"}
+{"id": "median3-direct-1", "query": "median middle of three values", "expected": "median3", "category": "direct"}
+{"id": "argmax2-direct-1", "query": "index of the larger of two", "expected": "argmax2", "category": "direct"}
+{"id": "argmin2-direct-1", "query": "index of the smaller of two", "expected": "argmin2", "category": "direct"}
+{"id": "argmax3-direct-1", "query": "index of the largest of three", "expected": "argmax3", "category": "direct"}
+{"id": "argmin3-direct-1", "query": "index of the smallest of three", "expected": "argmin3", "category": "direct"}
+{"id": "sum3-direct-1", "query": "saturating sum of three values", "expected": "sum3", "category": "direct"}
+{"id": "mean3-direct-1", "query": "mean average of three values", "expected": "mean3", "category": "direct"}
+{"id": "range3-direct-1", "query": "spread max minus min of three", "expected": "range3", "category": "direct"}
+{"id": "popcount-direct-1", "query": "population count set bits", "expected": "popcount", "category": "direct"}
+{"id": "parity-direct-1", "query": "parity odd number of set bits", "expected": "parity", "category": "direct"}
+{"id": "bit_is_set-direct-1", "query": "test whether a bit is set", "expected": "bit_is_set", "category": "direct"}
+{"id": "set_bit-direct-1", "query": "set a bit to one", "expected": "set_bit", "category": "direct"}
+{"id": "clear_bit-direct-1", "query": "clear a bit to zero", "expected": "clear_bit", "category": "direct"}
+{"id": "toggle_bit-direct-1", "query": "toggle flip a bit", "expected": "toggle_bit", "category": "direct"}
+{"id": "mask_has_all-direct-1", "query": "mask has all bits set", "expected": "mask_has_all", "category": "direct"}
+{"id": "mask_has_any-direct-1", "query": "mask has any bit set", "expected": "mask_has_any", "category": "direct"}
+{"id": "mask_union-direct-1", "query": "union of two bit masks", "expected": "mask_union", "category": "direct"}
+{"id": "mask_intersection-direct-1", "query": "intersection of two bit masks", "expected": "mask_intersection", "category": "direct"}
+{"id": "is_ge-para-1", "query": "is the first number at least as big as the second", "expected": "is_ge", "category": "paraphrase"}
+{"id": "neq-para-1", "query": "check whether the two inputs are different", "expected": "neq", "category": "paraphrase"}
+{"id": "is_odd-para-1", "query": "tell me if it is an odd number", "expected": "is_odd", "category": "paraphrase"}
+{"id": "is_zero-para-1", "query": "check if the counter has run out", "expected": "is_zero", "category": "paraphrase"}
+{"id": "add_sat-para-1", "query": "add two values without overflowing past the maximum", "expected": "add_sat", "category": "paraphrase"}
+{"id": "sub_sat-para-1", "query": "subtract but never go below zero", "expected": "sub_sat", "category": "paraphrase"}
+{"id": "ceil_div-para-1", "query": "how many pages for n items at b per page", "expected": "ceil_div", "category": "paraphrase"}
+{"id": "between_exclusive-para-1", "query": "keep a number inside a window but not touching the edges", "expected": "between_exclusive", "category": "paraphrase"}
+{"id": "snap_down-para-1", "query": "snap a coordinate down onto a grid", "expected": "snap_down", "category": "paraphrase"}
+{"id": "wrap-para-1", "query": "make an angle wrap around back to the start", "expected": "wrap", "category": "paraphrase"}
+{"id": "percent-para-1", "query": "what fraction out of a hundred is this", "expected": "percent", "category": "paraphrase"}
+{"id": "discount_percent-para-1", "query": "knock a percentage off a price", "expected": "discount_percent", "category": "paraphrase"}
+{"id": "within_percent-para-1", "query": "is the reading close enough to the target", "expected": "within_percent", "category": "paraphrase"}
+{"id": "median3-para-1", "query": "pick the middle value of three", "expected": "median3", "category": "paraphrase"}
+{"id": "argmax3-para-1", "query": "which of three options scores highest", "expected": "argmax3", "category": "paraphrase"}
+{"id": "range3-para-1", "query": "how far apart are the biggest and smallest of three", "expected": "range3", "category": "paraphrase"}
+{"id": "popcount-para-1", "query": "how many ones in the binary representation", "expected": "popcount", "category": "paraphrase"}
+{"id": "toggle_bit-para-1", "query": "flip a single flag bit", "expected": "toggle_bit", "category": "paraphrase"}
+{"id": "mask_has_any-para-1", "query": "do these two flag sets share any bit", "expected": "mask_has_any", "category": "paraphrase"}
+{"id": "mean3-para-1", "query": "the average of three readings", "expected": "mean3", "category": "paraphrase"}
+{"id": "is_le-adv-1", "query": "is x no bigger than y", "expected": "is_le", "category": "adversarial"}
+{"id": "safe_div-adv-1", "query": "divide two numbers but don't crash when the divisor is zero", "expected": "safe_div", "category": "adversarial"}
+{"id": "min3-adv-1", "query": "the least of three options", "expected": "min3", "category": "adversarial"}
+{"id": "mask_union-adv-1", "query": "combine two sets of flags into one", "expected": "mask_union", "category": "adversarial"}
+{"id": "normalize_0_100-adv-1", "query": "turn a raw score into a percentage out of 100", "expected": "normalize_0_100", "category": "adversarial"}
+{"id": "parity-adv-1", "query": "is the number of set bits odd", "expected": "parity", "category": "adversarial"}

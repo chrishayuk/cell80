@@ -43,8 +43,9 @@ Supported today (all differential-tested):
 |---|---|
 | Types | `u16` (default) and `u8` (wraps at 256). `as u8` truncates, `as u16`/`as usize` widen. `u32` (two slots, computed in `HL:DE`) for `^ & \|` + constant shifts + `as u16`/`as u8` — enough for a 32-bit xorshift RNG. |
 | Arithmetic | `+ - * / %`, `wrapping_add/sub/mul`. `*`/`/`/`%` use the appended micro-runtime — *except by a constant*: `× k` is shift-and-add, `/ 2ⁿ` / `% 2ⁿ` are shift/mask, and literal-only ops const-fold (no runtime call). (16-bit; `u32` arithmetic beyond bitwise/shift is not done yet.) |
-| Bitwise | `\|` `&` `^`, and `<<` / `>>` by a **constant** amount (`u16` and `u32`). |
-| Control flow | `if`/`else if`/`else`, `while`, `for` over integer ranges (`a..b` / `a..=b`, `for _ in`), `loop` / `break` / `continue`, early `return`; comparison conditions (`< <= > >= == !=`). |
+| Bitwise | `\|` `&` `^`, and `<<` / `>>` by a **constant** amount (`u16` and `u32`) or a **runtime** amount (`u16`; a counted shift loop — a count ≥ 16 shifts out to `0`). |
+| Booleans | Comparisons (`< <= > >= == !=`) work as **conditions** *and* as **values** — `(a < b) as u16` materialises `1`/`0`. Short-circuit `&&` / `\|\|` on bool operands. So a predicate is a one-liner: `fn run(a: u16, b: u16) -> u16 { (a <= b) as u16 }`. |
+| Control flow | `if`/`else if`/`else`, `while`, `for` over integer ranges (`a..b` / `a..=b`, `for _ in`), `loop` / `break` / `continue`, early `return`. |
 | Arrays | `let a = [0u16; N];` (a single block fill — `LDIR`, or an `ED FE` trap in Cell mode) / `[e0, e1, …]`; `a[i]`, `a[i] = v`. Index with `i as usize`. `[u8; N]` are byte-packed-per-slot. Arrays of structs `let a = [Cell { … }; N]` — element field access `a[i].x` (read/write) + whole-element assign `a[i] = Cell { … }`. |
 | Structs | `struct P { x: u16, y: u16 }` + literals + `p.x` read/write. Scalar, `[u16; N]`, tuple (`pos: (u16, u16)`, `p.pos.0`), and array-of-structs (`cells: [Cell; N]`, `p.cells[i].x`, `p.cells[i] = Cell { … }`) fields. |
 | Enums + match | `enum Dir { Up = 1, … }` (explicit discriminants or `0,1,2,…`); `match` on integers/variants with `_`. Plus `bool` (`true`/`false`). |
@@ -57,7 +58,8 @@ Supported today (all differential-tested):
 Out of scope (use `rustc`-only host code, or wait for later stages): recursion
 (needs stack frames — Stage 4), references / `&mut` params, `>3` params, slices,
 `String`/`Vec`/`alloc`, floats, traits, `u32` *arithmetic* (`+ - * /`) and `u32`
-params/returns (bitwise/shift `u32` works), variable shift amounts, closures, nested
+params/returns (bitwise/shift `u32` works), `u32` *variable* shift amounts (`u16`
+variable shifts work), closures, nested
 struct *fields*. Anything unsupported is a **clear compile error** — that error is the
 "this is host-only" budget detector.
 

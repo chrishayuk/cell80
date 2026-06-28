@@ -11,9 +11,11 @@ restricted-Rust → Z80 compiler (`rustz80`), and the cell micro-VM + tooling. T
 
 **Compiler (`rustz80`).** `syn` frontend → typed IR → naive Z80 codegen (HL accumulator,
 RAM scratch register file, ORG 0x8000). Subset: `u8`/`u16`/`u32`, arithmetic, `if`/`while`/
-`for`/`loop`, early return, comparisons, arrays, `struct`/`enum`, functions, methods,
-`poke`/`peek`/`inport`. The dialect is *also real Rust* → every program is differential-tested
-against `rustc` on the emulator (`tests/diff.rs`).
+`for`/`loop`, early return, arrays, `struct`/`enum`, functions, methods, `poke`/`peek`/`inport`.
+**Booleans:** comparisons (`< <= > >= == !=`) work both as branch conditions *and* as `0`/`1`
+**values** (`(a < b) as u16`), short-circuit `&&` / `||`, and bit shifts take a **runtime**
+amount (`x << bit`) — so predicates and bit ops are one-liners. The dialect is *also real Rust*
+→ every program is differential-tested against `rustc` on the emulator (`tests/diff.rs`).
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
@@ -48,8 +50,15 @@ against `rustc` on the emulator (`tests/diff.rs`).
   six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
   LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
   now fixed.
-- **Seed library** — `cell80/cells/` (math/grid/scoring/validation/bench), all "excellent"
-  tier (36–70 B, no caps), indexed + searchable.
+- **Standard library — first wave** — `cell80/cells/` is now **59 cells**: the 8 originals
+  (math/grid/scoring/validation/bench) plus six confusable families — **predicates** (`eq`,
+  `is_le`, `is_even`, …), **safe arithmetic** (`add_sat`, `safe_div`, `ceil_div`, …),
+  **bounds** (`between_exclusive`, `wrap`, `snap_down`, …), **percent/ratio** (`percent`,
+  `scale_percent`, `within_percent`, …), **ranking/stats** (`min3`, `median3`, `argmax3`,
+  `mean3`, …), and **bit/mask** (`popcount`, `set_bit`, `mask_has_any`, …) — a tiny
+  deterministic integer stdlib. All indexed + searchable, with a per-cell host-oracle
+  (`cell80/tests/library.rs`) and direct/paraphrase/adversarial retrieval rows. See
+  `docs/library-growth.md` (the boring-stdlib direction + a hard contribution rule).
 - **Typed-state I/O** — drive a state cell **by field name** end-to-end (`CellHost::run_state`
   → PyO3 → MCP `cell_run(fields=…)`); the scalar field addresses are baked into the manifest
   (`state_addrs`) so a host or a peer cell drives by name with no source.
@@ -102,13 +111,15 @@ not strictly by sequence; the library grows by eval need:
      precision@1 / hit@k / MRR, split direct vs paraphrase vs adversarial. **`adoption`** and
      **`composition`** are agent loops over an **OpenAI-compatible endpoint (Ollama by
      default)** — cell tools (incl. `cell_graph_run`) as function calls.
-   - **Retrieval baseline (seed lib, k=5):** overall **P@1 0.74 / hit@3 0.90 / MRR 0.82**,
-     but split it and the thesis-relevant number falls out: **direct P@1 1.00, paraphrase
-     0.53, adversarial 0.50.** Token-overlap is perfect on the library's own words and a
-     coin-flip under rewording — *"is this number within the allowed limits"* still misses
-     `range_check` entirely. The paraphrase brittleness is **deferred to SOMA** (handled as a
-     learning problem, not hand-tuned); this row is its regression guard, and the direct row
-     guards against search regressing outright.
+   - **Retrieval baseline (59-cell library, k=5):** overall **P@1 0.70**, and splitting it
+     shows the thesis-relevant trend: **direct P@1 0.91, paraphrase 0.40, adversarial 0.38**
+     (108 query rows). Growing 8 → 59 cells made retrieval *harder on purpose* — the six
+     confusable families (predicates, bounds, ranking, …) are exactly where token-overlap
+     breaks down: direct stays near-perfect on the library's own words, while paraphrase *fell*
+     (0.53 → 0.40) as siblings multiplied — *"is this number within the allowed limits"* still
+     misses `range_check`. That **widening gap** is the case for the type-led index. The
+     paraphrase brittleness is **deferred to SOMA** (a learning problem, not hand-tuned); the
+     direct row guards against search regressing outright.
    - **Adoption baseline (gemma-4-26B-A4B via Ollama, 8 tasks):** **adoption 0.75, correct
      1.00, correct-via-cell 0.75.** The two non-adoptions (`max` of 17/42; `25 within 1–10`)
      were answered directly in one turn — the model shortcuts the cell when the arithmetic is
@@ -164,8 +175,13 @@ not strictly by sequence; the library grows by eval need:
      route to interested cells → commit) and SOMA organs.
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library** — toward ~100 cells, but driven by what the evals
-   need, not by taxonomy.
+6. **Grow the standard cell library — first wave ✓.** `cell80/cells/` is now **59 cells**
+   (predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask — a tiny integer
+   stdlib; see `docs/library-growth.md`), each with retrieval rows + a host-oracle test.
+   Continue toward ~100+, driven by what the evals need, not taxonomy — next: number theory
+   (`lcm`/`is_prime`/`isqrt`/`digit_sum`), distance siblings (`chebyshev`/`euclid_sq`),
+   packing/hashing (`checksum`/`crc8_step`/`pack`), scoring/choice, and stateful cells
+   (`lcg_next`/counters/`ema_update`).
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
 
 ✓ **Published to crates.io @ 0.5.0** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered
