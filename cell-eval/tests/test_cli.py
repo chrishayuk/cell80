@@ -40,3 +40,25 @@ def test_adoption_success_path_renders(capsys, monkeypatch):
     assert "adoption=" in capsys.readouterr().out
     assert main(["adoption", "--model", "fake", "--json"]) == 0
     assert '"eval": "adoption"' in capsys.readouterr().out
+
+
+def test_composition_no_model_exits_2(capsys, monkeypatch):
+    monkeypatch.delenv("CELL_EVAL_MODEL", raising=False)
+    assert main(["composition"]) == 2
+    assert "no model set" in capsys.readouterr().err
+
+
+def test_composition_success_path_renders(capsys, monkeypatch):
+    """The CLI's composition success branch (text + json), network stubbed out."""
+    from cell_eval import composition
+    from cell_eval.composition import CompositionReport, TaskResult
+
+    rep = CompositionReport(model="fake", base_url="http://x/v1")
+    rep.tasks = [TaskResult("t1", "p", 100, 100, True, True, ["abs_diff", "clamp"], True, 3)]
+    monkeypatch.setattr(composition, "run_composition", lambda **_: rep)
+
+    assert main(["composition", "--model", "fake"]) == 0
+    out = capsys.readouterr().out
+    assert "composed=" in out and "used_graph=" in out
+    assert main(["composition", "--model", "fake", "--json"]) == 0
+    assert '"eval": "composition"' in capsys.readouterr().out

@@ -89,6 +89,36 @@ TOOLS = [
     },
 ]
 
+# The composition tool (offered only by the composition eval): wire cells into a graph.
+GRAPH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "cell_graph_run",
+        "description": (
+            "Compose cells into a graph and run it host-routed. `graph` is a manifest: "
+            "{id, nodes: {node_name: cell_id}, wires: [{to: 'node.port', and ONE of "
+            "from: 'node.port' | input: 'name' | const: int}], outputs: {name: 'node.port'}}. "
+            "A node's input ports are the cell's params (value cell) or state fields (state "
+            "cell); output ports are 'result' plus any state fields. `inputs` is the external "
+            "{name: int}. The host type-checks the whole graph before running and returns "
+            "{outputs, trace, cycles}. Use this to chain cells — one cell's output into "
+            "another's input — instead of doing the arithmetic yourself."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "graph": {"type": "object", "description": "the graph manifest"},
+                "inputs": {
+                    "type": "object",
+                    "additionalProperties": {"type": "integer"},
+                    "description": "external graph inputs {name: int}",
+                },
+            },
+            "required": ["graph"],
+        },
+    },
+}
+
 
 @dataclass
 class ToolTrace:
@@ -98,6 +128,7 @@ class ToolTrace:
     inspected: list[str] = field(default_factory=list)  # ids
     cells_run: list[str] = field(default_factory=list)  # ids actually executed
     run_results: list[int] = field(default_factory=list)  # results returned by cell_run
+    graphs_run: list[int] = field(default_factory=list)  # node count per cell_graph_run call
 
 
 def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
@@ -124,6 +155,13 @@ def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
             trace.cells_run.append(cid)
             if isinstance(out.get("result"), int):
                 trace.run_results.append(out["result"])
+            return out
+        if name == "cell_graph_run":
+            graph = args.get("graph") or {}
+            inputs = {k: int(v) for k, v in (args.get("inputs") or {}).items()}
+            out = lib.run_graph(graph, inputs)
+            # Node count → the "composed" signal (a graph with ≥2 nodes is real composition).
+            trace.graphs_run.append(len(graph.get("nodes", {})) if isinstance(graph, dict) else 0)
             return out
         return {"error": f"unknown tool `{name}`"}
     except Exception as e:  # ValueError from unknown id, etc.

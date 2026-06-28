@@ -111,19 +111,44 @@ gap (steering / task difficulty), not a retrieval gap — which is the whole rea
 numbers are tracked apart. Use a tool-calling model: `gemma3` does **not** support tools in
 Ollama; `gemma-4-26B-A4B` does.
 
+## Composition eval (the capstone)
+
+Adoption asks "did it run the *right cell*"; composition asks the harder question — given a
+task that needs **several** cells, does the agent **wire them together** instead of doing the
+multi-step arithmetic itself? Same fixed-steering discipline; the agent also gets the
+`cell_graph_run` tool (compose cells into a host-routed, type-checked graph).
+
+```bash
+cell-eval composition --model qwen2.5        # Ollama by default
+cell-eval composition --model llama3.1 --json
+```
+
+Dataset: [`datasets/composition_tasks.jsonl`](datasets/composition_tasks.jsonl) — each task
+needs ≥2 cells (one's output feeds the next), e.g. *"manhattan distance from (3,4) to (10,8),
+score it `dist + 2·risk + 3·cost`, then clamp to 0–10."* Three signals per task:
+
+- **composed** — did it wire cells (a `cell_graph_run` with ≥2 nodes, or ≥2 distinct cells run)?
+- **correct** — is the final `ANSWER: <n>` right?
+- **correct_via_composition** — correct *and* composed (the outcome we want).
+
+This is the proof the graph matters: the consumer doesn't just *find* a tool, it *builds* one
+from several.
+
 ## Layout
 
 ```
 src/cell_eval/
-  library.py    locate the seed lib + open the real CellLibrary
-  retrieval.py  deterministic retrieval eval + report
-  metrics.py    precision@1, hit@k, MRR
-  tools.py      cell tools as OpenAI function schemas + dispatcher (mirrors MCP)
-  adoption.py   the fixed steering prompt + the agent loop (OpenAI-compatible)
-  report.py     human-readable rendering
-  __main__.py   `cell-eval retrieval | adoption`
-datasets/       retrieval.jsonl, tasks.jsonl
-tests/          deterministic; no network (the adoption network path is run by you)
+  library.py     locate the seed lib + open the real CellLibrary
+  retrieval.py   deterministic retrieval eval + report
+  metrics.py     precision@1, hit@k, MRR
+  tools.py       cell tools as OpenAI function schemas + dispatcher (mirrors MCP)
+  agent.py       the shared OpenAI-compatible agent loop (adoption + composition)
+  adoption.py    fixed steering + single-cell scoring
+  composition.py fixed steering + the graph tool + composition scoring
+  report.py      human-readable rendering
+  __main__.py    `cell-eval retrieval | adoption | composition`
+datasets/        retrieval.jsonl, tasks.jsonl, composition_tasks.jsonl
+tests/           deterministic; no network (the LLM network path is run by you)
 ```
 
 ## Typed-state cells
