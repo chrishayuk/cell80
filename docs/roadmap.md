@@ -136,7 +136,7 @@ single-cell retrieval works before composition, and the library grows by eval ne
    need, not by taxonomy.
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
 
-✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.3.0, via the tag-triggered publish
+✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.4.0, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions.
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
@@ -146,7 +146,7 @@ A second, *frontend*-side ask on the shared compiler, driven by chuk-speccy's au
 *pure*** — one `impl Game` source → a host build **and** a bootable tape. The pure-Snake seam is
 closed today (`chuk-speccy-sdk/samples/snake_game.rs` compiles both ways and boots on the real
 ROM), but only inside a narrow envelope. Each item is a concrete blocker found while shaping the
-SDK kit; the `file:line` is `rustz80` 0.3.0. These sit **below the agent-tool arc above** (the
+SDK kit; the `file:line` is `rustz80` 0.4.0. These sit **below the agent-tool arc above** (the
 eval is the gate, not VM/compiler features) but are tracked here since the compiler lives here.
 
 - **Nested struct fields + field-of-field access** (`self.sprite.x`, a game-state field that is
