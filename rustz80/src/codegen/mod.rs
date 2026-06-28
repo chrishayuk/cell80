@@ -17,7 +17,7 @@ use stmt::{gen_return, gen_stmt};
 
 /// Code-generation target. `Spectrum48` is authentic Z80 — `*`/`/`/`%` use the appended
 /// software micro-runtime, so the output runs anywhere (real ROM, `.tap`). `Cell` is the
-/// micro-VM ([`crate::cell`]): those ops lower to the `ED FE` host-trap (serviced natively
+/// micro-VM (the `cell80` crate): those ops lower to the `ED FE` host-trap (serviced natively
 /// by the cell bus — see the Cell80 plan), so no software runtime is appended. `ED FE` is
 /// a no-op on real hardware, so it never reaches a real game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

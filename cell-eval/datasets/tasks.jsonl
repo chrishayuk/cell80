@@ -30,3 +30,9 @@
 {"id": "add_sat-1", "prompt": "Add 60000 and 6000, capping the result at 65535.", "expected": 65535, "cell": "add_sat"}
 {"id": "within_percent-1", "prompt": "Is 95 within 10 percent of 100? Answer 1 or 0.", "expected": 1, "cell": "within_percent"}
 {"id": "toggle_bit-1", "prompt": "Toggle bit number 3 of the value 0.", "expected": 8, "cell": "toggle_bit"}
+# --- second wave ---
+{"id": "lcm-1", "prompt": "What is the least common multiple of 4 and 6?", "expected": 12, "cell": "lcm"}
+{"id": "is_prime-1", "prompt": "Is 97 a prime number? Answer 1 for yes or 0 for no.", "expected": 1, "cell": "is_prime"}
+{"id": "isqrt-1", "prompt": "What is the integer square root of 50?", "expected": 7, "cell": "isqrt"}
+{"id": "factor_count-1", "prompt": "How many positive divisors does 12 have?", "expected": 6, "cell": "factor_count"}
+{"id": "popcount-2", "prompt": "How many one bits are in the binary form of 4660?", "expected": 5, "cell": "popcount"}

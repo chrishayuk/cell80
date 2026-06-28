@@ -17,3 +17,6 @@
 {"id": "comp-subsat-scale", "prompt": "Saturating-subtract 30 from 100, then take 50 percent of the result. What is the value?", "expected": 35, "cells": ["sub_sat", "scale_percent"]}
 {"id": "comp-max-snap", "prompt": "Find the largest of 12, 7, and 23; then round it down to the nearest multiple of 10.", "expected": 20, "cells": ["max3", "snap_down"]}
 {"id": "comp-avg-within", "prompt": "Average 40 and 60, then return 1 if that average is within 10 percent of 50, else 0.", "expected": 1, "cells": ["avg2", "within_percent"]}
+# --- second wave ---
+{"id": "comp-lcm-even", "prompt": "Find the least common multiple of 4 and 6, then return 1 if that result is even, else 0.", "expected": 1, "cells": ["lcm", "is_even"]}
+{"id": "comp-factors-bucket", "prompt": "Count the number of divisors of 12, then bucket it by thresholds 4 and 8 (below 4 -> 0, below 8 -> 1, else 2).", "expected": 1, "cells": ["factor_count", "bucket3"]}

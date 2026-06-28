@@ -133,3 +133,56 @@
 {"id": "mask_union-adv-1", "query": "combine two sets of flags into one", "expected": "mask_union", "category": "adversarial"}
 {"id": "normalize_0_100-adv-1", "query": "turn a raw score into a percentage out of 100", "expected": "normalize_0_100", "category": "adversarial"}
 {"id": "parity-adv-1", "query": "is the number of set bits odd", "expected": "parity", "category": "adversarial"}
+
+# --- second wave (number theory, distance family, bit/encoding, hashing, stats) ---
+{"id": "lcm-direct-1", "query": "least common multiple", "expected": "lcm", "category": "direct"}
+{"id": "gcd3-direct-1", "query": "greatest common divisor of three", "expected": "gcd3", "category": "direct"}
+{"id": "is_coprime-direct-1", "query": "are two numbers coprime", "expected": "is_coprime", "category": "direct"}
+{"id": "is_prime-direct-1", "query": "is the number prime", "expected": "is_prime", "category": "direct"}
+{"id": "isqrt-direct-1", "query": "integer square root isqrt floor", "expected": "isqrt", "category": "direct"}
+{"id": "is_square-direct-1", "query": "is it a perfect square", "expected": "is_square", "category": "direct"}
+{"id": "digit_sum-direct-1", "query": "sum of the decimal digits", "expected": "digit_sum", "category": "direct"}
+{"id": "num_digits-direct-1", "query": "how many decimal digits", "expected": "num_digits", "category": "direct"}
+{"id": "factor_count-direct-1", "query": "number of divisors", "expected": "factor_count", "category": "direct"}
+{"id": "triangular-direct-1", "query": "nth triangular number", "expected": "triangular", "category": "direct"}
+{"id": "next_pow2-direct-1", "query": "next power of two", "expected": "next_pow2", "category": "direct"}
+{"id": "is_pow2-direct-1", "query": "is it a power of two", "expected": "is_pow2", "category": "direct"}
+{"id": "pow_small-direct-1", "query": "raise base to an exponent power", "expected": "pow_small", "category": "direct"}
+{"id": "cube_sat-direct-1", "query": "cube a number", "expected": "cube_sat", "category": "direct"}
+{"id": "pow_mod-direct-1", "query": "modular exponentiation", "expected": "pow_mod", "category": "direct"}
+{"id": "chebyshev-direct-1", "query": "chebyshev chessboard distance", "expected": "chebyshev", "category": "direct"}
+{"id": "euclid_sq-direct-1", "query": "squared euclidean distance", "expected": "euclid_sq", "category": "direct"}
+{"id": "low_byte-direct-1", "query": "low byte of a value", "expected": "low_byte", "category": "direct"}
+{"id": "high_byte-direct-1", "query": "high byte of a value", "expected": "high_byte", "category": "direct"}
+{"id": "swap_bytes-direct-1", "query": "swap the bytes endianness", "expected": "swap_bytes", "category": "direct"}
+{"id": "rotl16-direct-1", "query": "rotate bits left", "expected": "rotl16", "category": "direct"}
+{"id": "rotr16-direct-1", "query": "rotate bits right", "expected": "rotr16", "category": "direct"}
+{"id": "reverse_bits-direct-1", "query": "reverse the bit order", "expected": "reverse_bits", "category": "direct"}
+{"id": "leading_zeros-direct-1", "query": "count leading zero bits", "expected": "leading_zeros", "category": "direct"}
+{"id": "trailing_zeros-direct-1", "query": "count trailing zero bits", "expected": "trailing_zeros", "category": "direct"}
+{"id": "bit_length-direct-1", "query": "highest set bit length", "expected": "bit_length", "category": "direct"}
+{"id": "mask_xor-direct-1", "query": "xor two bit masks symmetric difference", "expected": "mask_xor", "category": "direct"}
+{"id": "hash_pair-direct-1", "query": "hash two values together", "expected": "hash_pair", "category": "direct"}
+{"id": "fnv1a_step-direct-1", "query": "fnv1a hash step", "expected": "fnv1a_step", "category": "direct"}
+{"id": "crc8_step-direct-1", "query": "crc8 checksum step", "expected": "crc8_step", "category": "direct"}
+{"id": "mix16-direct-1", "query": "avalanche mix a value hash", "expected": "mix16", "category": "direct"}
+{"id": "mode3-direct-1", "query": "most common of three mode", "expected": "mode3", "category": "direct"}
+{"id": "majority3-direct-1", "query": "do at least two of three agree majority", "expected": "majority3", "category": "direct"}
+{"id": "midrange3-direct-1", "query": "midrange of three", "expected": "midrange3", "category": "direct"}
+{"id": "bucket3-direct-1", "query": "bucket into three by thresholds", "expected": "bucket3", "category": "direct"}
+{"id": "quantize-direct-1", "query": "quantize to a bucket index by step", "expected": "quantize", "category": "direct"}
+{"id": "byte_to_percent-direct-1", "query": "convert byte 255 scale to percent", "expected": "byte_to_percent", "category": "direct"}
+{"id": "lcm-para-1", "query": "smallest number that is a multiple of both", "expected": "lcm", "category": "paraphrase"}
+{"id": "is_prime-para-1", "query": "check the primality of a number", "expected": "is_prime", "category": "paraphrase"}
+{"id": "isqrt-para-1", "query": "floor of the square root", "expected": "isqrt", "category": "paraphrase"}
+{"id": "digit_sum-para-1", "query": "add up all the digits of a number", "expected": "digit_sum", "category": "paraphrase"}
+{"id": "factor_count-para-1", "query": "how many factors does it have", "expected": "factor_count", "category": "paraphrase"}
+{"id": "chebyshev-para-1", "query": "king move distance on a chessboard", "expected": "chebyshev", "category": "paraphrase"}
+{"id": "rotl16-para-1", "query": "circular shift the bits to the left", "expected": "rotl16", "category": "paraphrase"}
+{"id": "reverse_bits-para-1", "query": "mirror the bit pattern", "expected": "reverse_bits", "category": "paraphrase"}
+{"id": "crc8_step-para-1", "query": "advance a crc checksum by one byte", "expected": "crc8_step", "category": "paraphrase"}
+{"id": "mode3-para-1", "query": "the value that appears most among three", "expected": "mode3", "category": "paraphrase"}
+{"id": "bucket3-para-1", "query": "classify into low medium high by thresholds", "expected": "bucket3", "category": "paraphrase"}
+{"id": "next_pow2-para-1", "query": "round up to the nearest power of two", "expected": "next_pow2", "category": "paraphrase"}
+{"id": "divides-adv-1", "query": "does a divide b evenly", "expected": "divides", "category": "adversarial"}
+{"id": "percent_to_byte-adv-1", "query": "express a percent as a byte", "expected": "percent_to_byte", "category": "adversarial"}
