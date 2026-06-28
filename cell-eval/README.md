@@ -4,12 +4,14 @@ The headline question for cell80 isn't whether the VM works (it does). It's whet
 **an agent reliably retrieves and runs the right `.cell` instead of writing code.** That
 is the thesis. This package measures it.
 
-It measures **two numbers, not one** — because they fail for different reasons:
+It measures the whole arc — **find → run → compose** — as three numbers that fail for
+different reasons:
 
 | number | question | needs a model? |
 |---|---|---|
 | **retrieval precision** | given a query, is the right cell in the top-k? | no — deterministic |
 | **adoption** | given a task, does an agent actually `search → inspect → run` a cell (and get it right) instead of doing the math itself? | yes — OpenAI-compatible endpoint |
+| **composition** | given a task needing several cells, does it *wire them together* (via `cell_graph_run`) instead of doing the multi-step math itself? | yes — OpenAI-compatible endpoint |
 
 Low adoption is usually weak **steering** (the system prompt), not bad retrieval. So the
 harness **holds steering fixed** (one constant in `adoption.py`) and lets you vary the

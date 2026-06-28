@@ -1,11 +1,11 @@
 # Cell80 ABI — v1
 
-The frozen contract every `rustz80-cell` consumer (CLI, MCP server, tool index, future
-`.cell` cartridge) relies on. **`ABI_VERSION = 1`** (`rustz80::cell::ABI_VERSION`, also the
+The frozen contract every `cell80` consumer (CLI, MCP server, tool index, future
+`.cell` cartridge) relies on. **`ABI_VERSION = 1`** (`cell80::ABI_VERSION`, also the
 `"abi"` field of the JSON report). Bump only on a breaking change to anything below.
 
 The cell is a **flat-RAM Z80** — no ROM, no ULA, no I/O ports by default, no syscalls —
-behind `--features cell`. Determinism is the whole point: same program + same inputs ⇒
+provided by the `cell80` crate. Determinism is the whole point: same program + same inputs ⇒
 identical result, identical cycle count, identical touched-set (asserted by
 `runner_reuse_is_deterministic`).
 
