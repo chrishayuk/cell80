@@ -14,8 +14,11 @@ RAM scratch register file, ORG 0x8000). Subset: `u8`/`u16`/`u32`, arithmetic, `i
 `for`/`loop`, early return, arrays, `struct`/`enum`, functions, methods, `poke`/`peek`/`inport`.
 **Booleans:** comparisons (`< <= > >= == !=`) work both as branch conditions *and* as `0`/`1`
 **values** (`(a < b) as u16`), short-circuit `&&` / `||`, and bit shifts take a **runtime**
-amount (`x << bit`) — so predicates and bit ops are one-liners. The dialect is *also real Rust*
-→ every program is differential-tested against `rustc` on the emulator (`tests/diff.rs`).
+amount (`x << bit`) — so predicates and bit ops are one-liners. **Dead-code elimination**
+(`compile_file_pruned`) keeps only functions reachable from the roots — the cell layer uses it
+to prepend a shared-kernel prelude and prune whatever a cell doesn't call. The dialect is *also
+real Rust* → every program is differential-tested against `rustc` on the emulator
+(`tests/diff.rs`).
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
@@ -50,15 +53,20 @@ amount (`x << bit`) — so predicates and bit ops are one-liners. The dialect is
   six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
   LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
   now fixed.
-- **Standard library — first wave** — `cell80/cells/` is now **59 cells**: the 8 originals
-  (math/grid/scoring/validation/bench) plus six confusable families — **predicates** (`eq`,
-  `is_le`, `is_even`, …), **safe arithmetic** (`add_sat`, `safe_div`, `ceil_div`, …),
-  **bounds** (`between_exclusive`, `wrap`, `snap_down`, …), **percent/ratio** (`percent`,
-  `scale_percent`, `within_percent`, …), **ranking/stats** (`min3`, `median3`, `argmax3`,
-  `mean3`, …), and **bit/mask** (`popcount`, `set_bit`, `mask_has_any`, …) — a tiny
-  deterministic integer stdlib. All indexed + searchable, with a per-cell host-oracle
-  (`cell80/tests/library.rs`) and direct/paraphrase/adversarial retrieval rows. See
-  `docs/library-growth.md` (the boring-stdlib direction + a hard contribution rule).
+- **Standard library** — `cell80/cells/` is now **98 cells**: the 8 originals plus ~12
+  confusable families — **predicates**, **safe arithmetic**, **bounds**, **percent/ratio**,
+  **ranking/stats**, **bit/mask**, **number theory** (`lcm`, `is_prime`, `isqrt`,
+  `factor_count`, `pow_mod`, …), **distance** (`chebyshev`, `euclid_sq` — state-cell siblings of
+  `manhattan`), **bit/encoding** (`rotl16`, `reverse_bits`, `bit_length`, `swap_bytes`, …),
+  **hashing** (`hash_pair`, `fnv1a_step`, `crc8_step`, `mix16`), and **bucketing/conversion**.
+  All indexed + searchable, with a per-cell host-oracle (`cell80/tests/library.rs`) and
+  direct/paraphrase/adversarial retrieval rows.
+- **Modular cells — shared kernel prelude + DCE.** Cells reuse a small prelude (`gcd`, `imin`,
+  `imax`, `iabs_diff`, `isqrt`, `clamp_to`) instead of duplicating it — `lcm` calls `gcd`,
+  `chebyshev` calls `iabs_diff`/`imax`. The prelude is appended to every cell and dead-code
+  elimination prunes the kernels a cell doesn't reach, so a cartridge carries only what it uses
+  (a kernel-free cell stays byte-identical). See `docs/library-growth.md` (packs, the
+  contribution rule, and the modularity rules).
 - **Typed-state I/O** — drive a state cell **by field name** end-to-end (`CellHost::run_state`
   → PyO3 → MCP `cell_run(fields=…)`); the scalar field addresses are baked into the manifest
   (`state_addrs`) so a host or a peer cell drives by name with no source.
@@ -111,13 +119,14 @@ not strictly by sequence; the library grows by eval need:
      precision@1 / hit@k / MRR, split direct vs paraphrase vs adversarial. **`adoption`** and
      **`composition`** are agent loops over an **OpenAI-compatible endpoint (Ollama by
      default)** — cell tools (incl. `cell_graph_run`) as function calls.
-   - **Retrieval baseline (59-cell library, k=5):** overall **P@1 0.70**, and splitting it
-     shows the thesis-relevant trend: **direct P@1 0.91, paraphrase 0.40, adversarial 0.38**
-     (108 query rows). Growing 8 → 59 cells made retrieval *harder on purpose* — the six
-     confusable families (predicates, bounds, ranking, …) are exactly where token-overlap
-     breaks down: direct stays near-perfect on the library's own words, while paraphrase *fell*
-     (0.53 → 0.40) as siblings multiplied — *"is this number within the allowed limits"* still
-     misses `range_check`. That **widening gap** is the case for the type-led index. The
+   - **Retrieval baseline (98-cell library, k=5):** overall **P@1 0.71**, and splitting it
+     shows the thesis-relevant trend: **direct P@1 0.92, paraphrase 0.45, adversarial 0.20**
+     (159 query rows). Growing 8 → 98 cells made retrieval *harder on purpose* — the ~12
+     confusable families (predicates, distance, number theory, bit ops, …) are exactly where
+     token-overlap breaks down: direct stays near-perfect on the library's own words, while
+     paraphrase sits in coin-flip territory (0.53 → 0.45) and the direct misses are now all
+     sibling collisions (`gcd` vs `gcd3`/`lcm`, `manhattan` vs `chebyshev`/`euclid_sq`). That
+     **gap holding open as the library grows** is the case for the type-led index. The
      paraphrase brittleness is **deferred to SOMA** (a learning problem, not hand-tuned); the
      direct row guards against search regressing outright.
    - **Adoption baseline (gemma-4-26B-A4B via Ollama, 8 tasks):** **adoption 0.75, correct
@@ -175,18 +184,20 @@ not strictly by sequence; the library grows by eval need:
      route to interested cells → commit) and SOMA organs.
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — first wave ✓.** `cell80/cells/` is now **59 cells**
-   (predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask — a tiny integer
-   stdlib; see `docs/library-growth.md`), each with retrieval rows + a host-oracle test.
-   Continue toward ~100+, driven by what the evals need, not taxonomy — next: number theory
-   (`lcm`/`is_prime`/`isqrt`/`digit_sum`), distance siblings (`chebyshev`/`euclid_sq`),
-   packing/hashing (`checksum`/`crc8_step`/`pack`), scoring/choice, and stateful cells
+6. **Grow the standard cell library — two waves ✓ (98 cells).** `cell80/cells/`: predicates,
+   safe arithmetic, bounds, percent, ranking/stats, bit/mask, number theory, distance, encoding,
+   hashing, bucketing/conversion — each with retrieval rows + a host-oracle test, and now
+   **modular** via the shared kernel prelude + DCE (see `docs/library-growth.md`). Keep going
+   (driven by what the evals need, not taxonomy) — next: packing/BCD, multi-weight scoring &
+   choice (state cells), vector dot/norm, time/budget arithmetic, and stateful/RNG cells
    (`lcg_next`/counters/`ema_update`).
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
 
 ✓ **Published to crates.io @ 0.5.0** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered
 publish job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the
-`cell` feature — the cell layer is now the `cell80` crate.)
+`cell` feature — the cell layer is now the `cell80` crate.) **0.6.0 in development** — the
+compiler ergonomics (bool-as-value, `&&`/`||`, runtime shifts) + dead-code elimination, the
+98-cell standard library with a shared kernel prelude, and Spectrum-side DCE in `compile_to_tap`.
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
 
@@ -222,8 +233,35 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   `Button` plus primitives and arrays. A shared-source mechanism (extending the game-sample
   pattern) would let a `Sprite` be defined once and compile host **and** pure.
 
-Until these land, chuk-speccy's *pure* kit stays inside the envelope (solid-cell sprites, `u16`
-RNG, `[u16; N]` pools, no text HUD); its **host** SDK and asset tooling proceed independently.
+**Codegen robustness & size — the *other* kit blocker (not the type frontend).** Building real
+games on the SDK (`chuk-speccy-sdk/samples/platform.rs` + `chase.rs`) surfaced two codegen-side
+gaps that gate the SDK's "grow the kit via shared prelude routines" strategy. *Verified against
+rustz80 **0.5.0** on 2026-06-28 — chuk-speccy itself is still pinned to **0.2.0**:*
+
+- **Dead-code elimination — emit only *reachable* functions. ✓ done in 0.6.0.** `compile_to_tap`
+  now DCEs rooted at the game's `entry` (and `compile_file_pruned(file, target, roots)` exposes it
+  for any caller); only the functions the entry actually reaches are emitted — and so only the
+  `__mul16`/`__divmod16` runtime they need. A shared SDK helper now taxes *only* the games that
+  call it: adding a `__frame_number` HUD routine no longer grows a game that never calls it. This
+  was the **keystone** unblock for a numeric/text HUD, sprite-blit, attribute-collision, and a
+  screen-addr LUT as shared prelude routines. (Same pass powers the cell library's shared kernel
+  prelude — see **Built**.) *Once chuk-speccy moves to 0.6.0, re-measure the size ceiling.*
+- **Error on over-budget — never silently miscompile. [no diagnostic in 0.5.0]** Over the codegen
+  limit, 0.2.0 emits a *wrong* tape (a silent no-op loop, or a tape that won't run) rather than
+  failing, and 0.5.0 still has **no budget/size error** in codegen. It should **fail the compile
+  with a diagnostic**. (The ceiling *magnitude* may be higher in 0.5.0 — re-measure once
+  chuk-speccy is on 0.5.0; at 0.2.0 `chase` holds AI **or** a digit score, not both.)
+
+*Already in 0.5.0 — so the action is to **upgrade chuk-speccy's `rustz80` 0.2.0 → 0.5.0**, not to
+ask for these:* **`&mut self` methods that mutate through the receiver** (verified — the
+`state_machine` example mutates `self` and matches rustc), plus `+=`, `for` ranges, local
+`[u8; N]`, and structs/enums/methods. Upgrading lets games **decompose `update` into
+`self.step_enemies()` / `self.move_player()`** — readable *and* smaller, which itself relieves the
+size ceiling. (Re-verify the *frontend* asks above — nested struct fields, signed/`u32` fields,
+`[u8; N]` *fields*, `&CONST→addr` — against 0.5.0 too; some may already be done.)
+
+Until DCE + a real over-budget error land, chuk-speccy's pure kit can't grow via shared prelude
+routines; its **host** SDK and asset tooling proceed independently.
 
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —

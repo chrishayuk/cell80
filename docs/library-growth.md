@@ -1,10 +1,26 @@
-# Growing the cell library — what's useful
+# Growing the cell library — toward a large prebuilt collection
 
-*A prioritized guide for expanding `cell80/cells/`. The goal is a **tiny deterministic
-integer standard library** — the boring, universally-useful computations an agent reaches for
-constantly and should not re-derive by hand (math, bounds, percentages, ranking, scoring,
-bit/flag ops, checksums) — that doubles as a good substrate for the three evals
-(`retrieval` / `adoption` / `composition`).*
+*The goal is a **big, growing library of prebuilt cells** — hundreds of small, distinct,
+deterministic integer utilities an agent can retrieve, run, and compose, organized into
+**packs**. cell80's whole pitch is "millions of tiny tools, retrieved" — so the library should
+be **broad**: the more genuinely-distinct behaviours sit on the shelf, the more an agent finds
+one instead of writing code. This guide is how to grow it well.*
+
+## The shape we're building toward
+
+```
+wave 1 ✓   59 cells   predicates · safe arithmetic · bounds · percent · ranking · bit/mask
+wave 2 ✓   98 cells   + number theory · distance · bit/encoding · hashing · stats · conversion
+next      ~200+        + packing/BCD · scoring/choice · vector · time/budget · stateful/RNG
+```
+
+Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
+`isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
+and `chebyshev` calls `iabs_diff`/`imax` instead of re-implementing them — and a cell that uses
+no kernel stays byte-identical to having no prelude.
+
+Big is the point — but **big and distinct**, not big and padded. Every cell earns its place by
+being a *different behaviour*, not a renamed one.
 
 ## What a good cell is
 
@@ -12,101 +28,104 @@ bit/flag ops, checksums) — that doubles as a good substrate for the three eval
 
 ```
 small · deterministic · easy to test · easy to describe · useful in many workflows
-cheap enough to run constantly · confusable enough with siblings to pressure retrieval
+cheap enough to run constantly · a distinct behaviour · part of a confusable family
 ```
 
-Think **stdlib of boring useful computation**, not games and not agent-control policy. The
-first wave below is exactly this shape.
+## Two rules that keep a *large* library strong
 
-## Grow deliberately — for the evals, not just the count
+A library that just accumulates functions rots in two ways — these rules prevent it:
 
-A bag of unrelated functions is a *weak* library: retrieval becomes trivial (every cell is
-easily separable, so there's no signal) and composition has nothing to chain. Grow along the
-axes the evals reward:
+1. **No behavioural duplicates — aliases live in metadata, not in code.** `time_until(now,
+   deadline)` is `sub_sat`; `deadline_missed` is `is_ge`; inclusive `between` is `range_check`.
+   Don't ship a second cell with the same behaviour — add the alias as a **tag/summary** on the
+   existing one so search still finds it. Duplicates *hurt* retrieval (two right answers = no
+   signal) and bloat the shelf without adding capability.
+2. **Grow in confusable families, and pay the eval tax per cell.** Retrieval only gets *teeth*
+   from 3-4+ cells per family that collide in text but differ in behaviour; composition needs
+   predicates + transforms that chain. A new cell ships with its eval pressure or it's just
+   inventory. See the contribution rule.
 
-- **retrieval** wants **confusable families** — 3-4+ cells per family that collide in text but
-  differ in behaviour (the only thing that gives top-1 retrieval teeth).
-- **composition** wants **predicates + transforms** that chain — especially boolean cells you
-  can branch on (data-dependent composition is the part that actually needs a graph).
-- **adoption** wants **plausible tools** a user would naturally ask for.
+So "a large number of cells" and "good evals" pull the *same* direction: more distinct
+confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmark.
 
 ## Principles (what makes a cell worth adding)
 
 - **Fits the integer envelope** (`u8`/`u16`/`u32`, no float/string/syscall, bounded cycles).
-  The compile error *is* the "this belongs in host code" signal — lean into it. Keep new cells
-  **unsigned-friendly** until `i16` lands (do abs via a branch, like `abs_diff`/`manhattan`).
+  The compile error *is* the "this belongs in host code" signal. Keep cells
+  **unsigned-friendly** until `i16` lands (abs via a branch, like `abs_diff`/`manhattan`).
+- **≤ 3 args, or a state cell.** The calling convention takes 3 args (`HL`/`DE`/`BC`); a cell
+  that needs more (4-point distance, multi-weight scoring) is a **state cell** (a `struct` with
+  named fields + `fn run(&mut self)`), like `manhattan`/`chebyshev`.
 - **Small and pure** — tens of bytes of behaviour, deterministic, cycle-honest.
-- **Belongs to a family with confusable siblings** (retrieval depth).
 - **Composes** — produces/consumes values others use; include **boolean predicates** (`-> 0/1`).
 
-### What the compiler now gives you (use it)
+### What the compiler gives you (author cells clean)
 
-The dialect supports the ergonomics these cells lean on, so author them *clean*:
-
-- **Comparisons are values:** `fn run(a: u16, b: u16) -> u16 { (a < b) as u16 }` — a predicate
-  is a one-liner. All six (`< <= > >= == !=`) materialise to `1`/`0`.
-- **`&&` / `||`** (short-circuit): `((lo < x) && (x < hi)) as u16`.
-- **Runtime bit shifts:** `x << bit` / `x >> bit` with a *variable* amount — bit ops are
-  one-liners (`x | (1 << bit)`); a shift ≥ 16 saturates a `u16` to `0`.
+- **Comparisons are values:** `fn run(a: u16, b: u16) -> u16 { (a < b) as u16 }`. All six.
+- **`&&` / `||`** (short-circuit): `((lo < x) && (x < hi)) as u16` — and a short-circuit guard
+  is the right way to keep a loop in-budget, e.g. `while r < 255 && (r+1)*(r+1) <= n { … }`.
+- **Runtime bit shifts:** `x << bit` / `x >> bit` with a *variable* amount (a shift ≥ 16
+  saturates a `u16` to `0`) — bit/rotate/encoding cells are one-liners.
+- **Multi-function cells:** a cell may define helpers and call them; the entry is `run`
+  (e.g. `lcm` calling a local `gcd`).
 
 ### Standardise these semantics
 
-- **Predicate convention:** `false = 0`, `true = 1`; nothing else. (Built on `bool as u16`.)
-- **Divide/remainder by zero:** the cell returns a sentinel, so **guard explicitly**
-  (`if b != 0 { a / b } else { 0 }`) — `safe_div`/`safe_mod` are the canonical pattern.
-- **`u16` overflow is silent** (wraps), like the seed `weighted_sum`. Saturating cells
-  (`add_sat`, `mul_sat`, …) cap at `65535`; the percent/scale cells assume their product fits
-  `u16` (`value·scale ≤ 65535`) — beyond that is the host-code signal.
+- **Predicate convention:** `false = 0`, `true = 1` (built on `bool as u16`).
+- **Divide/remainder by zero:** the cell returns a sentinel — **guard explicitly**
+  (`if b != 0 { a / b } else { 0 }`); `safe_div`/`safe_mod` are canonical.
+- **`u16` overflow is silent** (wraps); saturating cells (`add_sat`, `mul_sat`, `sum3`, …) cap
+  at `65535`; percent/scale/`euclid_sq`/`triangular` assume their product fits `u16` (beyond is
+  the host-code signal).
 
 ## The contribution rule (every new-cell PR)
 
 ```
 1. cell80/cells/<name>.rs                       — header (//! summary, //! tags:) + fn/struct
-2. cell-eval/datasets/retrieval.jsonl           — direct + paraphrase (+ adversarial) rows;
-                                                   verify the direct query ranks the cell #1
+2. cell-eval/datasets/retrieval.jsonl           — a direct row that ranks the cell #1
+                                                   (verify with `cell80 search`), + paraphrase
 3. composition or adoption task (if user-facing) — composition_tasks.jsonl / tasks.jsonl
 4. cell80/tests/library.rs                       — edge-case rows (the host oracle)
 ```
 
-A new cell without eval pressure is just inventory; with confusable siblings and a task it
-becomes signal.
+## Packs (organise discovery by family via tags)
 
-## The first wave (landed) — a boring integer stdlib
-
-51 cells across six confusable families (the 8 seeds — `abs_diff`, `clamp`, `gcd`, `manhattan`,
-`min`, `max`, `range_check`, `weighted_sum` — plus these):
+The loader reads a flat `cell80/cells/`, so a "pack" is a **tag**, not a directory. Build them
+out broadly:
 
 ```
-predicates (→0/1)  eq neq is_lt is_le is_gt is_ge is_zero nonzero is_even is_odd
-safe arithmetic    add_sat sub_sat mul_sat safe_div safe_mod ceil_div avg2 square
-bounds             between_exclusive wrap normalize_0_100 snap_down snap_up round_to_multiple
-percent / ratio    percent permille ratio_255 scale_percent increase_percent
-                   discount_percent within_percent
-ranking / stats    min3 max3 median3 argmax2 argmin2 argmax3 argmin3 sum3 mean3 range3
-bit / mask         popcount parity bit_is_set set_bit clear_bit toggle_bit
-                   mask_has_all mask_has_any mask_union mask_intersection
+math-core      bounds        percent       ranking-stats   number-theory   distance
+bitops         bit-encoding  hashing       packing         time            budget
+validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-Each predicate + a transform is a composition seed (e.g. `median3 → is_ge`, `popcount →
-is_even`, `scale_percent → clamp`); each family is a retrieval family.
+### Landed (98 cells)
 
-## Next waves (prioritized)
+```
+predicates     eq neq is_lt is_le is_gt is_ge is_zero nonzero is_even is_odd
+safe-arith     add_sat sub_sat mul_sat safe_div safe_mod ceil_div avg2 square
+bounds         between_exclusive wrap normalize_0_100 snap_down snap_up round_to_multiple
+percent        percent permille ratio_255 scale_percent increase_percent discount_percent within_percent
+ranking-stats  min3 max3 median3 argmax2 argmin2 argmax3 argmin3 sum3 mean3 range3 mode3 majority3 midrange3
+bit/mask       popcount parity bit_is_set set_bit clear_bit toggle_bit mask_has_all mask_has_any mask_union mask_intersection mask_xor
+number-theory  lcm gcd3 divides is_coprime is_prime is_square isqrt digit_sum num_digits factor_count triangular next_pow2 is_pow2 pow_small cube_sat pow_mod
+distance       chebyshev euclid_sq          (state-cell siblings of manhattan)
+bit-encoding   low_byte high_byte swap_bytes rotl16 rotr16 reverse_bits leading_zeros trailing_zeros bit_length
+hashing        hash_pair fnv1a_step crc8_step mix16
+bucket/convert bucket3 quantize percent_to_byte byte_to_percent
+```
 
-Keep growing the **boring stdlib** before anything domain-specific:
+### Next waves (prioritized — keep them distinct)
 
-- **number theory** (siblings of `gcd`): `lcm`, `divides`, `is_prime`, `isqrt`, `digit_sum`,
-  `pow_mod`.
-- **distance** (siblings of `manhattan`/`abs_diff`): `chebyshev`, `euclid_sq`.
-- **packing / hashing**: `pack_u8`/`unpack_*`, `checksum`, `crc8_step`, `fnv1a_step`,
-  `hash_pair`.
-- **scoring / choice**: `weighted_sum2/3`, `choose_best3`, `is_clear_winner`, `bucket3`,
-  `quantize`.
-- **stateful** (struct state): `lcg_next`, `xorshift16`, counters, `ema_update`.
-- **budget / time arithmetic**: `remaining`, `used_percent`, `fits_budget`,
-  `cooldown_remaining`.
-
-Organise discovery by **pack** via tags (e.g. `bits`, `percent`, `bounds`) — the loader reads a
-flat `cell80/cells/`, so packs live in metadata, not directories.
+- **packing / BCD**: `pack_u8`/`unpack_lo`/`unpack_hi`, `pack_nibbles`, `bcd_encode`/`bcd_decode`.
+- **scoring / choice** (mostly state cells — need > 3 args): `weighted_sum2/3`, `score_2factor`,
+  `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
+- **vector** (state cells): `dot2`, `norm2_sq`, `cosine_score_approx`.
+- **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`,
+  `ema_update`, `moving_avg_update`.
+- **time / budget** (only the *non-alias* ones — skip `time_until`=`sub_sat`,
+  `deadline_missed`=`is_ge`): `cooldown_remaining`, `used_percent`, `fits_budget`.
+- **needs `i16`**: signed deltas / `lerp` / risk deltas.
 
 ## Mine the ecosystem first
 
@@ -115,12 +134,9 @@ porting straight in — cheaper than authoring from scratch, and it ties the loo
 
 ## After authoring: re-run the evals
 
-Each new **family** (≥3 confusable members) is a retrieval test case; each **predicate +
-transform** pair is a composition test case. Add their queries to
-`cell-eval/datasets/retrieval.jsonl` and re-run `cell-eval retrieval` / `composition`.
-
-A bigger, confusable library is what makes those numbers trustworthy. The first wave already
-shows the point: **direct** retrieval stays strong (P@1 ≈ 0.91) while **paraphrase** P@1 drops
-(≈ 0.40) as confusable siblings multiply — the brittleness of token-overlap search, and the
-case for the type-led / capability index (rank by typed signature + `kind = predicate |
-transform | …` first, embeddings as the tiebreaker).
+Each new **family** is a retrieval test case; each **predicate + transform** pair a composition
+test case. Re-run `cell-eval retrieval` / `composition`. Expect direct P@1 to stay strong while
+paraphrase stays in coin-flip territory as the library grows (8 → 98 cells: direct ≈ 0.92,
+paraphrase 0.53 → 0.45) — that gap is the standing case for the **type-led / capability index** (rank by
+typed signature + a `kind = predicate | transform | …` first, embeddings as the tiebreaker). A
+big confusable library is precisely what makes that benchmark trustworthy.

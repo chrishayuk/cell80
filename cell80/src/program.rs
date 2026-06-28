@@ -5,6 +5,49 @@ use super::*;
 use rustz80::Program;
 use std::collections::HashMap;
 
+/// The shared **kernel prelude** appended to every cell before compile. Cells call these
+/// instead of re-implementing them; rooting DCE at the cell's entry then keeps only the
+/// kernels that entry reaches, so a cartridge carries only what it uses (a cell that calls no
+/// kernel is byte-identical — every kernel here is pruned). Appended *after* the cell source
+/// so a parse error keeps the cell's own line numbers, and call resolution is order-independent
+/// (linked by name).
+pub(super) const CELL_PRELUDE: &str = "\
+fn gcd(a: u16, b: u16) -> u16 { let mut x = a; let mut y = b; while y != 0u16 { let t = x % y; x = y; y = t; } x }\n\
+fn imin(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }\n\
+fn imax(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }\n\
+fn iabs_diff(a: u16, b: u16) -> u16 { let mut d = 0u16; if a > b { d = a - b; } else { d = b - a; } d }\n\
+fn isqrt(n: u16) -> u16 { let mut r = 0u16; while r < 255u16 && (r + 1u16) * (r + 1u16) <= n { r = r + 1u16; } r }\n\
+fn clamp_to(x: u16, lo: u16, hi: u16) -> u16 { let mut r = x; if x < lo { r = lo; } if x > hi { r = hi; } r }\n";
+
+/// The DCE roots for a cell: its entry functions — every free `fn run`/`fn main` and every
+/// `impl` method named `run`/`main` (`Type::run`), matching the cartridge's entry convention.
+/// DCE keeps only what these reach, so the appended prelude (and any dead code) is pruned to
+/// what the cell actually uses. No entry found → an empty root set → DCE is a no-op (keep all).
+fn entry_roots(file: &syn::File) -> Vec<String> {
+    let is_entry = |id: &syn::Ident| id == "run" || id == "main";
+    let mut roots = Vec::new();
+    for item in &file.items {
+        match item {
+            syn::Item::Fn(f) if is_entry(&f.sig.ident) => roots.push(f.sig.ident.to_string()),
+            syn::Item::Impl(imp) => {
+                if let syn::Type::Path(p) = &*imp.self_ty {
+                    if let Some(ty) = p.path.segments.last() {
+                        for it in &imp.items {
+                            if let syn::ImplItem::Fn(m) = it {
+                                if is_entry(&m.sig.ident) {
+                                    roots.push(format!("{}::{}", ty.ident, m.sig.ident));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    roots
+}
+
 /// A **compiled** cell: the result of parse + lower + codegen under a policy. Cheap to
 /// clone and cache (e.g. by source hash) — re-running a known snippet then skips the
 /// (syn-parse-dominated, ~16 µs) compile. Turn one into a runnable machine with
@@ -25,11 +68,18 @@ impl CellProgram {
     /// Compile `src` under `cfg`: enforce its capability gates (`poke`/`peek`/`inport`)
     /// and `max_code_bytes`. Parses once (shared by the cap scan and the compile).
     pub fn compile_with_config(src: &str, cfg: CellConfig) -> Result<Self, String> {
-        let file: syn::File = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
+        // Append the shared kernel prelude, then DCE down to what the cell's entry reaches —
+        // so a cell calls `gcd`/`iabs_diff`/… without re-implementing them, and the kernels it
+        // doesn't use are pruned away.
+        let combined = format!("{src}\n{CELL_PRELUDE}");
+        let file: syn::File =
+            syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
         check_caps(&file, &cfg)?;
+        let roots = entry_roots(&file);
+        let root_refs: Vec<&str> = roots.iter().map(String::as_str).collect();
         // The cell runs in Cell80 mode: `*`/`/`/`%` lower to `ED FE` host traps that the
         // bus services natively (no software mul/div runtime appended).
-        let prog = rustz80::compile_file(&file, rustz80::Target::Cell)?;
+        let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &root_refs)?;
         if let Some(max) = cfg.max_code_bytes {
             if prog.code.len() > max {
                 return Err(format!(
