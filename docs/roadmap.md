@@ -32,9 +32,11 @@ against `rustc` on the emulator (`tests/diff.rs`).
 - **Index + host** — `CellIndex` (search by token overlap over tags/id/summary); `CellHost`
   (warm cached-runner sessions: `load → run* → unload`).
 - **CLI `cell80`** — `run` (source) · `compile` (→ `.cell`) · `exec` (`.cell`) ·
-  `inspect` · `index` · `search` · `serve` (persistent stdio session).
-- **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`:
-  `cell_search`/`cell_inspect`/`cell_list`/`cell_run`, a thin router over a warm host).
+  `inspect` · `index` · `search` · `serve` (persistent stdio session) · `graph` (run a
+  `CellGraph` manifest).
+- **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`): a thin
+  router over a warm host — `cell_search` / `cell_inspect` / `cell_list` / `cell_run`
+  (positional **or** named `fields` for state cells) / `cell_graph_run` (compose cells).
 - **Trustworthiness** — host-vs-cell field-state differential; determinism + reset fuzzer;
   and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
   *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
@@ -48,6 +50,19 @@ against `rustc` on the emulator (`tests/diff.rs`).
   now fixed.
 - **Seed library** — `cell80/cells/` (math/grid/scoring/validation/bench), all "excellent"
   tier (36–70 B, no caps), indexed + searchable.
+- **Typed-state I/O** — drive a state cell **by field name** end-to-end (`CellHost::run_state`
+  → PyO3 → MCP `cell_run(fields=…)`); the scalar field addresses are baked into the manifest
+  (`state_addrs`) so a host or a peer cell drives by name with no source.
+- **`CellGraph` (host-routed composition)** — wire cells into a static graph (`cell80/src/
+  graph.rs`); the host **type-checks the whole graph before a single cycle runs**, then runs
+  nodes in topological order routing typed values, with a combined trace. A JSON manifest is
+  drivable three ways (the `cell80 graph` CLI, PyO3 `run_graph`, MCP `cell_graph_run`). Cells
+  never see each other — the bus is the host's.
+- **Eval harness** (`cell-eval`) — measures the whole arc over the *same* warm library:
+  deterministic **retrieval**, LLM **adoption**, and **composition** (see **Next** for the
+  rationale + baselines).
+- **CI + release** — matrix CI (rust + python on Linux/macOS/Windows); a **tag-triggered,
+  test-gated** crates.io publish (`cell80-z80` → `rustz80` → `cell80`).
 
 ## Positioning
 
@@ -57,35 +72,36 @@ against `rustc` on the emulator (`tests/diff.rs`).
 > policy, and bounded execution. *A tool should not need a server, a process, or a page of
 > schema if it's only 47 bytes of behaviour.*
 
-The proof of the thesis isn't VM features — it's whether **an agent reliably retrieves and
-runs the right cell instead of writing Python**. That's the next gate.
+The proof of the thesis isn't VM features — it's whether **an agent reliably retrieves, runs,
+and composes the right cells instead of writing Python**. That's now *measured* (the eval
+harness, item 1); the open problems are discovery quality and graph-authoring, not the VM.
 
 ## Next
 
-The VM is proven; the open problem is **library semantics + discovery quality**. Numbered by
-theme, not strictly by sequence — composition (item 5) is the current chase, ahead of
-retrieval (item 3), because a static host-authored graph needs no retrieval. The library
-grows by eval need:
+The VM is proven and the eval loop is in place (items 1, 2, 5 ✓). The open problems are now
+**discovery quality** (item 3 — paraphrase retrieval is a coin-flip) and **graph-authoring
+ergonomics** (item 5 — agents *chain* cells rather than author a graph). Numbered by theme,
+not strictly by sequence; the library grows by eval need:
 
-1. **Agent eval harness — the headline milestone. → underway (`cell-eval/`).** Can an LLM
+1. **Agent eval harness — the headline milestone. ✓ done (`cell-eval/`).** Can an LLM
    `search → inspect → run` the right cell instead of writing code? Concrete cases: pick
    `manhattan` for grid distance, `range_check` for validation, `weighted_sum` for candidate
    scoring; compose `abs_diff + weighted_sum + clamp`; detect that *no* cell fits and ask
    for/compile one; prefer the safer/smaller/capability-free cell when two match; use
    reported `cycles` / `trapped_ops` / touched-memory to choose between implementations.
    This proves the real claim: *the consumer gets better because the cell is on the bus.*
-   **Measure two numbers, not one:** (a) end-to-end **adoption** ("did it use a cell at
-   all") and (b) **retrieval precision** ("given the query, is the right cell in top-k").
-   They fail for different reasons — low adoption is often weak *steering* (system-prompt
-   cueing), not bad retrieval. Hold the steering fixed, vary the library, and read precision
-   directly, so a one-line preamble fix doesn't get misdiagnosed as a week of index tuning.
-   - **Built so far** — `cell-eval/`, a standalone Python package driving the *same*
-     `CellLibrary` the MCP server exposes. **Retrieval eval** is deterministic and runnable
-     today (`cell-eval retrieval`): a paraphrase/adversarial dataset → precision@1 / hit@k /
-     MRR, with a fixed-steering split (direct vs paraphrase vs adversarial). **Adoption eval**
-     (`cell-eval adoption`) is a wired agent loop over an **OpenAI-compatible endpoint
-     (Ollama by default)** — cell tools as function calls, scoring adoption + correctness +
-     correct-via-cell; the steering prompt is a single held-fixed constant.
+   **Measure three numbers, each failing differently:** (a) **retrieval precision** ("given
+   the query, is the right cell in top-k"), (b) **adoption** ("did it use a cell at all"), and
+   (c) **composition** ("did it *wire several cells together*", item 5). They fail for
+   different reasons — low adoption is often weak *steering* (system-prompt cueing), not bad
+   retrieval. Hold the steering fixed, vary the library, and read precision directly, so a
+   one-line preamble fix doesn't get misdiagnosed as a week of index tuning.
+   - **Built** — `cell-eval/`, a standalone Python package driving the *same* `CellLibrary`
+     the MCP server exposes, with three subcommands sharing one held-fixed-steering agent loop.
+     **`retrieval`** is deterministic (no model): a paraphrase/adversarial dataset →
+     precision@1 / hit@k / MRR, split direct vs paraphrase vs adversarial. **`adoption`** and
+     **`composition`** are agent loops over an **OpenAI-compatible endpoint (Ollama by
+     default)** — cell tools (incl. `cell_graph_run`) as function calls.
    - **Retrieval baseline (seed lib, k=5):** overall **P@1 0.74 / hit@3 0.90 / MRR 0.82**,
      but split it and the thesis-relevant number falls out: **direct P@1 1.00, paraphrase
      0.53, adversarial 0.50.** Token-overlap is perfect on the library's own words and a
@@ -99,8 +115,9 @@ grows by eval need:
      trivial, *not* a retrieval miss (when it did reach for a cell it found the right one every
      time). This is exactly why the two numbers are tracked apart: correctness was perfect; the
      gap is adoption (steering), not retrieval.
-   - **Next on this milestone** — push adoption past trivial-task shortcutting (steering /
-     harder tasks); add typed-state tasks once item 2 lands; grow the dataset as the library does.
+   - **Status** — all three modes ship and run against a local model. Open levers: the
+     type-led index (item 3, for the paraphrase gap) and graph-authoring ergonomics (item 5).
+     (Composition baseline + the `used_graph` finding live under item 5.)
 2. **Typed-state I/O over MCP — ✓ done.** `cell_run` now takes a `fields` object ({name:int})
    for state cells: named fields → struct addresses (baked into the manifest at compile time
    as `state_addrs`, so a warm host or a peer cell drives by name with no source), run, and the
@@ -151,8 +168,9 @@ grows by eval need:
    need, not by taxonomy.
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
 
-✓ **Published to crates.io** (`cell80-z80`, `rustz80` @ 0.4.0, via the tag-triggered publish
-job in CI); `chuk-speccy` depends on the released versions.
+✓ **Published to crates.io @ 0.5.0** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered
+publish job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the
+`cell` feature — the cell layer is now the `cell80` crate.)
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
 
@@ -161,7 +179,7 @@ A second, *frontend*-side ask on the shared compiler, driven by chuk-speccy's au
 *pure*** — one `impl Game` source → a host build **and** a bootable tape. The pure-Snake seam is
 closed today (`chuk-speccy-sdk/samples/snake_game.rs` compiles both ways and boots on the real
 ROM), but only inside a narrow envelope. Each item is a concrete blocker found while shaping the
-SDK kit; the `file:line` is `rustz80` 0.4.0. These sit **below the agent-tool arc above** (the
+SDK kit; the `file:line` is `rustz80` 0.5.0. These sit **below the agent-tool arc above** (the
 eval is the gate, not VM/compiler features) but are tracked here since the compiler lives here.
 
 - **Nested struct fields + field-of-field access** (`self.sprite.x`, a game-state field that is

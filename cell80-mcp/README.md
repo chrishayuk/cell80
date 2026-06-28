@@ -1,7 +1,7 @@
 # cell80-mcp
 
 An MCP server over a **warm library of deterministic micro-tools** (cells) compiled by
-`rustz80-cell`. It's a thin **router**, not a tool-per-cell: the library can hold millions
+`cell80`. It's a thin **router**, not a tool-per-cell: the library can hold millions
 of cells, but the model only ever sees the handful it searches up.
 
 ```
@@ -17,7 +17,7 @@ call — which defeats the ~0.05 µs warm execution. This server holds the host 
 runners) in **one process**: `cell_run` keeps a runner warm per cell across calls.
 
 It's built on `chuk-mcp-server` over the PyO3 binding `cell80-py` (which wraps the Rust
-`rustz80::cell::CellHost`) — the same Rust-core → PyO3 → Python-MCP pattern as
+`cell80::CellHost`) — the same Rust-core → PyO3 → Python-MCP pattern as
 `chuk-mcp-spectrum`/`zxspec-py`. The session/warmth lives in `CellLibrary`; the tools carry
 no policy, so a socket daemon or another transport could wrap the same bodies.
 

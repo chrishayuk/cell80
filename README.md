@@ -46,7 +46,7 @@ Freeze it into a self-describing `.cell` cartridge:
 ```console
 $ cell80 compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
 $ cell80 inspect score.cell
-cell `score.v1`  (abi 1, compiler 0.4.0)
+cell `score.v1`  (abi 1, compiler 0.5.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
   signature: run(x: u16, y: u16) -> u16
@@ -94,21 +94,24 @@ smaller than its usefulness*.
 > policy, and bounded execution. A tool shouldn't need a server, a process, or a page of
 > schema if it's only 47 bytes of behaviour.
 
-### Is the thesis true? Measure it.
+### Does it work? Measure it — find → run → compose.
 
-The pitch only matters if an agent *actually* retrieves and runs the right cell instead of
-writing the code itself. [`cell-eval`](./cell-eval) measures exactly that, as **two numbers
-that fail for different reasons**:
+The pitch only matters if an agent *actually* uses cells instead of writing the code itself.
+[`cell-eval`](./cell-eval) measures the whole arc, with **steering held fixed** so index/library
+changes and prompt changes never get conflated:
 
 - **retrieval precision** — deterministic, no model: given a query, is the right cell in the
   top-k? (Reads index quality directly.)
-- **adoption** — an LLM agent loop over an **OpenAI-compatible / Ollama** endpoint: given a
-  task, did it `search → inspect → run` a cell, and get the right answer?
+- **adoption** — an LLM agent over an **OpenAI-compatible / Ollama** endpoint: given a task, did
+  it `search → inspect → run` the right cell, and get the right answer?
+- **composition** — given a task that needs *several* cells, did it **wire them together** (via
+  `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-First baselines on the seed library: retrieval **P@1 1.00** on direct queries (**0.53** under
-paraphrase — the open problem the index work targets); adoption **0.75** with **1.00**
-correctness on a local model. Steering is held fixed, so library changes and prompt changes
-never get conflated.
+Baselines on the seed library: retrieval **P@1 1.00** direct / **0.53** paraphrase (the open
+problem the type-led index targets); on `granite4.1:3b`, **adoption 1.00 / correct 1.00**, and
+**composition: composed 0.50, correct 0.83 — but `used_graph` 0.00**. That last number is the
+kind of finding only the eval surfaces: the small model *chains* cell calls rather than
+authoring a graph manifest, so the next lever is graph-authoring ergonomics, not the VM.
 
 ---
 
@@ -278,7 +281,7 @@ cell_graph_run(move_ranker_graph, inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "
 | **[`cell80`](./cell80)** | the **cell micro-VM + tooling** (built on `rustz80`): `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, typed-state I/O, host-routed `CellGraph` composition, and the `cell80` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
-| **[`cell-eval`](./cell-eval)** | the agent eval harness — retrieval precision + LLM adoption (does an agent run the right cell instead of writing code?). |
+| **[`cell-eval`](./cell-eval)** | the agent eval harness — retrieval precision + LLM adoption + composition (does an agent find, run, and *compose* the right cells instead of writing code?). |
 | **[`cell-bench`](./cell-bench)** | the cross-runtime comparison (native / Wasmtime / cell / Python). |
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
