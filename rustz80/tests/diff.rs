@@ -1246,6 +1246,153 @@ fn u16_shifts() {
 }
 
 #[test]
+fn comparisons_as_values() {
+    // A comparison used as a value materialises to `1`/`0` (`bool as u16`) — every
+    // operator, both outcomes, checked against rustc.
+    check!({
+        let a = 3u16;
+        let b = 5u16;
+        (a < b) as u16
+    }); // 1
+    check!({
+        let a = 5u16;
+        let b = 5u16;
+        (a < b) as u16 + (a <= b) as u16 * 10u16
+    }); // 0 + 1*10 = 10
+    check!({
+        let a = 7u16;
+        let b = 2u16;
+        (a > b) as u16 + (a >= b) as u16 * 10u16
+    }); // 1 + 10 = 11
+    check!({
+        let a = 4u16;
+        let b = 4u16;
+        (a == b) as u16 + (a != b) as u16 * 10u16
+    }); // 1 + 0 = 1
+    // Composing bools by arithmetic, and a bool bound to a `let`.
+    check!({
+        let a = 1u16;
+        let b = 2u16;
+        let c = 2u16;
+        (a < b) as u16 + (b < c) as u16 + (a == c) as u16
+    }); // 1 + 0 + 0 = 1
+    check!({
+        let a = 10u16;
+        let b = 3u16;
+        let f = a > b;
+        f as u16
+    }); // 1
+    // A predicate result feeding arithmetic in a loop: count evens in 0..10.
+    check!({
+        let mut n = 0u16;
+        let mut i = 0u16;
+        while i < 10u16 {
+            n = n + (i % 2u16 == 0u16) as u16;
+            i = i + 1u16;
+        }
+        n
+    }); // 0,2,4,6,8 → 5
+}
+
+#[test]
+fn logical_and_or() {
+    // Short-circuit `&&` / `||` on bool operands, as values and in conditions — vs rustc.
+    check!({
+        let x = 5u16;
+        ((x > 0u16) && (x < 10u16)) as u16
+    }); // 1
+    check!({
+        let x = 15u16;
+        ((x > 0u16) && (x < 10u16)) as u16
+    }); // 0
+    check!({
+        let x = 15u16;
+        ((x < 0u16) || (x > 10u16)) as u16
+    }); // 1
+    check!({
+        let x = 5u16;
+        ((x < 0u16) || (x > 10u16)) as u16
+    }); // 0
+    // Chained `&&` (three operands).
+    check!({
+        let a = 1u16;
+        let b = 2u16;
+        let c = 3u16;
+        ((a < b) && (b < c) && (a < c)) as u16
+    }); // 1
+    // `&&` / `||` in condition position (the common case).
+    check!({
+        let x = 7u16;
+        let mut r = 0u16;
+        if x > 0u16 && x < 10u16 {
+            r = 1u16;
+        }
+        r
+    }); // 1
+    check!({
+        let x = 50u16;
+        let mut r = 9u16;
+        if x < 0u16 || x > 10u16 {
+            r = 1u16;
+        }
+        r
+    }); // 1
+}
+
+#[test]
+fn variable_shifts() {
+    // Shift by a *runtime* amount (a `let`/loop variable, not a literal) — left & right,
+    // logical, checked against rustc. Amounts stay < 16 (a u16 shift ≥ 16 panics in rustc
+    // debug; the cell's saturate-to-0 behaviour is covered in the cell80 suite).
+    check!({
+        let x = 1u16;
+        let s = 0u16;
+        x << s
+    }); // 1
+    check!({
+        let x = 1u16;
+        let s = 7u16;
+        x << s
+    }); // 128
+    check!({
+        let x = 1u16;
+        let s = 15u16;
+        x << s
+    }); // 32768
+    check!({
+        let x = 0xF0F0u16;
+        let s = 4u16;
+        x >> s
+    }); // 0x0F0F = 3855
+    check!({
+        let x = 12345u16;
+        let s = 3u16;
+        x >> s
+    }); // 1543
+    // Amount from a loop variable: sum of powers of two 2^0..2^7 = 255.
+    check!({
+        let mut acc = 0u16;
+        let mut i = 0u16;
+        while i < 8u16 {
+            acc = acc + (1u16 << i);
+            i = i + 1u16;
+        }
+        acc
+    }); // 255
+    // Build a mask via a runtime shift, then test a bit (the bitop idiom).
+    check!({
+        let x = 11u16;
+        let bit = 3u16;
+        (x >> bit) & 1u16
+    }); // 11 = 1011b, bit 3 = 1
+    check!({
+        let x = 11u16;
+        let bit = 2u16;
+        (x >> bit) & 1u16
+    }); // bit 2 = 0
+}
+
+#[test]
 fn u32_xorshift() {
     // A real 32-bit xorshift step (the SDK `Rng` core) — `u32` locals, `^`, and
     // constant `<<` / `>>` (including a shift past the word boundary, 17). The low 16

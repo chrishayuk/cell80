@@ -10,3 +10,10 @@
 {"id": "gcd-manhattan", "prompt": "Let g be the greatest common divisor of 48 and 36. Then compute the manhattan distance from (0,0) to the grid point (g, g).", "expected": 24, "cells": ["gcd", "manhattan"]}
 {"id": "score-clamp", "prompt": "Score the three feature values 5, 1 and 9 with the standard weighted sum, then clamp the score to the range 0..30.", "expected": 30, "cells": ["weighted_sum", "clamp"]}
 {"id": "min-absdiff", "prompt": "Take the smaller of 100 and 60, then compute its absolute difference from 20.", "expected": 40, "cells": ["min", "abs_diff"]}
+# --- first library wave: predicate + transform chains ---
+{"id": "comp-pct-clamp", "prompt": "Compute 25 percent of 80, then clamp that result to the range 0 to 10. What is the final value?", "expected": 10, "cells": ["scale_percent", "clamp"]}
+{"id": "comp-median-ge", "prompt": "Take the median of 5, 2, and 8; then return 1 if that median is at least 4, else 0.", "expected": 1, "cells": ["median3", "is_ge"]}
+{"id": "comp-popcount-even", "prompt": "Count the set bits in 255, then return 1 if that count is even, else 0.", "expected": 1, "cells": ["popcount", "is_even"]}
+{"id": "comp-subsat-scale", "prompt": "Saturating-subtract 30 from 100, then take 50 percent of the result. What is the value?", "expected": 35, "cells": ["sub_sat", "scale_percent"]}
+{"id": "comp-max-snap", "prompt": "Find the largest of 12, 7, and 23; then round it down to the nearest multiple of 10.", "expected": 20, "cells": ["max3", "snap_down"]}
+{"id": "comp-avg-within", "prompt": "Average 40 and 60, then return 1 if that average is within 10 percent of 50, else 0.", "expected": 1, "cells": ["avg2", "within_percent"]}

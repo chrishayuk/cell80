@@ -18,3 +18,15 @@
 {"id": "range_check-2", "prompt": "Is the number 25 within the allowed limits of 1 to 10? Answer 1 for yes, 0 for no.", "expected": 0, "cell": "range_check"}
 {"id": "weighted_sum-1", "prompt": "Score a candidate whose three feature values are 5, 1 and 9 using the standard weighted sum.", "expected": 34, "cell": "weighted_sum"}
 {"id": "manhattan-1", "prompt": "On a grid, how many steps (moving only horizontally and vertically) from point (3,4) to point (10,8)?", "expected": 11, "cell": "manhattan"}
+# --- first library wave: single-cell adoption asks ---
+{"id": "scale_percent-1", "prompt": "What is 25% of 80?", "expected": 20, "cell": "scale_percent"}
+{"id": "snap_down-1", "prompt": "Round 47 down to the nearest multiple of 10.", "expected": 40, "cell": "snap_down"}
+{"id": "popcount-1", "prompt": "How many bits are set in the number 255?", "expected": 8, "cell": "popcount"}
+{"id": "is_even-1", "prompt": "Is 17 an even number? Answer 1 for yes or 0 for no.", "expected": 0, "cell": "is_even"}
+{"id": "max3-1", "prompt": "What is the greatest of 12, 7, and 20?", "expected": 20, "cell": "max3"}
+{"id": "median3-1", "prompt": "What is the median (middle value) of 5, 2, and 8?", "expected": 5, "cell": "median3"}
+{"id": "ceil_div-1", "prompt": "Divide 100 by 8 and round the result up to a whole number.", "expected": 13, "cell": "ceil_div"}
+{"id": "percent-1", "prompt": "What percentage is 1 out of 4?", "expected": 25, "cell": "percent"}
+{"id": "add_sat-1", "prompt": "Add 60000 and 6000, capping the result at 65535.", "expected": 65535, "cell": "add_sat"}
+{"id": "within_percent-1", "prompt": "Is 95 within 10 percent of 100? Answer 1 or 0.", "expected": 1, "cell": "within_percent"}
+{"id": "toggle_bit-1", "prompt": "Toggle bit number 3 of the value 0.", "expected": 8, "cell": "toggle_bit"}
