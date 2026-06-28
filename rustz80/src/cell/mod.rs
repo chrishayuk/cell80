@@ -33,4 +33,4 @@ pub use index::CellIndex;
 pub use program::CellProgram;
 pub use report::{Fast, Halt, Report, Ty, ABI_VERSION};
 pub use runner::{run, CellPool, Runner};
-pub use state::{StateCell, STATE_BASE};
+pub use state::{state_field_addrs, StateCell, STATE_BASE};

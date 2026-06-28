@@ -23,6 +23,10 @@ def test_tool_bodies_cover_all_four_verbs():
     assert h["cell_run"]("gcd", [48, 36])["result"] == 12
     assert "result" in h["cell_run"]("gcd", None)  # None args → [] (the `args or []` branch)
     assert "error" in h["cell_run"]("ghost", [1])
+    # cell_run drives a state cell by named fields, returning the full state.
+    st = h["cell_run"]("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
+    assert st["result"] == 11 and st["state"]["dist"] == 11
+    assert "error" in h["cell_run"]("manhattan", fields={"bogus": 1})
 
 
 def test_library_is_a_cached_singleton():

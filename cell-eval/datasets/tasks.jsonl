@@ -6,9 +6,8 @@
 # so this measures retrieval AND adoption together. Keep numbers small + unambiguous so
 # correctness is mechanical.
 #
-# NOTE: `manhattan` is omitted on purpose — it's a typed-state cell (x1,y1,x2,y2 by name),
-# and named-field I/O over the tool surface is roadmap item 2 (not wired yet). `cell_run`
-# only takes positional register args today. Add a manhattan task once that lands.
+# `manhattan` is a typed-state cell (x1,y1,x2,y2 by name); it's now drivable via cell_run's
+# `fields` argument (named-field I/O over MCP), so it's included below.
 
 {"id": "gcd-1", "prompt": "What is the greatest common divisor of 48 and 36?", "expected": 12, "cell": "gcd"}
 {"id": "abs_diff-1", "prompt": "How far apart are the numbers 200 and 75?", "expected": 125, "cell": "abs_diff"}
@@ -18,3 +17,4 @@
 {"id": "range_check-1", "prompt": "Is the number 7 within the allowed limits of 1 to 10? Answer 1 for yes, 0 for no.", "expected": 1, "cell": "range_check"}
 {"id": "range_check-2", "prompt": "Is the number 25 within the allowed limits of 1 to 10? Answer 1 for yes, 0 for no.", "expected": 0, "cell": "range_check"}
 {"id": "weighted_sum-1", "prompt": "Score a candidate whose three feature values are 5, 1 and 9 using the standard weighted sum.", "expected": 34, "cell": "weighted_sum"}
+{"id": "manhattan-1", "prompt": "On a grid, how many steps (moving only horizontally and vertically) from point (3,4) to point (10,8)?", "expected": 11, "cell": "manhattan"}

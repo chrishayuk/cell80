@@ -61,9 +61,12 @@ TOOLS = [
         "function": {
             "name": "cell_run",
             "description": (
-                "Run a cell by id with integer arguments, in signature order. Returns the "
-                "result plus an honest cost surface (cycles, trapped_ops). This is the "
-                "verified answer — prefer it over computing the value yourself."
+                "Run a cell by id. For a plain cell, pass `args` (integers, in signature "
+                "order). For a STATE cell — one whose manifest lists `state` fields, e.g. "
+                "manhattan — pass `fields` as {name: int} to drive it by name; the reply then "
+                "includes the full post-run `state`. Returns the result plus an honest cost "
+                "surface (cycles, trapped_ops). This is the verified answer — prefer it over "
+                "computing the value yourself."
             ),
             "parameters": {
                 "type": "object",
@@ -72,10 +75,15 @@ TOOLS = [
                     "args": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "arguments in signature order",
+                        "description": "positional arguments in signature order (plain cells)",
+                    },
+                    "fields": {
+                        "type": "object",
+                        "description": "named state fields {name: int} (state cells)",
+                        "additionalProperties": {"type": "integer"},
                     },
                 },
-                "required": ["id", "args"],
+                "required": ["id"],
             },
         },
     },
@@ -108,7 +116,11 @@ def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
             return {"cells": lib.list()}
         if name == "cell_run":
             cid = args["id"]
-            out = lib.run(cid, [int(a) for a in args.get("args", [])])
+            fields = args.get("fields")
+            if fields:
+                out = lib.run_state(cid, {k: int(v) for k, v in fields.items()})
+            else:
+                out = lib.run(cid, [int(a) for a in args.get("args", [])])
             trace.cells_run.append(cid)
             if isinstance(out.get("result"), int):
                 trace.run_results.append(out["result"])

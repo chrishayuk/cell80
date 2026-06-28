@@ -142,6 +142,39 @@ impl CellHost {
         Ok(d)
     }
 
+    /// Drive a loaded **state cell by field name**: `fields` is `{name: int}`. Returns
+    /// `{result, regs, cycles, trapped_ops, halt, state: {name: value}}`, where `state` is the
+    /// full post-run struct read back by name. The JSON↔state surface — no raw addresses.
+    #[pyo3(signature = (handle, fields, cycles=2_000_000))]
+    fn run_state<'py>(
+        &mut self,
+        py: Python<'py>,
+        handle: usize,
+        fields: &Bound<'py, PyDict>,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut named = Vec::with_capacity(fields.len());
+        for (k, v) in fields.iter() {
+            named.push((k.extract::<String>()?, v.extract::<u64>()?));
+        }
+        let (rep, state) = self
+            .host
+            .run_state(handle, &named, cycles)
+            .map_err(PyValueError::new_err)?;
+        let d = PyDict::new_bound(py);
+        d.set_item("result", rep.result)?;
+        d.set_item("regs", vec![rep.regs[0], rep.regs[1], rep.regs[2]])?;
+        d.set_item("cycles", rep.cycles)?;
+        d.set_item("trapped_ops", rep.trapped_ops)?;
+        d.set_item("halt", halt_str(rep.halt))?;
+        let sd = PyDict::new_bound(py);
+        for (name, val) in state {
+            sd.set_item(name, val)?;
+        }
+        d.set_item("state", sd)?;
+        Ok(d)
+    }
+
     /// Release a loaded handle (returns its bus to the pool).
     fn unload(&mut self, handle: usize) -> PyResult<()> {
         self.host.unload(handle).map_err(PyValueError::new_err)
