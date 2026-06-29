@@ -152,21 +152,6 @@ fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>
 }
 
 /// Build an index over every cell (`.rs` / `.cell`) in `dir`, sorted by id.
-fn index_dir(dir: &str) -> Result<CellIndex, String> {
-    let mut idx = CellIndex::new();
-    let mut paths: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{dir}: {e}"))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    paths.sort();
-    for path in paths {
-        if let Some(c) = library_cartridge(&path) {
-            idx.add(c?.manifest);
-        }
-    }
-    Ok(idx)
-}
-
 fn render(m: &crate::Manifest) -> String {
     format!(
         "  {} — {}  [{}]  ({})",
@@ -206,11 +191,12 @@ fn cmd_index(args: &[String]) -> Result<String, String> {
 fn cmd_search(args: &[String]) -> Result<String, String> {
     let query = args.first().ok_or(USAGE)?;
     let dir = args.get(1).ok_or("search needs a directory")?;
-    let idx = index_dir(dir)?;
-    let hits = idx.search(query, 10);
+    // Build a warm host so `search` uses the *same* TF-IDF index path as `serve`/MCP.
+    let host = host_from_dir(dir)?;
+    let hits = host.search(query, 10);
     let mut out = format!(
         "indexed {} cells; query `{query}` → {} match(es):\n",
-        idx.len(),
+        host.len(),
         hits.len()
     );
     for m in hits {

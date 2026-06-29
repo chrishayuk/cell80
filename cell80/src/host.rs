@@ -22,7 +22,12 @@ struct Loaded {
 #[derive(Default)]
 pub struct CellHost {
     catalog: HashMap<String, Cartridge>,
-    index: CellIndex,
+    /// Lazily-(re)built TF-IDF search index over the catalog. `None` means stale; the next
+    /// `search` rebuilds it from the catalog's manifests, and `add` invalidates it. TF-IDF
+    /// fits IDF over the *whole* corpus (unlike [`CellIndex`]'s incremental `add`), so we
+    /// cache-and-rebuild rather than update in place — O(n) per rebuild is cheap at library
+    /// scale, and a warm host is typically filled once at startup then served from.
+    index: std::cell::RefCell<Option<TfidfIndex>>,
     pool: CellPool,
     live: Vec<Option<Loaded>>,
 }
@@ -32,9 +37,10 @@ impl CellHost {
         Self::default()
     }
 
-    /// Register a cartridge in the catalog + search index (keyed by its manifest id).
+    /// Register a cartridge in the catalog (keyed by its manifest id) and invalidate the
+    /// search index, which is rebuilt from the catalog on the next [`search`](Self::search).
     pub fn add(&mut self, cart: Cartridge) {
-        self.index.add(cart.manifest.clone());
+        *self.index.borrow_mut() = None;
         self.catalog.insert(cart.manifest.id.clone(), cart);
     }
 
@@ -47,8 +53,29 @@ impl CellHost {
     }
 
     /// Discover: rank the catalog by relevance to `query` (returns manifests, not cells).
+    /// Rebuilds the TF-IDF index from the catalog if it went stale since the last search
+    /// (deterministic: ranking is by cosine then id, so catalog iteration order can't leak in).
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Manifest> {
-        self.index.search(query, limit)
+        let stale = self.index.borrow().is_none();
+        if stale {
+            let manifests: Vec<Manifest> =
+                self.catalog.values().map(|c| c.manifest.clone()).collect();
+            *self.index.borrow_mut() = Some(TfidfIndex::build(manifests));
+        }
+        // Pull the ranked ids out (dropping the borrow), then resolve them to manifests that
+        // borrow from `catalog` — so the returned references live as long as `&self`.
+        let ids: Vec<String> = self
+            .index
+            .borrow()
+            .as_ref()
+            .expect("index built above")
+            .search(query, limit)
+            .into_iter()
+            .map(|m| m.id.clone())
+            .collect();
+        ids.into_iter()
+            .filter_map(|id| self.catalog.get(&id).map(|c| &c.manifest))
+            .collect()
     }
 
     /// Inspect a cell's manifest by id (the typed signature, caps, tags, …).
