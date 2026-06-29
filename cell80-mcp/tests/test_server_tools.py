@@ -17,6 +17,12 @@ def _handlers():
 def test_tool_bodies_cover_all_four_verbs():
     h = _handlers()
     assert any(r["id"] == "gcd" for r in h["cell_search"]("greatest common divisor", 3)["results"])
+    # route by behaviour: (3,7)→3 / (10,3)→3 surfaces min and excludes its sibling max (which
+    # can't match); a malformed example is reported as data, not raised.
+    routed = h["cell_route_by_example"]([{"in": [3, 7], "out": 3}, {"in": [10, 3], "out": 3}])
+    routed_ids = [r["id"] for r in routed["results"]]
+    assert "min" in routed_ids and "max" not in routed_ids
+    assert "error" in h["cell_route_by_example"]([{"bad": 1}])
     assert h["cell_inspect"]("gcd")["signature"] == "run(a: u16, b: u16) -> u16"
     assert "error" in h["cell_inspect"]("ghost")
     assert len(h["cell_list"]()["cells"]) == 98

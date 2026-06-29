@@ -9,7 +9,7 @@ members = ["z80", "z80-tests", "rustz80", "cell80"]
 
 [workspace.package]
 edition = "2021"
-version = "0.7.0"
+version = "0.8.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/chrishayuk/cell80"
 

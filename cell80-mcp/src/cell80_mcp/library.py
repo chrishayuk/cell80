@@ -58,6 +58,12 @@ class CellLibrary:
     def search(self, query: str, limit: int = 10) -> list[dict]:
         return list(self.host.search(query, limit))
 
+    def route(self, examples: list[tuple[list[int], int]], limit: int = 10) -> list[dict]:
+        """Discover by behaviour: rank cells by how many (inputs, expected_output)
+        examples they reproduce on the VM — the phrasing-independent signal that tells
+        confusable siblings (min vs max) apart where their descriptions can't."""
+        return list(self.host.route([(list(i), o) for i, o in examples], limit))
+
     def inspect(self, cell_id: str) -> dict | None:
         return self.host.manifest(cell_id)
 

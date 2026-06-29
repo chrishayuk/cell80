@@ -380,6 +380,7 @@ fn is_value_expr(e: &syn::Expr) -> bool {
         syn::Expr::Lit(_)
             | syn::Expr::Path(_)
             | syn::Expr::Binary(_)
+            | syn::Expr::Unary(_)
             | syn::Expr::Paren(_)
             | syn::Expr::Call(_)
             | syn::Expr::Index(_)

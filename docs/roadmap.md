@@ -34,14 +34,18 @@ real Rust* → every program is differential-tested against `rustc` on the emula
 - **Honest cost** — `cycles` + a `trapped_ops` companion (traps are near-free in cycles, so
   count them — a reward-hack guard).
 - **ABI v1 frozen** — `docs/09-cell80-abi.md`.
-- **Index + host** — `CellIndex` (search by token overlap over tags/id/summary); `CellHost`
-  (warm cached-runner sessions: `load → run* → unload`).
+- **Index + host** — search defaults to **`TfidfIndex`** (IDF-weighted word + char-3-gram
+  cosine, lazily rebuilt in `CellHost`; `CellIndex` token-overlap kept as the baseline), plus
+  **behavioural routing** (`CellHost::route_by_examples` over `rank_by_examples` — find a cell by
+  the I/O examples it reproduces); `CellHost` warm cached-runner sessions (`load → run* →
+  unload`).
 - **CLI `cell80`** — `run` (source) · `compile` (→ `.cell`) · `exec` (`.cell`) ·
-  `inspect` · `index` · `search` · `serve` (persistent stdio session) · `graph` (run a
-  `CellGraph` manifest).
+  `inspect` · `index` · `search` · `serve` (persistent stdio session, with `route <in>=<out>`) ·
+  `graph` (run a `CellGraph` manifest).
 - **MCP front** — `cell80-py` (PyO3 `CellHost`) + `cell80-mcp` (`chuk-mcp-server`): a thin
-  router over a warm host — `cell_search` / `cell_inspect` / `cell_list` / `cell_run`
-  (positional **or** named `fields` for state cells) / `cell_graph_run` (compose cells).
+  router over a warm host — `cell_search` / **`cell_route_by_example`** / `cell_inspect` /
+  `cell_list` / `cell_run` (positional **or** named `fields` for state cells) / `cell_compose` /
+  `cell_graph_run` (compose cells).
 - **Trustworthiness** — host-vs-cell field-state differential; determinism + reset fuzzer;
   and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
   *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
@@ -95,10 +99,13 @@ harness, item 1); the open problems are discovery quality and graph-authoring, n
 
 ## Next
 
-The VM is proven and the eval loop is in place (items 1, 2, 5 ✓). The open problems are now
-**discovery quality** (item 3 — paraphrase retrieval is a coin-flip) and **graph-authoring
-ergonomics** (item 5 — agents *chain* cells rather than author a graph). Numbered by theme,
-not strictly by sequence; the library grows by eval need:
+The VM is proven and the eval loop is in place (items 1, 2, 5 ✓). The open problem is now
+**discovery quality** (item 3): TF-IDF is the default index and paraphrase is still a coin-flip,
+with the lever now **behavioural I/O-example routing**, not more text. **cell80 owns this** —
+retrieval, the type-led index, the graph-authoring surface, the verifier, and the optional
+synthesis mode are cell80's discovery + agent surface, *not* SOMA's; SOMA only enters to
+**schedule** these capabilities as fast/slow organs under pressure. Numbered by theme, not
+strictly by sequence; the library grows by eval need:
 
 1. **Agent eval harness — the headline milestone. ✓ done (`cell-eval/`).** Can an LLM
    `search → inspect → run` the right cell instead of writing code? Concrete cases: pick
@@ -119,25 +126,25 @@ not strictly by sequence; the library grows by eval need:
      precision@1 / hit@k / MRR, split direct vs paraphrase vs adversarial. **`adoption`** and
      **`composition`** are agent loops over an **OpenAI-compatible endpoint (Ollama by
      default)** — cell tools (incl. `cell_graph_run`) as function calls.
-   - **Retrieval baseline (98-cell library, k=5):** overall **P@1 0.71**, and splitting it
-     shows the thesis-relevant trend: **direct P@1 0.92, paraphrase 0.45, adversarial 0.20**
-     (159 query rows). Growing 8 → 98 cells made retrieval *harder on purpose* — the ~12
-     confusable families (predicates, distance, number theory, bit ops, …) are exactly where
-     token-overlap breaks down: direct stays near-perfect on the library's own words, while
-     paraphrase sits in coin-flip territory (0.53 → 0.45) and the direct misses are now all
-     sibling collisions (`gcd` vs `gcd3`/`lcm`, `manhattan` vs `chebyshev`/`euclid_sq`). That
-     **gap holding open as the library grows** is the case for the type-led index. The
-     paraphrase brittleness is **deferred to SOMA** (a learning problem, not hand-tuned); the
-     direct row guards against search regressing outright.
+   - **Retrieval (98-cell library, k=5, `examples/retrieval_compare`):** the default index is
+     now **TF-IDF** (word + char-3-gram cosine, lazily rebuilt in `CellHost`) — **direct P@1
+     0.97, paraphrase 0.45, adversarial 0.31** — a few points over the old token overlap, but
+     paraphrase stays a coin-flip as the ~12 confusable families multiply. Growing 8 → 98 cells
+     made retrieval *harder on purpose*: the direct misses are now sibling collisions (`gcd` vs
+     `gcd3`/`lcm`, `manhattan` vs `chebyshev`/`euclid_sq`). A **type-led** re-rank by behaviour
+     was measured **neutral** on this set — those siblings are *same-shape*, invisible to text
+     *and* signature; the language-independent lever for them is behavioural I/O-example routing
+     (item 3). The direct row guards against search regressing outright.
    - **Adoption baseline (gemma-4-26B-A4B via Ollama, 8 tasks):** **adoption 0.75, correct
      1.00, correct-via-cell 0.75.** The two non-adoptions (`max` of 17/42; `25 within 1–10`)
      were answered directly in one turn — the model shortcuts the cell when the arithmetic is
      trivial, *not* a retrieval miss (when it did reach for a cell it found the right one every
      time). This is exactly why the two numbers are tracked apart: correctness was perfect; the
      gap is adoption (steering), not retrieval.
-   - **Status** — all three modes ship and run against a local model. Open levers: the
-     type-led index (item 3, for the paraphrase gap) and graph-authoring ergonomics (item 5).
-     (Composition baseline + the `used_graph` finding live under item 5.)
+   - **Status** — all three modes ship and run against a local model. The retrieval lever is
+     now **behavioural routing** (item 3 — the type-led text re-rank measured neutral); the
+     composition lever was **`cell_compose`** (item 5). (Composition baseline + the `used_graph`
+     finding live under item 5.)
 2. **Typed-state I/O over MCP — ✓ done.** `cell_run` now takes a `fields` object ({name:int})
    for state cells: named fields → struct addresses (baked into the manifest at compile time
    as `state_addrs`, so a warm host or a peer cell drives by name with no source), run, and the
@@ -145,15 +152,21 @@ not strictly by sequence; the library grows by eval need:
    (`CellHost::run_state` → PyO3 `run_state` → MCP `cell_run(fields=…)`), and manhattan is back
    in the adoption tasks. **This is also the wiring substrate for the networked graph (edge 0):
    a CellGraph edge is one cell's named output fed into another's named input.**
-3. **Type-led index (the escape hatch from paraphrase brittleness).** Token-overlap is
-   brittle — today *"is this number within the allowed limits"* retrieves `gcd` (its `number`
-   tag), not `range_check`. But unlike a KnnStore *fact* (surface form only), a cell carries a
-   **typed signature + capability/cost profile** — structured, verifiable metadata. "is this
-   within limits" is a boolean-output, three-integer-bound query, a structurally stronger
-   match for `range_check : (x,lo,hi)->bool` than `gcd : (a,b)->u16` *regardless of tags*. So
-   make the **typed signature the primary ranking signal and embeddings the tiebreaker**, not
-   the reverse — cell retrieval can beat fact retrieval *because the artifact is typed*. Gate
-   it on a **paraphrased-query** stress test (a `.cell` is only useful if findable).
+3. **Type-led / behavioural discovery — measured; the lever is behaviour, not text. ✓ shipped.**
+   The bet was that a cell's typed signature could out-rank text for paraphrases. Built and
+   measured (`cell80/src/typeled.rs`, `examples/retrieval_compare`): a **type-led** re-rank by
+   behavioural **predicate-ness** — learned from the corpus as smoothed log-odds, *no hardcoded
+   vocabulary*, labels free from running the cell — is **neutral** vs plain TF-IDF on the 98-cell
+   set. The honest reason: the residual misses are *same-shape siblings* (`min`/`max`, `gcd`/
+   `lcm`, `manhattan`/`chebyshev`) that an arity/signature signal can't separate, and inferring
+   the target shape from a paraphrase hits the same vocabulary gap. What *does* separate them is
+   **behaviour**: on `(3,7)→3` only `min` matches, not `max`. So **behavioural I/O-example
+   routing** is now first-class — `CellHost::route_by_examples`, a `route` serve verb, and the
+   **`cell_route_by_example`** MCP tool over `rank_by_examples` (`cell80/src/fingerprint.rs`):
+   phrasing- and language-independent selection grounded in what the cell *does*. (`TypeLedIndex`
+   stays as the principled re-ranker and the home for further structural axes.) **Next** — richer
+   behavioural fingerprints (output cardinality, monotonicity) and discriminating-probe selection,
+   then let the model *learn* to pick probes (where SOMA would schedule, not own).
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition — core built; this is the chase.** Wire cells into a
    small static graph (planner→scorer→validator→decision; worker-swarm→reducer).
@@ -183,8 +196,9 @@ not strictly by sequence; the library grows by eval need:
      (`used_pipeline` 0.50, raw `used_graph` still 0.00, composed **0.79**, correct **0.93**). So
      graph-authoring **ergonomics** was the lever, exactly as predicted — not the VM. (adoption
      1.00 / correct 1.00 on single cells throughout.)
-   - **Next** — non-linear (DAG) authoring sugar, let the model *learn* to author graphs (SOMA),
-     then a live **CellBus** (publish typed event → route to interested cells → commit).
+   - **Next** — non-linear (DAG) authoring sugar, let the model *learn* to author graphs
+     (cell80's authoring surface; SOMA would *schedule* these, not own them), then a live
+     **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library — two waves ✓ (98 cells).** `cell80/cells/`: predicates,
@@ -195,6 +209,13 @@ not strictly by sequence; the library grows by eval need:
    choice (state cells), vector dot/norm, time/budget arithmetic, and stateful/RNG cells
    (`lcg_next`/counters/`ema_update`).
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
+   (Compiler ergonomics groundwork landed: `bool` flags + unary `!`.)
+8. **Experimental: outcome-specified synthesis** (`cell80/src/synth.rs`) — the *inverse* of
+   `CellGraph`: given input→output **examples**, search over short cell chains and verify
+   candidates by execution (the verifier is the engine). A deliberately separate mode from
+   normal `search → inspect → run` tool-calling — *given behaviour, discover a graph* — kept out
+   of the main pitch. Honestly gated: a learned value heuristic only *ties* the hand Hamming
+   heuristic at equal budget so far (a kill gate, not a given). See `examples/composition_eval`.
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`

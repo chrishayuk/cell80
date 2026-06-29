@@ -85,8 +85,18 @@ pub fn rank_by_examples<'a>(
     examples: &[(Vec<u16>, u16)],
     budget: u64,
 ) -> Vec<&'a Manifest> {
+    rank_examples_iter(carts.iter(), examples, budget)
+}
+
+/// The engine behind [`rank_by_examples`], over any iterator of cartridges — so a warm
+/// [`CellHost`](crate::CellHost) can route its catalog (a map, not a slice) by behaviour
+/// without cloning. Deterministic: ties broken by id, so iteration order doesn't matter.
+pub(crate) fn rank_examples_iter<'a>(
+    carts: impl Iterator<Item = &'a Cartridge>,
+    examples: &[(Vec<u16>, u16)],
+    budget: u64,
+) -> Vec<&'a Manifest> {
     let mut scored: Vec<(i32, &Manifest)> = carts
-        .iter()
         .map(|c| {
             let mut runner = Runner::new(&c.program);
             let entry = c.manifest.entry.as_str();

@@ -497,6 +497,18 @@ fn lower_block(b: &syn::Block, ctx: &mut Ctx) -> Result<Vec<Stmt>, String> {
 }
 
 fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
+    // `!cond` negates the comparison in place (a tight conditional jump) rather than
+    // materialising a `0`/`1` and testing it — `if !self.started`, `while !done`.
+    if let syn::Expr::Unary(u) = expr {
+        if matches!(u.op, syn::UnOp::Not(_)) {
+            let inner = lower_cond(&u.expr, ctx)?;
+            return Ok(Cond {
+                cmp: negate_cmp(inner.cmp),
+                lhs: inner.lhs,
+                rhs: inner.rhs,
+            });
+        }
+    }
     // A comparison maps directly; any other bool expression means "is non-zero"
     // (e.g. `if input.held(Button::Left)`).
     if let syn::Expr::Binary(b) = expr {
@@ -517,6 +529,18 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
         lhs: e,
         rhs: Expr::Lit(0),
     })
+}
+
+/// The logical negation of a comparison (for `!cond` / `if !x`).
+fn negate_cmp(c: Cmp) -> Cmp {
+    match c {
+        Cmp::Eq => Cmp::Ne,
+        Cmp::Ne => Cmp::Eq,
+        Cmp::Lt => Cmp::Ge,
+        Cmp::Ge => Cmp::Lt,
+        Cmp::Le => Cmp::Gt,
+        Cmp::Gt => Cmp::Le,
+    }
 }
 
 fn cmp_op(op: &syn::BinOp) -> Option<Cmp> {

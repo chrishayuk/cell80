@@ -90,7 +90,11 @@ impl Asm {
         let here = self.here();
         self.symbols.insert(name.to_string(), here);
     }
-    pub(super) fn finish(mut self) -> (Vec<u8>, HashMap<String, u16>) {
+    /// Resolve fixups and return the image. `Err` on an unknown call target (a `fn`
+    /// referenced but never defined — e.g. an unconfigured prelude route) or an unplaced
+    /// label (an internal codegen invariant). Returns a diagnostic rather than panicking so
+    /// every compile entry surfaces it as a normal compile error.
+    pub(super) fn finish(mut self) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
         // Append the micro-runtime routines that were used.
         if self.needs_mul {
             self.define("__mul16");
@@ -101,7 +105,7 @@ impl Asm {
             self.code.extend_from_slice(DIVMOD16);
         }
         for (pos, l) in &self.label_fixups {
-            let a = self.labels[*l].expect("unplaced label");
+            let a = self.labels[*l].ok_or("rustz80: internal codegen error — unplaced label")?;
             self.code[*pos] = a as u8;
             self.code[*pos + 1] = (a >> 8) as u8;
         }
@@ -109,10 +113,10 @@ impl Asm {
             let a = *self
                 .symbols
                 .get(name)
-                .unwrap_or_else(|| panic!("unknown call target {name}"));
+                .ok_or_else(|| format!("rustz80: unknown call target `{name}`"))?;
             self.code[*pos] = a as u8;
             self.code[*pos + 1] = (a >> 8) as u8;
         }
-        (self.code, self.symbols)
+        Ok((self.code, self.symbols))
     }
 }
