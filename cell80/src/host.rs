@@ -78,6 +78,21 @@ impl CellHost {
             .collect()
     }
 
+    /// Discover **by behaviour**: rank the catalog by how many `(inputs, expected_output)`
+    /// examples each cell reproduces on the VM, best first (ties by id), positive only. This is
+    /// the phrasing- and language-independent signal text search can't give — it tells `min`
+    /// from `max` (on `(3,7)` one returns 3, the other 7) where their manifests are identical.
+    /// An empty result means *no cell in the library reproduces these examples*.
+    pub fn route_by_examples(&self, examples: &[(Vec<u16>, u16)], limit: usize) -> Vec<&Manifest> {
+        let mut hits = crate::fingerprint::rank_examples_iter(
+            self.catalog.values(),
+            examples,
+            crate::DEFAULT_CYCLES,
+        );
+        hits.truncate(limit);
+        hits
+    }
+
     /// Inspect a cell's manifest by id (the typed signature, caps, tags, …).
     pub fn manifest(&self, id: &str) -> Option<&Manifest> {
         self.catalog.get(id).map(|c| &c.manifest)
