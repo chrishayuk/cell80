@@ -109,11 +109,16 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval baseline on the 98-cell library: **direct P@1 0.92**, **paraphrase 0.45** — token
-overlap stays strong on the library's own words but degrades under rewording as confusable
-siblings multiply (a dozen families: predicates, safe arithmetic, bounds, percent, ranking,
-bit ops, number theory, distance, encoding, hashing, …). That gap *holding open as the library
-grows* is exactly what the type-led index targets.
+Retrieval on the 98-cell library (`cargo run --example retrieval_compare -p cell80`): the
+default index is now **TF-IDF** (word + char-3-gram cosine) — **direct P@1 0.97**, **paraphrase
+0.45** — a few points over the old token overlap, but paraphrase stays a coin-flip as confusable
+siblings multiply (a dozen families: predicates, bounds, distance, number theory, bit ops,
+hashing, …). A **type-led** re-rank by the cell's *behaviour* (is it a predicate? — learned from
+the corpus, not hardcoded) was measured **neutral** on this set, for an honest reason: the
+residual misses are *same-shape siblings* (`min`/`max`, `gcd`/`lcm`, `manhattan`/`chebyshev`) no
+text or signature signal can separate. The lever for those is **behavioural I/O-example routing**
+(`cell_route_by_example`): on `(3,7)→3` only `min` matches, not `max` — selection grounded in
+what the cell *does*, phrasing- and language-independent.
 Adoption/composition (`granite4.1:3b`): **adoption 1.00 / correct 1.00**; composition once read
 **composed 0.50 / correct 0.83 — but `used_graph` 0.00**: the small model *chains* cell calls
 and never authors the wire-level graph manifest. That finding drove a fix — **`cell_compose`**,
@@ -270,13 +275,17 @@ kernels are the wedge.
 ## Connect it to an LLM (MCP)
 
 `cell80-mcp` exposes a warm library over MCP as a thin **router** — not a tool per cell.
-A few fixed tools (`cell_search` / `cell_inspect` / `cell_list` / `cell_run` / `cell_compose` /
-`cell_graph_run`) let a model find, run, and *compose* the few cells it wants while the library
-stays out of context. Built on the PyO3 binding `cell80-py` (the warm host as a Python class),
-the same Rust-core → PyO3 → Python-MCP shape as the rest of the ecosystem.
+A few fixed tools (`cell_search` / `cell_route_by_example` / `cell_inspect` / `cell_list` /
+`cell_run` / `cell_compose` / `cell_graph_run`) let a model find, run, and *compose* the few
+cells it wants while the library stays out of context. Built on the PyO3 binding `cell80-py`
+(the warm host as a Python class), the same Rust-core → PyO3 → Python-MCP shape as the rest of
+the ecosystem.
 
 ```python
 cell_search("grid distance")     # → a few brief manifests
+# don't know the name, or the words are ambiguous? route by BEHAVIOUR — the cell that
+# reproduces these input→output examples (tells `min` from `max` where text can't):
+cell_route_by_example([{"in": [3, 7], "out": 3}, {"in": [10, 3], "out": 3}])  # → min, not max
 cell_inspect("manhattan")        # → Pts::run() -> u16, typed state
 cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  (warm)
 # state cells drive by NAME — typed fields in, full state out (no raw addresses):
