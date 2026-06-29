@@ -32,6 +32,23 @@ pub fn parse_args(s: &str) -> Result<Vec<u16>, String> {
         .collect()
 }
 
+/// Parse `route` example tokens like `"3,7=7"` into `(inputs, expected_output)` pairs.
+fn parse_examples(toks: &[&str]) -> Result<Vec<(Vec<u16>, u16)>, String> {
+    toks.iter()
+        .map(|t| {
+            let (lhs, rhs) = t
+                .split_once('=')
+                .ok_or_else(|| format!("bad example `{t}` (want in,..=out)"))?;
+            let inputs = parse_args(lhs)?;
+            let want = parse_args(rhs)?;
+            match want.as_slice() {
+                [out] => Ok((inputs, *out)),
+                _ => Err(format!("bad example `{t}` (one output after `=`)")),
+            }
+        })
+        .collect()
+}
+
 /// Parse a `--set` spec — comma-separated `addr:ty=value` (addr/value decimal or `0x..`),
 /// the typed inputs written into memory before the run.
 fn parse_sets(s: &str) -> Result<Vec<(u16, Ty, u64)>, String> {
@@ -151,22 +168,7 @@ fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>
     }
 }
 
-/// Build an index over every cell (`.rs` / `.cell`) in `dir`, sorted by id.
-fn index_dir(dir: &str) -> Result<CellIndex, String> {
-    let mut idx = CellIndex::new();
-    let mut paths: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{dir}: {e}"))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    paths.sort();
-    for path in paths {
-        if let Some(c) = library_cartridge(&path) {
-            idx.add(c?.manifest);
-        }
-    }
-    Ok(idx)
-}
-
+/// Format a manifest as one library/search-result line: `id — summary  [tags]  (signature)`.
 fn render(m: &crate::Manifest) -> String {
     format!(
         "  {} — {}  [{}]  ({})",
@@ -206,11 +208,12 @@ fn cmd_index(args: &[String]) -> Result<String, String> {
 fn cmd_search(args: &[String]) -> Result<String, String> {
     let query = args.first().ok_or(USAGE)?;
     let dir = args.get(1).ok_or("search needs a directory")?;
-    let idx = index_dir(dir)?;
-    let hits = idx.search(query, 10);
+    // Build a warm host so `search` uses the *same* TF-IDF index path as `serve`/MCP.
+    let host = host_from_dir(dir)?;
+    let hits = host.search(query, 10);
     let mut out = format!(
         "indexed {} cells; query `{query}` → {} match(es):\n",
-        idx.len(),
+        host.len(),
         hits.len()
     );
     for m in hits {
@@ -244,8 +247,8 @@ pub(crate) fn dispatch(host: &mut CellHost, line: &str) -> String {
     match it.next() {
         None => String::new(),
         Some("help") => {
-            "commands: search <query> | inspect <id> | load <id> | run <handle> [a,b,c] | \
-             unload <handle> | help"
+            "commands: search <query> | route <in,..>=<out> ... | inspect <id> | load <id> | \
+             run <handle> [a,b,c] | unload <handle> | help"
                 .into()
         }
         Some("search") => {
@@ -258,6 +261,26 @@ pub(crate) fn dispatch(host: &mut CellHost, line: &str) -> String {
                     .map(|m| render(m))
                     .collect::<Vec<_>>()
                     .join("\n")
+            }
+        }
+        // Discover by *behaviour*: `route 3,7=7 10,3=10` finds the cell(s) reproducing those
+        // input→output examples — the phrasing-independent signal that tells `min` from `max`.
+        Some("route") => {
+            let toks: Vec<&str> = it.collect();
+            match parse_examples(&toks) {
+                Err(e) => e,
+                Ok(ex) if ex.is_empty() => "usage: route <in,..>=<out> [<in,..>=<out> ...]".into(),
+                Ok(ex) => {
+                    let hits = host.route_by_examples(&ex, 10);
+                    if hits.is_empty() {
+                        "no cell in the library reproduces those examples".into()
+                    } else {
+                        hits.iter()
+                            .map(|m| render(m))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    }
+                }
             }
         }
         Some("inspect") => match it.next() {
@@ -316,7 +339,7 @@ fn serve_loop(
     writeln!(
         out,
         "rustz80-cell session: {} cells from `{dir}`. \
-         commands: search/inspect/load/run/unload/help; `quit` or ^D to end.",
+         commands: search/route/inspect/load/run/unload/help; `quit` or ^D to end.",
         host.len()
     )
     .map_err(|e| e.to_string())?;

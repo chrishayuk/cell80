@@ -543,6 +543,18 @@ fn cell_host_warm_session() {
         .run_state(h, &[("a".into(), 1)], DEFAULT_CYCLES)
         .is_err());
 
+    // Discover by BEHAVIOUR: examples only `add` reproduces pick it over `mul`, and vice
+    // versa — the phrasing-independent signal text search can't give. No match → empty.
+    assert_eq!(
+        host.route_by_examples(&[(vec![4, 5], 9), (vec![10, 2], 12)], 5)[0].id,
+        "add"
+    );
+    assert_eq!(
+        host.route_by_examples(&[(vec![6, 7], 42), (vec![3, 3], 9)], 5)[0].id,
+        "mul"
+    );
+    assert!(host.route_by_examples(&[(vec![2, 2], 100)], 5).is_empty());
+
     // Unload returns the bus to the pool; the freed handle slot is reused next load.
     host.unload(h).unwrap();
     assert_eq!(host.live_count(), 1);

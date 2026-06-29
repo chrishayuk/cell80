@@ -29,6 +29,7 @@ mod selector;
 mod state;
 mod synth;
 mod tfidf;
+mod typeled;
 
 pub use cartridge::{Cartridge, CartridgeOpts, Manifest};
 pub use cli::{parse_args, run_cli, USAGE};
@@ -44,3 +45,4 @@ pub use selector::{fingerprint_features, Encoder, Rng, Routed, SlotRouter};
 pub use state::{state_field_addrs, StateCell, STATE_BASE};
 pub use synth::{synthesize, synthesize_with, Op, Plan};
 pub use tfidf::{Tfidf, TfidfIndex};
+pub use typeled::TypeLedIndex;

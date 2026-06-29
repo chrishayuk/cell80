@@ -88,7 +88,7 @@ pub fn compile_program(src: &str) -> Result<Program, String> {
 pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
     let funcs = lower_program(file, &PreludeConfig::default())?;
     let funcs = inline::inline(funcs, &[]);
-    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
+    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target)?;
     Ok(Program { code, symbols })
 }
 
@@ -106,7 +106,7 @@ pub fn compile_file_pruned(
     let funcs = lower_program(file, &PreludeConfig::default())?;
     let funcs = inline::inline(funcs, roots);
     let funcs = dce::prune(funcs, roots);
-    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
+    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target)?;
     Ok(Program { code, symbols })
 }
 
@@ -292,7 +292,7 @@ pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, Str
     let funcs = inline::inline(funcs, &[entry]);
     let funcs = dce::prune(funcs, &[entry]);
     // Emit a DI/EI trampoline at ORG and boot into it (`USR ORG`).
-    let (code, _) = codegen::codegen_program(&funcs, ORG, Some(entry), Target::Spectrum48);
+    let (code, _) = codegen::codegen_program(&funcs, ORG, Some(entry), Target::Spectrum48)?;
     Ok(to_tap(&code, ORG, ORG, name))
 }
 
@@ -302,6 +302,6 @@ pub fn compile_fn(src: &str) -> Result<Vec<u8>, String> {
     let item: syn::ItemFn = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
     let name = item.sig.ident.to_string();
     let func = lower::lower(&item)?;
-    let (code, _) = codegen::codegen_program(&[(name, func)], ORG, None, Target::Spectrum48);
+    let (code, _) = codegen::codegen_program(&[(name, func)], ORG, None, Target::Spectrum48)?;
     Ok(code)
 }

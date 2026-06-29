@@ -171,6 +171,16 @@ impl TfidfIndex {
     /// The manifests best matching `query` by tf-idf cosine, best first (ties broken by id),
     /// up to `limit`; only positive (non-zero) similarities are returned.
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Manifest> {
+        self.scored(query, limit)
+            .into_iter()
+            .map(|(_, m)| m)
+            .collect()
+    }
+
+    /// Like [`search`](Self::search) but keeps the cosine score with each manifest — the form
+    /// a re-ranker (e.g. [`TypeLedIndex`](crate::TypeLedIndex)) needs to combine the text
+    /// signal with a structural one. Best first (ties broken by id), positive scores only.
+    pub fn scored(&self, query: &str, limit: usize) -> Vec<(f32, &Manifest)> {
         let q = self.model.encode(query);
         let mut scored: Vec<(f32, &Manifest)> = self
             .entries
@@ -184,7 +194,7 @@ impl TfidfIndex {
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| a.1.id.cmp(&b.1.id))
         });
-        scored.into_iter().take(limit).map(|(_, m)| m).collect()
+        scored.into_iter().take(limit).collect()
     }
 }
 
