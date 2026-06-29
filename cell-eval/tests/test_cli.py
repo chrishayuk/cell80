@@ -54,7 +54,10 @@ def test_composition_success_path_renders(capsys, monkeypatch):
     from cell_eval.composition import CompositionReport, TaskResult
 
     rep = CompositionReport(model="fake", base_url="http://x/v1")
-    rep.tasks = [TaskResult("t1", "p", 100, 100, True, True, ["abs_diff", "clamp"], True, 3)]
+    rep.tasks = [
+        # task_id, prompt, expected, answer, composed, used_graph, used_pipeline, cells_run, correct, turns
+        TaskResult("t1", "p", 100, 100, True, True, False, ["abs_diff", "clamp"], True, 3)
+    ]
     monkeypatch.setattr(composition, "run_composition", lambda **_: rep)
 
     assert main(["composition", "--model", "fake"]) == 0

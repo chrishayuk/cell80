@@ -66,6 +66,7 @@ def render_composition(report) -> str:
         f"composition eval — model={report.model}  endpoint={report.base_url}",
         "",
         f"  n={o['n']}  composed={o['composed']:.2f}  used_graph={o['used_graph']:.2f}  "
+        f"used_pipeline={o['used_pipeline']:.2f}  "
         f"correct={o['correct']:.2f}  correct_via_composition={o['correct_via_composition']:.2f}",
         "",
         "per task:",
@@ -73,7 +74,9 @@ def render_composition(report) -> str:
     for t in report.tasks:
         mark = "✓" if t.correct else "✗"
         how = (
-            "graph"
+            "pipeline"
+            if t.used_pipeline
+            else "graph"
             if t.used_graph
             else (f"chain:{len(set(t.cells_run))}" if t.composed else "no-compose")
         )
