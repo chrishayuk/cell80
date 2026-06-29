@@ -17,6 +17,7 @@
 
 mod codegen;
 mod dce;
+mod inline;
 mod ir;
 mod lower;
 mod tap;
@@ -86,6 +87,7 @@ pub fn compile_program(src: &str) -> Result<Program, String> {
 /// (e.g. the `cell80` crate's capability scan) avoid a second parse, and pick the backend.
 pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
     let funcs = lower_program(file, &PreludeConfig::default())?;
+    let funcs = inline::inline(funcs, &[]);
     let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
     Ok(Program { code, symbols })
 }
@@ -102,6 +104,7 @@ pub fn compile_file_pruned(
     roots: &[&str],
 ) -> Result<Program, String> {
     let funcs = lower_program(file, &PreludeConfig::default())?;
+    let funcs = inline::inline(funcs, roots);
     let funcs = dce::prune(funcs, roots);
     let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target);
     Ok(Program { code, symbols })
@@ -286,6 +289,7 @@ pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, Str
     if !funcs.iter().any(|(n, _)| n == entry) {
         return Err(format!("no `{entry}` function"));
     }
+    let funcs = inline::inline(funcs, &[entry]);
     let funcs = dce::prune(funcs, &[entry]);
     // Emit a DI/EI trampoline at ORG and boot into it (`USR ORG`).
     let (code, _) = codegen::codegen_program(&funcs, ORG, Some(entry), Target::Spectrum48);

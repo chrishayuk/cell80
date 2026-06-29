@@ -173,7 +173,15 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
   function-level orchestration.
 - **Codegen** (`codegen/`: `asm` · `runtime` · `expr` · `stmt`): IR → Z80. Locals (incl.
   params) live in a per-function scratch region; expressions evaluate via `HL` + the stack;
-  `*`/`/`/`%` `CALL` an appended `__mul16`/`__divmod16` (Spectrum) or trap (Cell).
+  `*`/`/`/`%` `CALL` an appended `__mul16`/`__divmod16` (Spectrum) or trap (Cell). The frame
+  loop (`codegen_loop`) places that scratch region **just above the emitted code** (measure
+  then place) so a large program's code can't grow into its own locals, and **errors** if the
+  code + locals won't fit below the state region.
+- **Optimization** (`inline.rs`, `dce.rs`, run before codegen): the **inliner** folds each
+  single-call-site, return-free, scalar/void function into its one caller — argument
+  substitution (pure read-only params) + slot reuse make decomposed source compile as
+  compactly as if hand-inlined; **DCE** then drops the now-uncalled defs (and any unreachable
+  prelude fn). So you can split a big `update` into clean `&mut self` helpers for free.
 - **Library API**: `compile_program(src) -> Program { code, symbols }`,
   `compile_fn(src) -> Vec<u8>`, `to_tap(code, org, entry, name)`,
   `compile_to_tap(src, entry, name)`. Code is laid out from `ORG = 0x8000`.
