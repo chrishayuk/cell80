@@ -344,7 +344,8 @@ fn frame_loop_generator() {
     let file: syn::File = syn::parse_str("fn update() { poke(45056u16, 1u8); }").unwrap();
     let funcs = rustz80::lower_program(&file, &PreludeConfig::new()).unwrap();
     for state_bytes in [6u16, 1, 0] {
-        let code = rustz80::codegen_loop(&funcs, rustz80::ORG, "update", 0xB000, state_bytes);
+        let code =
+            rustz80::codegen_loop(&funcs, rustz80::ORG, "update", 0xB000, state_bytes).unwrap();
         assert_eq!(code[0], 0xF3, "frame loop starts with DI"); // DI
         assert!(code.len() > 8);
     }
@@ -355,21 +356,16 @@ fn frame_loop_errors_when_over_budget() {
     // The locals scratch region is placed just above the code; if code + locals can't fit
     // below `state_base`, codegen must **fail loudly** rather than silently overwrite code
     // with slot writes (the latent bug that froze a large game). Here `state_base` sits only
-    // a few bytes past `ORG`, so there's no room — codegen_loop must panic, not miscompile.
+    // a few bytes past `ORG`, so there's no room — codegen_loop must return `Err`, not miscompile.
     let file: syn::File = syn::parse_str(
         "fn update() { let mut a = 1u16; let mut b = 2u16; poke(a, 1u8); poke(b, 1u8); }",
     )
     .unwrap();
     let funcs = rustz80::lower_program(&file, &PreludeConfig::new()).unwrap();
-    let prev = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {})); // keep the test output clean
-    let r = std::panic::catch_unwind(|| {
-        rustz80::codegen_loop(&funcs, rustz80::ORG, "update", rustz80::ORG + 4, 2)
-    });
-    std::panic::set_hook(prev);
+    let r = rustz80::codegen_loop(&funcs, rustz80::ORG, "update", rustz80::ORG + 4, 2);
     assert!(
         r.is_err(),
-        "over-budget codegen_loop must panic, not silently miscompile"
+        "over-budget codegen_loop must return Err, not silently miscompile"
     );
 }
 
