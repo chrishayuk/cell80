@@ -196,11 +196,13 @@ not strictly by sequence; the library grows by eval need:
    (`lcg_next`/counters/`ema_update`).
 7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
 
-✓ **Published to crates.io @ 0.5.0** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered
-publish job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the
-`cell` feature — the cell layer is now the `cell80` crate.) **0.6.0 in development** — the
-compiler ergonomics (bool-as-value, `&&`/`||`, runtime shifts) + dead-code elimination, the
-98-cell standard library with a shared kernel prelude, and Spectrum-side DCE in `compile_to_tap`.
+✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
+job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`
+feature — the cell layer is now the `cell80` crate.) **0.6.0** added the compiler ergonomics
+(bool-as-value, `&&`/`||`, runtime shifts) + dead-code elimination, the 98-cell standard library
+with a shared kernel prelude, and Spectrum-side DCE in `compile_to_tap`. **0.7.0** adds the
+`cell_compose` pipeline graph-authoring helper, a single-call inliner, and the cell layer's
+learned retrieval router + program-synthesis modules.
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
 
