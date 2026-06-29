@@ -42,7 +42,10 @@ impl Op {
                     .unwrap_or(v)
             })
             .collect();
-        Op { name: name.into(), table }
+        Op {
+            name: name.into(),
+            table,
+        }
     }
 
     /// Apply the op to a value (executes the precomputed cell transition).
@@ -64,13 +67,22 @@ pub struct Plan {
 
 /// Total Hamming distance from the current values to the targets — the hand heuristic.
 fn hamming(state: &[u16], targets: &[u16]) -> i64 {
-    state.iter().zip(targets).map(|(s, t)| (s ^ t).count_ones() as i64).sum()
+    state
+        .iter()
+        .zip(targets)
+        .map(|(s, t)| (s ^ t).count_ones() as i64)
+        .sum()
 }
 
 /// Synthesize a chain (≤ `max_depth` ops) mapping every example input to its output, via A*
 /// over the verifier ordered by the **hand** Hamming heuristic. `budget` caps node expansions.
 /// Returns the first chain found, or `None` if none exists within the budget/depth.
-pub fn synthesize(examples: &[(u16, u16)], ops: &[Op], max_depth: usize, budget: usize) -> Option<Plan> {
+pub fn synthesize(
+    examples: &[(u16, u16)],
+    ops: &[Op],
+    max_depth: usize,
+    budget: usize,
+) -> Option<Plan> {
     synthesize_with(examples, ops, max_depth, budget, &hamming)
 }
 
@@ -87,7 +99,11 @@ pub fn synthesize_with(
     let inputs: Vec<u16> = examples.iter().map(|&(i, _)| i).collect();
     let targets: Vec<u16> = examples.iter().map(|&(_, o)| o).collect();
     if inputs == targets {
-        return Some(Plan { steps: vec![], tested: 0, depth: 0 });
+        return Some(Plan {
+            steps: vec![],
+            tested: 0,
+            depth: 0,
+        });
     }
 
     // Max-heap on negated A* cost (g + h); a unique sequence number breaks ties cheaply (so
@@ -134,7 +150,10 @@ mod tests {
         Cartridge::compile(
             src,
             CellConfig::sandboxed(),
-            CartridgeOpts { id: Some(id.into()), ..Default::default() },
+            CartridgeOpts {
+                id: Some(id.into()),
+                ..Default::default()
+            },
         )
         .unwrap()
     }
@@ -142,7 +161,10 @@ mod tests {
     fn ops() -> Vec<Op> {
         let xor = cell("mask_xor", "fn run(a: u16, b: u16) -> u16 { a ^ b }");
         let add = cell("add_sat", "fn run(a: u16, b: u16) -> u16 { let s = a.wrapping_add(b); let mut r = s; if s < a { r = 65535u16; } r }");
-        let swap = cell("swap_bytes", "fn run(x: u16) -> u16 { (x << 8u16) | (x >> 8u16) }");
+        let swap = cell(
+            "swap_bytes",
+            "fn run(x: u16) -> u16 { (x << 8u16) | (x >> 8u16) }",
+        );
         vec![
             Op::from_cell("xor_00ff", &xor, 0x00FF),
             Op::from_cell("xor_ff00", &xor, 0xFF00),
@@ -165,13 +187,19 @@ mod tests {
         let ops = ops();
         // Hidden target program: add_5 then swap. Generate examples from it.
         let truth = ["add_5".to_string(), "swap".to_string()];
-        let examples: Vec<(u16, u16)> =
-            [3u16, 40, 100, 7].iter().map(|&x| (x, run_chain(&ops, &truth, x))).collect();
+        let examples: Vec<(u16, u16)> = [3u16, 40, 100, 7]
+            .iter()
+            .map(|&x| (x, run_chain(&ops, &truth, x)))
+            .collect();
 
         let plan = synthesize(&examples, &ops, 4, 50_000).expect("a chain exists");
         // Not necessarily the same chain — but it MUST reproduce every example (verifier).
         for &(x, y) in &examples {
-            assert_eq!(run_chain(&ops, &plan.steps, x), y, "synthesized chain must satisfy the spec");
+            assert_eq!(
+                run_chain(&ops, &plan.steps, x),
+                y,
+                "synthesized chain must satisfy the spec"
+            );
         }
         assert!(plan.depth <= 4);
     }
@@ -180,7 +208,10 @@ mod tests {
     fn identity_spec_is_the_empty_chain() {
         let ops = ops();
         let examples = vec![(5u16, 5u16), (9, 9)];
-        assert_eq!(synthesize(&examples, &ops, 4, 1000).unwrap().steps, Vec::<String>::new());
+        assert_eq!(
+            synthesize(&examples, &ops, 4, 1000).unwrap().steps,
+            Vec::<String>::new()
+        );
     }
 
     #[test]
@@ -195,7 +226,10 @@ mod tests {
     fn budget_is_enforced() {
         let ops = ops();
         let examples = vec![(3u16, run_chain(&ops, &["add_5".to_string()], 3))]; // 1-step solvable
-        assert!(synthesize(&examples, &ops, 4, 0).is_none(), "budget 0 can't expand a node");
+        assert!(
+            synthesize(&examples, &ops, 4, 0).is_none(),
+            "budget 0 can't expand a node"
+        );
         let plan = synthesize(&examples, &ops, 4, 100).expect("enough budget");
         assert!(plan.tested <= 100, "never expands past the budget");
     }
@@ -204,8 +238,10 @@ mod tests {
     fn pluggable_heuristic_still_solves() {
         let ops = ops();
         let truth = ["add_5".to_string(), "swap".to_string()];
-        let examples: Vec<(u16, u16)> =
-            [10u16, 20].iter().map(|&x| (x, run_chain(&ops, &truth, x))).collect();
+        let examples: Vec<(u16, u16)> = [10u16, 20]
+            .iter()
+            .map(|&x| (x, run_chain(&ops, &truth, x)))
+            .collect();
         // A trivial heuristic (constant 0) degrades A* to uniform-cost search; must still solve
         // (this is the seam a learned value net plugs into — gated, never assumed).
         let plan = synthesize_with(&examples, &ops, 4, 200_000, &|_, _| 0).expect("found");
