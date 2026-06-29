@@ -30,7 +30,11 @@ fn char_ngrams(s: &str, n: usize) -> Vec<String> {
     let chars: Vec<char> = s.to_lowercase().chars().collect();
     if chars.len() < n {
         let whole: String = chars.into_iter().collect();
-        return if whole.is_empty() { vec![] } else { vec![whole] };
+        return if whole.is_empty() {
+            vec![]
+        } else {
+            vec![whole]
+        };
     }
     chars.windows(n).map(|w| w.iter().collect()).collect()
 }
@@ -64,8 +68,10 @@ impl Tfidf {
         }
         let mut df = vec![0u32; vocab.len()];
         for d in docs {
-            let mut seen: Vec<usize> =
-                feats(d).iter().filter_map(|f| vocab.get(f).copied()).collect();
+            let mut seen: Vec<usize> = feats(d)
+                .iter()
+                .filter_map(|f| vocab.get(f).copied())
+                .collect();
             seen.sort_unstable();
             seen.dedup();
             for i in seen {
@@ -229,7 +235,11 @@ mod tests {
             state_addrs: vec![],
         };
         let idx = TfidfIndex::build(vec![
-            mk("gcd", "greatest common divisor of two numbers", &["math", "divisor"]),
+            mk(
+                "gcd",
+                "greatest common divisor of two numbers",
+                &["math", "divisor"],
+            ),
             mk("min", "the smaller of two numbers", &["math", "compare"]),
             mk("clamp", "constrain a value to a range", &["math", "bound"]),
         ]);

@@ -41,21 +41,93 @@ struct Spec {
 fn fixture() -> Vec<Spec> {
     macro_rules! s {
         ($id:literal, $file:literal, $d:literal, $p:literal, $a:literal) => {
-            Spec { id: $id, src: include_str!($file), direct: $d, paraphrase: $p, adversarial: $a }
+            Spec {
+                id: $id,
+                src: include_str!($file),
+                direct: $d,
+                paraphrase: $p,
+                adversarial: $a,
+            }
         };
     }
     vec![
-        s!("min", "../cells/min.rs", "the smaller of two numbers", "which of two values is lower", "pick the lesser of two numbers, not the larger"),
-        s!("max", "../cells/max.rs", "the larger of two numbers", "which of two values is higher", "the bigger of two numbers, not the smaller one"),
-        s!("gcd", "../cells/gcd.rs", "the greatest common divisor of two numbers", "the largest integer that divides both numbers evenly", "the common factor shared by two numbers"),
-        s!("lcm", "../cells/lcm.rs", "the least common multiple of two numbers", "the smallest number both values divide into", "the common multiple of two numbers"),
-        s!("divides", "../cells/divides.rs", "does the first number divide evenly by the second", "is one number a whole multiple of another", "can two numbers be divided with no remainder"),
-        s!("abs_diff", "../cells/abs_diff.rs", "the absolute difference between two numbers", "how far apart two values are", "the distance between two numbers on a line"),
-        s!("eq", "../cells/eq.rs", "are two numbers equal", "do two values match exactly", "compare two numbers for equality, not order"),
-        s!("is_lt", "../cells/is_lt.rs", "is the first number less than the second", "does one value come before another in order", "compare two numbers, is the first the smaller"),
-        s!("is_gt", "../cells/is_gt.rs", "is the first number greater than the second", "does one value exceed another", "compare two numbers, is the first the larger"),
-        s!("avg2", "../cells/avg2.rs", "the average of two numbers", "add two numbers and halve the result", "the value in the middle of two numbers"),
-        s!("safe_mod", "../cells/safe_mod.rs", "the remainder after dividing two numbers", "what is left over when one number is divided by another", "divide two numbers and give the leftover, not the quotient"),
+        s!(
+            "min",
+            "../cells/min.rs",
+            "the smaller of two numbers",
+            "which of two values is lower",
+            "pick the lesser of two numbers, not the larger"
+        ),
+        s!(
+            "max",
+            "../cells/max.rs",
+            "the larger of two numbers",
+            "which of two values is higher",
+            "the bigger of two numbers, not the smaller one"
+        ),
+        s!(
+            "gcd",
+            "../cells/gcd.rs",
+            "the greatest common divisor of two numbers",
+            "the largest integer that divides both numbers evenly",
+            "the common factor shared by two numbers"
+        ),
+        s!(
+            "lcm",
+            "../cells/lcm.rs",
+            "the least common multiple of two numbers",
+            "the smallest number both values divide into",
+            "the common multiple of two numbers"
+        ),
+        s!(
+            "divides",
+            "../cells/divides.rs",
+            "does the first number divide evenly by the second",
+            "is one number a whole multiple of another",
+            "can two numbers be divided with no remainder"
+        ),
+        s!(
+            "abs_diff",
+            "../cells/abs_diff.rs",
+            "the absolute difference between two numbers",
+            "how far apart two values are",
+            "the distance between two numbers on a line"
+        ),
+        s!(
+            "eq",
+            "../cells/eq.rs",
+            "are two numbers equal",
+            "do two values match exactly",
+            "compare two numbers for equality, not order"
+        ),
+        s!(
+            "is_lt",
+            "../cells/is_lt.rs",
+            "is the first number less than the second",
+            "does one value come before another in order",
+            "compare two numbers, is the first the smaller"
+        ),
+        s!(
+            "is_gt",
+            "../cells/is_gt.rs",
+            "is the first number greater than the second",
+            "does one value exceed another",
+            "compare two numbers, is the first the larger"
+        ),
+        s!(
+            "avg2",
+            "../cells/avg2.rs",
+            "the average of two numbers",
+            "add two numbers and halve the result",
+            "the value in the middle of two numbers"
+        ),
+        s!(
+            "safe_mod",
+            "../cells/safe_mod.rs",
+            "the remainder after dividing two numbers",
+            "what is left over when one number is divided by another",
+            "divide two numbers and give the leftover, not the quotient"
+        ),
     ]
 }
 
@@ -65,10 +137,16 @@ fn parse_meta(src: &str) -> (String, Vec<String>) {
     let mut summary = String::new();
     let mut tags = Vec::new();
     for line in src.lines() {
-        let Some(rest) = line.trim().strip_prefix("//!") else { continue };
+        let Some(rest) = line.trim().strip_prefix("//!") else {
+            continue;
+        };
         let rest = rest.trim();
         if let Some(t) = rest.strip_prefix("tags:") {
-            tags = t.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+            tags = t
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
         } else if summary.is_empty() && !rest.is_empty() {
             summary = rest.to_string();
         }
@@ -84,7 +162,12 @@ fn compile_all(specs: &[Spec]) -> Vec<Cartridge> {
             Cartridge::compile(
                 s.src,
                 CellConfig::sandboxed(),
-                CartridgeOpts { id: Some(s.id.into()), summary, tags, ..Default::default() },
+                CartridgeOpts {
+                    id: Some(s.id.into()),
+                    summary,
+                    tags,
+                    ..Default::default()
+                },
             )
             .unwrap_or_else(|e| panic!("compile {}: {e}", s.id))
         })
@@ -93,7 +176,10 @@ fn compile_all(specs: &[Spec]) -> Vec<Cartridge> {
 
 /// P@1: fraction of test cases whose top-ranked id equals the expected id.
 fn p_at_1(tests: &[(&str, &str)], top: &dyn Fn(&str) -> Option<String>) -> f32 {
-    let hit = tests.iter().filter(|(q, want)| top(q).as_deref() == Some(*want)).count();
+    let hit = tests
+        .iter()
+        .filter(|(q, want)| top(q).as_deref() == Some(*want))
+        .count();
     hit as f32 / tests.len().max(1) as f32
 }
 
@@ -148,16 +234,43 @@ fn main() {
     let learned_top = |q: &str| router.top(&enc.encode(q)).map(str::to_string);
 
     let rows = [
-        ("token-overlap (CellIndex)", p_at_1(&direct, &token_top), p_at_1(&para, &token_top), p_at_1(&adv, &token_top)),
-        ("tf-idf (TfidfIndex)", p_at_1(&direct, &tfidf_top), p_at_1(&para, &tfidf_top), p_at_1(&adv, &tfidf_top)),
-        ("learned slot-router", p_at_1(&direct, &learned_top), p_at_1(&para, &learned_top), p_at_1(&adv, &learned_top)),
+        (
+            "token-overlap (CellIndex)",
+            p_at_1(&direct, &token_top),
+            p_at_1(&para, &token_top),
+            p_at_1(&adv, &token_top),
+        ),
+        (
+            "tf-idf (TfidfIndex)",
+            p_at_1(&direct, &tfidf_top),
+            p_at_1(&para, &tfidf_top),
+            p_at_1(&adv, &tfidf_top),
+        ),
+        (
+            "learned slot-router",
+            p_at_1(&direct, &learned_top),
+            p_at_1(&para, &learned_top),
+            p_at_1(&adv, &learned_top),
+        ),
     ];
 
-    println!("\nCell selection — P@1 ({} confusable 2-arg cells)\n", specs.len());
-    println!("  {:<28} {:>8} {:>11} {:>13}", "method (text query)", "direct", "paraphrase", "adversarial");
+    println!(
+        "\nCell selection — P@1 ({} confusable 2-arg cells)\n",
+        specs.len()
+    );
+    println!(
+        "  {:<28} {:>8} {:>11} {:>13}",
+        "method (text query)", "direct", "paraphrase", "adversarial"
+    );
     println!("  {}", "-".repeat(64));
     for (name, d, p, a) in &rows {
-        println!("  {:<28} {:>7.0}% {:>10.0}% {:>12.0}%", name, 100.0 * d, 100.0 * p, 100.0 * a);
+        println!(
+            "  {:<28} {:>7.0}% {:>10.0}% {:>12.0}%",
+            name,
+            100.0 * d,
+            100.0 * p,
+            100.0 * a
+        );
     }
 
     // Behavioural routing — phrasing-independent: the request carries desired I/O examples
@@ -176,9 +289,14 @@ fn main() {
             }
             examples.push((p.to_vec(), out.result));
         }
-        rank_by_examples(&carts, &examples, DEFAULT_CYCLES).first().map(|m| m.id.clone())
+        rank_by_examples(&carts, &examples, DEFAULT_CYCLES)
+            .first()
+            .map(|m| m.id.clone())
     };
-    let beh_hits = specs.iter().filter(|s| behavioural_top(s.id).as_deref() == Some(s.id)).count();
+    let beh_hits = specs
+        .iter()
+        .filter(|s| behavioural_top(s.id).as_deref() == Some(s.id))
+        .count();
     let beh = beh_hits as f32 / specs.len() as f32;
 
     // Kill-gate verdict (honest).
@@ -192,7 +310,11 @@ fn main() {
         "TIE — not demonstrated at one query/cell (needs query scaling); reported honestly"
     };
     println!("\n  KILL GATE — learned slot vs tf-idf on adversarial:");
-    println!("    learned {:.0}% vs tf-idf {:.0}%  ->  {verdict}", 100.0 * lrn_a, 100.0 * tf_a);
+    println!(
+        "    learned {:.0}% vs tf-idf {:.0}%  ->  {verdict}",
+        100.0 * lrn_a,
+        100.0 * tf_a
+    );
     println!(
         "\n  Behavioural route-by-I/O (phrasing-independent): {:.0}% of cells ({}/{})",
         100.0 * beh,

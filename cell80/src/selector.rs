@@ -143,7 +143,9 @@ impl Slot {
         let w1 = (0..hid)
             .map(|_| (0..n_in).map(|_| rng.signed() * scale).collect())
             .collect();
-        let w2 = (0..hid).map(|_| rng.signed() * (1.0 / hid as f32).sqrt()).collect();
+        let w2 = (0..hid)
+            .map(|_| rng.signed() * (1.0 / hid as f32).sqrt())
+            .collect();
         Slot {
             w1,
             b1: vec![0.0; hid],
@@ -301,7 +303,10 @@ impl SlotRouter {
 
     /// The single best cell, or `None` if nothing scored above 0.5.
     pub fn top(&self, feat: &[f32]) -> Option<&str> {
-        self.rank(feat).into_iter().find(|(_, s)| *s > 0.5).map(|(id, _)| id)
+        self.rank(feat)
+            .into_iter()
+            .find(|(_, s)| *s > 0.5)
+            .map(|(id, _)| id)
     }
 
     /// Route with **honest abstention**: if the top two are within `eps` *and* their
@@ -325,7 +330,10 @@ impl SlotRouter {
     }
 
     fn fingerprint(&self, id: &str) -> Option<&Fingerprint> {
-        self.cells.iter().find(|c| c.id == id).and_then(|c| c.fp.as_ref())
+        self.cells
+            .iter()
+            .find(|c| c.id == id)
+            .and_then(|c| c.fp.as_ref())
     }
 
     /// Whether two cells are behaviourally indistinguishable on their fingerprints.
@@ -362,13 +370,31 @@ mod tests {
         let neg = cluster(-1.0, &mut rng, 20, dim);
         r.add_cell("pos", None, &pos, &neg, 200, 0.2, &mut rng);
         // A fresh positive-side point scores high; a negative-side point scores low.
-        assert!(r.cells[0].slot.score(&{ let mut v = vec![0.0; dim]; v[0] = 1.0; v }) > 0.7);
-        assert!(r.cells[0].slot.score(&{ let mut v = vec![0.0; dim]; v[0] = -1.0; v }) < 0.3);
+        assert!(
+            r.cells[0].slot.score(&{
+                let mut v = vec![0.0; dim];
+                v[0] = 1.0;
+                v
+            }) > 0.7
+        );
+        assert!(
+            r.cells[0].slot.score(&{
+                let mut v = vec![0.0; dim];
+                v[0] = -1.0;
+                v
+            }) < 0.3
+        );
     }
 
     #[test]
     fn encoder_is_deterministic_and_normalised() {
-        let enc = Encoder::fit(64, &["the smaller of two numbers".into(), "the larger of two numbers".into()]);
+        let enc = Encoder::fit(
+            64,
+            &[
+                "the smaller of two numbers".into(),
+                "the larger of two numbers".into(),
+            ],
+        );
         let a = enc.encode("the smaller of two numbers");
         assert_eq!(a, enc.encode("the smaller of two numbers"));
         let norm = a.iter().map(|x| x * x).sum::<f32>().sqrt();
@@ -382,7 +408,9 @@ mod tests {
         let dim = 8;
         let mut rng = Rng::new(7);
         let enc = Encoder::fit(dim, &["duplicate of a cell".into()]);
-        let fp = Fingerprint { outputs: vec![Some(1), Some(2), Some(3)] };
+        let fp = Fingerprint {
+            outputs: vec![Some(1), Some(2), Some(3)],
+        };
         let q: Vec<Vec<f32>> = vec![enc.encode("a duplicated behaviour")];
         let other = vec![enc.encode("something unrelated entirely")];
         let mut r = SlotRouter::new(dim, 8);

@@ -174,14 +174,17 @@ not strictly by sequence; the library grows by eval need:
      together, the agent given the `cell_graph_run` tool, scored on **composed /
      correct / correct-via-composition** (held-fixed steering, like adoption). The capstone —
      it measures whether the consumer *builds* a tool from several, not just *finds* one.
-   - **Baseline (granite4.1:3b):** composed **0.50**, **used_graph 0.00**, correct **0.83** —
-     and the same model scores **adoption 1.00 / correct 1.00** on single cells. The finding:
-     a small model **composes by *chaining* `cell_run`, never by authoring a graph** — the JSON
-     manifest is too much to construct. So the next composition lever is **graph-authoring
-     ergonomics** (steering / a simpler author surface), not the VM. *(SOMA territory — let the
-     model learn to author graphs rather than hand-tuning the prompt.)*
-   - **Next** — close the graph-authoring gap, then a live **CellBus** (publish typed event →
-     route to interested cells → commit) and SOMA organs.
+   - **Baseline → the `cell_compose` fix (granite4.1:3b) — ✓ graph-authoring gap closed.** With
+     the raw `cell_graph_run` manifest only, the model **composed 0.50 / correct 0.83 but
+     `used_graph` 0.00** — it chains `cell_run` and never authors the wire-level JSON (too much
+     for a 3B). That drove **`cell_compose`** (built): an ordered pipeline of `{cell, args}` with
+     positional args (`"$N"` = step N's result), ports resolved from each cell's manifest — no
+     wires, no port names. The same model now **composes via a pipeline in half the tasks**
+     (`used_pipeline` 0.50, raw `used_graph` still 0.00, composed **0.79**, correct **0.93**). So
+     graph-authoring **ergonomics** was the lever, exactly as predicted — not the VM. (adoption
+     1.00 / correct 1.00 on single cells throughout.)
+   - **Next** — non-linear (DAG) authoring sugar, let the model *learn* to author graphs (SOMA),
+     then a live **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library — two waves ✓ (98 cells).** `cell80/cells/`: predicates,

@@ -125,10 +125,16 @@ mod tests {
     }
 
     fn min_cell() -> Cartridge {
-        cell("min", "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }")
+        cell(
+            "min",
+            "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }",
+        )
     }
     fn max_cell() -> Cartridge {
-        cell("max", "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }")
+        cell(
+            "max",
+            "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }",
+        )
     }
 
     #[test]
@@ -155,7 +161,8 @@ mod tests {
     fn retrieval_by_example_picks_the_behaviour_not_the_words() {
         let lib = vec![min_cell(), max_cell()];
         // Examples that only `max` reproduces: max(3,7)=7, max(10,3)=10.
-        let want_max = rank_by_examples(&lib, &[(vec![3, 7], 7), (vec![10, 3], 10)], DEFAULT_CYCLES);
+        let want_max =
+            rank_by_examples(&lib, &[(vec![3, 7], 7), (vec![10, 3], 10)], DEFAULT_CYCLES);
         assert_eq!(want_max[0].id, "max");
         // Flip the expected outputs and `min` wins — same words, different behaviour.
         let want_min = rank_by_examples(&lib, &[(vec![3, 7], 3), (vec![10, 3], 3)], DEFAULT_CYCLES);

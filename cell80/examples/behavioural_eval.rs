@@ -18,14 +18,33 @@
 //! clean). If a simple equal-weight count is just as robust, the MLP earns nothing — an honest
 //! null, reported as such. This is the data-rich regime the text experiment lacked: labels are
 //! free, so if learning ever helps cell selection, it should help here.
-use cell80::{
-    Cartridge, CartridgeOpts, CellConfig, Fingerprint, Rng, SlotRouter, DEFAULT_CYCLES,
-};
+use cell80::{Cartridge, CartridgeOpts, CellConfig, Fingerprint, Rng, SlotRouter, DEFAULT_CYCLES};
 
 const PROBES: &[[u16; 2]] = &[
-    [3, 7], [7, 3], [10, 3], [4, 4], [8, 2], [9, 6], [12, 8], [5, 15], [2, 11], [6, 6], [14, 7],
-    [1, 9], [13, 5], [8, 8], [11, 4], [3, 12], [16, 4], [7, 14], [10, 10], [15, 6], [2, 13],
-    [9, 3], [12, 12], [5, 8],
+    [3, 7],
+    [7, 3],
+    [10, 3],
+    [4, 4],
+    [8, 2],
+    [9, 6],
+    [12, 8],
+    [5, 15],
+    [2, 11],
+    [6, 6],
+    [14, 7],
+    [1, 9],
+    [13, 5],
+    [8, 8],
+    [11, 4],
+    [3, 12],
+    [16, 4],
+    [7, 14],
+    [10, 10],
+    [15, 6],
+    [2, 13],
+    [9, 3],
+    [12, 12],
+    [5, 8],
 ];
 
 fn cells() -> Vec<Cartridge> {
@@ -34,7 +53,10 @@ fn cells() -> Vec<Cartridge> {
             Cartridge::compile(
                 include_str!($file),
                 CellConfig::sandboxed(),
-                CartridgeOpts { id: Some($id.into()), ..Default::default() },
+                CartridgeOpts {
+                    id: Some($id.into()),
+                    ..Default::default()
+                },
             )
             .unwrap_or_else(|e| panic!("compile {}: {e}", $id))
         };
@@ -78,7 +100,12 @@ fn count_matches_top(q: &Fingerprint, clean: &[(String, Fingerprint)]) -> Option
     clean
         .iter()
         .map(|(id, fp)| {
-            let m = q.outputs.iter().zip(&fp.outputs).filter(|(a, b)| a == b).count();
+            let m = q
+                .outputs
+                .iter()
+                .zip(&fp.outputs)
+                .filter(|(a, b)| a == b)
+                .count();
             (m, id)
         })
         .max_by(|a, b| a.0.cmp(&b.0).then_with(|| b.1.cmp(a.1)))
@@ -89,17 +116,32 @@ fn main() {
     let carts = cells();
     let clean: Vec<(String, Fingerprint)> = carts
         .iter()
-        .map(|c| (c.manifest.id.clone(), Fingerprint::compute(c, PROBES, DEFAULT_CYCLES)))
+        .map(|c| {
+            (
+                c.manifest.id.clone(),
+                Fingerprint::compute(c, PROBES, DEFAULT_CYCLES),
+            )
+        })
         .collect();
 
     // Per-probe **standardisation** (z-score) so every probe contributes comparably — a global
     // max-scale would crush the small-output cells (min/max/eq/comparators) into one blob and
     // hand the MLP a rigged loss. A missing output falls back to the probe mean.
     let n = PROBES.len();
-    let col = |k: usize| clean.iter().map(move |(_, fp)| fp.outputs[k].map(|v| v as f32).unwrap_or(0.0));
-    let mean: Vec<f32> = (0..n).map(|k| col(k).sum::<f32>() / clean.len() as f32).collect();
+    let col = |k: usize| {
+        clean
+            .iter()
+            .map(move |(_, fp)| fp.outputs[k].map(|v| v as f32).unwrap_or(0.0))
+    };
+    let mean: Vec<f32> = (0..n)
+        .map(|k| col(k).sum::<f32>() / clean.len() as f32)
+        .collect();
     let std: Vec<f32> = (0..n)
-        .map(|k| (col(k).map(|x| (x - mean[k]).powi(2)).sum::<f32>() / clean.len() as f32).sqrt().max(1.0))
+        .map(|k| {
+            (col(k).map(|x| (x - mean[k]).powi(2)).sum::<f32>() / clean.len() as f32)
+                .sqrt()
+                .max(1.0)
+        })
         .collect();
     let feat = |fp: &Fingerprint| -> Vec<f32> {
         fp.outputs
@@ -116,7 +158,9 @@ fn main() {
     let mut rng = Rng::new(0xBEE5);
     let mut router = SlotRouter::new(n, 24);
     for (i, (id, fp)) in clean.iter().enumerate() {
-        let pos: Vec<Vec<f32>> = (0..M).map(|_| feat(&corrupt(fp, TRAIN_NOISE, &mut rng))).collect();
+        let pos: Vec<Vec<f32>> = (0..M)
+            .map(|_| feat(&corrupt(fp, TRAIN_NOISE, &mut rng)))
+            .collect();
         let negs: Vec<Vec<f32>> = (0..M)
             .map(|_| {
                 let mut j = rng.below(clean.len());
@@ -134,8 +178,15 @@ fn main() {
     const T: usize = 60;
     let levels = [0.0f32, 0.1, 0.2, 0.3, 0.4];
 
-    println!("\nBehavioural selection under noisy I/O ({} cells, {} probes)\n", carts.len(), n);
-    println!("  {:>6}   {:>14}   {:>14}", "noise", "count-matches", "learned slot");
+    println!(
+        "\nBehavioural selection under noisy I/O ({} cells, {} probes)\n",
+        carts.len(),
+        n
+    );
+    println!(
+        "  {:>6}   {:>14}   {:>14}",
+        "noise", "count-matches", "learned slot"
+    );
     println!("  {}", "-".repeat(42));
     let mut at_20 = (0.0, 0.0);
     for &lvl in &levels {
@@ -156,7 +207,12 @@ fn main() {
         if (lvl - 0.2).abs() < 1e-6 {
             at_20 = (cm, lr);
         }
-        println!("  {:>5.0}%   {:>13.0}%   {:>13.0}%", 100.0 * lvl, 100.0 * cm, 100.0 * lr);
+        println!(
+            "  {:>5.0}%   {:>13.0}%   {:>13.0}%",
+            100.0 * lvl,
+            100.0 * cm,
+            100.0 * lr
+        );
     }
 
     let (cm20, lr20) = at_20;
@@ -169,10 +225,20 @@ fn main() {
         "TIE — equal-weight matching is just as robust; the MLP earns nothing (honest null)"
     };
     println!("\n  KILL GATE @ 20% noise — learned vs count-matches:");
-    println!("    learned {:.0}% vs count-matches {:.0}%  ->  {verdict}", 100.0 * lr20, 100.0 * cm20);
-    println!("\n  Reading: the free verifier (count-matches) is already at the ceiling — 100%, robust");
-    println!("  to heavy noise, and O(1)-continual (add a cell = append a fingerprint, no retraining),");
-    println!("  so cell SELECTION needs no learning. (Our per-cell binary-slot argmax is also weak —");
+    println!(
+        "    learned {:.0}% vs count-matches {:.0}%  ->  {verdict}",
+        100.0 * lr20,
+        100.0 * cm20
+    );
+    println!(
+        "\n  Reading: the free verifier (count-matches) is already at the ceiling — 100%, robust"
+    );
+    println!(
+        "  to heavy noise, and O(1)-continual (add a cell = append a fingerprint, no retraining),"
+    );
+    println!(
+        "  so cell SELECTION needs no learning. (Our per-cell binary-slot argmax is also weak —"
+    );
     println!("  uncalibrated across slots — but a perfect classifier could only tie the ceiling.)");
     println!("  The learned/search machinery's candidate home is COMPOSITION, not selection.");
 }

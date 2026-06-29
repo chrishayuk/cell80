@@ -61,7 +61,10 @@ fn act(src: &str, id: &str, arg: u16) -> Act {
     let cart = Cartridge::compile(
         src,
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some(id.into()), ..Default::default() },
+        CartridgeOpts {
+            id: Some(id.into()),
+            ..Default::default()
+        },
     )
     .unwrap_or_else(|e| panic!("compile {id}: {e}"));
     Act { cart, arg }
@@ -69,10 +72,18 @@ fn act(src: &str, id: &str, arg: u16) -> Act {
 
 fn actions() -> Vec<Act> {
     vec![
-        act(include_str!("../cells/mask_intersection.rs"), "mask_intersection", 0xFF00), // AND (lossy)
-        act(include_str!("../cells/mask_intersection.rs"), "mask_intersection", 0x0FF0), // AND (lossy)
-        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x00FF),               // OR (lossy)
-        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x0F0F),               // OR (lossy)
+        act(
+            include_str!("../cells/mask_intersection.rs"),
+            "mask_intersection",
+            0xFF00,
+        ), // AND (lossy)
+        act(
+            include_str!("../cells/mask_intersection.rs"),
+            "mask_intersection",
+            0x0FF0,
+        ), // AND (lossy)
+        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x00FF), // OR (lossy)
+        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x0F0F), // OR (lossy)
         act(include_str!("../cells/mask_xor.rs"), "mask_xor", 0x0F0F),
         act(include_str!("../cells/mask_xor.rs"), "mask_xor", 0xF0F0),
         act(include_str!("../cells/toggle_bit.rs"), "toggle_bit", 0),
@@ -90,7 +101,11 @@ fn tables(acts: &[Act]) -> Vec<Vec<u16>> {
             let mut r = Runner::new(&a.cart.program);
             let entry = a.cart.manifest.entry.clone();
             (0..=u16::MAX)
-                .map(|v| r.run_fast(Some(&entry), &[v, a.arg], DEFAULT_CYCLES).map(|f| f.result).unwrap_or(v))
+                .map(|v| {
+                    r.run_fast(Some(&entry), &[v, a.arg], DEFAULT_CYCLES)
+                        .map(|f| f.result)
+                        .unwrap_or(v)
+                })
                 .collect()
         })
         .collect()
@@ -167,19 +182,31 @@ impl Net {
         let s2 = (1.0 / hid as f32).sqrt();
         Net {
             a,
-            w1: (0..hid).map(|_| (0..FDIM).map(|_| rng.signed() * s1).collect()).collect(),
+            w1: (0..hid)
+                .map(|_| (0..FDIM).map(|_| rng.signed() * s1).collect())
+                .collect(),
             b1: vec![0.0; hid],
-            w2: (0..a + 1).map(|_| (0..hid).map(|_| rng.signed() * s2).collect()).collect(),
+            w2: (0..a + 1)
+                .map(|_| (0..hid).map(|_| rng.signed() * s2).collect())
+                .collect(),
             b2: vec![0.0; a + 1],
         }
     }
 
     fn forward(&self, x: &[f32]) -> (Vec<f32>, Vec<f32>, f32) {
-        let z1: Vec<f32> = self.w1.iter().zip(&self.b1)
-            .map(|(row, b)| row.iter().zip(x).map(|(w, xi)| w * xi).sum::<f32>() + b).collect();
+        let z1: Vec<f32> = self
+            .w1
+            .iter()
+            .zip(&self.b1)
+            .map(|(row, b)| row.iter().zip(x).map(|(w, xi)| w * xi).sum::<f32>() + b)
+            .collect();
         let h: Vec<f32> = z1.iter().map(|z| z.max(0.0)).collect();
-        let o: Vec<f32> = self.w2.iter().zip(&self.b2)
-            .map(|(row, b)| row.iter().zip(&h).map(|(w, hi)| w * hi).sum::<f32>() + b).collect();
+        let o: Vec<f32> = self
+            .w2
+            .iter()
+            .zip(&self.b2)
+            .map(|(row, b)| row.iter().zip(&h).map(|(w, hi)| w * hi).sum::<f32>() + b)
+            .collect();
         let maxl = o[..self.a].iter().copied().fold(f32::MIN, f32::max);
         let exps: Vec<f32> = o[..self.a].iter().map(|l| (l - maxl).exp()).collect();
         let sum: f32 = exps.iter().sum();
@@ -232,7 +259,9 @@ impl ValueNet {
         let s1 = (1.0 / FDIM as f32).sqrt();
         let s2 = (1.0 / hid as f32).sqrt();
         ValueNet {
-            w1: (0..hid).map(|_| (0..FDIM).map(|_| rng.signed() * s1).collect()).collect(),
+            w1: (0..hid)
+                .map(|_| (0..FDIM).map(|_| rng.signed() * s1).collect())
+                .collect(),
             b1: vec![0.0; hid],
             w2: (0..hid).map(|_| rng.signed() * s2).collect(),
             b2: 0.0,
@@ -240,15 +269,22 @@ impl ValueNet {
     }
 
     fn predict(&self, x: &[f32]) -> f32 {
-        let h: Vec<f32> = self.w1.iter().zip(&self.b1)
+        let h: Vec<f32> = self
+            .w1
+            .iter()
+            .zip(&self.b1)
             .map(|(row, b)| (row.iter().zip(x).map(|(w, xi)| w * xi).sum::<f32>() + b).max(0.0))
             .collect();
         self.w2.iter().zip(&h).map(|(w, hi)| w * hi).sum::<f32>() + self.b2
     }
 
     fn train_step(&mut self, x: &[f32], target: f32, lr: f32) {
-        let z1: Vec<f32> = self.w1.iter().zip(&self.b1)
-            .map(|(row, b)| row.iter().zip(x).map(|(w, xi)| w * xi).sum::<f32>() + b).collect();
+        let z1: Vec<f32> = self
+            .w1
+            .iter()
+            .zip(&self.b1)
+            .map(|(row, b)| row.iter().zip(x).map(|(w, xi)| w * xi).sum::<f32>() + b)
+            .collect();
         let h: Vec<f32> = z1.iter().map(|z| z.max(0.0)).collect();
         let pred = self.w2.iter().zip(&h).map(|(w, hi)| w * hi).sum::<f32>() + self.b2;
         let d = pred - target;
@@ -315,7 +351,13 @@ fn bfs(start: u16, target: u16, t: &[Vec<u16>], budget: usize) -> bool {
 }
 
 /// Best-first ordered by a priority (higher = expand first), complete within `budget`.
-fn best_first(start: u16, target: u16, t: &[Vec<u16>], budget: usize, prio: impl Fn(u16) -> i64) -> bool {
+fn best_first(
+    start: u16,
+    target: u16,
+    t: &[Vec<u16>],
+    budget: usize,
+    prio: impl Fn(u16) -> i64,
+) -> bool {
     if start == target {
         return true;
     }
@@ -365,7 +407,14 @@ fn mlp_mcts(start: u16, target: u16, t: &[Vec<u16>], net: &Net, budget: usize) -
             }
             if !tree.contains_key(&v) {
                 let (_, probs, value) = net.forward(&feats(v, target));
-                tree.insert(v, S { prior: probs, n: vec![0; a_n], w: vec![0.0; a_n] });
+                tree.insert(
+                    v,
+                    S {
+                        prior: probs,
+                        n: vec![0; a_n],
+                        w: vec![0.0; a_n],
+                    },
+                );
                 expansions += 1;
                 leaf_value = value;
                 break;
@@ -376,7 +425,11 @@ fn mlp_mcts(start: u16, target: u16, t: &[Vec<u16>], net: &Net, budget: usize) -
             let mut best_a = 0;
             let mut best_u = f32::MIN;
             for a in 0..a_n {
-                let q = if s.n[a] > 0 { s.w[a] / s.n[a] as f32 } else { 0.0 };
+                let q = if s.n[a] > 0 {
+                    s.w[a] / s.n[a] as f32
+                } else {
+                    0.0
+                };
                 let u = q + c * s.prior[a] * sqrt_total / (1.0 + s.n[a] as f32);
                 if u > best_u {
                     best_u = u;
@@ -402,7 +455,10 @@ fn mlp_mcts(start: u16, target: u16, t: &[Vec<u16>], net: &Net, budget: usize) -
 
 fn main() {
     let acts = actions();
-    println!("building transition tables over the VM ({} lossy-bit actions × 65536 states)…", acts.len());
+    println!(
+        "building transition tables over the VM ({} lossy-bit actions × 65536 states)…",
+        acts.len()
+    );
     let t = tables(&acts);
     println!("building reverse adjacency…");
     let preds = reverse_adj(&t);
@@ -445,7 +501,11 @@ fn main() {
             net.train_step(x, *a, *v, 0.1);
         }
     }
-    let vmae: f32 = ex.iter().map(|(x, _, v)| (net.forward(x).2 - v).abs()).sum::<f32>() / ex.len() as f32;
+    let vmae: f32 = ex
+        .iter()
+        .map(|(x, _, v)| (net.forward(x).2 - v).abs())
+        .sum::<f32>()
+        / ex.len() as f32;
     println!("combined net (for MCTS) — value MAE {:.3}", vmae);
 
     // dedicated value regressor for best-first — no policy head to corrupt the trunk
@@ -458,23 +518,37 @@ fn main() {
             vnet.train_step(x, *v, 0.05);
         }
     }
-    let vmae2: f32 = ex.iter().map(|(x, _, v)| (vnet.predict(x) - v).abs()).sum::<f32>() / ex.len() as f32;
-    println!("dedicated value net (for best-first) — MAE {:.3} (≈{:.1} steps)\n", vmae2, vmae2 * DNORM);
+    let vmae2: f32 = ex
+        .iter()
+        .map(|(x, _, v)| (vnet.predict(x) - v).abs())
+        .sum::<f32>()
+        / ex.len() as f32;
+    println!(
+        "dedicated value net (for best-first) — MAE {:.3} (≈{:.1} steps)\n",
+        vmae2,
+        vmae2 * DNORM
+    );
 
     // ── budget sweep where blind BFS breaks ──
     let budgets = [64usize, 128, 256, 512];
-    let val_prio = |s: u16, tgt: u16| -> i64 { (vnet.predict(&feats(s, tgt)) * 1_000_000.0) as i64 };
+    let val_prio =
+        |s: u16, tgt: u16| -> i64 { (vnet.predict(&feats(s, tgt)) * 1_000_000.0) as i64 };
     let ham_prio = |s: u16, tgt: u16| -> i64 { -((s ^ tgt).count_ones() as i64) };
 
     // fixed eval set
     let mut rng = Rng::new(0xEFA1);
-    let inst: Vec<(u16, u16)> = (0..T_EVAL).map(|_| gen_far(&mut rng, &t, &preds, L, MIND)).collect();
+    let inst: Vec<(u16, u16)> = (0..T_EVAL)
+        .map(|_| gen_far(&mut rng, &t, &preds, L, MIND))
+        .collect();
 
     let pct = |h: usize| 100.0 * h as f32 / T_EVAL as f32;
     let run = |f: &dyn Fn(u16, u16) -> bool| pct(inst.iter().filter(|(s, g)| f(*s, *g)).count());
 
     println!("Non-metric composition (far targets, dist ≥ {MIND}) — solved %, {T_EVAL} tasks\n");
-    println!("  {:>7}   {:>9}   {:>11}   {:>13}   {:>9}", "budget", "blind BFS", "Hamming-bf", "MLP value-bf", "MLP+MCTS");
+    println!(
+        "  {:>7}   {:>9}   {:>11}   {:>13}   {:>9}",
+        "budget", "blind BFS", "Hamming-bf", "MLP value-bf", "MLP+MCTS"
+    );
     println!("  {}", "-".repeat(62));
     let (mut last_ham, mut last_val) = (0.0f32, 0.0f32);
     for &b in &budgets {
@@ -483,7 +557,10 @@ fn main() {
         let val = run(&|s, g| best_first(s, g, &t, b, |x| val_prio(x, g)));
         let mc = run(&|s, g| mlp_mcts(s, g, &t, &net, b));
         (last_ham, last_val) = (ham, val);
-        println!("  {:>7}   {:>8.0}%   {:>10.0}%   {:>12.0}%   {:>8.0}%", b, blind, ham, val, mc);
+        println!(
+            "  {:>7}   {:>8.0}%   {:>10.0}%   {:>12.0}%   {:>8.0}%",
+            b, blind, ham, val, mc
+        );
     }
     let ceiling = run(&|s, g| bfs(s, g, &t, usize::MAX));
     let one_pass = run(&|s, g| rollout(s, g, &t, &net, 40));
@@ -498,6 +575,9 @@ fn main() {
     } else {
         "value-best-first ≈ Hamming heuristic — clean-room build did NOT reproduce the documented dominance"
     };
-    println!("  LADDER: {verdict} (val {last_val:.0}% vs Hamming {last_ham:.0}% @ budget {}).", budgets[budgets.len() - 1]);
+    println!(
+        "  LADDER: {verdict} (val {last_val:.0}% vs Hamming {last_ham:.0}% @ budget {}).",
+        budgets[budgets.len() - 1]
+    );
     println!("  (Documented in chuk-soma docs/roadmap.md B3′: value-bf 28→94% ≫ Hamming, MCTS loses — banked/authoritative.)");
 }
