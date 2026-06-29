@@ -11,7 +11,7 @@
 //!
 //! Deterministic, no model. Run: `cargo run --release --example retrieval_compare -p cell80`.
 
-use cell80::{Cartridge, CartridgeOpts, CellConfig, CellIndex, Manifest, TfidfIndex};
+use cell80::{Cartridge, CartridgeOpts, CellConfig, CellIndex, Manifest, TfidfIndex, TypeLedIndex};
 use std::path::PathBuf;
 
 /// Parse a library cell's `//!` header (summary / `tags:` / `entry:`) — mirrors the CLI's
@@ -40,8 +40,9 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
     (summary, tags, entry)
 }
 
-/// Compile every `cell80/cells/*.rs` into its manifest (id = file stem).
-fn load_manifests() -> Vec<Manifest> {
+/// Compile every `cell80/cells/*.rs` into a cartridge (id = file stem). Cartridges, not just
+/// manifests, because the type-led index runs each cell to learn its behavioural shape.
+fn load_carts() -> Vec<Cartridge> {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells");
     let mut paths: Vec<_> = std::fs::read_dir(&dir)
         .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
@@ -64,7 +65,7 @@ fn load_manifests() -> Vec<Manifest> {
                 tags,
             },
         ) {
-            Ok(c) => out.push(c.manifest),
+            Ok(c) => out.push(c),
             Err(e) => eprintln!("skip {id}: {e}"),
         }
     }
@@ -106,6 +107,17 @@ fn load_dataset() -> Vec<Row> {
     rows
 }
 
+/// A cell's structural shape — what a type-led signal could discriminate on: value cell by
+/// arity (`v2`, `v3`), state cell by field count (`s4`). Two cells with the same shape are
+/// invisible to any arity/predicate-style structural signal.
+fn shape(m: &Manifest) -> String {
+    if m.signature.state.is_empty() {
+        format!("v{}", m.signature.params.len())
+    } else {
+        format!("s{}", m.signature.state.len())
+    }
+}
+
 /// P@1 and hit@5 over the rows in one category, for a ranking fn.
 fn score(rows: &[&Row], rank: &dyn Fn(&str) -> Vec<String>) -> (f32, f32) {
     if rows.is_empty() {
@@ -133,7 +145,8 @@ fn score(rows: &[&Row], rank: &dyn Fn(&str) -> Vec<String>) -> (f32, f32) {
 }
 
 fn main() {
-    let manifests = load_manifests();
+    let carts = load_carts();
+    let manifests: Vec<Manifest> = carts.iter().map(|c| c.manifest.clone()).collect();
     let rows = load_dataset();
 
     let mut token = CellIndex::new();
@@ -141,59 +154,72 @@ fn main() {
         token.add(m.clone());
     }
     let tfidf = TfidfIndex::build(manifests.clone());
+    let typed = TypeLedIndex::build(carts);
 
-    let token_rank = |q: &str| {
-        token
-            .search(q, 5)
-            .into_iter()
-            .map(|m| m.id.clone())
-            .collect::<Vec<_>>()
-    };
-    let tfidf_rank = |q: &str| {
-        tfidf
-            .search(q, 5)
-            .into_iter()
-            .map(|m| m.id.clone())
-            .collect::<Vec<_>>()
-    };
+    let rank = |hits: Vec<&Manifest>| hits.into_iter().map(|m| m.id.clone()).collect::<Vec<_>>();
+    let methods: [(&str, &dyn Fn(&str) -> Vec<String>); 3] = [
+        ("token-overlap", &|q| rank(token.search(q, 5))),
+        ("tf-idf (live)", &|q| rank(tfidf.search(q, 5))),
+        ("type-led", &|q| rank(typed.search(q, 5))),
+    ];
 
     let cats = ["direct", "paraphrase", "adversarial"];
+    let bucket = |cat: &str| -> Vec<&Row> { rows.iter().filter(|r| r.category == cat).collect() };
+
     println!(
-        "Retrieval — {} cells, {} queries (cell-eval/datasets/retrieval.jsonl)\n",
+        "Retrieval P@1 / hit@5 — {} cells, {} queries (cell-eval/datasets/retrieval.jsonl)\n",
         manifests.len(),
         rows.len()
     );
-    println!("                       token-overlap (prev)       tf-idf (live)");
-    println!("  category      n        P@1      hit@5            P@1      hit@5");
-    println!("  --------------------------------------------------------------------");
+    print!("  {:<15}", "method");
     for cat in cats {
-        let sub: Vec<&Row> = rows.iter().filter(|r| r.category == cat).collect();
-        let (tp1, th5) = score(&sub, &token_rank);
-        let (fp1, fh5) = score(&sub, &tfidf_rank);
-        println!(
-            "  {cat:<12} {:>3}      {:>5.0}%     {:>5.0}%          {:>5.0}%     {:>5.0}%",
-            sub.len(),
-            tp1 * 100.0,
-            th5 * 100.0,
-            fp1 * 100.0,
-            fh5 * 100.0
-        );
+        print!("{:>16}", format!("{cat} (n={})", bucket(cat).len()));
     }
-    let all: Vec<&Row> = rows.iter().collect();
-    let (tp1, th5) = score(&all, &token_rank);
-    let (fp1, fh5) = score(&all, &tfidf_rank);
-    println!("  --------------------------------------------------------------------");
+    println!("{:>16}", "overall");
+    println!("  {}", "-".repeat(15 + 16 * 4));
+    for (name, rank_fn) in methods {
+        print!("  {name:<15}");
+        for cat in cats {
+            let (p1, h5) = score(&bucket(cat), rank_fn);
+            print!("{:>16}", format!("{:.0}% / {:.0}%", p1 * 100.0, h5 * 100.0));
+        }
+        let (p1, h5) = score(&rows.iter().collect::<Vec<_>>(), rank_fn);
+        println!("{:>16}", format!("{:.0}% / {:.0}%", p1 * 100.0, h5 * 100.0));
+    }
     println!(
-        "  {:<12} {:>3}      {:>5.0}%     {:>5.0}%          {:>5.0}%     {:>5.0}%",
-        "overall",
-        all.len(),
-        tp1 * 100.0,
-        th5 * 100.0,
-        fp1 * 100.0,
-        fh5 * 100.0
+        "\n  Read: the paraphrase column is the headline. type-led re-ranks tf-idf by a\n  \
+         behavioural predicate signal with a corpus-learned (not hardcoded) query intent —\n  \
+         the lift it adds there is the case for it over plain text."
     );
+
+    // Why structural re-ranking has limited headroom: of tf-idf's wrong top-1s on the hard
+    // (non-direct) queries, how many name a cell of the *same* shape as the right answer? A
+    // structural (arity/predicate) signal can only ever rescue the different-shape misses.
+    let by_id: std::collections::HashMap<&str, &Manifest> =
+        manifests.iter().map(|m| (m.id.as_str(), m)).collect();
+    let (mut same, mut diff) = (0u32, 0u32);
+    for r in rows.iter().filter(|r| r.category != "direct") {
+        let got = tfidf.search(&r.query, 1);
+        let got_id = got.first().map(|m| m.id.as_str());
+        if got_id.is_some_and(|g| r.expected.iter().any(|e| e == g)) {
+            continue; // hit
+        }
+        let exp_shape = r
+            .expected
+            .iter()
+            .filter_map(|e| by_id.get(e.as_str()))
+            .map(|m| shape(m))
+            .next();
+        let got_shape = got_id.and_then(|g| by_id.get(g)).map(|m| shape(m));
+        match (exp_shape, got_shape) {
+            (Some(e), Some(g)) if e == g => same += 1,
+            (Some(_), Some(_)) => diff += 1,
+            _ => {}
+        }
+    }
     println!(
-        "\n  Read: does tf-idf lift P@1 without regressing the paraphrase row? That, not the\n  \
-         direct row, decides whether it should be the live default."
+        "\n  tf-idf hard (paraphrase+adversarial) top-1 misses: same-shape {same} / \
+         different-shape {diff}.\n  A structural signal can only rescue the different-shape \
+         ones; the same-shape sibling misses need behaviour (I/O examples) or better semantics."
     );
 }
