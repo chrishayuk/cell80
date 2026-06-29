@@ -46,7 +46,7 @@ Freeze it into a self-describing `.cell` cartridge:
 ```console
 $ cell80 compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
 $ cell80 inspect score.cell
-cell `score.v1`  (abi 1, compiler 0.6.0)
+cell `score.v1`  (abi 1, compiler 0.7.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
   signature: run(x: u16, y: u16) -> u16
