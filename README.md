@@ -114,11 +114,13 @@ overlap stays strong on the library's own words but degrades under rewording as 
 siblings multiply (a dozen families: predicates, safe arithmetic, bounds, percent, ranking,
 bit ops, number theory, distance, encoding, hashing, …). That gap *holding open as the library
 grows* is exactly what the type-led index targets.
-Adoption/composition (measured earlier on the seed set, `granite4.1:3b`): **adoption 1.00 /
-correct 1.00**, **composition composed 0.50 / correct 0.83 — but `used_graph` 0.00**. That last
-number is the kind of finding only the eval surfaces: the small model *chains* cell calls
-rather than authoring a graph manifest, so the next lever is graph-authoring ergonomics, not
-the VM.
+Adoption/composition (`granite4.1:3b`): **adoption 1.00 / correct 1.00**; composition once read
+**composed 0.50 / correct 0.83 — but `used_graph` 0.00**: the small model *chains* cell calls
+and never authors the wire-level graph manifest. That finding drove a fix — **`cell_compose`**,
+a pipeline-authoring helper (an ordered list of `{cell, args}` with positional args, ports
+resolved from the manifest; no wires). With it the same model **composes via a pipeline in
+half the tasks** (`used_pipeline` 0.50, raw `used_graph` still 0.00), and **composed 0.79 /
+correct 0.93** — graph-authoring ergonomics, not the VM, was the lever.
 
 ---
 
@@ -268,10 +270,10 @@ kernels are the wedge.
 ## Connect it to an LLM (MCP)
 
 `cell80-mcp` exposes a warm library over MCP as a thin **router** — not a tool per cell.
-A few fixed tools (`cell_search` / `cell_inspect` / `cell_list` / `cell_run` / `cell_graph_run`)
-let a model find, run, and *compose* the few cells it wants while the library stays out of
-context. Built on the PyO3 binding `cell80-py` (the warm host as a Python class), the same
-Rust-core → PyO3 → Python-MCP shape as the rest of the ecosystem.
+A few fixed tools (`cell_search` / `cell_inspect` / `cell_list` / `cell_run` / `cell_compose` /
+`cell_graph_run`) let a model find, run, and *compose* the few cells it wants while the library
+stays out of context. Built on the PyO3 binding `cell80-py` (the warm host as a Python class),
+the same Rust-core → PyO3 → Python-MCP shape as the rest of the ecosystem.
 
 ```python
 cell_search("grid distance")     # → a few brief manifests
@@ -280,9 +282,14 @@ cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  
 # state cells drive by NAME — typed fields in, full state out (no raw addresses):
 cell_run("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
 #   → {result: 11, state: {x1: 3, y1: 4, x2: 10, y2: 8, dist: 11}, cycles, …}
-# COMPOSE cells into a host-routed, type-checked graph (one cell's output → another's input):
-cell_graph_run(move_ranker_graph, inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "risk": 2, "cost": 1})
-#   → {outputs: {ranked: 10}, trace: [dist→11, score→18, bounded→10], cycles, …}
+# COMPOSE the easy way: a PIPELINE — positional args ("$N" = step N's result), ports resolved
+# from the manifests. No wires, no port names. (cell_graph_run takes the full manifest for DAGs.)
+cell_compose(
+    steps=[{"cell": "manhattan",    "args": ["x1", "y1", "x2", "y2"]},
+           {"cell": "weighted_sum", "args": ["$0", "risk", "cost"]},
+           {"cell": "clamp",        "args": ["$1", 0, 10]}],
+    inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "risk": 2, "cost": 1})
+#   → {outputs: {out: 10}, trace: [s0→11, s1→18, s2→10], cycles, …}
 ```
 
 ---
@@ -304,9 +311,10 @@ The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O o
 (done), the **standard library** (done — **98 cells** across ~12 families, plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
 elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
-the active chase — **host-routed `CellGraph` composition** (core built: cells wired into a
-static, type-checked graph the host validates before running) — then a type-led index, more
-library waves, a live CellBus, and signed `i16`.
+**host-routed `CellGraph` composition** (cells wired into a static, type-checked graph the host
+validates before running) with the **`cell_compose`** pipeline helper that lets a small model
+actually author one (measured: composition `used_graph` 0.00 → `used_pipeline` 0.50) — then a
+type-led index, more library waves, a live CellBus, and signed `i16`.
 
 ---
 

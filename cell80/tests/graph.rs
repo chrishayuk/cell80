@@ -174,6 +174,13 @@ fn pipeline_authoring_builds_and_runs_a_chain() {
     assert!(CellGraph::from_pipeline_json(ghost, &h)
         .unwrap_err()
         .contains("no cell `ghost`"));
+    // ...and the malformed-spec paths, each a clean error not a panic.
+    let bad = |spec: &str| CellGraph::from_pipeline_json(spec, &h).unwrap_err();
+    assert!(bad(r#"{"steps":[]}"#).contains("empty"));
+    assert!(bad(r#"{"steps":"nope"}"#).contains("must be an array"));
+    assert!(bad(r#"{"steps":[{"cell":"clamp"}]}"#).contains("missing array `args`"));
+    assert!(bad(r#"{"steps":[{"cell":"clamp","args":[{},0,10]}]}"#).contains("number or a string"));
+    assert!(bad(r#"{"steps":[{"cell":"clamp","args":["$x",0,10]}]}"#).contains("$<step number>"));
 }
 
 #[test]
