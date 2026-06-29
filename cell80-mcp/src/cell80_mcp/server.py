@@ -93,4 +93,19 @@ def build_server() -> ChukMCPServer:
         except Exception as e:  # bad manifest / type mismatch / cycle → data, not a crash
             return {"error": str(e)}
 
+    @mcp.tool(
+        description="Compose cells the EASY way: run a PIPELINE — no graph manifest, wires, or "
+        "port names. `steps` is an ordered list of {cell, args}; each arg is positional (the "
+        "cell's signature order) and is a number (constant), \"$N\" (the result of earlier step "
+        "N, 0-based), or a string (an external input by name). The last step's result is the "
+        "answer. `inputs` is the external {name:int}. The host resolves ports from each cell's "
+        "manifest, type-checks, and runs — returning {id, outputs, cycles, trapped_ops, trace}. "
+        "Prefer this over cell_graph_run for chaining.",
+    )
+    def cell_compose(steps: list, inputs: dict | None = None) -> dict:
+        try:
+            return lib.run_pipeline({"steps": steps}, inputs or {})
+        except Exception as e:  # bad spec / type mismatch → data, not a crash
+            return {"error": str(e)}
+
     return mcp

@@ -27,6 +27,18 @@ def test_tool_bodies_cover_all_four_verbs():
     st = h["cell_run"]("manhattan", fields={"x1": 3, "y1": 4, "x2": 10, "y2": 8})
     assert st["result"] == 11 and st["state"]["dist"] == 11
     assert "error" in h["cell_run"]("manhattan", fields={"bogus": 1})
+    # cell_compose: chain cells as a pipeline (positional args, "$N" refs, external inputs) —
+    # the ergonomic surface, no wires or port names. Same move-ranker result as a graph.
+    comp = h["cell_compose"](
+        [
+            {"cell": "manhattan", "args": ["x1", "y1", "x2", "y2"]},
+            {"cell": "weighted_sum", "args": ["$0", "risk", "cost"]},
+            {"cell": "clamp", "args": ["$1", 0, 10]},
+        ],
+        inputs={"x1": 3, "y1": 4, "x2": 10, "y2": 8, "risk": 2, "cost": 1},
+    )
+    assert comp["outputs"]["out"] == 10
+    assert "error" in h["cell_compose"]([{"cell": "weighted_sum", "args": [1, 2]}])  # bad arity
 
 
 def test_library_is_a_cached_singleton():

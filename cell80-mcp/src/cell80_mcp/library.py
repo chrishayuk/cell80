@@ -85,5 +85,13 @@ class CellLibrary:
         g = graph if isinstance(graph, str) else json.dumps(graph)
         return self.host.run_graph(g, dict(inputs or {}))
 
+    def run_pipeline(self, spec, inputs: dict | None = None) -> dict:
+        """Author + run a *pipeline* spec — steps with positional args (a number is a const,
+        "$N" is step N's result, any other string is an external input by name; ports are
+        resolved from each cell's manifest). The host builds the wires, type-checks, and runs;
+        same return shape as `run_graph`. Lets a caller compose without wire-level JSON."""
+        s = spec if isinstance(spec, str) else json.dumps(spec)
+        return self.host.run_pipeline(s, dict(inputs or {}))
+
     def __len__(self) -> int:
         return len(self.host)

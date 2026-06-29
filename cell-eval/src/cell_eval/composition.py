@@ -23,21 +23,23 @@ from dataclasses import dataclass, field
 from .agent import AgentConfig, make_client, run_episode
 from .datasets import load_jsonl
 from .library import open_library
-from .tools import GRAPH_TOOL, TOOLS
+from .tools import COMPOSE_TOOL, GRAPH_TOOL, TOOLS
 
-# Composition gets the base cell tools PLUS the graph tool.
-COMPOSITION_TOOLS = TOOLS + [GRAPH_TOOL]
+# Composition gets the base cell tools PLUS the two graph tools: the low-level manifest
+# (cell_graph_run) and the ergonomic pipeline (cell_compose).
+COMPOSITION_TOOLS = TOOLS + [GRAPH_TOOL, COMPOSE_TOOL]
 
 # ── steering (HOLD FIXED across runs) ─────────────────────────────────────────────
 SYSTEM_PROMPT = (
     "You answer numeric questions that usually need SEVERAL steps. You have a library of "
     "tiny, verified, deterministic cells (e.g. manhattan, weighted_sum, clamp, range_check). "
     "STRONGLY PREFER composing cells over doing the arithmetic yourself — the cells are "
-    "verified and you are not. Discover cells with cell_search and read their typed "
-    "signatures with cell_inspect, then wire them into ONE graph and run it with "
-    "cell_graph_run: each node names a cell; each wire feeds a node input port from a "
-    "constant, an external input, or another node's output port (output ports are 'result' "
-    "plus any state fields). The host type-checks the whole graph and returns the outputs. "
+    "verified and you are not. Discover cells with cell_search and read their typed signatures "
+    "with cell_inspect. Then chain them with cell_compose: give an ordered list of steps, each "
+    "{cell, args}, where an arg is a number (constant), \"$N\" (the result of an earlier step "
+    "N), or an input name — the last step's result is the answer. cell_compose is the easy way "
+    "and you should use it. (For a non-linear graph you may instead author a cell_graph_run "
+    "manifest, but prefer cell_compose.) "
     "End your reply with a final line exactly of the form 'ANSWER: <integer>'."
 )
 
@@ -49,7 +51,8 @@ class TaskResult:
     expected: int
     answer: int | None
     composed: bool
-    used_graph: bool
+    used_graph: bool  # authored a raw cell_graph_run manifest
+    used_pipeline: bool  # authored a cell_compose pipeline (the ergonomic helper)
     cells_run: list[str]
     correct: bool
     turns: int
@@ -67,6 +70,7 @@ class TaskResult:
             "answer": self.answer,
             "composed": self.composed,
             "used_graph": self.used_graph,
+            "used_pipeline": self.used_pipeline,
             "cells_run": self.cells_run,
             "correct": self.correct,
             "correct_via_composition": self.correct_via_composition,
@@ -92,6 +96,7 @@ class CompositionReport:
                 "n": n,
                 "composed": round(frac(lambda t: t.composed), 4),
                 "used_graph": round(frac(lambda t: t.used_graph), 4),
+                "used_pipeline": round(frac(lambda t: t.used_pipeline), 4),
                 "correct": round(frac(lambda t: t.correct), 4),
                 "correct_via_composition": round(frac(lambda t: t.correct_via_composition), 4),
             },
@@ -103,7 +108,8 @@ def _run_one(client, cfg: AgentConfig, lib, task: dict) -> TaskResult:
     ep = run_episode(client, cfg, lib, task["prompt"], SYSTEM_PROMPT, COMPOSITION_TOOLS)
     expected = int(task["expected"])
     used_graph = any(n >= 2 for n in ep.trace.graphs_run)
-    composed = used_graph or len(set(ep.trace.cells_run)) >= 2
+    used_pipeline = any(n >= 2 for n in ep.trace.pipelines_run)
+    composed = used_graph or used_pipeline or len(set(ep.trace.cells_run)) >= 2
     return TaskResult(
         task_id=str(task.get("id", task["prompt"])),
         prompt=task["prompt"],
@@ -111,6 +117,7 @@ def _run_one(client, cfg: AgentConfig, lib, task: dict) -> TaskResult:
         answer=ep.answer,
         composed=composed,
         used_graph=used_graph,
+        used_pipeline=used_pipeline,
         cells_run=ep.trace.cells_run,
         correct=(ep.answer == expected),
         turns=ep.turns,

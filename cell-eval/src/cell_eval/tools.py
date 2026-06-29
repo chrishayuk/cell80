@@ -120,6 +120,52 @@ GRAPH_TOOL = {
 }
 
 
+# The pipeline-authoring tool: the *easy* way to compose — no graph JSON, no port names.
+COMPOSE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "cell_compose",
+        "description": (
+            "Compose cells into a PIPELINE and run it — the EASY way to chain cells; no graph "
+            "manifest, wires, or port names. `steps` is an ordered list of {cell, args}. Each "
+            "arg is positional (the cell's signature order) and is ONE of: a number (a "
+            "constant), \"$N\" (the result of step N — a 0-based EARLIER step), or a string (an "
+            "external input by name). The last step's result is the answer. `inputs` is the "
+            "external {name: int}. Example — clamp(weighted_sum(manhattan(x1,y1,x2,y2), risk, "
+            "cost), 0, 10): steps=[{cell:'manhattan', args:['x1','y1','x2','y2']}, "
+            "{cell:'weighted_sum', args:['$0','risk','cost']}, {cell:'clamp', args:['$1',0,10]}]"
+            ". PREFER this over cell_graph_run for chaining."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "description": "ordered pipeline steps",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "cell": {"type": "string"},
+                            "args": {
+                                "type": "array",
+                                "description": "positional args: a number, \"$N\", or an input name",
+                            },
+                        },
+                        "required": ["cell", "args"],
+                    },
+                },
+                "inputs": {
+                    "type": "object",
+                    "additionalProperties": {"type": "integer"},
+                    "description": "external inputs {name: int}",
+                },
+            },
+            "required": ["steps"],
+        },
+    },
+}
+
+
 @dataclass
 class ToolTrace:
     """Records what the model did with the tools during one episode."""
@@ -129,6 +175,7 @@ class ToolTrace:
     cells_run: list[str] = field(default_factory=list)  # ids actually executed
     run_results: list[int] = field(default_factory=list)  # results returned by cell_run
     graphs_run: list[int] = field(default_factory=list)  # node count per cell_graph_run call
+    pipelines_run: list[int] = field(default_factory=list)  # step count per cell_compose call
 
 
 def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
@@ -162,6 +209,24 @@ def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
             out = lib.run_graph(graph, inputs)
             # Node count → the "composed" signal (a graph with ≥2 nodes is real composition).
             trace.graphs_run.append(len(graph.get("nodes", {})) if isinstance(graph, dict) else 0)
+            return out
+        if name == "cell_compose":
+            steps = args.get("steps") or []
+            # Forgiving: a constant passed as a digit-string ("3") → 3; "$N"/input names stay.
+            def _coerce(a):
+                return int(a) if isinstance(a, str) and a.lstrip("-").isdigit() else a
+
+            spec = {
+                "steps": [
+                    {"cell": s.get("cell"), "args": [_coerce(a) for a in (s.get("args") or [])]}
+                    for s in steps
+                ]
+            }
+            inputs = {k: int(v) for k, v in (args.get("inputs") or {}).items()}
+            out = lib.run_pipeline(spec, inputs)
+            # A pipeline is a host-routed graph (just easier to author); tracked separately from
+            # raw cell_graph_run so the eval can attribute composition to the helper.
+            trace.pipelines_run.append(len(steps) if isinstance(steps, list) else 0)
             return out
         return {"error": f"unknown tool `{name}`"}
     except Exception as e:  # ValueError from unknown id, etc.

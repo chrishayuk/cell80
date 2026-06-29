@@ -138,6 +138,45 @@ fn graph_loads_from_json_and_runs() {
 }
 
 #[test]
+fn pipeline_authoring_builds_and_runs_a_chain() {
+    // The ergonomic surface: a linear pipeline with positional args (number = const, "$N" =
+    // step N's result, name = external input) — no wires, no port names. Same move-ranker
+    // result as the hand-wired graph, proving the sugar lowers to the same thing.
+    let mut h = host();
+    let spec = r#"{ "steps": [
+        { "cell": "manhattan",    "args": ["x1", "y1", "x2", "y2"] },
+        { "cell": "weighted_sum", "args": ["$0", "risk", "cost"] },
+        { "cell": "clamp",        "args": ["$1", 0, 10] } ] }"#;
+    let g = CellGraph::from_pipeline_json(spec, &h).expect("pipeline should build");
+    let inputs = HashMap::from([
+        ("x1".into(), 3),
+        ("y1".into(), 4),
+        ("x2".into(), 10),
+        ("y2".into(), 8),
+        ("risk".into(), 2),
+        ("cost".into(), 1),
+    ]);
+    let run = g.run(&mut h, &inputs, DEFAULT_CYCLES).unwrap();
+    assert_eq!(run.outputs, vec![("out".into(), 10)]); // manhattan 11 → score 18 → clamp 10
+    assert_eq!(run.trace.len(), 3);
+    assert_eq!(run.trace[0].result, 11); // state cell wired by its leading input fields
+    assert_eq!(run.trace[2].result, 10);
+
+    // Errors guide the author: a forward `$` ref, a wrong value-cell arity, and a bad cell.
+    let fwd = r#"{"steps":[{"cell":"clamp","args":["$1",0,10]}]}"#;
+    assert!(CellGraph::from_pipeline_json(fwd, &h)
+        .unwrap_err()
+        .contains("not an earlier step"));
+    let arity = r#"{"steps":[{"cell":"weighted_sum","args":[1,2]}]}"#;
+    let e = CellGraph::from_pipeline_json(arity, &h).unwrap_err();
+    assert!(e.contains("expects 3") && e.contains("a, b, c"), "got: {e}");
+    let ghost = r#"{"steps":[{"cell":"ghost","args":[1]}]}"#;
+    assert!(CellGraph::from_pipeline_json(ghost, &h)
+        .unwrap_err()
+        .contains("no cell `ghost`"));
+}
+
+#[test]
 fn validate_rejects_a_type_mismatch_before_running() {
     let mut h = host();
     // A cell with a u8 input — wiring a u16 source into it must be rejected.
