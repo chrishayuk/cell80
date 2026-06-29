@@ -42,6 +42,26 @@ def test_run_one_via_graph_counts_as_composition():
     assert r.as_dict()["correct_via_composition"] is True
 
 
+def test_run_one_via_pipeline_counts_as_composition():
+    # The ergonomic surface: a 2-step pipeline (positional args, "$0" chaining) instead of a
+    # wire-level graph manifest. Same answer, and it counts as composition (a pipeline is a
+    # host-routed graph) — this is the tool meant to lift `used_graph` off the floor.
+    cfg = AgentConfig(model="fake")
+    pipeline = [
+        {"cell": "abs_diff", "args": [200, 75]},
+        {"cell": "clamp", "args": ["$0", 0, 100]},  # abs_diff(200,75)=125 -> clamp=100
+    ]
+    script = [
+        _Msg(tool_calls=[_ToolCall("cell_compose", {"steps": pipeline})]),
+        _Msg(content="ANSWER: 100"),
+    ]
+    r = _run_one(FakeClient(script), cfg, open_library(), {"id": "t", "prompt": "?", "expected": 100})
+    assert r.answer == 100 and r.correct
+    # The pipeline registers as `used_pipeline` (not the raw-graph `used_graph`), and still
+    # counts as composition.
+    assert r.used_pipeline and not r.used_graph and r.composed and r.correct_via_composition
+
+
 def test_run_one_chaining_two_cells_is_composition_without_graph():
     cfg = AgentConfig(model="fake")
     script = [

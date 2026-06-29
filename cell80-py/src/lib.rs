@@ -195,6 +195,43 @@ impl CellHost {
         cycles: u64,
     ) -> PyResult<Bound<'py, PyDict>> {
         let graph = CellGraph::from_json(graph_json).map_err(PyValueError::new_err)?;
+        self.run_built_graph(py, graph, inputs, cycles)
+    }
+
+    /// The ergonomic graph-authoring surface: build a graph from a **pipeline** spec — steps
+    /// with *positional* args (a JSON number = `const`, `"$N"` = step N's result, any other
+    /// string = an external input by name; ports resolved from each cell's manifest, no wires
+    /// or port names to write) — then validate + run it. Same return shape as `run_graph`. This
+    /// is what lets a model compose without authoring wire-level JSON.
+    #[pyo3(signature = (spec_json, inputs=None, cycles=2_000_000))]
+    fn run_pipeline<'py>(
+        &mut self,
+        py: Python<'py>,
+        spec_json: &str,
+        inputs: Option<&Bound<'py, PyDict>>,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let graph =
+            CellGraph::from_pipeline_json(spec_json, &self.host).map_err(PyValueError::new_err)?;
+        self.run_built_graph(py, graph, inputs, cycles)
+    }
+
+    /// Release a loaded handle (returns its bus to the pool).
+    fn unload(&mut self, handle: usize) -> PyResult<()> {
+        self.host.unload(handle).map_err(PyValueError::new_err)
+    }
+}
+
+impl CellHost {
+    /// Run a built `CellGraph` over the warm host and serialise the result to a PyDict —
+    /// shared by `run_graph` (JSON manifest) and `run_pipeline` (pipeline spec).
+    fn run_built_graph<'py>(
+        &mut self,
+        py: Python<'py>,
+        graph: CellGraph,
+        inputs: Option<&Bound<'py, PyDict>>,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
         let mut map = std::collections::HashMap::new();
         if let Some(d) = inputs {
             for (k, v) in d.iter() {
@@ -230,11 +267,6 @@ impl CellHost {
         }
         d.set_item("trace", trace)?;
         Ok(d)
-    }
-
-    /// Release a loaded handle (returns its bus to the pool).
-    fn unload(&mut self, handle: usize) -> PyResult<()> {
-        self.host.unload(handle).map_err(PyValueError::new_err)
     }
 }
 

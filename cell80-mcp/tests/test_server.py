@@ -60,7 +60,14 @@ def test_library_run_state_by_name():
 def test_mcp_surface_is_a_small_router():
     mcp = server.build_server()
     names = sorted(t.name for t in mcp.get_tools())
-    assert names == ["cell_graph_run", "cell_inspect", "cell_list", "cell_run", "cell_search"]
+    assert names == [
+        "cell_compose",
+        "cell_graph_run",
+        "cell_inspect",
+        "cell_list",
+        "cell_run",
+        "cell_search",
+    ]
 
 
 # The move-ranker graph: manhattan -> weighted_sum -> clamp, host-routed.
