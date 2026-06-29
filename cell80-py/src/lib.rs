@@ -116,6 +116,24 @@ impl CellHost {
         Ok(list)
     }
 
+    /// Discover by **behaviour**: rank the catalog by how many `(inputs, expected_output)`
+    /// examples each cell reproduces on the VM. `examples` is a list of `(list[int], int)` —
+    /// e.g. `[([3, 7], 3), ([10, 3], 3)]` picks `min`. The phrasing- and language-independent
+    /// signal text `search` can't give; an empty result means no cell reproduces them.
+    #[pyo3(signature = (examples, limit=10))]
+    fn route<'py>(
+        &self,
+        py: Python<'py>,
+        examples: Vec<(Vec<u16>, u16)>,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let list = PyList::empty_bound(py);
+        for m in self.host.route_by_examples(&examples, limit) {
+            list.append(brief(py, m)?)?;
+        }
+        Ok(list)
+    }
+
     /// Full manifest for `id` (typed signature, abi, hash) — or `None`.
     fn manifest<'py>(&self, py: Python<'py>, id: &str) -> PyResult<Option<Bound<'py, PyDict>>> {
         self.host.manifest(id).map(|m| full(py, m)).transpose()
