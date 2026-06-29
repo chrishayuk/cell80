@@ -20,6 +20,16 @@ def test_library_search_inspect_run_warm():
     assert lib.search("manhattan distance", 3)[0]["id"] == "manhattan"
     assert {"id", "summary", "tags", "signature"} <= set(lib.search("math", 1)[0])
 
+    # route by BEHAVIOUR: min and max share a description, but their behaviour cleanly
+    # separates the pair — min matches (3,7)→3 / (10,3)→3 and max can't, and vice versa. (Other
+    # cells that happen to agree on these inputs — e.g. median-of-three with an implicit 0,
+    # which equals min — also surface; behavioural routing returns every cell that matches,
+    # so precision is in choosing discriminating examples.)
+    min_ids = [r["id"] for r in lib.route([([3, 7], 3), ([10, 3], 3)])]
+    max_ids = [r["id"] for r in lib.route([([3, 7], 7), ([10, 3], 10)])]
+    assert "min" in min_ids and "max" not in min_ids
+    assert "max" in max_ids and "min" not in max_ids
+
     # inspect carries the typed signature.
     g = lib.inspect("gcd")
     assert g["signature"] == "run(a: u16, b: u16) -> u16"
@@ -65,6 +75,7 @@ def test_mcp_surface_is_a_small_router():
         "cell_graph_run",
         "cell_inspect",
         "cell_list",
+        "cell_route_by_example",
         "cell_run",
         "cell_search",
     ]
