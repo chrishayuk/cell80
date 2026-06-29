@@ -39,7 +39,7 @@ pub fn codegen_program(
     org: u16,
     entry: Option<&str>,
     target: Target,
-) -> (Vec<u8>, HashMap<String, u16>) {
+) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
     let mut a = Asm::new(org, target);
     if let Some(e) = entry {
         a.byte(0xF3); // DI
@@ -54,7 +54,29 @@ pub fn codegen_program(
         emit_func(&mut a, func);
         base += func.n_locals as u16;
     }
-    a.finish()
+    let (code, symbols) = a.finish()?;
+    // Locals live at the fixed `SCRATCH` base (slot `i` at `SCRATCH + i*2`), *above* the code.
+    // If the emitted code (incl. the appended runtime) grows up into that region, the per-call
+    // slot writes silently corrupt machine code — the same class of bug `codegen_loop` guards.
+    // Fail loudly instead of emitting a wrong image. (The frame loop uses code-relative scratch
+    // and its own `state_base` ceiling; this is the fixed-`SCRATCH` whole-program path.)
+    let code_end = org as u32 + code.len() as u32;
+    if code_end > asm::SCRATCH as u32 {
+        return Err(format!(
+            "rustz80: program too large — code ends at {code_end:#06x}, overrunning the locals \
+             scratch region at {:#06x}",
+            asm::SCRATCH
+        ));
+    }
+    let total_slots: u32 = funcs.iter().map(|(_, f)| f.n_locals as u32).sum();
+    if asm::SCRATCH as u32 + total_slots * 2 > 0x1_0000 {
+        return Err(format!(
+            "rustz80: too many locals — {total_slots} slots from {:#06x} overrun the 64 KiB \
+             address space",
+            asm::SCRATCH
+        ));
+    }
+    Ok((code, symbols))
 }
 
 /// A generic **frame-synced entry loop** at `org`: zero a `state_bytes` region at
@@ -68,7 +90,7 @@ pub fn codegen_loop(
     entry: &str,
     state_base: u16,
     state_bytes: u16,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, String> {
     // Inline single-call-site helpers, then DCE.
     let inlined = crate::inline::inline(funcs.to_vec(), &[entry]);
     let pruned = crate::dce::prune(inlined, &[entry]);
@@ -78,17 +100,17 @@ pub fn codegen_loop(
     // corrupted execution). The code length is independent of the scratch *value* (slot
     // refs are always 2-byte immediates), so a first pass measures the code, then the real
     // pass emits with `scratch` set just past it.
-    let probe = emit_loop(&pruned, org, entry, state_base, state_bytes, asm::SCRATCH);
+    let probe = emit_loop(&pruned, org, entry, state_base, state_bytes, asm::SCRATCH)?;
     let code_end = org.wrapping_add(probe.len() as u16);
     let scratch = (code_end + 1) & !1; // round up to a u16 boundary
     let total_slots: u32 = pruned.iter().map(|(_, f)| f.n_locals as u32).sum();
     let scratch_top = scratch as u32 + total_slots * 2;
-    assert!(
-        scratch_top <= state_base as u32,
-        "rustz80: program too large — code ends at {code_end:#06x} and {total_slots} locals \
-         (to {:#06x}) would overrun the state region at {state_base:#06x}",
-        scratch_top
-    );
+    if scratch_top > state_base as u32 {
+        return Err(format!(
+            "rustz80: program too large — code ends at {code_end:#06x} and {total_slots} locals \
+             (to {scratch_top:#06x}) would overrun the state region at {state_base:#06x}"
+        ));
+    }
     emit_loop(&pruned, org, entry, state_base, state_bytes, scratch)
 }
 
@@ -101,7 +123,7 @@ fn emit_loop(
     state_base: u16,
     state_bytes: u16,
     scratch: u16,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, String> {
     // Games are authentic Z80 (real ROM); always the Spectrum target.
     let mut a = Asm::new(org, Target::Spectrum48);
     a.scratch = scratch;
@@ -145,7 +167,7 @@ fn emit_loop(
         emit_func(&mut a, func);
         base += func.n_locals as u16;
     }
-    a.finish().0
+    Ok(a.finish()?.0)
 }
 
 fn emit_func(a: &mut Asm, f: &Func) {
