@@ -2177,3 +2177,67 @@ fn unsupported_is_an_error() {
     // f32 is outside the dialect → a clear compile error (the host-only signal).
     assert!(rustz80::compile_fn("fn f() -> u16 { let x = 1.5f32; 0u16 }").is_err());
 }
+
+// `bool` fields/locals/returns + `true`/`false` + unary `!` (logical not), in both value
+// and condition position — the readability win for game flags (`if !self.started` instead
+// of `self.started == 0u16`). The same source is real Rust, so it's checked vs rustc.
+#[test]
+fn bool_flags_and_logical_not() {
+    fn host() -> u16 {
+        struct S {
+            on: bool,
+            ready: bool,
+        }
+        impl S {
+            fn arm(&mut self) {
+                self.ready = true;
+            }
+            fn idle(&self) -> bool {
+                !self.on
+            }
+        }
+        let mut s = S {
+            on: false,
+            ready: false,
+        };
+        let mut acc = 0u16;
+        if !s.on {
+            acc = acc + 1u16; // on=false ⇒ +1
+        }
+        if s.idle() {
+            acc = acc + 2u16; // idle = !on = true ⇒ +2
+        }
+        s.arm();
+        if s.ready {
+            acc = acc + 4u16; // ready=true ⇒ +4
+        }
+        let flag = !s.ready; // false
+        acc = acc + (flag as u16) * 8u16; // +0
+        while !s.on {
+            s.on = true;
+            acc = acc + 16u16; // runs once ⇒ +16
+        }
+        acc
+    }
+    let src = "
+        struct S { on: bool, ready: bool }
+        impl S {
+            fn arm(&mut self) { self.ready = true; }
+            fn idle(&self) -> bool { !self.on }
+        }
+        fn run() -> u16 {
+            let mut s = S { on: false, ready: false };
+            let mut acc = 0u16;
+            if !s.on { acc = acc + 1u16; }
+            if s.idle() { acc = acc + 2u16; }
+            s.arm();
+            if s.ready { acc = acc + 4u16; }
+            let flag = !s.ready;
+            acc = acc + (flag as u16) * 8u16;
+            while !s.on { s.on = true; acc = acc + 16u16; }
+            acc
+        }
+    ";
+    let prog = rustz80::compile_program(src).expect("compile");
+    assert_eq!(run_program(&prog, "run"), host()); // 1+2+4+0+16 = 23
+}
