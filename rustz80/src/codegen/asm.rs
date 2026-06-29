@@ -3,8 +3,11 @@ use super::runtime::{DIVMOD16, MUL16};
 use super::Target;
 use std::collections::HashMap;
 
-/// Locals: slot `i` lives at `SCRATCH + i*2` (`u16` each). Each function reuses
-/// the same region (Stage 1 has no recursion / overlapping live ranges yet).
+/// Default base for locals: slot `i` lives at `SCRATCH + i*2` (`u16` each). Each function
+/// reuses the same region (Stage 1 has no recursion / overlapping live ranges yet). This is
+/// only a *default* (used by `codegen_program`); the frame loop ([`super::codegen_loop`])
+/// overrides `Asm::scratch` to sit just above the emitted code, so a large program's code
+/// can't grow into the locals region.
 pub(super) const SCRATCH: u16 = 0x9000;
 
 pub(super) struct Asm {
@@ -21,6 +24,9 @@ pub(super) struct Asm {
     /// locals occupy a disjoint scratch region (correct for non-recursive calls;
     /// real stack frames are a later stage).
     pub(super) base: u16,
+    /// Base address of the locals scratch region. Defaults to [`SCRATCH`]; the frame loop
+    /// raises it to just above the code so code and locals never overlap.
+    pub(super) scratch: u16,
     /// Enclosing loops as `(continue target, break target)` labels — the innermost
     /// is last. `continue`/`break` jump to the top entry's targets.
     pub(super) loop_stack: Vec<(usize, usize)>,
@@ -42,9 +48,14 @@ impl Asm {
             needs_mul: false,
             needs_div: false,
             base: 0,
+            scratch: SCRATCH,
             loop_stack: Vec::new(),
             func_end: None,
         }
+    }
+    /// Address of local `slot` for the function currently being emitted.
+    pub(super) fn slot_addr(&self, slot: usize) -> u16 {
+        self.scratch + (self.base + slot as u16) * 2
     }
     pub(super) fn here(&self) -> u16 {
         self.org.wrapping_add(self.code.len() as u16)
@@ -104,8 +115,4 @@ impl Asm {
         }
         (self.code, self.symbols)
     }
-}
-
-pub(super) fn slot_addr(base: u16, slot: usize) -> u16 {
-    SCRATCH + (base + slot as u16) * 2
 }

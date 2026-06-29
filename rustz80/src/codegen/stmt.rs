@@ -33,7 +33,7 @@ pub(super) fn gen_fill(a: &mut Asm, base: usize, count: usize, value: &Expr) {
     if count == 0 {
         return;
     }
-    let addr = slot_addr(a.base, base);
+    let addr = a.slot_addr(base);
     match a.target {
         Target::Spectrum48 => {
             gen_expr(a, value); // HL = value
@@ -68,7 +68,7 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
         Stmt::Assign(slot, e) => {
             gen_expr(a, e);
             a.byte(0x22); // LD (addr), HL
-            let addr = slot_addr(a.base, *slot);
+            let addr = a.slot_addr(*slot);
             a.word(addr);
         }
         Stmt::StoreIndex(base, index, value, w) => {
@@ -126,7 +126,7 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
         }
         Stmt::Assign32(slot, e) => {
             gen_expr32(a, e); // HL = low word, DE = high word
-            let addr = slot_addr(a.base, *slot);
+            let addr = a.slot_addr(*slot);
             a.byte(0x22); // LD (addr),HL     low word
             a.word(addr);
             a.byte(0xED);
@@ -146,7 +146,8 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
                 for &b in ST[i] {
                     a.byte(b);
                 }
-                a.word(slot_addr(a.base, *slot));
+                let addr = a.slot_addr(*slot);
+                a.word(addr);
             }
         }
         Stmt::If(cond, then, els) => {

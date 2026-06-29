@@ -120,8 +120,9 @@ Ollama; `gemma-4-26B-A4B` does.
 
 Adoption asks "did it run the *right cell*"; composition asks the harder question — given a
 task that needs **several** cells, does the agent **wire them together** instead of doing the
-multi-step arithmetic itself? Same fixed-steering discipline; the agent also gets the
-`cell_graph_run` tool (compose cells into a host-routed, type-checked graph).
+multi-step arithmetic itself? Same fixed-steering discipline; the agent also gets two graph
+tools — `cell_compose` (the easy pipeline: positional args, no wires) and `cell_graph_run`
+(the full manifest, for DAGs).
 
 ```bash
 cell-eval composition --model qwen2.5        # Ollama by default
@@ -132,25 +133,35 @@ Dataset: [`datasets/composition_tasks.jsonl`](datasets/composition_tasks.jsonl) 
 needs ≥2 cells (one's output feeds the next), e.g. *"manhattan distance from (3,4) to (10,8),
 score it `dist + 2·risk + 3·cost`, then clamp to 0–10."* Three signals per task:
 
-- **composed** — did it wire cells (a `cell_graph_run` with ≥2 nodes, or ≥2 distinct cells run)?
+- **composed** — did it wire cells (a `cell_compose`/`cell_graph_run` with ≥2 steps, or ≥2 distinct cells run)? Split out as `used_pipeline` vs `used_graph` so the helper's effect is attributable.
 - **correct** — is the final `ANSWER: <n>` right?
 - **correct_via_composition** — correct *and* composed (the outcome we want).
 
 This is the proof the graph matters: the consumer doesn't just *find* a tool, it *builds* one
 from several.
 
-### Baseline (granite4.1:3b via Ollama, 6 tasks)
+### Baseline → the `cell_compose` fix (granite4.1:3b via Ollama)
+
+The finding that only the eval surfaces: with the raw `cell_graph_run` manifest only, granite
+**composes by chaining `cell_run` calls** (chain:2, chain:3) but **never authors a graph**
+(`used_graph=0.00`) — the wire-level JSON is too much for a 3B to construct from scratch.
 
 ```
 composed=0.50   used_graph=0.00   correct=0.83   correct_via_composition=0.50
 ```
 
-The finding that only the eval surfaces: granite **composes by chaining `cell_run` calls**
-(chain:2, chain:3) and **never authors a graph** (`used_graph=0.00`) — the JSON graph
-manifest is too much for a 3B to construct from scratch. So composition happens, but not via
-`cell_graph_run`; closing that gap is a steering / tool-ergonomics problem, not a VM one.
-(For contrast, the *same* model scores **adoption 1.00 / correct 1.00** on the single-cell
-tasks — it's an eager, reliable tool-caller; the hard part is graph *authoring*, not tool use.)
+That drove **`cell_compose`**: a pipeline tool — an ordered list of `{cell, args}` with
+positional args (`"$N"` = step N's result), ports resolved from the manifest, **no wires or
+port names**. With it the same model authors a pipeline in **half** the tasks:
+
+```
+composed=0.79   used_graph=0.00   used_pipeline=0.50   correct=0.93   correct_via_composition=0.71
+```
+
+`used_graph` stays 0.00 (raw graphs really are too hard for a 3B), while `used_pipeline=0.50`
+carries the entire gain — so the lever was graph-authoring **ergonomics**, not the VM. (The
+same model scores **adoption 1.00 / correct 1.00** on single-cell tasks — an eager, reliable
+tool-caller; the hard part was graph *authoring*, now eased.)
 
 ## Layout
 
