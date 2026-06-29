@@ -12,7 +12,7 @@ mod expr;
 mod runtime;
 mod stmt;
 
-use asm::{slot_addr, Asm};
+use asm::Asm;
 use stmt::{gen_return, gen_stmt};
 
 /// Code-generation target. `Spectrum48` is authentic Z80 — `*`/`/`/`%` use the appended
@@ -69,8 +69,42 @@ pub fn codegen_loop(
     state_base: u16,
     state_bytes: u16,
 ) -> Vec<u8> {
+    // Inline single-call-site helpers, then DCE.
+    let inlined = crate::inline::inline(funcs.to_vec(), &[entry]);
+    let pruned = crate::dce::prune(inlined, &[entry]);
+
+    // Place the locals scratch region *just above the emitted code* rather than at a fixed
+    // address, so a large program's code can't grow into its own locals (which silently
+    // corrupted execution). The code length is independent of the scratch *value* (slot
+    // refs are always 2-byte immediates), so a first pass measures the code, then the real
+    // pass emits with `scratch` set just past it.
+    let probe = emit_loop(&pruned, org, entry, state_base, state_bytes, asm::SCRATCH);
+    let code_end = org.wrapping_add(probe.len() as u16);
+    let scratch = (code_end + 1) & !1; // round up to a u16 boundary
+    let total_slots: u32 = pruned.iter().map(|(_, f)| f.n_locals as u32).sum();
+    let scratch_top = scratch as u32 + total_slots * 2;
+    assert!(
+        scratch_top <= state_base as u32,
+        "rustz80: program too large — code ends at {code_end:#06x} and {total_slots} locals \
+         (to {:#06x}) would overrun the state region at {state_base:#06x}",
+        scratch_top
+    );
+    emit_loop(&pruned, org, entry, state_base, state_bytes, scratch)
+}
+
+/// Emit the frame-loop preamble + the (already inlined/pruned) functions, with locals at
+/// `scratch`. Pure of analysis — used twice by [`codegen_loop`] (measure, then place).
+fn emit_loop(
+    pruned: &[(String, Func)],
+    org: u16,
+    entry: &str,
+    state_base: u16,
+    state_bytes: u16,
+    scratch: u16,
+) -> Vec<u8> {
     // Games are authentic Z80 (real ROM); always the Spectrum target.
     let mut a = Asm::new(org, Target::Spectrum48);
+    a.scratch = scratch;
     a.byte(0xF3); // DI
                   // Zero the state region (memset via LD (HL),0 + LDIR).
     if state_bytes >= 2 {
@@ -105,7 +139,7 @@ pub fn codegen_loop(
     a.jump(0xC3, loop_l); // JP loop
 
     let mut base = 0u16;
-    for (name, func) in funcs {
+    for (name, func) in pruned {
         a.define(name);
         a.base = base;
         emit_func(&mut a, func);
@@ -117,7 +151,7 @@ pub fn codegen_loop(
 fn emit_func(a: &mut Asm, f: &Func) {
     // Prologue: copy parameters from the convention registers into their slots.
     for i in 0..f.params {
-        let addr = slot_addr(a.base, i);
+        let addr = a.slot_addr(i);
         match i {
             0 => {
                 a.byte(0x22); // LD (addr), HL

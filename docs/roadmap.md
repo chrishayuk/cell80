@@ -174,14 +174,17 @@ not strictly by sequence; the library grows by eval need:
      together, the agent given the `cell_graph_run` tool, scored on **composed /
      correct / correct-via-composition** (held-fixed steering, like adoption). The capstone —
      it measures whether the consumer *builds* a tool from several, not just *finds* one.
-   - **Baseline (granite4.1:3b):** composed **0.50**, **used_graph 0.00**, correct **0.83** —
-     and the same model scores **adoption 1.00 / correct 1.00** on single cells. The finding:
-     a small model **composes by *chaining* `cell_run`, never by authoring a graph** — the JSON
-     manifest is too much to construct. So the next composition lever is **graph-authoring
-     ergonomics** (steering / a simpler author surface), not the VM. *(SOMA territory — let the
-     model learn to author graphs rather than hand-tuning the prompt.)*
-   - **Next** — close the graph-authoring gap, then a live **CellBus** (publish typed event →
-     route to interested cells → commit) and SOMA organs.
+   - **Baseline → the `cell_compose` fix (granite4.1:3b) — ✓ graph-authoring gap closed.** With
+     the raw `cell_graph_run` manifest only, the model **composed 0.50 / correct 0.83 but
+     `used_graph` 0.00** — it chains `cell_run` and never authors the wire-level JSON (too much
+     for a 3B). That drove **`cell_compose`** (built): an ordered pipeline of `{cell, args}` with
+     positional args (`"$N"` = step N's result), ports resolved from each cell's manifest — no
+     wires, no port names. The same model now **composes via a pipeline in half the tasks**
+     (`used_pipeline` 0.50, raw `used_graph` still 0.00, composed **0.79**, correct **0.93**). So
+     graph-authoring **ergonomics** was the lever, exactly as predicted — not the VM. (adoption
+     1.00 / correct 1.00 on single cells throughout.)
+   - **Next** — non-linear (DAG) authoring sugar, let the model *learn* to author graphs (SOMA),
+     then a live **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
 6. **Grow the standard cell library — two waves ✓ (98 cells).** `cell80/cells/`: predicates,
@@ -234,34 +237,52 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   pattern) would let a `Sprite` be defined once and compile host **and** pure.
 
 **Codegen robustness & size — the *other* kit blocker (not the type frontend).** Building real
-games on the SDK (`chuk-speccy-sdk/samples/platform.rs` + `chase.rs`) surfaced two codegen-side
-gaps that gate the SDK's "grow the kit via shared prelude routines" strategy. *Verified against
-rustz80 **0.5.0** on 2026-06-28 — chuk-speccy itself is still pinned to **0.2.0**:*
+games on the SDK (`chuk-speccy-sdk/samples/platform.rs` + `chase.rs`) surfaced the codegen-side
+limits on how big/clean a game can be. *Verified against rustz80 **0.6.0** on 2026-06-28 —
+chuk-speccy is now on 0.6:*
 
-- **Dead-code elimination — emit only *reachable* functions. ✓ done in 0.6.0.** `compile_to_tap`
-  now DCEs rooted at the game's `entry` (and `compile_file_pruned(file, target, roots)` exposes it
-  for any caller); only the functions the entry actually reaches are emitted — and so only the
-  `__mul16`/`__divmod16` runtime they need. A shared SDK helper now taxes *only* the games that
-  call it: adding a `__frame_number` HUD routine no longer grows a game that never calls it. This
-  was the **keystone** unblock for a numeric/text HUD, sprite-blit, attribute-collision, and a
-  screen-addr LUT as shared prelude routines. (Same pass powers the cell library's shared kernel
-  prelude — see **Built**.) *Once chuk-speccy moves to 0.6.0, re-measure the size ceiling.*
-- **Error on over-budget — never silently miscompile. [no diagnostic in 0.5.0]** Over the codegen
-  limit, 0.2.0 emits a *wrong* tape (a silent no-op loop, or a tape that won't run) rather than
-  failing, and 0.5.0 still has **no budget/size error** in codegen. It should **fail the compile
-  with a diagnostic**. (The ceiling *magnitude* may be higher in 0.5.0 — re-measure once
-  chuk-speccy is on 0.5.0; at 0.2.0 `chase` holds AI **or** a digit score, not both.)
+- **Dead-code elimination — emit only reachable functions. ✓ (generic) + extended to the game
+  path.** `compile_to_tap` / `compile_file_pruned` DCE rooted at the entry. But the **frame-loop
+  entry (`codegen_loop`) did *not* prune** — the SDK compiles games through it, so on 0.6 a game
+  still got the *whole* prelude until `dce::prune(funcs, &[entry])` was added to `codegen_loop`
+  (done, pending review). Effect (verified on the real ROM): `platform` now shows a numeric
+  ROM-font score (`__frame_number`), and `chase` — which doesn't call it — is unaffected (the
+  routine is pruned from its tape). Keystone unblock for shared prelude routines (numeric/text HUD,
+  sprite-blit, attribute-collision, screen-addr LUT).
+- **Function inlining — so clean decomposed code is as compact as hand-inlining. ✓ done
+  (`src/inline.rs`), with argument substitution + slot reuse.** Folds each **single-call-site**,
+  early-return-free, scalar/void function into its one caller (then DCE drops the now-dead def).
+  Single-call ⇒ never duplicates code (pure win: drops the call/prologue/epilogue + param copies).
+  Two refinements make "as compact as hand-inlining" *literal*: **(a) argument substitution** — a
+  *pure* (`Var`/`Lit`/`&local`), *read-only* param is substituted straight into the body, so there's
+  no param-bind `Assign` and no param slot (a `&mut self` method with var/const args inlines to
+  exactly the hand-written body — zero overhead); **(b) slot reuse** — callee locals sit at a `water`
+  mark that pops after each inlined body, so siblings reuse slots and the scratch region grows by the
+  *deepest* inline, not the *sum*. Runs before DCE in `codegen_loop`, `compile_file`,
+  `compile_file_pruned`, `compile_to_tap`. Diff-validated against rustc by six behavioural tests in
+  `tests/diff.rs` (scalar `&mut self`, scalar assign, array-field write in a loop, two siblings
+  sharing slots, a nested kept call, and a helper-then-movement multi-array-field program).
+  **Result: `chuk-speccy`'s `chase` now decomposes into clean `step_enemy`/`caught` methods and the
+  tape is *smaller* than hand-inlined (4259 vs 4446 bytes).** *Follow-ups (nice-to-have):* inline
+  calls in expression/condition position (hoist to a temp) and tuple-return calls (today only `f(a);`
+  / `x = f(a);` statement positions inline); small multi-call inlining; the Stage-2
+  peephole/strength-reduce pass.
+- **Code↔scratch collision — the real `chase` "ceiling". ✓ fixed (dynamic scratch placement).**
+  Locals lived at a *fixed* `SCRATCH = 0x9000`, but code grows up from `ORG = 0x8000` — only 4 KB of
+  code space. `chase` (~4.3 KB code) overran 0x9000, so the per-frame slot writes silently corrupted
+  the overrun machine code → "frozen" enemies. (This is what masqueraded as an inliner bug: inlining
+  shifted the layout so the corruption became fatal; the inliner's IR was correct all along — proven
+  by the diff tests + an IR dump.) Fix: `codegen_loop` now places the scratch region **just above the
+  emitted code** (a measure-then-place two-pass; code length is invariant to the scratch *value*),
+  with `state_base` as the ceiling. `codegen_program` keeps the 0x9000 default (cells unaffected).
+- **Error on over-budget — never silently miscompile. ✓ (game path).** `codegen_loop` now asserts
+  that `code_end + locals*2 <= state_base` and panics with a diagnostic rather than emitting a wrong
+  tape. *Follow-up:* return a `Result` instead of panicking, and extend the guard to `codegen_program`.
 
-*Already in 0.5.0 — so the action is to **upgrade chuk-speccy's `rustz80` 0.2.0 → 0.5.0**, not to
-ask for these:* **`&mut self` methods that mutate through the receiver** (verified — the
-`state_machine` example mutates `self` and matches rustc), plus `+=`, `for` ranges, local
-`[u8; N]`, and structs/enums/methods. Upgrading lets games **decompose `update` into
-`self.step_enemies()` / `self.move_player()`** — readable *and* smaller, which itself relieves the
-size ceiling. (Re-verify the *frontend* asks above — nested struct fields, signed/`u32` fields,
-`[u8; N]` *fields*, `&CONST→addr` — against 0.5.0 too; some may already be done.)
-
-Until DCE + a real over-budget error land, chuk-speccy's pure kit can't grow via shared prelude
-routines; its **host** SDK and asset tooling proceed independently.
+*Already in 0.5/0.6 (the SDK is now on 0.6):* `&mut self` methods that mutate through the receiver,
+`+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (Re-verify the *frontend* asks above —
+nested struct fields, signed/`u32` fields, `[u8; N]` *fields*, `&CONST→addr` — against 0.6; some may
+already be done, e.g. a `bitmap` example suggests const-data progressed.)
 
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —

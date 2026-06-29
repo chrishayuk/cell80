@@ -13,7 +13,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         }
         Expr::Var(slot) => {
             a.byte(0x2A);
-            let addr = slot_addr(a.base, *slot);
+            let addr = a.slot_addr(*slot);
             a.word(addr);
         }
         Expr::Bin(op, l, r, w) => {
@@ -127,7 +127,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         }
         Expr::AddrOf(slot) => {
             a.byte(0x21); // LD HL, &local
-            let addr = slot_addr(a.base, *slot);
+            let addr = a.slot_addr(*slot);
             a.word(addr);
         }
         Expr::Deref(ptr, off) => {
@@ -363,7 +363,7 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             a.word((*n >> 16) as u16);
         }
         Expr::Var32(slot) => {
-            let addr = slot_addr(a.base, *slot);
+            let addr = a.slot_addr(*slot);
             a.byte(0x2A); // LD HL,(addr)      low word
             a.word(addr);
             a.byte(0xED);
@@ -511,7 +511,7 @@ pub(super) fn gen_pair(a: &mut Asm, first: &Expr, second: &Expr) {
 pub(super) fn gen_elem_addr(a: &mut Asm, base: usize, index: &Expr) {
     gen_expr(a, index); // HL = index
     a.byte(0x29); // ADD HL,HL  (index * 2)
-    let base_addr = slot_addr(a.base, base);
+    let base_addr = a.slot_addr(base);
     a.byte(0x11); // LD DE, base_addr
     a.word(base_addr);
     a.byte(0x19); // ADD HL, DE  -> element address

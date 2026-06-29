@@ -186,3 +186,25 @@
 {"id": "next_pow2-para-1", "query": "round up to the nearest power of two", "expected": "next_pow2", "category": "paraphrase"}
 {"id": "divides-adv-1", "query": "does a divide b evenly", "expected": "divides", "category": "adversarial"}
 {"id": "percent_to_byte-adv-1", "query": "express a percent as a byte", "expected": "percent_to_byte", "category": "adversarial"}
+{"id": "min-adv-1", "query": "pick the lesser of two numbers, not the larger", "expected": "min", "category": "adversarial"}
+{"id": "max-adv-1", "query": "the bigger of two numbers, not the smaller one", "expected": "max", "category": "adversarial"}
+{"id": "median3-adv-1", "query": "the middle one of three, neither smallest nor largest", "expected": "median3", "category": "adversarial"}
+{"id": "clamp-adv-1", "query": "limit a value so it never leaves the low and high bound", "expected": "clamp", "category": "adversarial"}
+{"id": "wrap-adv-1", "query": "fold a value back inside the low and high bound", "expected": "wrap", "category": "adversarial"}
+{"id": "gcd-adv-1", "query": "the common factor shared by two numbers", "expected": "gcd", "category": "adversarial"}
+{"id": "lcm-adv-1", "query": "the common multiple of two numbers", "expected": "lcm", "category": "adversarial"}
+{"id": "abs_diff-adv-1", "query": "the distance between two numbers on a line", "expected": "abs_diff", "category": "adversarial"}
+{"id": "chebyshev-adv-1", "query": "the grid distance between two points by the larger axis", "expected": "chebyshev", "category": "adversarial"}
+{"id": "manhattan-adv-1", "query": "the distance between two grid points adding the axes", "expected": "manhattan", "category": "adversarial"}
+{"id": "euclid_sq-adv-1", "query": "the straight distance between two grid points, squared", "expected": "euclid_sq", "category": "adversarial"}
+{"id": "eq-adv-1", "query": "compare two numbers for equality, not order", "expected": "eq", "category": "adversarial"}
+{"id": "is_lt-adv-1", "query": "compare two numbers, is the first the smaller", "expected": "is_lt", "category": "adversarial"}
+{"id": "is_gt-adv-1", "query": "compare two numbers, is the first the larger", "expected": "is_gt", "category": "adversarial"}
+{"id": "avg2-adv-1", "query": "the value in the middle of two numbers", "expected": "avg2", "category": "adversarial"}
+{"id": "safe_mod-adv-1", "query": "divide two numbers and give the leftover, not the quotient", "expected": "safe_mod", "category": "adversarial"}
+{"id": "euclid_sq-para-1", "query": "the sum of squared coordinate differences between two points", "expected": "euclid_sq", "category": "paraphrase"}
+{"id": "eq-para-1", "query": "do two values match exactly", "expected": "eq", "category": "paraphrase"}
+{"id": "is_lt-para-1", "query": "does one value come before another in order", "expected": "is_lt", "category": "paraphrase"}
+{"id": "is_gt-para-1", "query": "does one value exceed another", "expected": "is_gt", "category": "paraphrase"}
+{"id": "avg2-para-1", "query": "add two numbers and halve the result", "expected": "avg2", "category": "paraphrase"}
+{"id": "safe_mod-para-1", "query": "what is left over when one number is divided by another", "expected": "safe_mod", "category": "paraphrase"}
