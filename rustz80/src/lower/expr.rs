@@ -82,6 +82,24 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             }
         },
         syn::Expr::Paren(p) => lower_expr(&p.expr, ctx),
+        // `!b` — logical NOT on the `0`/`1` boolean convention (a `bool` field/flag is a
+        // single `0`/`1` slot; comparisons and `&&`/`||` already produce `0`/`1`). Yields
+        // `1` iff the operand is `0`. The integer bitwise-NOT meaning of `!` is out of the
+        // subset — `!` is for booleans (matches rustc on `bool` operands, which is what the
+        // differential oracle checks). In condition position `lower_cond` negates instead.
+        syn::Expr::Unary(u) => match u.op {
+            syn::UnOp::Not(_) => Ok((
+                Expr::Cmp {
+                    cmp: Cmp::Eq,
+                    lhs: Box::new(lower_expr(&u.expr, ctx)?.0),
+                    rhs: Box::new(Expr::Lit(0)),
+                },
+                Width::Byte,
+            )),
+            _ => {
+                Err("unary `-`/`*` are not in the subset (no signed ints; `!` is for bools)".into())
+            }
+        },
         // `e as u8` truncates to a byte; `as u16`/`as usize` is a no-op (16-bit); a `u32`
         // narrows to its low word/byte (`Trunc32`).
         syn::Expr::Cast(c) => {
