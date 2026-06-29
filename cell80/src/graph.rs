@@ -48,6 +48,7 @@ pub enum Feed {
 }
 
 /// A static graph of cells wired host-side.
+#[derive(Debug)]
 pub struct CellGraph {
     pub id: String,
     /// `(node id, cell id)` — a node names a cell in the host catalog.
@@ -400,6 +401,111 @@ impl CellGraph {
             outputs,
         })
     }
+
+    /// Build a graph from a **pipeline** spec — the ergonomic authoring surface that doesn't
+    /// make the model hand-write wires or know any port names. Each step names a cell and gives
+    /// its arguments **positionally** (in the cell's own param / state-field order, resolved
+    /// here from the manifest); an argument is a literal (a JSON number → `const`), `"$N"` (the
+    /// result of step `N`), or any other string (an external `input` by name). The graph's
+    /// output `out` is the last step's result.
+    ///
+    /// ```json
+    /// { "steps": [
+    ///     { "cell": "manhattan",    "args": ["x1", "y1", "x2", "y2"] },
+    ///     { "cell": "weighted_sum", "args": ["$0", "risk", "cost"] },
+    ///     { "cell": "clamp",        "args": ["$1", 0, 10] } ] }
+    /// ```
+    /// `validate` still gates the result before any run, so a bad spec is rejected up front.
+    pub fn from_pipeline_json(s: &str, host: &CellHost) -> Result<Self, String> {
+        let v: serde_json::Value =
+            serde_json::from_str(s).map_err(|e| format!("pipeline JSON: {e}"))?;
+        let steps = v
+            .get("steps")
+            .and_then(|x| x.as_array())
+            .ok_or("pipeline: `steps` must be an array")?;
+        if steps.is_empty() {
+            return Err("pipeline: `steps` is empty".into());
+        }
+
+        let mut nodes = Vec::with_capacity(steps.len());
+        let mut wires = Vec::new();
+        for (i, step) in steps.iter().enumerate() {
+            let cell = step
+                .get("cell")
+                .and_then(|x| x.as_str())
+                .ok_or_else(|| format!("step {i}: missing string `cell`"))?;
+            let m = host
+                .manifest(cell)
+                .ok_or_else(|| format!("step {i}: no cell `{cell}`"))?;
+            let ports = input_ports(m);
+            let args = step
+                .get("args")
+                .and_then(|x| x.as_array())
+                .ok_or_else(|| format!("step {i} (`{cell}`): missing array `args`"))?;
+            // A value cell needs exactly its params; a state cell takes its **input** fields,
+            // which by convention lead the struct (the trailing output field, e.g. `dist`, is
+            // written by the cell, not fed) — so allow up to the field count and wire the
+            // leading ones.
+            let is_state = !m.signature.state.is_empty();
+            let ok = if is_state {
+                args.len() <= ports.len()
+            } else {
+                args.len() == ports.len()
+            };
+            if !ok {
+                let names: Vec<&str> = ports.iter().map(|(n, _)| n.as_str()).collect();
+                return Err(format!(
+                    "step {i} (`{cell}`): {} {} arg(s) ({}), got {}",
+                    if is_state { "takes up to" } else { "expects" },
+                    ports.len(),
+                    names.join(", "),
+                    args.len()
+                ));
+            }
+            let node = format!("s{i}");
+            // `zip` stops at `args.len()`, so a state cell wires only its leading input fields.
+            for ((port, _), arg) in ports.iter().zip(args) {
+                let feed = pipeline_feed(arg, i)?;
+                wires.push((Port::new(node.clone(), port.clone()), feed));
+            }
+            nodes.push((node, cell.to_string()));
+        }
+
+        let last = format!("s{}", steps.len() - 1);
+        Ok(CellGraph {
+            id: v
+                .get("id")
+                .and_then(|x| x.as_str())
+                .unwrap_or("pipeline")
+                .to_string(),
+            nodes,
+            wires,
+            outputs: vec![("out".to_string(), Port::new(last, "result"))],
+        })
+    }
+}
+
+/// One pipeline argument → a [`Feed`]: a JSON number is a `const`; `"$N"` references step `N`'s
+/// result (must be an *earlier* step); any other string is an external input by name.
+fn pipeline_feed(arg: &serde_json::Value, step: usize) -> Result<Feed, String> {
+    if let Some(n) = arg.as_u64() {
+        return Ok(Feed::Const(n));
+    }
+    let s = arg
+        .as_str()
+        .ok_or_else(|| format!("step {step}: arg must be a number or a string, got {arg}"))?;
+    if let Some(rest) = s.strip_prefix('$') {
+        let n: usize = rest
+            .parse()
+            .map_err(|_| format!("step {step}: `{s}` must be `$<step number>`"))?;
+        if n >= step {
+            return Err(format!(
+                "step {step}: `{s}` refers to step {n}, which is not an earlier step"
+            ));
+        }
+        return Ok(Feed::From(Port::new(format!("s{n}"), "result")));
+    }
+    Ok(Feed::Input(s.to_string()))
 }
 
 impl GraphRun {
