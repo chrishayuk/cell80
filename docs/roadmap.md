@@ -223,7 +223,77 @@ feature — the cell layer is now the `cell80` crate.) **0.6.0** added the compi
 (bool-as-value, `&&`/`||`, runtime shifts) + dead-code elimination, the 98-cell standard library
 with a shared kernel prelude, and Spectrum-side DCE in `compile_to_tap`. **0.7.0** adds the
 `cell_compose` pipeline graph-authoring helper, a single-call inliner, and the cell layer's
-learned retrieval router + program-synthesis modules.
+learned retrieval router + program-synthesis modules. **0.8.0** makes **TF-IDF the default
+search index**, adds **behavioural I/O-example routing** (`cell_route_by_example`) as the
+language-independent lever for same-shape sibling confusions, the (experimental, measured-neutral)
+type-led re-ranker, and makes codegen **return `Result`** instead of panicking on over-budget.
+
+### `rustz80` backend — Stage 2 quality + wider state (the shared multiplier)
+
+Distinct from the frontend asks below (chuk-speccy's critical path): this backend work pays off
+for *both* consumers — cells get headroom under the manifest-smaller-than-usefulness line and
+lower decode cost (and since `cycles` is a **constraint, not a reward**, cheaper cells are pure
+upside — no gaming surface reopens); games get room under the 4 KB code ceiling that just bit
+`chase`. The ISA was never the ceiling: `ED FE` makes cell80 *Z80 for control flow + host traps
+for disproportionate primitives*, so the test for any new width is the **contract — bounded +
+honest cost** — not "can the chip do it."
+
+**Stage 2 — codegen quality.** The blocker is structural, not effort: codegen emits raw bytes
+straight into a `Vec<u8>` (`a.byte(0xE5)`), so instruction boundaries are gone and there is no
+seam for a quality pass.
+
+- **Instruction-IR seam (the keystone).** Interpose a thin `Ins` list between codegen and
+  `finish()` — an enum with **symbolic operands** (labels / slot refs / call targets stay
+  symbolic, not byte offsets; the runtime appended as `Ins::Blob(&[u8])`). The address model
+  inverts: PC + scratch assignment moves to a final pass *after* peephole
+  (`emit → peephole → measure → assign PCs + scratch → lower to bytes`), which folds the
+  code-relative scratch two-pass in cleanly (code length is invariant to the scratch *value*).
+  Unlocks peephole, a small *what's-in-`HL`/`DE`* tracker, and instruction-level measurement —
+  and it's the shared substrate for the 8-bit path and a future signed-compare, so it pays off 3×.
+- **Peephole rules, ranked by pattern frequency.** `Var⊕Var` / `Var⊕Lit` for commutative ops →
+  drop the `PUSH HL` / `POP DE` and use `LD HL,(a); LD DE,(b); ADD HL,DE` (`ED 5B` / `11`) — the
+  biggest cumulative win, because add is everywhere; store-then-reload elision; redundant
+  `LD H,0` / `EX DE,HL` pairs; dead push/pop around leaf operands. Each rule's correctness
+  predicate is **effect-free leaf operands** (the PUSH/POP scheme is evaluation-order-safe; the
+  flat form isn't if an operand can `poke` / call).
+- **8-bit path (follow-on, behind the seam).** `u8` ops compute in 16-bit `HL` + mask today;
+  computing in `A` is a size win for chuk-speccy byte code and pairs with the `[u8; N]` field ask.
+  Wants the seam first so peephole can clean the H/L splits at the boundaries.
+- **DoD — measure-first, double-tested.** Snapshot the library's per-fn byte sizes via
+  `Program::size_report()` *before* the seam (proves the prize is real; the golden to beat), and
+  *count* `Var⊕Var` vs general binop sites rather than assuming the ranking. Every peephole rule
+  ships **two** tests: a `tests/diff.rs` case (behaviour unchanged — the rustc-vs-emulator net)
+  **and** a size/shape assertion (a no-op rule passes diff trivially, so prove it fired).
+
+**Wider state — `u32` in state, then fixed-point (kill the overflow footgun).** `u32` already
+exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the gap is persisting
+it in **state**, which removes the `u16` ceiling that pushes `euclid_sq` / `weighted_sum` /
+running-stat cells toward "ask the agent to write Python."
+
+- **`u32` in state — the work is the typed-state ABI, not the codegen.** The carry-chain
+  arithmetic exists (`ADD HL,DE` then `ADC HL,DE`); the codegen gap is a `u32` *field* load/store
+  (two slots) + `layout.rs` giving the field two slots. The real work is the ABI surface the
+  discovery/graph layer rides on: `state_addrs` must carry **width** (a `u32` field is 4 bytes /
+  two slots), `CellHost::run_state` / `read_named` → PyO3 → MCP `cell_run(fields=)` learn to
+  read/write a 4-byte little-endian field by name, and **CellGraph** type-checks / routes `u32`
+  edges — an ABI-version-bump candidate. Per-op fork mirrors today: **carry-chain in software for
+  add/sub/shift** (authentic on *both* targets — no trap), **host trap for mul/div** (software is
+  disproportionate); only mul/div needs a Spectrum software sibling.
+- **Fixed-point — a convention on `u32`, not a type.** Q-format is a `u32` with a point
+  convention: `weighted_sum` with a Q8.8 weight is `(a*w) >> 8` — a `u32` multiply + a shift the
+  compiler already has. So it's a library convention + helper cells (`q_mul` / `q_div`) + an
+  optional manifest **scale** annotation, riding on `u32` — *not* a new type the agent must learn.
+- **Determinism split (write it down before the first wide op).** Integer / fixed-point /
+  **softfloat** are all deterministic (softfloat is pure-integer IEEE-754, bit-identical
+  cross-arch) → **in scope, gated on size/cost** (`max_code`, `trapped_ops`); the determinism
+  clause is **never waived**. **Hardware float + transcendentals** are non-deterministic or heavy
+  → **out**, the Wasm lane the non-goals reserve. `u64` on demonstrated eval need.
+- **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
+  halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
+  DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the
+  fast-vs-authentic + cross-arch determinism fuzz. Size the prize first: **audit which library
+  cells are *accidentally* capped by a `u16` intermediate** (`euclid_sq`, accumulators) vs
+  *deliberately* saturating (`add_sat` / `mul_sat` — correct as-is).
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
 
