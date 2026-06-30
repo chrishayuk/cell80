@@ -14,6 +14,9 @@
 use cell80::{Cartridge, CartridgeOpts, CellConfig, CellIndex, Manifest, TfidfIndex, TypeLedIndex};
 use std::path::PathBuf;
 
+/// A named ranking method: a label and a `query → ranked-cell-ids` function.
+type Method<'a> = (&'a str, &'a dyn Fn(&str) -> Vec<String>);
+
 /// Parse a library cell's `//!` header (summary / `tags:` / `entry:`) — mirrors the CLI's
 /// `parse_meta` so the manifests here are identical to what `index <dir>` builds.
 fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
@@ -157,7 +160,7 @@ fn main() {
     let typed = TypeLedIndex::build(carts);
 
     let rank = |hits: Vec<&Manifest>| hits.into_iter().map(|m| m.id.clone()).collect::<Vec<_>>();
-    let methods: [(&str, &dyn Fn(&str) -> Vec<String>); 3] = [
+    let methods: [Method; 3] = [
         ("token-overlap", &|q| rank(token.search(q, 5))),
         ("tf-idf (live)", &|q| rank(tfidf.search(q, 5))),
         ("type-led", &|q| rank(typed.search(q, 5))),
