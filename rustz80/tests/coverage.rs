@@ -398,6 +398,38 @@ fn array_struct_field_through_pointer() {
     assert_eq!(d2, 20);
 }
 
+#[test]
+fn bool_array_field_through_pointer() {
+    // A `[bool; N]` field: write some flags through the `self` pointer (PtrStoreIndex) and
+    // count them back (PtrIndex + a `bool` condition). Game flags can be a real `bool`
+    // array (`if self.got[k] { .. }`) instead of `[u16; N]` of 0/1. `self` points at a
+    // zeroed region, so every flag starts `false`.
+    let src = "
+        struct S { flags: [bool; 4] }
+        impl S {
+            fn run(&mut self) -> u16 {
+                self.flags[0] = true;
+                self.flags[2] = true;
+                let mut c = 0u16;
+                let mut i = 0u16;
+                while i < 4u16 {
+                    if self.flags[i as usize] {
+                        c = c + 1u16;
+                    }
+                    i = i + 1u16;
+                }
+                c
+            }
+        }
+    ";
+    let prog = compile_program(src).expect("compile");
+    let (hl, mem) = run_method(&prog, "S::run", 0xC000);
+    assert_eq!(hl, 2); // flags[0] and flags[2] set
+    assert_eq!(mem[0xC000], 1); // flags[0] = true (low byte of the slot)
+    assert_eq!(mem[0xC002], 0); // flags[1] still false
+    assert_eq!(mem[0xC004], 1); // flags[2] = true
+}
+
 // --- a tiny CPU runner (mirrors the differential harness) ----------------------
 
 struct Ram {

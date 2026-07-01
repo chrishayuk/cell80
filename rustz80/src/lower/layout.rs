@@ -87,7 +87,7 @@ pub(crate) fn collect_structs(file: &syn::File) -> Result<Structs, String> {
     Ok(m)
 }
 
-/// Lay out one named field: `(slots, elem_struct)`. A `[u16; N]` field is `N` slots; a
+/// Lay out one named field: `(slots, elem_struct)`. A scalar array `[u16/u8/bool; N]` is `N` slots; a
 /// `[Cell; N]` field is `N × sizeof(Cell)` slots with `elem_struct = Some("Cell")`
 /// (`structs` supplies element sizes — the element struct must be defined earlier); a
 /// tuple `(u16, …)` is one slot per element; everything else is a single slot. A
@@ -101,7 +101,9 @@ fn field_def(
     let name = f.ident.as_ref().unwrap().to_string();
     let (slots, elem_struct) = match &f.ty {
         syn::Type::Path(_) => (1, None),
-        syn::Type::Array(arr) if is_u16(&arr.elem) => (array_len(&arr.len, consts)?, None),
+        syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
+            (array_len(&arr.len, consts)?, None)
+        }
         // `[Cell; N]` — an array of structs.
         syn::Type::Array(arr) => {
             let elem = match &*arr.elem {
@@ -232,7 +234,10 @@ fn lit_u16(e: &syn::Expr) -> Result<u16, String> {
     Err("enum discriminant must be an integer literal".into())
 }
 
-/// Is `ty` the `u16` path type?
-fn is_u16(ty: &syn::Type) -> bool {
-    matches!(ty, syn::Type::Path(p) if p.path.is_ident("u16"))
+/// Is `ty` a scalar array-element type — one that occupies a single `u16` slot? Field
+/// arrays are Word-stride (a slot per element), so `u16`, `u8`, and `bool` all qualify
+/// (`[bool; N]` lets game flags be a real `bool` array instead of `[u16; N]` of 0/1).
+fn is_scalar_array_elem(ty: &syn::Type) -> bool {
+    matches!(ty, syn::Type::Path(p)
+        if p.path.is_ident("u16") || p.path.is_ident("u8") || p.path.is_ident("bool"))
 }
