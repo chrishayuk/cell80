@@ -28,6 +28,7 @@ mod runner;
 mod selector;
 mod state;
 mod synth;
+mod synth_value;
 mod tfidf;
 mod typeled;
 
@@ -44,5 +45,6 @@ pub use runner::{run, CellPool, Runner};
 pub use selector::{fingerprint_features, Encoder, Rng, Routed, SlotRouter};
 pub use state::{state_field_addrs, StateCell, STATE_BASE};
 pub use synth::{synthesize, synthesize_with, Op, Plan};
+pub use synth_value::{ValueHeuristic, ValueTrainConfig};
 pub use tfidf::{Tfidf, TfidfIndex};
 pub use typeled::TypeLedIndex;
