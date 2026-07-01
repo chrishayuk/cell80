@@ -109,6 +109,9 @@ pub enum Expr {
     Shift32 { left: bool, e: Box<Expr>, k: u8 },
     /// Truncate a `u32` to its low `u16` (`x as u16`) — the bridge back to 16-bit.
     Trunc32(Box<Expr>),
+    /// Widen a 16-bit expr to `u32` (`x as u32`) — zero-extend into the high word. The bridge
+    /// *up* to 32-bit, so a `u16` can feed a `u32` op (e.g. a wide intermediate).
+    Widen(Box<Expr>),
     /// `halt(code)` — a Cell80 intrinsic: stop the run with a status code (the `ED FE`
     /// HALT trap). A no-op on real hardware / the Spectrum target.
     Halt(Box<Expr>),

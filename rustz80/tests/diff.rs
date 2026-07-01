@@ -99,6 +99,29 @@ fn arithmetic() {
 }
 
 #[test]
+fn widen_to_u32() {
+    // `x as u32` zero-extends into the high word, so a widened `u16` can feed the `u32` bit/shift
+    // ops and truncate back. The `>>` cases would drag garbage down if the high word weren't 0.
+    check!({
+        let x = 43981u16; // 0xABCD
+        ((x as u32) >> 8) as u16
+    });
+    check!({
+        let x = 50000u16;
+        ((x as u32) >> 4) as u16
+    });
+    check!({
+        let x = 60000u16;
+        ((x as u32) & 65535u32) as u16
+    });
+    check!({
+        // widen → left shift fills the high word → shift back → truncate: round-trips to x.
+        let x = 700u16;
+        (((x as u32) << 8) >> 8) as u16
+    });
+}
+
+#[test]
 fn if_else() {
     check!({
         let a = 3u16;

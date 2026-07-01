@@ -212,7 +212,11 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             gen_expr(a, code);
             gen_trap(a, TRAP_HALT);
         }
-        Expr::Lit32(_) | Expr::Var32(_) | Expr::Bin32(..) | Expr::Shift32 { .. } => {
+        Expr::Lit32(_)
+        | Expr::Var32(_)
+        | Expr::Bin32(..)
+        | Expr::Shift32 { .. }
+        | Expr::Widen(..) => {
             unreachable!("u32 node used in a 16-bit context (u32 params/returns unsupported)")
         }
     }
@@ -371,6 +375,12 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             a.word(addr.wrapping_add(2));
         }
         Expr::Trunc32(e) => gen_expr32(a, e),
+        // `x as u32` — evaluate the 16-bit value into HL, then zero-extend: DE (high word) = 0.
+        Expr::Widen(inner) => {
+            gen_expr(a, inner); // HL = the u16 value
+            a.byte(0x11); // LD DE, 0   (high word)
+            a.word(0);
+        }
         Expr::Bin32(op, l, r) => {
             gen_expr32(a, l);
             a.byte(0xD5); // PUSH DE   (l.high)

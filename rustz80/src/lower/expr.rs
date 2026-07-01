@@ -116,7 +116,10 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 });
             }
             if tw == Width::DWord {
-                return Err("`as u32` (widening to u32) is not supported yet".into());
+                // Widen a 16-bit value up to `u32` (zero-extend), so a `u16` can feed a wide
+                // intermediate (e.g. `part as u32 * 100`). `Byte`/`Word` widen identically —
+                // the value is held in `HL` and the high word is zeroed.
+                return Ok((Expr::Widen(Box::new(e)), Width::DWord));
             }
             if tw == Width::Byte {
                 Ok((Expr::Trunc(Box::new(e)), Width::Byte))

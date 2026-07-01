@@ -40,6 +40,7 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
         | Expr::MulConst(e, _)
         | Expr::LoadAt(e, _)
         | Expr::Trunc32(e)
+        | Expr::Widen(e)
         | Expr::Shift32 { e, .. }
         | Expr::Halt(e) => calls_in_expr(e, out),
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::Lit32(_) | Expr::Var32(_) => {}

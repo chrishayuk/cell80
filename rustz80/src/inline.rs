@@ -253,6 +253,7 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
             | Expr::MulConst(a, _)
             | Expr::LoadAt(a, _)
             | Expr::Trunc32(a)
+            | Expr::Widen(a)
             | Expr::Halt(a)
             | Expr::Shift32 { e: a, .. } => ex(a, out),
             Expr::PtrIndex { ptr, index, .. } => {
@@ -392,6 +393,7 @@ fn count_expr(e: &Expr, m: &mut HashMap<String, usize>) {
         | Expr::MulConst(a, _)
         | Expr::LoadAt(a, _)
         | Expr::Trunc32(a)
+        | Expr::Widen(a)
         | Expr::Halt(a)
         | Expr::Shift32 { e: a, .. } => count_expr(a, m),
         Expr::PtrIndex { ptr, index, .. } => {
@@ -503,6 +505,7 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         ),
         Expr::Trunc(a) => Expr::Trunc(e(a)),
         Expr::Trunc32(a) => Expr::Trunc32(e(a)),
+        Expr::Widen(a) => Expr::Widen(e(a)),
         Expr::Peek(a) => Expr::Peek(e(a)),
         Expr::InPort(a) => Expr::InPort(e(a)),
         Expr::Halt(a) => Expr::Halt(e(a)),
