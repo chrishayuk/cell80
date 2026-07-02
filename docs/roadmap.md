@@ -1,5 +1,10 @@
 # cell80 — Roadmap
 
+> **Execution plan:** [roadmap-phases.md](roadmap-phases.md) sequences the work as
+> phased gates (0: determinism contract ✓ → 1: LLM-facing compiler → 2: retrieval →
+> 3: trust → 4: codegen stage 2), with a DoD per item and the end-state narrative.
+> This file stays the ledger of what's *built*.
+
 cell80 is the deterministic **executable-tool-capsule** layer extracted from
 [`chuk-speccy`](https://github.com/chrishayuk/chuk-speccy): a Z80 CPU core (`z80`), a
 restricted-Rust → Z80 compiler (`rustz80`), and the cell micro-VM + tooling. The north star:
@@ -50,6 +55,16 @@ real Rust* → every program is differential-tested against `rustc` on the emula
   and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
   *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
   field↔memory↔field seam as one property, not two halves (`tests/cell_fuzz.rs`).
+- **Determinism contract closed (Phase 0 of [roadmap-phases.md](roadmap-phases.md)).**
+  **Recursion is rejected at compile time** (a call-graph cycle check at lowering — Stage-1
+  static locals made the slot-after-call factorial silently return 1; now it's a named-cycle
+  error, probed by reject-tests). **Both targets sit under the rustc oracle** — the diff
+  harness compiles every test for `Spectrum48` *and* `Cell`, services the full trap set, and
+  asserts cross-target agreement (the trap path the VM ships had never been diff-tested).
+  **`/ 0` is a typed halt** (`Halt::DivByZero`; `CellConfig::div_by_zero` — `Halt` default,
+  `Saturate` legacy opt-in, carried in the image; Spectrum keeps saturation, documented).
+  The dialect's guarantees are written down in
+  [10-dialect-semantics.md](10-dialect-semantics.md).
 - **Z80 core conformance** — the foundation everything runs on passes the per-opcode
   **SingleStepTests** vectors **1,530,000/1,530,000** (initial→final state + cycle counts for
   every opcode/prefix incl. undocumented: base/CB/ED/DD/FD/DDCB/FDCB) and the **ZEXDOC**

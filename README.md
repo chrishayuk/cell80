@@ -39,14 +39,18 @@ $ cell80 run score.rs --args 10,5 --json
 **47 bytes of code.** It returned `155`, took `327` T-states, touched 7 bytes of RAM, and
 halted cleanly — every run reports exactly what it did and what it cost. The *same* `score.rs`
 also compiles under `rustc`, so you can debug it as normal Rust; the two are kept honest by
-differential testing.
+differential testing — every accepted construct is checked against release-mode rustc on
+**both** backends (the authentic Spectrum software routines and the cell VM's trap path).
+Exactly what an accepted program guarantees — wrapping arithmetic, divide-by-zero policy,
+evaluation order, the no-recursion rule — is written down in
+[docs/10-dialect-semantics.md](docs/10-dialect-semantics.md).
 
 Freeze it into a self-describing `.cell` cartridge:
 
 ```console
 $ cell80 compile score.rs -o score.cell --id score.v1 --summary "Score a candidate (x²+y²+3x)" --tags scoring,math
 $ cell80 inspect score.cell
-cell `score.v1`  (abi 1, compiler 0.7.0)
+cell `score.v1`  (abi 2, compiler 0.8.0)
   Score a candidate (x²+y²+3x)
   tags: scoring, math
   signature: run(x: u16, y: u16) -> u16
@@ -79,7 +83,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 98 cells; query `distance between grid points` → 8 match(es):
+indexed 100 cells; query `distance between grid points` → 8 match(es):
   chebyshev — Chebyshev (chessboard) distance between two grid points.  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points.       [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
   manhattan — Manhattan distance between two grid points.               [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
@@ -109,7 +113,7 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval on the 98-cell library (`cargo run --example retrieval_compare -p cell80`): the
+Retrieval on the 100-cell library (`cargo run --example retrieval_compare -p cell80`): the
 default index is now **TF-IDF** (word + char-3-gram cosine) — **direct P@1 0.97**, **paraphrase
 0.45** — a few points over the old token overlap, but paraphrase stays a coin-flip as confusable
 siblings multiply (a dozen families: predicates, bounds, distance, number theory, bit ops,
@@ -161,7 +165,10 @@ own RAM. On top of that:
   The CLI runs sandboxed unless you opt in (`--allow-raw-memory`, `--max-touched N`, …).
 - **Bounded.** Every run has a cycle budget; an infinite loop stops and reports
   `halt: cycle_budget` instead of hanging. A run always tells you *why* it stopped
-  (`returned` / `halted` / `cycle_budget` / `memory_limit`).
+  (`returned` / `halted` / `cycle_budget` / `memory_limit` / `div_by_zero`).
+- **No garbage flows onward.** `/ 0` halts the run (`halt: div_by_zero`) instead of
+  yielding a saturated quotient into downstream scoring, and **recursion is rejected at
+  compile time** (static locals make it silently wrong — so it doesn't compile).
 - **Deterministic.** Same inputs → same result, same cycle count, same touched-memory set —
   fuzzed across rerun, fresh instance, image round-trip, and the fast vs. authentic
   executor. Reproducible by design (no clocks, no RNG, no I/O).
@@ -175,6 +182,15 @@ own RAM. On top of that:
 
 The whole trust surface is *64 KiB of RAM + a cycle budget* — small enough to audit, and
 the same for every cell.
+
+### Non-goals — the moat is what it refuses to be
+
+- **Strings, floats-by-default, I/O, network.** A cell that needs them isn't a cell —
+  that's the escalation path to the host (a typed hand-off), not a roadmap item. The
+  moment the ISA chases general applicability, the differentiation vs Wasm evaporates.
+- **JIT / speed chasing.** Wasm wins warm compute; the moat here is exact metering,
+  auditability, byte-scale artifacts, and determinism. Protect the moat — don't race
+  the loser's race.
 
 ---
 
@@ -317,13 +333,18 @@ cell_compose(
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard library** (done — **98 cells** across ~12 families, plus the compiler
+(done), the **standard library** (done — **100 cells** across ~12 families incl. wide u32-in-state siblings, plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
 elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
 **host-routed `CellGraph` composition** (cells wired into a static, type-checked graph the host
 validates before running) with the **`cell_compose`** pipeline helper that lets a small model
-actually author one (measured: composition `used_graph` 0.00 → `used_pipeline` 0.50) — then a
-type-led index, more library waves, a live CellBus, and signed `i16`.
+actually author one (measured: composition `used_graph` 0.00 → `used_pipeline` 0.50).
+The execution plan is phased in [`docs/roadmap-phases.md`](docs/roadmap-phases.md):
+**Phase 0 (shipped)** closed the determinism contract — recursion rejected at compile time,
+the Cell trap path differential-tested against rustc, `/ 0` a typed halt, the dialect
+semantics written down — then the LLM-facing compiler (if/match expressions, diagnostics,
+signed `i16`), retrieval as the product, trust (signed cells, escalation contract,
+memoization), and codegen stage 2.
 
 ---
 
