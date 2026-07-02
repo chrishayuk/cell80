@@ -4,7 +4,11 @@ use std::collections::HashMap;
 /// The frozen cell ABI / report-schema version (`"abi"` in [`Report::to_json`]). Bump only
 /// on a breaking change to the register/memory/capability contract or the JSON shape. See
 /// `docs/09-cell80-abi.md`.
-pub const ABI_VERSION: u32 = 1;
+// v2: the 32-bit lane — `ED FE` traps 0x12 (MUL32) / 0x13 (DIVMOD32), and `u32` state
+// fields (two little-endian slots) drivable/readable by name (`.cell` format v4 carries
+// a width per state field). Additive, but a v2 cartridge that traps 0x12/0x13 needs a
+// v2 host — an older host treats unknown trap ids as no-ops and would compute garbage.
+pub const ABI_VERSION: u32 = 2;
 
 /// Why a run stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +50,25 @@ impl Ty {
             "u16" => Ok(Ty::U16),
             "u32" => Ok(Ty::U32),
             other => Err(format!("unknown type `{other}` (want u8/u16/u32)")),
+        }
+    }
+
+    /// The one-byte wire code (the `.cell` manifest's `state_addrs` encoding).
+    pub fn code(self) -> u8 {
+        match self {
+            Ty::U16 => 0,
+            Ty::U32 => 1,
+            Ty::U8 => 2,
+        }
+    }
+
+    /// Decode a [`code`](Ty::code) byte.
+    pub fn from_code(c: u8) -> Result<Ty, String> {
+        match c {
+            0 => Ok(Ty::U16),
+            1 => Ok(Ty::U32),
+            2 => Ok(Ty::U8),
+            other => Err(format!("unknown state-field type code {other}")),
         }
     }
 }

@@ -57,14 +57,15 @@ real Rust* → every program is differential-tested against `rustc` on the emula
   six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
   LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
   now fixed.
-- **Standard library** — `cell80/cells/` is now **98 cells**: the 8 originals plus ~12
+- **Standard library** — `cell80/cells/` is now **100 cells**: the 8 originals plus ~12
   confusable families — **predicates**, **safe arithmetic**, **bounds**, **percent/ratio**,
   **ranking/stats**, **bit/mask**, **number theory** (`lcm`, `is_prime`, `isqrt`,
   `factor_count`, `pow_mod`, …), **distance** (`chebyshev`, `euclid_sq` — state-cell siblings of
   `manhattan`), **bit/encoding** (`rotl16`, `reverse_bits`, `bit_length`, `swap_bytes`, …),
-  **hashing** (`hash_pair`, `fnv1a_step`, `crc8_step`, `mix16`), and **bucketing/conversion**.
-  All indexed + searchable, with a per-cell host-oracle (`cell80/tests/library.rs`) and
-  direct/paraphrase/adversarial retrieval rows.
+  **hashing** (`hash_pair`, `fnv1a_step`, `crc8_step`, `mix16`), **bucketing/conversion**,
+  and the **wide (u32-in-state) siblings** (`square_wide`, `weighted_sum_wide`; `euclid_sq`
+  carries a wide `dist` field). All indexed + searchable, with a per-cell host-oracle
+  (`cell80/tests/library.rs`) and direct/paraphrase/adversarial retrieval rows.
 - **Modular cells — shared kernel prelude + DCE.** Cells reuse a small prelude (`gcd`, `imin`,
   `imax`, `iabs_diff`, `isqrt`, `clamp_to`) instead of duplicating it — `lcm` calls `gcd`,
   `chebyshev` calls `iabs_diff`/`imax`. The prelude is appended to every cell and dead-code
@@ -270,15 +271,45 @@ exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the g
 it in **state**, which removes the `u16` ceiling that pushes `euclid_sq` / `weighted_sum` /
 running-stat cells toward "ask the agent to write Python."
 
-- **`u32` in state — the work is the typed-state ABI, not the codegen.** The carry-chain
-  arithmetic exists (`ADD HL,DE` then `ADC HL,DE`); the codegen gap is a `u32` *field* load/store
-  (two slots) + `layout.rs` giving the field two slots. The real work is the ABI surface the
-  discovery/graph layer rides on: `state_addrs` must carry **width** (a `u32` field is 4 bytes /
-  two slots), `CellHost::run_state` / `read_named` → PyO3 → MCP `cell_run(fields=)` learn to
-  read/write a 4-byte little-endian field by name, and **CellGraph** type-checks / routes `u32`
-  edges — an ABI-version-bump candidate. Per-op fork mirrors today: **carry-chain in software for
-  add/sub/shift** (authentic on *both* targets — no trap), **host trap for mul/div** (software is
-  disproportionate); only mul/div needs a Spectrum software sibling.
+- **`u32` arithmetic — ✓ done (the expression lane is complete).** The prize was sized first
+  (`cell80/examples/overflow_audit.rs`: **7/7** overflow-prone cells wrong at `u16`), then:
+  `as u32` widening (`Expr::Widen`, zero-extend into `HL:DE`), full **`+ - * / %`** — add/sub as
+  an inline carry chain (`ADD`/`ADC`, `SBC` — authentic on *both* targets), mul/div/rem via the
+  per-op fork exactly as planned: **`ED FE` traps `0x12`/`0x13`** on the Cell target (counted in
+  `trapped_ops`) and real **software siblings on Spectrum** (`__mul32` by three 16-bit partial
+  products over a new `__mul16w` 16×16→32 core; `__divmod32` restoring division with a 33rd-bit
+  forced-commit path, so even divisors ≥ 2³¹ are exact — both emitted through the `Asm` with
+  labels, not hand-counted offsets). Mixed-width operands zero-extend (`part as u32 * 100`, the
+  unsuffixed-literal mixing rustc allows); `wrapping_*` maps to the mod-2³² ops; `let x: u32 = 5`
+  respects the annotation. Divide-by-zero is bounded and target-identical (`q = 0xFFFF_FFFF`,
+  `rem = dividend`). Diff-tested against rustc (`tests/diff/u32_ops.rs`, incl. the forced-commit
+  divisor and the percent shape) — and every place a `u32` could *leak into a 16-bit context*
+  (returns, params, call args, comparisons, conditions, stores, `u32` struct fields) is now a
+  **clean lowering error, never a codegen panic or a silent one-slot layout**.
+  **Effect on the library:** the five intermediate-overflow cells (`percent`/`permille`/
+  `ratio_255`/`scale_percent`/`within_percent`) now compute wide and saturate — the audit reads
+  **2/7** wrong, and what remains is precisely *result* overflow (`square(300)`, `weighted_sum`),
+  i.e. the u32-in-state prize proper. `u32` **comparisons** stay unbuilt (cells compare via the
+  word-split idiom); add `Cond32` when a cell family needs them broadly.
+- **`u32` in state — ✓ done, end to end (ABI v2, `.cell` v4).** The compiler side:
+  `layout.rs` gives a `u32` field two little-endian slots (`FieldDef.width` distinguishes it
+  from a 2-element array), field access lowers wide (`Var32`/`Assign32` by value,
+  new `Deref32`/`Store32` through the `self` pointer), diff-tested against rustc.
+  The ABI side, exactly as scoped: `state_addrs` carries a **width per field**
+  (`(name, addr, Ty)`; `.cell` format **v4**, back-compat reads of v3/v2),
+  `StateCell::set`/`get` and `CellHost::run_state`/`read_named` drive and read a 4-byte field
+  by name (PyO3/MCP were already u64-wide — no change needed), and **CellGraph** routes `u32`
+  edges — u32→u32 wires type-check, u32→u16 narrowing is rejected *before* running.
+  **`ABI_VERSION` bumped to 2** (with the 0x12/0x13 traps): additive on a v2 host, but a v1
+  host no-ops unknown trap ids, so the artifact must declare what it needs.
+  **Library:** `euclid_sq.dist` is now a wide field (exact 250,000 on (0,0)→(300,400));
+  new wide siblings **`square_wide`** / **`weighted_sum_wide`** (100 cells). The
+  `overflow_audit` example now ends **3/3 wide fields exact** — the u16 ceiling is gone
+  end-to-end: compute wide, persist wide, read wide by name. (Value-cell u16 *returns* stay
+  capped by the register convention — that's the honest residual, shown in the audit.)
+  **Next here:** u32 comparisons (`Cond32`) when a cell family needs them; retrieval rows for
+  the wide siblings in the cell-eval dataset (library grew 98 → 100, so the
+  `retrieval_compare` baselines will shift a hair on next run).
 - **Fixed-point — a convention on `u32`, not a type.** Q-format is a `u32` with a point
   convention: `weighted_sum` with a Q8.8 weight is `(a*w) >> 8` — a `u32` multiply + a shift the
   compiler already has. So it's a library convention + helper cells (`q_mul` / `q_div`) + an
@@ -291,9 +322,10 @@ running-stat cells toward "ask the agent to write Python."
 - **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
   halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
   DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the
-  fast-vs-authentic + cross-arch determinism fuzz. Size the prize first: **audit which library
-  cells are *accidentally* capped by a `u16` intermediate** (`euclid_sq`, accumulators) vs
-  *deliberately* saturating (`add_sat` / `mul_sat` — correct as-is).
+  fast-vs-authentic + cross-arch determinism fuzz. ✓ The prize was sized first (the
+  `overflow_audit` example: 7/7 wrong → 2/7 after u32 arithmetic); `rustc ≡ Spectrum software`
+  holds via `tests/diff/u32_ops.rs` and `Cell trap ≡ rustc` via the library host-oracle rows on
+  the wide percent-family inputs.
 
 ### `rustz80` frontend — features the chuk-speccy authoring-plane kit needs
 

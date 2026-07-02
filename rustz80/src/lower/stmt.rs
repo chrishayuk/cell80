@@ -4,8 +4,8 @@
 //! `match` to an if-chain over a scrutinee temp — no codegen support needed for either.
 
 use super::expr::{
-    array_base, lower_expr, lower_field_store, lower_index_store, lower_method_call, path_ident,
-    path_str,
+    array_base, coerce32, lower_expr, lower_expr16, lower_field_store, lower_index_store,
+    lower_method_call, path_ident, path_str,
 };
 use super::generics::infer_struct_args;
 use super::layout::{
@@ -73,12 +73,17 @@ pub(crate) fn lower_local(
             let efields = ctx
                 .struct_fields(&elem_name)
                 .ok_or_else(|| format!("unknown struct {elem_name}"))?;
+            if efields.iter().any(|f| f.width == Width::DWord) {
+                return Err(format!(
+                    "struct-array elements with u32 fields are not supported yet ({elem_name})"
+                ));
+            }
             let stride = struct_slots(&efields);
             let base = ctx.vars.declare_struct_array(&name, n * stride, &elem_name);
             for i in 0..n {
                 for fv in &slit.fields {
                     let foff = field_offset(&efields, &member_name(&fv.member)?)?;
-                    let v = lower_expr(&fv.expr, ctx)?.0;
+                    let v = lower_expr16(&fv.expr, ctx, "struct field (u16 slots)")?;
                     body.push(Stmt::Assign(base + i * stride + foff, v));
                 }
             }
@@ -88,7 +93,7 @@ pub(crate) fn lower_local(
             let n = array_len(&r.len, ctx)?;
             let elem = elem_width(&r.expr);
             let base = ctx.vars.declare(&name, n, None, elem);
-            let value = lower_expr(&r.expr, ctx)?.0;
+            let value = lower_expr16(&r.expr, ctx, "array element (u16 slots)")?;
             body.push(Stmt::Fill {
                 base,
                 count: n,
@@ -99,7 +104,7 @@ pub(crate) fn lower_local(
             let elem = arr.elems.first().map(elem_width).unwrap_or(Width::Word);
             let base = ctx.vars.declare(&name, arr.elems.len(), None, elem);
             for (i, e) in arr.elems.iter().enumerate() {
-                let v = lower_expr(e, ctx)?.0;
+                let v = lower_expr16(e, ctx, "array element (u16 slots)")?;
                 body.push(Stmt::StoreIndex(base, Expr::Lit(i as u16), v, elem));
             }
         }
@@ -153,14 +158,14 @@ pub(crate) fn lower_local(
                             return Err(format!("tuple field `{fname}` expects {slots} values"));
                         }
                         for (i, e) in t.elems.iter().enumerate() {
-                            let v = lower_expr(e, ctx)?.0;
+                            let v = lower_expr16(e, ctx, "struct field (u16 slots)")?;
                             body.push(Stmt::Assign(base + off + i, v));
                         }
                     }
                     // An array field initialised `[v; N]` — fill its `slots` slots.
                     syn::Expr::Repeat(r) => {
                         for i in 0..slots {
-                            let v = lower_expr(&r.expr, ctx)?.0;
+                            let v = lower_expr16(&r.expr, ctx, "struct field (u16 slots)")?;
                             body.push(Stmt::Assign(base + off + i, v));
                         }
                     }
@@ -170,12 +175,17 @@ pub(crate) fn lower_local(
                             return Err(format!("array field `{fname}` expects {slots} values"));
                         }
                         for (i, e) in arr.elems.iter().enumerate() {
-                            let v = lower_expr(e, ctx)?.0;
+                            let v = lower_expr16(e, ctx, "struct field (u16 slots)")?;
                             body.push(Stmt::Assign(base + off + i, v));
                         }
                     }
+                    // A `u32` field initialises wide (two slots, one `Assign32`).
+                    _ if fd.is_some_and(|d| d.width == Width::DWord) => {
+                        let (v, vw) = lower_expr(&fv.expr, ctx)?;
+                        body.push(Stmt::Assign32(base + off, coerce32(v, vw)));
+                    }
                     _ if slots == 1 => {
-                        let v = lower_expr(&fv.expr, ctx)?.0;
+                        let v = lower_expr16(&fv.expr, ctx, "struct field (u16 slots)")?;
                         body.push(Stmt::Assign(base + off, v));
                     }
                     _ => return Err(format!("field `{fname}` expects {slots} values")),
@@ -184,9 +194,20 @@ pub(crate) fn lower_local(
         }
         other => {
             let (e, ty) = lower_expr(other, ctx)?;
-            if ty == Width::DWord {
+            // An explicit `: u32` annotation makes the binding wide even when the
+            // initialiser is 16-bit (`let x: u32 = 5;`) — the value zero-extends.
+            let ann = match &local.pat {
+                syn::Pat::Type(t) => Some(ctx.width_of_type(&t.ty)),
+                _ => None,
+            };
+            if ty == Width::DWord && matches!(ann, Some(w) if w != Width::DWord) {
+                return Err(format!(
+                    "cannot bind a u32 value to 16-bit `{name}` — narrow with `as u16`"
+                ));
+            }
+            if ty == Width::DWord || ann == Some(Width::DWord) {
                 let base = ctx.vars.declare(&name, 2, None, Width::DWord);
-                body.push(Stmt::Assign32(base, e));
+                body.push(Stmt::Assign32(base, coerce32(e, ty)));
             } else {
                 let base = ctx.vars.declare(&name, 1, None, ty);
                 body.push(Stmt::Assign(base, e));
@@ -221,6 +242,12 @@ fn lower_tuple_let(
                 .map(|e| lower_expr(e, ctx))
                 .collect::<Result<_, _>>()?;
             for (name, (v, ty)) in names.iter().zip(vals) {
+                if ty == Width::DWord {
+                    return Err(format!(
+                        "u32 value in a 16-bit context (tuple binding `{name}`) — narrow with \
+                         `as u16`"
+                    ));
+                }
                 let base = ctx.vars.declare(name, 1, None, ty);
                 body.push(Stmt::Assign(base, v));
             }
@@ -260,11 +287,16 @@ fn lower_index_assign(
         let efields = ctx
             .struct_fields(&elem_struct)
             .ok_or_else(|| format!("unknown struct {elem_struct}"))?;
+        if efields.iter().any(|f| f.width == Width::DWord) {
+            return Err(format!(
+                "struct-array elements with u32 fields are not supported yet ({elem_struct})"
+            ));
+        }
         let stride = (struct_slots(&efields) * 2) as u16;
-        let idx = lower_expr(&ix.index, ctx)?.0;
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
         for fv in &slit.fields {
             let foff = field_offset(&efields, &member_name(&fv.member)?)?;
-            let v = lower_expr(&fv.expr, ctx)?.0;
+            let v = lower_expr16(&fv.expr, ctx, "struct field (u16 slots)")?;
             let elem = Expr::Bin(
                 BinOp::Add,
                 Box::new(base_addr.clone()),
@@ -298,15 +330,20 @@ pub(crate) fn lower_stmt_expr(
         syn::Expr::Assign(a) => match &*a.left {
             syn::Expr::Index(ix) => lower_index_assign(ix, &a.right, ctx, body)?,
             syn::Expr::Field(f) => {
-                let val = lower_expr(&a.right, ctx)?.0;
-                body.push(lower_field_store(f, val, ctx)?);
+                let (val, vw) = lower_expr(&a.right, ctx)?;
+                body.push(lower_field_store(f, val, vw, ctx)?);
             }
             _ => {
                 let name = path_ident(&a.left)?;
                 let slot = ctx.vars.base(&name);
                 let (e, ew) = lower_expr(&a.right, ctx)?;
-                if ctx.vars.ty(&name) == Width::DWord || ew == Width::DWord {
-                    body.push(Stmt::Assign32(slot, e));
+                if ctx.vars.ty(&name) == Width::DWord {
+                    // A 16-bit value widens into a u32 var (`x = 5` on `x: u32`).
+                    body.push(Stmt::Assign32(slot, coerce32(e, ew)));
+                } else if ew == Width::DWord {
+                    return Err(format!(
+                        "cannot assign a u32 value to 16-bit `{name}` — narrow with `as u16`"
+                    ));
                 } else {
                     body.push(Stmt::Assign(slot, e));
                 }
@@ -330,7 +367,7 @@ pub(crate) fn lower_stmt_expr(
         }
         // `match` lowers to an if-chain over a scrutinee temporary (no codegen change).
         syn::Expr::Match(m) => {
-            let scrut = lower_expr(&m.expr, ctx)?.0;
+            let scrut = lower_expr16(&m.expr, ctx, "match scrutinee")?;
             let temp = ctx
                 .vars
                 .declare(&format!("__match{}", ctx.temp), 1, None, Width::Word);
@@ -363,8 +400,8 @@ pub(crate) fn lower_stmt_expr(
             if name == "poke" {
                 let addr = c.args.first().ok_or("poke(addr, val) needs an address")?;
                 let val = c.args.get(1).ok_or("poke(addr, val) needs a value")?;
-                let addr = lower_expr(addr, ctx)?.0;
-                let val = lower_expr(val, ctx)?.0;
+                let addr = lower_expr16(addr, ctx, "poke address")?;
+                let val = lower_expr16(val, ctx, "poke value")?;
                 body.push(Stmt::Poke(addr, val));
             } else {
                 body.push(Stmt::Eval(lower_expr(expr, ctx)?.0));
@@ -409,7 +446,11 @@ pub(crate) fn lower_stmt_expr(
         }
         syn::Expr::Return(r) => {
             let val = match &r.expr {
-                Some(e) => Some(lower_expr(e, ctx)?.0),
+                Some(e) => Some(lower_expr16(
+                    e,
+                    ctx,
+                    "return value — u32 returns are not supported yet",
+                )?),
                 None => None,
             };
             body.push(Stmt::Return(val));
@@ -448,7 +489,10 @@ fn lower_for(fl: &syn::ExprForLoop, ctx: &mut Ctx, body: &mut Vec<Stmt>) -> Resu
 
     // Evaluate both bounds before declaring the loop variable (they cannot see it).
     let (start_e, width) = lower_expr(start, ctx)?;
-    let (end_e, _) = lower_expr(end_expr, ctx)?;
+    let (end_e, end_w) = lower_expr(end_expr, ctx)?;
+    if width == Width::DWord || end_w == Width::DWord {
+        return Err("u32 `for` bounds are not supported yet — narrow with `as u16`".into());
+    }
     let end_temp = ctx
         .vars
         .declare(&format!("__forend{}", ctx.temp), 1, None, width);
@@ -513,17 +557,25 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
     // (e.g. `if input.held(Button::Left)`).
     if let syn::Expr::Binary(b) = expr {
         if let Some(cmp) = cmp_op(&b.op) {
+            let (le, lw) = lower_expr(&b.left, ctx)?;
+            let (re, rw) = lower_expr(&b.right, ctx)?;
+            if lw == Width::DWord || rw == Width::DWord {
+                return Err(
+                    "u32 comparisons are not supported yet — compare the words (`as u16`, `>> 16`)"
+                        .into(),
+                );
+            }
             return Ok(Cond {
                 cmp,
-                lhs: lower_expr(&b.left, ctx)?.0,
-                rhs: lower_expr(&b.right, ctx)?.0,
+                lhs: le,
+                rhs: re,
             });
         }
     }
     if let syn::Expr::Paren(p) = expr {
         return lower_cond(&p.expr, ctx);
     }
-    let (e, _) = lower_expr(expr, ctx)?;
+    let e = lower_expr16(expr, ctx, "condition")?;
     Ok(Cond {
         cmp: Cmp::Ne,
         lhs: e,

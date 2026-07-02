@@ -122,6 +122,9 @@ pub struct FieldLayout {
     pub offset: u16,
     /// Slot count (each slot is one 2-byte `u16`).
     pub slots: u16,
+    /// `true` for a `u32` field — two consecutive slots holding one little-endian
+    /// 4-byte value (vs. `slots == 2` meaning a 2-element array).
+    pub dword: bool,
 }
 
 /// The field layout of a (non-generic) named struct in `src` — `(name, slot offset, slot
@@ -140,6 +143,7 @@ pub fn struct_layout(src: &str, name: &str) -> Result<Vec<FieldLayout>, String> 
             name: f.name.clone(),
             offset,
             slots: f.slots as u16,
+            dword: f.width == ir::Width::DWord,
         });
         offset += f.slots as u16;
     }

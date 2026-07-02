@@ -9,7 +9,9 @@ use rustz80::Signature;
 use std::hash::{Hash, Hasher};
 
 const MAGIC: &[u8; 4] = b"CELL";
-const VERSION: u8 = 3; // v2 added the typed I/O signature; v3 added state field addresses
+// v2 added the typed I/O signature; v3 added state field addresses; v4 added a width
+// (`Ty`) per state field, so a `u32` field is drivable/readable wide by name.
+const VERSION: u8 = 4;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -28,19 +30,28 @@ fn read_pairs(r: &mut ImageReader) -> Result<Vec<(String, String)>, String> {
     Ok(v)
 }
 
-/// Serialize / read a `(name, u16 address)` list (the state field addresses).
-fn put_addrs(b: &mut Vec<u8>, v: &[(String, u16)]) {
+/// Serialize / read a `(name, u16 address, ty)` list (the state field addresses). A v3
+/// cartridge has no `ty` byte — its fields read back as `u16` (the only width v3 knew).
+fn put_addrs(b: &mut Vec<u8>, v: &[(String, u16, Ty)]) {
     b.extend_from_slice(&(v.len() as u16).to_le_bytes());
-    for (n, a) in v {
+    for (n, a, ty) in v {
         put_string(b, n);
         b.extend_from_slice(&a.to_le_bytes());
+        b.push(ty.code());
     }
 }
-fn read_addrs(r: &mut ImageReader) -> Result<Vec<(String, u16)>, String> {
+fn read_addrs(r: &mut ImageReader, ver: u8) -> Result<Vec<(String, u16, Ty)>, String> {
     let n = r.u16()?;
     let mut v = Vec::with_capacity(n as usize);
     for _ in 0..n {
-        v.push((r.string()?, r.u16()?));
+        let name = r.string()?;
+        let addr = r.u16()?;
+        let ty = if ver >= 4 {
+            Ty::from_code(r.u8()?)?
+        } else {
+            Ty::U16
+        };
+        v.push((name, addr, ty));
     }
     Ok(v)
 }
@@ -65,10 +76,11 @@ pub struct Manifest {
     /// The typed I/O signature of the entry — so a registry/MCP can present the interface
     /// and validate named inputs **without re-parsing** the source.
     pub signature: Signature,
-    /// For a state-cell entry: the byte address of each **scalar** state field at
-    /// [`STATE_BASE`], `(name, addr)` in declaration order. Lets a warm host (or a peer cell
-    /// in a graph) drive the cell *by field name* without the source. Empty for a free fn.
-    pub state_addrs: Vec<(String, u16)>,
+    /// For a state-cell entry: the byte address **and width** of each scalar state field
+    /// at [`STATE_BASE`], `(name, addr, ty)` in declaration order — a `u32` field is 4
+    /// bytes / two slots. Lets a warm host (or a peer cell in a graph) drive the cell *by
+    /// field name*, wide fields included, without the source. Empty for a free fn.
+    pub state_addrs: Vec<(String, u16, Ty)>,
 }
 
 /// Options for [`Cartridge::compile`] (all optional).
@@ -153,7 +165,7 @@ impl Cartridge {
             return Err("not a .cell cartridge".into());
         }
         let ver = r.u8()?;
-        if ver != 2 && ver != 3 {
+        if !(2..=4).contains(&ver) {
             return Err(format!("unsupported .cell version {ver}"));
         }
         let abi_version = r.u32()?;
@@ -172,10 +184,10 @@ impl Cartridge {
             ret: r.string()?,
             state: read_pairs(&mut r)?,
         };
-        // v3+ carries the state field addresses; a v2 cartridge has none (named I/O
-        // unavailable until recompiled).
+        // v3+ carries the state field addresses (v4 adds a width per field); a v2
+        // cartridge has none (named I/O unavailable until recompiled).
         let state_addrs = if ver >= 3 {
-            read_addrs(&mut r)?
+            read_addrs(&mut r, ver)?
         } else {
             Vec::new()
         };

@@ -332,6 +332,12 @@ fn lower_inputs(
                     Some(h) => ctx.vars.declare_handle(&name, &h),
                     None => {
                         let w = ctx.width_of_type(&pt.ty);
+                        if w == Width::DWord {
+                            return Err(format!(
+                                "u32 parameter `{name}` is not supported yet (params pass in \
+                                 16-bit registers) — pass the words and widen with `as u32`"
+                            ));
+                        }
                         ctx.vars.declare(&name, 1, None, w)
                     }
                 };
@@ -361,10 +367,24 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                         return Err("tuple returns support up to 3 values".into());
                     }
                     for e in &t.elems {
-                        ret.push(lower_expr(e, ctx)?.0);
+                        let (le, w) = lower_expr(e, ctx)?;
+                        if w == Width::DWord {
+                            return Err("u32 return values are not supported yet — narrow with \
+                                        `as u16`"
+                                .into());
+                        }
+                        ret.push(le);
                     }
                 }
-                _ if is_value_expr(expr) => ret.push(lower_expr(expr, ctx)?.0),
+                _ if is_value_expr(expr) => {
+                    let (le, w) = lower_expr(expr, ctx)?;
+                    if w == Width::DWord {
+                        return Err(
+                            "u32 return values are not supported yet — narrow with `as u16`".into(),
+                        );
+                    }
+                    ret.push(le);
+                }
                 _ => lower_stmt_expr(expr, ctx, &mut body)?,
             },
             syn::Stmt::Expr(expr, _) => lower_stmt_expr(expr, ctx, &mut body)?,

@@ -80,25 +80,37 @@ fn state_named_roundtrip_fuzz() {
     for _ in 0..500 {
         let a = (rng.next() & 0xFFFF) as u16;
         let b = (rng.next() & 0xFFFF) as u16;
-        cell.set("a", a).unwrap(); // queued; applied to memory by run()
-        cell.set("b", b).unwrap();
+        cell.set("a", a as u64).unwrap(); // queued; applied to memory by run()
+        cell.set("b", b as u64).unwrap();
         cell.run(DEFAULT_CYCLES).unwrap();
         // input half: the queued inputs landed in memory and read back by name unchanged
         assert_eq!(
             cell.get("a"),
-            Some(a),
+            Some(a as u64),
             "input `a` did not round-trip by name"
         );
         assert_eq!(
             cell.get("b"),
-            Some(b),
+            Some(b as u64),
             "input `b` did not round-trip by name"
         );
         // output half: every output (incl. one written last) read back by name == host oracle
-        assert_eq!(cell.get("sum"), Some(a.wrapping_add(b)), "sum ({a},{b})");
-        assert_eq!(cell.get("diff"), Some(a.wrapping_sub(b)), "diff ({a},{b})");
-        assert_eq!(cell.get("prod"), Some(a.wrapping_mul(b)), "prod ({a},{b})");
-        assert_eq!(cell.get("big"), Some(a.max(b)), "big ({a},{b})");
+        assert_eq!(
+            cell.get("sum"),
+            Some(a.wrapping_add(b) as u64),
+            "sum ({a},{b})"
+        );
+        assert_eq!(
+            cell.get("diff"),
+            Some(a.wrapping_sub(b) as u64),
+            "diff ({a},{b})"
+        );
+        assert_eq!(
+            cell.get("prod"),
+            Some(a.wrapping_mul(b) as u64),
+            "prod ({a},{b})"
+        );
+        assert_eq!(cell.get("big"), Some(a.max(b) as u64), "big ({a},{b})");
     }
 }
 

@@ -5,15 +5,18 @@
 use crate::ir::Width;
 use std::collections::HashMap;
 
-/// One struct field's layout: its name and slot count (1 for a scalar, `N` for a
-/// `[u16; N]` array field, `N × sizeof(Cell)` for a `[Cell; N]` struct-element array).
-/// Offsets are the running sum of `slots`. `elem_struct` names the element struct of a
-/// `[Cell; N]` field, so element access (`s.field[i].x`) knows its stride + sub-layout.
+/// One struct field's layout: its name and slot count (1 for a 16-bit scalar, 2 for a
+/// `u32`, `N` for a `[u16; N]` array field, `N × sizeof(Cell)` for a `[Cell; N]`
+/// struct-element array). Offsets are the running sum of `slots`. `elem_struct` names
+/// the element struct of a `[Cell; N]` field, so element access (`s.field[i].x`) knows
+/// its stride + sub-layout. `width` is the field's *value* width — `DWord` marks a
+/// two-slot `u32` (distinguishing it from a 2-element array).
 #[derive(Clone)]
 pub(crate) struct FieldDef {
     pub(crate) name: String,
     pub(crate) slots: usize,
     pub(crate) elem_struct: Option<String>,
+    pub(crate) width: Width,
 }
 
 /// Struct layouts: name → fields in declaration order. A field occupies `slots`
@@ -99,10 +102,13 @@ fn field_def(
     owner: &str,
 ) -> Result<FieldDef, String> {
     let name = f.ident.as_ref().unwrap().to_string();
-    let (slots, elem_struct) = match &f.ty {
-        syn::Type::Path(_) => (1, None),
+    let (slots, elem_struct, width) = match &f.ty {
+        // A `u32` field: two consecutive slots, little-endian (low word first) — the
+        // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
+        syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
+        syn::Type::Path(_) => (1, None, Width::Word),
         syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
-            (array_len(&arr.len, consts)?, None)
+            (array_len(&arr.len, consts)?, None, Width::Word)
         }
         // `[Cell; N]` — an array of structs.
         syn::Type::Array(arr) => {
@@ -116,17 +122,25 @@ fn field_def(
             let esize = structs.get(&elem).map(|f| struct_slots(f)).ok_or_else(|| {
                 format!("array field element `{elem}` of `{owner}.{name}` must be `u16` or a previously-defined struct")
             })?;
-            (array_len(&arr.len, consts)? * esize, Some(elem))
+            (
+                array_len(&arr.len, consts)? * esize,
+                Some(elem),
+                Width::Word,
+            )
         }
         // A tuple field `(u16, u16)` occupies one slot per (scalar) element, accessed
         // by `.0` / `.1`.
         syn::Type::Tuple(t) => {
-            if !t.elems.iter().all(|e| matches!(e, syn::Type::Path(_))) {
+            if !t
+                .elems
+                .iter()
+                .all(|e| matches!(e, syn::Type::Path(p) if !p.path.is_ident("u32")))
+            {
                 return Err(format!(
-                    "tuple struct fields must have scalar elements: {owner}"
+                    "tuple struct fields must have 16-bit scalar elements: {owner}"
                 ));
             }
-            (t.elems.len(), None)
+            (t.elems.len(), None, Width::Word)
         }
         _ => {
             return Err(format!(
@@ -138,6 +152,7 @@ fn field_def(
         name,
         slots,
         elem_struct,
+        width,
     })
 }
 

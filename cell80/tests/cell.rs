@@ -52,10 +52,11 @@ fn state_cell_named_io() {
 }
 
 #[test]
-fn report_json_is_abi_v1() {
-    // The frozen v1 report schema: leads with the ABI version, then the documented keys.
+fn report_json_is_abi_versioned() {
+    // The report schema leads with the ABI version, then the documented keys.
+    // (v2: the 32-bit lane — MUL32/DIVMOD32 traps + wide `u32` state fields.)
     use cell80::ABI_VERSION;
-    assert_eq!(ABI_VERSION, 1);
+    assert_eq!(ABI_VERSION, 2);
     let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a * b }").unwrap();
     let json = r.run(None, &[6, 7], DEFAULT_CYCLES).unwrap().to_json();
     assert!(
@@ -421,7 +422,7 @@ fn cartridge_roundtrip_and_inspect() {
         "\"id\":\"mul.v1\"",
         "\"entry\":\"run\"",
         "\"tags\":[\"math\",\"demo\"]",
-        "\"abi\":1",
+        "\"abi\":2",
     ] {
         assert!(j.contains(key), "inspect json missing {key}: {j}");
     }
@@ -673,7 +674,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("98 cells"));
+    assert!(listing.contains("range_check") && listing.contains("100 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -1042,19 +1043,21 @@ fn typed_state_read_back() {
 
 #[test]
 fn struct_layout_offsets() {
-    let src = "struct State { x: u16, y: u16, arr: [u16; 4], score: u16 }";
+    let src = "struct State { x: u16, y: u16, arr: [u16; 4], total: u32, score: u16 }";
     let l = rustz80::struct_layout(src, "State").unwrap();
     assert_eq!(
         l[0],
         rustz80::FieldLayout {
             name: "x".into(),
             offset: 0,
-            slots: 1
+            slots: 1,
+            dword: false
         }
     );
     assert_eq!(l[1].offset, 1); // y
     assert_eq!((l[2].offset, l[2].slots), (2, 4)); // arr — 4 slots
-    assert_eq!(l[3].offset, 6); // score, after the array
+    assert_eq!((l[3].offset, l[3].slots, l[3].dword), (6, 2, true)); // total — a wide u32
+    assert_eq!(l[4].offset, 8); // score, after the u32's two slots
     assert!(rustz80::struct_layout(src, "Nope").is_err());
 }
 
@@ -1425,4 +1428,67 @@ fn run_cli_typed_set() {
     // bad --set specs
     assert!(cell::run_cli(&["run".into(), p.clone(), "--set".into(), "noeq".into()]).is_err());
     assert!(cell::run_cli(&["run".into(), p, "--set".into(), "0xB000:u9=1".into()]).is_err());
+}
+
+#[test]
+fn wide_u32_state_field_end_to_end() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost, StateCell};
+    // A `u32` state field driven and read BY NAME, wide, at every layer of the stack:
+    // StateCell, the `.cell` manifest round-trip (v4 carries a width per field), and
+    // the warm host's `run_state`. The values only exist past the u16 ceiling.
+    let src = "struct Acc { n: u16, total: u32 }
+               impl Acc {
+                   fn run(&mut self) -> u16 {
+                       self.total = self.total + self.n as u32 * self.n as u32;
+                       (self.total >> 16u32) as u16
+                   }
+               }";
+
+    // StateCell: set a 32-bit value into the wide field, read the exact wide result.
+    let mut cell = StateCell::bind(src, "Acc", None).unwrap();
+    cell.set("n", 300).unwrap();
+    cell.set("total", 4_000_000_000).unwrap(); // representable only in the wide field
+    cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(cell.get("total"), Some(4_000_090_000)); // 4e9 + 300²
+    assert_eq!(cell.get("n"), Some(300));
+
+    // The manifest carries the width — and it survives the byte round-trip.
+    let cart = Cartridge::compile(
+        src,
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("acc".into()),
+            entry: Some("Acc::run".into()),
+            summary: "wide accumulator".into(),
+            tags: vec!["state".into()],
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        cart.manifest.state_addrs,
+        vec![
+            ("n".into(), 0xB000, Ty::U16),
+            ("total".into(), 0xB002, Ty::U32),
+        ]
+    );
+    let back = Cartridge::from_bytes(&cart.to_bytes()).unwrap();
+    assert_eq!(back.manifest.state_addrs, cart.manifest.state_addrs);
+
+    // The warm host drives the wide field by name — the JSON↔state agent surface.
+    let mut host = CellHost::new();
+    host.add(back);
+    let h = host.load("acc").unwrap();
+    let (rep, state) = host
+        .run_state(
+            h,
+            &[("n".into(), 300), ("total".into(), 4_000_000_000)],
+            DEFAULT_CYCLES,
+        )
+        .unwrap();
+    assert_eq!(rep.result, (4_000_090_000u64 >> 16) as u16);
+    assert_eq!(
+        state,
+        vec![("n".into(), 300u64), ("total".into(), 4_000_090_000u64)]
+    );
+    host.unload(h).unwrap();
 }

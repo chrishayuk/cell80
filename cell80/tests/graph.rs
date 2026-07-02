@@ -266,3 +266,71 @@ fn validate_catches_structural_errors() {
     };
     assert!(cyc.validate(&h).unwrap_err().contains("cycle"));
 }
+
+#[test]
+fn graph_routes_a_u32_edge() {
+    // A wide edge: one cell's `u32` state output feeds another's `u32` state input,
+    // with values past the u16 ceiling at every hop — the typed-artifact win, wide.
+    let cell = |id: &str, entry: &str, src: &str| {
+        Cartridge::compile(
+            src,
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some(id.into()),
+                entry: Some(entry.into()),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let mut h = CellHost::new();
+    h.add(cell(
+        "square_wide",
+        "Sq::run",
+        "struct Sq { n: u16, sq: u32 }
+         impl Sq { fn run(&mut self) -> u16 { self.sq = self.n as u32 * self.n as u32; (self.sq >> 16u32) as u16 } }",
+    ));
+    h.add(cell(
+        "halve_wide",
+        "Half::run",
+        "struct Half { big: u32, half: u32 }
+         impl Half { fn run(&mut self) -> u16 { self.half = self.big / 2u32; (self.half >> 16u32) as u16 } }",
+    ));
+
+    let g = CellGraph {
+        id: "wide_edge.v1".into(),
+        nodes: vec![
+            ("sq".into(), "square_wide".into()),
+            ("hv".into(), "halve_wide".into()),
+        ],
+        wires: vec![
+            (Port::new("sq", "n"), Feed::Input("n".into())),
+            (Port::new("hv", "big"), Feed::From(Port::new("sq", "sq"))),
+        ],
+        outputs: vec![("half".into(), Port::new("hv", "half"))],
+    };
+    g.validate(&h).expect("u32 → u32 edge must type-check");
+
+    let run = g
+        .run(&mut h, &HashMap::from([("n".into(), 300)]), DEFAULT_CYCLES)
+        .unwrap();
+    // 300² = 90000 flows wide across the edge; half = 45000 — still past u16 territory
+    // on the way in, exact on the way out.
+    assert_eq!(run.outputs, vec![("half".into(), 45000)]);
+
+    // A u32 output into a u16 port is caught BEFORE running — no silent narrowing.
+    let bad = CellGraph {
+        id: "narrowing.v1".into(),
+        nodes: vec![
+            ("sq".into(), "square_wide".into()),
+            ("sq2".into(), "square_wide".into()),
+        ],
+        wires: vec![
+            (Port::new("sq", "n"), Feed::Input("n".into())),
+            (Port::new("sq2", "n"), Feed::From(Port::new("sq", "sq"))),
+        ],
+        outputs: vec![("out".into(), Port::new("sq2", "sq"))],
+    };
+    let err = bad.validate(&h).unwrap_err();
+    assert!(err.contains("type mismatch"), "got: {err}");
+}

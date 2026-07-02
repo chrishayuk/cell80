@@ -2,5 +2,9 @@
 //! tags: percent, within, tolerance, close, near, approx
 fn run(actual: u16, target: u16, pct: u16) -> u16 {
     let d = iabs_diff(actual, target);
-    (d * 100u16 <= target * pct) as u16
+    let l = d as u32 * 100u32;
+    let r = target as u32 * pct as u32;
+    let lh = (l >> 16u32) as u16;
+    let rh = (r >> 16u32) as u16;
+    (lh < rh || (lh == rh && l as u16 <= r as u16)) as u16
 }
