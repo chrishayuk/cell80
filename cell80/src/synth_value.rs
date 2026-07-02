@@ -83,7 +83,9 @@ impl BinsNet {
             hid,
             w1: (0..hid * FDIM).map(|_| rng.signed_f32() * s1).collect(),
             b1: vec![0.0; hid],
-            w2: (0..(DCAP + 1) * hid).map(|_| rng.signed_f32() * s2).collect(),
+            w2: (0..(DCAP + 1) * hid)
+                .map(|_| rng.signed_f32() * s2)
+                .collect(),
             b2: vec![0.0; DCAP + 1],
         }
     }
@@ -267,7 +269,10 @@ impl ValueHeuristic {
     /// Train a value heuristic on `ops`' own transition structure. Deterministic in
     /// `cfg.seed`. Panics if `ops` is empty.
     pub fn train(ops: &[Op], cfg: &ValueTrainConfig) -> Self {
-        assert!(!ops.is_empty(), "cannot train a value heuristic on zero ops");
+        assert!(
+            !ops.is_empty(),
+            "cannot train a value heuristic on zero ops"
+        );
         let mut rng = Rng(cfg.seed);
         let preds = reverse_adj(ops);
 
@@ -396,7 +401,8 @@ mod tests {
         // (correctness of the seam — dominance over the hand heuristic is the gate
         // example, not this test).
         let hidden = |v: u16| ops[3].apply(ops[0].apply(v)); // xor_0f0f then swap
-        let examples: Vec<(u16, u16)> = [7u16, 300, 41000].iter().map(|&x| (x, hidden(x))).collect();
+        let examples: Vec<(u16, u16)> =
+            [7u16, 300, 41000].iter().map(|&x| (x, hidden(x))).collect();
         let plan = vh.synthesize(&examples, &ops, 4, 50_000).expect("solves");
         let run = |steps: &[String], mut v: u16| {
             for s in steps {

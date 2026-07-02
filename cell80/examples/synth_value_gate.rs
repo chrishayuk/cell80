@@ -67,8 +67,16 @@ fn op(src: &str, id: &str, arg: u16) -> Op {
 /// reverse scramble Hamming) — the deceptive regime synthesis exists for.
 fn ops() -> Vec<Op> {
     vec![
-        op(include_str!("../cells/mask_intersection.rs"), "and_ff00", 0xFF00),
-        op(include_str!("../cells/mask_intersection.rs"), "and_0ff0", 0x0FF0),
+        op(
+            include_str!("../cells/mask_intersection.rs"),
+            "and_ff00",
+            0xFF00,
+        ),
+        op(
+            include_str!("../cells/mask_intersection.rs"),
+            "and_0ff0",
+            0x0FF0,
+        ),
         op(include_str!("../cells/mask_union.rs"), "or_00ff", 0x00FF),
         op(include_str!("../cells/mask_union.rs"), "or_0f0f", 0x0F0F),
         op(include_str!("../cells/mask_xor.rs"), "xor_0f0f", 0x0F0F),
@@ -125,40 +133,34 @@ fn main() {
 
     let mut rows: Vec<(f32, f32, f32)> = Vec::new();
     for &b in &BUDGETS {
-        let blind = pct(
-            tasks
-                .iter()
-                .filter(|ex| synthesize_with(ex, &ops, MAX_DEPTH, b, &|_, _| 0).is_some())
-                .count(),
-        );
-        let hand = pct(
-            tasks
-                .iter()
-                .filter(|ex| synthesize(ex, &ops, MAX_DEPTH, b).is_some())
-                .count(),
-        );
+        let blind = pct(tasks
+            .iter()
+            .filter(|ex| synthesize_with(ex, &ops, MAX_DEPTH, b, &|_, _| 0).is_some())
+            .count());
+        let hand = pct(tasks
+            .iter()
+            .filter(|ex| synthesize(ex, &ops, MAX_DEPTH, b).is_some())
+            .count());
         // Memoise per-pair values (same numbers, fewer forwards — compute parity is the
         // node budget, unchanged).
-        let learned = pct(
-            tasks
-                .iter()
-                .filter(|ex| {
-                    let memo: RefCell<HashMap<(u16, u16), i64>> = RefCell::new(HashMap::new());
-                    let h = |s: &[u16], t: &[u16]| -> i64 {
-                        s.iter()
-                            .zip(t)
-                            .map(|(&si, &ti)| {
-                                *memo
-                                    .borrow_mut()
-                                    .entry((si, ti))
-                                    .or_insert_with(|| vh.h(&[si], &[ti]))
-                            })
-                            .sum()
-                    };
-                    synthesize_with(ex, &ops, MAX_DEPTH, b, &h).is_some()
-                })
-                .count(),
-        );
+        let learned = pct(tasks
+            .iter()
+            .filter(|ex| {
+                let memo: RefCell<HashMap<(u16, u16), i64>> = RefCell::new(HashMap::new());
+                let h = |s: &[u16], t: &[u16]| -> i64 {
+                    s.iter()
+                        .zip(t)
+                        .map(|(&si, &ti)| {
+                            *memo
+                                .borrow_mut()
+                                .entry((si, ti))
+                                .or_insert_with(|| vh.h(&[si], &[ti]))
+                        })
+                        .sum()
+                };
+                synthesize_with(ex, &ops, MAX_DEPTH, b, &h).is_some()
+            })
+            .count());
         println!("  {b:>7}  {blind:>9.1}%  {hand:>11.1}%  {learned:>12.1}%");
         rows.push((blind, hand, learned));
     }
