@@ -1,8 +1,16 @@
-# Cell80 ABI — v1
+# Cell80 ABI — v2
 
 The frozen contract every `cell80` consumer (CLI, MCP server, tool index, future
-`.cell` cartridge) relies on. **`ABI_VERSION = 1`** (`cell80::ABI_VERSION`, also the
+`.cell` cartridge) relies on. **`ABI_VERSION = 2`** (`cell80::ABI_VERSION`, also the
 `"abi"` field of the JSON report). Bump only on a breaking change to anything below.
+
+**v2 (the 32-bit lane).** Two additions over v1: the `ED FE` traps `0x12` (MUL32) and
+`0x13` (DIVMOD32), and **`u32` state fields** — two consecutive little-endian slots (low
+word first), drivable and readable *by name* at their full width (the `.cell` format v4
+carries a `Ty` per state field). Everything else is unchanged. The bump exists because the
+trap addition is only *additive on a v2 host*: a v1 host treats unknown trap ids as no-ops,
+so a cartridge compiled with `u32` mul/div would compute garbage there — the artifact must
+declare which host it needs.
 
 The cell is a **flat-RAM Z80** — no ROM, no ULA, no I/O ports by default, no syscalls —
 provided by the `cell80` crate. Determinism is the whole point: same program + same inputs ⇒
@@ -123,10 +131,12 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v3**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v4**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
-and (v3) `state_addrs`: each scalar state field's byte address at `STATE_BASE`, so a host or a
-peer cell in a graph drives the cell **by field name without the source**. `from_bytes` still
-reads v2 cartridges (no `state_addrs`). This named, versioned, manifest-bearing artifact is
-the object the CLI, a tool index, the MCP server, and a `CellGraph` pass around. (Note: the
-`.cell` *file* format version — v3 — is distinct from the runtime `ABI_VERSION` above, still 1.)
+and `state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
+0 = u16, 1 = u32, 2 = u8) at `STATE_BASE`, so a host or a peer cell in a graph drives the
+cell **by field name without the source** — a `u32` field at its full width. `from_bytes`
+still reads v3 (addresses without widths → fields read as `u16`) and v2 (no `state_addrs`)
+cartridges. This named, versioned, manifest-bearing artifact is the object the CLI, a tool
+index, the MCP server, and a `CellGraph` pass around. (Note: the `.cell` *file* format
+version — v4 — is distinct from the runtime `ABI_VERSION` above, now 2.)

@@ -92,21 +92,29 @@ fn first_wave_cells_match_defined_behaviour() {
         ("snap_up", &[0, 10], 0),
         ("round_to_multiple", &[47, 10], 50),
         ("round_to_multiple", &[44, 10], 40),
-        // ── percent / ratio (u16 domain: value·scale ≤ 65535) ──
+        // ── percent / ratio (u32-wide internally: the full u16 domain is exact) ──
         ("percent", &[25, 200], 12),
         ("percent", &[1, 4], 25),
         ("percent", &[5, 0], 0),
+        ("percent", &[700, 1000], 70), // part*100 > 65535 — the old u16 wrap gave 4
+        ("percent", &[65535, 65535], 100), // the domain extreme
         ("permille", &[1, 4], 250),
         ("permille", &[5, 0], 0),
+        ("permille", &[700, 1000], 700), // part*1000 wraps hard at u16
         ("ratio_255", &[1, 2], 127),
         ("ratio_255", &[1, 1], 255),
+        ("ratio_255", &[300, 255], 300), // part*255 > 65535
         ("scale_percent", &[80, 25], 20),
+        ("scale_percent", &[1000, 200], 2000), // value*pct > 65535
+        ("scale_percent", &[65535, 65535], 65535), // saturates at the u16 return
         ("increase_percent", &[600, 50], 900),
         ("increase_percent", &[65000, 1], 65535),
         ("discount_percent", &[100, 20], 80),
         ("discount_percent", &[50, 150], 0),
         ("within_percent", &[95, 100, 10], 1),
         ("within_percent", &[80, 100, 10], 0),
+        ("within_percent", &[1500, 1000, 100], 1), // target*pct wraps at u16 — flipped the predicate
+        ("within_percent", &[3000, 1000, 100], 0), // wide compare on both sides
         // ── ranking / extremum / stats ──
         ("min3", &[5, 2, 8], 2),
         ("min3", &[9, 9, 9], 9),
@@ -258,7 +266,7 @@ fn distance_state_cells_match_defined_behaviour() {
         let mut cell = StateCell::bind(&cell_src(id), "Pts", None)
             .unwrap_or_else(|e| panic!("bind {id}: {e}"));
         for (f, v) in [("x1", x1), ("y1", y1), ("x2", x2), ("y2", y2)] {
-            cell.set(f, v).unwrap();
+            cell.set(f, v as u64).unwrap();
         }
         cell.run(DEFAULT_CYCLES).unwrap().result
     }
@@ -267,4 +275,33 @@ fn distance_state_cells_match_defined_behaviour() {
     assert_eq!(dist("chebyshev", 0, 0, 5, 2), 5);
     assert_eq!(dist("euclid_sq", 0, 0, 3, 4), 25); // 9 + 16
     assert_eq!(dist("euclid_sq", 1, 1, 4, 5), 25); // 9 + 16
+
+    // euclid_sq's `dist` is a wide u32 field: past the u16 ceiling the scalar result
+    // saturates but the named field carries the exact value.
+    let mut cell = StateCell::bind(&cell_src("euclid_sq"), "Pts", None).unwrap();
+    for (f, v) in [("x1", 0u64), ("y1", 0), ("x2", 300), ("y2", 400)] {
+        cell.set(f, v).unwrap();
+    }
+    assert_eq!(cell.run(DEFAULT_CYCLES).unwrap().result, 65535); // saturated scalar
+    assert_eq!(cell.get("dist"), Some(250_000)); // 300² + 400², exact and wide
+}
+
+#[test]
+fn wide_state_cells_carry_exact_u32_results() {
+    // The wide siblings of the result-overflow value cells: the u32 output field holds
+    // the exact value the u16 return can't (`square(300)`, `weighted_sum` past 65535).
+    let mut sq = StateCell::bind(&cell_src("square_wide"), "Sq", None).unwrap();
+    sq.set("n", 300).unwrap();
+    sq.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(sq.get("sq"), Some(90_000));
+    sq.set("n", 65535).unwrap(); // the domain extreme: 65535² needs all 32 bits
+    sq.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(sq.get("sq"), Some(65_535u64 * 65_535));
+
+    let mut ws = StateCell::bind(&cell_src("weighted_sum_wide"), "Ws", None).unwrap();
+    for (f, v) in [("a", 30_000u64), ("b", 20_000), ("c", 10_000)] {
+        ws.set(f, v).unwrap();
+    }
+    assert_eq!(ws.run(DEFAULT_CYCLES).unwrap().result, 65535); // saturated scalar
+    assert_eq!(ws.get("sum"), Some(100_000)); // a + 2b + 3c, exact
 }

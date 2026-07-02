@@ -21,8 +21,15 @@ fn bad_prog(src: &str) {
 fn expr_rejections() {
     bad_fn("fn f() -> u16 { 1.5f32 as u16 }"); // unsupported literal
     bad_fn("fn f() -> u16 { let a = 1u32; let b = 2u32; a << b }"); // u32 variable shift (16-bit only)
-    bad_fn("fn f() -> u16 { let a = 1u32; let b = 2u32; a + b }"); // u32 arithmetic (only |&^ + shifts)
-    bad_fn("fn f() -> u16 { let a = 1u16; a as u32 }"); // widening to u32 unsupported
+    bad_fn("fn f() -> u16 { let a = 1u16; a as u32 }"); // u32 return value (u16 registers)
+    bad_fn("fn f() -> u16 { let a = 1u32; let b = 2u32; (a < b) as u16 }"); // u32 comparison
+    bad_fn("fn f() -> u16 { let a = 1u32; if a > 0u32 { 1u16 } else { 0u16 } }"); // u32 condition
+    bad_fn("fn f(a: u32) -> u16 { a as u16 }"); // u32 parameter (u16 registers)
+    bad_fn("fn f() -> u16 { let a = 1u32; g(a) }"); // u32 call argument
+    bad_fn("fn f() -> u16 { let mut x = 1u16; x = 2u32; x }"); // u32 into a u16 var
+    bad_fn("fn f() -> u16 { let x: u16 = 2u32; x }"); // u32 init on a 16-bit annotation
+    bad_fn("fn f() -> u16 { let a = 1u32; for _ in 0u32..a { } 0u16 }"); // u32 `for` bounds
+    bad_fn("fn f() -> u16 { let a = 1u32; poke(40000u16, a); 0u16 }"); // u32 poke value
     bad_fn("fn f() -> u16 { nope::<u16>() }"); // turbofish on a non-generic call
     bad_fn("fn f(a: u16, b: u16, c: u16, d: u16) -> u16 { a }"); // > 3 params
     bad_fn("fn f() -> u16 { g(1u16, 2u16, 3u16, 4u16) }"); // > 3 call args
@@ -396,6 +403,38 @@ fn array_struct_field_through_pointer() {
     assert_eq!(total, 60);
     let d2 = u16::from_le_bytes([mem[0xC004], mem[0xC005]]); // data[2]
     assert_eq!(d2, 20);
+}
+
+#[test]
+fn bool_array_field_through_pointer() {
+    // A `[bool; N]` field: write some flags through the `self` pointer (PtrStoreIndex) and
+    // count them back (PtrIndex + a `bool` condition). Game flags can be a real `bool`
+    // array (`if self.got[k] { .. }`) instead of `[u16; N]` of 0/1. `self` points at a
+    // zeroed region, so every flag starts `false`.
+    let src = "
+        struct S { flags: [bool; 4] }
+        impl S {
+            fn run(&mut self) -> u16 {
+                self.flags[0] = true;
+                self.flags[2] = true;
+                let mut c = 0u16;
+                let mut i = 0u16;
+                while i < 4u16 {
+                    if self.flags[i as usize] {
+                        c = c + 1u16;
+                    }
+                    i = i + 1u16;
+                }
+                c
+            }
+        }
+    ";
+    let prog = compile_program(src).expect("compile");
+    let (hl, mem) = run_method(&prog, "S::run", 0xC000);
+    assert_eq!(hl, 2); // flags[0] and flags[2] set
+    assert_eq!(mem[0xC000], 1); // flags[0] = true (low byte of the slot)
+    assert_eq!(mem[0xC002], 0); // flags[1] still false
+    assert_eq!(mem[0xC004], 1); // flags[2] = true
 }
 
 // --- a tiny CPU runner (mirrors the differential harness) ----------------------

@@ -37,9 +37,11 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
         | Expr::Peek(e)
         | Expr::InPort(e)
         | Expr::Deref(e, _)
+        | Expr::Deref32(e, _)
         | Expr::MulConst(e, _)
         | Expr::LoadAt(e, _)
         | Expr::Trunc32(e)
+        | Expr::Widen(e)
         | Expr::Shift32 { e, .. }
         | Expr::Halt(e) => calls_in_expr(e, out),
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::Lit32(_) | Expr::Var32(_) => {}
@@ -60,7 +62,7 @@ fn calls_in_stmt(s: &Stmt, out: &mut Vec<String>) {
             calls_in_expr(a, out);
             calls_in_expr(b, out);
         }
-        Stmt::Store(a, _, b) => {
+        Stmt::Store(a, _, b) | Stmt::Store32(a, _, b) => {
             calls_in_expr(a, out);
             calls_in_expr(b, out);
         }

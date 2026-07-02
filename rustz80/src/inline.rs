@@ -250,9 +250,11 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
             | Expr::Peek(a)
             | Expr::InPort(a)
             | Expr::Deref(a, _)
+            | Expr::Deref32(a, _)
             | Expr::MulConst(a, _)
             | Expr::LoadAt(a, _)
             | Expr::Trunc32(a)
+            | Expr::Widen(a)
             | Expr::Halt(a)
             | Expr::Shift32 { e: a, .. } => ex(a, out),
             Expr::PtrIndex { ptr, index, .. } => {
@@ -279,7 +281,7 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
                 ex(a, out);
                 ex(b, out);
             }
-            Stmt::Store(p, _, v) => {
+            Stmt::Store(p, _, v) | Stmt::Store32(p, _, v) => {
                 ex(p, out);
                 ex(v, out);
             }
@@ -343,7 +345,7 @@ fn count_stmt(s: &Stmt, m: &mut HashMap<String, usize>) {
             count_expr(a, m);
             count_expr(b, m);
         }
-        Stmt::Store(p, _, v) => {
+        Stmt::Store(p, _, v) | Stmt::Store32(p, _, v) => {
             count_expr(p, m);
             count_expr(v, m);
         }
@@ -389,9 +391,11 @@ fn count_expr(e: &Expr, m: &mut HashMap<String, usize>) {
         | Expr::Peek(a)
         | Expr::InPort(a)
         | Expr::Deref(a, _)
+        | Expr::Deref32(a, _)
         | Expr::MulConst(a, _)
         | Expr::LoadAt(a, _)
         | Expr::Trunc32(a)
+        | Expr::Widen(a)
         | Expr::Halt(a)
         | Expr::Shift32 { e: a, .. } => count_expr(a, m),
         Expr::PtrIndex { ptr, index, .. } => {
@@ -438,6 +442,7 @@ fn remap_stmt(s: &Stmt, plan: &[Slot]) -> Stmt {
         Stmt::StoreIndex(slot, i, v, w) => Stmt::StoreIndex(reloc(plan, *slot), e(i), e(v), *w),
         Stmt::Poke(a, v) => Stmt::Poke(e(a), e(v)),
         Stmt::Store(p, off, v) => Stmt::Store(e(p), *off, e(v)),
+        Stmt::Store32(p, off, v) => Stmt::Store32(e(p), *off, e(v)),
         Stmt::PtrStoreIndex {
             ptr,
             off,
@@ -503,10 +508,12 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         ),
         Expr::Trunc(a) => Expr::Trunc(e(a)),
         Expr::Trunc32(a) => Expr::Trunc32(e(a)),
+        Expr::Widen(a) => Expr::Widen(e(a)),
         Expr::Peek(a) => Expr::Peek(e(a)),
         Expr::InPort(a) => Expr::InPort(e(a)),
         Expr::Halt(a) => Expr::Halt(e(a)),
         Expr::Deref(p, off) => Expr::Deref(e(p), *off),
+        Expr::Deref32(p, off) => Expr::Deref32(e(p), *off),
         Expr::PtrIndex { ptr, off, index } => Expr::PtrIndex {
             ptr: e(ptr),
             off: *off,

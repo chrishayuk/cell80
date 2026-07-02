@@ -151,8 +151,18 @@ impl CellGraph {
                             format!("node `{}` has no output port `{}`", src.node, src.port)
                         })?
                 }
-                // Constants and external inputs are u16-wide (the addressable slot).
-                Feed::Const(_) | Feed::Input(_) => "u16".to_string(),
+                // Constants and external inputs are untyped integers — they fit any
+                // scalar port (the host routes values as u64 and writes at the port's
+                // own width, so a `u32` port takes the full value).
+                Feed::Const(_) | Feed::Input(_) => {
+                    if dtype == "u16" || dtype == "u32" || dtype == "u8" {
+                        continue;
+                    }
+                    return Err(format!(
+                        "input `{}`: a constant/external feed needs a scalar port, got `{dtype}`",
+                        dest.key()
+                    ));
+                }
             };
             if stype != dtype {
                 return Err(format!(

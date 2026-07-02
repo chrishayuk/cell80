@@ -133,6 +133,23 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
             a.byte(0x53); // LD (addr+2),DE   high word
             a.word(addr.wrapping_add(2));
         }
+        // Wide field store through a pointer: 4 little-endian bytes at *(ptr + off).
+        Stmt::Store32(ptr, off, value) => {
+            gen_expr32(a, value); // HL = low word, DE = high word
+            a.byte(0xD5); // PUSH DE  (high word)
+            a.byte(0xE5); // PUSH HL  (low word)
+            gen_expr(a, ptr); // HL = base pointer
+            gen_add_offset(a, *off); // HL = &field
+            a.byte(0xD1); // POP DE   (low word)
+            a.byte(0x73); // LD (HL),E
+            a.byte(0x23); // INC HL
+            a.byte(0x72); // LD (HL),D
+            a.byte(0x23); // INC HL
+            a.byte(0xD1); // POP DE   (high word)
+            a.byte(0x73); // LD (HL),E
+            a.byte(0x23); // INC HL
+            a.byte(0x72); // LD (HL),D
+        }
         Stmt::Fill { base, count, value } => gen_fill(a, *base, *count, value),
         Stmt::Eval(e) => {
             gen_expr(a, e); // result left in HL, discarded

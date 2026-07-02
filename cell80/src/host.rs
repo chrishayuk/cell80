@@ -14,7 +14,7 @@ use std::collections::HashMap;
 struct Loaded {
     runner: Runner,
     entry: String,
-    state_addrs: Vec<(String, u16)>,
+    state_addrs: Vec<(String, u16, Ty)>,
 }
 
 /// A persistent host over a library of cells: discover (`search`/`manifest`), then
@@ -168,24 +168,23 @@ impl CellHost {
         }
         let entry = l.entry.clone();
         let addrs = l.state_addrs.clone();
-        // Resolve each named input to its address (typed u16 — the addressable slot width).
+        // Resolve each named input to its address, at the field's own width — a `u32`
+        // field takes (and reads back) the full 32-bit value.
         let mut inputs = Vec::with_capacity(fields.len());
         for (name, val) in fields {
-            let addr = addrs
+            let (addr, ty) = addrs
                 .iter()
-                .find(|(n, _)| n == name)
-                .map(|(_, a)| *a)
+                .find(|(n, _, _)| n == name)
+                .map(|(_, a, t)| (*a, *t))
                 .ok_or_else(|| format!("no state field `{name}`"))?;
-            inputs.push((addr, Ty::U16, *val));
+            inputs.push((addr, ty, *val));
         }
         let report = l
             .runner
             .run_with_inputs(Some(&entry), &[STATE_BASE], &inputs, budget)?;
         // Read all fields back so the caller sees the full post-run state.
-        let reads: Vec<(String, u16, Ty)> = addrs
-            .iter()
-            .map(|(n, a)| (n.clone(), *a, Ty::U16))
-            .collect();
+        let reads: Vec<(String, u16, Ty)> =
+            addrs.iter().map(|(n, a, t)| (n.clone(), *a, *t)).collect();
         let state = l.runner.read_named(&reads);
         Ok((report, state))
     }

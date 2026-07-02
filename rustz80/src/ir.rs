@@ -103,12 +103,19 @@ pub enum Expr {
     Lit32(u32),
     /// A `u32` local, by slot index (occupies `slot` and `slot + 1`).
     Var32(usize),
-    /// A `u32` bitwise op (`| & ^` only).
+    /// A `u32` binary op: `+ - * / %` (add/sub as an inline carry chain; mul/div via
+    /// the software runtime on Spectrum or the `ED FE` trap on Cell) and `| & ^`.
     Bin32(BinOp, Box<Expr>, Box<Expr>),
     /// A `u32` shift by a constant: `e << k` (`left`) or `e >> k`.
     Shift32 { left: bool, e: Box<Expr>, k: u8 },
     /// Truncate a `u32` to its low `u16` (`x as u16`) — the bridge back to 16-bit.
     Trunc32(Box<Expr>),
+    /// Read a `u32` at `*(ptr + byte_offset)` — a wide field access through a pointer
+    /// (`self.total` where `total: u32`; two little-endian slots, low word first).
+    Deref32(Box<Expr>, usize),
+    /// Widen a 16-bit expr to `u32` (`x as u32`) — zero-extend into the high word. The bridge
+    /// *up* to 32-bit, so a `u16` can feed a `u32` op (e.g. a wide intermediate).
+    Widen(Box<Expr>),
     /// `halt(code)` — a Cell80 intrinsic: stop the run with a status code (the `ED FE`
     /// HALT trap). A no-op on real hardware / the Spectrum target.
     Halt(Box<Expr>),
@@ -148,6 +155,9 @@ pub enum Stmt {
     StoreAt(Expr, Expr, Width),
     /// Store a `u32` expression (evaluated in `HL:DE`) into a two-slot local.
     Assign32(usize, Expr),
+    /// Write a `u32` to `*(ptr + byte_offset)` — a wide field store through a pointer
+    /// (`self.total = v` where `total: u32`; two little-endian slots, low word first).
+    Store32(Expr, usize, Expr),
     /// Fill `count` consecutive slots from local slot `base` with `value` (a `[v; N]`
     /// array initialiser — every element is one 2-byte slot, `u8` in the low byte). A
     /// block op: Spectrum lowers it to a first store + `LDIR`; Cell to an `ED FE` fill

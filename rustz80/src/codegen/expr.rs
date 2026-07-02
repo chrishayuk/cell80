@@ -212,8 +212,13 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             gen_expr(a, code);
             gen_trap(a, TRAP_HALT);
         }
-        Expr::Lit32(_) | Expr::Var32(_) | Expr::Bin32(..) | Expr::Shift32 { .. } => {
-            unreachable!("u32 node used in a 16-bit context (u32 params/returns unsupported)")
+        Expr::Lit32(_)
+        | Expr::Var32(_)
+        | Expr::Deref32(..)
+        | Expr::Bin32(..)
+        | Expr::Shift32 { .. }
+        | Expr::Widen(..) => {
+            unreachable!("u32 node in a 16-bit context — the lowering guards reject these")
         }
     }
 }
@@ -296,6 +301,49 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
     }
 }
 
+/// `HL:DE = l * r` (mod 2^32). Both targets share the convention: `l` pushed on the
+/// stack (low word on top), `r` in `HL:DE`; the callee/trap leaves the product in
+/// `HL:DE` and the two stack words in place, so the cleanup is one shape.
+fn gen_mul32(a: &mut Asm, l: &Expr, r: &Expr) {
+    gen_expr32(a, l);
+    a.byte(0xD5); // PUSH DE   (l.high)
+    a.byte(0xE5); // PUSH HL   (l.low)
+    gen_expr32(a, r); // HL:DE = r
+    match a.target {
+        Target::Spectrum48 => {
+            a.call("__mul32");
+            a.needs_mul32 = true;
+        }
+        Target::Cell => gen_trap(a, TRAP_MUL32),
+    }
+    a.byte(0xC1); // POP BC   ─┐ drop l
+    a.byte(0xC1); // POP BC   ─┘
+}
+
+/// `HL:DE = l / r` (or `l % r` if `rem`). Same convention as [`gen_mul32`]; the
+/// quotient comes back in `HL:DE` and the remainder in the two stack words — popped
+/// as the result for `%`, dropped for `/`.
+fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
+    gen_expr32(a, l);
+    a.byte(0xD5); // PUSH DE   (l.high)
+    a.byte(0xE5); // PUSH HL   (l.low)
+    gen_expr32(a, r); // HL:DE = r (the divisor)
+    match a.target {
+        Target::Spectrum48 => {
+            a.call("__divmod32");
+            a.needs_div32 = true;
+        }
+        Target::Cell => gen_trap(a, TRAP_DIVMOD32),
+    }
+    if rem {
+        a.byte(0xE1); // POP HL   (rem.low)
+        a.byte(0xD1); // POP DE   (rem.high)
+    } else {
+        a.byte(0xC1); // POP BC   ─┐ drop the remainder
+        a.byte(0xC1); // POP BC   ─┘
+    }
+}
+
 /// `HL = l / r` (or `l % r` if `rem`), neither a power of two. Spectrum: the software
 /// runtime. Cell: an `ED FE` host trap.
 pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
@@ -370,19 +418,76 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             a.byte(0x5B); // LD DE,(addr+2)    high word
             a.word(addr.wrapping_add(2));
         }
-        Expr::Trunc32(e) => gen_expr32(a, e),
-        Expr::Bin32(op, l, r) => {
-            gen_expr32(a, l);
-            a.byte(0xD5); // PUSH DE   (l.high)
-            a.byte(0xE5); // PUSH HL   (l.low)
-            gen_expr32(a, r); // HL = r.low, DE = r.high
-            a.byte(0xC1); // POP BC    (l.low)
-            gen_bitwise_bc(a, op, false); // HL = r.low OP l.low
-            a.byte(0xEB); // EX DE,HL  -> HL = r.high
-            a.byte(0xC1); // POP BC    (l.high)
-            gen_bitwise_bc(a, op, true); // HL = r.high OP l.high; EX back below
-            a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+        // Wide field read through a pointer: 4 little-endian bytes at *(ptr + off).
+        Expr::Deref32(ptr, off) => {
+            gen_expr(a, ptr); // HL = base pointer
+            gen_add_offset(a, *off); // HL = &field
+            a.byte(0x5E); // LD E,(HL)   low word
+            a.byte(0x23); // INC HL
+            a.byte(0x56); // LD D,(HL)
+            a.byte(0x23); // INC HL
+            a.byte(0x4E); // LD C,(HL)   high word
+            a.byte(0x23); // INC HL
+            a.byte(0x46); // LD B,(HL)
+            a.byte(0xEB); // EX DE,HL    -> HL = low word
+            a.byte(0x50); // LD D,B
+            a.byte(0x59); // LD E,C      -> DE = high word
         }
+        Expr::Trunc32(e) => gen_expr32(a, e),
+        // `x as u32` — evaluate the 16-bit value into HL, then zero-extend: DE (high word) = 0.
+        Expr::Widen(inner) => {
+            gen_expr(a, inner); // HL = the u16 value
+            a.byte(0x11); // LD DE, 0   (high word)
+            a.word(0);
+        }
+        Expr::Bin32(op, l, r) => match op {
+            BinOp::Or | BinOp::And | BinOp::Xor => {
+                gen_expr32(a, l);
+                a.byte(0xD5); // PUSH DE   (l.high)
+                a.byte(0xE5); // PUSH HL   (l.low)
+                gen_expr32(a, r); // HL = r.low, DE = r.high
+                a.byte(0xC1); // POP BC    (l.low)
+                gen_bitwise_bc(a, op, false); // HL = r.low OP l.low
+                a.byte(0xEB); // EX DE,HL  -> HL = r.high
+                a.byte(0xC1); // POP BC    (l.high)
+                gen_bitwise_bc(a, op, true); // HL = r.high OP l.high; EX back below
+                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+            }
+            // 32-bit add: word add, then the carry chains into the high word.
+            BinOp::Add => {
+                gen_expr32(a, l);
+                a.byte(0xD5); // PUSH DE   (l.high)
+                a.byte(0xE5); // PUSH HL   (l.low)
+                gen_expr32(a, r); // HL = r.low, DE = r.high
+                a.byte(0xC1); // POP BC    (l.low)
+                a.byte(0x09); // ADD HL,BC   (low sum, CF out)
+                a.byte(0xEB); // EX DE,HL    (HL = r.high; flags survive)
+                a.byte(0xC1); // POP BC    (l.high)
+                a.byte(0xED);
+                a.byte(0x4A); // ADC HL,BC   (high sum + carry)
+                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+            }
+            // 32-bit sub: `SBC` chains the borrow (r evaluated first, like `gen_sub`).
+            BinOp::Sub => {
+                gen_expr32(a, r);
+                a.byte(0xD5); // PUSH DE   (r.high)
+                a.byte(0xE5); // PUSH HL   (r.low)
+                gen_expr32(a, l); // HL = l.low, DE = l.high
+                a.byte(0xC1); // POP BC    (r.low)
+                a.byte(0xB7); // OR A        (clear carry)
+                a.byte(0xED);
+                a.byte(0x42); // SBC HL,BC   (low diff, borrow out)
+                a.byte(0xEB); // EX DE,HL    (HL = l.high)
+                a.byte(0xC1); // POP BC    (r.high)
+                a.byte(0xED);
+                a.byte(0x42); // SBC HL,BC   (high diff - borrow)
+                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+            }
+            BinOp::Mul => gen_mul32(a, l, r),
+            BinOp::Div => gen_divmod32(a, l, r, false),
+            BinOp::Rem => gen_divmod32(a, l, r, true),
+            BinOp::Shl | BinOp::Shr => unreachable!("u32 shifts lower to Shift32"),
+        },
         Expr::Shift32 { left, e, k } => {
             gen_expr32(a, e); // HL:DE = lo:hi
             for _ in 0..*k {

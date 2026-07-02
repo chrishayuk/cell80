@@ -25,6 +25,13 @@ impl CellBus<'_> {
             self.touched.push(a);
         }
     }
+
+    /// Read the little-endian `u32` a 32-bit trap's left operand occupies at `sp`
+    /// (two pushed words, low word on top).
+    fn read32_stack(&self, sp: u16) -> u32 {
+        let b = |i: u16| self.mem[sp.wrapping_add(i) as usize] as u32;
+        b(0) | b(1) << 8 | b(2) << 16 | b(3) << 24
+    }
 }
 
 impl z80::Bus for CellBus<'_> {
@@ -43,7 +50,10 @@ impl z80::Bus for CellBus<'_> {
         self.cycles += c as u64; // the single source of truth for elapsed time
     }
     /// Cell80 host intrinsics (`ED FE`, id in `A`). Matches `spectrum::host::math_traps`:
-    /// `0x10` MUL16 (`HL = BC*DE`), `0x11` DIVMOD16 (`HL = BC/DE`, `DE = BC%DE`). Done
+    /// `0x10` MUL16 (`HL = BC*DE`), `0x11` DIVMOD16 (`HL = BC/DE`, `DE = BC%DE`),
+    /// and the 32-bit pair — `0x12` MUL32 / `0x13` DIVMOD32: the left operand in the
+    /// two stack words (low word on top), the right in `HL:DE` (low:high), result in
+    /// `HL:DE`; DIVMOD32 writes the remainder back into the stack words. Done
     /// host-native, so a `var*var` multiply/divide costs a few T-states instead of a
     /// software loop.
     fn host_trap(&mut self, regs: &mut z80::Regs) -> u32 {
@@ -62,6 +72,32 @@ impl z80::Bus for CellBus<'_> {
                     }
                     None => regs.set_hl(0xFFFF), // divide-by-zero (a bug) — bounded, not a panic
                 }
+                self.trapped_ops += 1;
+            }
+            0x12 => {
+                // MUL32: HL:DE = l * r (mod 2^32).
+                let l = self.read32_stack(regs.sp);
+                let r = regs.hl() as u32 | (regs.de() as u32) << 16;
+                let p = l.wrapping_mul(r);
+                regs.set_hl(p as u16);
+                regs.set_de((p >> 16) as u16);
+                self.trapped_ops += 1;
+            }
+            0x13 => {
+                // DIVMOD32: quotient → HL:DE, remainder → back into the stack words.
+                // `/ 0` mirrors the Spectrum software sibling: q = 0xFFFF_FFFF, rem = l.
+                let l = self.read32_stack(regs.sp);
+                let r = regs.hl() as u32 | (regs.de() as u32) << 16;
+                let (q, rem) = match l.checked_div(r) {
+                    Some(q) => (q, l % r),
+                    None => (u32::MAX, l),
+                };
+                regs.set_hl(q as u16);
+                regs.set_de((q >> 16) as u16);
+                self.touch_write(regs.sp, rem as u8);
+                self.touch_write(regs.sp.wrapping_add(1), (rem >> 8) as u8);
+                self.touch_write(regs.sp.wrapping_add(2), (rem >> 16) as u8);
+                self.touch_write(regs.sp.wrapping_add(3), (rem >> 24) as u8);
                 self.trapped_ops += 1;
             }
             0x20 => {

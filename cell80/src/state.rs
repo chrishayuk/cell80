@@ -23,7 +23,7 @@ pub const STATE_BASE: u16 = 0xB000;
 /// ```
 pub struct StateCell {
     runner: Runner,
-    addrs: HashMap<String, u16>, // scalar field name -> byte address
+    addrs: HashMap<String, (u16, Ty)>, // scalar field name -> (byte address, width)
     entry: String,
     pending: Vec<(u16, Ty, u64)>,
 }
@@ -35,9 +35,8 @@ impl StateCell {
         let layout = rustz80::struct_layout(src, state)?;
         let mut addrs = HashMap::new();
         for f in &layout {
-            if f.slots == 1 {
-                // scalar field, addressable by name (a `u16`/`u8` slot)
-                addrs.insert(f.name.clone(), STATE_BASE + f.offset * 2);
+            if let Some(ty) = scalar_ty(f) {
+                addrs.insert(f.name.clone(), (STATE_BASE + f.offset * 2, ty));
             }
         }
         Ok(StateCell {
@@ -48,13 +47,14 @@ impl StateCell {
         })
     }
 
-    /// Queue a named `u16` input (written into the state before the next [`run`](StateCell::run)).
-    pub fn set(&mut self, field: &str, value: u16) -> Result<(), String> {
-        let &addr = self
+    /// Queue a named input (written into the state before the next [`run`](StateCell::run))
+    /// at the field's own width — a `u32` field takes the full 32-bit value.
+    pub fn set(&mut self, field: &str, value: u64) -> Result<(), String> {
+        let &(addr, ty) = self
             .addrs
             .get(field)
             .ok_or_else(|| format!("no scalar field `{field}`"))?;
-        self.pending.push((addr, Ty::U16, value as u64));
+        self.pending.push((addr, ty, value));
         Ok(())
     }
 
@@ -66,9 +66,13 @@ impl StateCell {
             .run_with_inputs(Some(&self.entry), &[STATE_BASE], &pending, budget)
     }
 
-    /// Read a named `u16` field from the last run's state.
-    pub fn get(&self, field: &str) -> Option<u16> {
-        self.addrs.get(field).map(|&a| self.runner.peek_u16(a))
+    /// Read a named field from the last run's state, at the field's own width.
+    pub fn get(&self, field: &str) -> Option<u64> {
+        self.addrs.get(field).map(|&(a, ty)| match ty {
+            Ty::U8 => self.runner.peek_u8(a) as u64,
+            Ty::U16 => self.runner.peek_u16(a) as u64,
+            Ty::U32 => self.runner.peek_u32(a) as u64,
+        })
     }
 
     /// The bound (scalar) field names.
@@ -77,11 +81,25 @@ impl StateCell {
     }
 }
 
-/// Byte addresses of a state cell's **scalar** fields — `(name, addr)` at [`STATE_BASE`], in
-/// declaration order — so a warm host (or a `.cell`) can drive the cell *by name* without the
-/// source. Empty for a free-function entry (no `&mut self` state). Uses the exact compiler
-/// [`struct_layout`](rustz80::struct_layout); tolerant of a non-state entry (returns empty).
-pub fn state_field_addrs(src: &str, entry: &str) -> Result<Vec<(String, u16)>, String> {
+/// The addressable width of a layout field: one slot → `u16` (a `u8` field also reads
+/// fine as its low byte), a two-slot `dword` → `u32`; arrays/tuples are not name-addressed.
+fn scalar_ty(f: &rustz80::FieldLayout) -> Option<Ty> {
+    if f.dword {
+        Some(Ty::U32)
+    } else if f.slots == 1 {
+        Some(Ty::U16)
+    } else {
+        None
+    }
+}
+
+/// Byte addresses of a state cell's **scalar** fields — `(name, addr, ty)` at
+/// [`STATE_BASE`], in declaration order — so a warm host (or a `.cell`) can drive the cell
+/// *by name* without the source. `ty` is the field's width: a `u32` field is 4 bytes /
+/// two slots (little-endian, low word first). Empty for a free-function entry (no
+/// `&mut self` state). Uses the exact compiler [`struct_layout`](rustz80::struct_layout);
+/// tolerant of a non-state entry (returns empty).
+pub fn state_field_addrs(src: &str, entry: &str) -> Result<Vec<(String, u16, Ty)>, String> {
     // A state entry is `Struct::method`; the receiver struct name is the part before `::`.
     let state_struct = match entry.split_once("::") {
         Some((s, _)) => s,
@@ -93,7 +111,9 @@ pub fn state_field_addrs(src: &str, entry: &str) -> Result<Vec<(String, u16)>, S
     };
     Ok(layout
         .into_iter()
-        .filter(|f| f.slots == 1) // scalar (u8/u16) fields are addressable by name
-        .map(|f| (f.name, STATE_BASE + f.offset * 2))
+        .filter_map(|f| {
+            let ty = scalar_ty(&f)?;
+            Some((f.name, STATE_BASE + f.offset * 2, ty))
+        })
         .collect())
 }

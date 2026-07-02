@@ -1,5 +1,5 @@
 //! The `Asm` assembler — emit primitives, label/call fixups, the local scratch layout.
-use super::runtime::{DIVMOD16, MUL16};
+use super::runtime::{emit_divmod32, emit_mul16w, emit_mul32, DIVMOD16, MUL16};
 use super::Target;
 use std::collections::HashMap;
 
@@ -20,6 +20,8 @@ pub(super) struct Asm {
     pub(super) call_fixups: Vec<(usize, String)>,
     pub(super) needs_mul: bool,
     pub(super) needs_div: bool,
+    pub(super) needs_mul32: bool,
+    pub(super) needs_div32: bool,
     /// Slot offset for the function currently being emitted, so each function's
     /// locals occupy a disjoint scratch region (correct for non-recursive calls;
     /// real stack frames are a later stage).
@@ -47,6 +49,8 @@ impl Asm {
             call_fixups: Vec::new(),
             needs_mul: false,
             needs_div: false,
+            needs_mul32: false,
+            needs_div32: false,
             base: 0,
             scratch: SCRATCH,
             loop_stack: Vec::new(),
@@ -80,6 +84,12 @@ impl Asm {
         self.label_fixups.push((self.code.len(), l));
         self.word(0);
     }
+    /// Emit a 16-bit operand that resolves to `l`'s placed address — an absolute
+    /// data reference (`LD HL,(label)` / `LD (label),HL`) inside an emitted routine.
+    pub(super) fn word_label(&mut self, l: usize) {
+        self.label_fixups.push((self.code.len(), l));
+        self.word(0);
+    }
     /// Emit `CALL name` (resolved to the symbol address at finish).
     pub(super) fn call(&mut self, name: &str) {
         self.byte(0xCD);
@@ -95,7 +105,16 @@ impl Asm {
     /// label (an internal codegen invariant). Returns a diagnostic rather than panicking so
     /// every compile entry surfaces it as a normal compile error.
     pub(super) fn finish(mut self) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
-        // Append the micro-runtime routines that were used.
+        // Append the micro-runtime routines that were used. The 32-bit routines come
+        // first: `__mul32` calls `__mul16`/`__mul16w`, so it turns those flags on.
+        if self.needs_mul32 {
+            emit_mul32(&mut self);
+            emit_mul16w(&mut self);
+            self.needs_mul = true;
+        }
+        if self.needs_div32 {
+            emit_divmod32(&mut self);
+        }
         if self.needs_mul {
             self.define("__mul16");
             self.code.extend_from_slice(MUL16);

@@ -8,6 +8,32 @@ use super::layout::{field_offset, member_name, resolve_enum_path, struct_slots};
 use super::Ctx;
 use crate::ir::*;
 
+/// Lower an expression that must fit a 16-bit context (a slot store, a call register,
+/// a comparison operand, an index): a `u32` value is a clean lowering error — never a
+/// codegen panic. `what` names the context in the message.
+pub(crate) fn lower_expr16(expr: &syn::Expr, ctx: &mut Ctx, what: &str) -> Result<Expr, String> {
+    let (e, w) = lower_expr(expr, ctx)?;
+    if w == Width::DWord {
+        return Err(format!(
+            "u32 value in a 16-bit context ({what}) — narrow with `as u16`"
+        ));
+    }
+    Ok(e)
+}
+
+/// Coerce a lowered operand into a 32-bit position: a `u32` passes through, a literal
+/// becomes a `u32` literal, and any other 16-bit value zero-extends (`Widen`) — this is
+/// the unsuffixed-literal mixing rustc itself allows (`part as u32 * 100`).
+pub(crate) fn coerce32(e: Expr, w: Width) -> Expr {
+    if w == Width::DWord {
+        e
+    } else if let Expr::Lit(k) = e {
+        Expr::Lit32(k as u32)
+    } else {
+        Expr::Widen(Box::new(e))
+    }
+}
+
 /// The byte address of `a[i].field` for a local struct-element array `[Cell; N]`:
 /// `&a + index*(elem_stride) + field_offset` (all in bytes). Errs if `a` isn't a
 /// struct-element array.
@@ -20,9 +46,17 @@ pub(crate) fn elem_field_addr(
     let efields = ctx
         .struct_fields(&elem_struct)
         .ok_or_else(|| format!("unknown struct {elem_struct}"))?;
-    let foff = field_offset(&efields, &member_name(member)?)?;
+    let fname = member_name(member)?;
+    if let Some(f) = efields.iter().find(|f| f.name == fname) {
+        if f.width == Width::DWord {
+            return Err(format!(
+                "u32 field `{fname}` of a struct-array element is not supported yet"
+            ));
+        }
+    }
+    let foff = field_offset(&efields, &fname)?;
     let stride = (struct_slots(&efields) * 2) as u16;
-    let idx = lower_expr(&ix.index, ctx)?.0;
+    let idx = lower_expr16(&ix.index, ctx, "array index")?;
     // base + index*stride (+ field_offset)
     let elem = Expr::Bin(
         BinOp::Add,
@@ -91,7 +125,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             syn::UnOp::Not(_) => Ok((
                 Expr::Cmp {
                     cmp: Cmp::Eq,
-                    lhs: Box::new(lower_expr(&u.expr, ctx)?.0),
+                    lhs: Box::new(lower_expr16(&u.expr, ctx, "`!` operand")?),
                     rhs: Box::new(Expr::Lit(0)),
                 },
                 Width::Byte,
@@ -116,7 +150,10 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 });
             }
             if tw == Width::DWord {
-                return Err("`as u32` (widening to u32) is not supported yet".into());
+                // Widen a 16-bit value up to `u32` (zero-extend), so a `u16` can feed a wide
+                // intermediate (e.g. `part as u32 * 100`). `Byte`/`Word` widen identically —
+                // the value is held in `HL` and the high word is zeroed.
+                return Ok((Expr::Widen(Box::new(e)), Width::DWord));
             }
             if tw == Width::Byte {
                 Ok((Expr::Trunc(Box::new(e)), Width::Byte))
@@ -124,7 +161,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 Ok((e, Width::Word))
             }
         }
-        syn::Expr::Field(f) => Ok((lower_field_read(f, ctx)?, Width::Word)),
+        syn::Expr::Field(f) => lower_field_read(f, ctx),
         syn::Expr::Index(ix) => lower_index_read(ix, ctx),
         syn::Expr::Binary(b) => lower_binary(b, ctx),
         syn::Expr::MethodCall(m) => lower_method_call(m, ctx),
@@ -133,19 +170,25 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             // `peek(addr)` intrinsic — read a byte from raw memory.
             if name == "peek" {
                 let addr = c.args.first().ok_or("peek(addr) needs an address")?;
-                return Ok((Expr::Peek(Box::new(lower_expr(addr, ctx)?.0)), Width::Byte));
+                return Ok((
+                    Expr::Peek(Box::new(lower_expr16(addr, ctx, "peek address")?)),
+                    Width::Byte,
+                ));
             }
             if name == "inport" {
                 let port = c.args.first().ok_or("inport(port) needs a port")?;
                 return Ok((
-                    Expr::InPort(Box::new(lower_expr(port, ctx)?.0)),
+                    Expr::InPort(Box::new(lower_expr16(port, ctx, "inport port")?)),
                     Width::Byte,
                 ));
             }
             // `halt(code)` — Cell80: stop the run with a status code (no-op on Spectrum).
             if name == "halt" {
                 let code = c.args.first().ok_or("halt(code) needs a code")?;
-                return Ok((Expr::Halt(Box::new(lower_expr(code, ctx)?.0)), Width::Word));
+                return Ok((
+                    Expr::Halt(Box::new(lower_expr16(code, ctx, "halt code")?)),
+                    Width::Word,
+                ));
             }
             if c.args.len() > 3 {
                 return Err("more than 3 call arguments not supported yet".into());
@@ -155,6 +198,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 .iter()
                 .map(|a| lower_expr(a, ctx))
                 .collect::<Result<Vec<_>, String>>()?;
+            if lowered.iter().any(|(_, w)| *w == Width::DWord) {
+                return Err(format!(
+                    "u32 call arguments are not supported yet (`{name}` — args pass in 16-bit \
+                     registers); narrow with `as u16`"
+                ));
+            }
             let args: Vec<Expr> = lowered.iter().map(|(e, _)| e.clone()).collect();
 
             // A call to a generic function instantiates a specialized copy.
@@ -226,22 +275,29 @@ fn lit_shift_amount(e: &syn::Expr) -> Result<u8, String> {
     Err("shift amount must be an integer literal".into())
 }
 
-/// Lower a binary expression. Shifts take a constant RHS (16- or 32-bit by the LHS
-/// type); `| & ^` on a `u32` operand produce a 32-bit op; `u32` arithmetic (`+ - * /`)
-/// is not supported yet.
+/// Lower a binary expression. Shifts take a constant RHS for a `u32` LHS (16-bit
+/// shifts also take a runtime amount); a `u32` operand makes the op 32-bit (`Bin32`),
+/// zero-extending a mixed 16-bit side. `u32` comparisons are not supported yet.
 fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
     // A comparison used as a value (`(a < b) as u16`, `let f = a == b;`) materialises to
     // a `0`/`1` bool. In condition position a comparison stays a tight `Cond` (handled by
     // `lower_cond`), so this only fires when a comparison is a real value.
     if let Some(cmp) = cmp_op(&b.op) {
-        let lhs = Box::new(lower_expr(&b.left, ctx)?.0);
-        let rhs = Box::new(lower_expr(&b.right, ctx)?.0);
+        let (le, lw) = lower_expr(&b.left, ctx)?;
+        let (re, rw) = lower_expr(&b.right, ctx)?;
+        if lw == Width::DWord || rw == Width::DWord {
+            return Err(
+                "u32 comparisons are not supported yet — compare the words (`as u16`, `>> 16`)"
+                    .into(),
+            );
+        }
+        let (lhs, rhs) = (Box::new(le), Box::new(re));
         return Ok((Expr::Cmp { cmp, lhs, rhs }, Width::Byte));
     }
     // Short-circuit `&&` / `||` on bool operands → a `0`/`1` value.
     if let Some(and) = logic_op(&b.op) {
-        let lhs = Box::new(lower_expr(&b.left, ctx)?.0);
-        let rhs = Box::new(lower_expr(&b.right, ctx)?.0);
+        let lhs = Box::new(lower_expr16(&b.left, ctx, "`&&`/`||` operand")?);
+        let rhs = Box::new(lower_expr16(&b.right, ctx, "`&&`/`||` operand")?);
         return Ok((Expr::Logic { and, lhs, rhs }, Width::Byte));
     }
     let op = bin_op(&b.op)?;
@@ -250,7 +306,13 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         // A runtime (non-literal) 16-bit shift amount → a counted shift loop. `u32`
         // shifts and literal amounts keep the unrolled constant path below.
         if lw != Width::DWord && !is_int_literal(&b.right) {
-            let amount = Box::new(lower_expr(&b.right, ctx)?.0);
+            let (ae, aw) = lower_expr(&b.right, ctx)?;
+            // A `u32` amount is fine in rustc (`x << y32`) — only its low byte counts.
+            let amount = Box::new(if aw == Width::DWord {
+                Expr::Trunc32(Box::new(ae))
+            } else {
+                ae
+            });
             return Ok((
                 Expr::ShiftVar {
                     left: matches!(op, BinOp::Shl),
@@ -280,22 +342,26 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
     let (le, lw) = lower_expr(&b.left, ctx)?;
     let (re, rw) = lower_expr(&b.right, ctx)?;
     if lw == Width::DWord || rw == Width::DWord {
-        if !matches!(op, BinOp::Or | BinOp::And | BinOp::Xor) {
-            return Err("u32 supports only `| & ^` and constant shifts (no `+ - * /` yet)".into());
-        }
-        return Ok((Expr::Bin32(op, Box::new(le), Box::new(re)), Width::DWord));
+        // Full 32-bit arithmetic: `+ - * / %` and `| & ^`. A 16-bit side zero-extends
+        // (the unsuffixed-literal mixing rustc allows, `part as u32 * 100`).
+        return Ok((
+            Expr::Bin32(op, Box::new(coerce32(le, lw)), Box::new(coerce32(re, rw))),
+            Width::DWord,
+        ));
     }
     Ok((Expr::Bin(op, Box::new(le), Box::new(re), lw), lw))
 }
 
 /// What a field access resolves to: the receiver's base slot, the field's slot offset,
 /// whether the receiver is a pointer (`self`) or a by-value local, the field's slot
-/// count, and (for a `[Cell; N]` field) its element struct.
+/// count and value width (`DWord` = a two-slot `u32`), and (for a `[Cell; N]` field)
+/// its element struct.
 struct FieldRef {
     base: usize,
     off: usize,
     is_ptr: bool,
     slots: usize,
+    width: Width,
     elem_struct: Option<String>,
 }
 
@@ -310,6 +376,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
         return Ok(FieldRef {
             off: r.off + idx.index as usize,
             slots: 1,
+            width: Width::Word,
             elem_struct: None,
             ..r
         });
@@ -330,6 +397,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
         off,
         is_ptr,
         slots: fd.map_or(1, |d| d.slots),
+        width: fd.map_or(Width::Word, |d| d.width),
         elem_struct: fd.and_then(|d| d.elem_struct.clone()),
     })
 }
@@ -378,7 +446,7 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
                 "a struct-array element isn't a scalar — read a field, e.g. `s.cells[i].x`".into(),
             );
         }
-        let idx = lower_expr(&ix.index, ctx)?.0;
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
         let e = if r.is_ptr {
             // `self.arr[i]` → *(self + off*2 + i*2)
             Expr::PtrIndex {
@@ -400,7 +468,7 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
     }
     let base = ctx.vars.base(&arr);
     let w = ctx.vars.ty(&arr);
-    let idx = lower_expr(&ix.index, ctx)?.0;
+    let idx = lower_expr16(&ix.index, ctx, "array index")?;
     Ok((Expr::Index(base, Box::new(idx), w), w))
 }
 
@@ -412,8 +480,8 @@ pub(crate) fn lower_index_store(
 ) -> Result<Stmt, String> {
     if let syn::Expr::Field(f) = &*ix.expr {
         let r = field_target(f, ctx)?;
-        let idx = lower_expr(&ix.index, ctx)?.0;
-        let val = lower_expr(rhs, ctx)?.0;
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        let val = lower_expr16(rhs, ctx, "array element (u16 slots)")?;
         return Ok(if r.is_ptr {
             Stmt::PtrStoreIndex {
                 ptr: Box::new(Expr::Var(r.base)),
@@ -428,40 +496,64 @@ pub(crate) fn lower_index_store(
     let arr = path_ident(&ix.expr)?;
     let base = ctx.vars.base(&arr);
     let w = ctx.vars.ty(&arr);
-    let idx = lower_expr(&ix.index, ctx)?.0;
-    let val = lower_expr(rhs, ctx)?.0;
+    let idx = lower_expr16(&ix.index, ctx, "array index")?;
+    let val = lower_expr16(rhs, ctx, "array element (u16 slots)")?;
     Ok(Stmt::StoreIndex(base, idx, val, w))
 }
 
 /// Read `obj.field` — a constant slot for a by-value struct, an indirect load
-/// through the pointer for `self`-style receivers.
-fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<Expr, String> {
+/// through the pointer for `self`-style receivers. A `u32` field reads wide
+/// (`Var32` / `Deref32`), so the expression carries `Width::DWord`.
+fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
     // `a[i].field` — a field of a struct-array element at a computed address.
     if let syn::Expr::Index(ix) = &*f.base {
-        return Ok(Expr::LoadAt(
-            Box::new(elem_field_addr(ix, &f.member, ctx)?),
+        return Ok((
+            Expr::LoadAt(Box::new(elem_field_addr(ix, &f.member, ctx)?), Width::Word),
             Width::Word,
         ));
     }
     let r = field_target(f, ctx)?;
+    if r.width == Width::DWord {
+        return Ok(if r.is_ptr {
+            (
+                Expr::Deref32(Box::new(Expr::Var(r.base)), r.off * 2),
+                Width::DWord,
+            )
+        } else {
+            (Expr::Var32(r.base + r.off), Width::DWord)
+        });
+    }
     if r.slots != 1 {
         return Err("this field is not a scalar (read a tuple field by element: `.0`)".into());
     }
-    if r.is_ptr {
-        Ok(Expr::Deref(Box::new(Expr::Var(r.base)), r.off * 2))
+    Ok(if r.is_ptr {
+        (
+            Expr::Deref(Box::new(Expr::Var(r.base)), r.off * 2),
+            Width::Word,
+        )
     } else {
-        Ok(Expr::Var(r.base + r.off))
-    }
+        (Expr::Var(r.base + r.off), Width::Word)
+    })
 }
 
-/// Write `obj.field = val`.
+/// Write `obj.field = val` (`vw` is the value's lowered width). A `u32` field stores
+/// wide (`Assign32` / `Store32`), zero-extending a 16-bit value; a `u32` value into a
+/// 16-bit field is an error.
 pub(crate) fn lower_field_store(
     f: &syn::ExprField,
     val: Expr,
+    vw: Width,
     ctx: &mut Ctx,
 ) -> Result<Stmt, String> {
     // `a[i].field = v` — store a field of a struct-array element at a computed address.
     if let syn::Expr::Index(ix) = &*f.base {
+        if vw == Width::DWord {
+            return Err(
+                "u32 value in a 16-bit context (struct-array element field) — narrow with \
+                 `as u16`"
+                    .into(),
+            );
+        }
         return Ok(Stmt::StoreAt(
             elem_field_addr(ix, &f.member, ctx)?,
             val,
@@ -469,6 +561,17 @@ pub(crate) fn lower_field_store(
         ));
     }
     let r = field_target(f, ctx)?;
+    if r.width == Width::DWord {
+        let val = coerce32(val, vw);
+        return Ok(if r.is_ptr {
+            Stmt::Store32(Expr::Var(r.base), r.off * 2, val)
+        } else {
+            Stmt::Assign32(r.base + r.off, val)
+        });
+    }
+    if vw == Width::DWord {
+        return Err("cannot assign a u32 value to a 16-bit field — narrow with `as u16`".into());
+    }
     if r.slots != 1 {
         return Err("this field is not a scalar (assign a tuple field by element: `.0`)".into());
     }
@@ -494,7 +597,15 @@ pub(crate) fn lower_method_call(
         };
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
         let arg = m.args.first().ok_or("wrapping_* needs an argument")?;
-        let (re, _) = lower_expr(arg, ctx)?;
+        let (re, aw) = lower_expr(arg, ctx)?;
+        // A `u32` receiver/argument makes it a 32-bit op (all `Bin32` arithmetic is
+        // mod-2^32, i.e. wrapping, already).
+        if rw == Width::DWord || aw == Width::DWord {
+            return Ok((
+                Expr::Bin32(op, Box::new(coerce32(recv, rw)), Box::new(coerce32(re, aw))),
+                Width::DWord,
+            ));
+        }
         return Ok((Expr::Bin(op, Box::new(recv), Box::new(re), rw), rw));
     }
     let recv = path_ident(&m.receiver)?;
@@ -513,7 +624,7 @@ pub(crate) fn lower_method_call(
     };
     let mut args = vec![self_ptr];
     for a in &m.args {
-        args.push(lower_expr(a, ctx)?.0);
+        args.push(lower_expr16(a, ctx, "method argument")?);
     }
     if args.len() > 3 {
         return Err("method receiver + args exceed 3 registers".into());
@@ -536,7 +647,7 @@ fn lower_prelude_call(
         .to_string();
     let lowered = args
         .iter()
-        .map(|a| Ok(lower_expr(a, ctx)?.0))
+        .map(|a| lower_expr16(a, ctx, "prelude-call argument"))
         .collect::<Result<_, String>>()?;
     Ok((Expr::Call(name, lowered), Width::Word))
 }
