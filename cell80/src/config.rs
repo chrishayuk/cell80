@@ -14,6 +14,22 @@ pub struct CellConfig {
     pub max_code_bytes: Option<usize>,
     /// Abort the run if it writes more than this many distinct addresses.
     pub max_touched: Option<usize>,
+    /// What `/ 0` / `% 0` does on the Cell target (the divide traps).
+    pub div_by_zero: DivByZero,
+}
+
+/// Divide-by-zero policy for the Cell target's `ED FE` divide traps. The default is
+/// [`Halt`](DivByZero::Halt): a garbage quotient must not flow onward into scoring —
+/// the run stops with [`Halt::DivByZero`](crate::Halt::DivByZero).
+/// [`Saturate`](DivByZero::Saturate) is the legacy opt-in: quotient `0xFFFF` /
+/// `0xFFFF_FFFF`, remainder = the dividend, and the run continues. (The authentic
+/// `Spectrum48` target has no trap surface — its software routines always saturate;
+/// the dialect semantics doc records the divergence.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DivByZero {
+    #[default]
+    Halt,
+    Saturate,
 }
 
 impl CellConfig {
@@ -24,6 +40,7 @@ impl CellConfig {
             allow_ports: false,
             max_code_bytes: Some(4096),
             max_touched: Some(4096),
+            div_by_zero: DivByZero::Halt,
         }
     }
     /// Allow everything, no ceilings — for trusted/game code (matches the pre-policy
@@ -34,6 +51,7 @@ impl CellConfig {
             allow_ports: true,
             max_code_bytes: None,
             max_touched: None,
+            div_by_zero: DivByZero::Halt,
         }
     }
 }

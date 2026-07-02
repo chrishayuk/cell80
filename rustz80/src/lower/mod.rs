@@ -216,6 +216,15 @@ pub fn lower_program(
     if out.is_empty() {
         return Err("no functions found".into());
     }
+    // Stage 1 gives every function static local slots — a recursive call clobbers the
+    // caller's frame, so any cycle in the call graph would compile to silently wrong
+    // values. Reject it here, with the cycle named.
+    if let Some(cycle) = crate::dce::find_recursion(&out) {
+        return Err(format!(
+            "recursion is not supported (Stage 1: static locals) — rewrite as a loop \
+             (cycle: {cycle})"
+        ));
+    }
     Ok(out)
 }
 

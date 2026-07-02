@@ -34,7 +34,7 @@ mod typeled;
 
 pub use cartridge::{Cartridge, CartridgeOpts, Manifest};
 pub use cli::{parse_args, run_cli, USAGE};
-pub use config::CellConfig;
+pub use config::{CellConfig, DivByZero};
 pub use fingerprint::{rank_by_examples, Fingerprint, DEFAULT_PROBES};
 pub use graph::{CellGraph, Feed, GraphRun, NodeTrace, Port};
 pub use host::CellHost;

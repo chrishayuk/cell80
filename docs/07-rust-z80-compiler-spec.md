@@ -7,6 +7,11 @@ small, finishable end — a compiler for a **restricted Rust dialect that is als
 real Rust**, with a `syn` frontend, our own IR + Z80 codegen, and a hand-written
 micro-runtime.
 
+> **Semantics addendum:** [10-dialect-semantics.md](./10-dialect-semantics.md) pins down
+> exactly what an accepted program guarantees — wrapping arithmetic, divide-by-zero policy
+> per target, evaluation order, the no-recursion rule, and what the differential oracle
+> (`check!`, both targets) does and doesn't cover.
+
 > **Status: built and running — now a bounded data-structure language.** Implemented
 > in the [`rustz80`](../rustz80) crate with a `syn` frontend, own IR + Z80 codegen, and
 > a mul/div micro-runtime. The value layer is complete (`u8`/`u16`, arrays, `struct`,

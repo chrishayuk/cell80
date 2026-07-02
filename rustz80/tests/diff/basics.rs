@@ -174,8 +174,7 @@ fn square_same_var() {
             s
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -207,7 +206,7 @@ fn mul16_operand_widths() {
     ";
     let prog = rustz80::compile_program(src).expect("compile");
     assert!(prog.symbols.contains_key("__mul16")); // var*var uses the runtime
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -239,7 +238,7 @@ fn divmod16_small_dividend() {
     ";
     let prog = rustz80::compile_program(src).expect("compile");
     assert!(prog.symbols.contains_key("__divmod16")); // var/var uses the runtime
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -271,9 +270,9 @@ fn const_strength_reduction() {
             acc + (2u16 * 5u16 + 4u16)
         }
     ";
+    assert_eq!(run_program(src, "run"), host()); // 84 + 28 + 56 + 14 = 182
+                                                 // Strength reduction fired: no `__mul16` / `__divmod16` runtime was appended.
     let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 84 + 28 + 56 + 14 = 182
-                                                   // Strength reduction fired: no `__mul16` / `__divmod16` runtime was appended.
     assert!(
         !prog.symbols.contains_key("__mul16"),
         "constant mul should not call __mul16"
@@ -299,8 +298,7 @@ fn u16_shifts() {
             (a << 4u16) | (a >> 1u16) | (b >> 8u16) | ((b << 4u16) & 0xFF00u16)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -510,6 +508,5 @@ fn bool_flags_and_logical_not() {
             acc
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 1+2+4+0+16 = 23
+    assert_eq!(run_program(src, "run"), host()); // 1+2+4+0+16 = 23
 }

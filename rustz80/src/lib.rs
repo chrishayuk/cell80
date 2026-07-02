@@ -79,8 +79,14 @@ impl Program {
 /// Compile a multi-`fn` program. Functions are laid out in source order from
 /// [`ORG`]; calls resolve by name; the mul/div micro-runtime is appended if used.
 pub fn compile_program(src: &str) -> Result<Program, String> {
+    compile_program_for(src, Target::Spectrum48)
+}
+
+/// [`compile_program`] with an explicit [`Target`] — so the differential harness can
+/// exercise the Cell target's `ED FE` trap path against the same rustc oracle.
+pub fn compile_program_for(src: &str, target: Target) -> Result<Program, String> {
     let file: syn::File = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
-    compile_file(&file, Target::Spectrum48)
+    compile_file(&file, target)
 }
 
 /// Compile an already-parsed file for `target` — lets a caller that has parsed the source
@@ -303,9 +309,23 @@ pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, Str
 /// Compile a single Rust `fn` to Z80 machine code with its entry at [`ORG`]
 /// (result in `HL`, then `RET`). Convenience over [`compile_program`].
 pub fn compile_fn(src: &str) -> Result<Vec<u8>, String> {
+    compile_fn_for(src, Target::Spectrum48)
+}
+
+/// [`compile_fn`] with an explicit [`Target`] — so the differential harness can exercise
+/// the Cell target's `ED FE` trap path against the same rustc oracle.
+pub fn compile_fn_for(src: &str, target: Target) -> Result<Vec<u8>, String> {
     let item: syn::ItemFn = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
     let name = item.sig.ident.to_string();
     let func = lower::lower(&item)?;
-    let (code, _) = codegen::codegen_program(&[(name, func)], ORG, None, Target::Spectrum48)?;
+    let funcs = [(name, func)];
+    // A single fn can still self-recurse — same static-locals hazard as the program path.
+    if let Some(cycle) = dce::find_recursion(&funcs) {
+        return Err(format!(
+            "recursion is not supported (Stage 1: static locals) — rewrite as a loop \
+             (cycle: {cycle})"
+        ));
+    }
+    let (code, _) = codegen::codegen_program(&funcs, ORG, None, target)?;
     Ok(code)
 }

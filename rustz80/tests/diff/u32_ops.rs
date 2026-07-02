@@ -47,8 +47,7 @@ fn u32_xorshift() {
             x as u16
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -68,8 +67,7 @@ fn u32_bitwise_and_truncate() {
             (c as u16) ^ ((c >> 16u32) as u16) ^ ((a as u8) as u16)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -209,8 +207,7 @@ fn u32_struct_fields() {
             s.run()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -243,6 +240,5 @@ fn u32_field_by_value_local() {
             (s.big as u16) + ((s.big >> 16u32) as u16) + s.lo + s.hi
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }

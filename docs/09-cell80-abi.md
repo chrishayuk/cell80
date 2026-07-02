@@ -91,6 +91,7 @@ is a no-op (also uncounted).
 | `halted` (+ `halt_code`) | the program called `halt(code)` (an `ED FE` trap) |
 | `cycle_budget` | the T-state budget was reached first |
 | `memory_limit` | the `max_touched` ceiling was reached |
+| `div_by_zero` | a `/ 0` / `% 0` reached a divide trap under the default `DivByZero::Halt` policy (the `Saturate` opt-in keeps the legacy bounded-garbage value instead) |
 
 ## Capability model
 

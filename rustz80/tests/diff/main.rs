@@ -29,5 +29,6 @@ mod functions;
 mod generics;
 mod inline;
 mod misc;
+mod recursion;
 mod structs;
 mod u32_ops;
