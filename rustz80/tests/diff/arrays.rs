@@ -121,6 +121,5 @@ fn array_fill() {
             s
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 114
+    assert_eq!(run_program(src, "run"), host()); // 114
 }

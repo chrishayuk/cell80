@@ -26,8 +26,7 @@ fn inline_single_call_mut_self_method() {
         impl C { fn bump(&mut self, k: u16) { self.v = self.v + k; } }
         fn run() -> u16 { let mut c = C { v: 10u16 }; c.bump(5u16); c.v }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 15
+    assert_eq!(run_program(src, "run"), host()); // 15
 }
 
 #[test]
@@ -43,8 +42,7 @@ fn inline_single_call_scalar_assign() {
         fn add5(a: u16) -> u16 { a + 5u16 }
         fn run() -> u16 { let x = add5(10u16); x + 1u16 }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 16
+    assert_eq!(run_program(src, "run"), host()); // 16
 }
 
 // chuk-speccy's `chase` pattern exactly: a single-call `&mut self` method that writes an
@@ -79,8 +77,7 @@ fn inline_mut_self_array_field_in_loop() {
             s.a[0u16 as usize] + s.a[1u16 as usize] + s.a[2u16 as usize]
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 3
+    assert_eq!(run_program(src, "run"), host()); // 3
 }
 
 // chase has *two* single-call methods inlined into one caller (a `&mut self` in a loop, then
@@ -132,8 +129,7 @@ fn inline_two_sibling_methods_share_slots() {
             r
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 3
+    assert_eq!(run_program(src, "run"), host()); // 3
 }
 
 // chase's `step_enemy` calls a free fn (`solid`) several times with `self.field[i]` args.
@@ -180,8 +176,7 @@ fn inline_body_with_nested_kept_call() {
             s.a[0u16 as usize] + s.a[1u16 as usize] + s.a[2u16 as usize]
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 3
+    assert_eq!(run_program(src, "run"), host()); // 3
 }
 
 // chase's *full* shape: a struct with several array fields; a single-call `&mut self` helper
@@ -234,6 +229,5 @@ fn inline_helper_then_movement_multi_array_fields() {
             s.ex[0u16 as usize] + s.ex[1u16 as usize] + s.ex[2u16 as usize]
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 15
+    assert_eq!(run_program(src, "run"), host()); // 15
 }

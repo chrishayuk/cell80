@@ -26,8 +26,7 @@ fn pixels_to_screen() {
             plot(1u16, 100u16);
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    let mem = run_to_memory(&prog, "run");
+    let mem = run_to_memory(src, "run");
 
     let pixels = [(0u16, 0u16), (255, 191), (128, 96), (7, 1), (1, 100)];
     let mut want = vec![0u8; 0x1_0000];

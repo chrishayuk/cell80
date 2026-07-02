@@ -25,8 +25,7 @@ fn structs() {
             p.x * 100u16 + p.y
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -53,8 +52,7 @@ fn structs_compose_with_functions() {
             area(a.x, a.y) + area(b.x, b.y)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -90,8 +88,7 @@ fn methods_and_self() {
             c.doubled()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -136,8 +133,7 @@ fn methods_call_self_and_two_structs() {
             v.scaled_sum(10u16) + b.area()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -187,9 +183,8 @@ fn struct_element_arrays() {
             total
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
     // a = {99,10},{2,20},{3,30},{4,40}  → 109 + 22 + 33 + 44 = 208
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -257,6 +252,5 @@ fn struct_field_struct_arrays() {
             b.checksum() + b.cells[0].x
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 912 + 1 = 913
+    assert_eq!(run_program(src, "run"), host()); // 912 + 1 = 913
 }

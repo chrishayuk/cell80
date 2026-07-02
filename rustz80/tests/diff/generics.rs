@@ -41,12 +41,12 @@ fn generics() {
             a + b + u as u16
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 40 + 10 + 150 = 200
+    assert_eq!(run_program(src, "run"), host()); // 40 + 10 + 150 = 200
 
     // The type argument is inferred (no turbofish), and `clamp` was instantiated at
     // both u16 and u8 — distinct monomorphic copies, each pulling in max/min.
     for sym in ["clamp$u16", "clamp$u8", "max$u16", "min$u8"] {
+        let prog = rustz80::compile_program(src).expect("compile");
         assert!(prog.symbols.contains_key(sym), "missing instance {sym}");
     }
 }
@@ -85,9 +85,9 @@ fn const_generics() {
         }
         fn run() -> u16 { sum_to::<4>() + sum_to::<6>() }
     ";
+    assert_eq!(run_program(src, "run"), host()); // 10 + 21 = 31
+                                                 // Distinct const instances, named by value.
     let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 10 + 21 = 31
-                                                   // Distinct const instances, named by value.
     assert!(prog.symbols.contains_key("sum_to$4"));
     assert!(prog.symbols.contains_key("sum_to$6"));
 }
@@ -165,7 +165,7 @@ fn const_generic_entities() {
     ";
     let prog = rustz80::compile_program(src).expect("compile");
     assert!(prog.symbols.contains_key("Entities$4::add"));
-    assert_eq!(run_program(&prog, "run"), host()); // capacity 4: 102+304+506 = 912
+    assert_eq!(run_program(src, "run"), host()); // capacity 4: 102+304+506 = 912
 }
 
 #[test]
@@ -228,10 +228,10 @@ fn const_generic_structs() {
             s.sum()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 10+20+30+40 = 100
-                                                   // The methods are instantiated per struct instance.
+    assert_eq!(run_program(src, "run"), host()); // 10+20+30+40 = 100
+                                                 // The methods are instantiated per struct instance.
     for sym in ["Stack$4::push", "Stack$4::sum"] {
+        let prog = rustz80::compile_program(src).expect("compile");
         assert!(prog.symbols.contains_key(sym), "missing instance {sym}");
     }
 }
@@ -246,9 +246,8 @@ fn generics_substitute_width() {
         fn at_u16() -> u16 { add(200u16, 100u16) }
         fn at_u8() -> u16 { add(200u8, 100u8) as u16 }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "at_u16"), 300); // u16: no wrap
-    assert_eq!(run_program(&prog, "at_u8"), 44); // u8: 300 wraps to 44
+    assert_eq!(run_program(src, "at_u16"), 300); // u16: no wrap
+    assert_eq!(run_program(src, "at_u8"), 44); // u8: 300 wraps to 44
 }
 
 #[test]
@@ -286,8 +285,7 @@ fn generic_structs() {
             p.sum() + q.sum()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 57
+    assert_eq!(run_program(src, "run"), host()); // 57
 }
 
 #[test]
@@ -310,9 +308,9 @@ fn monomorphization() {
             id(10u16) + id(5u8) as u16 + first(7u16, 2u8) + first(7u16, 2u8)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 10 + 5 + 7 + 7 = 29
+    assert_eq!(run_program(src, "run"), host()); // 10 + 5 + 7 + 7 = 29
 
+    let prog = rustz80::compile_program(src).expect("compile");
     let instances: Vec<&String> = prog.symbols.keys().filter(|k| k.contains('$')).collect();
     // id at u16 and u8, first at (u16, u8) once — exactly three instances.
     assert_eq!(instances.len(), 3, "instances: {instances:?}");
@@ -363,6 +361,5 @@ fn generic_methods() {
             a.add_then_double(5u16)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 30
+    assert_eq!(run_program(src, "run"), host()); // 30
 }

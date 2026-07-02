@@ -35,8 +35,7 @@ fn enum_and_match() {
             v
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -94,8 +93,7 @@ fn match_literals_with_wildcard_and_enum_param() {
                 + classify(0u16) + classify(1u16) + classify(7u16)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 13 + 20 + 10 + 20 + 99 = 162
+    assert_eq!(run_program(src, "run"), host()); // 13 + 20 + 10 + 20 + 99 = 162
 }
 
 #[test]
@@ -260,8 +258,7 @@ fn early_return() {
             classify(0u16) + classify(1u16) + classify(5u16) + first_ge(1u16, 10u16)
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 100 + 200 + 1005 + 11 = 1316
+    assert_eq!(run_program(src, "run"), host()); // 100 + 200 + 1005 + 11 = 1316
 }
 
 #[test]

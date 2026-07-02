@@ -24,8 +24,7 @@ fn function_calls() {
         fn f(a: u16, b: u16, c: u16) -> u16 { a + b * c }
         fn run() -> u16 { add(40u16, 2u16) + sq(5u16) - f(1u16, 2u16, 3u16) }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), main_host()); // 42 + 25 - 7 = 60
+    assert_eq!(run_program(src, "run"), main_host()); // 42 + 25 - 7 = 60
 }
 
 #[test]
@@ -70,9 +69,8 @@ fn tuples() {
             q * 100u16 + r + hi * 10u16 + lo + a * 100u16 + b * 10u16 + c
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
     // 14206 + 73 + 123 = 14402
-    assert_eq!(run_program(&prog, "run"), host());
+    assert_eq!(run_program(src, "run"), host());
 }
 
 #[test]
@@ -82,11 +80,10 @@ fn tuple_layout() {
         fn pair() -> (u16, u16) { (42u16, 7u16) }
         fn triple() -> (u16, u16, u16) { (11u16, 22u16, 33u16) }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    let [hl, de, _] = run_program_regs(&prog, "pair");
+    let [hl, de, _] = run_program_regs(src, "pair");
     assert_eq!((hl, de), (42, 7), "2-tuple → (HL, DE)");
     assert_eq!(
-        run_program_regs(&prog, "triple"),
+        run_program_regs(src, "triple"),
         [11, 22, 33],
         "3-tuple → (HL, DE, BC)"
     );
@@ -129,8 +126,7 @@ fn tuple_struct_fields() {
             s.key()
         }
     ";
-    let prog = rustz80::compile_program(src).expect("compile");
-    assert_eq!(run_program(&prog, "run"), host()); // 516
+    assert_eq!(run_program(src, "run"), host()); // 516
 }
 
 #[test]
