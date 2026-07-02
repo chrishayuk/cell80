@@ -146,3 +146,76 @@ pub(crate) fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, 
         .filter(|(n, _)| keep.contains(n))
         .collect()
 }
+
+/// The names a function's body (and tail returns) directly calls — its outgoing edges
+/// in the call graph.
+pub(crate) fn callees(f: &Func) -> Vec<String> {
+    let mut out = Vec::new();
+    for s in &f.body {
+        calls_in_stmt(s, &mut out);
+    }
+    for e in &f.ret {
+        calls_in_expr(e, &mut out);
+    }
+    out
+}
+
+/// Find a call cycle — direct (`f → f`) or mutual (`f → g → f`) recursion — returning
+/// the cycle as a rendered path. Stage 1 gives every function **static** local slots,
+/// so a recursive call silently clobbers the caller's locals: any value read from a slot
+/// after the recursive call returns is the *innermost* frame's, not this one's
+/// (tail-shaped recursion only works by accident, riding the hardware stack). Rejecting
+/// the cycle at lowering keeps the "an accepted program matches rustc" contract true.
+/// Unknown callees (prelude routes resolved later) are treated as leaves.
+pub(crate) fn find_recursion(funcs: &[(String, Func)]) -> Option<String> {
+    let graph: HashMap<&str, Vec<String>> = funcs
+        .iter()
+        .map(|(n, f)| (n.as_str(), callees(f)))
+        .collect();
+    // Iterative three-colour DFS; `path` carries the grey chain for the error message.
+    #[derive(Clone, Copy, PartialEq)]
+    enum C {
+        White,
+        Grey,
+        Black,
+    }
+    let mut colour: HashMap<&str, C> = graph.keys().map(|&n| (n, C::White)).collect();
+    for &start in graph.keys() {
+        if colour[start] != C::White {
+            continue;
+        }
+        // Stack of (node, next-callee index); `path` mirrors the grey chain.
+        let mut stack: Vec<(&str, usize)> = vec![(start, 0)];
+        colour.insert(start, C::Grey);
+        let mut path: Vec<&str> = vec![start];
+        while let Some(&mut (node, ref mut i)) = stack.last_mut() {
+            let callees = &graph[node];
+            if *i >= callees.len() {
+                colour.insert(node, C::Black);
+                stack.pop();
+                path.pop();
+                continue;
+            }
+            let next = callees[*i].as_str();
+            *i += 1;
+            match colour.get(next).copied() {
+                Some(C::Grey) => {
+                    // Found the cycle: render it from `next`'s position in the path.
+                    let from = path.iter().position(|&n| n == next).unwrap_or(0);
+                    let mut cycle: Vec<&str> = path[from..].to_vec();
+                    cycle.push(next);
+                    return Some(cycle.join(" → "));
+                }
+                Some(C::White) => {
+                    colour.insert(next, C::Grey);
+                    if let Some(&key) = graph.keys().find(|&&k| k == next) {
+                        stack.push((key, 0));
+                        path.push(key);
+                    }
+                }
+                _ => {} // Black (done) or unknown (a leaf resolved later)
+            }
+        }
+    }
+    None
+}
