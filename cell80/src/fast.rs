@@ -114,13 +114,18 @@ pub(super) fn decode(code: &[u8], entry: u16) -> Option<Vec<Op>> {
 
 /// Replay `ops` with native registers over the cell's memory (resetting the previous
 /// run's writes first, like the authentic path). Returns `[HL, DE, BC]`.
+/// Returns the result registers plus a divide-by-zero flag: under the
+/// [`DivByZero::Halt`](crate::DivByZero::Halt) policy the caller reports
+/// [`Halt::DivByZero`](crate::Halt::DivByZero) instead of a result (matching the
+/// authentic interpreter's divide traps).
 pub(super) fn run(
     ops: &[Op],
     mem: &mut [u8],
     seen: &mut [bool],
     touched: &mut Vec<u16>,
     args: &[u16],
-) -> [u16; 3] {
+    div0_halts: bool,
+) -> ([u16; 3], bool) {
     for &t in touched.iter() {
         mem[t as usize] = 0;
         seen[t as usize] = false;
@@ -217,10 +222,12 @@ pub(super) fn run(
                     hl = q;
                     de = bc % de;
                 }
+                // Divide by zero: halt (default) or saturate — mirror the 0x11 trap.
+                None if div0_halts => return ([hl, de, bc], true),
                 None => hl = 0xFFFF,
             },
             Op::Ret => break,
         }
     }
-    [hl, de, bc]
+    ([hl, de, bc], false)
 }

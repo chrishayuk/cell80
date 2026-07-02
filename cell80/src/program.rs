@@ -59,6 +59,12 @@ pub struct CellProgram {
 }
 
 impl CellProgram {
+    /// The safety policy this program was compiled under (capabilities, ceilings,
+    /// divide-by-zero behaviour) — it rides in the image.
+    pub fn cfg(&self) -> &CellConfig {
+        &self.cfg
+    }
+
     /// Compile `src` with the **permissive** policy (raw memory + ports allowed, no
     /// ceilings) — for trusted/game code.
     pub fn compile(src: &str) -> Result<Self, String> {
@@ -116,7 +122,10 @@ impl CellProgram {
         let flags = (c.allow_raw_memory as u8)
             | (c.allow_ports as u8) << 1
             | (c.max_code_bytes.is_some() as u8) << 2
-            | (c.max_touched.is_some() as u8) << 3;
+            | (c.max_touched.is_some() as u8) << 3
+            // Bit 4 = the legacy saturate opt-in; absent (0) = halt on divide-by-zero,
+            // so pre-policy images load with the safe default.
+            | ((c.div_by_zero == DivByZero::Saturate) as u8) << 4;
         b.push(flags);
         b.extend_from_slice(&(c.max_code_bytes.unwrap_or(0) as u32).to_le_bytes());
         b.extend_from_slice(&(c.max_touched.unwrap_or(0) as u32).to_le_bytes());
@@ -154,6 +163,11 @@ impl CellProgram {
                 allow_ports: flags & 2 != 0,
                 max_code_bytes: (flags & 4 != 0).then_some(max_code),
                 max_touched: (flags & 8 != 0).then_some(max_touched),
+                div_by_zero: if flags & 16 != 0 {
+                    DivByZero::Saturate
+                } else {
+                    DivByZero::Halt
+                },
             },
         })
     }

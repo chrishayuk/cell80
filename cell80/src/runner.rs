@@ -13,6 +13,8 @@ struct CellBus<'a> {
     cycles: u64,
     halt: Option<u16>, // set by the HALT trap (`halt(code)`)
     trapped_ops: u64,  // count of cost-bearing ED FE traps (mul/div/fill) this run
+    div0_halts: bool,  // the `CellConfig::div_by_zero` policy (halt vs saturate)
+    div0: bool,        // a divide trap saw a zero divisor under the halt policy
 }
 
 impl CellBus<'_> {
@@ -70,7 +72,10 @@ impl z80::Bus for CellBus<'_> {
                         regs.set_hl(q);
                         regs.set_de(bc % de);
                     }
-                    None => regs.set_hl(0xFFFF), // divide-by-zero (a bug) — bounded, not a panic
+                    // Divide by zero: halt the run (default — a garbage quotient must not
+                    // flow onward), or saturate under the legacy opt-in policy.
+                    None if self.div0_halts => self.div0 = true,
+                    None => regs.set_hl(0xFFFF),
                 }
                 self.trapped_ops += 1;
             }
@@ -85,11 +90,17 @@ impl z80::Bus for CellBus<'_> {
             }
             0x13 => {
                 // DIVMOD32: quotient → HL:DE, remainder → back into the stack words.
-                // `/ 0` mirrors the Spectrum software sibling: q = 0xFFFF_FFFF, rem = l.
                 let l = self.read32_stack(regs.sp);
                 let r = regs.hl() as u32 | (regs.de() as u32) << 16;
                 let (q, rem) = match l.checked_div(r) {
                     Some(q) => (q, l % r),
+                    // Divide by zero: halt (default), or saturate like the Spectrum
+                    // software sibling (q = 0xFFFF_FFFF, rem = l) under the opt-in.
+                    None if self.div0_halts => {
+                        self.div0 = true;
+                        self.trapped_ops += 1;
+                        return 4;
+                    }
                     None => (u32::MAX, l),
                 };
                 regs.set_hl(q as u16);
@@ -247,16 +258,23 @@ impl Runner {
                 // calibration run gives both for the whole batch.
                 let (_, cycles, trapped_ops, halt) = self.exec(entry_addr, first, &[], budget);
                 if halt == Halt::Returned {
-                    return Ok(arg_sets
-                        .iter()
-                        .map(|args| {
-                            let regs = fast::run(
-                                &ops,
-                                &mut self.mem,
-                                &mut self.seen,
-                                &mut self.touched,
-                                args,
-                            );
+                    let div0_halts = self.cfg.div_by_zero == DivByZero::Halt;
+                    let mut out = Vec::with_capacity(arg_sets.len());
+                    for args in arg_sets {
+                        let (regs, div0) = fast::run(
+                            &ops,
+                            &mut self.mem,
+                            &mut self.seen,
+                            &mut self.touched,
+                            args,
+                            div0_halts,
+                        );
+                        out.push(if div0 {
+                            // A divide-by-zero halts mid-run, breaking the input-independent
+                            // cycle premise — take the authentic path for this input so the
+                            // reported cycles/halt are the real ones.
+                            self.exec_fast(entry_addr, args, budget)
+                        } else {
                             Fast {
                                 result: regs[0],
                                 regs,
@@ -264,8 +282,9 @@ impl Runner {
                                 trapped_ops,
                                 halt: Halt::Returned,
                             }
-                        })
-                        .collect());
+                        });
+                    }
+                    return Ok(out);
                 }
             }
         }
@@ -382,6 +401,8 @@ impl Runner {
             cycles: 0,
             halt: None,
             trapped_ops: 0,
+            div0_halts: self.cfg.div_by_zero == DivByZero::Halt,
+            div0: false,
         };
         let mut cpu = z80::Cpu::new();
         cpu.reset();
@@ -390,15 +411,17 @@ impl Runner {
         let mut mem_limit = false;
         while !cpu.halted && bus.cycles < budget {
             cpu.step(&mut bus);
-            if bus.halt.is_some() {
-                break; // `halt(code)` — stop right after the trap
+            if bus.halt.is_some() || bus.div0 {
+                break; // `halt(code)` or a divide-by-zero — stop right after the trap
             }
             if matches!(max_touched, Some(m) if bus.touched.len() > m) {
                 mem_limit = true;
                 break;
             }
         }
-        let halt = if let Some(code) = bus.halt {
+        let halt = if bus.div0 {
+            Halt::DivByZero
+        } else if let Some(code) = bus.halt {
             Halt::Halted(code)
         } else if cpu.halted {
             Halt::Returned

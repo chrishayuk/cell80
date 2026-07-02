@@ -21,6 +21,9 @@ pub enum Halt {
     CycleBudget,
     /// The `max_touched` memory ceiling was reached.
     MemoryLimit,
+    /// A `/ 0` or `% 0` reached a divide trap (the default [`crate::DivByZero::Halt`]
+    /// policy) — the run stopped rather than letting a garbage quotient flow onward.
+    DivByZero,
 }
 
 impl Halt {
@@ -30,6 +33,7 @@ impl Halt {
             Halt::Halted(_) => "halted",
             Halt::CycleBudget => "cycle_budget",
             Halt::MemoryLimit => "memory_limit",
+            Halt::DivByZero => "div_by_zero",
         }
     }
 }
@@ -140,6 +144,7 @@ impl Report {
             Halt::Halted(c) => format!("halted (code {c})"),
             Halt::CycleBudget => format!("CYCLE BUDGET EXCEEDED (≥ {} T-states)", self.budget),
             Halt::MemoryLimit => "MEMORY LIMIT EXCEEDED".to_string(),
+            Halt::DivByZero => "DIVIDE BY ZERO".to_string(),
         };
         let syms: Vec<String> = self
             .symbols

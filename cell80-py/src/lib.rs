@@ -19,6 +19,7 @@ fn halt_str(h: Halt) -> &'static str {
         Halt::Halted(_) => "halted",
         Halt::CycleBudget => "cycle_budget",
         Halt::MemoryLimit => "memory_limit",
+        Halt::DivByZero => "div_by_zero",
     }
 }
 

@@ -1492,3 +1492,59 @@ fn wide_u32_state_field_end_to_end() {
     );
     host.unload(h).unwrap();
 }
+
+#[test]
+fn div_by_zero_halts_by_default() {
+    use cell80::Halt;
+    // The determinism contract: a garbage quotient must not flow onward — `/ 0` and
+    // `% 0` stop the run with a typed halt (both the 16-bit and the wide trap).
+    let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a / b }").unwrap();
+    let rep = r.run(None, &[9, 0], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.halt, Halt::DivByZero);
+    assert!(!rep.returned);
+
+    let mut m = Runner::compile("fn run(a: u16, b: u16) -> u16 { a % b }").unwrap();
+    assert_eq!(
+        m.run(None, &[9, 0], DEFAULT_CYCLES).unwrap().halt,
+        Halt::DivByZero
+    );
+
+    let mut w =
+        Runner::compile("fn run(a: u16, b: u16) -> u16 { (a as u32 / b as u32) as u16 }").unwrap();
+    assert_eq!(
+        w.run(None, &[9, 0], DEFAULT_CYCLES).unwrap().halt,
+        Halt::DivByZero
+    );
+
+    // A guarded divide (the library's `safe_div` shape) still returns cleanly.
+    let mut s = Runner::compile(
+        "fn run(a: u16, b: u16) -> u16 { let mut r = 0u16; if b != 0u16 { r = a / b; } r }",
+    )
+    .unwrap();
+    let rep = s.run(None, &[9, 0], DEFAULT_CYCLES).unwrap();
+    assert_eq!((rep.result, rep.halt), (0, Halt::Returned));
+}
+
+#[test]
+fn div_by_zero_saturates_under_the_legacy_policy() {
+    use cell80::{CellProgram, DivByZero, Halt};
+    // The opt-in keeps the old bounded-garbage behaviour: q = 0xFFFF, run continues.
+    let mut cfg = cell::CellConfig::sandboxed();
+    cfg.div_by_zero = DivByZero::Saturate;
+    let mut r = Runner::compile_with_config("fn run(a: u16, b: u16) -> u16 { a / b }", cfg.clone())
+        .unwrap();
+    let rep = r.run(None, &[9, 0], DEFAULT_CYCLES).unwrap();
+    assert_eq!((rep.result, rep.halt), (0xFFFF, Halt::Returned));
+
+    // The policy is part of the artifact: it survives the image round-trip (flag bit 4),
+    // and a pre-policy image (bit absent) loads with the safe default.
+    let prog =
+        CellProgram::compile_with_config("fn run(a: u16, b: u16) -> u16 { a / b }", cfg).unwrap();
+    let back = CellProgram::from_bytes(&prog.to_bytes()).unwrap();
+    assert_eq!(back.cfg().div_by_zero, DivByZero::Saturate);
+    let mut r2 = Runner::new(&back);
+    assert_eq!(
+        r2.run(None, &[9, 0], DEFAULT_CYCLES).unwrap().result,
+        0xFFFF
+    );
+}
