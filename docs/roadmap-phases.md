@@ -126,7 +126,7 @@ doesn't, every dataset row genuinely rejects).
 instructive-rewrite classes (`if_no_else`, `match_no_wildcard`, `range_pattern`,
 `string_literal`, `float_literal`) repair at 1.00 on both; `recursion`/`closure` sit at
 0.00 on the 3B but 0.5/1.0 on the 26B — confirming those misses are a model-capability
-floor (one-shot restructuring), not a diagnostic gap. `results/repair-*.json` carries
+floor (one-shot restructuring), not a diagnostic gap. `cell-eval/baselines/repair-*.json` carries
 both runs.
 
 **1.4 Signed `i16`. ✓**
@@ -161,7 +161,7 @@ split as the calibration set** and picks the smallest θ whose adversarial
 precision-on-answered clears the 0.75 floor. Operating point on the seed library:
 **θ = 0.14** — direct answers 72% of queries at **1.00** precision, paraphrase 23%
 at 0.83, adversarial answers only 15% at 0.75 and escalates the rest. The full
-curve + report are checked into `results/tier-calibration.json`; re-runs catch
+curve + report are checked into `cell-eval/baselines/tier-calibration.json`; re-runs catch
 drift as the library grows.
 *Still open in 2.1:* tier 3 — behavioural disambiguation of the escalated residue
 via precomputed discriminating probes (the ladder's rung-1 machinery pointed at

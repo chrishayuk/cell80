@@ -39,7 +39,7 @@ DEFAULT_EMBED_MODEL = "minishlab/potion-retrieval-32M"
 TIER1_K = 10  # tier 1 hands this many candidates to the rerank
 
 # The operating points chosen by `calibrate` on the seed library (see
-# results/tier-calibration.json for the curves backing these numbers). Re-run
+# baselines/tier-calibration.json for the curves backing these numbers). Re-run
 # `cell-eval tiers` after growing the library; drift shows up as the adversarial
 # precision-on-answered falling below the floor at the chosen θ.
 BLEND_ALPHA = 0.25
