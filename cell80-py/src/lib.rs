@@ -117,6 +117,22 @@ impl CellHost {
         Ok(list)
     }
 
+    /// Like `search` but each hit is `(score, brief)` — the tf-idf cosine kept so a
+    /// tiered retriever can gate on the top-1/top-2 margin (small margin → escalate).
+    #[pyo3(signature = (query, limit=5))]
+    fn search_scored<'py>(
+        &self,
+        py: Python<'py>,
+        query: &str,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let list = PyList::empty_bound(py);
+        for (s, m) in self.host.search_scored(query, limit) {
+            list.append((s, brief(py, m)?))?;
+        }
+        Ok(list)
+    }
+
     /// Discover by **behaviour**: rank the catalog by how many `(inputs, expected_output)`
     /// examples each cell reproduces on the VM. `examples` is a list of `(list[int], int)` —
     /// e.g. `[([3, 7], 3), ([10, 3], 3)]` picks `min`. The phrasing- and language-independent

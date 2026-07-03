@@ -78,6 +78,30 @@ impl CellHost {
             .collect()
     }
 
+    /// Like [`search`](Self::search) but keeping each hit's tf-idf cosine — the margin
+    /// between top-1 and top-2 is the confidence signal a tiered retriever gates on
+    /// (small margin → escalate to the next rung instead of answering).
+    pub fn search_scored(&self, query: &str, limit: usize) -> Vec<(f32, &Manifest)> {
+        let stale = self.index.borrow().is_none();
+        if stale {
+            let manifests: Vec<Manifest> =
+                self.catalog.values().map(|c| c.manifest.clone()).collect();
+            *self.index.borrow_mut() = Some(TfidfIndex::build(manifests));
+        }
+        let hits: Vec<(f32, String)> = self
+            .index
+            .borrow()
+            .as_ref()
+            .expect("index built above")
+            .scored(query, limit)
+            .into_iter()
+            .map(|(s, m)| (s, m.id.clone()))
+            .collect();
+        hits.into_iter()
+            .filter_map(|(s, id)| self.catalog.get(&id).map(|c| (s, &c.manifest)))
+            .collect()
+    }
+
     /// Discover **by behaviour**: rank the catalog by how many `(inputs, expected_output)`
     /// examples each cell reproduces on the VM, best first (ties by id), positive only. This is
     /// the phrasing- and language-independent signal text search can't give — it tells `min`
