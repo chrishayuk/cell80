@@ -131,13 +131,16 @@ impl Mono {
         let layout = struct_field_defs(named, &consts, structs, name)?;
         self.struct_instances.insert(mangled.clone(), layout);
 
-        // Request each method as an instance named `Buf$8::method`.
-        let methods: Vec<(String, String)> = self
+        // Request each method as an instance named `Buf$8::method`. Sorted: the registry
+        // is a HashMap, and worklist order is emission order — an unsorted walk laid the
+        // instances out in a different order per process, breaking image determinism.
+        let mut methods: Vec<(String, String)> = self
             .generics
             .iter()
             .filter(|(_, gf)| gf.self_ty.as_deref() == Some(name))
             .map(|(key, _)| (key.clone(), key.rsplit("::").next().unwrap().to_string()))
             .collect();
+        methods.sort();
         for (key, m) in methods {
             self.request_named(&key, args.clone(), format!("{mangled}::{m}"));
         }
