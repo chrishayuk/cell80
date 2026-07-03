@@ -2,17 +2,20 @@
 //! locals (incl. parameters) live in a fixed RAM scratch region (the "virtual
 //! register file") and expressions evaluate via the stack. Functions follow the
 //! spec-07 calling convention; `*`/`/`/`%` call an appended micro-runtime.
-//! Correct first — peephole/strength-reduce come in Stage 2.
+//! Codegen emits the symbolic [`ins::Ins`] stream (the Stage 2 seam); encoding to
+//! bytes happens once at the end — see `ins.rs`.
 
 use crate::ir::*;
 use std::collections::HashMap;
 
 mod asm;
 mod expr;
+mod ins;
 mod runtime;
 mod stmt;
 
 use asm::Asm;
+use ins::{Imm, R16};
 use stmt::{gen_return, gen_stmt};
 
 /// Code-generation target. `Spectrum48` is authentic Z80 — `*`/`/`/`%` use the appended
@@ -42,10 +45,10 @@ pub fn codegen_program(
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
     let mut a = Asm::new(org, target);
     if let Some(e) = entry {
-        a.byte(0xF3); // DI
+        a.fx(&[0xF3]); // DI
         a.call(e); // CALL entry
-        a.byte(0xFB); // EI
-        a.byte(0xC9); // RET
+        a.fx(&[0xFB]); // EI
+        a.fx(&[0xC9]); // RET
     }
     let mut base = 0u16;
     for (name, func) in funcs {
@@ -97,11 +100,12 @@ pub fn codegen_loop(
 
     // Place the locals scratch region *just above the emitted code* rather than at a fixed
     // address, so a large program's code can't grow into its own locals (which silently
-    // corrupted execution). The code length is independent of the scratch *value* (slot
-    // refs are always 2-byte immediates), so a first pass measures the code, then the real
-    // pass emits with `scratch` set just past it.
-    let probe = emit_loop(&pruned, org, entry, state_base, state_bytes, asm::SCRATCH)?;
-    let code_end = org.wrapping_add(probe.len() as u16);
+    // corrupted execution). Slot operands stay symbolic in the instruction stream and the
+    // encoded length is independent of the scratch *value* (slot refs are always 2-byte
+    // immediates), so one emission suffices: measure, place scratch, encode.
+    let mut a = emit_loop(&pruned, org, entry, state_base, state_bytes);
+    a.seal();
+    let code_end = org.wrapping_add(a.encoded_len());
     let scratch = (code_end + 1) & !1; // round up to a u16 boundary
     let total_slots: u32 = pruned.iter().map(|(_, f)| f.n_locals as u32).sum();
     let scratch_top = scratch as u32 + total_slots * 2;
@@ -111,52 +115,41 @@ pub fn codegen_loop(
              (to {scratch_top:#06x}) would overrun the state region at {state_base:#06x}"
         ));
     }
-    emit_loop(&pruned, org, entry, state_base, state_bytes, scratch)
+    a.scratch = scratch;
+    Ok(a.finish()?.0)
 }
 
-/// Emit the frame-loop preamble + the (already inlined/pruned) functions, with locals at
-/// `scratch`. Pure of analysis — used twice by [`codegen_loop`] (measure, then place).
+/// Emit the frame-loop preamble + the (already inlined/pruned) functions. Scratch stays
+/// symbolic — [`codegen_loop`] measures the stream, then encodes with scratch placed.
 fn emit_loop(
     pruned: &[(String, Func)],
     org: u16,
     entry: &str,
     state_base: u16,
     state_bytes: u16,
-    scratch: u16,
-) -> Result<Vec<u8>, String> {
+) -> Asm {
     // Games are authentic Z80 (real ROM); always the Spectrum target.
     let mut a = Asm::new(org, Target::Spectrum48);
-    a.scratch = scratch;
-    a.byte(0xF3); // DI
-                  // Zero the state region (memset via LD (HL),0 + LDIR).
+    a.fx(&[0xF3]); // DI
+                   // Zero the state region (memset via LD (HL),0 + LDIR).
     if state_bytes >= 2 {
-        a.byte(0x21);
-        a.word(state_base); // LD HL, STATE
-        a.byte(0x36);
-        a.byte(0x00); // LD (HL), 0
-        a.byte(0x11);
-        a.word(state_base + 1); // LD DE, STATE+1
-        a.byte(0x01);
-        a.word(state_bytes - 1); // LD BC, n-1
-        a.byte(0xED);
-        a.byte(0xB0); // LDIR
+        a.ld_imm(R16::Hl, Imm::Abs(state_base)); // LD HL, STATE
+        a.fx(&[0x36, 0x00]); // LD (HL), 0
+        a.ld_imm(R16::De, Imm::Abs(state_base + 1)); // LD DE, STATE+1
+        a.ld_imm(R16::Bc, Imm::Abs(state_bytes - 1)); // LD BC, n-1
+        a.fx(&[0xED, 0xB0]); // LDIR
     } else if state_bytes == 1 {
-        a.byte(0x21);
-        a.word(state_base);
-        a.byte(0x36);
-        a.byte(0x00);
+        a.ld_imm(R16::Hl, Imm::Abs(state_base));
+        a.fx(&[0x36, 0x00]);
     }
     let loop_l = a.label();
     a.place(loop_l);
-    a.byte(0xFB); // EI
-    a.byte(0x76); // HALT     (wait for the 50 Hz frame interrupt)
-    a.byte(0xF3); // DI
-    a.byte(0x21);
-    a.word(state_base); // LD HL, &state   (first arg)
-    a.byte(0x11);
-    a.word(0); // LD DE, 0   (second arg, unused)
-    a.byte(0x01);
-    a.word(0); // LD BC, 0   (third arg, unused)
+    a.fx(&[0xFB]); // EI
+    a.fx(&[0x76]); // HALT     (wait for the 50 Hz frame interrupt)
+    a.fx(&[0xF3]); // DI
+    a.ld_imm(R16::Hl, Imm::Abs(state_base)); // LD HL, &state   (first arg)
+    a.ld_imm(R16::De, Imm::Abs(0)); // LD DE, 0   (second arg, unused)
+    a.ld_imm(R16::Bc, Imm::Abs(0)); // LD BC, 0   (third arg, unused)
     a.call(entry); // CALL entry
     a.jump(0xC3, loop_l); // JP loop
 
@@ -167,28 +160,17 @@ fn emit_loop(
         emit_func(&mut a, func);
         base += func.n_locals as u16;
     }
-    Ok(a.finish()?.0)
+    a
 }
 
 fn emit_func(a: &mut Asm, f: &Func) {
     // Prologue: copy parameters from the convention registers into their slots.
     for i in 0..f.params {
-        let addr = a.slot_addr(i);
+        let slot = a.slot(i);
         match i {
-            0 => {
-                a.byte(0x22); // LD (addr), HL
-                a.word(addr);
-            }
-            1 => {
-                a.byte(0xED); // LD (addr), DE
-                a.byte(0x53);
-                a.word(addr);
-            }
-            2 => {
-                a.byte(0xED); // LD (addr), BC
-                a.byte(0x43);
-                a.word(addr);
-            }
+            0 => a.st_hl_mem(slot),                 // LD (slot), HL
+            1 => a.st_wide_mem(R16::De, slot),      // LD (slot), DE
+            2 => a.st_wide_mem(R16::Bc, slot),      // LD (slot), BC
             _ => unreachable!(),
         }
     }
@@ -202,5 +184,5 @@ fn emit_func(a: &mut Asm, f: &Func) {
     gen_return(a, &f.ret);
     a.place(end);
     a.func_end = None;
-    a.byte(0xC9); // RET
+    a.fx(&[0xC9]); // RET
 }

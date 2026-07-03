@@ -1,6 +1,7 @@
 //! Statement codegen — effects (`gen_stmt`), returns, fills, and condition branches.
 use super::asm::*;
 use super::expr::*;
+use super::ins::{Imm, R16};
 use super::runtime::*;
 use super::Target;
 use crate::ir::*;
@@ -15,11 +16,11 @@ pub(super) fn gen_return(a: &mut Asm, rets: &[Expr]) {
         n => {
             for e in rets {
                 gen_expr(a, e);
-                a.byte(0xE5); // PUSH HL
+                a.push(R16::Hl); // PUSH HL
             }
-            const POP: [u8; 3] = [0xE1, 0xD1, 0xC1]; // HL, DE, BC
+            const POP: [R16; 3] = [R16::Hl, R16::De, R16::Bc];
             for i in (0..n).rev() {
-                a.byte(POP[i]);
+                a.pop(POP[i]);
             }
         }
     }
@@ -33,31 +34,24 @@ pub(super) fn gen_fill(a: &mut Asm, base: usize, count: usize, value: &Expr) {
     if count == 0 {
         return;
     }
-    let addr = a.slot_addr(base);
+    let addr = a.slot(base);
     match a.target {
         Target::Spectrum48 => {
             gen_expr(a, value); // HL = value
-            a.byte(0x22); // LD (addr),HL    (first slot)
-            a.word(addr);
+            a.st_hl_mem(addr); // LD (addr),HL    (first slot)
             if count >= 2 {
-                a.byte(0x21); // LD HL, addr        (src)
-                a.word(addr);
-                a.byte(0x11); // LD DE, addr+2      (dst)
-                a.word(addr.wrapping_add(2));
-                a.byte(0x01); // LD BC, (count-1)*2
-                a.word((count as u16 - 1) * 2);
-                a.byte(0xED);
-                a.byte(0xB0); // LDIR  (propagates the slot forward)
+                a.ld_imm(R16::Hl, addr); // LD HL, addr        (src)
+                a.ld_imm(R16::De, a.slot_hi(base)); // LD DE, addr+2      (dst)
+                a.ld_imm(R16::Bc, Imm::Abs((count as u16 - 1) * 2)); // LD BC, (count-1)*2
+                a.fx(&[0xED, 0xB0]); // LDIR  (propagates the slot forward)
             }
         }
         Target::Cell => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
-            a.byte(0x21); // LD HL, addr   (base)
-            a.word(addr);
-            a.byte(0x01); // LD BC, count  (slots)
-            a.word(count as u16);
-            a.byte(0xD1); // POP DE   (value)
+            a.push(R16::Hl); // PUSH HL  (value)
+            a.ld_imm(R16::Hl, addr); // LD HL, addr   (base)
+            a.ld_imm(R16::Bc, Imm::Abs(count as u16)); // LD BC, count  (slots)
+            a.pop(R16::De); // POP DE   (value)
             gen_trap(a, TRAP_FILL16);
         }
     }
@@ -67,37 +61,36 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
     match s {
         Stmt::Assign(slot, e) => {
             gen_expr(a, e);
-            a.byte(0x22); // LD (addr), HL
-            let addr = a.slot_addr(*slot);
-            a.word(addr);
+            let addr = a.slot(*slot);
+            a.st_hl_mem(addr); // LD (addr), HL
         }
         Stmt::StoreIndex(base, index, value, w) => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_elem_addr(a, *base, index); // HL = &base[index]
-            a.byte(0xD1); // POP DE   (DE = value)
-            a.byte(0x73); // LD (HL),E   (low byte)
+            a.pop(R16::De); // POP DE   (DE = value)
+            a.fx(&[0x73]); // LD (HL),E   (low byte)
             if *w == Width::Word {
-                a.byte(0x23); // INC HL
-                a.byte(0x72); // LD (HL),D   (high byte)
+                a.fx(&[0x23]); // INC HL
+                a.fx(&[0x72]); // LD (HL),D   (high byte)
             }
         }
         Stmt::Poke(addr, value) => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_expr(a, addr); // HL = addr
-            a.byte(0xD1); // POP DE   (DE = value)
-            a.byte(0x73); // LD (HL),E   (store low byte)
+            a.pop(R16::De); // POP DE   (DE = value)
+            a.fx(&[0x73]); // LD (HL),E   (store low byte)
         }
         Stmt::Store(ptr, off, value) => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_expr(a, ptr); // HL = base pointer
             gen_add_offset(a, *off); // HL = &field
-            a.byte(0xD1); // POP DE   (DE = value)
-            a.byte(0x73); // LD (HL),E
-            a.byte(0x23); // INC HL
-            a.byte(0x72); // LD (HL),D
+            a.pop(R16::De); // POP DE   (DE = value)
+            a.fx(&[0x73]); // LD (HL),E
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x72]); // LD (HL),D
         }
         Stmt::PtrStoreIndex {
             ptr,
@@ -106,49 +99,45 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
             value,
         } => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_ptr_elem_addr(a, ptr, *off, index); // HL = &arr[index] (balanced push/pop)
-            a.byte(0xD1); // POP DE   (DE = value)
-            a.byte(0x73); // LD (HL),E
-            a.byte(0x23); // INC HL
-            a.byte(0x72); // LD (HL),D
+            a.pop(R16::De); // POP DE   (DE = value)
+            a.fx(&[0x73]); // LD (HL),E
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x72]); // LD (HL),D
         }
         Stmt::StoreAt(addr, value, w) => {
             gen_expr(a, value);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_expr(a, addr); // HL = byte address
-            a.byte(0xD1); // POP DE   (DE = value)
-            a.byte(0x73); // LD (HL),E   (low byte)
+            a.pop(R16::De); // POP DE   (DE = value)
+            a.fx(&[0x73]); // LD (HL),E   (low byte)
             if *w == Width::Word {
-                a.byte(0x23); // INC HL
-                a.byte(0x72); // LD (HL),D   (high byte)
+                a.fx(&[0x23]); // INC HL
+                a.fx(&[0x72]); // LD (HL),D   (high byte)
             }
         }
         Stmt::Assign32(slot, e) => {
             gen_expr32(a, e); // HL = low word, DE = high word
-            let addr = a.slot_addr(*slot);
-            a.byte(0x22); // LD (addr),HL     low word
-            a.word(addr);
-            a.byte(0xED);
-            a.byte(0x53); // LD (addr+2),DE   high word
-            a.word(addr.wrapping_add(2));
+            a.st_hl_mem(a.slot(*slot)); // LD (addr),HL     low word
+            a.st_wide_mem(R16::De, a.slot_hi(*slot)); // LD (addr+2),DE   high word
         }
         // Wide field store through a pointer: 4 little-endian bytes at *(ptr + off).
         Stmt::Store32(ptr, off, value) => {
             gen_expr32(a, value); // HL = low word, DE = high word
-            a.byte(0xD5); // PUSH DE  (high word)
-            a.byte(0xE5); // PUSH HL  (low word)
+            a.push(R16::De); // PUSH DE  (high word)
+            a.push(R16::Hl); // PUSH HL  (low word)
             gen_expr(a, ptr); // HL = base pointer
             gen_add_offset(a, *off); // HL = &field
-            a.byte(0xD1); // POP DE   (low word)
-            a.byte(0x73); // LD (HL),E
-            a.byte(0x23); // INC HL
-            a.byte(0x72); // LD (HL),D
-            a.byte(0x23); // INC HL
-            a.byte(0xD1); // POP DE   (high word)
-            a.byte(0x73); // LD (HL),E
-            a.byte(0x23); // INC HL
-            a.byte(0x72); // LD (HL),D
+            a.pop(R16::De); // POP DE   (low word)
+            a.fx(&[0x73]); // LD (HL),E
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x72]); // LD (HL),D
+            a.fx(&[0x23]); // INC HL
+            a.pop(R16::De); // POP DE   (high word)
+            a.fx(&[0x73]); // LD (HL),E
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x72]); // LD (HL),D
         }
         Stmt::Fill { base, count, value } => gen_fill(a, *base, *count, value),
         Stmt::Eval(e) => {
@@ -158,13 +147,14 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
             gen_expr(a, call); // leaves the returned tuple in HL/DE/BC
                                // Store each register to its slot — `LD (nn),HL/DE/BC` don't clobber
                                // the other registers, so order is free.
-            const ST: [&[u8]; 3] = [&[0x22], &[0xED, 0x53], &[0xED, 0x43]];
             for (i, slot) in slots.iter().enumerate() {
-                for &b in ST[i] {
-                    a.byte(b);
+                let addr = a.slot(*slot);
+                match i {
+                    0 => a.st_hl_mem(addr),            // LD (nn),HL
+                    1 => a.st_wide_mem(R16::De, addr), // LD (nn),DE
+                    2 => a.st_wide_mem(R16::Bc, addr), // LD (nn),BC
+                    _ => unreachable!(),
                 }
-                let addr = a.slot_addr(*slot);
-                a.word(addr);
             }
         }
         Stmt::If(cond, then, els) => {

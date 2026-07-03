@@ -1,5 +1,6 @@
 //! The appended mul/div micro-runtime (Spectrum target) + the Cell80 `ED FE` trap ids.
 use super::asm::Asm;
+use super::ins::{Imm, R16};
 use super::Target;
 
 /// `__mul16`: HL = HL * DE (low 16). Shift-add, **multiplier-terminated**: loops once
@@ -66,10 +67,8 @@ pub(super) const TRAP_DIVMOD32: u8 = 0x13;
 
 /// Emit a host trap: `LD A, id ; ED FE` (the reserved `TRAP_OP`).
 pub(super) fn gen_trap(a: &mut Asm, id: u8) {
-    a.byte(0x3E); // LD A, id
-    a.byte(id);
-    a.byte(0xED); // ED FE  (host trap)
-    a.byte(0xFE);
+    a.fx(&[0x3E, id]); // LD A, id
+    a.fx(&[0xED, 0xFE]); // ED FE  (host trap)
 }
 
 pub(super) const TRAP_FILL16: u8 = 0x20; // fill `BC` slots (2-byte words) at `HL` with `DE`
@@ -91,26 +90,22 @@ pub(super) const TRAP_HALT: u8 = 0x30; // stop the run with status code `HL`
 /// set. Clobbers `AF`.
 pub(super) fn emit_mul16w(a: &mut Asm) {
     a.define("__mul16w");
-    a.byte(0x21); // LD HL, 0
-    a.word(0);
-    a.byte(0x3E); // LD A, 16
-    a.byte(16);
+    a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL, 0
+    a.fx(&[0x3E, 16]); // LD A, 16
     let top = a.label();
     let skip = a.label();
     a.place(top);
-    a.byte(0x29); // ADD HL,HL
-    a.byte(0xCB);
-    a.byte(0x13); // RL E
-    a.byte(0xCB);
-    a.byte(0x12); // RL D          (CF = multiplier MSB out)
+    a.add_hl(R16::Hl); // ADD HL,HL
+    a.fx(&[0xCB, 0x13]); // RL E
+    a.fx(&[0xCB, 0x12]); // RL D          (CF = multiplier MSB out)
     a.jump(0xD2, skip); // JP NC,skip
-    a.byte(0x09); // ADD HL,BC     (product += multiplicand)
+    a.add_hl(R16::Bc); // ADD HL,BC     (product += multiplicand)
     a.jump(0xD2, skip); // JP NC,skip
-    a.byte(0x13); // INC DE        (carry into the high word)
+    a.fx(&[0x13]); // INC DE        (carry into the high word)
     a.place(skip);
-    a.byte(0x3D); // DEC A
+    a.fx(&[0x3D]); // DEC A
     a.jump(0xC2, top); // JP NZ,top
-    a.byte(0xC9); // RET
+    a.fx(&[0xC9]); // RET
 }
 
 /// `__mul32`: `HL:DE = l * r` (mod 2^32) — `l` in the two stack words under the
@@ -122,65 +117,47 @@ pub(super) fn emit_mul32(a: &mut Asm) {
     let (llo, lhi, rlo, rhi, phi) = (a.label(), a.label(), a.label(), a.label(), a.label());
     // Spill r, then pull l from under the return address (restoring the stack shape
     // so the caller's cleanup matches the trap path).
-    a.byte(0x22); // LD (Rlo), HL
-    a.word_label(rlo);
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0x22); // LD (Rhi), HL
-    a.word_label(rhi);
-    a.byte(0xC1); // POP BC        (return address)
-    a.byte(0xE1); // POP HL        (l.lo)
-    a.byte(0x22); // LD (Llo), HL
-    a.word_label(llo);
-    a.byte(0xD1); // POP DE        (l.hi)
-    a.byte(0xD5); // PUSH DE
-    a.byte(0xE5); // PUSH HL
-    a.byte(0xC5); // PUSH BC       (return address back)
-    a.byte(0xEB); // EX DE,HL      (HL = l.hi)
-    a.byte(0x22); // LD (Lhi), HL
-    a.word_label(lhi);
+    a.st_hl_mem(Imm::Label(rlo)); // LD (Rlo), HL
+    a.ex_de_hl(); // EX DE,HL
+    a.st_hl_mem(Imm::Label(rhi)); // LD (Rhi), HL
+    a.pop(R16::Bc); // POP BC        (return address)
+    a.pop(R16::Hl); // POP HL        (l.lo)
+    a.st_hl_mem(Imm::Label(llo)); // LD (Llo), HL
+    a.pop(R16::De); // POP DE        (l.hi)
+    a.push(R16::De); // PUSH DE
+    a.push(R16::Hl); // PUSH HL
+    a.push(R16::Bc); // PUSH BC       (return address back)
+    a.ex_de_hl(); // EX DE,HL      (HL = l.hi)
+    a.st_hl_mem(Imm::Label(lhi)); // LD (Lhi), HL
     // p = l.lo * r.lo, full 32.
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Llo)
-    a.word_label(llo);
-    a.byte(0xED);
-    a.byte(0x5B); // LD DE,(Rlo)
-    a.word_label(rlo);
+    a.ld_wide_mem(R16::Bc, Imm::Label(llo)); // LD BC,(Llo)
+    a.ld_wide_mem(R16::De, Imm::Label(rlo)); // LD DE,(Rlo)
     a.call("__mul16w"); // DE:HL = BC*DE
-    a.byte(0xE5); // PUSH HL       (p.lo — safe across the __mul16 calls)
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0x22); // LD (Phi), HL
-    a.word_label(phi);
+    a.push(R16::Hl); // PUSH HL       (p.lo — safe across the __mul16 calls)
+    a.ex_de_hl(); // EX DE,HL
+    a.st_hl_mem(Imm::Label(phi)); // LD (Phi), HL
     // p.hi += l.lo * r.hi (low word).
-    a.byte(0x2A); // LD HL,(Llo)
-    a.word_label(llo);
-    a.byte(0xED);
-    a.byte(0x5B); // LD DE,(Rhi)
-    a.word_label(rhi);
+    a.ld_hl_mem(Imm::Label(llo)); // LD HL,(Llo)
+    a.ld_wide_mem(R16::De, Imm::Label(rhi)); // LD DE,(Rhi)
     a.call("__mul16"); // HL = HL*DE (low 16)
-    a.byte(0xEB); // EX DE,HL      (DE = t)
-    a.byte(0x2A); // LD HL,(Phi)
-    a.word_label(phi);
-    a.byte(0x19); // ADD HL,DE
-    a.byte(0x22); // LD (Phi), HL
-    a.word_label(phi);
+    a.ex_de_hl(); // EX DE,HL      (DE = t)
+    a.ld_hl_mem(Imm::Label(phi)); // LD HL,(Phi)
+    a.add_hl(R16::De); // ADD HL,DE
+    a.st_hl_mem(Imm::Label(phi)); // LD (Phi), HL
     // p.hi += l.hi * r.lo (low word).
-    a.byte(0x2A); // LD HL,(Lhi)
-    a.word_label(lhi);
-    a.byte(0xED);
-    a.byte(0x5B); // LD DE,(Rlo)
-    a.word_label(rlo);
+    a.ld_hl_mem(Imm::Label(lhi)); // LD HL,(Lhi)
+    a.ld_wide_mem(R16::De, Imm::Label(rlo)); // LD DE,(Rlo)
     a.call("__mul16");
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0x2A); // LD HL,(Phi)
-    a.word_label(phi);
-    a.byte(0x19); // ADD HL,DE
-    a.byte(0xEB); // EX DE,HL      (DE = p.hi)
-    a.byte(0xE1); // POP HL        (p.lo)
-    a.byte(0xC9); // RET
-                  // The static scratch words (addressed by the fixups above).
+    a.ex_de_hl(); // EX DE,HL
+    a.ld_hl_mem(Imm::Label(phi)); // LD HL,(Phi)
+    a.add_hl(R16::De); // ADD HL,DE
+    a.ex_de_hl(); // EX DE,HL      (DE = p.hi)
+    a.pop(R16::Hl); // POP HL        (p.lo)
+    a.fx(&[0xC9]); // RET
+                   // The static scratch words (addressed by the label operands above).
     for l in [llo, lhi, rlo, rhi, phi] {
         a.place(l);
-        a.word(0);
+        a.data_word(Imm::Abs(0));
     }
 }
 
@@ -196,119 +173,87 @@ pub(super) fn emit_divmod32(a: &mut Asm) {
     a.define("__divmod32");
     let (dlo, dhi, dret) = (a.label(), a.label(), a.label());
     // Spill D and the return address; move N into the alternate BC:DE.
-    a.byte(0x22); // LD (Dlo), HL
-    a.word_label(dlo);
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0x22); // LD (Dhi), HL
-    a.word_label(dhi);
-    a.byte(0xC1); // POP BC        (return address)
-    a.byte(0xED);
-    a.byte(0x43); // LD (Dret), BC
-    a.word_label(dret);
-    a.byte(0xD1); // POP DE        (N.lo)
-    a.byte(0xC1); // POP BC        (N.hi)
-    a.byte(0xC5); // PUSH BC        ─┐ hand N across to the
-    a.byte(0xD5); // PUSH DE         │ alternate register set
-    a.byte(0xD9); // EXX             │
-    a.byte(0xD1); // POP DE (N.lo)   │
-    a.byte(0xC1); // POP BC (N.hi)  ─┘
-    a.byte(0xD9); // EXX
-                  // R (remainder) = 0 in main HL:DE.
-    a.byte(0x21); // LD HL, 0
-    a.word(0);
-    a.byte(0x11); // LD DE, 0
-    a.word(0);
-    a.byte(0x3E); // LD A, 32
-    a.byte(32);
+    a.st_hl_mem(Imm::Label(dlo)); // LD (Dlo), HL
+    a.ex_de_hl(); // EX DE,HL
+    a.st_hl_mem(Imm::Label(dhi)); // LD (Dhi), HL
+    a.pop(R16::Bc); // POP BC        (return address)
+    a.st_wide_mem(R16::Bc, Imm::Label(dret)); // LD (Dret), BC
+    a.pop(R16::De); // POP DE        (N.lo)
+    a.pop(R16::Bc); // POP BC        (N.hi)
+    a.push(R16::Bc); // PUSH BC        ─┐ hand N across to the
+    a.push(R16::De); // PUSH DE         │ alternate register set
+    a.fx(&[0xD9]); // EXX             │
+    a.pop(R16::De); // POP DE (N.lo)   │
+    a.pop(R16::Bc); // POP BC (N.hi)  ─┘
+    a.fx(&[0xD9]); // EXX
+                   // R (remainder) = 0 in main HL:DE.
+    a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL, 0
+    a.ld_imm(R16::De, Imm::Abs(0)); // LD DE, 0
+    a.fx(&[0x3E, 32]); // LD A, 32
     let (top, force, commit, next) = (a.label(), a.label(), a.label(), a.label());
     a.place(top);
     // Shift N/Q left one bit (alternate set); CF = the next dividend bit.
-    a.byte(0xD9); // EXX
-    a.byte(0xCB);
-    a.byte(0x23); // SLA E
-    a.byte(0xCB);
-    a.byte(0x12); // RL D
-    a.byte(0xCB);
-    a.byte(0x11); // RL C
-    a.byte(0xCB);
-    a.byte(0x10); // RL B          (CF = N msb out)
-    a.byte(0xD9); // EXX           (flags survive)
-                  // R = R<<1 | bit — 33 bits: a carry out of the high word forces a commit.
-    a.byte(0xED);
-    a.byte(0x6A); // ADC HL,HL     (R.lo)
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0xED);
-    a.byte(0x6A); // ADC HL,HL     (R.hi; CF = bit 32)
+    a.fx(&[0xD9]); // EXX
+    a.fx(&[0xCB, 0x23]); // SLA E
+    a.fx(&[0xCB, 0x12]); // RL D
+    a.fx(&[0xCB, 0x11]); // RL C
+    a.fx(&[0xCB, 0x10]); // RL B          (CF = N msb out)
+    a.fx(&[0xD9]); // EXX           (flags survive)
+                   // R = R<<1 | bit — 33 bits: a carry out of the high word forces a commit.
+    a.fx(&[0xED, 0x6A]); // ADC HL,HL     (R.lo)
+    a.ex_de_hl(); // EX DE,HL
+    a.fx(&[0xED, 0x6A]); // ADC HL,HL     (R.hi; CF = bit 32)
     a.jump(0xDA, force); // JP C,force
                          // Trial subtract T = R - D. (Entering: HL = R.hi, DE = R.lo.)
-    a.byte(0xEB); // EX DE,HL      (HL = R.lo, DE = R.hi)
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dlo)
-    a.word_label(dlo);
-    a.byte(0xB7); // OR A
-    a.byte(0xED);
-    a.byte(0x42); // SBC HL,BC     (T.lo)
-    a.byte(0xEB); // EX DE,HL      (HL = R.hi, DE = T.lo)
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dhi)
-    a.word_label(dhi);
-    a.byte(0xED);
-    a.byte(0x42); // SBC HL,BC     (T.hi; CF = R < D)
+    a.ex_de_hl(); // EX DE,HL      (HL = R.lo, DE = R.hi)
+    a.ld_wide_mem(R16::Bc, Imm::Label(dlo)); // LD BC,(Dlo)
+    a.fx(&[0xB7]); // OR A
+    a.fx(&[0xED, 0x42]); // SBC HL,BC     (T.lo)
+    a.ex_de_hl(); // EX DE,HL      (HL = R.hi, DE = T.lo)
+    a.ld_wide_mem(R16::Bc, Imm::Label(dhi)); // LD BC,(Dhi)
+    a.fx(&[0xED, 0x42]); // SBC HL,BC     (T.hi; CF = R < D)
     a.jump(0xD2, commit); // JP NC,commit
                           // Restore: R = T + D.
-    a.byte(0xEB); // (HL = T.lo, DE = T.hi)
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dlo)
-    a.word_label(dlo);
-    a.byte(0x09); // ADD HL,BC     (R.lo back)
-    a.byte(0xEB); // (HL = T.hi, DE = R.lo)
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dhi)
-    a.word_label(dhi);
-    a.byte(0xED);
-    a.byte(0x4A); // ADC HL,BC     (R.hi back)
+    a.ex_de_hl(); // (HL = T.lo, DE = T.hi)
+    a.ld_wide_mem(R16::Bc, Imm::Label(dlo)); // LD BC,(Dlo)
+    a.add_hl(R16::Bc); // ADD HL,BC     (R.lo back)
+    a.ex_de_hl(); // (HL = T.hi, DE = R.lo)
+    a.ld_wide_mem(R16::Bc, Imm::Label(dhi)); // LD BC,(Dhi)
+    a.fx(&[0xED, 0x4A]); // ADC HL,BC     (R.hi back)
     a.jump(0xC3, next);
     // Force: the shifted-out bit 32 makes R ≥ D whatever the 32-bit compare says.
     a.place(force);
-    a.byte(0xEB);
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dlo)
-    a.word_label(dlo);
-    a.byte(0xB7); // OR A
-    a.byte(0xED);
-    a.byte(0x42); // SBC HL,BC
-    a.byte(0xEB);
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dhi)
-    a.word_label(dhi);
-    a.byte(0xED);
-    a.byte(0x42); // SBC HL,BC     (the hidden bit 32 absorbs any borrow)
-                  // Commit: keep T as the new R; the quotient bit is bit 0 just vacated by SLA E.
+    a.ex_de_hl();
+    a.ld_wide_mem(R16::Bc, Imm::Label(dlo)); // LD BC,(Dlo)
+    a.fx(&[0xB7]); // OR A
+    a.fx(&[0xED, 0x42]); // SBC HL,BC
+    a.ex_de_hl();
+    a.ld_wide_mem(R16::Bc, Imm::Label(dhi)); // LD BC,(Dhi)
+    a.fx(&[0xED, 0x42]); // SBC HL,BC     (the hidden bit 32 absorbs any borrow)
+                         // Commit: keep T as the new R; the quotient bit is bit 0 just vacated by SLA E.
     a.place(commit);
-    a.byte(0xD9); // EXX
-    a.byte(0x1C); // INC E
-    a.byte(0xD9); // EXX
+    a.fx(&[0xD9]); // EXX
+    a.fx(&[0x1C]); // INC E
+    a.fx(&[0xD9]); // EXX
     a.place(next); // (all paths: HL = R.hi, DE = R.lo)
-    a.byte(0xEB); // EX DE,HL
-    a.byte(0x3D); // DEC A
+    a.ex_de_hl(); // EX DE,HL
+    a.fx(&[0x3D]); // DEC A
     a.jump(0xC2, top); // JP NZ,top
                        // Done: remainder = HL:DE (lo:hi), quotient = alternate BC:DE (hi:lo).
-    a.byte(0xD5); // PUSH DE       (rem.hi — stays for the caller)
-    a.byte(0xE5); // PUSH HL       (rem.lo — stays for the caller)
-    a.byte(0xD9); // EXX
-    a.byte(0xC5); // PUSH BC        ─┐ hand Q back across
-    a.byte(0xD5); // PUSH DE         │
-    a.byte(0xD9); // EXX             │
-    a.byte(0xE1); // POP HL (Q.lo)   │
-    a.byte(0xD1); // POP DE (Q.hi)  ─┘
-    a.byte(0xED);
-    a.byte(0x4B); // LD BC,(Dret)
-    a.word_label(dret);
-    a.byte(0xC5); // PUSH BC       (return address)
-    a.byte(0xC9); // RET           (the remainder words remain on the stack)
+    a.push(R16::De); // PUSH DE       (rem.hi — stays for the caller)
+    a.push(R16::Hl); // PUSH HL       (rem.lo — stays for the caller)
+    a.fx(&[0xD9]); // EXX
+    a.push(R16::Bc); // PUSH BC        ─┐ hand Q back across
+    a.push(R16::De); // PUSH DE         │
+    a.fx(&[0xD9]); // EXX             │
+    a.pop(R16::Hl); // POP HL (Q.lo)   │
+    a.pop(R16::De); // POP DE (Q.hi)  ─┘
+    a.ld_wide_mem(R16::Bc, Imm::Label(dret)); // LD BC,(Dret)
+    a.push(R16::Bc); // PUSH BC       (return address)
+    a.fx(&[0xC9]); // RET           (the remainder words remain on the stack)
     for l in [dlo, dhi, dret] {
         a.place(l);
-        a.word(0);
+        a.data_word(Imm::Abs(0));
     }
 }
 
@@ -321,66 +266,64 @@ pub(super) fn emit_sdivmod16(a: &mut Asm) {
     a.define("__sdivmod16");
     let (abs_l, abs_r, fix_rem, fix_q) = (a.label(), a.label(), a.label(), a.label());
     // Stash the result signs: quotient = sign(l) ^ sign(r), remainder = sign(l).
-    a.byte(0x7C); // LD A,H
-    a.byte(0xAA); // XOR D
-    a.byte(0xF5); // PUSH AF       (bit 7 = negate quotient)
-    a.byte(0x7C); // LD A,H
-    a.byte(0xF5); // PUSH AF       (bit 7 = negate remainder)
-                  // |l|: negate HL if negative.
-    a.byte(0xCB);
-    a.byte(0x7C); // BIT 7,H
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[0xAA]); // XOR D
+    a.push(R16::Af); // PUSH AF       (bit 7 = negate quotient)
+    a.fx(&[0x7C]); // LD A,H
+    a.push(R16::Af); // PUSH AF       (bit 7 = negate remainder)
+                     // |l|: negate HL if negative.
+    a.fx(&[0xCB, 0x7C]); // BIT 7,H
     a.jump(0xCA, abs_l); // JP Z
-    a.byte(0x7D); // LD A,L
-    a.byte(0x2F); // CPL
-    a.byte(0x6F); // LD L,A
-    a.byte(0x7C); // LD A,H
-    a.byte(0x2F); // CPL
-    a.byte(0x67); // LD H,A
-    a.byte(0x23); // INC HL
+    a.fx(&[0x7D]); // LD A,L
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x6F]); // LD L,A
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x67]); // LD H,A
+    a.fx(&[0x23]); // INC HL
     a.place(abs_l);
     // |r|: negate DE if negative.
-    a.byte(0xCB);
-    a.byte(0x7A); // BIT 7,D
+    a.fx(&[0xCB, 0x7A]); // BIT 7,D
     a.jump(0xCA, abs_r); // JP Z
-    a.byte(0x7B); // LD A,E
-    a.byte(0x2F); // CPL
-    a.byte(0x5F); // LD E,A
-    a.byte(0x7A); // LD A,D
-    a.byte(0x2F); // CPL
-    a.byte(0x57); // LD D,A
-    a.byte(0x13); // INC DE
+    a.fx(&[0x7B]); // LD A,E
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x5F]); // LD E,A
+    a.fx(&[0x7A]); // LD A,D
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x57]); // LD D,A
+    a.fx(&[0x13]); // INC DE
     a.place(abs_r);
     // The unsigned core: HL/DE -> HL = q, DE = rem.
     match a.target {
         Target::Spectrum48 => a.call("__divmod16"),
         Target::Cell => {
-            a.byte(0x44); // LD B,H
-            a.byte(0x4D); // LD C,L        (BC = |dividend|)
+            a.fx(&[0x44]); // LD B,H
+            a.fx(&[0x4D]); // LD C,L        (BC = |dividend|)
             gen_trap(a, TRAP_DIVMOD16); // HL = BC/DE, DE = BC%DE
         }
     }
     // Reapply the signs (remainder first — its flag was pushed last).
-    a.byte(0xF1); // POP AF        (bit 7 = negate remainder)
-    a.byte(0x07); // RLCA          (bit 7 -> carry)
+    a.pop(R16::Af); // POP AF        (bit 7 = negate remainder)
+    a.fx(&[0x07]); // RLCA          (bit 7 -> carry)
     a.jump(0xD2, fix_rem); // JP NC
-    a.byte(0x7B); // LD A,E
-    a.byte(0x2F); // CPL
-    a.byte(0x5F); // LD E,A
-    a.byte(0x7A); // LD A,D
-    a.byte(0x2F); // CPL
-    a.byte(0x57); // LD D,A
-    a.byte(0x13); // INC DE
+    a.fx(&[0x7B]); // LD A,E
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x5F]); // LD E,A
+    a.fx(&[0x7A]); // LD A,D
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x57]); // LD D,A
+    a.fx(&[0x13]); // INC DE
     a.place(fix_rem);
-    a.byte(0xF1); // POP AF        (bit 7 = negate quotient)
-    a.byte(0x07); // RLCA
+    a.pop(R16::Af); // POP AF        (bit 7 = negate quotient)
+    a.fx(&[0x07]); // RLCA
     a.jump(0xD2, fix_q); // JP NC
-    a.byte(0x7D); // LD A,L
-    a.byte(0x2F); // CPL
-    a.byte(0x6F); // LD L,A
-    a.byte(0x7C); // LD A,H
-    a.byte(0x2F); // CPL
-    a.byte(0x67); // LD H,A
-    a.byte(0x23); // INC HL
+    a.fx(&[0x7D]); // LD A,L
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x6F]); // LD L,A
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[0x2F]); // CPL
+    a.fx(&[0x67]); // LD H,A
+    a.fx(&[0x23]); // INC HL
     a.place(fix_q);
-    a.byte(0xC9); // RET
+    a.fx(&[0xC9]); // RET
 }

@@ -1,5 +1,6 @@
 //! Expression codegen — evaluate an `Expr` into `HL` (arithmetic, bitwise, traps, u32).
 use super::asm::*;
+use super::ins::{Imm, R16};
 use super::runtime::*;
 use super::Target;
 use crate::ir::*;
@@ -8,20 +9,17 @@ use crate::ir::*;
 pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
     match e {
         Expr::Lit(n) => {
-            a.byte(0x21);
-            a.word(*n);
+            a.ld_imm(R16::Hl, Imm::Abs(*n)); // LD HL, n
         }
         Expr::Var(slot) => {
-            a.byte(0x2A);
-            let addr = a.slot_addr(*slot);
-            a.word(addr);
+            let addr = a.slot(*slot);
+            a.ld_hl_mem(addr); // LD HL, (slot)
         }
         Expr::Bin(op, l, r, w) => {
             // Const-fold a literal-only op (e.g. `2 * 3 + 4`).
             if let (Expr::Lit(x), Expr::Lit(y)) = (&**l, &**r) {
                 if let Some(v) = const_fold(*op, *x, *y) {
-                    a.byte(0x21); // LD HL, v
-                    a.word(v);
+                    a.ld_imm(R16::Hl, Imm::Abs(v)); // LD HL, v
                     mask_to_width(a, *w);
                     return;
                 }
@@ -29,10 +27,10 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             match op {
                 BinOp::Add => {
                     gen_expr(a, l);
-                    a.byte(0xE5); // PUSH HL
+                    a.push(R16::Hl); // PUSH HL
                     gen_expr(a, r);
-                    a.byte(0xD1); // POP DE  (DE = l)
-                    a.byte(0x19); // ADD HL, DE
+                    a.pop(R16::De); // POP DE  (DE = l)
+                    a.add_hl(R16::De); // ADD HL, DE
                 }
                 BinOp::Sub => gen_sub(a, l, r),
                 // `x * const` → shift-and-add (no `__mul16`); else the runtime/trap.
@@ -69,17 +67,15 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                 BinOp::Shl => {
                     gen_expr(a, l);
                     for _ in 0..lit_u8(r) {
-                        a.byte(0x29); // ADD HL,HL  (logical << 1)
+                        a.add_hl(R16::Hl); // ADD HL,HL  (logical << 1)
                     }
                 }
                 // `i16 >> n` is an *arithmetic* shift (sign-propagating SRA).
                 BinOp::Shr if *w == Width::SWord => {
                     gen_expr(a, l);
                     for _ in 0..lit_u8(r) {
-                        a.byte(0xCB);
-                        a.byte(0x2C); // SRA H
-                        a.byte(0xCB);
-                        a.byte(0x1D); // RR L
+                        a.fx(&[0xCB, 0x2C]); // SRA H
+                        a.fx(&[0xCB, 0x1D]); // RR L
                     }
                 }
                 BinOp::Shr => {
@@ -93,15 +89,14 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             gen_elem_addr(a, *base, index); // HL = &base[index]
             match w {
                 Width::Word | Width::SWord => {
-                    a.byte(0x5E); // LD E,(HL)
-                    a.byte(0x23); // INC HL
-                    a.byte(0x56); // LD D,(HL)
-                    a.byte(0xEB); // EX DE,HL   -> HL = value
+                    a.fx(&[0x5E]); // LD E,(HL)
+                    a.fx(&[0x23]); // INC HL
+                    a.fx(&[0x56]); // LD D,(HL)
+                    a.ex_de_hl(); // EX DE,HL   -> HL = value
                 }
                 Width::Byte => {
-                    a.byte(0x6E); // LD L,(HL)
-                    a.byte(0x26); // LD H, 0    -> HL = zero-extended byte
-                    a.byte(0x00);
+                    a.fx(&[0x6E]); // LD L,(HL)
+                    a.fx(&[0x26, 0x00]); // LD H, 0    -> HL = zero-extended byte
                 }
                 Width::DWord => unreachable!("u32 array elements are unsupported"),
             }
@@ -109,54 +104,49 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         Expr::Call(name, args) => {
             for arg in args {
                 gen_expr(a, arg);
-                a.byte(0xE5); // PUSH HL
+                a.push(R16::Hl); // PUSH HL
             }
-            const POP: [u8; 3] = [0xE1, 0xD1, 0xC1]; // HL, DE, BC
+            const POP: [R16; 3] = [R16::Hl, R16::De, R16::Bc];
             for i in (0..args.len()).rev() {
-                a.byte(POP[i]);
+                a.pop(POP[i]);
             }
             a.call(name);
         }
         Expr::Trunc(e) => {
             gen_expr(a, e);
-            a.byte(0x26); // LD H, 0   (mask to u8)
-            a.byte(0x00);
+            a.fx(&[0x26, 0x00]); // LD H, 0   (mask to u8)
         }
         Expr::Peek(addr) => {
             gen_expr(a, addr); // HL = addr
-            a.byte(0x6E); // LD L,(HL)   -- read mem[addr] into L
-            a.byte(0x26); // LD H, 0     -> HL = zero-extended byte
-            a.byte(0x00);
+            a.fx(&[0x6E]); // LD L,(HL)   -- read mem[addr] into L
+            a.fx(&[0x26, 0x00]); // LD H, 0     -> HL = zero-extended byte
         }
         Expr::InPort(port) => {
             gen_expr(a, port); // HL = port
-            a.byte(0x44); // LD B,H
-            a.byte(0x4D); // LD C,L   (BC = port)
-            a.byte(0xED);
-            a.byte(0x78); // IN A,(C)
-            a.byte(0x6F); // LD L,A
-            a.byte(0x26); // LD H,0   -> HL = port byte
-            a.byte(0x00);
+            a.fx(&[0x44]); // LD B,H
+            a.fx(&[0x4D]); // LD C,L   (BC = port)
+            a.fx(&[0xED, 0x78]); // IN A,(C)
+            a.fx(&[0x6F]); // LD L,A
+            a.fx(&[0x26, 0x00]); // LD H,0   -> HL = port byte
         }
         Expr::AddrOf(slot) => {
-            a.byte(0x21); // LD HL, &local
-            let addr = a.slot_addr(*slot);
-            a.word(addr);
+            let addr = a.slot(*slot);
+            a.ld_imm(R16::Hl, addr); // LD HL, &local
         }
         Expr::Deref(ptr, off) => {
             gen_expr(a, ptr); // HL = base pointer
             gen_add_offset(a, *off);
-            a.byte(0x5E); // LD E,(HL)
-            a.byte(0x23); // INC HL
-            a.byte(0x56); // LD D,(HL)
-            a.byte(0xEB); // EX DE,HL   -> HL = u16 at *(ptr + off)
+            a.fx(&[0x5E]); // LD E,(HL)
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x56]); // LD D,(HL)
+            a.ex_de_hl(); // EX DE,HL   -> HL = u16 at *(ptr + off)
         }
         Expr::PtrIndex { ptr, off, index } => {
             gen_ptr_elem_addr(a, ptr, *off, index); // HL = ptr + off + index*2
-            a.byte(0x5E); // LD E,(HL)
-            a.byte(0x23); // INC HL
-            a.byte(0x56); // LD D,(HL)
-            a.byte(0xEB); // EX DE,HL   -> HL = u16 element
+            a.fx(&[0x5E]); // LD E,(HL)
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x56]); // LD D,(HL)
+            a.ex_de_hl(); // EX DE,HL   -> HL = u16 element
         }
         Expr::MulConst(e, k) => {
             gen_expr(a, e);
@@ -166,15 +156,14 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             gen_expr(a, addr); // HL = byte address
             match w {
                 Width::Word | Width::SWord => {
-                    a.byte(0x5E); // LD E,(HL)
-                    a.byte(0x23); // INC HL
-                    a.byte(0x56); // LD D,(HL)
-                    a.byte(0xEB); // EX DE,HL
+                    a.fx(&[0x5E]); // LD E,(HL)
+                    a.fx(&[0x23]); // INC HL
+                    a.fx(&[0x56]); // LD D,(HL)
+                    a.ex_de_hl(); // EX DE,HL
                 }
                 Width::Byte => {
-                    a.byte(0x6E); // LD L,(HL)
-                    a.byte(0x26); // LD H, 0  (zero-extend)
-                    a.byte(0x00);
+                    a.fx(&[0x6E]); // LD L,(HL)
+                    a.fx(&[0x26, 0x00]); // LD H, 0  (zero-extend)
                 }
                 Width::DWord => unreachable!("u32 array/field elements are unsupported"),
             }
@@ -189,8 +178,8 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         // Short-circuit `&&` / `||` on bool operands.
         Expr::Logic { and, lhs, rhs } => {
             gen_expr(a, lhs); // HL = lhs (0/1)
-            a.byte(0x7D); // LD A,L
-            a.byte(0xB4); // OR H    -> Z set iff HL == 0
+            a.fx(&[0x7D]); // LD A,L
+            a.fx(&[0xB4]); // OR H    -> Z set iff HL == 0
             let end = a.label();
             // `&&`: short-circuit to `end` when lhs is false (HL already 0).
             // `||`: short-circuit to `end` when lhs is true  (HL already 1).
@@ -201,29 +190,25 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         // Shift by a runtime amount: a counted `ADD HL,HL` / `SRL H;RR L` loop.
         Expr::ShiftVar { left, e, amount, w } => {
             gen_expr(a, e);
-            a.byte(0xE5); // PUSH HL  (value)
+            a.push(R16::Hl); // PUSH HL  (value)
             gen_expr(a, amount); // HL = amount
-            a.byte(0x7D); // LD A,L   (count = low byte)
-            a.byte(0xE1); // POP HL   (value)
-            a.byte(0xB7); // OR A     -> Z iff count == 0
+            a.fx(&[0x7D]); // LD A,L   (count = low byte)
+            a.pop(R16::Hl); // POP HL   (value)
+            a.fx(&[0xB7]); // OR A     -> Z iff count == 0
             let done = a.label();
             let top = a.label();
             a.jump(0xCA, done); // JP Z,done   (no shift)
             a.place(top);
             if *left {
-                a.byte(0x29); // ADD HL,HL          (<< 1)
+                a.add_hl(R16::Hl); // ADD HL,HL          (<< 1)
             } else if *w == Width::SWord {
-                a.byte(0xCB);
-                a.byte(0x2C); // SRA H              (>> 1, arithmetic — sign propagates)
-                a.byte(0xCB);
-                a.byte(0x1D); // RR L
+                a.fx(&[0xCB, 0x2C]); // SRA H              (>> 1, arithmetic — sign propagates)
+                a.fx(&[0xCB, 0x1D]); // RR L
             } else {
-                a.byte(0xCB);
-                a.byte(0x3C); // SRL H
-                a.byte(0xCB);
-                a.byte(0x1D); // RR L               (>> 1, logical)
+                a.fx(&[0xCB, 0x3C]); // SRL H
+                a.fx(&[0xCB, 0x1D]); // RR L               (>> 1, logical)
             }
-            a.byte(0x3D); // DEC A
+            a.fx(&[0x3D]); // DEC A
             a.jump(0xC2, top); // JP NZ,top
             a.place(done);
             mask_to_width(a, *w);
@@ -298,8 +283,8 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
         Target::Spectrum48 => {
             if square {
                 gen_expr(a, l); // HL = x
-                a.byte(0x54);
-                a.byte(0x5D); // ld d,h ; ld e,l   (DE = x)
+                a.fx(&[0x54]);
+                a.fx(&[0x5D]); // ld d,h ; ld e,l   (DE = x)
             } else {
                 gen_pair(a, l, r); // HL = r, DE = l
             }
@@ -309,16 +294,16 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
         Target::Cell => {
             if square {
                 gen_expr(a, l); // HL = x
-                a.byte(0x54);
-                a.byte(0x5D); // ld d,h ; ld e,l   (DE = x)
+                a.fx(&[0x54]);
+                a.fx(&[0x5D]); // ld d,h ; ld e,l   (DE = x)
             } else {
                 gen_expr(a, l);
-                a.byte(0xE5); // PUSH HL  (l)
+                a.push(R16::Hl); // PUSH HL  (l)
                 gen_expr(a, r); // HL = r
-                a.byte(0xD1); // POP DE   (DE = l)
+                a.pop(R16::De); // POP DE   (DE = l)
             }
-            a.byte(0x44);
-            a.byte(0x4D); // ld b,h ; ld c,l   (BC = the value left in HL)
+            a.fx(&[0x44]);
+            a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = the value left in HL)
             gen_trap(a, TRAP_MUL16); // HL = BC * DE
         }
     }
@@ -329,8 +314,8 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
 /// `HL:DE` and the two stack words in place, so the cleanup is one shape.
 fn gen_mul32(a: &mut Asm, l: &Expr, r: &Expr) {
     gen_expr32(a, l);
-    a.byte(0xD5); // PUSH DE   (l.high)
-    a.byte(0xE5); // PUSH HL   (l.low)
+    a.push(R16::De); // PUSH DE   (l.high)
+    a.push(R16::Hl); // PUSH HL   (l.low)
     gen_expr32(a, r); // HL:DE = r
     match a.target {
         Target::Spectrum48 => {
@@ -339,8 +324,8 @@ fn gen_mul32(a: &mut Asm, l: &Expr, r: &Expr) {
         }
         Target::Cell => gen_trap(a, TRAP_MUL32),
     }
-    a.byte(0xC1); // POP BC   ─┐ drop l
-    a.byte(0xC1); // POP BC   ─┘
+    a.pop(R16::Bc); // POP BC   ─┐ drop l
+    a.pop(R16::Bc); // POP BC   ─┘
 }
 
 /// `HL:DE = l / r` (or `l % r` if `rem`). Same convention as [`gen_mul32`]; the
@@ -348,8 +333,8 @@ fn gen_mul32(a: &mut Asm, l: &Expr, r: &Expr) {
 /// as the result for `%`, dropped for `/`.
 fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
     gen_expr32(a, l);
-    a.byte(0xD5); // PUSH DE   (l.high)
-    a.byte(0xE5); // PUSH HL   (l.low)
+    a.push(R16::De); // PUSH DE   (l.high)
+    a.push(R16::Hl); // PUSH HL   (l.low)
     gen_expr32(a, r); // HL:DE = r (the divisor)
     match a.target {
         Target::Spectrum48 => {
@@ -359,11 +344,11 @@ fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
         Target::Cell => gen_trap(a, TRAP_DIVMOD32),
     }
     if rem {
-        a.byte(0xE1); // POP HL   (rem.low)
-        a.byte(0xD1); // POP DE   (rem.high)
+        a.pop(R16::Hl); // POP HL   (rem.low)
+        a.pop(R16::De); // POP DE   (rem.high)
     } else {
-        a.byte(0xC1); // POP BC   ─┐ drop the remainder
-        a.byte(0xC1); // POP BC   ─┘
+        a.pop(R16::Bc); // POP BC   ─┐ drop the remainder
+        a.pop(R16::Bc); // POP BC   ─┘
     }
 }
 
@@ -376,7 +361,7 @@ fn gen_sdivmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
     a.call("__sdivmod16");
     a.needs_sdiv = true;
     if rem {
-        a.byte(0xEB); // EX DE,HL  -> HL = remainder
+        a.ex_de_hl(); // EX DE,HL  -> HL = remainder
     }
 }
 
@@ -389,19 +374,19 @@ pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
             a.call("__divmod16"); // HL = l/r, DE = l%r
             a.needs_div = true;
             if rem {
-                a.byte(0xEB); // EX DE,HL  -> HL = remainder
+                a.ex_de_hl(); // EX DE,HL  -> HL = remainder
             }
         }
         Target::Cell => {
             gen_expr(a, r);
-            a.byte(0xE5); // PUSH HL  (r = divisor)
+            a.push(R16::Hl); // PUSH HL  (r = divisor)
             gen_expr(a, l);
-            a.byte(0x44);
-            a.byte(0x4D); // ld b,h ; ld c,l   (BC = l = dividend)
-            a.byte(0xD1); // POP DE   (DE = r = divisor)
+            a.fx(&[0x44]);
+            a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = l = dividend)
+            a.pop(R16::De); // POP DE   (DE = r = divisor)
             gen_trap(a, TRAP_DIVMOD16); // HL = BC/DE, DE = BC%DE
             if rem {
-                a.byte(0xEB); // EX DE,HL  -> HL = remainder
+                a.ex_de_hl(); // EX DE,HL  -> HL = remainder
             }
         }
     }
@@ -410,30 +395,25 @@ pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
 /// `HL >>= n` (logical), as `SRL H; RR L` per step.
 pub(super) fn gen_shr_const(a: &mut Asm, n: u32) {
     for _ in 0..n {
-        a.byte(0xCB);
-        a.byte(0x3C); // SRL H
-        a.byte(0xCB);
-        a.byte(0x1D); // RR L
+        a.fx(&[0xCB, 0x3C]); // SRL H
+        a.fx(&[0xCB, 0x1D]); // RR L
     }
 }
 
 /// `HL &= mask` (a compile-time constant), byte-wise through the accumulator.
 pub(super) fn gen_and_mask(a: &mut Asm, mask: u16) {
-    a.byte(0x7D); // LD A,L
-    a.byte(0xE6); // AND lo
-    a.byte(mask as u8);
-    a.byte(0x6F); // LD L,A
-    a.byte(0x7C); // LD A,H
-    a.byte(0xE6); // AND hi
-    a.byte((mask >> 8) as u8);
-    a.byte(0x67); // LD H,A
+    a.fx(&[0x7D]); // LD A,L
+    a.fx(&[0xE6, mask as u8]); // AND lo
+    a.fx(&[0x6F]); // LD L,A
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[0xE6, (mask >> 8) as u8]); // AND hi
+    a.fx(&[0x67]); // LD H,A
 }
 
 /// Wrap `HL` to a byte (`u8`) by zeroing `H`.
 pub(super) fn mask_to_width(a: &mut Asm, w: Width) {
     if w == Width::Byte {
-        a.byte(0x26); // LD H, 0
-        a.byte(0x00);
+        a.fx(&[0x26, 0x00]); // LD H, 0
     }
 }
 
@@ -441,83 +421,74 @@ pub(super) fn mask_to_width(a: &mut Asm, w: Width) {
 pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
     match e {
         Expr::Lit32(n) => {
-            a.byte(0x21); // LD HL, low16
-            a.word(*n as u16);
-            a.byte(0x11); // LD DE, high16
-            a.word((*n >> 16) as u16);
+            a.ld_imm(R16::Hl, Imm::Abs(*n as u16)); // LD HL, low16
+            a.ld_imm(R16::De, Imm::Abs((*n >> 16) as u16)); // LD DE, high16
         }
         Expr::Var32(slot) => {
-            let addr = a.slot_addr(*slot);
-            a.byte(0x2A); // LD HL,(addr)      low word
-            a.word(addr);
-            a.byte(0xED);
-            a.byte(0x5B); // LD DE,(addr+2)    high word
-            a.word(addr.wrapping_add(2));
+            let (lo, hi) = (a.slot(*slot), a.slot_hi(*slot));
+            a.ld_hl_mem(lo); // LD HL,(addr)      low word
+            a.ld_wide_mem(R16::De, hi); // LD DE,(addr+2)    high word
         }
         // Wide field read through a pointer: 4 little-endian bytes at *(ptr + off).
         Expr::Deref32(ptr, off) => {
             gen_expr(a, ptr); // HL = base pointer
             gen_add_offset(a, *off); // HL = &field
-            a.byte(0x5E); // LD E,(HL)   low word
-            a.byte(0x23); // INC HL
-            a.byte(0x56); // LD D,(HL)
-            a.byte(0x23); // INC HL
-            a.byte(0x4E); // LD C,(HL)   high word
-            a.byte(0x23); // INC HL
-            a.byte(0x46); // LD B,(HL)
-            a.byte(0xEB); // EX DE,HL    -> HL = low word
-            a.byte(0x50); // LD D,B
-            a.byte(0x59); // LD E,C      -> DE = high word
+            a.fx(&[0x5E]); // LD E,(HL)   low word
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x56]); // LD D,(HL)
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x4E]); // LD C,(HL)   high word
+            a.fx(&[0x23]); // INC HL
+            a.fx(&[0x46]); // LD B,(HL)
+            a.ex_de_hl(); // EX DE,HL    -> HL = low word
+            a.fx(&[0x50]); // LD D,B
+            a.fx(&[0x59]); // LD E,C      -> DE = high word
         }
         Expr::Trunc32(e) => gen_expr32(a, e),
         // `x as u32` — evaluate the 16-bit value into HL, then zero-extend: DE (high word) = 0.
         Expr::Widen(inner) => {
             gen_expr(a, inner); // HL = the u16 value
-            a.byte(0x11); // LD DE, 0   (high word)
-            a.word(0);
+            a.ld_imm(R16::De, Imm::Abs(0)); // LD DE, 0   (high word)
         }
         Expr::Bin32(op, l, r) => match op {
             BinOp::Or | BinOp::And | BinOp::Xor => {
                 gen_expr32(a, l);
-                a.byte(0xD5); // PUSH DE   (l.high)
-                a.byte(0xE5); // PUSH HL   (l.low)
+                a.push(R16::De); // PUSH DE   (l.high)
+                a.push(R16::Hl); // PUSH HL   (l.low)
                 gen_expr32(a, r); // HL = r.low, DE = r.high
-                a.byte(0xC1); // POP BC    (l.low)
+                a.pop(R16::Bc); // POP BC    (l.low)
                 gen_bitwise_bc(a, op, false); // HL = r.low OP l.low
-                a.byte(0xEB); // EX DE,HL  -> HL = r.high
-                a.byte(0xC1); // POP BC    (l.high)
+                a.ex_de_hl(); // EX DE,HL  -> HL = r.high
+                a.pop(R16::Bc); // POP BC    (l.high)
                 gen_bitwise_bc(a, op, true); // HL = r.high OP l.high; EX back below
-                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+                a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
             }
             // 32-bit add: word add, then the carry chains into the high word.
             BinOp::Add => {
                 gen_expr32(a, l);
-                a.byte(0xD5); // PUSH DE   (l.high)
-                a.byte(0xE5); // PUSH HL   (l.low)
+                a.push(R16::De); // PUSH DE   (l.high)
+                a.push(R16::Hl); // PUSH HL   (l.low)
                 gen_expr32(a, r); // HL = r.low, DE = r.high
-                a.byte(0xC1); // POP BC    (l.low)
-                a.byte(0x09); // ADD HL,BC   (low sum, CF out)
-                a.byte(0xEB); // EX DE,HL    (HL = r.high; flags survive)
-                a.byte(0xC1); // POP BC    (l.high)
-                a.byte(0xED);
-                a.byte(0x4A); // ADC HL,BC   (high sum + carry)
-                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+                a.pop(R16::Bc); // POP BC    (l.low)
+                a.add_hl(R16::Bc); // ADD HL,BC   (low sum, CF out)
+                a.ex_de_hl(); // EX DE,HL    (HL = r.high; flags survive)
+                a.pop(R16::Bc); // POP BC    (l.high)
+                a.fx(&[0xED, 0x4A]); // ADC HL,BC   (high sum + carry)
+                a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
             }
             // 32-bit sub: `SBC` chains the borrow (r evaluated first, like `gen_sub`).
             BinOp::Sub => {
                 gen_expr32(a, r);
-                a.byte(0xD5); // PUSH DE   (r.high)
-                a.byte(0xE5); // PUSH HL   (r.low)
+                a.push(R16::De); // PUSH DE   (r.high)
+                a.push(R16::Hl); // PUSH HL   (r.low)
                 gen_expr32(a, l); // HL = l.low, DE = l.high
-                a.byte(0xC1); // POP BC    (r.low)
-                a.byte(0xB7); // OR A        (clear carry)
-                a.byte(0xED);
-                a.byte(0x42); // SBC HL,BC   (low diff, borrow out)
-                a.byte(0xEB); // EX DE,HL    (HL = l.high)
-                a.byte(0xC1); // POP BC    (r.high)
-                a.byte(0xED);
-                a.byte(0x42); // SBC HL,BC   (high diff - borrow)
-                a.byte(0xEB); // EX DE,HL  -> HL = low, DE = high
+                a.pop(R16::Bc); // POP BC    (r.low)
+                a.fx(&[0xB7]); // OR A        (clear carry)
+                a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+                a.ex_de_hl(); // EX DE,HL    (HL = l.high)
+                a.pop(R16::Bc); // POP BC    (r.high)
+                a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff - borrow)
+                a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
             }
             BinOp::Mul => gen_mul32(a, l, r),
             BinOp::Div => gen_divmod32(a, l, r, false),
@@ -529,24 +500,16 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             for _ in 0..*k {
                 if *left {
                     // DE:HL << 1  (low first, carry up)
-                    a.byte(0xCB);
-                    a.byte(0x25); // SLA L
-                    a.byte(0xCB);
-                    a.byte(0x14); // RL H
-                    a.byte(0xCB);
-                    a.byte(0x13); // RL E
-                    a.byte(0xCB);
-                    a.byte(0x12); // RL D
+                    a.fx(&[0xCB, 0x25]); // SLA L
+                    a.fx(&[0xCB, 0x14]); // RL H
+                    a.fx(&[0xCB, 0x13]); // RL E
+                    a.fx(&[0xCB, 0x12]); // RL D
                 } else {
                     // DE:HL >> 1  (high first, carry down)
-                    a.byte(0xCB);
-                    a.byte(0x3A); // SRL D
-                    a.byte(0xCB);
-                    a.byte(0x1B); // RR E
-                    a.byte(0xCB);
-                    a.byte(0x1C); // RR H
-                    a.byte(0xCB);
-                    a.byte(0x1D); // RR L
+                    a.fx(&[0xCB, 0x3A]); // SRL D
+                    a.fx(&[0xCB, 0x1B]); // RR E
+                    a.fx(&[0xCB, 0x1C]); // RR H
+                    a.fx(&[0xCB, 0x1D]); // RR L
                 }
             }
         }
@@ -563,12 +526,12 @@ pub(super) fn gen_bitwise_bc(a: &mut Asm, op: &BinOp, _high: bool) {
         BinOp::Xor => (0xA9, 0xA8), // XOR C / XOR B
         _ => unreachable!("u32 supports only | & ^"),
     };
-    a.byte(0x7D); // LD A,L
-    a.byte(oc); // <op> C   -> A = L <op> C
-    a.byte(0x6F); // LD L,A
-    a.byte(0x7C); // LD A,H
-    a.byte(ob); // <op> B   -> A = H <op> B
-    a.byte(0x67); // LD H,A
+    a.fx(&[0x7D]); // LD A,L
+    a.fx(&[oc]); // <op> C   -> A = L <op> C
+    a.fx(&[0x6F]); // LD L,A
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[ob]); // <op> B   -> A = H <op> B
+    a.fx(&[0x67]); // LD H,A
 }
 
 /// `HL *= k` for a compile-time constant: a power of two shifts (`ADD HL,HL`), else
@@ -578,26 +541,24 @@ pub(super) fn gen_mul_const(a: &mut Asm, k: u16) {
         return;
     }
     if k == 0 {
-        a.byte(0x21); // LD HL, 0
-        a.word(0);
+        a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL, 0
         return;
     }
     if k.is_power_of_two() {
         for _ in 0..k.trailing_zeros() {
-            a.byte(0x29); // ADD HL,HL
+            a.add_hl(R16::Hl); // ADD HL,HL
         }
         return;
     }
     // General constant: shift-and-add (no `__mul16`). Move the value to DE, build the
     // result in HL by `result = result*2 (+ value)` per bit from the top.
-    a.byte(0xEB); // EX DE,HL   (DE = value)
-    a.byte(0x21); // LD HL, 0   (result)
-    a.word(0);
+    a.ex_de_hl(); // EX DE,HL   (DE = value)
+    a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL, 0   (result)
     let top = 15 - k.leading_zeros();
     for i in (0..=top).rev() {
-        a.byte(0x29); // ADD HL,HL   (result <<= 1)
+        a.add_hl(R16::Hl); // ADD HL,HL   (result <<= 1)
         if k & (1 << i) != 0 {
-            a.byte(0x19); // ADD HL,DE   (result += value)
+            a.add_hl(R16::De); // ADD HL,DE   (result += value)
         }
     }
 }
@@ -607,20 +568,19 @@ pub(super) fn gen_mul_const(a: &mut Asm, k: u16) {
 /// runtime); `index` is evaluated once.
 pub(super) fn gen_ptr_elem_addr(a: &mut Asm, ptr: &Expr, off: usize, index: &Expr) {
     gen_expr(a, index); // HL = index
-    a.byte(0x29); // ADD HL,HL   (index * 2)
-    a.byte(0xE5); // PUSH HL
+    a.add_hl(R16::Hl); // ADD HL,HL   (index * 2)
+    a.push(R16::Hl); // PUSH HL
     gen_expr(a, ptr); // HL = base pointer
     gen_add_offset(a, off); // HL = ptr + off
-    a.byte(0xD1); // POP DE      (DE = index*2)
-    a.byte(0x19); // ADD HL,DE   -> HL = ptr + off + index*2
+    a.pop(R16::De); // POP DE      (DE = index*2)
+    a.add_hl(R16::De); // ADD HL,DE   -> HL = ptr + off + index*2
 }
 
 /// `HL += off` (a small constant byte offset), if non-zero.
 pub(super) fn gen_add_offset(a: &mut Asm, off: usize) {
     if off != 0 {
-        a.byte(0x11); // LD DE, off
-        a.word(off as u16);
-        a.byte(0x19); // ADD HL, DE
+        a.ld_imm(R16::De, Imm::Abs(off as u16)); // LD DE, off
+        a.add_hl(R16::De); // ADD HL, DE
     }
 }
 
@@ -628,42 +588,40 @@ pub(super) fn gen_add_offset(a: &mut Asm, off: usize) {
 /// `OP E` / `OP D` opcodes (commutative, so operand order is irrelevant).
 pub(super) fn gen_bitwise(a: &mut Asm, l: &Expr, r: &Expr, op_e: u8, op_d: u8) {
     gen_expr(a, l);
-    a.byte(0xE5); // PUSH HL
+    a.push(R16::Hl); // PUSH HL
     gen_expr(a, r);
-    a.byte(0xD1); // POP DE       (DE = l, HL = r)
-    a.byte(0x7D); // LD A,L
-    a.byte(op_e); // OP E
-    a.byte(0x6F); // LD L,A
-    a.byte(0x7C); // LD A,H
-    a.byte(op_d); // OP D
-    a.byte(0x67); // LD H,A
+    a.pop(R16::De); // POP DE       (DE = l, HL = r)
+    a.fx(&[0x7D]); // LD A,L
+    a.fx(&[op_e]); // OP E
+    a.fx(&[0x6F]); // LD L,A
+    a.fx(&[0x7C]); // LD A,H
+    a.fx(&[op_d]); // OP D
+    a.fx(&[0x67]); // LD H,A
 }
 
 /// Evaluate so that `HL = second`, `DE = first` (the operand layout the runtime
 /// and `SBC` want).
 pub(super) fn gen_pair(a: &mut Asm, first: &Expr, second: &Expr) {
     gen_expr(a, first);
-    a.byte(0xE5); // PUSH HL
+    a.push(R16::Hl); // PUSH HL
     gen_expr(a, second);
-    a.byte(0xD1); // POP DE  (DE = first)
+    a.pop(R16::De); // POP DE  (DE = first)
 }
 
 /// Leave `HL = &base[index]` (each element is `u16`, so address = slot base + index*2).
 pub(super) fn gen_elem_addr(a: &mut Asm, base: usize, index: &Expr) {
     gen_expr(a, index); // HL = index
-    a.byte(0x29); // ADD HL,HL  (index * 2)
-    let base_addr = a.slot_addr(base);
-    a.byte(0x11); // LD DE, base_addr
-    a.word(base_addr);
-    a.byte(0x19); // ADD HL, DE  -> element address
+    a.add_hl(R16::Hl); // ADD HL,HL  (index * 2)
+    let base_addr = a.slot(base);
+    a.ld_imm(R16::De, base_addr); // LD DE, base_addr
+    a.add_hl(R16::De); // ADD HL, DE  -> element address
 }
 
 /// `HL = left - right`, flags from the subtraction (carry = borrow).
 pub(super) fn gen_sub(a: &mut Asm, left: &Expr, right: &Expr) {
     gen_pair(a, right, left); // HL = left, DE = right
-    a.byte(0xB7); // OR A   (clear carry)
-    a.byte(0xED);
-    a.byte(0x52); // SBC HL, DE
+    a.fx(&[0xB7]); // OR A   (clear carry)
+    a.fx(&[0xED, 0x52]); // SBC HL, DE
 }
 
 /// The operand order and the conditional-jump opcode that is taken when a comparison is
@@ -720,11 +678,9 @@ pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr, signed: boo
         gen_sub(a, left, right); // flags set; HL clobbered (overwritten below)
         a.jump(jp_false, false_l);
     }
-    a.byte(0x21); // LD HL, 1   (true)
-    a.word(1);
+    a.ld_imm(R16::Hl, Imm::Abs(1)); // LD HL, 1   (true)
     a.jump(0xC3, end_l); // JP end
     a.place(false_l);
-    a.byte(0x21); // LD HL, 0   (false)
-    a.word(0);
+    a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL, 0   (false)
     a.place(end_l);
 }
