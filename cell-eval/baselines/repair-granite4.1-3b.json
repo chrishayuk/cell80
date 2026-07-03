@@ -1,0 +1,202 @@
+{
+  "model": "granite4.1:3b",
+  "overall": {
+    "n": 20,
+    "compiled": 13,
+    "repair_at_1": 0.6
+  },
+  "by_class": {
+    "closure": {
+      "n": 2,
+      "compiled": 0,
+      "repair_at_1": 0.0
+    },
+    "float_literal": {
+      "n": 2,
+      "compiled": 2,
+      "repair_at_1": 1.0
+    },
+    "if_no_else": {
+      "n": 2,
+      "compiled": 2,
+      "repair_at_1": 1.0
+    },
+    "match_no_wildcard": {
+      "n": 2,
+      "compiled": 2,
+      "repair_at_1": 1.0
+    },
+    "neg_unsigned": {
+      "n": 2,
+      "compiled": 1,
+      "repair_at_1": 0.0
+    },
+    "range_pattern": {
+      "n": 2,
+      "compiled": 2,
+      "repair_at_1": 1.0
+    },
+    "recursion": {
+      "n": 2,
+      "compiled": 0,
+      "repair_at_1": 0.0
+    },
+    "string_literal": {
+      "n": 2,
+      "compiled": 2,
+      "repair_at_1": 1.0
+    },
+    "try_operator": {
+      "n": 2,
+      "compiled": 1,
+      "repair_at_1": 0.5
+    },
+    "u32_return": {
+      "n": 2,
+      "compiled": 1,
+      "repair_at_1": 0.5
+    }
+  },
+  "results": [
+    {
+      "id": "repair.recursion.fact",
+      "class": "recursion",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.recursion.sum",
+      "class": "recursion",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.if_no_else.floor",
+      "class": "if_no_else",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.if_no_else.step",
+      "class": "if_no_else",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.match_no_wild.op",
+      "class": "match_no_wildcard",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.match_no_wild.bucket",
+      "class": "match_no_wildcard",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.u32_return.percent",
+      "class": "u32_return",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.u32_return.scale",
+      "class": "u32_return",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.string.tag",
+      "class": "string_literal",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.string.msg",
+      "class": "string_literal",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.float.half",
+      "class": "float_literal",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.float.pct",
+      "class": "float_literal",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.closure.apply",
+      "class": "closure",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.closure.thrice",
+      "class": "closure",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.try.div",
+      "class": "try_operator",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    },
+    {
+      "id": "repair.try.sub",
+      "class": "try_operator",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.range_pat.decade",
+      "class": "range_pattern",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.range_pat.grade",
+      "class": "range_pattern",
+      "compiled": true,
+      "correct": true,
+      "note": ""
+    },
+    {
+      "id": "repair.neg.negate",
+      "class": "neg_unsigned",
+      "compiled": true,
+      "correct": false,
+      "note": "compiles but breaks the intended behavior"
+    },
+    {
+      "id": "repair.neg.delta",
+      "class": "neg_unsigned",
+      "compiled": false,
+      "correct": false,
+      "note": "repaired source still rejected"
+    }
+  ]
+}

@@ -109,3 +109,27 @@ def render_repair(report) -> str:
         for r in misses:
             lines.append(f"  ✗ {r['id']} [{r['class']}] — {r['note']}")
     return "\n".join(lines)
+
+
+def render_tiers(report, calibration=None) -> str:
+    d = report.as_dict()
+    lines = [
+        f"tiered retrieval — embed={d['embed_model']}  gate θ={d['theta']} "
+        f"(margin on the blended score; below → escalate)",
+        "",
+        f"  {'split':<12}{'n':>4}{'tier1 P@1':>11}{'tier2 P@1':>11}"
+        f"{'answered':>10}{'prec@answered':>15}",
+    ]
+    for c, s_ in d["splits"].items():
+        lines.append(
+            f"  {c:<12}{s_['n']:>4}{s_['tier1_p1']:>11.2f}{s_['tier2_p1']:>11.2f}"
+            f"{s_['answer_rate']:>10.2f}{s_['precision_on_answered']:>15.2f}"
+        )
+    if calibration:
+        lines += [
+            "",
+            f"calibration: chosen θ={calibration['chosen_theta']} "
+            f"(smallest margin with adversarial precision-on-answered ≥ "
+            f"{calibration['floor']}); full curve in the JSON output",
+        ]
+    return "\n".join(lines)

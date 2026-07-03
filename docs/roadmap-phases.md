@@ -126,7 +126,7 @@ doesn't, every dataset row genuinely rejects).
 instructive-rewrite classes (`if_no_else`, `match_no_wildcard`, `range_pattern`,
 `string_literal`, `float_literal`) repair at 1.00 on both; `recursion`/`closure` sit at
 0.00 on the 3B but 0.5/1.0 on the 26B — confirming those misses are a model-capability
-floor (one-shot restructuring), not a diagnostic gap. `results/repair-*.json` carries
+floor (one-shot restructuring), not a diagnostic gap. `cell-eval/baselines/repair-*.json` carries
 both runs.
 
 **1.4 Signed `i16`. ✓**
@@ -146,16 +146,30 @@ the numerics table.
 ## Phase 2 — Retrieval is the product (2–6 weeks)
 
 An agent that finds the wrong capsule in 0.25 µs loses to one that finds the right
-function in 100 ms. This phase gates the "millions of cells" claim.
+function in 100 ms. This phase gates the "millions of cells" claim. The governing
+design is [escalation-ladder.md](escalation-ladder.md): one cost-ordered ladder,
+cheapest adequate mechanism wins, **calibration is a first-class deliverable**.
 
-**2.1 Confidence-gated escalation path.**
-Tier 1: lexical (tf-idf, current). Tier 2: embedding rerank over manifest descriptions.
-Tier 3: behavioural disambiguation — run the top-k candidates on precomputed
-discriminating probe inputs and match output fingerprints. Cells are microsecond-cheap
-and deterministic; *executing the candidates* is a retrieval signal no other tool
-ecosystem can afford. This is cell80's native trick — lean into it.
-*DoD:* paraphrase ≥ 0.85, adversarial ≥ 0.75 on the current eval set at ≤ 10 ms p99
-(tiers 1–2) / ≤ 50 ms (tier 3).
+**2.1 Confidence-gated escalation path — first slice ✓ (the calibrated margin gate).**
+Tier 1: lexical (tf-idf, `search_scored` keeps the cosine). Tier 2: static-embedding
+rerank (`model2vec` potion-retrieval-32M, µs on CPU) over a **blended score**
+(`0.25·tfidf + 0.75·embed` — swept; the blend dominates either signal alone: the
+embedding lifts adversarial 0.31 → 0.50 while the lexical term holds direct at 0.97).
+**The margin gate** answers iff `top1 − top2 ≥ θ`, else **escalates** — and θ is
+calibrated, not chosen: `cell-eval tiers` sweeps the curve with the **adversarial
+split as the calibration set** and picks the smallest θ whose adversarial
+precision-on-answered clears the 0.75 floor. Operating point on the seed library:
+**θ = 0.14** — direct answers 72% of queries at **1.00** precision, paraphrase 23%
+at 0.83, adversarial answers only 15% at 0.75 and escalates the rest. The full
+curve + report are checked into `cell-eval/baselines/tier-calibration.json`; re-runs catch
+drift as the library grows.
+*Still open in 2.1:* tier 3 — behavioural disambiguation of the escalated residue
+via precomputed discriminating probes (the ladder's rung-1 machinery pointed at
+escalations), and the ungated paraphrase target (needs better manifest text and/or
+the admission gate more than a bigger model — the residual misses are same-shape
+siblings). The original DoD's blanket "paraphrase ≥ 0.85 ungated" is superseded by
+the ladder framing: the deliverable is *calibrated honesty per split* — what the
+cheap tiers answer must be right; what they can't answer must escalate, not guess.
 
 **2.2 Per-cell admission gate.**
 A cell enters the library only if it survives its own paraphrase + adversarial query set
