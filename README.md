@@ -233,7 +233,7 @@ not when it's a hot kernel you'd keep resident.
 
 ## Write a cell
 
-The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`, arithmetic, comparisons as
+The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`/`i16`, arithmetic (incl. `if`/`match` as values), comparisons as
 values (`(a < b) as u16`) + `&&`/`||`, runtime bit shifts, `if`/`while`/`for`/`loop`, arrays,
 `struct`/`enum`/`match`, functions and methods, `poke`/`peek`. A few of the cells
 (`cell80/cells/`):
@@ -275,7 +275,17 @@ and `chebyshev` calls `iabs_diff`/`imax`. **Dead-code elimination** then drops t
 cell doesn't use, so a cartridge only ever carries what it reaches — a cell that touches no
 kernel is byte-identical to having no prelude at all.
 
-**The envelope is deliberately narrow** — integers (`u8`/`u16`/`u32`, no float/signed yet),
+**The envelope is deliberately narrow** — integers only:
+
+| type | width | notes |
+|---|---|---|
+| `u8` | 1 slot | zero-extends on load; wrapping |
+| `u16` | 1 slot | the native word; wrapping |
+| `i16` | 1 slot | two's complement: signed compare/divide/`>>`; wrapping |
+| `u32` | 2 slots | wide arithmetic + state fields; wrapping |
+| fractional | — | a **fixed-point convention on integers** (Q8.8: `(a * w) >> 8`), not a float type |
+
+no floats,
 fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: a tiny
 deterministic integer **stdlib** (predicates, percentages, bounds, ranking, bit/flag ops —
 the [first wave](./docs/library-growth.md)), scoring, validators, range/move checks, small

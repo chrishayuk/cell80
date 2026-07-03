@@ -55,6 +55,16 @@ real Rust* → every program is differential-tested against `rustc` on the emula
   and the **named round-trip fuzz** (`state_named_roundtrip_fuzz`): 500 random inputs set
   *by name* → run → read inputs+outputs back *by name* vs a host oracle — the B3
   field↔memory↔field seam as one property, not two halves (`tests/cell_fuzz.rs`).
+- **The LLM-facing compiler (Phase 1 of [roadmap-phases.md](roadmap-phases.md)).**
+  **`if`/`match` as expressions** (`let x = if c { a } else { b };` — let/assign/return/
+  tail positions, nesting, `else if`, u32 arms); **instructive diagnostics** — every syn
+  `{:?}` dump replaced with prose naming the construct and the accepted rewrite, and
+  `compile_fn` on multi-item input points at `compile_program`; **signed `i16`**
+  (two's-complement: signed compare via S ⊕ V, truncating `__sdivmod16` through the
+  per-target unsigned core, arithmetic `>>`, sign-boundary diff tests) with the
+  fixed-point idiom documented; and the **repair-rate eval** (`cell-eval repair`) that
+  makes the diagnostics *measurable* — one shot, compile **and** reproduce the intended
+  I/O to count. Baselines: repair@1 **0.60** (granite4.1:3b) / **0.90** (gemma-4-26B).
 - **Determinism contract closed (Phase 0 of [roadmap-phases.md](roadmap-phases.md)).**
   **Recursion is rejected at compile time** (a call-graph cycle check at lowering — Stage-1
   static locals made the slot-after-call factorial silently return 1; now it's a named-cycle
