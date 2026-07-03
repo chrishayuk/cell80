@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 
 
@@ -116,6 +117,26 @@ def _cmd_repair(args) -> int:
     return 0
 
 
+def _cmd_potion_pairs(args) -> int:
+    from .potion import PAIRS_PATH, generate_pairs, write_pairs
+
+    try:
+        rows, stats = generate_pairs(
+            model=args.model,
+            library_dir=args.library,
+            n_para=args.paraphrases,
+            n_adv=args.adversarial,
+            only_cells=args.cells.split(",") if args.cells else None,
+        )
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval potion-pairs: {e}", file=sys.stderr)
+        return 2
+    out = pathlib.Path(args.out) if args.out else PAIRS_PATH
+    write_pairs(rows, stats, out)
+    print(json.dumps({"out": str(out), **stats}, indent=2))
+    return 0 if not stats["validation_problems"] and not stats["failed_cells"] else 1
+
+
 def _cmd_composition(args) -> int:
     from .composition import run_composition
     from .report import render_composition
@@ -184,6 +205,19 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--model", default=None)
     r.add_argument("--json", action="store_true")
     r.set_defaults(func=_cmd_repair)
+
+    pp = sub.add_parser(
+        "potion-pairs",
+        help="regenerate the cell-potion training corpus from manifests (banked protocol; "
+        "audit with potion/audit_overlap.py, retrain with potion/train.py)",
+    )
+    pp.add_argument("--library", default=None)
+    pp.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
+    pp.add_argument("--paraphrases", type=int, default=8)
+    pp.add_argument("--adversarial", type=int, default=4)
+    pp.add_argument("--cells", default=None, help="comma-separated ids (library growth: new cells only)")
+    pp.add_argument("--out", default=None)
+    pp.set_defaults(func=_cmd_potion_pairs)
 
     c = sub.add_parser("composition", help="LLM composition eval — does the agent wire cells?")
     c.add_argument("--dataset", default="composition_tasks")

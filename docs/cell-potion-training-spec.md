@@ -150,7 +150,10 @@ frozen-eval-result.json), corpus `cell-eval/datasets/potion-train-pairs.jsonl`
 (+ `.clean.jsonl`), bake-off row `cell-eval/baselines/embed-bakeoff.json`,
 harness alias `--embed-model cell-potion` (θ in `OPERATING_POINTS`). The
 model artifact lives at `cell-eval/potion/model/` (129 MB, not committed;
-rebuild is deterministic from the committed corpus).
+rebuild is deterministic from the committed corpus). The pair-generation
+deliverable is committed post-run as `cell-eval potion-pairs` (same protocol
+and row shape; see PROTOCOL.md §Regeneration) — the banked corpus itself was
+agent-authored and is unchanged.
 
 Winning config (selected on the generated-corpus dev split only, pre-registered
 criterion = sum of split accuracies): τ = 0.05, λ = 0.0, lr = 0.05 (Adam),

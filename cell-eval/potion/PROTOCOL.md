@@ -63,3 +63,16 @@ Python path. Baseline potion-retrieval-32M measures 32 us median / 45 us p99
 (the banked 1.7 ms/query bake-off figure includes eval-loop overhead, not the
 in-process floor). cell-potion shares tokenizer and table shape, so its latency
 is identical by construction — but it is measured anyway, not asserted.
+
+## Regeneration (added after the banked run)
+
+The banked corpus above was authored by session agents with manifests passed
+inline. The committed, mechanical regeneration path for library growth is
+`cell-eval potion-pairs` (`src/cell_eval/potion.py` + offline tests): same row
+shape and per-cell counts (8 paraphrase / 4 adversarial skirting a named
+confusable, recorded first in `hard_negatives` / 1 direct anchor), same
+neutral-embedder confusable map, manifests-only authoring, and the same
+validation checks — then this audit (`audit_overlap.py`) and `train.py`,
+unchanged. `--cells new_a,new_b` regenerates rows for new cells only, per the
+spec's growth invariant (never touch the eval rows). The banked numbers were
+produced from the committed corpus, not from this CLI.
