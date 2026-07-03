@@ -1,0 +1,170 @@
+[
+ {
+  "model": "minishlab/potion-retrieval-32M",
+  "ms_per_query": 1.7,
+  "theta": 0.14,
+  "ungated": {
+   "direct": 0.971,
+   "paraphrase": 0.434,
+   "adversarial": 0.5
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.72,
+    "prec": 1.0
+   },
+   "paraphrase": {
+    "rate": 0.23,
+    "prec": 0.83
+   },
+   "adversarial": {
+    "rate": 0.15,
+    "prec": 0.75
+   }
+  }
+ },
+ {
+  "model": "ollama:granite-embedding",
+  "ms_per_query": 38.6,
+  "theta": 0.06,
+  "ungated": {
+   "direct": 0.961,
+   "paraphrase": 0.547,
+   "adversarial": 0.423
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.89,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.34,
+    "prec": 0.83
+   },
+   "adversarial": {
+    "rate": 0.35,
+    "prec": 0.89
+   }
+  }
+ },
+ {
+  "model": "ollama:nomic-embed-text",
+  "ms_per_query": 31.0,
+  "theta": 0.05,
+  "ungated": {
+   "direct": 0.98,
+   "paraphrase": 0.566,
+   "adversarial": 0.538
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.91,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.47,
+    "prec": 0.8
+   },
+   "adversarial": {
+    "rate": 0.46,
+    "prec": 0.75
+   }
+  }
+ },
+ {
+  "model": "ollama:embeddinggemma",
+  "ms_per_query": 158.0,
+  "theta": 0.06,
+  "ungated": {
+   "direct": 0.99,
+   "paraphrase": 0.623,
+   "adversarial": 0.462
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.9,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.51,
+    "prec": 0.93
+   },
+   "adversarial": {
+    "rate": 0.35,
+    "prec": 0.89
+   }
+  }
+ },
+ {
+  "model": "ollama:qwen3-embedding:0.6b",
+  "ms_per_query": 119.0,
+  "theta": 0.05,
+  "ungated": {
+   "direct": 0.98,
+   "paraphrase": 0.66,
+   "adversarial": 0.538
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.91,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.51,
+    "prec": 0.85
+   },
+   "adversarial": {
+    "rate": 0.5,
+    "prec": 0.77
+   }
+  }
+ },
+ {
+  "model": "ollama:mxbai-embed-large",
+  "ms_per_query": 39.3,
+  "theta": 0.06,
+  "ungated": {
+   "direct": 0.971,
+   "paraphrase": 0.623,
+   "adversarial": 0.538
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.9,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.4,
+    "prec": 0.81
+   },
+   "adversarial": {
+    "rate": 0.38,
+    "prec": 0.9
+   }
+  }
+ },
+ {
+  "model": "ollama:snowflake-arctic-embed2",
+  "ms_per_query": 192.6,
+  "theta": 0.09,
+  "ungated": {
+   "direct": 0.961,
+   "paraphrase": 0.585,
+   "adversarial": 0.5
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.85,
+    "prec": 0.99
+   },
+   "paraphrase": {
+    "rate": 0.32,
+    "prec": 0.82
+   },
+   "adversarial": {
+    "rate": 0.23,
+    "prec": 0.83
+   }
+  }
+ }
+]

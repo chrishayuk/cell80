@@ -65,7 +65,7 @@ def _cmd_tiers(args) -> int:
             dataset=args.dataset,
             library_dir=args.library,
             embed_model=args.embed_model or _t.DEFAULT_EMBED_MODEL,
-            theta=args.theta if args.theta is not None else _t.OPERATING_MARGIN,
+            theta=args.theta,
             alpha=args.alpha if args.alpha is not None else _t.BLEND_ALPHA,
         )
     except ImportError as e:
