@@ -35,7 +35,13 @@ from dataclasses import dataclass, field
 from .datasets import load_jsonl
 from .library import open_library
 
+# The code default runs anywhere (µs, CPU, offline — the latency floor); the
+# recommended production tier-2 where an Ollama endpoint exists is nomic-embed-text —
+# see baselines/embed-bakeoff.json for the seven-model bake-off backing the choice
+# (nomic: best answered-coverage per millisecond; qwen3-embedding:0.6b: the quality
+# ceiling when the latency budget is looser; granite-embedding measured below both).
 DEFAULT_EMBED_MODEL = "minishlab/potion-retrieval-32M"
+RECOMMENDED_EMBED_MODEL = "ollama:nomic-embed-text"
 TIER1_K = 10  # tier 1 hands this many candidates to the rerank
 
 # The operating points chosen by `calibrate` on the seed library (see
@@ -43,7 +49,18 @@ TIER1_K = 10  # tier 1 hands this many candidates to the rerank
 # `cell-eval tiers` after growing the library; drift shows up as the adversarial
 # precision-on-answered falling below the floor at the chosen θ.
 BLEND_ALPHA = 0.25
-OPERATING_MARGIN = 0.14  # calibrated on the seed library (adversarial floor 0.75)
+# Calibrated operating points per embedder (adversarial floor 0.75, seed library) —
+# the margin scale depends on the embedding geometry, so θ is per-model.
+OPERATING_POINTS = {
+    "minishlab/potion-retrieval-32M": 0.14,
+    "ollama:granite-embedding": 0.06,
+    "ollama:nomic-embed-text": 0.05,
+    "ollama:embeddinggemma": 0.06,
+    "ollama:qwen3-embedding:0.6b": 0.05,
+    "ollama:mxbai-embed-large": 0.06,
+    "ollama:snowflake-arctic-embed2": 0.09,
+}
+OPERATING_MARGIN = OPERATING_POINTS[DEFAULT_EMBED_MODEL]
 
 
 def _doc(m: dict) -> str:
@@ -53,21 +70,70 @@ def _doc(m: dict) -> str:
 
 
 class Embedder:
-    """A static-embedding model (model2vec potion): loads once, embeds in ~µs."""
+    """A pluggable embedding backend, selected by the model name:
+
+    * `minishlab/potion-*` (or any HF id) → `model2vec` static vectors — **µs on
+      CPU**, no server. The latency floor of the ladder's tier 2.
+    * `ollama:<model>` (e.g. `ollama:nomic-embed-text`) → the local Ollama
+      OpenAI-compatible `/v1/embeddings` endpoint — **~ms per query**, a real
+      transformer, the widely-supported path.
+
+    Both L2-normalise, so dot = cosine. The calibration curve is the arbiter
+    between them, not the model's reputation — same gate, same floor, compare
+    answered-coverage."""
 
     def __init__(self, model: str = DEFAULT_EMBED_MODEL):
-        from model2vec import StaticModel  # lazy: gate-math tests need no model
-
         self.name = model
-        self._m = StaticModel.from_pretrained(model)
+        if model.startswith("ollama:"):
+            self._kind = "ollama"
+            self._model = model.split(":", 1)[1]
+            import urllib.request  # stdlib — no client dependency
+
+            self._url = "http://localhost:11434/v1/embeddings"
+        else:
+            self._kind = "static"
+            from model2vec import StaticModel  # lazy: gate-math tests need no model
+
+            self._m = StaticModel.from_pretrained(model)
+
+    def _encode_ollama(self, texts: list[str]):
+        import json as _json
+        import urllib.request
+
+        import numpy as np
+
+        req = urllib.request.Request(
+            self._url,
+            data=_json.dumps({"model": self._model, "input": texts}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as r:
+            data = _json.loads(r.read())
+        return np.array([d["embedding"] for d in data["data"]], dtype="float32")
 
     def encode(self, texts: list[str]):
         import numpy as np
 
-        v = self._m.encode(texts)
+        v = self._encode_ollama(texts) if self._kind == "ollama" else self._m.encode(texts)
         n = np.linalg.norm(v, axis=1, keepdims=True)
         n[n == 0] = 1.0
         return v / n
+
+    _cache: dict | None = None
+
+    def encode_cached(self, texts: list[str]):
+        """Like [`encode`] with a per-instance cache — manifest docs recur across
+        queries, so each unique doc embeds once (the honest per-query cost is then
+        one query embed + K cache hits)."""
+        import numpy as np
+
+        if self._cache is None:
+            self._cache = {}
+        misses = [t for t in texts if t not in self._cache]
+        if misses:
+            for t, v in zip(misses, self.encode(misses)):
+                self._cache[t] = v
+        return np.array([self._cache[t] for t in texts])
 
 
 @dataclass
@@ -171,13 +237,16 @@ def run_tiers(
     dataset: str = "retrieval",
     library_dir: str | None = None,
     embed_model: str = DEFAULT_EMBED_MODEL,
-    theta: float = OPERATING_MARGIN,
+    theta: float | None = None,
     k: int = TIER1_K,
     alpha: float = BLEND_ALPHA,
 ) -> TierReport:
-    """Run every dataset query through tier 1 → the blended tier-2 rerank → the gate."""
+    """Run every dataset query through tier 1 → the blended tier-2 rerank → the gate.
+    `theta` defaults to the model's calibrated operating point."""
     lib = open_library(library_dir)
     emb = Embedder(embed_model)
+    if theta is None:
+        theta = OPERATING_POINTS.get(embed_model, OPERATING_MARGIN)
     report = TierReport(embed_model=emb.name, theta=theta)
 
     for i, row in enumerate(load_jsonl(dataset)):
@@ -190,7 +259,7 @@ def run_tiers(
             )
             continue
         t1 = [s for s, _ in hits]
-        docs = emb.encode([_doc(m) for _, m in hits])
+        docs = emb.encode_cached([_doc(m) for _, m in hits])
         q = emb.encode([row["query"]])[0]
         scored = sorted(
             (

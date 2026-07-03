@@ -163,6 +163,18 @@ precision-on-answered clears the 0.75 floor. Operating point on the seed library
 at 0.83, adversarial answers only 15% at 0.75 and escalates the rest. The full
 curve + report are checked into `cell-eval/baselines/tier-calibration.json`; re-runs catch
 drift as the library grows.
+*Embedder bake-off (recorded in `cell-eval/baselines/embed-bakeoff.json`):* seven
+candidates through the same gate and floor. **nomic-embed-text** is the recommended
+tier-2 default where an Ollama endpoint exists — best answered-coverage per
+millisecond (0.91 / 0.47 / 0.46 across the splits at ~31 ms/query) and the
+most-supported model in the ecosystem; **qwen3-embedding:0.6b** is the recorded
+quality ceiling (ungated paraphrase 0.66, coverage 0.91 / 0.51 / 0.50, ~119 ms);
+**granite-embedding** measured below both (paraphrase coverage 0.34) despite the
+stack preference — the curve, not the vendor, picks. potion stays the µs offline
+floor and the code default (runs anywhere, no server). Retrieval prefixes were
+tested on the top three and don't change the ordering. θ is calibrated per
+embedder (`OPERATING_POINTS`).
+
 *Still open in 2.1:* tier 3 — behavioural disambiguation of the escalated residue
 via precomputed discriminating probes (the ladder's rung-1 machinery pointed at
 escalations), and the ungated paraphrase target (needs better manifest text and/or
