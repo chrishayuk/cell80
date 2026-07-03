@@ -79,6 +79,27 @@ def _cmd_tiers(args) -> int:
     return 0
 
 
+def _cmd_tier3(args) -> int:
+    from .report import render_tier3
+    from .tier3 import run_disambiguation
+
+    try:
+        report = run_disambiguation(
+            dataset=args.dataset,
+            library_dir=args.library,
+            model=args.model,
+            embed_model=args.embed_model,
+        )
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval tier3: {e}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report.as_dict(), indent=2))
+    else:
+        print(render_tier3(report))
+    return 0
+
+
 def _cmd_repair(args) -> int:
     from .repair import run_repair
     from .report import render_repair
@@ -143,6 +164,17 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--floor", type=float, default=0.75)
     t.add_argument("--json", action="store_true")
     t.set_defaults(func=_cmd_tiers)
+
+    t3 = sub.add_parser(
+        "tier3",
+        help="behavioural disambiguation A/B over the escalated residue (probe tables)",
+    )
+    t3.add_argument("--dataset", default="retrieval")
+    t3.add_argument("--library", default=None)
+    t3.add_argument("--model", default=None)
+    t3.add_argument("--embed-model", default=None)
+    t3.add_argument("--json", action="store_true")
+    t3.set_defaults(func=_cmd_tier3)
 
     r = sub.add_parser(
         "repair",

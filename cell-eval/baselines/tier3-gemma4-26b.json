@@ -1,0 +1,22 @@
+{
+  "model": "hf.co/ggml-org/gemma-4-26B-A4B-it-GGUF:Q4_K_M",
+  "theta": 0.05,
+  "embed_model": "ollama:nomic-embed-text",
+  "splits": {
+    "paraphrase": {
+      "n": 13,
+      "manifests_only": 1.0,
+      "with_probes": 1.0
+    },
+    "direct": {
+      "n": 9,
+      "manifests_only": 1.0,
+      "with_probes": 1.0
+    },
+    "adversarial": {
+      "n": 10,
+      "manifests_only": 1.0,
+      "with_probes": 1.0
+    }
+  }
+}

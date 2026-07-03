@@ -175,13 +175,30 @@ floor and the code default (runs anywhere, no server). Retrieval prefixes were
 tested on the top three and don't change the ordering. θ is calibrated per
 embedder (`OPERATING_POINTS`).
 
-*Still open in 2.1:* tier 3 — behavioural disambiguation of the escalated residue
-via precomputed discriminating probes (the ladder's rung-1 machinery pointed at
-escalations), and the ungated paraphrase target (needs better manifest text and/or
-the admission gate more than a bigger model — the residual misses are same-shape
-siblings). The original DoD's blanket "paraphrase ≥ 0.85 ungated" is superseded by
-the ladder framing: the deliverable is *calibrated honesty per split* — what the
-cheap tiers answer must be right; what they can't answer must escalate, not guess.
+*Tier 3 — measured, and half of it banked as a negative.* The machinery exists
+(`cell_eval.tier3`): discriminating-probe tables executed over a candidate set in µs
+(min/max separate in one row), and `match_examples` — rung 1 scoped to the top-k, a
+pure-execution filter for requests that carry I/O examples. The A/B over the
+escalated residue (nomic θ = 0.05; `baselines/tier3-*.json`) answered the open
+question the honest way: **raw probe tables attached to text-only escalations do not
+help** — gemma-4-26B resolves the pickable residue at 1.00 from manifests alone
+(probes neutral), and granite-3B at 0.85–1.00 manifests-only with probes *hurting*
+(−0.11…−0.38: raw numeric tables distract a small model that can't map a text query
+to expected outputs). So the ladder's text-only escalation path is "hand the top-k
+manifests to the smallest adequate brain", which is nearly free; probes earn their
+keep where an expected behaviour exists to match — example-carrying requests
+(rung 1) and register-time discriminating-probe metadata for the admission gate.
+A natural-language rendering of behavioural *differences* (rather than raw tables)
+is the one follow-up worth an A/B before closing the door entirely.
+
+*Still open in 2.1:* the ungated paraphrase target (needs better manifest text
+and/or the admission gate more than a bigger model — the residual misses are
+same-shape siblings). The original DoD's blanket "paraphrase ≥ 0.85 ungated" is
+superseded by the ladder framing: the deliverable is *calibrated honesty per split*
+— what the cheap tiers answer must be right; what they can't answer must escalate,
+not guess. The **cell-potion** static-embedder experiment is specced (kill-gated)
+in [cell-potion-training-spec.md](cell-potion-training-spec.md) — a *training*, not
+a distillation, justified by the reflex-tier latency budget no served model meets.
 
 **2.2 Per-cell admission gate.**
 A cell enters the library only if it survives its own paraphrase + adversarial query set
