@@ -1,0 +1,165 @@
+{
+ "neutral_embedder": "ollama:nomic-embed-text",
+ "threshold": 0.92,
+ "train_rows": 1300,
+ "eval_queries": 181,
+ "dropped": 23,
+ "kept": 1277,
+ "nn_sim": {
+  "max": 1.0,
+  "mean": 0.7194,
+  "p95": 0.8746
+ },
+ "nn_sim_hist_0.5+": {
+  "0.50-0.55": 22,
+  "0.55-0.60": 68,
+  "0.60-0.65": 187,
+  "0.65-0.70": 260,
+  "0.70-0.75": 290,
+  "0.75-0.80": 228,
+  "0.80-0.85": 131,
+  "0.85-0.90": 63,
+  "0.90-0.95": 19,
+  "0.95-1.00": 18
+ },
+ "dropped_rows": [
+  {
+   "cell": "gcd",
+   "kind": "paraphrase",
+   "query": "greatest common divisor of two numbers",
+   "sim": 1.0
+  },
+  {
+   "cell": "square",
+   "kind": "paraphrase",
+   "query": "saturating square of a number",
+   "sim": 1.0
+  },
+  {
+   "cell": "digit_sum",
+   "kind": "paraphrase",
+   "query": "sum of decimal digits",
+   "sim": 0.9918
+  },
+  {
+   "cell": "max",
+   "kind": "direct",
+   "query": "Maximum of two values.",
+   "sim": 0.9916
+  },
+  {
+   "cell": "max3",
+   "kind": "direct",
+   "query": "Largest of three values.",
+   "sim": 0.9915
+  },
+  {
+   "cell": "min",
+   "kind": "direct",
+   "query": "Minimum of two values.",
+   "sim": 0.9912
+  },
+  {
+   "cell": "min3",
+   "kind": "direct",
+   "query": "Smallest of three values.",
+   "sim": 0.9901
+  },
+  {
+   "cell": "min",
+   "kind": "paraphrase",
+   "query": "smaller of two numbers",
+   "sim": 0.9835
+  },
+  {
+   "cell": "abs_diff",
+   "kind": "paraphrase",
+   "query": "how far apart are two values?",
+   "sim": 0.9782
+  },
+  {
+   "cell": "gcd3",
+   "kind": "paraphrase",
+   "query": "greatest common divisor of three numbers",
+   "sim": 0.9754
+  },
+  {
+   "cell": "median3",
+   "kind": "direct",
+   "query": "Median (middle value) of three.",
+   "sim": 0.9648
+  },
+  {
+   "cell": "argmin2",
+   "kind": "adversarial",
+   "query": "index of the smaller of two, not the larger",
+   "sim": 0.9574
+  },
+  {
+   "cell": "max",
+   "kind": "paraphrase",
+   "query": "two-value maximum",
+   "sim": 0.9573
+  },
+  {
+   "cell": "gcd3",
+   "kind": "direct",
+   "query": "Greatest common divisor of three values.",
+   "sim": 0.957
+  },
+  {
+   "cell": "byte_to_percent",
+   "kind": "adversarial",
+   "query": "express a byte as a percent, not take a percent of a value",
+   "sim": 0.9545
+  },
+  {
+   "cell": "min",
+   "kind": "paraphrase",
+   "query": "two-value minimum",
+   "sim": 0.9532
+  },
+  {
+   "cell": "euclid_sq",
+   "kind": "paraphrase",
+   "query": "squared straight-line distance between two points on a grid",
+   "sim": 0.9529
+  },
+  {
+   "cell": "triangular",
+   "kind": "paraphrase",
+   "query": "compute the nth triangular number",
+   "sim": 0.9502
+  },
+  {
+   "cell": "digit_sum",
+   "kind": "paraphrase",
+   "query": "add up the digits of a number",
+   "sim": 0.9482
+  },
+  {
+   "cell": "median3",
+   "kind": "paraphrase",
+   "query": "middle value of three",
+   "sim": 0.9402
+  },
+  {
+   "cell": "manhattan",
+   "kind": "paraphrase",
+   "query": "manhattan distance between two points",
+   "sim": 0.9282
+  },
+  {
+   "cell": "next_pow2",
+   "kind": "paraphrase",
+   "query": "round a number up to the nearest power of two",
+   "sim": 0.9278
+  },
+  {
+   "cell": "max",
+   "kind": "paraphrase",
+   "query": "bigger of two numbers",
+   "sim": 0.9265
+  }
+ ]
+}

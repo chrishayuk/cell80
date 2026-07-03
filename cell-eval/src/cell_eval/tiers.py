@@ -53,6 +53,7 @@ BLEND_ALPHA = 0.25
 # the margin scale depends on the embedding geometry, so θ is per-model.
 OPERATING_POINTS = {
     "minishlab/potion-retrieval-32M": 0.14,
+    "cell-potion": 0.11,  # domain-trained static (cell-eval/potion/, earned in 2026-07-03)
     "ollama:granite-embedding": 0.06,
     "ollama:nomic-embed-text": 0.05,
     "ollama:embeddinggemma": 0.06,
@@ -84,6 +85,11 @@ class Embedder:
 
     def __init__(self, model: str = DEFAULT_EMBED_MODEL):
         self.name = model
+        if model == "cell-potion":  # the domain-trained artifact, kept out of git;
+            # rebuild deterministically with potion/train.py (see potion/PROTOCOL.md)
+            from pathlib import Path
+
+            model = str(Path(__file__).resolve().parents[2] / "potion" / "model")
         if model.startswith("ollama:"):
             self._kind = "ollama"
             self._model = model.split(":", 1)[1]

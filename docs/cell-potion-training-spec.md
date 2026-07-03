@@ -102,3 +102,57 @@ floor honestly.
   repeatable).
 - A `baselines/embed-bakeoff.json` row + calibration entry.
 - The *Result* section of this spec: earned-in or killed, with the numbers.
+
+## Result (2026-07-03): EARNED IN
+
+One-shot frozen eval (θ = 0.11, calibrated at the 0.75 adversarial
+precision-on-answered floor; full curve in `cell-eval/potion/frozen-eval-result.json`):
+
+| split | answered-coverage @ precision | potion-32M baseline | gate |
+|---|---|---|---|
+| direct | **0.814** @ 1.00 | 0.72 @ 1.00 | beats |
+| paraphrase | **0.396** @ 0.81 | 0.23 @ 0.83 | beats |
+| adversarial | **0.192** @ 0.80 | 0.15 @ 0.75 | beats (thin: 5/26 vs 4/26 — one query) |
+
+Latency: **34 µs median / 48 µs p99**, warm single-query `Embedder.encode`
+in-process — the pre-registered measurement (the old banked 1.7 ms/query for
+potion-32M was eval-loop overhead; base potion measures 32 µs the same way).
+Both gate halves pass: coverage strictly beats potion-retrieval-32M on every
+split with the adversarial precision floor held, and latency stays in the
+static class.
+
+**Ungated P@1 tells the sharper story**: paraphrase 0.604 — above nomic's
+0.566. The trained static vectors *rank* this domain better than the served
+transformer; the remaining coverage gap to nomic (0.396 vs 0.47 answered) is
+margin geometry at the gate, not ranking quality. Adversarial ungated 0.538
+exactly ties nomic. Rung 2's floor is now a domain-trained 34 µs model, not a
+generic one.
+
+Honest caveats, banked with the number:
+- The adversarial coverage win is one query at n = 26. Real, pre-registered,
+  not tuned — but thin. Nomic still owns adversarial coverage (0.46).
+- The corpus decontamination audit dropped 23/1300 training rows at the
+  pre-registered 0.92 nomic-similarity threshold, including one row identical
+  to a frozen eval query (max sim 1.0) — without the audit this result would
+  carry an asterisk (`cell-eval/potion/overlap-audit.json`).
+- The dev sweep showed the authored-hard-negative loss term earning λ = 0: with
+  all 100 docs in the softmax every confusable is already a negative each step.
+  The near-miss *queries* still matter (they are training rows); the extra loss
+  term did not.
+- The artifact is library-version-bound (a domain lexicon, zero transfer to
+  future cells). Retraining cost: corpus regeneration for new cells (LLM
+  authoring, ~5 min wall-clock for 100 cells) + `potion/train.py` (~2 min CPU,
+  deterministic seed 80). That is the maintenance price of rung 2.
+
+Deliverables: protocol + scripts in `cell-eval/potion/` (PROTOCOL.md, train.py,
+audit_overlap.py, overlap-audit.json, sweep-results.jsonl,
+frozen-eval-result.json), corpus `cell-eval/datasets/potion-train-pairs.jsonl`
+(+ `.clean.jsonl`), bake-off row `cell-eval/baselines/embed-bakeoff.json`,
+harness alias `--embed-model cell-potion` (θ in `OPERATING_POINTS`). The
+model artifact lives at `cell-eval/potion/model/` (129 MB, not committed;
+rebuild is deterministic from the committed corpus).
+
+Winning config (selected on the generated-corpus dev split only, pre-registered
+criterion = sum of split accuracies): τ = 0.05, λ = 0.0, lr = 0.05 (Adam),
+best epoch 6 — the most aggressive lr in the grid, consistent with the HF
+static-embeddings finding that lookup tables want ~100× transformer LRs.

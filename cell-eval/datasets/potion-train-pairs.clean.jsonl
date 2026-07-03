@@ -1,0 +1,1277 @@
+{"cell": "abs_diff", "kind": "paraphrase", "query": "gap between two numbers", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "compute the delta between two readings", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "u16 unsigned difference", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "subtract two numbers and drop the sign", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "I need the positive difference regardless of argument order", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "magnitude of the gap separating a and b", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "paraphrase", "query": "give me how much two counters differ by", "hard_negatives": []}
+{"cell": "abs_diff", "kind": "adversarial", "query": "how far apart two values are, not whether one is at most the other", "hard_negatives": ["is_le"]}
+{"cell": "abs_diff", "kind": "adversarial", "query": "size of the gap, not a check that a is at least b", "hard_negatives": ["is_ge"]}
+{"cell": "abs_diff", "kind": "adversarial", "query": "distance between two plain scalars, not squared distance between grid points", "hard_negatives": ["euclid_sq"]}
+{"cell": "abs_diff", "kind": "adversarial", "query": "safe unsigned gap of a and b, no dividing involved", "hard_negatives": ["safe_div"]}
+{"cell": "add_sat", "kind": "paraphrase", "query": "u16 saturating add", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "sum two numbers capped at the max", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "how do I add two u16s without wraparound?", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "I need a plus that clamps at 65535", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "overflow-safe addition of two 16-bit integers", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "combine two counters, topping out instead of wrapping", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "total of a and b that never overflows", "hard_negatives": []}
+{"cell": "add_sat", "kind": "paraphrase", "query": "add with a ceiling at the type maximum", "hard_negatives": []}
+{"cell": "add_sat", "kind": "adversarial", "query": "saturating arithmetic for adding two values, not multiplying them", "hard_negatives": ["mul_sat"]}
+{"cell": "add_sat", "kind": "adversarial", "query": "sum clamped at the top, like saturating subtract floors at zero", "hard_negatives": ["sub_sat"]}
+{"cell": "add_sat", "kind": "adversarial", "query": "capped at 65535 like the cube op, but for a plus b", "hard_negatives": ["cube_sat"]}
+{"cell": "add_sat", "kind": "adversarial", "query": "saturating combine of two inputs summed, not one number times itself", "hard_negatives": ["square"]}
+{"cell": "argmax2", "kind": "paraphrase", "query": "which of two values is bigger, as an index", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "return 0 or 1 for whichever input is higher", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "argmax over a pair", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "index of the winner between a and b", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "tell me which slot holds the greater number of two", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "pick the position of the top value out of two", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "I need which of two candidates scored highest, first on ties", "hard_negatives": []}
+{"cell": "argmax2", "kind": "paraphrase", "query": "two-input biggest, returned as a position", "hard_negatives": []}
+{"cell": "argmax2", "kind": "adversarial", "query": "index of the larger one, the opposite of picking the smaller slot", "hard_negatives": ["argmin2"]}
+{"cell": "argmax2", "kind": "adversarial", "query": "argmax but with only two candidates, not three", "hard_negatives": ["argmax3"]}
+{"cell": "argmax2", "kind": "adversarial", "query": "not the bigger value itself, just which of the two positions", "hard_negatives": ["max"]}
+{"cell": "argmax2", "kind": "adversarial", "query": "which of a pair is greatest as an index, unlike three-way smallest", "hard_negatives": ["argmin3"]}
+{"cell": "argmax3", "kind": "paraphrase", "query": "which of three numbers is biggest, give the index", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "argmax over a triple", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "position 0 1 or 2 of the highest value", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "index of the top element among a b c", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "tell me which of three inputs wins", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "I need the slot of the greatest of three candidates", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "find which argument holds the largest of three numbers", "hard_negatives": []}
+{"cell": "argmax3", "kind": "paraphrase", "query": "three-way maximum returned as a position", "hard_negatives": []}
+{"cell": "argmax3", "kind": "adversarial", "query": "index of the max of three, not the minimum", "hard_negatives": ["argmin3"]}
+{"cell": "argmax3", "kind": "adversarial", "query": "like two-input argmax but with a third candidate added", "hard_negatives": ["argmax2"]}
+{"cell": "argmax3", "kind": "adversarial", "query": "don't give me the largest of three values, give its position", "hard_negatives": ["max3"]}
+{"cell": "argmax3", "kind": "adversarial", "query": "three inputs, index of the greatest, lowest slot on ties", "hard_negatives": ["argmin2"]}
+{"cell": "argmin2", "kind": "paraphrase", "query": "which of two values is smaller, as an index", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "return 0 or 1 for the lower input", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "argmin over a pair", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "index of the lesser of a and b", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "which slot has the cheaper of two values?", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "give me the position of the minimum among two numbers", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "I need to know which of the two args is least", "hard_negatives": []}
+{"cell": "argmin2", "kind": "paraphrase", "query": "tell me whether the first or second input is lowest", "hard_negatives": []}
+{"cell": "argmin2", "kind": "adversarial", "query": "two-candidate argmin, no third input", "hard_negatives": ["argmin3"]}
+{"cell": "argmin2", "kind": "adversarial", "query": "not the smaller value itself, just which of the two it was", "hard_negatives": ["min"]}
+{"cell": "argmin2", "kind": "adversarial", "query": "pair of inputs, index of the lowest, zero on ties", "hard_negatives": ["argmax3"]}
+{"cell": "argmin3", "kind": "paraphrase", "query": "which of three numbers is lowest, return the index", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "argmin over a triple", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "position of the minimum among a b c", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "index 0 1 or 2 of the smallest input", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "which of three candidates is cheapest?", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "find the slot holding the least of three values", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "three-way smallest, returned as a position", "hard_negatives": []}
+{"cell": "argmin3", "kind": "paraphrase", "query": "I need which argument out of three is the minimum", "hard_negatives": []}
+{"cell": "argmin3", "kind": "adversarial", "query": "index of the min of three, not the max", "hard_negatives": ["argmax3"]}
+{"cell": "argmin3", "kind": "adversarial", "query": "argmin with three candidates instead of two", "hard_negatives": ["argmin2"]}
+{"cell": "argmin3", "kind": "adversarial", "query": "not the smallest of three itself, its position", "hard_negatives": ["min3"]}
+{"cell": "argmin3", "kind": "adversarial", "query": "three inputs, which one is least, earliest index breaks ties", "hard_negatives": ["argmax2"]}
+{"cell": "avg2", "kind": "paraphrase", "query": "mean of two numbers", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "midpoint between two u16s without overflow", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "what's the halfway point of a and b?", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "average two values safely", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "I need the middle of two readings without wrap", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "overflow-free mean of a pair", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "half the sum of two integers, no overflow", "hard_negatives": []}
+{"cell": "avg2", "kind": "paraphrase", "query": "u16 average pair", "hard_negatives": []}
+{"cell": "avg2", "kind": "adversarial", "query": "average of exactly two values, not three", "hard_negatives": ["mean3"]}
+{"cell": "avg2", "kind": "adversarial", "query": "midpoint of a pair, not the min-max midrange of a triple", "hard_negatives": ["midrange3"]}
+{"cell": "avg2", "kind": "adversarial", "query": "the center between two values, not the gap between them", "hard_negatives": ["abs_diff"]}
+{"cell": "avg2", "kind": "adversarial", "query": "halfway between two numbers, not a rescale to 0..100", "hard_negatives": ["normalize_0_100"]}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "is x strictly inside an open interval?", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "check a value falls strictly between two bounds", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "true if greater than lo and less than hi, both strict", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "open-interval membership test", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "does x lie between the limits with endpoints excluded?", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "strict interior check for a value against two bounds", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "1 if inside the range, borders don't count", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "paraphrase", "query": "I need a range test where hitting either edge fails", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "adversarial", "query": "range membership check, but the endpoints must not count", "hard_negatives": ["range_check"]}
+{"cell": "between_exclusive", "kind": "adversarial", "query": "don't pull x into the range, just report if strictly inside", "hard_negatives": ["clamp"]}
+{"cell": "between_exclusive", "kind": "adversarial", "query": "strictly-less on both sides: lo below x below hi", "hard_negatives": ["is_lt"]}
+{"cell": "between_exclusive", "kind": "adversarial", "query": "not an at-most compare, a two-sided exclusive bounds test", "hard_negatives": ["is_le"]}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "check if a flag bit is on", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "test bit n of a value", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "is the kth bit of x a one?", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "read a single bit out of a word", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "query whether a given bit position is turned on", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "u16 bit test", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "I need the state of one bit as 0 or 1", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "paraphrase", "query": "does this mask have bit number n enabled?", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "adversarial", "query": "don't set the bit, just tell me if it's already set", "hard_negatives": ["set_bit"]}
+{"cell": "bit_is_set", "kind": "adversarial", "query": "inspect whether a bit is on or clear, without modifying x", "hard_negatives": ["clear_bit"]}
+{"cell": "bit_is_set", "kind": "adversarial", "query": "state of one specific bit, not whether the set-bit count is odd", "hard_negatives": ["parity"]}
+{"cell": "bit_is_set", "kind": "adversarial", "query": "test a single bit position, not whether x is a power of two", "hard_negatives": ["is_pow2"]}
+{"cell": "bit_length", "kind": "paraphrase", "query": "how many bits are needed to represent this number?", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "position of the top set bit plus one", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "bit width of a value", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "minimum binary digits for n", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "find the msb index and add one", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "how wide in bits is this integer?", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "length of x written in binary", "hard_negatives": []}
+{"cell": "bit_length", "kind": "paraphrase", "query": "I need a rough integer log2 as a bit count", "hard_negatives": []}
+{"cell": "bit_length", "kind": "adversarial", "query": "bits needed for x, not the count of high zero bits", "hard_negatives": ["leading_zeros"]}
+{"cell": "bit_length", "kind": "adversarial", "query": "significant bit count of the value, not extracting its top byte", "hard_negatives": ["high_byte"]}
+{"cell": "bit_length", "kind": "adversarial", "query": "index of the highest set bit plus one, no bit writing", "hard_negatives": ["set_bit"]}
+{"cell": "bit_length", "kind": "adversarial", "query": "measure the binary length, don't clear any bits", "hard_negatives": ["clear_bit"]}
+{"cell": "bucket3", "kind": "paraphrase", "query": "classify a value into three tiers using two cutoffs", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "bin x as low medium high with thresholds", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "which of three bands does x fall in?", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "two-threshold three-way binning", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "map a reading to tier 0 1 or 2", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "I need to grade x against two ascending limits", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "sort a value into small mid or large groups", "hard_negatives": []}
+{"cell": "bucket3", "kind": "paraphrase", "query": "3-level classifier with cutoff points t1 and t2", "hard_negatives": []}
+{"cell": "bucket3", "kind": "adversarial", "query": "bucket x by two explicit thresholds, not by a uniform step size", "hard_negatives": ["quantize"]}
+{"cell": "bucket3", "kind": "adversarial", "query": "returns 0 1 or 2 from thresholds, not from picking the largest argument", "hard_negatives": ["argmax3"]}
+{"cell": "bucket3", "kind": "adversarial", "query": "tier index for a single value under two cutoffs, not smallest of three", "hard_negatives": ["argmin3"]}
+{"cell": "bucket3", "kind": "adversarial", "query": "bump x into the next tier when it crosses a threshold, no powers of two", "hard_negatives": ["next_pow2"]}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "convert a byte value to a percentage", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "map 0-255 onto 0-100", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "turn an 8-bit level into a percent", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "255-scale to 100-scale conversion", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "what percent is this 0..255 reading?", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "I need a raw brightness byte shown as a percentage", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "rescale a byte-range value into percent form", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "paraphrase", "query": "b times 100 over 255", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "adversarial", "query": "from the 255 scale down to percent, not percent up to bytes", "hard_negatives": ["percent_to_byte"]}
+{"cell": "byte_to_percent", "kind": "adversarial", "query": "a fixed 0-255 input to percent, not a part-over-whole ratio to 255", "hard_negatives": ["ratio_255"]}
+{"cell": "byte_to_percent", "kind": "adversarial", "query": "0..255 mapped to 0..100 with fixed bounds, no custom lo and hi", "hard_negatives": ["normalize_0_100"]}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "divide and round up", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "ceiling of a over b", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "how many buckets of size b are needed to hold a?", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "integer division that rounds toward infinity", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "quotient rounded up, not truncated", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "smallest k where k times b covers a", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "u16 ceil division", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "paraphrase", "query": "I need page count: items divided by page size, rounded up", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "adversarial", "query": "round a quotient up, rather than snapping x to a grid multiple", "hard_negatives": ["snap_up"]}
+{"cell": "ceil_div", "kind": "adversarial", "query": "division returning 0 on zero divisor, but rounding up instead of down", "hard_negatives": ["safe_div"]}
+{"cell": "ceil_div", "kind": "adversarial", "query": "round up the result of dividing, not up to a power of two", "hard_negatives": ["next_pow2"]}
+{"cell": "ceil_div", "kind": "adversarial", "query": "count divisor-sized chunks rounded up, not check if it divides evenly", "hard_negatives": ["divides"]}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "chessboard distance between two points", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "king move distance on a grid", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "max of the coordinate deltas between two cells", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "L-infinity metric for two grid points", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "how many king steps between two squares?", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "grid distance where diagonal moves cost one", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "chebyshev distance cell", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "paraphrase", "query": "I need the larger of the x and y offsets between points", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "adversarial", "query": "grid point distance taking the max of the axes, not their sum", "hard_negatives": ["manhattan"]}
+{"cell": "chebyshev", "kind": "adversarial", "query": "distance between two points without squaring, just the biggest axis delta", "hard_negatives": ["euclid_sq"]}
+{"cell": "chebyshev", "kind": "adversarial", "query": "max absolute delta across both coordinates, not one pair of scalars", "hard_negatives": ["abs_diff"]}
+{"cell": "chebyshev", "kind": "adversarial", "query": "a grid metric from the largest axis gap, no rounding to multiples", "hard_negatives": ["snap_down"]}
+{"cell": "clamp", "kind": "paraphrase", "query": "clamp this value between bounds", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "constrain x into a range", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "limit a number to a min and max", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "keep a value inside lo..hi", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "how do I cap and floor a value at the same time?", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "I need a reading forced into its allowed interval", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "bound x so it never leaves the window", "hard_negatives": []}
+{"cell": "clamp", "kind": "paraphrase", "query": "u16 clamp lo hi", "hard_negatives": []}
+{"cell": "clamp", "kind": "adversarial", "query": "don't just test if in range, pull the value into it", "hard_negatives": ["range_check"]}
+{"cell": "clamp", "kind": "adversarial", "query": "coerce x inside inclusive bounds, not a strict inside yes-no test", "hard_negatives": ["between_exclusive"]}
+{"cell": "clamp", "kind": "adversarial", "query": "restrict to [lo, hi] keeping original units, no percent rescale", "hard_negatives": ["normalize_0_100"]}
+{"cell": "clamp", "kind": "adversarial", "query": "cap at an arbitrary hi with a floor too, not just 65535", "hard_negatives": ["mul_sat"]}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "turn off bit n of x", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "zero out a specific bit", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "unset a flag bit in a word", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "how do I disable one bit by position?", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "reset bit number k to zero", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "mask off a single bit from a value", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "I need to switch a given binary flag off", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "paraphrase", "query": "u16 clear nth bit", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "adversarial", "query": "write bit n of x, but to zero, not one", "hard_negatives": ["set_bit"]}
+{"cell": "clear_bit", "kind": "adversarial", "query": "don't just read whether the bit is set, wipe it to zero", "hard_negatives": ["bit_is_set"]}
+{"cell": "clear_bit", "kind": "adversarial", "query": "always leave the bit off afterwards, not flipped either way", "hard_negatives": ["toggle_bit"]}
+{"cell": "clear_bit", "kind": "adversarial", "query": "zero one chosen bit, not mask down to the low byte", "hard_negatives": ["low_byte"]}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "update a crc8 checksum with one byte", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "single-byte crc-8 dallas maxim round", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "rolling crc-8 update, one byte at a time", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "feed the next byte into a crc8 accumulator", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "one iteration of crc8 with poly 0x8c", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "I need an incremental crc-8 over a byte stream", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "advance my crc state by one input byte", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "paraphrase", "query": "maxim 1-wire checksum step", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "adversarial", "query": "byte-wise rolling checksum step, crc style, not fnv hashing", "hard_negatives": ["fnv1a_step"]}
+{"cell": "crc8_step", "kind": "adversarial", "query": "fold one byte into the crc, no swapping of high and low bytes", "hard_negatives": ["swap_bytes"]}
+{"cell": "crc8_step", "kind": "adversarial", "query": "a crc-8 step over a byte, stronger than a single parity bit", "hard_negatives": ["parity"]}
+{"cell": "crc8_step", "kind": "adversarial", "query": "checksum update that consumes a byte, not one that extracts a byte", "hard_negatives": ["high_byte"]}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "cube a number with saturation", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "n to the third power, capped at the max", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "raise a value to the third power without overflow", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "u16 saturating cube", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "x cubed, clamped at 65535", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "I need a safe third power of an integer", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "compute n times n times n, topping out at max", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "paraphrase", "query": "cube that doesn't wrap when it overflows", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "adversarial", "query": "saturating third power, one multiply more than squaring", "hard_negatives": ["square"]}
+{"cell": "cube_sat", "kind": "adversarial", "query": "saturating multiply of a value by itself twice, single input", "hard_negatives": ["mul_sat"]}
+{"cell": "cube_sat", "kind": "adversarial", "query": "power of exactly three with saturation, no general base and exponent", "hard_negatives": ["pow_small"]}
+{"cell": "cube_sat", "kind": "adversarial", "query": "caps at 65535 like safe addition, but cubes one value", "hard_negatives": ["add_sat"]}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "total the base-10 digits of n", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "what do the digits of this number add up to?", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "digit total of an integer", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "I need every decimal digit of n added together", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "reduce a number to the sum of its digits", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "paraphrase", "query": "u16 decimal digit sum", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "adversarial", "query": "sum the digits, don't count how many digits there are", "hard_negatives": ["num_digits"]}
+{"cell": "digit_sum", "kind": "adversarial", "query": "total of a number's own digits, not of 1 through n", "hard_negatives": ["triangular"]}
+{"cell": "digit_sum", "kind": "adversarial", "query": "a plain unweighted sum, but over the decimal digits of one input", "hard_negatives": ["weighted_sum_wide"]}
+{"cell": "digit_sum", "kind": "adversarial", "query": "add n's digits, the digital root step, not its square root", "hard_negatives": ["isqrt"]}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "take a percent off a price", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "reduce a value by pct percent", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "apply a discount percentage to an amount", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "knock 20 percent off a number", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "how do I mark a price down by a percentage?", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "value after subtracting a given percent of itself", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "I need to cut a quantity down by some percent", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "paraphrase", "query": "what remains after a percentage reduction", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "adversarial", "query": "not pct of the value, the value minus that percentage", "hard_negatives": ["scale_percent"]}
+{"cell": "discount_percent", "kind": "adversarial", "query": "adjust a value by a percentage downward, not upward", "hard_negatives": ["increase_percent"]}
+{"cell": "discount_percent", "kind": "adversarial", "query": "shrink the value by pct, not test if it's within a percent tolerance", "hard_negatives": ["within_percent"]}
+{"cell": "discount_percent", "kind": "adversarial", "query": "a percent applied as a price cut, not a byte scale conversion", "hard_negatives": ["byte_to_percent"]}
+{"cell": "divides", "kind": "paraphrase", "query": "does a divide b with no remainder", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "check whether b is a multiple of a", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "I need a test that says if one number is a factor of another", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "u16 divisibility predicate", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "return 1 when b mod a is zero", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "is the second value evenly divisible by the first", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "factor check: does the first value go into the second exactly", "hard_negatives": []}
+{"cell": "divides", "kind": "paraphrase", "query": "multiple-of test for two 16-bit integers", "hard_negatives": []}
+{"cell": "divides", "kind": "adversarial", "query": "like an even check but for an arbitrary divisor a into b", "hard_negatives": ["is_even"]}
+{"cell": "divides", "kind": "adversarial", "query": "not primality \u2014 just whether this one candidate factor divides the number cleanly", "hard_negatives": ["is_prime"]}
+{"cell": "divides", "kind": "adversarial", "query": "I don't want the quotient from dividing, just a 1/0 exact-division flag", "hard_negatives": ["safe_div"]}
+{"cell": "divides", "kind": "adversarial", "query": "yes/no vote on two values: does a go into b a whole number of times", "hard_negatives": ["majority3"]}
+{"cell": "eq", "kind": "paraphrase", "query": "are these two numbers the same", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "check if a equals b", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "I need a 1/0 flag when two values match", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "u16 equality predicate", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "return 1 only when both inputs are identical", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "compare two ints for exact equality", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "boolean equals test on a pair of 16-bit values", "hard_negatives": []}
+{"cell": "eq", "kind": "paraphrase", "query": "tell me whether the two arguments coincide in value", "hard_negatives": []}
+{"cell": "eq", "kind": "adversarial", "query": "I want 1 when the pair matches, not when they differ", "hard_negatives": ["neq"]}
+{"cell": "eq", "kind": "adversarial", "query": "not an at-least comparison \u2014 strictly whether a and b are exactly equal", "hard_negatives": ["is_ge"]}
+{"cell": "eq", "kind": "adversarial", "query": "compare a to b but only signal exact equality, not at-most", "hard_negatives": ["is_le"]}
+{"cell": "eq", "kind": "adversarial", "query": "greater-than isn't what I need; flag when a and b are equal", "hard_negatives": ["is_gt"]}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "compute dx squared plus dy squared for two coordinates", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "euclidean distance without the square root, wide 32-bit result", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "I need the sum of squared coordinate deltas between two grid points", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "squared L2 distance between points", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "how far apart are two positions, as the crow flies, squared", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "grid point distance metric returning dx*dx+dy*dy", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "paraphrase", "query": "u32 squared separation between a pair of positions", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "adversarial", "query": "not chessboard max-of-deltas \u2014 the euclidean distance squared between two points", "hard_negatives": ["chebyshev"]}
+{"cell": "euclid_sq", "kind": "adversarial", "query": "grid distance but squared euclidean, not the sum of absolute deltas", "hard_negatives": ["manhattan"]}
+{"cell": "euclid_sq", "kind": "adversarial", "query": "wide u32 result squaring both coordinate deltas and summing them", "hard_negatives": ["square_wide"]}
+{"cell": "euclid_sq", "kind": "adversarial", "query": "not a scalar |a-b| \u2014 squared 2D distance between two grid points", "hard_negatives": ["abs_diff"]}
+{"cell": "factor_count", "kind": "paraphrase", "query": "how many divisors does n have", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "count all the factors of a number", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "I need the total of values that divide n evenly", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "divisor count function tau", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "return the count of positive divisors for a u16", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "number of factors of an integer", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "compute tau(n), the divisor-counting function", "hard_negatives": []}
+{"cell": "factor_count", "kind": "paraphrase", "query": "tell me how many whole numbers divide this value", "hard_negatives": []}
+{"cell": "factor_count", "kind": "adversarial", "query": "not a prime yes/no \u2014 I want the actual count of divisors", "hard_negatives": ["is_prime"]}
+{"cell": "factor_count", "kind": "adversarial", "query": "count of divisors of n, not how many decimal digits it has", "hard_negatives": ["num_digits"]}
+{"cell": "factor_count", "kind": "adversarial", "query": "instead of testing one divisor, count every divisor of n", "hard_negatives": ["divides"]}
+{"cell": "factor_count", "kind": "adversarial", "query": "no gcd pair test \u2014 just how many factors a single number has", "hard_negatives": ["is_coprime"]}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "single fnv-1a hash update with one byte", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "xor the byte into the hash then multiply by the prime", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "I need one step of a rolling fnv hash over bytes", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "16-bit fnv1a round function", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "fold the next byte into a running fnv-style hash state", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "incremental fnv hash: advance the state by one input byte", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "one iteration of fnv-1a for streaming byte hashing", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "paraphrase", "query": "update my u16 fnv hash with another byte", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "adversarial", "query": "byte-at-a-time checksum step, but fnv1a xor-multiply, not a crc polynomial", "hard_negatives": ["crc8_step"]}
+{"cell": "fnv1a_step", "kind": "adversarial", "query": "not a one-shot finalizer mix \u2014 a per-byte fnv update of hash state", "hard_negatives": ["mix16"]}
+{"cell": "fnv1a_step", "kind": "adversarial", "query": "no bit reversal, just the fnv xor-then-multiply step over a byte", "hard_negatives": ["reverse_bits"]}
+{"cell": "fnv1a_step", "kind": "adversarial", "query": "takes hash and byte as a pair, but chained as an fnv1a step", "hard_negatives": ["hash_pair"]}
+{"cell": "gcd", "kind": "paraphrase", "query": "find the biggest value dividing both a and b", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "euclid's algorithm on a pair of u16s", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "gcd of two integers", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "I need the largest shared factor of two values", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "compute the highest common factor of a and b", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "what's the greatest number that goes into both inputs", "hard_negatives": []}
+{"cell": "gcd", "kind": "paraphrase", "query": "hcf of a pair of 16-bit numbers", "hard_negatives": []}
+{"cell": "gcd", "kind": "adversarial", "query": "gcd for exactly two inputs, not three", "hard_negatives": ["gcd3"]}
+{"cell": "gcd", "kind": "adversarial", "query": "give me the gcd value itself, not a coprime 1/0 flag", "hard_negatives": ["is_coprime"]}
+{"cell": "gcd", "kind": "adversarial", "query": "the common divisor that's greatest, not the least common multiple", "hard_negatives": ["lcm"]}
+{"cell": "gcd", "kind": "adversarial", "query": "euclidean algorithm for shared divisors, not euclidean distance on a grid", "hard_negatives": ["euclid_sq"]}
+{"cell": "gcd3", "kind": "paraphrase", "query": "gcd across a, b, and c", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "largest factor shared by all three inputs", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "three-way gcd for u16 values", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "I need the highest common divisor of a triple", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "compute the gcd of three values at once", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "biggest number dividing all three arguments evenly", "hard_negatives": []}
+{"cell": "gcd3", "kind": "paraphrase", "query": "hcf of three 16-bit integers", "hard_negatives": []}
+{"cell": "gcd3", "kind": "adversarial", "query": "like the two-input gcd but taking a third value too", "hard_negatives": ["gcd"]}
+{"cell": "gcd3", "kind": "adversarial", "query": "not a coprimality flag \u2014 the actual gcd of all three values", "hard_negatives": ["is_coprime"]}
+{"cell": "gcd3", "kind": "adversarial", "query": "greatest shared divisor of three inputs, not their common multiple", "hard_negatives": ["lcm"]}
+{"cell": "gcd3", "kind": "adversarial", "query": "for three values, but I want their gcd, not the repeated one", "hard_negatives": ["mode3"]}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "combine two numbers into a single hash", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "deterministic fingerprint of a pair of values", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "hash two u16 keys into one", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "I need to mix a and b into one hash code", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "make a repeatable hash from two inputs", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "two-value hash combiner", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "derive one 16-bit key from a pair of numbers", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "paraphrase", "query": "collapse a coordinate pair into a hashed identifier", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "adversarial", "query": "avalanche-style mixing, but over two inputs together rather than one value", "hard_negatives": ["mix16"]}
+{"cell": "hash_pair", "kind": "adversarial", "query": "combine two words into one \u2014 a scrambled hash, not a bitwise or", "hard_negatives": ["mask_union"]}
+{"cell": "hash_pair", "kind": "adversarial", "query": "hash two values in one shot, not a per-byte streaming step", "hard_negatives": ["fnv1a_step"]}
+{"cell": "hash_pair", "kind": "adversarial", "query": "not the bits both share via and \u2014 a hash blending both values", "hard_negatives": ["mask_intersection"]}
+{"cell": "high_byte", "kind": "paraphrase", "query": "get the upper 8 bits of a u16", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "extract the top byte of a word", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "shift x right by eight to grab its high half", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "most significant byte of a 16-bit value", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "I need the leading byte from a two-byte integer", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "upper half of a 16-bit word as a byte", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "u16 high byte extract", "hard_negatives": []}
+{"cell": "high_byte", "kind": "paraphrase", "query": "what's the big-end byte of this word", "hard_negatives": []}
+{"cell": "high_byte", "kind": "adversarial", "query": "the byte in the upper half, not the 0xFF-masked low one", "hard_negatives": ["low_byte"]}
+{"cell": "high_byte", "kind": "adversarial", "query": "don't swap the two bytes \u2014 just pull out the high one", "hard_negatives": ["swap_bytes"]}
+{"cell": "high_byte", "kind": "adversarial", "query": "not counting significant bits \u2014 extract the most significant byte itself", "hard_negatives": ["bit_length"]}
+{"cell": "high_byte", "kind": "adversarial", "query": "no bit clearing; isolate the top eight bits shifted down", "hard_negatives": ["clear_bit"]}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "add a percentage markup to a value", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "grow a number by pct percent", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "I need price plus x percent, capped at u16 max", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "bump a value up by a given percentage", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "apply a surcharge percentage to an amount", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "raise this quantity by n percent with saturation", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "value plus its own percentage, saturating", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "paraphrase", "query": "compute a number after a percent uplift", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "adversarial", "query": "percent adjustment, but upward \u2014 a markup, not a discount", "hard_negatives": ["discount_percent"]}
+{"cell": "increase_percent", "kind": "adversarial", "query": "not just pct of the value \u2014 the original plus that percentage", "hard_negatives": ["scale_percent"]}
+{"cell": "increase_percent", "kind": "adversarial", "query": "not a tolerance check; actually add pct percent onto the value", "hard_negatives": ["within_percent"]}
+{"cell": "increase_percent", "kind": "adversarial", "query": "percent math that increases a value by pct, no byte-scale conversion", "hard_negatives": ["byte_to_percent"]}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "do these two numbers share no common factor", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "check if a and b are relatively prime", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "1 if the gcd of the pair is one", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "coprimality test for two u16s", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "I need a flag saying two values have gcd equal to 1", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "are the two integers coprime", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "predicate: no divisor above 1 shared between a and b", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "paraphrase", "query": "tell me whether these values are mutually prime", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "adversarial", "query": "not primality of one number \u2014 whether a pair is relatively prime", "hard_negatives": ["is_prime"]}
+{"cell": "is_coprime", "kind": "adversarial", "query": "don't return the gcd itself, just 1 when it equals one", "hard_negatives": ["gcd"]}
+{"cell": "is_coprime", "kind": "adversarial", "query": "a 1/0 number test, but for two values sharing no common divisor", "hard_negatives": ["is_even"]}
+{"cell": "is_coprime", "kind": "adversarial", "query": "not whether one divides the other \u2014 whether they share no factor", "hard_negatives": ["divides"]}
+{"cell": "is_even", "kind": "paraphrase", "query": "is this number even", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "check parity: return 1 for even values", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "even test on a u16", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "I need a flag for divisible-by-two", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "1 if x has no remainder mod 2", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "tell me whether the integer is even", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "predicate that fires on even inputs", "hard_negatives": []}
+{"cell": "is_even", "kind": "paraphrase", "query": "does two go into x cleanly", "hard_negatives": []}
+{"cell": "is_even", "kind": "adversarial", "query": "parity check, but signaling even numbers, not odd ones", "hard_negatives": ["is_odd"]}
+{"cell": "is_even", "kind": "adversarial", "query": "returns 1 for 0, 2, 4 and so on \u2014 evenness, not just zero", "hard_negatives": ["is_zero"]}
+{"cell": "is_even", "kind": "adversarial", "query": "a 1/0 flag on x, true whenever x is even", "hard_negatives": ["nonzero"]}
+{"cell": "is_even", "kind": "adversarial", "query": "single-value boolean: is x even, no pair comparison involved", "hard_negatives": ["is_le"]}
+{"cell": "is_ge", "kind": "paraphrase", "query": "is a at least b", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "check a greater than or equal to b", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "1 when the first value is no less than the second", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "u16 >= comparison predicate", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "I need a flag for a meets or exceeds b", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "does the first number reach the threshold b, inclusive", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "greater-or-equal test on two ints", "hard_negatives": []}
+{"cell": "is_ge", "kind": "paraphrase", "query": "return 1 if a isn't below b", "hard_negatives": []}
+{"cell": "is_ge", "kind": "adversarial", "query": "at-least comparison, not at-most: 1 when a >= b", "hard_negatives": ["is_le"]}
+{"cell": "is_ge", "kind": "adversarial", "query": "like greater-than but inclusive, ties count as a pass", "hard_negatives": ["is_gt"]}
+{"cell": "is_ge", "kind": "adversarial", "query": "the opposite of a < b: flag when a is not less", "hard_negatives": ["is_lt"]}
+{"cell": "is_ge", "kind": "adversarial", "query": "not just equality \u2014 true for equal or greater", "hard_negatives": ["eq"]}
+{"cell": "is_gt", "kind": "paraphrase", "query": "is a strictly bigger than b", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "check whether the first value exceeds the second", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "1 when a is larger than b, ties fail", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "u16 greater-than predicate", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "I need a strict > comparison flag", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "does a beat b outright", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "strictly-greater test for two numbers", "hard_negatives": []}
+{"cell": "is_gt", "kind": "paraphrase", "query": "return 1 only if the first argument tops the second", "hard_negatives": []}
+{"cell": "is_gt", "kind": "adversarial", "query": "strictly greater \u2014 equal values must return 0", "hard_negatives": ["is_ge"]}
+{"cell": "is_gt", "kind": "adversarial", "query": "not at-most; flag when a is strictly above b", "hard_negatives": ["is_le"]}
+{"cell": "is_gt", "kind": "adversarial", "query": "strict comparison, but the first-greater-than-second direction", "hard_negatives": ["is_lt"]}
+{"cell": "is_gt", "kind": "adversarial", "query": "excludes equality: 1 only when a is truly bigger than b", "hard_negatives": ["eq"]}
+{"cell": "is_le", "kind": "paraphrase", "query": "is a at most b", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "check a less than or equal to b", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "1 when the first value doesn't exceed the second", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "u16 <= comparison predicate", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "I need a flag for a no more than b", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "does a stay within the cap b, inclusive", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "less-or-equal test on a pair of ints", "hard_negatives": []}
+{"cell": "is_le", "kind": "paraphrase", "query": "return 1 if a isn't above b", "hard_negatives": []}
+{"cell": "is_le", "kind": "adversarial", "query": "at-most, not at-least: true when a <= b", "hard_negatives": ["is_ge"]}
+{"cell": "is_le", "kind": "adversarial", "query": "like less-than but ties pass too", "hard_negatives": ["is_lt"]}
+{"cell": "is_le", "kind": "adversarial", "query": "the inverse of strictly-greater: 1 when a doesn't exceed b", "hard_negatives": ["is_gt"]}
+{"cell": "is_le", "kind": "adversarial", "query": "equal counts, but so does smaller \u2014 an a <= b flag", "hard_negatives": ["eq"]}
+{"cell": "is_lt", "kind": "paraphrase", "query": "is a strictly smaller than b", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "check whether the first value is below the second", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "1 when a comes in under b, ties fail", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "u16 less-than predicate", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "I need a strict < comparison flag", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "does a fall short of b", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "strictly-less test for two numbers", "hard_negatives": []}
+{"cell": "is_lt", "kind": "paraphrase", "query": "return 1 only if the first argument is beneath the second", "hard_negatives": []}
+{"cell": "is_lt", "kind": "adversarial", "query": "strictly less \u2014 equal values return 0", "hard_negatives": ["is_le"]}
+{"cell": "is_lt", "kind": "adversarial", "query": "not at-least; signal when a is strictly under b", "hard_negatives": ["is_ge"]}
+{"cell": "is_lt", "kind": "adversarial", "query": "same strict compare, but the smaller-than direction", "hard_negatives": ["is_gt"]}
+{"cell": "is_lt", "kind": "adversarial", "query": "more than just different: specifically a below b", "hard_negatives": ["neq"]}
+{"cell": "is_odd", "kind": "paraphrase", "query": "is this number odd", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "check if x leaves a remainder when halved", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "odd test on a u16", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "I need a flag for not-divisible-by-two", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "1 when x mod 2 equals one", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "tell me whether the integer is odd", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "predicate that fires on odd inputs", "hard_negatives": []}
+{"cell": "is_odd", "kind": "paraphrase", "query": "does dividing by two leave one over", "hard_negatives": []}
+{"cell": "is_odd", "kind": "adversarial", "query": "parity flag, but for odd numbers, not even ones", "hard_negatives": ["is_even"]}
+{"cell": "is_odd", "kind": "adversarial", "query": "oddness of the value itself, not of its set-bit count", "hard_negatives": ["parity"]}
+{"cell": "is_odd", "kind": "adversarial", "query": "true for 1, 3, 5 and so on \u2014 an odd test, not a zero test", "hard_negatives": ["is_zero"]}
+{"cell": "is_odd", "kind": "adversarial", "query": "single-input boolean asking whether x is odd, no comparison", "hard_negatives": ["is_le"]}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "is x a power of two", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "check whether the value is exactly 2 to some k", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "power-of-two predicate for u16", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "1 if only a single bit is set in x", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "I need to know if n is 1, 2, 4, 8 and so on", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "test if a number is a two's power", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "flag values like 256 or 1024 that are powers of 2", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "paraphrase", "query": "does x land exactly on a power of two", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "adversarial", "query": "just tell me if it already is a power of two \u2014 don't round up", "hard_negatives": ["next_pow2"]}
+{"cell": "is_pow2", "kind": "adversarial", "query": "not merely even: exactly a power of two", "hard_negatives": ["is_even"]}
+{"cell": "is_pow2", "kind": "adversarial", "query": "whether exactly one bit is set anywhere, i.e. a power of two", "hard_negatives": ["bit_is_set"]}
+{"cell": "is_pow2", "kind": "adversarial", "query": "number-class predicate, but for powers of two, not primes", "hard_negatives": ["is_prime"]}
+{"cell": "is_prime", "kind": "paraphrase", "query": "is n a prime number", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "primality test for a 16-bit integer", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "check whether this value has no divisors besides 1 and itself", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "1 if n is prime else 0", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "I need a fast prime check", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "tell me if the number is prime", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "prime predicate u16", "hard_negatives": []}
+{"cell": "is_prime", "kind": "paraphrase", "query": "does n belong to the primes", "hard_negatives": []}
+{"cell": "is_prime", "kind": "adversarial", "query": "single-number primality, not whether a pair is relatively prime", "hard_negatives": ["is_coprime"]}
+{"cell": "is_prime", "kind": "adversarial", "query": "not a parity check \u2014 whether n itself is prime", "hard_negatives": ["is_even"]}
+{"cell": "is_prime", "kind": "adversarial", "query": "no specific divisor to test; just is n prime at all", "hard_negatives": ["divides"]}
+{"cell": "is_prime", "kind": "adversarial", "query": "don't count the divisors, just flag primes with a 1", "hard_negatives": ["factor_count"]}
+{"cell": "is_square", "kind": "paraphrase", "query": "is n a perfect square", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "check whether some integer squared gives n", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "perfect-square predicate for u16", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "flag numbers such as 36 or 121 that are exact squares", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "I need to detect square numbers", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "does n have a whole-number square root", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "test if the value is an exact square", "hard_negatives": []}
+{"cell": "is_square", "kind": "paraphrase", "query": "return 1 when sqrt of n is an integer", "hard_negatives": []}
+{"cell": "is_square", "kind": "adversarial", "query": "don't give me the integer root itself \u2014 just whether one exists exactly", "hard_negatives": ["isqrt"]}
+{"cell": "is_square", "kind": "adversarial", "query": "not computing n squared wide; detecting if n already is a square", "hard_negatives": ["square_wide"]}
+{"cell": "is_square", "kind": "adversarial", "query": "boolean test on n for being a perfect square, not for being zero", "hard_negatives": ["is_zero"]}
+{"cell": "is_square", "kind": "adversarial", "query": "instead of squaring the input, tell me if it is a square", "hard_negatives": ["square"]}
+{"cell": "is_zero", "kind": "paraphrase", "query": "check if a number equals zero", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "does x equal 0?", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "test whether a value is 0 and give me a flag", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "u16 zero check predicate", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "return 1 when the input is zero, otherwise 0", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "I need something that tells me if a counter has hit zero", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "flag inputs that are exactly zero", "hard_negatives": []}
+{"cell": "is_zero", "kind": "paraphrase", "query": "boolean test for an empty (zero) value", "hard_negatives": []}
+{"cell": "is_zero", "kind": "adversarial", "query": "opposite of a nonzero check: 1 only when x is zero", "hard_negatives": ["nonzero"]}
+{"cell": "is_zero", "kind": "adversarial", "query": "even-or-odd style yes/no test, but true only for zero", "hard_negatives": ["is_even"]}
+{"cell": "is_zero", "kind": "adversarial", "query": "returns 0 for odd or any other nonzero input, 1 for zero", "hard_negatives": ["is_odd"]}
+{"cell": "is_zero", "kind": "adversarial", "query": "check that no bits are set anywhere in x, return 1", "hard_negatives": ["bit_is_set"]}
+{"cell": "isqrt", "kind": "paraphrase", "query": "integer square root of a u16", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "floor sqrt without floating point", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "biggest r whose square doesn't exceed n", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "compute a square root rounded down for integers", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "I need the whole-number root of n", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "u16 isqrt", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "how do I get the integer part of a square root?", "hard_negatives": []}
+{"cell": "isqrt", "kind": "paraphrase", "query": "truncated square root of an integer input", "hard_negatives": []}
+{"cell": "isqrt", "kind": "adversarial", "query": "not a perfect-square test, I want the floor square root value itself", "hard_negatives": ["is_square"]}
+{"cell": "isqrt", "kind": "adversarial", "query": "inverse of squaring a number: find r with r*r <= n", "hard_negatives": ["square"]}
+{"cell": "isqrt", "kind": "adversarial", "query": "instead of computing n*n wide, go backwards from n to its root", "hard_negatives": ["square_wide"]}
+{"cell": "isqrt", "kind": "adversarial", "query": "undo a power: largest integer whose square stays under n", "hard_negatives": ["cube_sat"]}
+{"cell": "lcm", "kind": "paraphrase", "query": "least common multiple of two numbers", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "smallest value divisible by both a and b", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "u16 lcm of a pair", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "find the lowest shared multiple of two inputs", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "I need the smallest number both inputs divide into evenly", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "compute lcm(a, b) with zero handled", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "what's the least multiple common to two values?", "hard_negatives": []}
+{"cell": "lcm", "kind": "paraphrase", "query": "smallest common multiple, 16-bit integer math", "hard_negatives": []}
+{"cell": "lcm", "kind": "adversarial", "query": "not the greatest common divisor \u2014 the least common multiple of the pair", "hard_negatives": ["gcd"]}
+{"cell": "lcm", "kind": "adversarial", "query": "the common-multiple counterpart of gcd, for two values", "hard_negatives": ["gcd3"]}
+{"cell": "lcm", "kind": "adversarial", "query": "for coprime inputs this is just a*b: smallest common multiple", "hard_negatives": ["is_coprime"]}
+{"cell": "lcm", "kind": "adversarial", "query": "smallest shared multiple of a and b, plain u16 arithmetic not mod m", "hard_negatives": ["pow_mod"]}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "count zero bits at the top of a 16-bit word", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "clz for u16", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "how many high-order zeros before the first set bit?", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "number of leading zero bits in a value", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "I need a count-leading-zeros operation", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "zeros above the most significant one bit", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "u16 clz that gives 16 for zero input", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "paraphrase", "query": "count the empty upper bits of x", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "adversarial", "query": "count zeros from the high end of the word, not the low end", "hard_negatives": ["trailing_zeros"]}
+{"cell": "leading_zeros", "kind": "adversarial", "query": "essentially 16 minus the bit length: leading zero count of x", "hard_negatives": ["bit_length"]}
+{"cell": "leading_zeros", "kind": "adversarial", "query": "not counting set bits \u2014 counting the zeros above the top set bit", "hard_negatives": ["popcount"]}
+{"cell": "leading_zeros", "kind": "adversarial", "query": "how many high bits are clear before the first 1 appears?", "hard_negatives": ["clear_bit"]}
+{"cell": "low_byte", "kind": "paraphrase", "query": "get the bottom 8 bits of a word", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "extract the least significant byte", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "x & 0xFF helper", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "grab the lower byte from a u16", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "I need just the low 8 bits of a value", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "least significant byte extraction", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "keep only bits 0 through 7 of x", "hard_negatives": []}
+{"cell": "low_byte", "kind": "paraphrase", "query": "unpack the bottom byte of a 16-bit word", "hard_negatives": []}
+{"cell": "low_byte", "kind": "adversarial", "query": "of the two bytes in x, give me the low one, not the top", "hard_negatives": ["high_byte"]}
+{"cell": "low_byte", "kind": "adversarial", "query": "no byte swapping \u2014 just isolate the lower byte of x", "hard_negatives": ["swap_bytes"]}
+{"cell": "low_byte", "kind": "adversarial", "query": "mask a word down to its bottom byte", "hard_negatives": ["mask_intersection"]}
+{"cell": "low_byte", "kind": "adversarial", "query": "clear away the upper byte, leaving only bits 0-7", "hard_negatives": ["clear_bit"]}
+{"cell": "majority3", "kind": "paraphrase", "query": "do at least two of three inputs match?", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "check whether any pair among three values agrees", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "1 if two or more of a, b, c are equal", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "three-way agreement test, boolean result", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "quorum check: some two of three readings identical", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "I need to know if a majority of three sensors coincide", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "detect a duplicate among three numbers, yes or no", "hard_negatives": []}
+{"cell": "majority3", "kind": "paraphrase", "query": "vote check across three inputs", "hard_negatives": []}
+{"cell": "majority3", "kind": "adversarial", "query": "not the repeated value itself \u2014 just whether one repeats among three", "hard_negatives": ["mode3"]}
+{"cell": "majority3", "kind": "adversarial", "query": "across three values, test consensus: return 1 when two are equal", "hard_negatives": ["gcd3"]}
+{"cell": "majority3", "kind": "adversarial", "query": "no weighted scoring of three candidates, just a flag if two agree", "hard_negatives": ["weighted_sum"]}
+{"cell": "majority3", "kind": "adversarial", "query": "returns 1 or 0: do at least two of three values equal each other?", "hard_negatives": ["divides"]}
+{"cell": "manhattan", "kind": "paraphrase", "query": "taxicab metric on grid coordinates", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "sum of |dx| and |dy| between two positions", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "L1 distance for grid navigation", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "how far apart are two cells walking only along axes?", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "city block distance between grid positions", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "I need the axis-aligned step count between two points", "hard_negatives": []}
+{"cell": "manhattan", "kind": "paraphrase", "query": "taxicab distance, typed point state", "hard_negatives": []}
+{"cell": "manhattan", "kind": "adversarial", "query": "distance between grid points by summing axis deltas, no squaring", "hard_negatives": ["euclid_sq"]}
+{"cell": "manhattan", "kind": "adversarial", "query": "not the chessboard max metric \u2014 add the two axis distances together", "hard_negatives": ["chebyshev"]}
+{"cell": "manhattan", "kind": "adversarial", "query": "absolute differences on both axes, summed, between two points", "hard_negatives": ["abs_diff"]}
+{"cell": "manhattan", "kind": "adversarial", "query": "on a grid, total orthogonal travel from one point to the other", "hard_negatives": ["snap_down"]}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "check every flag in the mask is present in x", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "does x contain all bits of the mask?", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "test whether all required flags are set", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "1 if x is a superset of the mask's bits", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "verify (x & mask) == mask", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "are all the specified bits on in this word?", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "I need to confirm a value includes every bit of a mask", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "paraphrase", "query": "u16 all-flags-present predicate", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "adversarial", "query": "not just any overlap \u2014 every single mask bit must be set in x", "hard_negatives": ["mask_has_any"]}
+{"cell": "mask_has_all", "kind": "adversarial", "query": "like a bit-is-set check but for a whole mask: all bits present", "hard_negatives": ["bit_is_set"]}
+{"cell": "mask_has_all", "kind": "adversarial", "query": "check the intersection with the mask equals the mask itself", "hard_negatives": ["mask_intersection"]}
+{"cell": "mask_has_all", "kind": "adversarial", "query": "flag test returning 1/0: x must include each bit of mask", "hard_negatives": ["mask_xor"]}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "does x share any bit with the mask?", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "test for overlap between a value and a flag mask", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "1 if at least one mask bit is set in x", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "check whether any of these flags is present", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "nonzero AND test between x and mask", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "do these two bit sets touch at all?", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "I need a predicate for x hitting any bit of a mask", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "paraphrase", "query": "u16 any-flag-set check", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "adversarial", "query": "not all bits required \u2014 one shared mask bit is enough, return 1", "hard_negatives": ["mask_has_all"]}
+{"cell": "mask_has_any", "kind": "adversarial", "query": "instead of the intersection value, just tell me if it's nonzero", "hard_negatives": ["mask_intersection"]}
+{"cell": "mask_has_any", "kind": "adversarial", "query": "like testing one bit, but true if any of the mask's bits is set", "hard_negatives": ["bit_is_set"]}
+{"cell": "mask_has_any", "kind": "adversarial", "query": "yes/no on whether x and mask differ from disjoint \u2014 any overlap gives 1", "hard_negatives": ["mask_xor"]}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "bitwise AND of two masks", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "keep only the flags present in both words", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "common bits of a and b", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "intersect two flag sets", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "a & b for u16 masks", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "I need the overlap of two bitmasks as an actual value", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "which bits do both masks have in common?", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "paraphrase", "query": "compute the shared subset of two bit sets", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "adversarial", "query": "combine two masks keeping only bits set in both, not in either", "hard_negatives": ["mask_union"]}
+{"cell": "mask_intersection", "kind": "adversarial", "query": "not the bits in exactly one \u2014 the bits in both masks", "hard_negatives": ["mask_xor"]}
+{"cell": "mask_intersection", "kind": "adversarial", "query": "give me the actual overlapping bits, not a yes/no overlap flag", "hard_negatives": ["mask_has_any"]}
+{"cell": "mask_intersection", "kind": "adversarial", "query": "the mask of bits contained in both inputs, as a value not a predicate", "hard_negatives": ["mask_has_all"]}
+{"cell": "mask_union", "kind": "paraphrase", "query": "bitwise OR two masks together", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "merge two flag sets into one", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "combine every bit from either word", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "a | b for u16", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "join two bitmasks", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "I need the union of two permission masks", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "set all bits present in either input", "hard_negatives": []}
+{"cell": "mask_union", "kind": "paraphrase", "query": "u16 mask union", "hard_negatives": []}
+{"cell": "mask_union", "kind": "adversarial", "query": "not the common bits \u2014 all bits from either mask combined", "hard_negatives": ["mask_intersection"]}
+{"cell": "mask_union", "kind": "adversarial", "query": "keep bits set in either or both masks, not exactly one", "hard_negatives": ["mask_xor"]}
+{"cell": "mask_union", "kind": "adversarial", "query": "merge overlapping flag sets into a single combined mask value", "hard_negatives": ["mask_has_any"]}
+{"cell": "mask_union", "kind": "adversarial", "query": "resulting mask that contains all bits of both inputs", "hard_negatives": ["mask_has_all"]}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "bitwise XOR of two words", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "bits set in exactly one of the two masks", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "symmetric difference of two flag sets", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "a ^ b for u16", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "which bits differ between two masks?", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "exclusive-or two bitmasks", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "I need the disagreement bits between two values", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "paraphrase", "query": "flags in one mask but not both", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "adversarial", "query": "flip every bit of x that appears in the other mask", "hard_negatives": ["toggle_bit"]}
+{"cell": "mask_xor", "kind": "adversarial", "query": "combine two masks but drop the bits they share", "hard_negatives": ["mask_union"]}
+{"cell": "mask_xor", "kind": "adversarial", "query": "opposite of the common bits: the ones in exactly one mask", "hard_negatives": ["mask_intersection"]}
+{"cell": "mask_xor", "kind": "adversarial", "query": "overlap-aware diff: the mask of bits where the two inputs differ", "hard_negatives": ["mask_has_any"]}
+{"cell": "max", "kind": "paraphrase", "query": "return whichever of a and b is greater", "hard_negatives": []}
+{"cell": "max", "kind": "paraphrase", "query": "u16 max of a pair", "hard_negatives": []}
+{"cell": "max", "kind": "paraphrase", "query": "pick the higher of two inputs", "hard_negatives": []}
+{"cell": "max", "kind": "paraphrase", "query": "I need the larger value out of two", "hard_negatives": []}
+{"cell": "max", "kind": "paraphrase", "query": "greatest of a and b", "hard_negatives": []}
+{"cell": "max", "kind": "paraphrase", "query": "top value between two operands", "hard_negatives": []}
+{"cell": "max", "kind": "adversarial", "query": "not the smaller one \u2014 the larger of the two values", "hard_negatives": ["min"]}
+{"cell": "max", "kind": "adversarial", "query": "maximum, but over just two inputs not three", "hard_negatives": ["max3"]}
+{"cell": "max", "kind": "adversarial", "query": "the larger of two values itself, not its index", "hard_negatives": ["argmax2"]}
+{"cell": "max", "kind": "adversarial", "query": "biggest element of a pair, returned as the value not a position", "hard_negatives": ["argmax3"]}
+{"cell": "max3", "kind": "paraphrase", "query": "largest of three numbers", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "three-way maximum", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "highest of a, b, and c", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "u16 max over three inputs", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "pick the biggest among three values", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "return the top value of a triple", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "I need the greatest of three readings", "hard_negatives": []}
+{"cell": "max3", "kind": "paraphrase", "query": "find the peak value across three candidates", "hard_negatives": []}
+{"cell": "max3", "kind": "adversarial", "query": "of the three, keep the largest not the smallest", "hard_negatives": ["min3"]}
+{"cell": "max3", "kind": "adversarial", "query": "the biggest of three values itself, not which index it sits at", "hard_negatives": ["argmax3"]}
+{"cell": "max3", "kind": "adversarial", "query": "not max minus min \u2014 just the max of the three", "hard_negatives": ["range3"]}
+{"cell": "max3", "kind": "adversarial", "query": "the extreme high end of three values, no averaging with the min", "hard_negatives": ["midrange3"]}
+{"cell": "mean3", "kind": "paraphrase", "query": "average of three numbers", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "arithmetic mean over three inputs", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "avg of a, b, c without overflow", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "u16 mean of a triple", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "add three values and divide by three, safely", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "I need the average of three sensor readings", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "compute (a+b+c)/3 for 16-bit values", "hard_negatives": []}
+{"cell": "mean3", "kind": "paraphrase", "query": "overflow-safe three-input average", "hard_negatives": []}
+{"cell": "mean3", "kind": "adversarial", "query": "the arithmetic average of three, not the middle element", "hard_negatives": ["median3"]}
+{"cell": "mean3", "kind": "adversarial", "query": "total of three values divided by three, without overflowing", "hard_negatives": ["sum3"]}
+{"cell": "mean3", "kind": "adversarial", "query": "average over all three inputs, not just the min and max", "hard_negatives": ["midrange3"]}
+{"cell": "mean3", "kind": "adversarial", "query": "no repeat detection \u2014 just the mean of the three numbers", "hard_negatives": ["mode3"]}
+{"cell": "median3", "kind": "paraphrase", "query": "median of a triple", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "select the second-largest of three inputs", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "three-input median filter", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "which of three numbers sits in the middle?", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "u16 median of three values", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "I need the in-between value from three samples", "hard_negatives": []}
+{"cell": "median3", "kind": "paraphrase", "query": "middle element after sorting three values", "hard_negatives": []}
+{"cell": "median3", "kind": "adversarial", "query": "the middle one of three values, not their average", "hard_negatives": ["mean3"]}
+{"cell": "median3", "kind": "adversarial", "query": "the actual middle input, not (min+max)/2", "hard_negatives": ["midrange3"]}
+{"cell": "median3", "kind": "adversarial", "query": "neither the smallest nor the largest \u2014 the one in between", "hard_negatives": ["min3"]}
+{"cell": "median3", "kind": "adversarial", "query": "after sorting three values, give the center one not the spread", "hard_negatives": ["range3"]}
+{"cell": "midrange3", "kind": "paraphrase", "query": "halfway between the smallest and largest of three", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "(min + max) / 2 over three values", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "midpoint of the extremes of a triple", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "center of the range spanned by three numbers", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "average of just the lowest and highest among three", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "u16 midrange of three inputs", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "I need the mid-extent value of three samples", "hard_negatives": []}
+{"cell": "midrange3", "kind": "paraphrase", "query": "midrange statistic for a triple", "hard_negatives": []}
+{"cell": "midrange3", "kind": "adversarial", "query": "not the middle element \u2014 the average of the two extremes of three", "hard_negatives": ["median3"]}
+{"cell": "midrange3", "kind": "adversarial", "query": "average only the min and max of three, ignoring the middle one", "hard_negatives": ["mean3"]}
+{"cell": "midrange3", "kind": "adversarial", "query": "from three values, the center of max and min, not their gap", "hard_negatives": ["range3"]}
+{"cell": "midrange3", "kind": "adversarial", "query": "take the triple's smallest and largest and split the difference", "hard_negatives": ["min3"]}
+{"cell": "min", "kind": "paraphrase", "query": "return the lesser of a and b", "hard_negatives": []}
+{"cell": "min", "kind": "paraphrase", "query": "u16 min of a pair", "hard_negatives": []}
+{"cell": "min", "kind": "paraphrase", "query": "pick the lower of two inputs", "hard_negatives": []}
+{"cell": "min", "kind": "paraphrase", "query": "I need the least value out of two", "hard_negatives": []}
+{"cell": "min", "kind": "paraphrase", "query": "lowest of a and b", "hard_negatives": []}
+{"cell": "min", "kind": "paraphrase", "query": "bottom value between two operands", "hard_negatives": []}
+{"cell": "min", "kind": "adversarial", "query": "the lesser of the two, not the greater", "hard_negatives": ["max"]}
+{"cell": "min", "kind": "adversarial", "query": "minimum of exactly two values, no third input", "hard_negatives": ["min3"]}
+{"cell": "min", "kind": "adversarial", "query": "the smaller value itself, not which slot it's in", "hard_negatives": ["argmin2"]}
+{"cell": "min", "kind": "adversarial", "query": "least element of a pair, as a value not an index", "hard_negatives": ["argmin3"]}
+{"cell": "min3", "kind": "paraphrase", "query": "smallest of three numbers", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "three-way minimum", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "lowest of a, b, and c", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "u16 min over three inputs", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "pick the least among three values", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "return the bottom value of a triple", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "I need the smallest of three readings", "hard_negatives": []}
+{"cell": "min3", "kind": "paraphrase", "query": "cheapest of three candidate values", "hard_negatives": []}
+{"cell": "min3", "kind": "adversarial", "query": "of three values, the smallest not the biggest", "hard_negatives": ["max3"]}
+{"cell": "min3", "kind": "adversarial", "query": "the least of three itself, not its index", "hard_negatives": ["argmin3"]}
+{"cell": "min3", "kind": "adversarial", "query": "not the middle of the sorted three \u2014 the very smallest one", "hard_negatives": ["median3"]}
+{"cell": "min3", "kind": "adversarial", "query": "lowest extreme of three, no halving with the max", "hard_negatives": ["midrange3"]}
+{"cell": "mix16", "kind": "paraphrase", "query": "scramble a single u16 into a hash", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "avalanche finalizer for one 16-bit value", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "hash one number into a well-mixed word", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "bit mixer for a lone input value", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "I need a fingerprint of a single u16", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "deterministic scramble of one input word", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "u16 avalanche mix function", "hard_negatives": []}
+{"cell": "mix16", "kind": "paraphrase", "query": "diffuse the bits of one value like a hash finalizer", "hard_negatives": []}
+{"cell": "mix16", "kind": "adversarial", "query": "hash of a single value, not mixing two inputs together", "hard_negatives": ["hash_pair"]}
+{"cell": "mix16", "kind": "adversarial", "query": "one-shot avalanche of a whole u16, not a per-byte hash step", "hard_negatives": ["fnv1a_step"]}
+{"cell": "mix16", "kind": "adversarial", "query": "not a checksum byte step \u2014 a full scramble of one u16", "hard_negatives": ["crc8_step"]}
+{"cell": "mix16", "kind": "adversarial", "query": "shuffle x's bits thoroughly like a hash, not just reverse their order", "hard_negatives": ["reverse_bits"]}
+{"cell": "mode3", "kind": "paraphrase", "query": "which of three numbers occurs most often", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "find the repeated value among three inputs", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "most common of three u16 values", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "I need the duplicate value out of three numbers", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "pick the value that appears twice in a trio", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "mode of a b c", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "given three readings return the one that shows up more than once", "hard_negatives": []}
+{"cell": "mode3", "kind": "paraphrase", "query": "duplicate detector that returns the duplicated number from a trio", "hard_negatives": []}
+{"cell": "mode3", "kind": "adversarial", "query": "return the actual value at least two of three share, not a yes/no flag", "hard_negatives": ["majority3"]}
+{"cell": "mode3", "kind": "adversarial", "query": "the typical value of three samples, meaning the repeated one rather than their average", "hard_negatives": ["mean3"]}
+{"cell": "mode3", "kind": "adversarial", "query": "the common element among three numbers, the one that repeats, not a shared divisor", "hard_negatives": ["gcd3"]}
+{"cell": "mode3", "kind": "adversarial", "query": "give me the repeated value itself from three, not the index of the largest", "hard_negatives": ["argmax3"]}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "multiply two u16s without wraparound", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "safe product that tops out at 65535", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "how do I multiply two values and clamp on overflow", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "u16 saturating multiply", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "I need a product that pins to max instead of overflowing", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "times two numbers together, ceiling at the type max", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "overflow-safe multiplication of two 16-bit values", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "paraphrase", "query": "compute a times b but never wrap past the limit", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "adversarial", "query": "saturating arithmetic for a product of two inputs, not a sum", "hard_negatives": ["add_sat"]}
+{"cell": "mul_sat", "kind": "adversarial", "query": "cap the overflow when multiplying two different numbers, not cubing one", "hard_negatives": ["cube_sat"]}
+{"cell": "mul_sat", "kind": "adversarial", "query": "overflow-capped multiply of two distinct values rather than a number by itself", "hard_negatives": ["square"]}
+{"cell": "mul_sat", "kind": "adversarial", "query": "like the clamped subtract but for products: a*b saturating at the top", "hard_negatives": ["sub_sat"]}
+{"cell": "neq", "kind": "paraphrase", "query": "flag when two values differ", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "check that a and b are not the same", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "boolean test for two numbers being unequal", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "u16 not equal predicate", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "I need a 1 or 0 for whether the inputs mismatch", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "does x differ from y", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "return one when the pair of values don't match", "hard_negatives": []}
+{"cell": "neq", "kind": "paraphrase", "query": "inequality check between two u16s", "hard_negatives": []}
+{"cell": "neq", "kind": "adversarial", "query": "comparison that fires on mismatch, the opposite of an equality check", "hard_negatives": ["eq"]}
+{"cell": "neq", "kind": "adversarial", "query": "not asking whether a is at least b, just whether they are different", "hard_negatives": ["is_ge"]}
+{"cell": "neq", "kind": "adversarial", "query": "1 when the values aren't identical, no at-most ordering involved", "hard_negatives": ["is_le"]}
+{"cell": "neq", "kind": "adversarial", "query": "strict test that a and b are distinct, not that one exceeds the other", "hard_negatives": ["is_gt"]}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "smallest power of 2 at least n", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "next power-of-two ceiling for a u16", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "bump my buffer size up to a power of two", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "I need the closest power of two that isn't below my value", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "pow2 round up", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "what's the least 2^k covering this number", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "paraphrase", "query": "grow n to the following power-of-two boundary", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "adversarial", "query": "not just testing whether n is a power of two, give me the next one up", "hard_negatives": ["is_pow2"]}
+{"cell": "next_pow2", "kind": "adversarial", "query": "round up, but to a power-of-two boundary rather than a divisor multiple", "hard_negatives": ["ceil_div"]}
+{"cell": "next_pow2", "kind": "adversarial", "query": "I don't want 2 raised to a given exponent, I want the power of two covering n", "hard_negatives": ["pow_small"]}
+{"cell": "next_pow2", "kind": "adversarial", "query": "the power-of-two ceiling above n, not n raised to some power", "hard_negatives": ["cube_sat"]}
+{"cell": "nonzero", "kind": "paraphrase", "query": "test whether a value is anything but zero", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "truthiness check for a u16", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "return 1 when x has a value, 0 otherwise", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "flag set when the input isn't zero", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "u16 nonzero predicate", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "convert a number to a 0 or 1 boolean", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "I need to know if this counter has anything in it", "hard_negatives": []}
+{"cell": "nonzero", "kind": "paraphrase", "query": "does x hold something other than zero", "hard_negatives": []}
+{"cell": "nonzero", "kind": "adversarial", "query": "the inverse of a zero test: 1 when the value is present", "hard_negatives": ["is_zero"]}
+{"cell": "nonzero", "kind": "adversarial", "query": "1 if the number is set at all, nothing to do with even or odd", "hard_negatives": ["is_even"]}
+{"cell": "nonzero", "kind": "adversarial", "query": "single-input check that x isn't zero, no second operand to compare against", "hard_negatives": ["is_le"]}
+{"cell": "nonzero", "kind": "adversarial", "query": "1 when the value is at least something, i.e. not zero", "hard_negatives": ["is_ge"]}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "map a reading between its min and max onto 0 to 100", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "turn a sensor value within known bounds into a percent", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "linear rescale from an arbitrary interval to a percentage", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "normalize value to 0-100 given lo hi bounds", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "I need progress as percent given start and end points", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "convert x relative to its floor and ceiling into 0..100", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "where does x sit between two limits, as a percentage", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "paraphrase", "query": "rescale a bounded value to a hundred-point scale", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "adversarial", "query": "rescale into 0..100 with explicit lower and upper bounds, not a byte fraction", "hard_negatives": ["ratio_255"]}
+{"cell": "normalize_0_100", "kind": "adversarial", "query": "not taking a percent of a value, expressing x's position in a range as a percent", "hard_negatives": ["scale_percent"]}
+{"cell": "normalize_0_100", "kind": "adversarial", "query": "percent from arbitrary lo and hi bounds, not from a 0..255 byte", "hard_negatives": ["byte_to_percent"]}
+{"cell": "normalize_0_100", "kind": "adversarial", "query": "give the percent position inside the band, not a yes/no tolerance check", "hard_negatives": ["within_percent"]}
+{"cell": "num_digits", "kind": "paraphrase", "query": "how many digits does this number have", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "decimal length of a u16", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "count the base-10 digits of n", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "digit count for display width", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "I need the printed width of an integer", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "number of characters when n is written in decimal", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "length of n in base ten", "hard_negatives": []}
+{"cell": "num_digits", "kind": "paraphrase", "query": "figure out whether a value is 1, 2, or 5 digits long", "hard_negatives": []}
+{"cell": "num_digits", "kind": "adversarial", "query": "count the decimal digits themselves, don't add them up", "hard_negatives": ["digit_sum"]}
+{"cell": "num_digits", "kind": "adversarial", "query": "how many decimal digits n has, not how many divisors", "hard_negatives": ["factor_count"]}
+{"cell": "num_digits", "kind": "adversarial", "query": "length of the number in base 10, not in bits", "hard_negatives": ["bit_length"]}
+{"cell": "num_digits", "kind": "adversarial", "query": "the magnitude of n as a digit count, not the next power-of-two boundary", "hard_negatives": ["next_pow2"]}
+{"cell": "parity", "kind": "paraphrase", "query": "xor of all the bits in a word", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "is the count of one-bits odd", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "compute the parity bit for a 16-bit value", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "parity flag for a simple checksum", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "reduce a word's bits by xor down to a single flag", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "1 when an odd number of bits are set", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "u16 bit parity", "hard_negatives": []}
+{"cell": "parity", "kind": "paraphrase", "query": "I need the odd-ones flag over all bits of x", "hard_negatives": []}
+{"cell": "parity", "kind": "adversarial", "query": "parity over the set bits of the word, not whether the value itself is odd", "hard_negatives": ["is_odd"]}
+{"cell": "parity", "kind": "adversarial", "query": "one flag summarizing the xor of all bits, not a test of a single bit position", "hard_negatives": ["bit_is_set"]}
+{"cell": "parity", "kind": "adversarial", "query": "tells me if the ones count is odd, not whether the number is even", "hard_negatives": ["is_even"]}
+{"cell": "parity", "kind": "adversarial", "query": "xor folded across one value's own bits, not the xor of two masks", "hard_negatives": ["mask_xor"]}
+{"cell": "percent", "kind": "paraphrase", "query": "what percent of the total is this amount", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "compute completion percentage from done and total", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "part over whole as a percentage", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "u16 percentage of a whole", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "I need x out of y expressed per hundred", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "turn a fraction into a percent figure", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "how much of the whole is covered, in percent", "hard_negatives": []}
+{"cell": "percent", "kind": "paraphrase", "query": "score as a percentage given points and max points", "hard_negatives": []}
+{"cell": "percent", "kind": "adversarial", "query": "the ratio per hundred, not per thousand", "hard_negatives": ["permille"]}
+{"cell": "percent", "kind": "adversarial", "query": "derive the percent from part and whole, not apply a percent to a value", "hard_negatives": ["scale_percent"]}
+{"cell": "percent", "kind": "adversarial", "query": "fraction of the whole scaled to 100, not to a 255 byte", "hard_negatives": ["ratio_255"]}
+{"cell": "percent", "kind": "adversarial", "query": "simple part divided by whole percent, no lo and hi bounds involved", "hard_negatives": ["normalize_0_100"]}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "convert a percentage to a 0-255 value", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "map 0..100 onto a byte range", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "brightness percent to 8-bit level", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "percent to byte scale conversion", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "I have a percent and need the equivalent out of 255", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "turn 50 percent into its byte representation", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "rescale a hundred-based value to 255-based", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "paraphrase", "query": "what byte value corresponds to this percent", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "adversarial", "query": "going from percent into byte units, not the other way around", "hard_negatives": ["byte_to_percent"]}
+{"cell": "percent_to_byte", "kind": "adversarial", "query": "input is already a percent, just stretch it to the 255 scale", "hard_negatives": ["ratio_255"]}
+{"cell": "percent_to_byte", "kind": "adversarial", "query": "don't take a percent of something, translate the percent itself to 0..255", "hard_negatives": ["scale_percent"]}
+{"cell": "percent_to_byte", "kind": "adversarial", "query": "converting out of the 0..100 scale into byte range, not into it", "hard_negatives": ["normalize_0_100"]}
+{"cell": "permille", "kind": "paraphrase", "query": "parts per thousand from part and whole", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "compute a ratio in thousandths", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "like a percentage but out of 1000", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "per-mille of a total", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "I need finer than percent: the fraction times a thousand", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "express part over whole per thousand", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "u16 permille ratio", "hard_negatives": []}
+{"cell": "permille", "kind": "paraphrase", "query": "how many thousandths of the whole is this part", "hard_negatives": []}
+{"cell": "permille", "kind": "adversarial", "query": "proportion resolution in thousandths, not the usual per-hundred", "hard_negatives": ["percent"]}
+{"cell": "permille", "kind": "adversarial", "query": "compute the per-thousand rate from two quantities, not scale a value by a rate", "hard_negatives": ["scale_percent"]}
+{"cell": "permille", "kind": "adversarial", "query": "proportion scaled by 1000, not to a byte fraction", "hard_negatives": ["ratio_255"]}
+{"cell": "permille", "kind": "adversarial", "query": "give me the per-mille value itself, not a tolerance pass or fail", "hard_negatives": ["within_percent"]}
+{"cell": "popcount", "kind": "paraphrase", "query": "count the one bits in a word", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "hamming weight of a u16", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "how many bits are set in x", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "set-bit total of a 16-bit value", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "tally the ones in a bitmask", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "I need the number of flags enabled in a mask", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "u16 popcount instruction", "hard_negatives": []}
+{"cell": "popcount", "kind": "paraphrase", "query": "count enabled flags in a bitfield", "hard_negatives": []}
+{"cell": "popcount", "kind": "adversarial", "query": "total ones across the whole word, not the zeros at the high end", "hard_negatives": ["leading_zeros"]}
+{"cell": "popcount", "kind": "adversarial", "query": "count of set bits anywhere in x, not the low zero bits", "hard_negatives": ["trailing_zeros"]}
+{"cell": "popcount", "kind": "adversarial", "query": "how many binary ones, not how many decimal digits", "hard_negatives": ["num_digits"]}
+{"cell": "popcount", "kind": "adversarial", "query": "number of bits that are on, not the position of the highest one", "hard_negatives": ["bit_length"]}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "raise a number to a power under a modulus", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "modular exponentiation for small u16 moduli", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "compute base^exp mod m", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "powmod primitive for hashing", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "I need exponentiation reduced by a modulus without overflow", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "b to the e, remainder m", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "modpow building block for crypto-style math", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "paraphrase", "query": "exponentiate then take the remainder, done without blowing up", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "adversarial", "query": "the power reduced mod m, not the saturating raw power", "hard_negatives": ["pow_small"]}
+{"cell": "pow_mod", "kind": "adversarial", "query": "not just a remainder, exponentiate first and then reduce mod m", "hard_negatives": ["safe_mod"]}
+{"cell": "pow_mod", "kind": "adversarial", "query": "base^exp folded into a small modulus up to 256, not a byte-scaled ratio", "hard_negatives": ["ratio_255"]}
+{"cell": "pow_mod", "kind": "adversarial", "query": "find the last-digit style residue of a huge power: base^exp mod m", "hard_negatives": ["num_digits"]}
+{"cell": "pow_small", "kind": "paraphrase", "query": "integer exponentiation that caps at u16 max", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "raise base to exp with saturation", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "small power function for 16-bit ints", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "u16 pow function", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "I need b^e without wrapping, clamped on overflow", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "compute ten to the third, two to the tenth, etc.", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "exponent operator that tops out instead of overflowing", "hard_negatives": []}
+{"cell": "pow_small", "kind": "paraphrase", "query": "generic power with any base and exponent", "hard_negatives": []}
+{"cell": "pow_small", "kind": "adversarial", "query": "arbitrary exponent, not just the third power, still overflow-capped", "hard_negatives": ["cube_sat"]}
+{"cell": "pow_small", "kind": "adversarial", "query": "plain saturating power, no modulus applied afterwards", "hard_negatives": ["pow_mod"]}
+{"cell": "pow_small", "kind": "adversarial", "query": "raising to any power, not only squaring, clamped at max", "hard_negatives": ["square"]}
+{"cell": "pow_small", "kind": "adversarial", "query": "saturating repeated multiplication: base times itself exp times", "hard_negatives": ["mul_sat"]}
+{"cell": "quantize", "kind": "paraphrase", "query": "which bucket does x fall into given a step size", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "discretize a value into bin numbers", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "index of the interval containing x for fixed-width bins", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "value to bucket index by step", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "I need the histogram bin number for a reading", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "divide the range into steps and tell me x's slot", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "convert a measurement to its grid cell number", "hard_negatives": []}
+{"cell": "quantize", "kind": "paraphrase", "query": "bin a u16 by uniform step width", "hard_negatives": []}
+{"cell": "quantize", "kind": "adversarial", "query": "uniform step-sized bins over the whole range, not two custom thresholds", "hard_negatives": ["bucket3"]}
+{"cell": "quantize", "kind": "adversarial", "query": "give the bin index, not the value rounded up to the grid", "hard_negatives": ["snap_up"]}
+{"cell": "quantize", "kind": "adversarial", "query": "I want the slot number, not x floored to a multiple of step", "hard_negatives": ["snap_down"]}
+{"cell": "quantize", "kind": "adversarial", "query": "the bucket index by step size rather than rounding to the nearest multiple", "hard_negatives": ["round_to_multiple"]}
+{"cell": "range3", "kind": "paraphrase", "query": "gap between the highest and lowest of three numbers", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "spread of three readings", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "difference between the biggest and smallest of a trio", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "three-value range max minus min", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "how far apart are the extremes of three samples", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "I need the delta between top and bottom of three inputs", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "max minus min over a b c", "hard_negatives": []}
+{"cell": "range3", "kind": "paraphrase", "query": "measure the variation span across three measurements", "hard_negatives": []}
+{"cell": "range3", "kind": "adversarial", "query": "the distance between min and max of three, not their midpoint", "hard_negatives": ["midrange3"]}
+{"cell": "range3", "kind": "adversarial", "query": "not just the largest of three, its gap above the smallest", "hard_negatives": ["max3"]}
+{"cell": "range3", "kind": "adversarial", "query": "how much the biggest of three exceeds the smallest", "hard_negatives": ["min3"]}
+{"cell": "range3", "kind": "adversarial", "query": "the separation of the extremes for three values, not the middle one", "hard_negatives": ["median3"]}
+{"cell": "range_check", "kind": "paraphrase", "query": "validate that a value lies inside inclusive bounds", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "is x between lo and hi, endpoints allowed", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "boolean bounds check for a u16", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "inclusive in-range test", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "I need a 1 or 0 telling me the input falls within limits", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "check a port number stays inside its allowed window", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "does the reading sit within min and max inclusive", "hard_negatives": []}
+{"cell": "range_check", "kind": "paraphrase", "query": "flag valid when value is no less than lo and no more than hi", "hard_negatives": []}
+{"cell": "range_check", "kind": "adversarial", "query": "inclusive membership test where the endpoints count as in range", "hard_negatives": ["between_exclusive"]}
+{"cell": "range_check", "kind": "adversarial", "query": "just tell me if it's inside the bounds, don't move the value into them", "hard_negatives": ["clamp"]}
+{"cell": "range_check", "kind": "adversarial", "query": "two-sided containment check, not a single less-than comparison", "hard_negatives": ["is_lt"]}
+{"cell": "range_check", "kind": "adversarial", "query": "returns 1 when the value is within its limits, not when a bit is on", "hard_negatives": ["bit_is_set"]}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "fraction of a total scaled to 0..255", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "part over whole as an 8-bit value", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "convert a proportion to a byte", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "part divided by whole times 255", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "I need a fill level as a byte from amount and capacity", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "express how full something is on a 255 scale", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "u16 ratio to byte fraction", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "paraphrase", "query": "scale progress out of total into an alpha byte", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "adversarial", "query": "producing the 0..255 fraction from part and whole, not reading a byte into percent", "hard_negatives": ["byte_to_percent"]}
+{"cell": "ratio_255", "kind": "adversarial", "query": "inputs are part and whole, not an existing percent, output on the byte scale", "hard_negatives": ["percent_to_byte"]}
+{"cell": "ratio_255", "kind": "adversarial", "query": "the proportion mapped onto 255 rather than 100", "hard_negatives": ["percent"]}
+{"cell": "ratio_255", "kind": "adversarial", "query": "part of a whole onto the byte range, no lo/hi window and not 0..100", "hard_negatives": ["normalize_0_100"]}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "mirror the bit order of a 16-bit word", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "flip a word end to end so bit 0 becomes bit 15", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "bit reversal for FFT-style indexing", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "reverse bit order u16", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "I need the bits of x read backwards", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "swap msb-first ordering to lsb-first", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "turn 0b1000000000000000 into 0b0000000000000001", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "paraphrase", "query": "reflect all sixteen bits of a value", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "adversarial", "query": "reverse every individual bit, not just exchange the two bytes", "hard_negatives": ["swap_bytes"]}
+{"cell": "reverse_bits", "kind": "adversarial", "query": "flip the ordering of all the bits, not invert one bit", "hard_negatives": ["toggle_bit"]}
+{"cell": "reverse_bits", "kind": "adversarial", "query": "a fully mirrored bit sequence, not a rotation right by n", "hard_negatives": ["rotr16"]}
+{"cell": "reverse_bits", "kind": "adversarial", "query": "reversal of bit positions rather than a circular left shift", "hard_negatives": ["rotl16"]}
+{"cell": "rotl16", "kind": "paraphrase", "query": "circular left shift of a 16-bit value", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "rotate bits leftward with wraparound", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "rol instruction equivalent for u16", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "left rotate x by n bits", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "shift left where the top bits wrap back around to the bottom", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "I need a barrel rotate to the left", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "u16 rotl operation", "hard_negatives": []}
+{"cell": "rotl16", "kind": "paraphrase", "query": "cyclically move bits up by n positions", "hard_negatives": []}
+{"cell": "rotl16", "kind": "adversarial", "query": "rotation toward the high end, i.e. left, not right", "hard_negatives": ["rotr16"]}
+{"cell": "rotl16", "kind": "adversarial", "query": "circularly shift the bits left by n, don't mirror their order", "hard_negatives": ["reverse_bits"]}
+{"cell": "rotl16", "kind": "adversarial", "query": "wrap the leading bits around to the low end: rotate left by n", "hard_negatives": ["leading_zeros"]}
+{"cell": "rotl16", "kind": "adversarial", "query": "rotate left by n so the trailing positions refill from the top", "hard_negatives": ["trailing_zeros"]}
+{"cell": "rotr16", "kind": "paraphrase", "query": "how do I circular shift a 16-bit value right?", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "rotate this u16 right by n places", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "I need a right bit rotation for 16-bit words", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "u16 ror instruction equivalent", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "spin the bits rightward with wraparound on a 16-bit number", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "circularly move bits toward the low end, wrapping into the top", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "16-bit rotate right, shift amount taken modulo 16", "hard_negatives": []}
+{"cell": "rotr16", "kind": "paraphrase", "query": "bits that fall off the right should come back in on the left", "hard_negatives": []}
+{"cell": "rotr16", "kind": "adversarial", "query": "rotate bits right, not left, by n positions on a u16", "hard_negatives": ["rotl16"]}
+{"cell": "rotr16", "kind": "adversarial", "query": "shift bits around cyclically to the right, not mirror-reverse them", "hard_negatives": ["reverse_bits"]}
+{"cell": "rotr16", "kind": "adversarial", "query": "not flipping a single bit, I want the whole word rotated right", "hard_negatives": ["toggle_bit"]}
+{"cell": "rotr16", "kind": "adversarial", "query": "carry the high zero bits around to the right end, full circular rotate", "hard_negatives": ["leading_zeros"]}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "round a number to the closest multiple of a step", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "snap a value to the nearest grid point", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "which cell rounds to the nearest increment?", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "align x to the closest step boundary, halfway cases go upward", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "I need nearest-multiple rounding for u16 values", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "u16 round to closest multiple", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "put a value onto a grid, choosing whichever multiple is nearer", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "paraphrase", "query": "nearest step rounding with ties broken upward", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "adversarial", "query": "snap to grid, but to the nearest multiple, not always flooring down", "hard_negatives": ["snap_down"]}
+{"cell": "round_to_multiple", "kind": "adversarial", "query": "round to a multiple, picking the closest one rather than always ceiling", "hard_negatives": ["snap_up"]}
+{"cell": "round_to_multiple", "kind": "adversarial", "query": "not the bucket index, give me the nearest multiple value itself", "hard_negatives": ["quantize"]}
+{"cell": "round_to_multiple", "kind": "adversarial", "query": "nearest multiple of an arbitrary step, not the next power of two", "hard_negatives": ["next_pow2"]}
+{"cell": "safe_div", "kind": "paraphrase", "query": "divide two numbers without crashing on a zero denominator", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "integer division that returns zero instead of panicking on divide by zero", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "u16 quotient with zero-divisor guard", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "how can I safely divide a by b?", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "I need division that tolerates a zero divisor", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "guarded integer quotient of two values", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "compute a over b, giving 0 when b is 0", "hard_negatives": []}
+{"cell": "safe_div", "kind": "paraphrase", "query": "crash-proof divide for 16-bit ints", "hard_negatives": []}
+{"cell": "safe_div", "kind": "adversarial", "query": "give me the quotient, not the remainder, safe when divisor is zero", "hard_negatives": ["safe_mod"]}
+{"cell": "safe_div", "kind": "adversarial", "query": "not a divisibility check, actually divide a by b with zero guard", "hard_negatives": ["divides"]}
+{"cell": "safe_div", "kind": "adversarial", "query": "plain truncating division guarded against zero, no rounding up", "hard_negatives": ["ceil_div"]}
+{"cell": "safe_div", "kind": "adversarial", "query": "divide that fails soft to zero, not a floored subtraction", "hard_negatives": ["sub_sat"]}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "remainder of a divided by b, zero-safe", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "modulo that doesn't blow up when the divisor is zero", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "u16 mod with divide-by-zero guard", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "what's left over after dividing, handling a zero divisor", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "I need a remainder operation that can't fault", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "compute a mod b, returning 0 when b equals 0", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "leftover after integer division, guarded against zero", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "paraphrase", "query": "safe modulus for u16 values", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "adversarial", "query": "I want the remainder, not the quotient, with a zero-divisor guard", "hard_negatives": ["safe_div"]}
+{"cell": "safe_mod", "kind": "adversarial", "query": "just a plain mod of a by b, no exponentiation involved", "hard_negatives": ["pow_mod"]}
+{"cell": "safe_mod", "kind": "adversarial", "query": "the leftover from division, not a subtraction floored at zero", "hard_negatives": ["sub_sat"]}
+{"cell": "safe_mod", "kind": "adversarial", "query": "modulo remainder of two values, not a 0-255 scaled fraction", "hard_negatives": ["ratio_255"]}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "compute a given percent of a value", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "what cell gives me pct percent of a number?", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "multiply a value by a percentage", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "u16 percent of value", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "I need to work out x percent of some amount", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "take a proportion of a value expressed in percent", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "scale a number by a percentage factor", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "paraphrase", "query": "get the share of a value corresponding to a percentage", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "adversarial", "query": "just the pct portion of the price, not the price after the reduction", "hard_negatives": ["discount_percent"]}
+{"cell": "scale_percent", "kind": "adversarial", "query": "given a value and pct, return that share, not what percent one number is of another", "hard_negatives": ["percent"]}
+{"cell": "scale_percent", "kind": "adversarial", "query": "take a percentage of a value without adding it back on", "hard_negatives": ["increase_percent"]}
+{"cell": "scale_percent", "kind": "adversarial", "query": "compute pct percent of a value, not test a percent tolerance", "hard_negatives": ["within_percent"]}
+{"cell": "set_bit", "kind": "paraphrase", "query": "turn on a specific bit in a u16", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "force bit n of x to one", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "how do I enable a flag bit at a given position?", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "set the nth bit of a 16-bit value", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "I need to raise a single bit in a word", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "u16 set bit at index", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "make sure bit k is 1 in this value", "hard_negatives": []}
+{"cell": "set_bit", "kind": "paraphrase", "query": "OR a one into a chosen bit position of x", "hard_negatives": []}
+{"cell": "set_bit", "kind": "adversarial", "query": "set the bit to one, not clear it to zero", "hard_negatives": ["clear_bit"]}
+{"cell": "set_bit", "kind": "adversarial", "query": "unconditionally turn the bit on, not flip its current state", "hard_negatives": ["toggle_bit"]}
+{"cell": "set_bit", "kind": "adversarial", "query": "don't just test whether the bit is set, actually set it", "hard_negatives": ["bit_is_set"]}
+{"cell": "set_bit", "kind": "adversarial", "query": "switch on a bit at a given index, not count bits used", "hard_negatives": ["bit_length"]}
+{"cell": "snap_down", "kind": "paraphrase", "query": "floor a value to a multiple of step", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "round down to the previous grid line", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "align x downward to a step boundary", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "u16 floor to multiple", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "I need to truncate a value down onto a grid", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "largest multiple of step not exceeding x", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "drop x to the multiple of step just below it", "hard_negatives": []}
+{"cell": "snap_down", "kind": "paraphrase", "query": "how do I round a number down to an increment?", "hard_negatives": []}
+{"cell": "snap_down", "kind": "adversarial", "query": "snap to the grid line below, never above", "hard_negatives": ["snap_up"]}
+{"cell": "snap_down", "kind": "adversarial", "query": "always floor to the multiple, even when the upper one is closer", "hard_negatives": ["round_to_multiple"]}
+{"cell": "snap_down", "kind": "adversarial", "query": "give me the floored multiple itself, not the bucket number", "hard_negatives": ["quantize"]}
+{"cell": "snap_down", "kind": "adversarial", "query": "round down onto a step grid, the opposite of ceiling division", "hard_negatives": ["ceil_div"]}
+{"cell": "snap_up", "kind": "paraphrase", "query": "round a value up to the next multiple of step", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "ceiling a number onto a step grid", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "bump x up to the following step boundary", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "u16 ceil to multiple", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "smallest multiple of step that is at least x", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "I need to pad a size up to an alignment boundary", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "advance a value to the next increment of step", "hard_negatives": []}
+{"cell": "snap_up", "kind": "paraphrase", "query": "how do I round up to a given granularity?", "hard_negatives": []}
+{"cell": "snap_up", "kind": "adversarial", "query": "snap onto the grid, but upward, never flooring", "hard_negatives": ["snap_down"]}
+{"cell": "snap_up", "kind": "adversarial", "query": "always take the higher multiple, not the nearest one", "hard_negatives": ["round_to_multiple"]}
+{"cell": "snap_up", "kind": "adversarial", "query": "the rounded-up multiple itself, not how many steps it takes", "hard_negatives": ["ceil_div"]}
+{"cell": "snap_up", "kind": "adversarial", "query": "round up to a multiple of any step, not just powers of two", "hard_negatives": ["next_pow2"]}
+{"cell": "square", "kind": "paraphrase", "query": "square a u16, capping at the max instead of overflowing", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "n times itself with saturation", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "raise a value to the second power, clamped at 65535", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "I need x squared without wraparound on overflow", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "multiply a value by itself, saturating if it overflows", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "u16 squaring that tops out at the ceiling", "hard_negatives": []}
+{"cell": "square", "kind": "paraphrase", "query": "how do I square a number safely in 16 bits?", "hard_negatives": []}
+{"cell": "square", "kind": "adversarial", "query": "second power with saturation, not the cube", "hard_negatives": ["cube_sat"]}
+{"cell": "square", "kind": "adversarial", "query": "saturating multiply of a number by itself, single input", "hard_negatives": ["mul_sat"]}
+{"cell": "square", "kind": "adversarial", "query": "the capped u16 square, not the wide exact variant", "hard_negatives": ["square_wide"]}
+{"cell": "square", "kind": "adversarial", "query": "just squaring with a fixed exponent of two, saturating", "hard_negatives": ["pow_small"]}
+{"cell": "square_wide", "kind": "paraphrase", "query": "exact square with a 32-bit result, no clamping", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "square a number and keep the full wide product", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "n squared without the u16 cap", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "wide exact squaring cell", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "I need the true square even when it exceeds 65535", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "squaring with a u32 output field so nothing saturates", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "full-precision square of a 16-bit input", "hard_negatives": []}
+{"cell": "square_wide", "kind": "paraphrase", "query": "a square that never loses bits to saturation", "hard_negatives": []}
+{"cell": "square_wide", "kind": "adversarial", "query": "square with the exact wide result, not the saturating value cell", "hard_negatives": ["square"]}
+{"cell": "square_wide", "kind": "adversarial", "query": "the wide-field cell for squaring, not the weighted sum one", "hard_negatives": ["weighted_sum_wide"]}
+{"cell": "square_wide", "kind": "adversarial", "query": "exact wide second power, not a capped cube", "hard_negatives": ["cube_sat"]}
+{"cell": "square_wide", "kind": "adversarial", "query": "compute the square itself in full width, not test for perfect squares", "hard_negatives": ["is_square"]}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "subtract b from a, clamping at zero", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "a difference that never goes negative", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "u16 saturating subtraction", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "how do I subtract without underflow wrapping?", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "I need minus that floors at zero on underflow", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "take one number from another, bottoming out at 0", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "underflow-proof subtract for unsigned 16-bit values", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "paraphrase", "query": "a minus b, giving zero if b is bigger", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "adversarial", "query": "the saturating operation for subtraction, not addition", "hard_negatives": ["add_sat"]}
+{"cell": "sub_sat", "kind": "adversarial", "query": "clamped subtract, not clamped multiply", "hard_negatives": ["mul_sat"]}
+{"cell": "sub_sat", "kind": "adversarial", "query": "saturating arithmetic for a minus b, nothing cubed", "hard_negatives": ["cube_sat"]}
+{"cell": "sub_sat", "kind": "adversarial", "query": "subtraction floored at zero, not guarded division", "hard_negatives": ["safe_div"]}
+{"cell": "sum3", "kind": "paraphrase", "query": "add three numbers together with saturation", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "total of three u16 values", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "sum a, b and c, capped at 65535", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "I need a three-way addition cell", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "combine three inputs into one grand total", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "three-operand saturating add", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "what cell totals three values without wrapping?", "hard_negatives": []}
+{"cell": "sum3", "kind": "paraphrase", "query": "aggregate three quantities into a single sum", "hard_negatives": []}
+{"cell": "sum3", "kind": "adversarial", "query": "saturating addition of three operands, not just two", "hard_negatives": ["add_sat"]}
+{"cell": "sum3", "kind": "adversarial", "query": "plain unweighted total of three inputs", "hard_negatives": ["weighted_sum"]}
+{"cell": "sum3", "kind": "adversarial", "query": "the sum of the three values, not their average", "hard_negatives": ["mean3"]}
+{"cell": "sum3", "kind": "adversarial", "query": "add three values with a saturation cap, no multiplying", "hard_negatives": ["mul_sat"]}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "swap the upper and lower bytes of a u16", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "convert a 16-bit word between endianness", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "byte swap a 16-bit value", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "exchange the high and low byte of a word", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "I need to flip the byte order of a halfword", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "u16 endian swap", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "move the top byte to the bottom and vice versa", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "paraphrase", "query": "how do I reorder the two bytes of a 16-bit number?", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "adversarial", "query": "reverse at the byte level, trading octets, not mirroring every bit", "hard_negatives": ["reverse_bits"]}
+{"cell": "swap_bytes", "kind": "adversarial", "query": "don't just extract the high byte, exchange it with the low one", "hard_negatives": ["high_byte"]}
+{"cell": "swap_bytes", "kind": "adversarial", "query": "reorder the bytes of a word, no checksum math", "hard_negatives": ["crc8_step"]}
+{"cell": "swap_bytes", "kind": "adversarial", "query": "flip the byte order of the word, not a single bit", "hard_negatives": ["toggle_bit"]}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "flip one bit at a given position", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "invert bit n of a u16", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "xor a single bit position in a word", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "switch the flag at index bit to its opposite", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "I need to flip a specific bit whatever its state", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "u16 toggle bit k", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "change a bit from 0 to 1 or back at position n", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "paraphrase", "query": "how do I invert just one bit of a value?", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "adversarial", "query": "flip the bit whatever it currently is, not force it on", "hard_negatives": ["set_bit"]}
+{"cell": "toggle_bit", "kind": "adversarial", "query": "invert the chosen bit rather than always zeroing it", "hard_negatives": ["clear_bit"]}
+{"cell": "toggle_bit", "kind": "adversarial", "query": "xor just one bit position, not a whole mask", "hard_negatives": ["mask_xor"]}
+{"cell": "toggle_bit", "kind": "adversarial", "query": "flip a single chosen bit, not reverse all sixteen", "hard_negatives": ["reverse_bits"]}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "count the zero bits at the low end of a value", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "how many trailing zeros does this u16 have?", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "ctz for 16-bit numbers", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "find how many low-order bits are zero", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "I need the count of zeros below the lowest set bit", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "count consecutive zero bits starting from bit zero", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "trailing zero bit count, 16 when the input is zero", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "paraphrase", "query": "u16 trailing zeros count", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "adversarial", "query": "count zeros at the bottom of the word, not the top", "hard_negatives": ["leading_zeros"]}
+{"cell": "trailing_zeros", "kind": "adversarial", "query": "the low zero bit count, not how many bits the number needs", "hard_negatives": ["bit_length"]}
+{"cell": "trailing_zeros", "kind": "adversarial", "query": "count trailing zeros directly, without reversing the bits first", "hard_negatives": ["reverse_bits"]}
+{"cell": "trailing_zeros", "kind": "adversarial", "query": "count the low zero bits, don't clear any of them", "hard_negatives": ["clear_bit"]}
+{"cell": "triangular", "kind": "paraphrase", "query": "sum of the first n integers", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "total of 1 through n", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "n times n plus one, halved", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "I need the series sum 1+2+...+n", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "how many items in a triangle with n rows?", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "cumulative total from one up to n", "hard_negatives": []}
+{"cell": "triangular", "kind": "paraphrase", "query": "gauss sum of the first n naturals", "hard_negatives": []}
+{"cell": "triangular", "kind": "adversarial", "query": "sum the whole run 1 to n, not the digits of n", "hard_negatives": ["digit_sum"]}
+{"cell": "triangular", "kind": "adversarial", "query": "the closed-form sum of a rising sequence, not adding two numbers", "hard_negatives": ["add_sat"]}
+{"cell": "triangular", "kind": "adversarial", "query": "the triangle number formula n(n+1)/2, not n cubed", "hard_negatives": ["cube_sat"]}
+{"cell": "triangular", "kind": "adversarial", "query": "series total one through n, not a weighted three-input sum", "hard_negatives": ["weighted_sum_wide"]}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "combine three inputs with weights one, two, three", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "compute a candidate score from three features", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "a plus twice b plus three times c", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "weighted three-input score cell", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "I need a linear combination with weights 1, 2 and 3", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "blend three values where later inputs count more", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "fixed-weight scoring of three u16 inputs", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "paraphrase", "query": "how do I get a 1x, 2x, 3x weighted total of three values?", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "adversarial", "query": "the regular u16 weighted score, not the wide exact sibling", "hard_negatives": ["weighted_sum_wide"]}
+{"cell": "weighted_sum", "kind": "adversarial", "query": "total of three inputs but weighted 1, 2, 3, not plain", "hard_negatives": ["sum3"]}
+{"cell": "weighted_sum", "kind": "adversarial", "query": "weighted combination of three values, not their average", "hard_negatives": ["mean3"]}
+{"cell": "weighted_sum", "kind": "adversarial", "query": "score the three inputs with weights, not vote on their agreement", "hard_negatives": ["majority3"]}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "weighted sum a+2b+3c with a full 32-bit result", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "exact weighted total of three inputs, no u16 wrap", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "wide-result scoring cell with weights 1 2 3", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "I need the weighted score without any overflow truncation", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "1-2-3 weighted combination kept in a wide field", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "precise weighted score that can exceed 65535", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "overflow-proof weighted sum of three values", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "paraphrase", "query": "three-input weighted total, exact wide arithmetic", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "adversarial", "query": "the wide exact variant of the 1-2-3 weighted score", "hard_negatives": ["weighted_sum"]}
+{"cell": "weighted_sum_wide", "kind": "adversarial", "query": "wide u32 result for the weighted sum, not the square", "hard_negatives": ["square_wide"]}
+{"cell": "weighted_sum_wide", "kind": "adversarial", "query": "exact wide addition of weighted terms, no saturating cap", "hard_negatives": ["add_sat"]}
+{"cell": "weighted_sum_wide", "kind": "adversarial", "query": "weighted accumulation at full precision, not a clamped multiply", "hard_negatives": ["mul_sat"]}
+{"cell": "within_percent", "kind": "paraphrase", "query": "check if a value is within some percent of a target", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "is the actual close to the target inside a percentage tolerance?", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "percentage tolerance test for two numbers", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "I need to verify a reading is near expected within pct", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "does the measurement deviate less than n percent from the goal?", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "tolerance check, actual versus target, percent based", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "return 1 when a value sits inside a percent band around target", "hard_negatives": []}
+{"cell": "within_percent", "kind": "paraphrase", "query": "compare two numbers for closeness by percentage", "hard_negatives": []}
+{"cell": "within_percent", "kind": "adversarial", "query": "not computing percent of a value, testing whether it lies within percent of target", "hard_negatives": ["scale_percent"]}
+{"cell": "within_percent", "kind": "adversarial", "query": "a percent tolerance check on a value, not reducing it by percent", "hard_negatives": ["discount_percent"]}
+{"cell": "within_percent", "kind": "adversarial", "query": "a yes-no percent closeness test, not rescaling to a 0-100 range", "hard_negatives": ["normalize_0_100"]}
+{"cell": "within_percent", "kind": "adversarial", "query": "check the value falls within pct of target, don't grow it", "hard_negatives": ["increase_percent"]}
+{"cell": "wrap", "kind": "paraphrase", "query": "wrap an index around a buffer length", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "keep x inside the range zero to m by cycling", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "circular wraparound of a counter at modulus m", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "u16 wrap into period m", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "I need values to loop back to zero at m", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "constrain x to a repeating cycle of length m", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "ring buffer position from a running index", "hard_negatives": []}
+{"cell": "wrap", "kind": "paraphrase", "query": "how do I make a value wrap around a period?", "hard_negatives": []}
+{"cell": "wrap", "kind": "adversarial", "query": "wrap x into the cycle 0 to m, bounds framing rather than remainder math", "hard_negatives": ["safe_mod"]}
+{"cell": "wrap", "kind": "adversarial", "query": "values should wrap around at m, not saturate at a cap", "hard_negatives": ["mul_sat"]}
+{"cell": "wrap", "kind": "adversarial", "query": "cycle x back inside the period, not snap it to a multiple", "hard_negatives": ["round_to_multiple"]}
+{"cell": "wrap", "kind": "adversarial", "query": "just wrap a value mod m, no exponentiation", "hard_negatives": ["pow_mod"]}
+{"cell": "abs_diff", "kind": "direct", "query": "Absolute difference |a - b| between two values.", "hard_negatives": []}
+{"cell": "add_sat", "kind": "direct", "query": "Saturating add: a + b, capped at 65535 instead of wrapping.", "hard_negatives": []}
+{"cell": "argmax2", "kind": "direct", "query": "Index (0 or 1) of the larger of two values; ties \u2192 0.", "hard_negatives": []}
+{"cell": "argmax3", "kind": "direct", "query": "Index (0, 1, or 2) of the largest of three values; ties \u2192 lowest index.", "hard_negatives": []}
+{"cell": "argmin2", "kind": "direct", "query": "Index (0 or 1) of the smaller of two values; ties \u2192 0.", "hard_negatives": []}
+{"cell": "argmin3", "kind": "direct", "query": "Index (0, 1, or 2) of the smallest of three values; ties \u2192 lowest index.", "hard_negatives": []}
+{"cell": "avg2", "kind": "direct", "query": "Average of two values, (a + b) / 2, computed without overflow.", "hard_negatives": []}
+{"cell": "between_exclusive", "kind": "direct", "query": "Returns 1 if lo < x < hi (strictly inside, exclusive bounds), else 0.", "hard_negatives": []}
+{"cell": "bit_is_set", "kind": "direct", "query": "Returns 1 if bit number `bit` of x is set, else 0.", "hard_negatives": []}
+{"cell": "bit_length", "kind": "direct", "query": "Number of bits needed to represent x: index of the highest set bit + 1 (0 for x == 0).", "hard_negatives": []}
+{"cell": "bucket3", "kind": "direct", "query": "Bucket x into 0, 1, or 2 by two ascending thresholds: x<t1 \u2192 0, x<t2 \u2192 1, else 2.", "hard_negatives": []}
+{"cell": "byte_to_percent", "kind": "direct", "query": "Convert a 0..255 byte scale to a 0..100 percent: b*100/255.", "hard_negatives": []}
+{"cell": "ceil_div", "kind": "direct", "query": "Ceiling division: the smallest k with k*b >= a (0 if b == 0). Rounds up.", "hard_negatives": []}
+{"cell": "chebyshev", "kind": "direct", "query": "Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).", "hard_negatives": []}
+{"cell": "clamp", "kind": "direct", "query": "Clamp a value to the inclusive range [lo, hi].", "hard_negatives": []}
+{"cell": "clear_bit", "kind": "direct", "query": "Clear bit number `bit` of x to 0.", "hard_negatives": []}
+{"cell": "crc8_step", "kind": "direct", "query": "One CRC-8 (Dallas/Maxim, poly 0x8C reflected) step over a byte.", "hard_negatives": []}
+{"cell": "cube_sat", "kind": "direct", "query": "Saturating cube: n*n*n, capped at 65535 (n >= 41 saturates).", "hard_negatives": []}
+{"cell": "digit_sum", "kind": "direct", "query": "Sum of the decimal digits of n.", "hard_negatives": []}
+{"cell": "discount_percent", "kind": "direct", "query": "Decrease a value by pct percent: value - value*pct/100 (0 if pct >= 100).", "hard_negatives": []}
+{"cell": "divides", "kind": "direct", "query": "Returns 1 if a divides b evenly (b % a == 0, a != 0), else 0.", "hard_negatives": []}
+{"cell": "eq", "kind": "direct", "query": "Returns 1 if a == b, else 0.", "hard_negatives": []}
+{"cell": "euclid_sq", "kind": "direct", "query": "Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt). Wide u32 dist field.", "hard_negatives": []}
+{"cell": "factor_count", "kind": "direct", "query": "Number of positive divisors of n (0 for n == 0).", "hard_negatives": []}
+{"cell": "fnv1a_step", "kind": "direct", "query": "One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit).", "hard_negatives": []}
+{"cell": "gcd", "kind": "direct", "query": "Greatest common divisor (Euclid's algorithm).", "hard_negatives": []}
+{"cell": "hash_pair", "kind": "direct", "query": "Deterministic hash mixing two values into one u16.", "hard_negatives": []}
+{"cell": "high_byte", "kind": "direct", "query": "High byte of x (x >> 8).", "hard_negatives": []}
+{"cell": "increase_percent", "kind": "direct", "query": "Increase a value by pct percent: value + value*pct/100 (saturating at 65535).", "hard_negatives": []}
+{"cell": "is_coprime", "kind": "direct", "query": "Returns 1 if a and b are coprime (gcd == 1), else 0.", "hard_negatives": []}
+{"cell": "is_even", "kind": "direct", "query": "Returns 1 if x is even, else 0.", "hard_negatives": []}
+{"cell": "is_ge", "kind": "direct", "query": "Returns 1 if a >= b (at least), else 0.", "hard_negatives": []}
+{"cell": "is_gt", "kind": "direct", "query": "Returns 1 if a > b (strictly greater than), else 0.", "hard_negatives": []}
+{"cell": "is_le", "kind": "direct", "query": "Returns 1 if a <= b (at most), else 0.", "hard_negatives": []}
+{"cell": "is_lt", "kind": "direct", "query": "Returns 1 if a < b (strictly less than), else 0.", "hard_negatives": []}
+{"cell": "is_odd", "kind": "direct", "query": "Returns 1 if x is odd, else 0.", "hard_negatives": []}
+{"cell": "is_pow2", "kind": "direct", "query": "Returns 1 if x is a power of two, else 0.", "hard_negatives": []}
+{"cell": "is_prime", "kind": "direct", "query": "Returns 1 if n is prime, else 0.", "hard_negatives": []}
+{"cell": "is_square", "kind": "direct", "query": "Returns 1 if n is a perfect square, else 0.", "hard_negatives": []}
+{"cell": "is_zero", "kind": "direct", "query": "Returns 1 if x is zero, else 0.", "hard_negatives": []}
+{"cell": "isqrt", "kind": "direct", "query": "Integer square root: the largest r with r*r <= n.", "hard_negatives": []}
+{"cell": "lcm", "kind": "direct", "query": "Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain.", "hard_negatives": []}
+{"cell": "leading_zeros", "kind": "direct", "query": "Count of leading (high) zero bits in the 16-bit value (16 for x == 0).", "hard_negatives": []}
+{"cell": "low_byte", "kind": "direct", "query": "Low byte of x (x & 0xFF).", "hard_negatives": []}
+{"cell": "majority3", "kind": "direct", "query": "Returns 1 if at least two of three values are equal, else 0.", "hard_negatives": []}
+{"cell": "manhattan", "kind": "direct", "query": "Manhattan distance between two grid points (typed state).", "hard_negatives": []}
+{"cell": "mask_has_all", "kind": "direct", "query": "Returns 1 if x has ALL bits of mask set: (x & mask) == mask.", "hard_negatives": []}
+{"cell": "mask_has_any", "kind": "direct", "query": "Returns 1 if x has ANY bit of mask set: (x & mask) != 0.", "hard_negatives": []}
+{"cell": "mask_intersection", "kind": "direct", "query": "Intersection of two bit masks: a & b (bits set in both).", "hard_negatives": []}
+{"cell": "mask_union", "kind": "direct", "query": "Union of two bit masks: a | b (every bit set in either).", "hard_negatives": []}
+{"cell": "mask_xor", "kind": "direct", "query": "Symmetric difference of two bit masks: a ^ b (bits set in exactly one).", "hard_negatives": []}
+{"cell": "mean3", "kind": "direct", "query": "Mean (average) of three values, computed without overflow.", "hard_negatives": []}
+{"cell": "midrange3", "kind": "direct", "query": "Midrange of three values: (min + max) / 2.", "hard_negatives": []}
+{"cell": "mix16", "kind": "direct", "query": "Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value).", "hard_negatives": []}
+{"cell": "mode3", "kind": "direct", "query": "Mode of three values: the value that repeats (ties/all-distinct \u2192 the first, a).", "hard_negatives": []}
+{"cell": "mul_sat", "kind": "direct", "query": "Saturating multiply: a * b, capped at 65535 instead of wrapping.", "hard_negatives": []}
+{"cell": "neq", "kind": "direct", "query": "Returns 1 if a != b, else 0.", "hard_negatives": []}
+{"cell": "next_pow2", "kind": "direct", "query": "Smallest power of two >= n (0 if it would exceed 65535; next_pow2(0) = 1).", "hard_negatives": []}
+{"cell": "nonzero", "kind": "direct", "query": "Returns 1 if x is nonzero, else 0.", "hard_negatives": []}
+{"cell": "normalize_0_100", "kind": "direct", "query": "Rescale x within [lo, hi] to a 0..100 percentage (clamped; 0 if hi <= lo).", "hard_negatives": []}
+{"cell": "num_digits", "kind": "direct", "query": "Number of decimal digits of n (0 has 1 digit).", "hard_negatives": []}
+{"cell": "parity", "kind": "direct", "query": "Parity: 1 if the number of set bits is odd, else 0.", "hard_negatives": []}
+{"cell": "percent", "kind": "direct", "query": "Percentage of a whole: part*100/whole, in 0..100+ (0 if whole == 0).", "hard_negatives": []}
+{"cell": "percent_to_byte", "kind": "direct", "query": "Convert a 0..100 percent to a 0..255 byte scale: p*255/100.", "hard_negatives": []}
+{"cell": "permille", "kind": "direct", "query": "Per-mille (parts per thousand): part*1000/whole (0 if whole == 0).", "hard_negatives": []}
+{"cell": "popcount", "kind": "direct", "query": "Population count: the number of set bits in a 16-bit value.", "hard_negatives": []}
+{"cell": "pow_mod", "kind": "direct", "query": "Modular exponentiation: (base^exp) mod m (0 if m == 0). u16 domain m <= 256.", "hard_negatives": []}
+{"cell": "pow_small", "kind": "direct", "query": "base raised to exp (saturating at 65535). 0^0 = 1.", "hard_negatives": []}
+{"cell": "quantize", "kind": "direct", "query": "Quantize x to a bucket index by step size: x / step (0 if step == 0).", "hard_negatives": []}
+{"cell": "range3", "kind": "direct", "query": "Spread of three values: max \u2212 min.", "hard_negatives": []}
+{"cell": "range_check", "kind": "direct", "query": "Returns 1 if lo <= x <= hi, else 0.", "hard_negatives": []}
+{"cell": "ratio_255", "kind": "direct", "query": "Ratio scaled to a 0..255 byte fraction: part*255/whole (0 if whole == 0).", "hard_negatives": []}
+{"cell": "reverse_bits", "kind": "direct", "query": "Reverse the 16 bits of x (bit 0 <-> bit 15, ...).", "hard_negatives": []}
+{"cell": "rotl16", "kind": "direct", "query": "Rotate the 16 bits of x left by n (n taken mod 16).", "hard_negatives": []}
+{"cell": "rotr16", "kind": "direct", "query": "Rotate the 16 bits of x right by n (n taken mod 16).", "hard_negatives": []}
+{"cell": "round_to_multiple", "kind": "direct", "query": "Round x to the NEAREST multiple of step (ties up; x if step == 0).", "hard_negatives": []}
+{"cell": "safe_div", "kind": "direct", "query": "Integer divide a / b, returning 0 when b == 0 (no divide-by-zero).", "hard_negatives": []}
+{"cell": "safe_mod", "kind": "direct", "query": "Remainder a % b, returning 0 when b == 0.", "hard_negatives": []}
+{"cell": "scale_percent", "kind": "direct", "query": "Take pct percent of a value: value*pct/100.", "hard_negatives": []}
+{"cell": "set_bit", "kind": "direct", "query": "Set bit number `bit` of x to 1.", "hard_negatives": []}
+{"cell": "snap_down", "kind": "direct", "query": "Round x DOWN to the nearest multiple of step (x if step == 0). Floor to grid.", "hard_negatives": []}
+{"cell": "snap_up", "kind": "direct", "query": "Round x UP to the nearest multiple of step (x if step == 0). Ceil to grid.", "hard_negatives": []}
+{"cell": "square", "kind": "direct", "query": "Saturating square: n * n, capped at 65535.", "hard_negatives": []}
+{"cell": "square_wide", "kind": "direct", "query": "Exact square with a wide u32 result field: sq = n*n, no u16 cap (the value cell square saturates).", "hard_negatives": []}
+{"cell": "sub_sat", "kind": "direct", "query": "Saturating subtract: a - b, floored at 0 when b > a.", "hard_negatives": []}
+{"cell": "sum3", "kind": "direct", "query": "Sum of three values (saturating at 65535).", "hard_negatives": []}
+{"cell": "swap_bytes", "kind": "direct", "query": "Swap the high and low bytes of x ((x << 8) | (x >> 8)).", "hard_negatives": []}
+{"cell": "toggle_bit", "kind": "direct", "query": "Toggle (flip) bit number `bit` of x.", "hard_negatives": []}
+{"cell": "trailing_zeros", "kind": "direct", "query": "Count of trailing (low) zero bits in the 16-bit value (16 for x == 0).", "hard_negatives": []}
+{"cell": "triangular", "kind": "direct", "query": "nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361).", "hard_negatives": []}
+{"cell": "weighted_sum", "kind": "direct", "query": "Weighted sum of three inputs with fixed weights 1, 2, 3 (a candidate score).", "hard_negatives": []}
+{"cell": "weighted_sum_wide", "kind": "direct", "query": "Exact weighted sum with a wide u32 result field: sum = a + 2b + 3c, no u16 wrap (sibling of weighted_sum).", "hard_negatives": []}
+{"cell": "within_percent", "kind": "direct", "query": "Returns 1 if actual is within pct percent of target (|actual-target|*100 <= target*pct).", "hard_negatives": []}
+{"cell": "wrap", "kind": "direct", "query": "Wrap x into the cycle [0, m): x % m (0 if m == 0).", "hard_negatives": []}

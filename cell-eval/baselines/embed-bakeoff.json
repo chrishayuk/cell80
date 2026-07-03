@@ -24,6 +24,31 @@
   }
  },
  {
+  "model": "cell-potion",
+  "notes": "domain-TRAINED static (model2vec shape, warm-start potion-retrieval-32M, InfoNCE over all 100 manifest docs; corpus datasets/potion-train-pairs.jsonl; protocol cell-eval/potion/PROTOCOL.md; artifact rebuilt deterministically by potion/train.py, not committed). ms_per_query is the pre-registered in-process measure (warm single-query Embedder.encode median); the potion-32M row's 1.7 includes eval-loop overhead - its in-process floor measures 0.032 the same way.",
+  "ms_per_query": 0.034,
+  "theta": 0.11,
+  "ungated": {
+   "direct": 0.971,
+   "paraphrase": 0.604,
+   "adversarial": 0.538
+  },
+  "answered_at_floor": {
+   "direct": {
+    "rate": 0.814,
+    "prec": 1.0
+   },
+   "paraphrase": {
+    "rate": 0.396,
+    "prec": 0.81
+   },
+   "adversarial": {
+    "rate": 0.192,
+    "prec": 0.8
+   }
+  }
+ },
+ {
   "model": "ollama:granite-embedding",
   "ms_per_query": 38.6,
   "theta": 0.06,
