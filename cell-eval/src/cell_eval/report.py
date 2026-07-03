@@ -85,3 +85,27 @@ def render_composition(report) -> str:
             f"  {mark} [{how}{cells}] {t.task_id}: got={t.answer} want={t.expected}"
         )
     return "\n".join(lines)
+
+
+def render_repair(report) -> str:
+    d = report.as_dict()
+    o = d["overall"]
+    lines = [
+        f"repair eval — model={report.model}  (one shot: broken source + compiler error)",
+        "",
+        f"  n={o['n']}  compiled={o['compiled']}  repair@1={o['repair_at_1']:.2f}",
+        "",
+        "per diagnostic class:",
+    ]
+    for klass, s_ in d["by_class"].items():
+        lines.append(
+            f"  {klass:<18} n={s_['n']}  compiled={s_['compiled']}  "
+            f"repair@1={s_['repair_at_1']:.2f}"
+        )
+    misses = [r for r in d["results"] if not r["correct"]]
+    if misses:
+        lines.append("")
+        lines.append("misses:")
+        for r in misses:
+            lines.append(f"  ✗ {r['id']} [{r['class']}] — {r['note']}")
+    return "\n".join(lines)

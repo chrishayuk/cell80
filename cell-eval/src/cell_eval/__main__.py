@@ -54,6 +54,22 @@ def _cmd_adoption(args) -> int:
     return 0
 
 
+def _cmd_repair(args) -> int:
+    from .repair import run_repair
+    from .report import render_repair
+
+    try:
+        report = run_repair(dataset=args.dataset, model=args.model)
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval repair: {e}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report.as_dict(), indent=2))
+    else:
+        print(render_repair(report))
+    return 0
+
+
 def _cmd_composition(args) -> int:
     from .composition import run_composition
     from .report import render_composition
@@ -89,6 +105,15 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
     a.add_argument("--json", action="store_true")
     a.set_defaults(func=_cmd_adoption)
+
+    r = sub.add_parser(
+        "repair",
+        help="LLM repair eval — is a rejected cell + the diagnostic enough for a one-shot fix?",
+    )
+    r.add_argument("--dataset", default="repair")
+    r.add_argument("--model", default=None)
+    r.add_argument("--json", action="store_true")
+    r.set_defaults(func=_cmd_repair)
 
     c = sub.add_parser("composition", help="LLM composition eval — does the agent wire cells?")
     c.add_argument("--dataset", default="composition_tasks")
