@@ -54,6 +54,31 @@ def _cmd_adoption(args) -> int:
     return 0
 
 
+def _cmd_tiers(args) -> int:
+    from .tiers import calibrate, run_tiers
+    from .report import render_tiers
+
+    try:
+        from . import tiers as _t
+
+        report = run_tiers(
+            dataset=args.dataset,
+            library_dir=args.library,
+            embed_model=args.embed_model or _t.DEFAULT_EMBED_MODEL,
+            theta=args.theta if args.theta is not None else _t.OPERATING_MARGIN,
+            alpha=args.alpha if args.alpha is not None else _t.BLEND_ALPHA,
+        )
+    except ImportError as e:
+        print(f"cell-eval tiers: {e} (pip install model2vec)", file=sys.stderr)
+        return 2
+    cal = calibrate(report, floor=args.floor)
+    if args.json:
+        print(json.dumps({"report": report.as_dict(), "calibration": cal}, indent=2))
+    else:
+        print(render_tiers(report, cal))
+    return 0
+
+
 def _cmd_repair(args) -> int:
     from .repair import run_repair
     from .report import render_repair
@@ -105,6 +130,19 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
     a.add_argument("--json", action="store_true")
     a.set_defaults(func=_cmd_adoption)
+
+    t = sub.add_parser(
+        "tiers",
+        help="tiered retrieval + the calibrated margin gate (answer vs escalate)",
+    )
+    t.add_argument("--dataset", default="retrieval")
+    t.add_argument("--library", default=None)
+    t.add_argument("--embed-model", default=None)
+    t.add_argument("--theta", type=float, default=None)
+    t.add_argument("--alpha", type=float, default=None)
+    t.add_argument("--floor", type=float, default=0.75)
+    t.add_argument("--json", action="store_true")
+    t.set_defaults(func=_cmd_tiers)
 
     r = sub.add_parser(
         "repair",
