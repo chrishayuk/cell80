@@ -106,6 +106,7 @@ fn field_def(
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
         syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
+        syn::Type::Path(p) if p.path.is_ident("i16") => (1, None, Width::SWord),
         syn::Type::Path(_) => (1, None, Width::Word),
         syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
             (array_len(&arr.len, consts)?, None, Width::Word)
@@ -208,7 +209,11 @@ pub(crate) fn type_name(t: &syn::Type) -> Result<String, String> {
             return Ok(seg.ident.to_string());
         }
     }
-    Err(format!("unsupported impl type: {t:?}"))
+    Err(
+        "unsupported `impl` target — implement methods on a named struct \
+         (`impl MyStruct {{ … }}`)"
+            .into(),
+    )
 }
 
 pub(crate) fn member_name(m: &syn::Member) -> Result<String, String> {
@@ -225,6 +230,9 @@ pub(crate) fn elem_width(e: &syn::Expr) -> Width {
         if let syn::Lit::Int(i) = &l.lit {
             if i.suffix() == "u8" {
                 return Width::Byte;
+            }
+            if i.suffix() == "i16" {
+                return Width::SWord;
             }
         }
     }
@@ -254,5 +262,6 @@ fn lit_u16(e: &syn::Expr) -> Result<u16, String> {
 /// (`[bool; N]` lets game flags be a real `bool` array instead of `[u16; N]` of 0/1).
 fn is_scalar_array_elem(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Path(p)
-        if p.path.is_ident("u16") || p.path.is_ident("u8") || p.path.is_ident("bool"))
+        if p.path.is_ident("u16") || p.path.is_ident("u8") || p.path.is_ident("bool")
+            || p.path.is_ident("i16"))
 }

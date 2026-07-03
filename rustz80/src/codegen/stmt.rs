@@ -223,6 +223,7 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
                 cmp: if *inclusive { Cmp::Le } else { Cmp::Lt },
                 lhs: Expr::Var(*var),
                 rhs: end.clone(),
+                signed: *width == Width::SWord,
             };
             gen_cond_skip(a, &cond, brk);
             // `continue` lands on the step (`cont`); `break` exits (`brk`).
@@ -269,6 +270,35 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
 /// Emit a comparison and a conditional jump to `target`, taken when the condition
 /// is **false** (used to skip an `if`/`while` body).
 pub(super) fn gen_cond_skip(a: &mut Asm, cond: &Cond, target: usize) {
+    // Signed (`i16`) ordering: `<` is S ⊕ V after the subtraction. `==`/`!=` are
+    // sign-agnostic and take the unsigned route.
+    if cond.signed && !matches!(cond.cmp, Cmp::Eq | Cmp::Ne) {
+        let (swap, want_lt) = match cond.cmp {
+            Cmp::Lt => (false, true),
+            Cmp::Ge => (false, false),
+            Cmp::Gt => (true, true),
+            Cmp::Le => (true, false),
+            _ => unreachable!(),
+        };
+        let (left, right) = if swap {
+            (&cond.rhs, &cond.lhs)
+        } else {
+            (&cond.lhs, &cond.rhs)
+        };
+        gen_sub(a, left, right); // S/V from `left - right`
+                                 // Jump to `target` when the condition is FALSE.
+        let no_ovf = a.label();
+        let cont = a.label();
+        a.jump(0xE2, no_ovf); // JP PO (V = 0)
+                              // V = 1: lt ⟺ S = 0 → false-jump on the *other* sign.
+        a.jump(if want_lt { 0xFA } else { 0xF2 }, target); // JP M / JP P
+        a.jump(0xC3, cont);
+        a.place(no_ovf);
+        // V = 0: lt ⟺ S = 1.
+        a.jump(if want_lt { 0xF2 } else { 0xFA }, target); // JP P / JP M
+        a.place(cont);
+        return;
+    }
     let (swap, jp_false) = cmp_false_jump(cond.cmp);
     let (left, right) = if swap {
         (&cond.rhs, &cond.lhs)

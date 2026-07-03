@@ -1,5 +1,5 @@
 //! The `Asm` assembler — emit primitives, label/call fixups, the local scratch layout.
-use super::runtime::{emit_divmod32, emit_mul16w, emit_mul32, DIVMOD16, MUL16};
+use super::runtime::{emit_divmod32, emit_mul16w, emit_mul32, emit_sdivmod16, DIVMOD16, MUL16};
 use super::Target;
 use std::collections::HashMap;
 
@@ -22,6 +22,7 @@ pub(super) struct Asm {
     pub(super) needs_div: bool,
     pub(super) needs_mul32: bool,
     pub(super) needs_div32: bool,
+    pub(super) needs_sdiv: bool,
     /// Slot offset for the function currently being emitted, so each function's
     /// locals occupy a disjoint scratch region (correct for non-recursive calls;
     /// real stack frames are a later stage).
@@ -51,6 +52,7 @@ impl Asm {
             needs_div: false,
             needs_mul32: false,
             needs_div32: false,
+            needs_sdiv: false,
             base: 0,
             scratch: SCRATCH,
             loop_stack: Vec::new(),
@@ -114,6 +116,14 @@ impl Asm {
         }
         if self.needs_div32 {
             emit_divmod32(&mut self);
+        }
+        if self.needs_sdiv {
+            // The signed wrapper forks per target inside: the Spectrum path calls the
+            // software `__divmod16`, so that must be appended too.
+            emit_sdivmod16(&mut self);
+            if self.target == Target::Spectrum48 {
+                self.needs_div = true;
+            }
         }
         if self.needs_mul {
             self.define("__mul16");

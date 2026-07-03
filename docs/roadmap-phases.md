@@ -94,35 +94,52 @@ and carries the non-goals.
 
 ---
 
-## Phase 1 — The compiler as an LLM-facing API (1–2 weeks)
+## Phase 1 — The compiler as an LLM-facing API ✓ (shipped)
 
 The primary author is a model; error text is the repair interface.
 
-**1.1 If/match as expressions.**
-`if a { 1 } else { 2 }` is the single most idiomatic shape LLMs emit and it currently
-dies with a raw syn Debug dump. Lower both arms to an assignment into a temp slot. Same
-for `match` arms yielding values.
-*DoD:* diff tests for if-expr, nested if-expr, match-expr; the old error path is
-unreachable for these shapes.
+**1.1 If/match as expressions. ✓**
+`let x = if c { a } else { b };` (and value-`match`) lowers to the statement form
+through the destination slot, in `let` / assignment / `return` / tail position, with
+nesting, `else if` chains, statements-before-the-value in branches, and u32 arms. A
+tail conditional with statement branches stays a statement (void fns legitimately end
+with `if`). A value-`if` without `else`, a value-`match` without `_`, and a branch
+ending in `;` are each their own instructive error.
+*DoD met:* `tests/diff/conditionals.rs` — if-expr in all four positions, nested,
+match-expr, wide arms, bool arms, three rejection modes — on both targets.
 
-**1.2 Diagnostic rewrite pass.**
-Replace `unsupported statement expression: Expr::Lit {...}`-class messages with
-instructive text: what's unsupported, the accepted rewrite, one example. Cover the top
-~10 rejection sites in `lower/` (`compile_fn` on multi-fn input should point at
-`compile_program`).
-*DoD:* no user-facing error contains a `{:?}` of a syn node.
+**1.2 Diagnostic rewrite pass. ✓**
+Every syn `{:?}` dump in `lower/` is gone — 14 sites now name the construct in prose
+(`describe_expr`/`describe_stmt`/`describe_lit`) and state the accepted rewrite where
+one exists. `compile_fn` on multi-item input points at `compile_program`.
+*DoD met:* a coverage test probes ten rejection shapes and asserts no diagnostic
+contains a syn Debug marker; the repair dataset (1.3) re-asserts it on every class.
 
-**1.3 Repair-rate eval in cell-eval.**
-New metric: given a rejected cell + the diagnostic, one-shot LLM repair success rate per
-diagnostic class. Makes 1.2 measurable and catches regressions.
-*DoD:* `cell-eval` reports repair@1 per error class; baseline recorded before/after 1.2.
+**1.3 Repair-rate eval. ✓**
+`cell-eval repair`: 20 rejected cells across 10 diagnostic classes, each with intended
+behavior as I/O examples; the model gets the broken source + the compiler error, one
+shot, no tools — the repair counts only if it compiles **and reproduces the examples**.
+Steering is held fixed and deliberately thin: the signal being measured is the error
+text. Offline tests pin the loop (a known-good fix counts, a compiles-but-wrong fix
+doesn't, every dataset row genuinely rejects).
+*Baselines (post-1.2):* granite4.1:3b **repair@1 = 0.60**, gemma-4-26B **0.90** — the
+instructive-rewrite classes (`if_no_else`, `match_no_wildcard`, `range_pattern`,
+`string_literal`, `float_literal`) repair at 1.00 on both; `recursion`/`closure` sit at
+0.00 on the 3B but 0.5/1.0 on the 26B — confirming those misses are a model-capability
+floor (one-shot restructuring), not a diagnostic gap. `results/repair-*.json` carries
+both runs.
 
-**1.4 Signed `i16`.**
-Rewards, deltas, and coordinates go negative. Two's-complement add/sub/compare are
-near-free; signed mul/div via trap on Cell, runtime on Spectrum. Document the fixed-point
-idiom for fractional values in the same commit.
-*DoD:* diff tests across the sign boundary (−1, i16::MIN, mixed-sign mul/div); README
-numerics table updated.
+**1.4 Signed `i16`. ✓**
+`Width::SWord`: add/sub/mul/bitwise share the unsigned bit patterns (wrapping);
+comparisons order by sign (S ⊕ V on both the value and branch paths); divide truncates
+toward zero via `__sdivmod16` (strip signs → the unsigned core, software on Spectrum /
+the DIVMOD16 trap on Cell so `/ 0` still honours the halt policy → reapply signs);
+`>>` is an arithmetic shift. Literals (`-5i16` through `i16::MIN`), bit-preserving
+casts (`i16 as u32` rejected with the `as u16 as u32` rewrite), params, arrays, and
+struct fields. The fixed-point idiom is documented alongside.
+*DoD met:* `tests/diff/signed.rs` runs the sign boundary (−1, `i16::MIN`, `MIN / -1`,
+mixed-sign div/rem, the V=1 compare case) against rustc on both targets; README carries
+the numerics table.
 
 ---
 

@@ -87,6 +87,15 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         Width::DWord,
                     ));
                 }
+                if i.suffix() == "i16" {
+                    // Parse the magnitude (a negative literal arrives as `-` around it,
+                    // so `-32768i16`'s magnitude 32768 must parse); the bits are u16.
+                    let m = i.base10_parse::<u16>().map_err(|e| e.to_string())?;
+                    if m > 32768 {
+                        return Err(format!("`{m}` is out of range for i16"));
+                    }
+                    return Ok((Expr::Lit(m), Width::SWord));
+                }
                 let w = if i.suffix() == "u8" {
                     Width::Byte
                 } else {
@@ -98,7 +107,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 ))
             }
             syn::Lit::Bool(b) => Ok((Expr::Lit(b.value as u16), Width::Byte)),
-            other => Err(format!("unsupported literal: {other:?}")),
+            other => Err(format!(
+                "unsupported literal: {} — the dialect's values are integers and bools \
+                 (strings/floats/chars are out; for fractional values use fixed-point on \
+                 integers, e.g. Q8.8: `(a * w) >> 8`)",
+                describe_lit(other)
+            )),
         },
         syn::Expr::Path(p) => match resolve_enum_path(&p.path, ctx.enums) {
             Some(v) => Ok((Expr::Lit(v), Width::Word)),
@@ -127,12 +141,37 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                     cmp: Cmp::Eq,
                     lhs: Box::new(lower_expr16(&u.expr, ctx, "`!` operand")?),
                     rhs: Box::new(Expr::Lit(0)),
+                    signed: false,
                 },
                 Width::Byte,
             )),
-            _ => {
-                Err("unary `-`/`*` are not in the subset (no signed ints; `!` is for bools)".into())
+            // `-x` on a signed (`i16`) operand: two's-complement negation (wrapping —
+            // `0 - x` shares the unsigned subtract bits). A negative literal folds.
+            syn::UnOp::Neg(_) => {
+                let (e, w) = lower_expr(&u.expr, ctx)?;
+                match w {
+                    Width::SWord => Ok(match e {
+                        Expr::Lit(m) => (Expr::Lit(m.wrapping_neg()), Width::SWord),
+                        e => (
+                            Expr::Bin(
+                                BinOp::Sub,
+                                Box::new(Expr::Lit(0)),
+                                Box::new(e),
+                                Width::SWord,
+                            ),
+                            Width::SWord,
+                        ),
+                    }),
+                    _ => Err("unary `-` needs a signed operand — suffix the literal \
+                              (`-5i16`) or cast first (`x as i16`)"
+                        .into()),
+                }
             }
+            _ => Err(
+                "unary `*` is not in the subset (no raw pointers; `!` is for \
+                      bools, `-` for i16)"
+                    .into(),
+            ),
         },
         // `e as u8` truncates to a byte; `as u16`/`as usize` is a no-op (16-bit); a `u32`
         // narrows to its low word/byte (`Trunc32`).
@@ -145,11 +184,16 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         Expr::Trunc(Box::new(Expr::Trunc32(Box::new(e)))),
                         Width::Byte,
                     ),
-                    Width::Word => (Expr::Trunc32(Box::new(e)), Width::Word),
+                    Width::Word | Width::SWord => (Expr::Trunc32(Box::new(e)), tw),
                     Width::DWord => (e, Width::DWord),
                 });
             }
             if tw == Width::DWord {
+                if ew == Width::SWord {
+                    return Err("`i16 as u32` sign-extends in Rust, which the dialect \
+                                doesn't do — take the bits explicitly (`x as u16 as u32`)"
+                        .into());
+                }
                 // Widen a 16-bit value up to `u32` (zero-extend), so a `u16` can feed a wide
                 // intermediate (e.g. `part as u32 * 100`). `Byte`/`Word` widen identically —
                 // the value is held in `HL` and the high word is zeroed.
@@ -218,7 +262,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             }
             Ok((Expr::Call(name, args), Width::Word)) // non-generic calls assume u16 returns
         }
-        other => Err(format!("unsupported expression: {other:?}")),
+        other => Err(format!(
+            "unsupported expression: {} — the dialect accepts integer/bool arithmetic, \
+             comparisons, calls, indexing, field access, casts, and `if`/`match` values; \
+             restructure around those",
+            describe_expr(other)
+        )),
     }
 }
 
@@ -234,7 +283,13 @@ fn bin_op(op: &syn::BinOp) -> Result<BinOp, String> {
         syn::BinOp::BitXor(_) => BinOp::Xor,
         syn::BinOp::Shl(_) => BinOp::Shl,
         syn::BinOp::Shr(_) => BinOp::Shr,
-        other => return Err(format!("unsupported arithmetic op: {other:?}")),
+        _ => {
+            return Err(
+                "unsupported operator — the dialect has `+ - * / % & | ^ << >>`, \
+                 comparisons, and `&&`/`||` (no `..`, no overloading)"
+                    .into(),
+            )
+        }
     })
 }
 
@@ -291,8 +346,17 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
                     .into(),
             );
         }
+        let signed = lw == Width::SWord || rw == Width::SWord;
         let (lhs, rhs) = (Box::new(le), Box::new(re));
-        return Ok((Expr::Cmp { cmp, lhs, rhs }, Width::Byte));
+        return Ok((
+            Expr::Cmp {
+                cmp,
+                lhs,
+                rhs,
+                signed,
+            },
+            Width::Byte,
+        ));
     }
     // Short-circuit `&&` / `||` on bool operands → a `0`/`1` value.
     if let Some(and) = logic_op(&b.op) {
@@ -432,7 +496,11 @@ pub(crate) fn array_base(arr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, String
             };
             Ok((base, elem))
         }
-        other => Err(format!("cannot index {other:?}")),
+        other => Err(format!(
+            "cannot index {} — index a named local array (`arr[i]`) or an array field \
+             (`self.arr[i]`)",
+            describe_expr(other)
+        )),
     }
 }
 
@@ -589,10 +657,14 @@ pub(crate) fn lower_method_call(
     ctx: &mut Ctx,
 ) -> Result<(Expr, Width), String> {
     let method = m.method.to_string();
-    if let "wrapping_add" | "wrapping_sub" | "wrapping_mul" = method.as_str() {
+    if let "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "wrapping_div" | "wrapping_rem" =
+        method.as_str()
+    {
         let op = match method.as_str() {
             "wrapping_add" => BinOp::Add,
             "wrapping_sub" => BinOp::Sub,
+            "wrapping_div" => BinOp::Div,
+            "wrapping_rem" => BinOp::Rem,
             _ => BinOp::Mul,
         };
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
@@ -659,7 +731,11 @@ pub(crate) fn path_ident(expr: &syn::Expr) -> Result<String, String> {
             .get_ident()
             .map(|i| i.to_string())
             .ok_or_else(|| "expected a simple variable".into()),
-        other => Err(format!("expected a variable, got {other:?}")),
+        other => Err(format!(
+            "expected a plain variable name here, got {} — bind the value with `let` \
+             first, then use the name",
+            describe_expr(other)
+        )),
     }
 }
 
@@ -667,4 +743,75 @@ pub(crate) fn path_str(p: &syn::Path) -> Result<String, String> {
     p.get_ident()
         .map(|i| i.to_string())
         .ok_or_else(|| "expected a struct name".into())
+}
+
+// ── diagnostics ─────────────────────────────────────────────────────────────────────
+
+/// A human name for a syn expression — user-facing diagnostics never dump the syn
+/// Debug tree. Where the dialect has an accepted rewrite, the name says so.
+pub(crate) fn describe_expr(e: &syn::Expr) -> &'static str {
+    match e {
+        syn::Expr::Array(_) => "an array literal",
+        syn::Expr::Assign(_) => "an assignment (assignments are statements — end with `;`)",
+        syn::Expr::Async(_) | syn::Expr::Await(_) => "async code (not in the dialect)",
+        syn::Expr::Binary(_) => "a binary expression",
+        syn::Expr::Block(_) => {
+            "a block expression (blocks-as-values aren't supported — bind with `let` first)"
+        }
+        syn::Expr::Break(_) => "`break`",
+        syn::Expr::Call(_) => "a function call",
+        syn::Expr::Cast(_) => "an `as` cast",
+        syn::Expr::Closure(_) => "a closure (not in the dialect — write a named `fn`)",
+        syn::Expr::Continue(_) => "`continue`",
+        syn::Expr::Field(_) => "a field access",
+        syn::Expr::ForLoop(_) => "a `for` loop (loops are statements, not values)",
+        syn::Expr::If(_) => "an `if`",
+        syn::Expr::Index(_) => "an index expression",
+        syn::Expr::Lit(_) => "a literal",
+        syn::Expr::Loop(_) => "a `loop` (loops are statements, not values)",
+        syn::Expr::Macro(_) => "a macro call (no macros in the dialect)",
+        syn::Expr::Match(_) => "a `match`",
+        syn::Expr::MethodCall(_) => "a method call",
+        syn::Expr::Paren(_) => "a parenthesized expression",
+        syn::Expr::Path(_) => "a name/path",
+        syn::Expr::Range(_) => "a range (ranges only appear as `for` bounds)",
+        syn::Expr::Reference(_) => {
+            "a borrow (`&`/`&mut` only exist as method receivers in the dialect)"
+        }
+        syn::Expr::Repeat(_) => "an array-repeat literal (`[v; N]`)",
+        syn::Expr::Return(_) => "a `return`",
+        syn::Expr::Struct(_) => "a struct literal",
+        syn::Expr::Try(_) => "`?` (no `Result` in the dialect — return sentinel values)",
+        syn::Expr::Tuple(_) => "a tuple literal",
+        syn::Expr::Unary(_) => "a unary expression",
+        syn::Expr::While(_) => "a `while` loop (loops are statements, not values)",
+        _ => "this expression",
+    }
+}
+
+/// A human name for a literal kind (see [`describe_expr`]).
+pub(crate) fn describe_lit(l: &syn::Lit) -> &'static str {
+    match l {
+        syn::Lit::Str(_) | syn::Lit::ByteStr(_) | syn::Lit::CStr(_) => "a string literal",
+        syn::Lit::Byte(_) | syn::Lit::Char(_) => "a character literal",
+        syn::Lit::Int(_) => "an integer literal",
+        syn::Lit::Float(_) => "a float literal",
+        syn::Lit::Bool(_) => "a bool literal",
+        _ => "this literal",
+    }
+}
+
+/// [`describe_lit`] for a literal appearing as a `match` pattern.
+pub(crate) fn describe_lit_kind(l: &syn::Lit) -> &'static str {
+    describe_lit(l)
+}
+
+/// A human name for a syn statement (see [`describe_expr`]).
+pub(crate) fn describe_stmt(s: &syn::Stmt) -> &'static str {
+    match s {
+        syn::Stmt::Local(_) => "a `let` binding",
+        syn::Stmt::Item(_) => "a nested item (declare fns/structs at the top level)",
+        syn::Stmt::Expr(e, _) => describe_expr(e),
+        syn::Stmt::Macro(_) => "a macro call (no macros in the dialect)",
+    }
 }

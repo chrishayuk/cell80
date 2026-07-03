@@ -31,7 +31,10 @@ use layout::{collect_enums, collect_structs, type_name, Enums, FieldDef, Structs
 use prelude::handle_type;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use stmt::{lower_local, lower_stmt_expr, pat_ident};
+use stmt::{
+    if_is_value, lower_local, lower_stmt_expr, lower_value_into, match_is_value, pat_ident,
+    value_width,
+};
 use vars::Vars;
 
 /// Per-function lowering context: locals + the program's struct/enum layouts + the
@@ -69,6 +72,9 @@ impl Ctx<'_> {
                 }
                 if s == "u8" {
                     return Width::Byte;
+                }
+                if s == "i16" {
+                    return Width::SWord;
                 }
                 if s == "u32" {
                     return Width::DWord;
@@ -385,6 +391,16 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                         ret.push(le);
                     }
                 }
+                // A tail `if`/`match` whose branches all end in a value — the
+                // idiomatic `fn f() -> u16 { if c { 1 } else { 2 } }` — lowers through
+                // a temp slot. (A tail conditional with statement branches stays a
+                // statement: void fns legitimately end with `if`.)
+                syn::Expr::If(ifx) if if_is_value(ifx) => {
+                    ret.push(lower_value_tail(expr, ctx, &mut body)?);
+                }
+                syn::Expr::Match(m) if match_is_value(m) => {
+                    ret.push(lower_value_tail(expr, ctx, &mut body)?);
+                }
                 _ if is_value_expr(expr) => {
                     let (le, w) = lower_expr(expr, ctx)?;
                     if w == Width::DWord {
@@ -397,10 +413,28 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                 _ => lower_stmt_expr(expr, ctx, &mut body)?,
             },
             syn::Stmt::Expr(expr, _) => lower_stmt_expr(expr, ctx, &mut body)?,
-            other => return Err(format!("unsupported statement: {other:?}")),
+            other => {
+                return Err(format!(
+                    "unsupported statement: {}",
+                    expr::describe_stmt(other)
+                ))
+            }
         }
     }
     Ok((body, ret))
+}
+
+/// Lower a tail-position value `if`/`match` through a hidden temp slot, returning the
+/// slot read the epilogue evaluates.
+fn lower_value_tail(expr: &syn::Expr, ctx: &mut Ctx, body: &mut Vec<Stmt>) -> Result<Expr, String> {
+    let w = value_width(expr, ctx)?;
+    if w == Width::DWord {
+        return Err("u32 return values are not supported yet — narrow with `as u16`".into());
+    }
+    let temp = ctx.vars.declare(&format!("__val{}", ctx.temp), 1, None, w);
+    ctx.temp += 1;
+    lower_value_into(temp, false, expr, ctx, body)?;
+    Ok(Expr::Var(temp))
 }
 
 fn is_value_expr(e: &syn::Expr) -> bool {

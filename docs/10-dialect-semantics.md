@@ -5,6 +5,30 @@ dialect *guarantees*, on both targets, and what the differential oracle does and
 check. The rule of thumb: **an accepted program computes what rustc computes** — anything
 the compiler can't make true it must reject, never approximate.
 
+## Types
+
+`u8`, `u16`, `i16`, `u32`, `bool`. `i16` is two's complement in a single slot:
+add/sub/mul and the bitwise ops share the unsigned bit patterns (wrapping), while
+**comparisons order by sign**, **divide truncates toward zero** (the remainder takes the
+dividend's sign — rustc semantics; `i16::MIN / -1` wraps to `i16::MIN`), and **`>>` is an
+arithmetic shift** (the sign propagates). Casts between `i16` and `u16`/`u8` are
+bit-preserving; `i16 as u32` (a sign extension in Rust) is rejected — take the bits
+explicitly (`x as u16 as u32`). Negative literals need the suffix (`-5i16`), and unary
+`-` needs a signed operand.
+
+**Fractional values are a fixed-point convention on integers, not a type**: a Q8.8
+weight is a `u32` (or `u16` for small ranges) with an implied point — multiply then
+shift (`(a * w) >> 8`). This keeps every cell bit-exact and cross-target deterministic;
+there are no floats and there will be none (see the non-goals).
+
+## `if`/`match` as values
+
+`let x = if c { a } else { b };` and `match`-with-value-arms are accepted in `let`,
+assignment, `return`, and tail position (with nesting and `else if` chains), lowering to
+the statement form through the destination slot. A value-`if` needs an `else`; a
+value-`match` needs a `_` arm; every branch must end with the value (no trailing `;`) —
+each violation is its own instructive compile error.
+
 ## Arithmetic
 
 All integer arithmetic is **wrapping** (mod 2^width) — the semantics of release-mode

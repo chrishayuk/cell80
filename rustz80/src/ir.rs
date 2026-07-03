@@ -16,13 +16,16 @@ pub enum BinOp {
     Shr,
 }
 
-/// Value width. `u8`/`u16` occupy one 2-byte slot (only load/store size differs — `u8`
-/// zero-extends); `u32` (`DWord`) occupies two slots and is computed in the `HL:DE`
-/// pair (`HL` = low word, `DE` = high word) by the dedicated 32-bit codegen.
+/// Value width. `u8`/`u16`/`i16` occupy one 2-byte slot (`u8` zero-extends on load;
+/// `i16` — `SWord` — is two's-complement: add/sub/mul/bitwise share the unsigned bit
+/// patterns, only compare / divide / arithmetic-shift-right differ); `u32` (`DWord`)
+/// occupies two slots and is computed in the `HL:DE` pair (`HL` = low word, `DE` =
+/// high word) by the dedicated 32-bit codegen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Width {
     Byte,
     Word,
+    SWord,
     DWord,
 }
 
@@ -79,6 +82,9 @@ pub enum Expr {
         cmp: Cmp,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+        /// Two's-complement (`i16`) comparison — `<`/`>` order by sign (S ⊕ V), not
+        /// magnitude. `==`/`!=` are sign-agnostic either way.
+        signed: bool,
     },
     /// Short-circuit logical op on boolean (`0`/`1`) operands: `&&` (`and = true`) or
     /// `||` (`and = false`). The right operand is only evaluated when the left doesn't
@@ -129,6 +135,8 @@ pub struct Cond {
     pub cmp: Cmp,
     pub lhs: Expr,
     pub rhs: Expr,
+    /// Signed (`i16`) ordering — see [`Expr::Cmp`].
+    pub signed: bool,
 }
 
 #[derive(Debug, Clone)]

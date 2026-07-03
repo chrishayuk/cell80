@@ -43,7 +43,9 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     }
                     None => gen_mul(a, l, r),
                 },
-                // `x / 2^n` → shift right; else the runtime/trap.
+                // `x / 2^n` → shift right; else the runtime/trap. Signed (`i16`)
+                // divide truncates toward zero — always the signed runtime.
+                BinOp::Div if *w == Width::SWord => gen_sdivmod(a, l, r, false),
                 BinOp::Div => match lit_val(r) {
                     Some(k) if k.is_power_of_two() => {
                         gen_expr(a, l);
@@ -52,6 +54,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     _ => gen_divmod(a, l, r, false),
                 },
                 // `x % 2^n` → mask the low bits; else the runtime/trap.
+                BinOp::Rem if *w == Width::SWord => gen_sdivmod(a, l, r, true),
                 BinOp::Rem => match lit_val(r) {
                     Some(k) if k.is_power_of_two() => {
                         gen_expr(a, l);
@@ -69,6 +72,16 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                         a.byte(0x29); // ADD HL,HL  (logical << 1)
                     }
                 }
+                // `i16 >> n` is an *arithmetic* shift (sign-propagating SRA).
+                BinOp::Shr if *w == Width::SWord => {
+                    gen_expr(a, l);
+                    for _ in 0..lit_u8(r) {
+                        a.byte(0xCB);
+                        a.byte(0x2C); // SRA H
+                        a.byte(0xCB);
+                        a.byte(0x1D); // RR L
+                    }
+                }
                 BinOp::Shr => {
                     gen_expr(a, l);
                     gen_shr_const(a, lit_u8(r) as u32);
@@ -79,7 +92,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         Expr::Index(base, index, w) => {
             gen_elem_addr(a, *base, index); // HL = &base[index]
             match w {
-                Width::Word => {
+                Width::Word | Width::SWord => {
                     a.byte(0x5E); // LD E,(HL)
                     a.byte(0x23); // INC HL
                     a.byte(0x56); // LD D,(HL)
@@ -152,7 +165,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         Expr::LoadAt(addr, w) => {
             gen_expr(a, addr); // HL = byte address
             match w {
-                Width::Word => {
+                Width::Word | Width::SWord => {
                     a.byte(0x5E); // LD E,(HL)
                     a.byte(0x23); // INC HL
                     a.byte(0x56); // LD D,(HL)
@@ -167,7 +180,12 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             }
         }
         // A comparison as a value → `1`/`0` in `HL`.
-        Expr::Cmp { cmp, lhs, rhs } => gen_cmp(a, *cmp, lhs, rhs),
+        Expr::Cmp {
+            cmp,
+            lhs,
+            rhs,
+            signed,
+        } => gen_cmp(a, *cmp, lhs, rhs, *signed),
         // Short-circuit `&&` / `||` on bool operands.
         Expr::Logic { and, lhs, rhs } => {
             gen_expr(a, lhs); // HL = lhs (0/1)
@@ -194,6 +212,11 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             a.place(top);
             if *left {
                 a.byte(0x29); // ADD HL,HL          (<< 1)
+            } else if *w == Width::SWord {
+                a.byte(0xCB);
+                a.byte(0x2C); // SRA H              (>> 1, arithmetic — sign propagates)
+                a.byte(0xCB);
+                a.byte(0x1D); // RR L
             } else {
                 a.byte(0xCB);
                 a.byte(0x3C); // SRL H
@@ -341,6 +364,19 @@ fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
     } else {
         a.byte(0xC1); // POP BC   ─┐ drop the remainder
         a.byte(0xC1); // POP BC   ─┘
+    }
+}
+
+/// `HL = l / r` (or `l % r`) for **signed** (`i16`) operands: `__sdivmod16` takes the
+/// absolute values through the unsigned core (software or trap, per target) and fixes
+/// the signs up (quotient truncates toward zero; the remainder takes the dividend's
+/// sign — rustc semantics).
+fn gen_sdivmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
+    gen_pair(a, r, l); // HL = l (dividend), DE = r (divisor)
+    a.call("__sdivmod16");
+    a.needs_sdiv = true;
+    if rem {
+        a.byte(0xEB); // EX DE,HL  -> HL = remainder
     }
 }
 
@@ -650,14 +686,40 @@ pub(super) fn cmp_false_jump(cmp: Cmp) -> (bool, u8) {
     }
 }
 
-/// Materialise a comparison as a `1`/`0` value in `HL` (a `bool`).
-pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr) {
-    let (swap, jp_false) = cmp_false_jump(cmp);
-    let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
-    gen_sub(a, left, right); // flags set; HL clobbered (overwritten below)
+/// Materialise a comparison as a `1`/`0` value in `HL` (a `bool`). `signed` orders by
+/// two's complement (`i16`): `<` is S ⊕ V after the subtraction, not the carry.
+pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr, signed: bool) {
     let false_l = a.label();
     let end_l = a.label();
-    a.jump(jp_false, false_l);
+    if signed && !matches!(cmp, Cmp::Eq | Cmp::Ne) {
+        // Normalize to Lt/Ge by swapping (a > b ≡ b < a; a <= b ≡ b >= a).
+        let (swap, want_lt) = match cmp {
+            Cmp::Lt => (false, true),
+            Cmp::Ge => (false, false),
+            Cmp::Gt => (true, true),
+            Cmp::Le => (true, false),
+            _ => unreachable!(),
+        };
+        let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
+        gen_sub(a, left, right); // S/V/Z from `left - right`
+                                 // `left < right` (signed) ⟺ S ⊕ V. Route the four flag cases to false_l.
+        let no_ovf = a.label();
+        let true_l = a.label();
+        a.jump(0xE2, no_ovf); // JP PO (V = 0)
+                              // V = 1: lt ⟺ S = 0.
+        a.jump(if want_lt { 0xF2 } else { 0xFA }, true_l); // JP P / JP M
+        a.jump(0xC3, false_l);
+        a.place(no_ovf);
+        // V = 0: lt ⟺ S = 1.
+        a.jump(if want_lt { 0xFA } else { 0xF2 }, true_l); // JP M / JP P
+        a.jump(0xC3, false_l);
+        a.place(true_l);
+    } else {
+        let (swap, jp_false) = cmp_false_jump(cmp);
+        let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
+        gen_sub(a, left, right); // flags set; HL clobbered (overwritten below)
+        a.jump(jp_false, false_l);
+    }
     a.byte(0x21); // LD HL, 1   (true)
     a.word(1);
     a.jump(0xC3, end_l); // JP end

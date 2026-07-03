@@ -1,5 +1,6 @@
 //! The appended mul/div micro-runtime (Spectrum target) + the Cell80 `ED FE` trap ids.
 use super::asm::Asm;
+use super::Target;
 
 /// `__mul16`: HL = HL * DE (low 16). Shift-add, **multiplier-terminated**: loops once
 /// per bit up to the multiplier's (DE's) top set bit, then returns — so small operands
@@ -309,4 +310,77 @@ pub(super) fn emit_divmod32(a: &mut Asm) {
         a.place(l);
         a.word(0);
     }
+}
+
+/// `__sdivmod16`: signed 16-bit divide — `HL = HL / DE`, `DE = HL % DE`, two's
+/// complement, truncating toward zero, remainder taking the dividend's sign (rustc
+/// semantics). Strips the signs, runs the unsigned core (the software `__divmod16` on
+/// Spectrum, the `ED FE` DIVMOD16 trap on Cell — so a `/ 0` still honours the
+/// divide-by-zero policy), and reapplies them. Clobbers AF/BC.
+pub(super) fn emit_sdivmod16(a: &mut Asm) {
+    a.define("__sdivmod16");
+    let (abs_l, abs_r, fix_rem, fix_q) = (a.label(), a.label(), a.label(), a.label());
+    // Stash the result signs: quotient = sign(l) ^ sign(r), remainder = sign(l).
+    a.byte(0x7C); // LD A,H
+    a.byte(0xAA); // XOR D
+    a.byte(0xF5); // PUSH AF       (bit 7 = negate quotient)
+    a.byte(0x7C); // LD A,H
+    a.byte(0xF5); // PUSH AF       (bit 7 = negate remainder)
+                  // |l|: negate HL if negative.
+    a.byte(0xCB);
+    a.byte(0x7C); // BIT 7,H
+    a.jump(0xCA, abs_l); // JP Z
+    a.byte(0x7D); // LD A,L
+    a.byte(0x2F); // CPL
+    a.byte(0x6F); // LD L,A
+    a.byte(0x7C); // LD A,H
+    a.byte(0x2F); // CPL
+    a.byte(0x67); // LD H,A
+    a.byte(0x23); // INC HL
+    a.place(abs_l);
+    // |r|: negate DE if negative.
+    a.byte(0xCB);
+    a.byte(0x7A); // BIT 7,D
+    a.jump(0xCA, abs_r); // JP Z
+    a.byte(0x7B); // LD A,E
+    a.byte(0x2F); // CPL
+    a.byte(0x5F); // LD E,A
+    a.byte(0x7A); // LD A,D
+    a.byte(0x2F); // CPL
+    a.byte(0x57); // LD D,A
+    a.byte(0x13); // INC DE
+    a.place(abs_r);
+    // The unsigned core: HL/DE -> HL = q, DE = rem.
+    match a.target {
+        Target::Spectrum48 => a.call("__divmod16"),
+        Target::Cell => {
+            a.byte(0x44); // LD B,H
+            a.byte(0x4D); // LD C,L        (BC = |dividend|)
+            gen_trap(a, TRAP_DIVMOD16); // HL = BC/DE, DE = BC%DE
+        }
+    }
+    // Reapply the signs (remainder first — its flag was pushed last).
+    a.byte(0xF1); // POP AF        (bit 7 = negate remainder)
+    a.byte(0x07); // RLCA          (bit 7 -> carry)
+    a.jump(0xD2, fix_rem); // JP NC
+    a.byte(0x7B); // LD A,E
+    a.byte(0x2F); // CPL
+    a.byte(0x5F); // LD E,A
+    a.byte(0x7A); // LD A,D
+    a.byte(0x2F); // CPL
+    a.byte(0x57); // LD D,A
+    a.byte(0x13); // INC DE
+    a.place(fix_rem);
+    a.byte(0xF1); // POP AF        (bit 7 = negate quotient)
+    a.byte(0x07); // RLCA
+    a.jump(0xD2, fix_q); // JP NC
+    a.byte(0x7D); // LD A,L
+    a.byte(0x2F); // CPL
+    a.byte(0x6F); // LD L,A
+    a.byte(0x7C); // LD A,H
+    a.byte(0x2F); // CPL
+    a.byte(0x67); // LD H,A
+    a.byte(0x23); // INC HL
+    a.place(fix_q);
+    a.byte(0xC9); // RET
 }
