@@ -1,0 +1,22 @@
+{
+  "model": "granite4.1:3b",
+  "theta": 0.05,
+  "embed_model": "ollama:nomic-embed-text",
+  "splits": {
+    "paraphrase": {
+      "n": 13,
+      "manifests_only": 0.8461538461538461,
+      "with_probes": 0.46153846153846156
+    },
+    "direct": {
+      "n": 9,
+      "manifests_only": 1.0,
+      "with_probes": 0.8888888888888888
+    },
+    "adversarial": {
+      "n": 10,
+      "manifests_only": 0.9,
+      "with_probes": 0.6
+    }
+  }
+}

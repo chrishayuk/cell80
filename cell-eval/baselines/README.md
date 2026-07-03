@@ -17,5 +17,13 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
   measured below both (paraphrase coverage 0.34) despite the stack preference.
   Retrieval prefixes were tested on the top three and don't change the ordering.
 
+- `tier3-granite4.1-3b.json`, `tier3-gemma4-26b.json` — the tier-3 probe-evidence
+  A/B over the escalated residue (nomic tier 2, θ = 0.05): a **banked negative** for
+  raw probe tables on text-only escalations. The 26B resolves the pickable residue
+  at 1.00 from manifests alone (probes neutral); the 3B sits at 0.85–1.00
+  manifests-only and probes *hurt* (−0.11…−0.38). Behavioural probes stay for
+  example-carrying requests (`match_examples`) and register-time metadata — not as
+  escalation payload.
+
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

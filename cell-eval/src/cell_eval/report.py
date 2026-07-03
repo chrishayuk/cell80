@@ -133,3 +133,20 @@ def render_tiers(report, calibration=None) -> str:
             f"{calibration['floor']}); full curve in the JSON output",
         ]
     return "\n".join(lines)
+
+
+def render_tier3(report) -> str:
+    d = report.as_dict()
+    lines = [
+        f"tier-3 disambiguation — model={d['model']}  embed={d['embed_model']} "
+        f"(the escalated residue at θ={d['theta']}; pick accuracy A/B)",
+        "",
+        f"  {'split':<12}{'n':>4}{'manifests-only':>16}{'with probes':>13}{'lift':>8}",
+    ]
+    for c, s_ in d["splits"].items():
+        lift = s_["with_probes"] - s_["manifests_only"]
+        lines.append(
+            f"  {c:<12}{s_['n']:>4}{s_['manifests_only']:>16.2f}"
+            f"{s_['with_probes']:>13.2f}{lift:>+8.2f}"
+        )
+    return "\n".join(lines)
