@@ -11,6 +11,7 @@ use std::collections::HashMap;
 mod asm;
 mod expr;
 mod ins;
+mod peephole;
 mod runtime;
 mod stmt;
 

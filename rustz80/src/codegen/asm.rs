@@ -1,6 +1,7 @@
 //! The `Asm` assembler — typed emission into the [`Ins`] stream, label/call/slot
 //! symbols, the runtime-append seal, and the encode to bytes.
 use super::ins::{encode, stream_len, FxBytes, Imm, Ins, R16};
+use super::peephole::{self, PeepholeCounts};
 use super::runtime::{emit_divmod32, emit_mul16w, emit_mul32, emit_sdivmod16, DIVMOD16, MUL16};
 use super::Target;
 use std::collections::HashMap;
@@ -38,6 +39,8 @@ pub(super) struct Asm {
     pub(super) func_end: Option<usize>,
     /// Whether the used runtime routines have been appended ([`Asm::seal`] ran).
     sealed: bool,
+    /// Per-rule peephole fire counts from [`Asm::seal`] (measurement, not behaviour).
+    pub(super) peep: PeepholeCounts,
 }
 
 impl Asm {
@@ -57,6 +60,7 @@ impl Asm {
             loop_stack: Vec::new(),
             func_end: None,
             sealed: false,
+            peep: PeepholeCounts::default(),
         }
     }
 
@@ -165,6 +169,9 @@ impl Asm {
             self.define("__divmod16");
             self.ins.push(Ins::Blob(DIVMOD16));
         }
+        // The Stage-2 peephole, over the whole stream (bodies + label-emitted
+        // runtime) — before any measurement, so lengths are post-optimization.
+        self.peep = peephole::optimize(&mut self.ins);
     }
 
     /// Encoded code length. Static per instruction (operands are 2-byte immediates),
