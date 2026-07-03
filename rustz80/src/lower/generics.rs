@@ -161,6 +161,7 @@ fn arg_tag(a: GArg) -> String {
     match a {
         GArg::Width(Width::Byte) => "u8".to_string(),
         GArg::Width(Width::Word) => "u16".to_string(),
+        GArg::Width(Width::SWord) => "i16".to_string(),
         GArg::Width(Width::DWord) => "u32".to_string(),
         GArg::Const(n) => n.to_string(),
     }
@@ -380,7 +381,11 @@ fn path_is(e: &syn::Expr, name: &str) -> bool {
 /// tolerating a path with generic arguments (which `path_ident` rejects).
 pub(crate) fn call_target(func: &syn::Expr) -> Result<(String, Vec<syn::GenericArgument>), String> {
     let syn::Expr::Path(p) = func else {
-        return Err(format!("unsupported call target: {func:?}"));
+        return Err(
+            "unsupported call target — call a named function (`f(a, b)`) or a \
+                     method (`obj.m(a)`); no function pointers or paths with arguments"
+                .into(),
+        );
     };
     let seg = p.path.segments.last().ok_or("empty call path")?;
     let name = seg.ident.to_string();

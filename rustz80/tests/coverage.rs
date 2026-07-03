@@ -490,3 +490,44 @@ fn run_method(prog: &rustz80::Program, entry: &str, self_ptr: u16) -> (u16, Vec<
     assert!(cpu.halted, "method did not return");
     (cpu.regs.hl(), bus.mem)
 }
+
+#[test]
+fn diagnostics_are_instructive_not_debug_dumps() {
+    // Phase 1.2 DoD: no user-facing error contains a syn Debug tree. Each probe hits a
+    // different rejection site; every message must be prose (and where there's an
+    // accepted rewrite, say it), never `Expr { attrs: [], … }`.
+    let rejects = [
+        "fn f() -> u16 { \"hello\" }",                   // string literal
+        "fn f() -> u16 { 1.5 }",                         // float literal
+        "fn f() -> u16 { let g = |x: u16| x; g(1u16) }", // closure
+        "fn f(a: u16) -> u16 { a.checked_div(2u16)? }",  // `?`
+        "fn f(a: u16) -> u16 { match a { 0u16..=5u16 => 1u16, _ => 0u16 } }", // range pattern
+        "fn f(a: u16) -> u16 { let x = if a > 1u16 { 1u16 } else 2u16; x }", // bad else (parse)
+        "fn f() -> u16 { loop { } }",                    // loop as value
+        "fn f(a: u16) -> u16 { let [x, y] = [a, a]; x + y }", // slice pattern
+        "fn f(a: u16) -> u16 { (&a) as u16 }",           // borrow expression
+        "fn f() -> u16 { vec![1u16][0] }",               // macro call
+    ];
+    for src in rejects {
+        let e = match compile_fn(src) {
+            Err(e) => e,
+            Ok(_) => continue, // if a shape gains support later this probe just retires
+        };
+        for marker in [
+            "attrs:", "attrs :", "span:", "Expr {", "Lit {", "Pat {", "ident:",
+        ] {
+            assert!(
+                !e.contains(marker),
+                "diagnostic leaks a syn Debug dump ({marker}):\n  src: {src}\n  err: {e}"
+            );
+        }
+    }
+
+    // The classic misuse: a whole program handed to the single-`fn` entry must point at
+    // the right API, not surface a bare parse error.
+    let e = compile_fn("fn a() -> u16 { 1u16 } fn b() -> u16 { 2u16 }").unwrap_err();
+    assert!(
+        e.contains("compile_program"),
+        "should point at compile_program: {e}"
+    );
+}

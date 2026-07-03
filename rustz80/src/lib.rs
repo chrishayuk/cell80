@@ -315,7 +315,25 @@ pub fn compile_fn(src: &str) -> Result<Vec<u8>, String> {
 /// [`compile_fn`] with an explicit [`Target`] — so the differential harness can exercise
 /// the Cell target's `ED FE` trap path against the same rustc oracle.
 pub fn compile_fn_for(src: &str, target: Target) -> Result<Vec<u8>, String> {
-    let item: syn::ItemFn = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
+    let item: syn::ItemFn = syn::parse_str(src).map_err(|e| {
+        // The classic misuse: handing a whole program to the single-`fn` entry. Point
+        // at the right API instead of surfacing a bare parse error.
+        if let Ok(file) = syn::parse_str::<syn::File>(src) {
+            if file.items.len() > 1 {
+                return format!(
+                    "this source has {} items but `compile_fn` compiles exactly one `fn` — \
+                     use `compile_program` for multi-function sources",
+                    file.items.len()
+                );
+            }
+            if !matches!(file.items.first(), Some(syn::Item::Fn(_))) {
+                return "this source's top-level item is not a `fn` — `compile_fn` takes a \
+                        single function; use `compile_program` for structs/impls"
+                    .to_string();
+            }
+        }
+        format!("parse error: {e}")
+    })?;
     let name = item.sig.ident.to_string();
     let func = lower::lower(&item)?;
     let funcs = [(name, func)];

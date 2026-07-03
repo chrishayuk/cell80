@@ -430,6 +430,7 @@ fn remap_cond(c: &Cond, plan: &[Slot]) -> Cond {
         cmp: c.cmp,
         lhs: remap_expr(&c.lhs, plan),
         rhs: remap_expr(&c.rhs, plan),
+        signed: c.signed,
     }
 }
 
@@ -521,10 +522,16 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         },
         Expr::MulConst(a, k) => Expr::MulConst(e(a), *k),
         Expr::LoadAt(a, w) => Expr::LoadAt(e(a), *w),
-        Expr::Cmp { cmp, lhs, rhs } => Expr::Cmp {
+        Expr::Cmp {
+            cmp,
+            lhs,
+            rhs,
+            signed,
+        } => Expr::Cmp {
             cmp: *cmp,
             lhs: e(lhs),
             rhs: e(rhs),
+            signed: *signed,
         },
         Expr::Logic { and, lhs, rhs } => Expr::Logic {
             and: *and,

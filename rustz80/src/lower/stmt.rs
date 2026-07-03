@@ -192,6 +192,28 @@ pub(crate) fn lower_local(
                 }
             }
         }
+        // `let x = if c { a } else { b };` / `let x = match … { … };` — the value-position
+        // conditional lowers to its statement form assigning into `x`'s slot.
+        cond @ (syn::Expr::If(_) | syn::Expr::Match(_)) => {
+            let ann = match &local.pat {
+                syn::Pat::Type(t) => Some(ctx.width_of_type(&t.ty)),
+                _ => None,
+            };
+            let w = value_width(cond, ctx)?;
+            if w == Width::DWord && matches!(ann, Some(a) if a != Width::DWord) {
+                return Err(format!(
+                    "cannot bind a u32 value to 16-bit `{name}` — narrow with `as u16`"
+                ));
+            }
+            let dword = w == Width::DWord || ann == Some(Width::DWord);
+            let base = ctx.vars.declare(
+                &name,
+                if dword { 2 } else { 1 },
+                None,
+                if dword { Width::DWord } else { w },
+            );
+            lower_value_into(base, dword, cond, ctx, body)?;
+        }
         other => {
             let (e, ty) = lower_expr(other, ctx)?;
             // An explicit `: u32` annotation makes the binding wide even when the
@@ -336,6 +358,12 @@ pub(crate) fn lower_stmt_expr(
             _ => {
                 let name = path_ident(&a.left)?;
                 let slot = ctx.vars.base(&name);
+                // `x = if c { a } else { b };` — a value conditional into x's slot.
+                if matches!(&*a.right, syn::Expr::If(_) | syn::Expr::Match(_)) {
+                    let dword = ctx.vars.ty(&name) == Width::DWord;
+                    lower_value_into(slot, dword, &a.right, ctx, body)?;
+                    return Ok(());
+                }
                 let (e, ew) = lower_expr(&a.right, ctx)?;
                 if ctx.vars.ty(&name) == Width::DWord {
                     // A 16-bit value widens into a u32 var (`x = 5` on `x: u32`).
@@ -389,6 +417,7 @@ pub(crate) fn lower_stmt_expr(
                     cmp: Cmp::Eq,
                     lhs: Expr::Var(temp),
                     rhs: val,
+                    signed: false,
                 };
                 chain = vec![Stmt::If(cond, arm_body, chain)];
             }
@@ -445,6 +474,22 @@ pub(crate) fn lower_stmt_expr(
             body.push(Stmt::Continue);
         }
         syn::Expr::Return(r) => {
+            // `return if c { a } else { b };` — value conditional through a temp slot.
+            if let Some(e) = r.expr.as_deref() {
+                if matches!(e, syn::Expr::If(_) | syn::Expr::Match(_)) {
+                    let w = value_width(e, ctx)?;
+                    if w == Width::DWord {
+                        return Err(
+                            "u32 return values are not supported yet — narrow with `as u16`".into(),
+                        );
+                    }
+                    let temp = ctx.vars.declare(&format!("__val{}", ctx.temp), 1, None, w);
+                    ctx.temp += 1;
+                    lower_value_into(temp, false, e, ctx, body)?;
+                    body.push(Stmt::Return(Some(Expr::Var(temp))));
+                    return Ok(());
+                }
+            }
             let val = match &r.expr {
                 Some(e) => Some(lower_expr16(
                     e,
@@ -455,7 +500,14 @@ pub(crate) fn lower_stmt_expr(
             };
             body.push(Stmt::Return(val));
         }
-        other => return Err(format!("unsupported statement expression: {other:?}")),
+        other => {
+            return Err(format!(
+                "unsupported statement: {} — statements are `let`, assignment, \
+                 `if`/`while`/`for`/`loop`/`match`, `break`/`continue`/`return`, and \
+                 calls; a bare value needs a `let` (or make it the final expression)",
+                super::expr::describe_expr(other)
+            ))
+        }
     }
     Ok(())
 }
@@ -524,7 +576,10 @@ fn lower_else(e: &syn::Expr, ctx: &mut Ctx) -> Result<Vec<Stmt>, String> {
             lower_stmt_expr(e, ctx, &mut v)?;
             Ok(v)
         }
-        other => Err(format!("unsupported else branch: {other:?}")),
+        other => Err(format!(
+            "unsupported `else` branch: {} — write `else {{ … }}` or `else if … {{ … }}`",
+            super::expr::describe_expr(other)
+        )),
     }
 }
 
@@ -534,7 +589,12 @@ fn lower_block(b: &syn::Block, ctx: &mut Ctx) -> Result<Vec<Stmt>, String> {
         match st {
             syn::Stmt::Local(local) => lower_local(local, ctx, &mut body)?,
             syn::Stmt::Expr(expr, _) => lower_stmt_expr(expr, ctx, &mut body)?,
-            other => return Err(format!("unsupported statement: {other:?}")),
+            other => {
+                return Err(format!(
+                    "unsupported statement: {}",
+                    super::expr::describe_stmt(other)
+                ))
+            }
         }
     }
     Ok(body)
@@ -550,6 +610,7 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
                 cmp: negate_cmp(inner.cmp),
                 lhs: inner.lhs,
                 rhs: inner.rhs,
+                signed: inner.signed,
             });
         }
     }
@@ -569,6 +630,7 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
                 cmp,
                 lhs: le,
                 rhs: re,
+                signed: lw == Width::SWord || rw == Width::SWord,
             });
         }
     }
@@ -580,6 +642,7 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
         cmp: Cmp::Ne,
         lhs: e,
         rhs: Expr::Lit(0),
+        signed: false,
     })
 }
 
@@ -627,12 +690,19 @@ fn pattern_value(pat: &syn::Pat, ctx: &Ctx) -> Result<Option<Expr>, String> {
             syn::Lit::Int(i) => Ok(Some(Expr::Lit(
                 i.base10_parse::<u16>().map_err(|e| e.to_string())?,
             ))),
-            other => Err(format!("only integer literal patterns: {other:?}")),
+            other => Err(format!(
+                "unsupported `match` pattern: {} — arms match integer literals, enum \
+                 variants, or `_`",
+                super::expr::describe_lit_kind(other)
+            )),
         },
         syn::Pat::Path(pp) => resolve_enum_path(&pp.path, ctx.enums)
             .map(|v| Some(Expr::Lit(v)))
             .ok_or_else(|| "unknown enum variant in pattern".into()),
-        other => Err(format!("unsupported match pattern: {other:?}")),
+        _ => Err("unsupported `match` pattern — arms match integer literals \
+                  (`0u16 => …`), enum variants (`Dir::Up => …`), or `_` (no ranges, \
+                  bindings, or tuples)"
+            .into()),
     }
 }
 
@@ -640,6 +710,233 @@ pub(crate) fn pat_ident(pat: &syn::Pat) -> Result<String, String> {
     match pat {
         syn::Pat::Ident(p) => Ok(p.ident.to_string()),
         syn::Pat::Type(t) => pat_ident(&t.pat),
-        other => Err(format!("unsupported let pattern: {other:?}")),
+        _ => Err(
+            "unsupported `let` pattern — bind a plain name (`let x = …`) or a \
+                  tuple of names (`let (a, b) = …`); no nested/struct patterns"
+                .into(),
+        ),
     }
+}
+
+// ── if/match as expressions ─────────────────────────────────────────────────────────
+//
+// `let x = if a { 1 } else { 2 };` is the single most idiomatic shape an LLM emits.
+// A value-position `if`/`match` lowers to its statement form with every arm assigning
+// into one destination slot — no codegen support needed. Arms recurse, so nested
+// conditionals and `else if` chains land in the same slot.
+
+/// Is this `if` a *value* (every path ends in a trailing expression) rather than a
+/// statement? Mirrors rustc's typing for the dialect: a value-`if` needs an `else`,
+/// and each branch must end with a no-semicolon expression.
+pub(crate) fn if_is_value(ifx: &syn::ExprIf) -> bool {
+    let Some((_, els)) = &ifx.else_branch else {
+        return false;
+    };
+    let branch_is_value = |b: &syn::Block| matches!(b.stmts.last(), Some(syn::Stmt::Expr(e, None)) if expr_is_value(e));
+    branch_is_value(&ifx.then_branch)
+        && match &**els {
+            syn::Expr::Block(b) => branch_is_value(&b.block),
+            syn::Expr::If(nested) => if_is_value(nested),
+            _ => false,
+        }
+}
+
+/// Is this `match` a *value* — every arm body ends in (or is) a trailing expression?
+pub(crate) fn match_is_value(m: &syn::ExprMatch) -> bool {
+    !m.arms.is_empty()
+        && m.arms.iter().all(|arm| match &*arm.body {
+            syn::Expr::Block(b) => {
+                matches!(b.block.stmts.last(), Some(syn::Stmt::Expr(e, None)) if expr_is_value(e))
+            }
+            e => expr_is_value(e),
+        })
+}
+
+/// A trailing expression that plausibly *produces* a value (vs a void call / statement
+/// shape). Conservative: conditionals recurse; calls count (non-void is the common cell
+/// shape); loops/assignments don't.
+fn expr_is_value(e: &syn::Expr) -> bool {
+    match e {
+        syn::Expr::If(ifx) => if_is_value(ifx),
+        syn::Expr::Match(m) => match_is_value(m),
+        syn::Expr::Paren(p) => expr_is_value(&p.expr),
+        syn::Expr::Lit(_)
+        | syn::Expr::Path(_)
+        | syn::Expr::Binary(_)
+        | syn::Expr::Unary(_)
+        | syn::Expr::Call(_)
+        | syn::Expr::MethodCall(_)
+        | syn::Expr::Index(_)
+        | syn::Expr::Field(_)
+        | syn::Expr::Cast(_) => true,
+        _ => false,
+    }
+}
+
+/// The width a value-position expression will produce, probed from its first value
+/// path (arms must agree — enforced when each arm actually lowers). Pure: `lower_expr`
+/// emits no statements, and generic-instance requests dedup.
+pub(crate) fn value_width(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Width, String> {
+    match expr {
+        syn::Expr::If(ifx) => match ifx.then_branch.stmts.last() {
+            Some(syn::Stmt::Expr(e, None)) => value_width(e, ctx),
+            _ => Err(
+                "an `if` used as a value must end each branch with the value \
+                      (no trailing `;`)"
+                    .into(),
+            ),
+        },
+        syn::Expr::Match(m) => match m.arms.first() {
+            Some(arm) => match &*arm.body {
+                syn::Expr::Block(b) => match b.block.stmts.last() {
+                    Some(syn::Stmt::Expr(e, None)) => value_width(e, ctx),
+                    _ => Err("a `match` arm used as a value must end with the value \
+                              (no trailing `;`)"
+                        .into()),
+                },
+                e => value_width(e, ctx),
+            },
+            None => Err("a `match` used as a value needs at least one arm".into()),
+        },
+        syn::Expr::Paren(p) => value_width(&p.expr, ctx),
+        other => Ok(lower_expr(other, ctx)?.1),
+    }
+}
+
+/// Lower a value-position expression **into `slot`**, emitting statements. `dword`
+/// selects the wide (`u32`, two-slot) destination. This is the temp-slot desugar for
+/// `if`/`match` expressions; a plain expression is a straight assignment.
+pub(crate) fn lower_value_into(
+    slot: usize,
+    dword: bool,
+    expr: &syn::Expr,
+    ctx: &mut Ctx,
+    body: &mut Vec<Stmt>,
+) -> Result<(), String> {
+    match expr {
+        syn::Expr::If(ifx) => {
+            let Some((_, els)) = &ifx.else_branch else {
+                return Err(
+                    "an `if` used as a value needs an `else` branch — every path \
+                            must produce the value (e.g. `let x = if c { 1u16 } else { 0u16 };`)"
+                        .into(),
+                );
+            };
+            let cond = lower_cond(&ifx.cond, ctx)?;
+            let then = value_block_into(slot, dword, &ifx.then_branch, ctx)?;
+            let els_stmts = match &**els {
+                syn::Expr::Block(b) => value_block_into(slot, dword, &b.block, ctx)?,
+                nested @ syn::Expr::If(_) => {
+                    // `else if …` chain — recurse into the same slot.
+                    let mut v = Vec::new();
+                    lower_value_into(slot, dword, nested, ctx, &mut v)?;
+                    v
+                }
+                other => {
+                    return Err(format!(
+                        "unsupported `else` branch for an `if` value: {}",
+                        super::expr::describe_expr(other)
+                    ))
+                }
+            };
+            body.push(Stmt::If(cond, then, els_stmts));
+        }
+        syn::Expr::Match(m) => {
+            // Scrutinee temp + an if-chain whose arms assign into `slot` (the same
+            // desugar as statement-`match`).
+            let scrut = lower_expr16(&m.expr, ctx, "match scrutinee")?;
+            let temp = ctx
+                .vars
+                .declare(&format!("__match{}", ctx.temp), 1, None, Width::Word);
+            ctx.temp += 1;
+            body.push(Stmt::Assign(temp, scrut));
+
+            let mut default: Option<Vec<Stmt>> = None;
+            let mut arms: Vec<(Expr, Vec<Stmt>)> = Vec::new();
+            for arm in &m.arms {
+                let mut ab = Vec::new();
+                match &*arm.body {
+                    syn::Expr::Block(b) => {
+                        ab = value_block_into(slot, dword, &b.block, ctx)?;
+                    }
+                    e => lower_value_into(slot, dword, e, ctx, &mut ab)?,
+                }
+                match pattern_value(&arm.pat, ctx)? {
+                    Some(v) => arms.push((v, ab)),
+                    None => default = Some(ab),
+                }
+            }
+            let Some(default) = default else {
+                return Err(
+                    "a `match` used as a value needs a `_` arm — every input must \
+                            produce the value (add `_ => <default>`)"
+                        .into(),
+                );
+            };
+            let mut chain = default;
+            for (val, ab) in arms.into_iter().rev() {
+                let cond = Cond {
+                    cmp: Cmp::Eq,
+                    lhs: Expr::Var(temp),
+                    rhs: val,
+                    signed: false,
+                };
+                chain = vec![Stmt::If(cond, ab, chain)];
+            }
+            body.extend(chain);
+        }
+        syn::Expr::Paren(p) => lower_value_into(slot, dword, &p.expr, ctx, body)?,
+        other => {
+            let (e, w) = lower_expr(other, ctx)?;
+            if dword {
+                body.push(Stmt::Assign32(slot, coerce32(e, w)));
+            } else if w == Width::DWord {
+                return Err(
+                    "this branch produces a u32 but the destination is 16-bit — narrow \
+                     with `as u16` (or make every branch u32)"
+                        .into(),
+                );
+            } else {
+                body.push(Stmt::Assign(slot, e));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Lower a value-`if`/`match` **branch block**: leading statements as usual, the
+/// trailing expression into `slot`.
+fn value_block_into(
+    slot: usize,
+    dword: bool,
+    block: &syn::Block,
+    ctx: &mut Ctx,
+) -> Result<Vec<Stmt>, String> {
+    let mut body = Vec::new();
+    let n = block.stmts.len();
+    if n == 0 {
+        return Err("an empty branch can't produce a value — end it with the value".into());
+    }
+    for (i, st) in block.stmts.iter().enumerate() {
+        let last = i + 1 == n;
+        match st {
+            syn::Stmt::Expr(e, None) if last => lower_value_into(slot, dword, e, ctx, &mut body)?,
+            _ if last => {
+                return Err(
+                    "the branch of an `if`/`match` value must end with the value \
+                            (drop the trailing `;`)"
+                        .into(),
+                )
+            }
+            syn::Stmt::Local(local) => lower_local(local, ctx, &mut body)?,
+            syn::Stmt::Expr(expr, _) => lower_stmt_expr(expr, ctx, &mut body)?,
+            other => {
+                return Err(format!(
+                    "unsupported statement in a value branch: {}",
+                    super::expr::describe_stmt(other)
+                ))
+            }
+        }
+    }
+    Ok(body)
 }

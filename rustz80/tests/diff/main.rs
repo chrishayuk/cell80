@@ -24,11 +24,13 @@ mod harness;
 
 mod arrays;
 mod basics;
+mod conditionals;
 mod control_flow;
 mod functions;
 mod generics;
 mod inline;
 mod misc;
 mod recursion;
+mod signed;
 mod structs;
 mod u32_ops;
