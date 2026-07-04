@@ -114,10 +114,21 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 let name = ctx.consts.borrow_mut().intern_str(&s.value())?;
                 Ok((Expr::ConstAddr(name), Width::Word))
             }
+            // A byte literal is a `u8` value — ASCII work reads as itself
+            // (`c >= b'0' && c <= b'9'`) instead of magic numbers.
+            syn::Lit::Byte(b) => Ok((Expr::Lit(b.value() as u16), Width::Byte)),
+            // A byte-string literal is packed const data — raw bytes, no length
+            // prefix (its `&[u8; N]` type carries the length) — and evaluates to
+            // its address, deduplicated by content.
+            syn::Lit::ByteStr(bs) => {
+                let name = ctx.consts.borrow_mut().intern_bytes(&bs.value())?;
+                Ok((Expr::ConstAddr(name), Width::Word))
+            }
             other => Err(format!(
                 "unsupported literal: {} — the dialect's values are integers, bools, and \
-                 (as data) string literals; floats/chars are out — for fractional values \
-                 use fixed-point on integers, e.g. Q8.8: `(a * w) >> 8`",
+                 byte literals (`b'a'`), plus (as data) string and byte-string literals; \
+                 floats/chars are out — for fractional values use fixed-point on \
+                 integers, e.g. Q8.8: `(a * w) >> 8`; for a character use `b'a'`",
                 describe_lit(other)
             )),
         },
@@ -137,7 +148,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         return Ok((Expr::Lit(*v), *w));
                     }
                     if let Some(d) = consts.get(&name) {
-                        if d.is_str {
+                        if d.is_ref {
                             return Ok((Expr::ConstAddr(name), Width::Word));
                         }
                         return Err(format!(
@@ -518,10 +529,10 @@ fn lower_const_ref(referent: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width),
                      `&CONST[i]`); `{name}` is not a data const"
                 ));
             };
-            if d.is_str {
+            if d.is_ref {
                 return Err(format!(
-                    "`&{name}` is a reference to a reference — a `&str` const is \
-                     already an address; pass `{name}` directly"
+                    "`&{name}` is a reference to a reference — a `&str`/`&[u8; N]` \
+                     const is already an address; pass `{name}` directly"
                 ));
             }
             Ok((Expr::ConstAddr(name), Width::Word))
@@ -941,8 +952,10 @@ pub(crate) fn describe_expr(e: &syn::Expr) -> &'static str {
 /// A human name for a literal kind (see [`describe_expr`]).
 pub(crate) fn describe_lit(l: &syn::Lit) -> &'static str {
     match l {
-        syn::Lit::Str(_) | syn::Lit::ByteStr(_) | syn::Lit::CStr(_) => "a string literal",
-        syn::Lit::Byte(_) | syn::Lit::Char(_) => "a character literal",
+        syn::Lit::Str(_) | syn::Lit::CStr(_) => "a string literal",
+        syn::Lit::ByteStr(_) => "a byte-string literal",
+        syn::Lit::Byte(_) => "a byte literal",
+        syn::Lit::Char(_) => "a character literal (use a byte literal, `b'a'`)",
         syn::Lit::Int(_) => "an integer literal",
         syn::Lit::Float(_) => "a float literal",
         syn::Lit::Bool(_) => "a bool literal",

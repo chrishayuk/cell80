@@ -711,9 +711,10 @@ fn pattern_value(pat: &syn::Pat, ctx: &Ctx) -> Result<Option<Expr>, String> {
             syn::Lit::Int(i) => Ok(Some(Expr::Lit(
                 i.base10_parse::<u16>().map_err(|e| e.to_string())?,
             ))),
+            syn::Lit::Byte(b) => Ok(Some(Expr::Lit(b.value() as u16))),
             other => Err(format!(
-                "unsupported `match` pattern: {} — arms match integer literals, enum \
-                 variants, or `_`",
+                "unsupported `match` pattern: {} — arms match integer/byte literals, \
+                 enum variants, or `_`",
                 super::expr::describe_lit_kind(other)
             )),
         },

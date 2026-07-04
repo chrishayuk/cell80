@@ -16,7 +16,8 @@
 //! `&[T; N]` reference parameters (byte-addressed), never through the slot-based
 //! field access of a `self` receiver. Strings are length-prefixed: one length
 //! byte, then the bytes (so a routine gets the length with `peek(s)` and byte `i`
-//! with `peek(s + 1 + i)`).
+//! with `peek(s + 1 + i)`). Byte strings (`b"…"`, `const B: &[u8; N] = b"…";`)
+//! are **raw** bytes with no prefix — their `[u8; N]` type carries the length.
 
 use crate::ir::Width;
 use std::collections::HashMap;
@@ -35,9 +36,10 @@ pub(crate) struct DataConst {
     pub(crate) stride: u16,
     /// Element count (arrays) — for the out-of-range diagnostics.
     pub(crate) len: u16,
-    /// A length-prefixed string (an interned literal or a `&str` const) — its bare
-    /// name *is* the address (a `&str` is already a reference).
-    pub(crate) is_str: bool,
+    /// The const's Rust type is a reference (a `&str` const / interned string
+    /// literal, or a `&[u8; N]` const / interned byte-string) — so its bare name
+    /// *is* the address, and `&NAME` would be a reference to a reference.
+    pub(crate) is_ref: bool,
 }
 
 /// Every `const` in the program: scalars by value, data consts by (eventual) address.
@@ -49,6 +51,8 @@ pub(crate) struct ConstTable {
     pub(crate) data: Vec<DataConst>,
     /// Interned string content → its data-const name (`__str0`, `__str1`, …).
     strings: HashMap<String, String>,
+    /// Interned byte-string content → its data-const name (`__bytes0`, …).
+    byte_strings: HashMap<Vec<u8>, String>,
 }
 
 impl ConstTable {
@@ -78,9 +82,35 @@ impl ConstTable {
             elem_width: None,
             stride: 0,
             len: s.len() as u16,
-            is_str: true,
+            is_ref: true,
         });
         self.strings.insert(s.to_string(), name.clone());
+        Ok(name)
+    }
+
+    /// Intern a byte-string literal (`b"…"`) as a **raw** (unprefixed) data const,
+    /// deduplicated by content — its `[u8; N]` type carries the length, so unlike
+    /// a string there is no length byte. Returns the const's symbol name.
+    pub(crate) fn intern_bytes(&mut self, b: &[u8]) -> Result<String, String> {
+        if let Some(name) = self.byte_strings.get(b) {
+            return Ok(name.clone());
+        }
+        if b.len() > 1024 {
+            return Err(format!(
+                "byte-string literal is {} bytes — const data caps at 1024",
+                b.len()
+            ));
+        }
+        let name = format!("__bytes{}", self.byte_strings.len());
+        self.data.push(DataConst {
+            name: name.clone(),
+            bytes: b.to_vec(),
+            elem_width: Some(Width::Byte),
+            stride: 1,
+            len: b.len() as u16,
+            is_ref: true,
+        });
+        self.byte_strings.insert(b.to_vec(), name.clone());
         Ok(name)
     }
 }
@@ -161,6 +191,44 @@ fn collect_one(
             });
             Ok(())
         }
+        // `&[u8; N]` — a byte-string const (`const CRLF: &[u8; 2] = b"\r\n";`): raw
+        // packed bytes, the bare name is the address, elements index like any
+        // array const (`CRLF[i]`).
+        syn::Type::Reference(r) if byte_array_len(&r.elem).is_some() => {
+            let n = byte_array_len(&r.elem).unwrap()?;
+            let bytes = match expr {
+                syn::Expr::Lit(l) => match &l.lit {
+                    syn::Lit::ByteStr(bs) => bs.value(),
+                    _ => {
+                        return Err(format!(
+                            "const `{name}`: a `&[u8; N]` const must be a byte-string \
+                             literal (`b\"…\"`)"
+                        ))
+                    }
+                },
+                _ => {
+                    return Err(format!(
+                        "const `{name}`: a `&[u8; N]` const must be a byte-string \
+                         literal (`b\"…\"`)"
+                    ))
+                }
+            };
+            if bytes.len() != n {
+                return Err(format!(
+                    "const `{name}`: the byte-string is {} bytes for a `&[u8; {n}]`",
+                    bytes.len()
+                ));
+            }
+            table.data.push(DataConst {
+                name: name.to_string(),
+                bytes,
+                elem_width: Some(Width::Byte),
+                stride: 1,
+                len: n as u16,
+                is_ref: true,
+            });
+            Ok(())
+        }
         // Scalar arrays `[u8; N]` / `[u16; N]` / `[i16; N]` — indexable data.
         syn::Type::Array(arr) if scalar_elem(&arr.elem).is_some() => {
             let w = scalar_elem(&arr.elem).unwrap();
@@ -174,7 +242,7 @@ fn collect_one(
                 elem_width: Some(w),
                 stride: scalar_bytes(w),
                 len: n as u16,
-                is_str: false,
+                is_ref: false,
             });
             Ok(())
         }
@@ -207,7 +275,7 @@ fn collect_one(
                 elem_width: None,
                 stride,
                 len: n as u16,
-                is_str: false,
+                is_ref: false,
             });
             Ok(())
         }
@@ -233,13 +301,13 @@ fn collect_one(
                 elem_width: None,
                 stride: 0,
                 len: 1,
-                is_str: false,
+                is_ref: false,
             });
             Ok(())
         }
         _ => Err(format!(
             "const `{name}`: unsupported const type — scalars, `[u8/u16/i16; N]`, `&str`, \
-             structs, and `[Struct; N]` are supported"
+             `&[u8; N]`, structs, and `[Struct; N]` are supported"
         )),
     }
 }
@@ -361,6 +429,7 @@ fn eval_scalar(expr: &syn::Expr, table: &ConstTable) -> Result<u16, String> {
                 .base10_parse::<u16>()
                 .map_err(|_| format!("`{}` is out of the 16-bit range", i.base10_digits())),
             syn::Lit::Bool(b) => Ok(b.value as u16),
+            syn::Lit::Byte(b) => Ok(b.value() as u16),
             other => Err(format!(
                 "unsupported const value: {}",
                 super::expr::describe_lit(other)
@@ -387,6 +456,19 @@ fn eval_scalar(expr: &syn::Expr, table: &ConstTable) -> Result<u16, String> {
 
 fn is_str(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Path(p) if p.path.is_ident("str"))
+}
+
+/// `Some(N)` when `ty` is `[u8; N]` (the referent of a `&[u8; N]` const); the inner
+/// `Result` reports a bad length expression.
+fn byte_array_len(ty: &syn::Type) -> Option<Result<usize, String>> {
+    let syn::Type::Array(arr) = ty else {
+        return None;
+    };
+    // Precisely `u8` — `bool` also lowers to a byte but isn't byte-string material.
+    if !matches!(&*arr.elem, syn::Type::Path(p) if p.path.is_ident("u8")) {
+        return None;
+    }
+    Some(super::layout::lit_len(&arr.len))
 }
 
 fn scalar_width(p: &syn::Path) -> Option<Width> {

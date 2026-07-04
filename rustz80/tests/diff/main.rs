@@ -24,6 +24,7 @@ mod harness;
 
 mod arrays;
 mod basics;
+mod bytes;
 mod conditionals;
 mod consts;
 mod control_flow;
