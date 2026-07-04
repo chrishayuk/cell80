@@ -14,10 +14,12 @@
 //! `u16`/`i16` → 2 bytes LE, arrays/structs concatenate). This is **not** the
 //! 2-byte-slot layout of *state* structs: const data is read through `peek` /
 //! `&[T; N]` reference parameters (byte-addressed), never through the slot-based
-//! field access of a `self` receiver. Strings are length-prefixed: one length
-//! byte, then the bytes (so a routine gets the length with `peek(s)` and byte `i`
-//! with `peek(s + 1 + i)`). Byte strings (`b"…"`, `const B: &[u8; N] = b"…";`)
-//! are **raw** bytes with no prefix — their `[u8; N]` type carries the length.
+//! field access of a `self` receiver. Strings are length-prefixed: a
+//! **little-endian `u16` length**, then the bytes — the Phase S wire format
+//! (`docs/11-machine-text.md` §1): length low byte at `peek(s)`, high at
+//! `peek(s + 1)`, byte `i` at `peek(s + 2 + i)`. Byte strings (`b"…"`,
+//! `const B: &[u8; N] = b"…";`) are **raw** bytes with no prefix — their
+//! `[u8; N]` type carries the length.
 
 use crate::ir::Width;
 use std::collections::HashMap;
@@ -66,15 +68,15 @@ impl ConstTable {
         if let Some(name) = self.strings.get(s) {
             return Ok(name.clone());
         }
-        if s.len() > 255 {
+        if s.len() > 1024 {
             return Err(format!(
-                "string literal is {} bytes — the length-prefixed layout caps at 255",
+                "string literal is {} bytes — const data caps at 1024",
                 s.len()
             ));
         }
         let name = format!("__str{}", self.strings.len());
-        let mut bytes = Vec::with_capacity(s.len() + 1);
-        bytes.push(s.len() as u8);
+        let mut bytes = Vec::with_capacity(s.len() + 2);
+        bytes.extend_from_slice(&(s.len() as u16).to_le_bytes());
         bytes.extend_from_slice(s.as_bytes());
         self.data.push(DataConst {
             name: name.clone(),

@@ -41,6 +41,11 @@ UTF-8 valid by contract (§4). One format for const data, params, and state fiel
   compiler-internal (the convention lives between emitted code and itself), so old
   *images* are untouched; only user source that hand-reads the prefix via `peek(s)`
   breaks — grep the cell corpus, expect zero hits, note it in the changelog.
+  *Shipped (S0): the corpus grep found zero prefix reads outside the compiler's own
+  diff tests (updated in the same change). One external consumer: `chuk-speccy`'s
+  `Frame::text` routine must skip 2 prefix bytes instead of 1 when it bumps
+  rustz80 — for strings under 256 bytes the length read itself is unchanged (low
+  byte first).*
 - **Capacity cap: `N ≤ 1024` per field/const.** Cells are index cards; a cell that
   needs more is not a cell (`Escalate::CapacityExceeded`). The cap is a lowering
   error, not a runtime surprise.
