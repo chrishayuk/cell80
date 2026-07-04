@@ -106,6 +106,17 @@ operand, and a count ≥ the width shifts out to `0` (matching rustc's behaviour
 in-range counts the oracle tests; rustc panics on out-of-range constants in debug — the
 dialect does not, it zeroes).
 
+**The std bit methods** are in for `u8`/`u16`, all rustc-identical and oracle-checked.
+`count_ones`, `leading_zeros`, `trailing_zeros` call tiny appended kernels
+(`__bits_*` — plain Z80 shift loops, identical bytes on both targets, honest cycles,
+**no traps**); the u8 variants derive from the u16 kernels (`lz - 8`; `tz` of
+`x | 0x100`). `rotate_left(k)`/`rotate_right(k)` desugar to `(x << k') | (x >> w-k')`
+with `k' = k % width` — constant amounts unroll, runtime amounts (std's `u32`
+narrows freely) mask and shift; `swap_bytes` is `(x << 8) | (x >> 8)` (u8: identity).
+The desugars re-read operands, so effectful operands steer to a `let` binding. The
+counting trio returns 16-bit values where std returns `u32` — every in-range use
+agrees, and the value never exceeds 16. `u32`/`i16` variants reject instructively.
+
 ## Divide by zero
 
 rustc panics; a cell cannot. The two targets answer differently, **by design**:

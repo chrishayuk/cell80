@@ -2,7 +2,9 @@
 //! symbols, the runtime-append seal, and the encode to bytes.
 use super::ins::{encode, stream_len, FxBytes, Imm, Ins, R16};
 use super::peephole::{self, PeepholeCounts};
-use super::runtime::{emit_divmod32, emit_mul16w, emit_mul32, emit_sdivmod16, DIVMOD16, MUL16};
+use super::runtime::{
+    emit_divmod32, emit_mul16w, emit_mul32, emit_sdivmod16, BIT_ROUTINES, DIVMOD16, MUL16,
+};
 use super::Target;
 use std::collections::HashMap;
 
@@ -177,6 +179,23 @@ impl Asm {
         if self.needs_div {
             self.define("__divmod16");
             self.ins.push(Ins::Blob(DIVMOD16));
+        }
+        // The bit-method kernels (`__bits_*`, reserved names): appended when the
+        // lowered stream calls them — same bytes on both targets (plain Z80 loops,
+        // honest cycles, no traps).
+        for (name, blob) in BIT_ROUTINES {
+            let called = self
+                .ins
+                .iter()
+                .any(|i| matches!(i, Ins::Call(n) if n == name));
+            let defined = self
+                .ins
+                .iter()
+                .any(|i| matches!(i, Ins::Def(n) if n == name));
+            if called && !defined {
+                self.define(name);
+                self.ins.push(Ins::Blob(blob));
+            }
         }
         // The Stage-2 peephole, over the whole stream (bodies + label-emitted
         // runtime) — before any measurement, so lengths are post-optimization.

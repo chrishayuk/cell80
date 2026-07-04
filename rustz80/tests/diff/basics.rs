@@ -566,3 +566,73 @@ fn saturating_rejections() {
     .unwrap();
     assert!(err.contains("bind them first"), "unexpected: {err}");
 }
+
+#[test]
+fn bit_methods_counting() {
+    // count_ones / leading_zeros / trailing_zeros — appended `__bits_*` kernels,
+    // oracle-checked across widths and edge values (0, all-ones).
+    check!({
+        let x = 0b1011_0010_1000_0001u16;
+        x.count_ones() as u16 * 100u16
+            + 0u16.count_ones() as u16 * 10u16
+            + 0xFFFFu16.count_ones() as u16
+    });
+    check!({
+        let x = 0x0100u16;
+        x.leading_zeros() as u16 * 100u16
+            + 0u16.leading_zeros() as u16
+            + 0x8000u16.leading_zeros() as u16 * 10u16
+    });
+    check!({
+        let x = 0x0100u16;
+        x.trailing_zeros() as u16 * 100u16
+            + 0u16.trailing_zeros() as u16
+            + 1u16.trailing_zeros() as u16 * 10u16
+    });
+    // u8 widths: lz is 8-based, tz caps at 8, count matches.
+    check!({
+        let c = 0b0010_0100u8;
+        c.count_ones() as u16 * 100u16
+            + c.leading_zeros() as u16 * 10u16
+            + c.trailing_zeros() as u16
+    });
+    check!({ 0u8.leading_zeros() as u16 * 100u16 + 0u8.trailing_zeros() as u16 });
+}
+
+#[test]
+fn bit_methods_rotate_swap() {
+    // Constant amounts (unrolled shifts), zero/width-multiple amounts, and a
+    // runtime amount — all against rustc.
+    check!({
+        let x = 0xABCDu16;
+        x.rotate_left(4) ^ x.rotate_right(4) ^ x.rotate_left(0) ^ x.rotate_left(16)
+    });
+    check!({
+        let x = 0xABCDu16;
+        let mut acc = 0u16;
+        for k in 0..20u16 {
+            acc = acc ^ x.rotate_left(k as u32) ^ x.rotate_right(k as u32);
+        }
+        acc
+    });
+    check!({
+        let c = 0b1001_0110u8;
+        (c.rotate_left(3) as u16) * 256u16 + c.rotate_right(3) as u16
+    });
+    check!({
+        let x = 0xABCDu16;
+        x.swap_bytes() + 0x00FFu16.swap_bytes() / 256u16
+    });
+    check!({
+        let c = 0x5Au8;
+        c.swap_bytes() as u16
+    });
+}
+
+#[test]
+fn bit_method_rejections() {
+    let err = rustz80::compile_fn("fn f(a: u16) -> u16 { ((a as u32).count_ones()) as u16 }")
+        .err()
+        .unwrap();
+    assert!(err.contains("u32 `count_ones`"), "unexpected: {err}");
+}

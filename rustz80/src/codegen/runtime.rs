@@ -50,6 +50,69 @@ pub(super) const DIVMOD16: &[u8] = &[
     0xC9, // ret
 ];
 
+/// `__bits_count_ones`: HL = popcount(HL). 16 shift-and-carry iterations.
+/// Clobbers AF/B. Plain Z80 — same bytes and honest cycles on both targets.
+const BITS_COUNT_ONES: &[u8] = &[
+    0xAF, // xor a           (count)
+    0x06, 0x10, // ld b,16
+    // lp:
+    0x29, // add hl,hl       (carry = old bit 15)
+    0xCE, 0x00, // adc a,0
+    0x10, 0xFB, // djnz lp    (-5)
+    0x6F, // ld l,a
+    0x26, 0x00, // ld h,0
+    0xC9, // ret
+];
+
+/// `__bits_leading_zeros`: HL = leading_zeros(HL) (`0 → 16`). Clobbers AF/B.
+const BITS_LEADING_ZEROS: &[u8] = &[
+    0x7C, 0xB5, // ld a,h ; or l
+    0x20, 0x04, // jr nz, lp_init
+    0x21, 0x10, 0x00, // ld hl,16    (x == 0)
+    0xC9, // ret
+    // lp_init:
+    0x06, 0x00, // ld b,0
+    // lp:
+    0xCB, 0x7C, // bit 7,h
+    0x20, 0x04, // jr nz, done
+    0x04, // inc b
+    0x29, // add hl,hl
+    0x18, 0xF8, // jr lp      (-8)
+    // done:
+    0x68, // ld l,b
+    0x26, 0x00, // ld h,0
+    0xC9, // ret
+];
+
+/// `__bits_trailing_zeros`: HL = trailing_zeros(HL) (`0 → 16`). Clobbers AF/B.
+const BITS_TRAILING_ZEROS: &[u8] = &[
+    0x7C, 0xB5, // ld a,h ; or l
+    0x20, 0x04, // jr nz, lp_init
+    0x21, 0x10, 0x00, // ld hl,16    (x == 0)
+    0xC9, // ret
+    // lp_init:
+    0x06, 0x00, // ld b,0
+    // lp:
+    0xCB, 0x45, // bit 0,l
+    0x20, 0x07, // jr nz, done
+    0x04, // inc b
+    0xCB, 0x3C, // srl h
+    0xCB, 0x1D, // rr l
+    0x18, 0xF5, // jr lp      (-11)
+    // done:
+    0x68, // ld l,b
+    0x26, 0x00, // ld h,0
+    0xC9, // ret
+];
+
+/// The bit-method kernels, by reserved symbol name — appended by `Asm::seal` when a
+/// lowered `Expr::Call` targets them (see `lower_bit_method`).
+pub(super) const BIT_ROUTINES: &[(&str, &[u8])] = &[
+    ("__bits_count_ones", BITS_COUNT_ONES),
+    ("__bits_leading_zeros", BITS_LEADING_ZEROS),
+    ("__bits_trailing_zeros", BITS_TRAILING_ZEROS),
+];
+
 /// Host-trap ids (match `spectrum::host::math_traps`): `HL = BC * DE`, and `HL = BC / DE`
 /// with `DE = BC % DE`.
 pub(super) const TRAP_MUL16: u8 = 0x10;

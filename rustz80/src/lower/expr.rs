@@ -923,6 +923,11 @@ pub(crate) fn lower_method_call(
     if let "saturating_add" | "saturating_sub" | "saturating_mul" = method.as_str() {
         return lower_saturating(&method, m, ctx);
     }
+    if let "count_ones" | "leading_zeros" | "trailing_zeros" | "rotate_left" | "rotate_right"
+    | "swap_bytes" = method.as_str()
+    {
+        return lower_bit_method(&method, m, ctx);
+    }
     let recv = path_ident(&m.receiver)?;
     // Prelude handles (`frame`/`input`): route methods to intrinsic prelude fns.
     if let Some(handle) = ctx.vars.handle_of(&recv) {
@@ -1045,6 +1050,144 @@ fn lower_saturating(
         },
     };
     Ok((e, w))
+}
+
+/// Lower the std bit methods (u8/u16) — every one is real Rust, so the oracle
+/// checks it. The counting trio call tiny appended kernels (`__bits_*` — plain Z80
+/// loops, same bytes both targets, **no traps**); `rotate_*`/`swap_bytes` desugar
+/// to shift-and-or, re-reading their operands (pure operands required):
+///
+/// | method | u16 | u8 |
+/// |---|---|---|
+/// | `count_ones` | `CALL __bits_count_ones` | same (high byte is 0) |
+/// | `leading_zeros` | `CALL __bits_leading_zeros` | that minus 8 |
+/// | `trailing_zeros` | `CALL __bits_trailing_zeros` | of `x \| 0x100` (0 → 8) |
+/// | `swap_bytes` | `(x << 8) \| (x >> 8)` | identity |
+/// | `rotate_left(k)` | `(x << k') \| (x >> 16 - k')`, `k' = k % 16` | same at 8 |
+///
+/// Note the counting results are `u16` here where std returns `u32` — every
+/// in-range use (`x.count_ones() as u16`, comparisons, arithmetic) agrees; the
+/// value never exceeds 16.
+fn lower_bit_method(
+    method: &str,
+    m: &syn::ExprMethodCall,
+    ctx: &mut Ctx,
+) -> Result<(Expr, Width), String> {
+    let (recv, rw) = lower_expr(&m.receiver, ctx)?;
+    if rw == Width::DWord {
+        return Err(format!(
+            "u32 `{method}` is not supported yet — split the words and combine"
+        ));
+    }
+    if rw == Width::SWord {
+        return Err(format!(
+            "i16 `{method}` is not supported — cast to the bit pattern first (`as u16`)"
+        ));
+    }
+    let call = |name: &str, arg: Expr| Expr::Call(name.to_string(), vec![arg]);
+    let bin = |op, a: Expr, b: Expr, w| Expr::Bin(op, Box::new(a), Box::new(b), w);
+    let byte = rw == Width::Byte;
+    match method {
+        "count_ones" => return Ok((call("__bits_count_ones", recv), Width::Word)),
+        "leading_zeros" => {
+            let lz = call("__bits_leading_zeros", recv);
+            return Ok((
+                if byte {
+                    bin(BinOp::Sub, lz, Expr::Lit(8), Width::Word)
+                } else {
+                    lz
+                },
+                Width::Word,
+            ));
+        }
+        "trailing_zeros" => {
+            let arg = if byte {
+                // Bit 8 caps a byte's trailing-zero count at 8 (and handles 0).
+                bin(BinOp::Or, recv, Expr::Lit(0x100), Width::Word)
+            } else {
+                recv
+            };
+            return Ok((call("__bits_trailing_zeros", arg), Width::Word));
+        }
+        _ => {}
+    }
+    // The shift-and-or desugars re-read the value (and the rotate amount).
+    if has_effects(&recv) {
+        return Err(format!(
+            "`{method}` needs a simple value here (the lowering re-reads it) — \
+             bind it first: `let x = …;`"
+        ));
+    }
+    let bits: u16 = if byte { 8 } else { 16 };
+    let w = rw;
+    if method == "swap_bytes" {
+        // u8::swap_bytes is the identity.
+        if byte {
+            return Ok((recv, w));
+        }
+        return Ok((
+            bin(
+                BinOp::Or,
+                bin(BinOp::Shl, recv.clone(), Expr::Lit(8), w),
+                bin(BinOp::Shr, recv, Expr::Lit(8), w),
+                w,
+            ),
+            w,
+        ));
+    }
+    // rotate_left / rotate_right, amount `k` rotated mod the width.
+    let left = method == "rotate_left";
+    let arg = m.args.first().ok_or("rotate_* takes the rotate amount")?;
+    if let syn::Expr::Lit(l) = arg {
+        if let syn::Lit::Int(i) = &l.lit {
+            // Constant amount: unrolled literal shifts (k' = 0 is the identity).
+            let k = i.base10_parse::<u16>().map_err(|e| e.to_string())? % bits;
+            if k == 0 {
+                return Ok((recv, w));
+            }
+            let (a, b) = if left { (k, bits - k) } else { (bits - k, k) };
+            return Ok((
+                bin(
+                    BinOp::Or,
+                    bin(BinOp::Shl, recv.clone(), Expr::Lit(a), w),
+                    bin(BinOp::Shr, recv, Expr::Lit(b), w),
+                    w,
+                ),
+                w,
+            ));
+        }
+    }
+    // Runtime amount: `k' = k & (bits-1)`; the opposite shift is `bits - k'`
+    // (`bits` when `k' = 0`, which shifts out to 0 — the identity falls out).
+    // std's rotate amount is a `u32` — a wide amount narrows freely, the rotate
+    // only reads `k % bits`.
+    let k = match lower_expr(arg, ctx)? {
+        (e, Width::DWord) => Expr::Trunc32(Box::new(e)),
+        (e, _) => e,
+    };
+    if has_effects(&k) {
+        return Err(format!(
+            "`{method}` needs a simple rotate amount here (it is re-read) — \
+             bind it first: `let k = …;`"
+        ));
+    }
+    let km = bin(BinOp::And, k, Expr::Lit(bits - 1), Width::Word);
+    let opp = bin(BinOp::Sub, Expr::Lit(bits), km.clone(), Width::Word);
+    let shift = |dir_left: bool, e: Expr, amount: Expr| Expr::ShiftVar {
+        left: dir_left,
+        e: Box::new(e),
+        amount: Box::new(amount),
+        w,
+    };
+    Ok((
+        bin(
+            BinOp::Or,
+            shift(left, recv.clone(), km),
+            shift(!left, recv, opp),
+            w,
+        ),
+        w,
+    ))
 }
 
 /// Lower a method call on a `&str` parameter (Phase S §2.1). Every accepted method
