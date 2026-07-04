@@ -102,6 +102,33 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     rides on top of a genuine multi-checkpoint direct decline. Flagged to the user as a
     decision point rather than auto-continuing past it (see the session's response for
     the resolution reached).
+  - Checkpoint 11 (`checkpoint-11-retrieval-complexity-tiebreak`, 163 cells, **no new
+    cells** — a retrieval fix in response to checkpoint 10's kill-gate flag, per the
+    user's "pause growth, fix retrieval first" call): P@1 direct 0.91 / paraphrase 0.41 /
+    adversarial 0.47. Diagnosed all 3 fractions-attributable losses from checkpoint 10
+    directly (`cargo run --example retrieval_compare`-adjacent scratch harness): each was
+    a simple 2-arg free-fn (`sub_sat`, `eq`, `same_unit_check`) losing to a 4-6-field
+    fraction state cell that happened to share one core verb — a genuine, measurable
+    same-verb-different-shape confound, not noise. Fix: `TfidfIndex::search` (the *live*
+    path — `CellHost`/CLI/MCP/`cell-eval`'s `lib.search` all route through it) now breaks
+    near-ties toward the structurally simpler cell (`rank_key = cosine / (1 + 0.05 · max(0,
+    complexity − 2))`, complexity = free-fn param count or state-cell field count) — the
+    same length-normalisation instinct BM25 applies to document length, applied to a
+    cell's shape instead. Swept γ 0.0–0.3 on the full 327-query set before picking 0.05,
+    the best overall point and the only one positive on every split but direct.
+    Deliberately **not** applied to `TfidfIndex::scored`'s exposed magnitude — that value
+    feeds `cell-eval`'s tiered-retrieval margin gate (`tiers.py`), calibrated against raw
+    tf-idf cosine; rescaling it would silently drift an already-tuned θ (0.14 for
+    `cell-potion`, etc.) without re-running that calibration, so only `search`'s ranking
+    *order* changed, never the number. Result: adversarial jumped well above checkpoint
+    1's baseline (0.4706 vs 0.3939, +0.09), paraphrase recovered part of checkpoint 10's
+    drop (0.4098 vs 0.4016, still ~1.5 points under the 0.4247 baseline — a partial, not
+    complete, recovery), direct ticked down a further 0.6 points (0.9123, continuing a
+    now-four-checkpoint decline whose *rate* has been steadily slowing each checkpoint —
+    consistent with a natural denominator effect of a growing corpus, not something this
+    fix caused on its own). Net: real, validated, honestly-partial progress on the
+    kill-gate's literal concern (paraphrase/adversarial); reported to the user as such
+    rather than declared fully resolved.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
