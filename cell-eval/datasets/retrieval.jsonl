@@ -334,3 +334,11 @@
 {"id": "product_equals_u32-para-1", "query": "double-check this plan's total price against quantity times unit price", "expected": "product_equals_u32", "category": "paraphrase"}
 {"id": "quotient_equals_exact_u32-direct-1", "query": "verify a claimed exact quotient of two wide numbers", "expected": "quotient_equals_exact_u32", "category": "direct"}
 {"id": "quotient_equals_exact_u32-para-1", "query": "confirm this plan's per-item count divides the total evenly with no leftover", "expected": "quotient_equals_exact_u32", "category": "paraphrase"}
+
+# ── stateful / RNG (Phase 2.3, library-growth next-waves) ──
+{"id": "lcg_next-direct-1", "query": "linear congruential generator step for a pseudo-random sequence", "expected": "lcg_next", "category": "direct"}
+{"id": "lcg_next-para-1", "query": "advance a deterministic random number generator by one step from a seed", "expected": "lcg_next", "category": "paraphrase"}
+{"id": "xorshift16-direct-1", "query": "16-bit xorshift pseudo-random generator step", "expected": "xorshift16", "category": "direct"}
+{"id": "xorshift16-para-1", "query": "cheap shift-and-xor way to get the next random-looking number", "expected": "xorshift16", "category": "paraphrase"}
+{"id": "counter_step-direct-1", "query": "increment a counter that wraps back to zero at a limit", "expected": "counter_step", "category": "direct"}
+{"id": "counter_step-para-1", "query": "cycle through round-robin dispatch slots one step at a time", "expected": "counter_step", "category": "paraphrase"}

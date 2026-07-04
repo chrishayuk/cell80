@@ -46,14 +46,17 @@ wave 3g   134 cells   + M1 pack 2/5: money/basis-points (bps_of, increase_by_bps
 wave 3h   138 cells   + M1 pack 3/5: units (same_unit_check, unit_mul, unit_div,
                         unit_cancel_check) — the campaign's first free-fn pack (all
                         prior GSM8K cells were u32 state cells)
-now       142 cells   + M1 pack 4/5: verifier/ranker (sum_equals, diff_equals,
+wave 3i   142 cells   + M1 pack 4/5: verifier/ranker (sum_equals, diff_equals,
                         product_equals_u32, quotient_equals_exact_u32) — reverse-
                         equation-satisfaction checks that always return a verdict,
                         never escalate; answer_eq/multi-plan-agreement/tie-break
                         needed no new code (see the pack note below)
+now       145 cells   + stateful/RNG, first slice (lcg_next, xorshift16,
+                        counter_step) — bounded_rand deferred (exact duplicate of
+                        safe_mod)
 next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
                         confirmed still unbuilt even after Cond32) · time/budget ·
-                        stateful/RNG · signed deltas
+                        signed deltas
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -136,6 +139,27 @@ constraints (`range_check`, validation pack). `answer_in_options` (checking an a
 against an arbitrary-length option list) is deferred — GSM8K is free-response, not
 multiple-choice, so the motivation is thin, and a real implementation would need an array
 state field this session hasn't risked yet.
+
+**Stateful/RNG, first slice.** `lcg_next` (seed = seed \* 1664525 + 1013904223 mod 2^32,
+Numerical Recipes constants, top 16 bits returned), `xorshift16` (x ^= x<<7; x ^= x>>9;
+x ^= x<<8 — a distinct recurrence from lcg_next, no multiply), `counter_step` (a modular
+increment-and-wrap counter for round-robin dispatch). `bounded_rand` — the fourth item on
+`library-growth.md`'s own next-waves list — was **not** built: `raw % bound` (0 on
+`bound == 0`) is an exact behavioural duplicate of the already-shipped `safe_mod`, the
+same reasoning that folded `wrap` into `safe_mod` as an alias earlier. Verifying these
+cells surfaced an important, easy-to-miss point about `StateCell`/`Runner::run`'s
+contract: **a state cell does not persist memory across separate `.run()` calls** —
+`Runner::run`'s own doc says "memory the previous run touched is zeroed first, so
+repeated runs start from the same clean state." A naive test that calls `.run()` twice on
+the same instance expecting `self.seed`'s prior mutation to carry over silently resets to
+0 — not a compiler bug (confirmed by reproducing the identical pattern against the
+already-shipped `streak_step`, whose own host-oracle test already re-`set`s the carried
+field from the previous `.get()` before every call, per `cell80/tests/library.rs`). Every
+"step" cell in the library (this pack included) relies on the *caller* threading the
+carried field through explicitly, matching the real host/agent loop's own calling
+convention (`run_state`/`run_state_fast` take the full current field set on every call) —
+documented here since it cost real debugging time to pin down and will bite the next
+stateful pack's author again if it isn't written down.
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -236,7 +260,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (142 cells)
+### Landed (145 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -303,9 +327,11 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
 - **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
   fixed-point sqrt-of-a-product).
-- **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`.
-  (`ema_update`/`moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample,
-  alpha)` is one EMA step.)
+- **stateful / RNG — first slice landed** (see the pack note above): `lcg_next`,
+  `xorshift16`, `counter_step`. `bounded_rand` was checked against `docs/cell-index.md`
+  and found to be an exact duplicate of `safe_mod` — not built. (`ema_update`/
+  `moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample, alpha)` is
+  one EMA step.)
 - **time / budget** — checked against `docs/cell-index.md` before building: `used_percent` is
   `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
