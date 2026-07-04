@@ -54,9 +54,9 @@ fn state_cell_named_io() {
 #[test]
 fn report_json_is_abi_versioned() {
     // The report schema leads with the ABI version, then the documented keys.
-    // (v2: the 32-bit lane — MUL32/DIVMOD32 traps + wide `u32` state fields.)
+    // (v3: the buffer manifest types — `bytes[N]`/`str[N]` state fields, Phase S.)
     use cell80::ABI_VERSION;
-    assert_eq!(ABI_VERSION, 2);
+    assert_eq!(ABI_VERSION, 3);
     let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a * b }").unwrap();
     let json = r.run(None, &[6, 7], DEFAULT_CYCLES).unwrap().to_json();
     assert!(
@@ -423,7 +423,7 @@ fn cartridge_roundtrip_and_inspect() {
         "\"id\":\"mul.v1\"",
         "\"entry\":\"run\"",
         "\"tags\":[\"math\",\"demo\"]",
-        "\"abi\":2",
+        "\"abi\":3",
     ] {
         assert!(j.contains(key), "inspect json missing {key}: {j}");
     }
@@ -1159,7 +1159,8 @@ fn struct_layout_offsets() {
             name: "x".into(),
             offset: 0,
             slots: 1,
-            dword: false
+            dword: false,
+            bytes: None
         }
     );
     assert_eq!(l[1].offset, 1); // y
@@ -1955,4 +1956,69 @@ fn pre_v5_cartridges_still_load() {
     assert_eq!(back.manifest.id, "adder");
     assert!(back.manifest.limits.is_empty());
     assert!(back.signature.is_none());
+}
+
+#[test]
+fn abi_v3_bytes_field_manifest() {
+    // A byte-packed `[u8; N]` state field is declared in the manifest as
+    // `bytes[N]` (ABI v3 / .cell v6): name-addressed with its capacity, surviving
+    // the byte round-trip — while the scalar set/get paths reject it cleanly
+    // until the S3 byte-I/O surface.
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, StateCell, Ty};
+    let src = "
+        struct Out { len: u16, buf: [u8; 8], score: u32 }
+        impl Out {
+            fn run(&mut self) -> u16 {
+                self.buf[0] = b'h';
+                self.len = 1u16;
+                self.len
+            }
+        }
+    ";
+    let cart = Cartridge::compile(
+        src,
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            entry: Some("Out::run".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let addrs = &cart.manifest.state_addrs;
+    let by_name = |n: &str| addrs.iter().find(|(name, ..)| name == n).unwrap();
+    assert_eq!(by_name("buf").2, Ty::Bytes(8));
+    assert_eq!(by_name("len").2, Ty::U16);
+    assert_eq!(by_name("score").2, Ty::U32);
+    // buf sits after len (1 slot): STATE_BASE + 2; score after buf's 4 slots.
+    assert_eq!(by_name("buf").1, cell80::STATE_BASE + 2);
+    assert_eq!(by_name("score").1, cell80::STATE_BASE + 2 + 8);
+
+    // Round-trip: the capacity survives the v6 wire format.
+    let back = Cartridge::from_bytes(&cart.to_bytes()).unwrap();
+    assert_eq!(back.manifest.state_addrs, cart.manifest.state_addrs);
+
+    // Scalar paths reject the buffer with a steering message.
+    let mut cell = StateCell::bind(src, "Out", None).unwrap();
+    let err = cell.set("buf", 1).unwrap_err();
+    assert!(err.contains("bytes[8]"), "unexpected: {err}");
+    cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(cell.get("buf"), None); // no scalar misread
+    assert_eq!(cell.get("len"), Some(1));
+}
+
+#[test]
+fn abi_v3_ty_parse_display() {
+    use cell80::Ty;
+    for (s, ty) in [
+        ("u8", Ty::U8),
+        ("u16", Ty::U16),
+        ("u32", Ty::U32),
+        ("bytes[64]", Ty::Bytes(64)),
+        ("str[1024]", Ty::Str(1024)),
+    ] {
+        assert_eq!(Ty::parse(s).unwrap(), ty);
+        assert_eq!(ty.to_string(), s);
+    }
+    assert!(Ty::parse("bytes[x]").is_err());
+    assert!(Ty::parse("float").is_err());
 }

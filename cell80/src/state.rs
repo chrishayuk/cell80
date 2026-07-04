@@ -54,6 +54,12 @@ impl StateCell {
             .addrs
             .get(field)
             .ok_or_else(|| format!("no scalar field `{field}`"))?;
+        if ty.capacity().is_some() {
+            return Err(format!(
+                "field `{field}` is {ty} — a buffer, not a scalar; the byte-buffer \
+                 I/O surface arrives with Phase S3"
+            ));
+        }
         self.pending.push((addr, ty, value));
         Ok(())
     }
@@ -66,12 +72,15 @@ impl StateCell {
             .run_with_inputs(Some(&self.entry), &[STATE_BASE], &pending, budget)
     }
 
-    /// Read a named field from the last run's state, at the field's own width.
+    /// Read a named **scalar** field from the last run's state, at the field's own
+    /// width. A `bytes[N]`/`str[N]` buffer field returns `None` (its byte-I/O
+    /// surface is Phase S3).
     pub fn get(&self, field: &str) -> Option<u64> {
-        self.addrs.get(field).map(|&(a, ty)| match ty {
-            Ty::U8 => self.runner.peek_u8(a) as u64,
-            Ty::U16 => self.runner.peek_u16(a) as u64,
-            Ty::U32 => self.runner.peek_u32(a) as u64,
+        self.addrs.get(field).and_then(|&(a, ty)| match ty {
+            Ty::U8 => Some(self.runner.peek_u8(a) as u64),
+            Ty::U16 => Some(self.runner.peek_u16(a) as u64),
+            Ty::U32 => Some(self.runner.peek_u32(a) as u64),
+            Ty::Bytes(_) | Ty::Str(_) => None,
         })
     }
 
@@ -81,13 +90,14 @@ impl StateCell {
     }
 }
 
-/// The addressable width of a layout field: one slot → `u16` (a `u8` field also reads
-/// fine as its low byte), a two-slot `dword` → `u32`; arrays/tuples are not name-addressed.
-/// A byte-packed `[u8; N]` field (`bytes: Some`) is excluded here even at one slot —
-/// it becomes name-addressable as `bytes[N]` with ABI v3, not as a misread `u16`.
+/// The addressable kind of a layout field: one slot → `u16` (a `u8` field also reads
+/// fine as its low byte), a two-slot `dword` → `u32`, a byte-packed `[u8; N]` field →
+/// `bytes[N]` (ABI v3 — declared with its capacity so a caller reads the envelope;
+/// the scalar `set`/`get` paths reject it until the S3 byte-I/O surface). Word-slot
+/// arrays and tuples are not name-addressed.
 fn scalar_ty(f: &rustz80::FieldLayout) -> Option<Ty> {
-    if f.bytes.is_some() {
-        None
+    if let Some(n) = f.bytes {
+        Some(Ty::Bytes(n))
     } else if f.dword {
         Some(Ty::U32)
     } else if f.slots == 1 {
