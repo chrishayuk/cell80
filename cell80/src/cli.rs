@@ -226,12 +226,26 @@ fn cmd_index(args: &[String]) -> Result<String, String> {
         .filter_map(|e| e.ok().map(|e| e.path()))
         .collect();
     paths.sort();
-    let mut rows = Vec::new();
+    let mut manifests = Vec::new();
     for path in paths {
         if let Some(c) = library_cartridge(&path) {
-            rows.push(render(&c?.manifest));
+            manifests.push(c?.manifest);
         }
     }
+    if json {
+        use serde_json::json;
+        let cells: Vec<_> = manifests
+            .iter()
+            .map(|m| {
+                json!({
+                    "id": m.id, "summary": m.summary, "tags": m.tags,
+                    "signature": m.signature.to_decl(&m.entry),
+                })
+            })
+            .collect();
+        return Ok(json!({ "dir": dir, "cells": cells }).to_string());
+    }
+    let rows: Vec<String> = manifests.iter().map(render).collect();
     Ok(format!(
         "cell library `{dir}` ({} cells):\n{}",
         rows.len(),

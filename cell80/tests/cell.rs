@@ -746,6 +746,23 @@ fn cli_index_without_gate_is_unchanged() {
 }
 
 #[test]
+fn cli_index_json_lists_every_manifest() {
+    // The plain (non-gate) listing's --json path — feeds docs/cell-index.md's generator.
+    let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
+    let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let cells = v["cells"].as_array().unwrap();
+    assert_eq!(cells.len(), 96, "got: {out}");
+    let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
+    assert_eq!(manhattan["signature"], "Pts::run() -> u16");
+    assert!(manhattan["tags"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t == "grid"));
+}
+
+#[test]
 fn cli_index_gate_over_the_real_library() {
     // The admission gate against the real 96-cell library + its own retrieval dataset — the
     // true end-to-end proof, not a synthetic fixture. The first run against the (then-100-
