@@ -106,10 +106,9 @@ fn r5_two_arg_call_shape() {
 fn r6_ex_ex_cancellation_shape() {
     // `100 - arr[i]`: the element load ends EX DE,HL and R1 inserts another —
     // the pair cancels, so the literal load follows LD D,(HL) directly.
-    let code = compile_fn(
-        "fn f(i: u16) -> u16 { let arr = [10u16, 20u16, 30u16]; 100u16 - arr[i] }",
-    )
-    .unwrap();
+    let code =
+        compile_fn("fn f(i: u16) -> u16 { let arr = [10u16, 20u16, 30u16]; 100u16 - arr[i] }")
+            .unwrap();
     assert!(
         contains(&code, &[0x56, 0x21, 0x64, 0x00]),
         "R6: expected LD D,(HL) directly followed by LD HL,100 (EX;EX cancelled)"

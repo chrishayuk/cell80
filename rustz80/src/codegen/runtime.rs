@@ -129,14 +129,14 @@ pub(super) fn emit_mul32(a: &mut Asm) {
     a.push(R16::Bc); // PUSH BC       (return address back)
     a.ex_de_hl(); // EX DE,HL      (HL = l.hi)
     a.st_hl_mem(Imm::Label(lhi)); // LD (Lhi), HL
-    // p = l.lo * r.lo, full 32.
+                                  // p = l.lo * r.lo, full 32.
     a.ld_wide_mem(R16::Bc, Imm::Label(llo)); // LD BC,(Llo)
     a.ld_wide_mem(R16::De, Imm::Label(rlo)); // LD DE,(Rlo)
     a.call("__mul16w"); // DE:HL = BC*DE
     a.push(R16::Hl); // PUSH HL       (p.lo — safe across the __mul16 calls)
     a.ex_de_hl(); // EX DE,HL
     a.st_hl_mem(Imm::Label(phi)); // LD (Phi), HL
-    // p.hi += l.lo * r.hi (low word).
+                                  // p.hi += l.lo * r.hi (low word).
     a.ld_hl_mem(Imm::Label(llo)); // LD HL,(Llo)
     a.ld_wide_mem(R16::De, Imm::Label(rhi)); // LD DE,(Rhi)
     a.call("__mul16"); // HL = HL*DE (low 16)
@@ -144,7 +144,7 @@ pub(super) fn emit_mul32(a: &mut Asm) {
     a.ld_hl_mem(Imm::Label(phi)); // LD HL,(Phi)
     a.add_hl(R16::De); // ADD HL,DE
     a.st_hl_mem(Imm::Label(phi)); // LD (Phi), HL
-    // p.hi += l.hi * r.lo (low word).
+                                  // p.hi += l.hi * r.lo (low word).
     a.ld_hl_mem(Imm::Label(lhi)); // LD HL,(Lhi)
     a.ld_wide_mem(R16::De, Imm::Label(rlo)); // LD DE,(Rlo)
     a.call("__mul16");
