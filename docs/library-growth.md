@@ -59,13 +59,18 @@ wave 3k   149 cells   + signed deltas, first slice (sign_i16, abs_i16, clamp_i16
                         widened DEFAULT_PROBES (fingerprint.rs) with a negative-i16
                         value, which fixed the long-standing snap_down false
                         positive as a side effect (see the pack note below)
-now       153 cells   + scoring/choice, second slice (weighted_sum2, weighted_sum3,
+wave 3l   153 cells   + scoring/choice, second slice (weighted_sum2, weighted_sum3,
                         choose_best3, is_clear_winner) — generalizes weighted_sum's
                         fixed weights to caller-supplied ones (a genuine u32
                         overflow is now reachable and escalates); choose_best3
                         picks by score where value != score, unlike argmax3
-next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
-                        confirmed still unbuilt even after Cond32) · cosine_score_approx
+now       163 cells   + the GSM8K math campaign, M1 pack 5/5 (final): fractions
+                        (frac_reduce/add/sub/mul/div/cmp/eq, is_integer,
+                        frac_to_mixed, ratio_split2) — M0 (u32-across-a-call-
+                        boundary) landed as Tier 2 (one u32 param per call), so
+                        each cell inlines its own GCD-reduction loop rather than
+                        sharing a two-u32-param gcd_u32 helper; M1 complete
+next      ~200+        + cosine_score_approx
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -213,6 +218,35 @@ tie-break rule (lowest index for `argmax3`/`choose_best3`, "value that repeats" 
 `mode3`), so a separate abstract tie-break cell has no clear GSM8K/agent-facing use case
 yet.
 
+**Fractions — GSM8K math campaign, M1 pack 5/5 (final).** `frac_reduce`, `frac_add`,
+`frac_sub`, `frac_mul`, `frac_div`, `frac_cmp`, `frac_eq`, `is_integer`, `frac_to_mixed`,
+`ratio_split2` — every fraction is a `(u32, u32)` numerator/denominator pair; every op
+reduces the result to lowest terms via an inline Euclidean GCD. `frac_cmp`/`frac_eq`
+cross-multiply (`na*db` vs `nb*da`) instead of reducing first, so they work correctly on
+unreduced-but-equivalent fractions (`1/2` vs `2/4`) without extra steps. `frac_sub`
+escalates (`halt(0xFF05)`, `needs_wider_math`) if the result would be negative — an
+unsigned fraction can't represent it, the same convention `sub_checked_u32` already
+uses for "this would go negative." Every op escalates (`halt(0xFF06)`, `out_of_domain`)
+on a zero denominator, and `frac_div` additionally on a zero-numerator divisor
+(dividing by a zero fraction). `frac_floor`/`frac_ceil` from the spec's own list were
+never built — checking `docs/cell-index.md` before authoring found they'd be exact
+duplicates of the already-shipped `div_floor_u32`/`div_ceil_u32`.
+
+M0 (u32-across-a-call-boundary) landed from a parallel session mid-session, as **Tier
+2**: at most one `u32` parameter per call (and it must be the first), a `u32` return, and
+nothing more — confirmed directly, and confirmed this does *not* fully unblock the
+originally-envisioned design. A shared `gcd_u32(a: u32, b: u32) -> u32` reducer (what the
+whole session assumed "M0 landing" meant) still can't be called: **two** `u32` params in
+one call still isn't supported — `docs/10-dialect-semantics.md` calls this out itself as
+"the honest residual: a two-wide-param kernel... still doesn't fit three registers —
+widen inside, or pass through state." The actual unblock is narrower and was available
+all along: a `while` loop over `u32` **local variables**, entirely inside one cell's own
+`run` method, was never gated by the call-boundary limitation at all (only actual
+function *calls* passing `u32` arguments are) — confirmed directly with a standalone
+inline-GCD test before writing any real cell. So every fraction cell duplicates its own
+short Euclidean-GCD loop rather than sharing one; a genuine `gcd_u32` helper (for the
+next pack that wants one) still needs a further compiler feature, not this one.
+
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
 and `chebyshev` calls `iabs_diff`/`imax` instead of re-implementing them — and a cell that uses
@@ -312,7 +346,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (153 cells)
+### Landed (163 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -443,13 +477,24 @@ pack, 138 cells) dipped *under* the adversarial baseline (0.38 vs 0.39), traced 
 pre-existing confusable pairs re-ranking from a corpus-wide TF-IDF weight shift, not a
 units-pack collision; checkpoint 6 (verifier/ranker, 142 cells) recovered to 0.41,
 confirming it was noise, not a trend. The kill-gate rule itself only names paraphrase/
-adversarial, but **direct P@1 has dipped below checkpoint 1's baseline (0.9426) for two
-checkpoints running**: checkpoint 8 (signed-deltas, 0.9363 — `abs_i16`/`abs_diff`
-vocabulary overlap) and checkpoint 9 (scoring/choice, 0.9255 — this pack's own
-`weighted_sum2`/`weighted_sum3` losing their own direct query to the pre-existing
-`weighted_sum`, both still in hit@3). Neither is individually large enough to call a
-trend, but it's the first back-to-back direct decline in the curve's history and worth a
-closer look at checkpoint 10 before assuming it's noise the way the adversarial dip was.
+adversarial, but **direct P@1 has now declined for three checkpoints running**:
+checkpoint 8 (signed-deltas, 0.9363 — `abs_i16`/`abs_diff` vocabulary overlap),
+checkpoint 9 (scoring/choice, 0.9255 — `weighted_sum2`/`weighted_sum3` losing their own
+direct query to the pre-existing `weighted_sum`), and checkpoint 10 (fractions, 0.9181).
+
+**Checkpoint 10 is the first to actually meet the kill-gate's literal condition.**
+Paraphrase dropped to 0.4016 — measurably below checkpoint 1's 0.4247 baseline (a ~2.3
+point drop, an order of magnitude past the ~0.005 deltas earlier checkpoints called
+"noise"). Of 6 flipped retrieval cases, 3 losses trace directly to the fractions pack:
+`frac_sub`/`frac_cmp`/`frac_add`'s summaries lead with generic arithmetic verbs
+("subtract," "compare," "add") that now outrank `sub_sat`, `eq`, and `same_unit_check` on
+those cells' own established queries. This was raised explicitly to the user as a
+decision point rather than logged and continued past silently — see the session record
+for the resolution. The underlying lesson: a *math-themed* pack that legitimately reuses
+common arithmetic vocabulary is more prone to this than a narrowly-scoped pack (units,
+RNG) was: `docs/cell-index.md` catches true behavioural duplicates before authoring, but
+it doesn't catch "this wording will out-rank an existing cell on a shared verb" —
+that's what the retrieval curve is for.
 
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells

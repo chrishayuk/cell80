@@ -38,6 +38,7 @@ PACKS = {
     "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32"],
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
+    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -111,10 +112,11 @@ def main():
           "cosine_score_approx still ahead), the Phase 2.3 "
           "pilot-batch section for the author->verify->admit loop, and "
           "`docs/math-campaign-spec.md` for the "
-          "GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and "
-          "verifier-ranker above are the first four authored packs; fractions is the last, "
-          "gated on M0's u32-across-a-call-boundary compiler feature, confirmed still "
-          "unbuilt this session even after Cond32 landed). All five originally-planned "
+          "GSM8K math campaign (M1 complete: checked-arithmetic, money-bps, units, "
+          "verifier-ranker, and fractions above are all five authored packs — M0 landed "
+          "Tier 2, one u32 param per call, so fractions inlines its own GCD-reduction loop "
+          "per cell rather than sharing a two-u32-param gcd_u32 helper; M2-M4 remain gated "
+          "behind cell_solve). All five originally-planned "
           "wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice "
           "above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md "
           "before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. "

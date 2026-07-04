@@ -362,3 +362,25 @@
 {"id": "choose_best3-para-1", "query": "which of these three candidates ranked best, give me its value not its index", "expected": "choose_best3", "category": "paraphrase"}
 {"id": "is_clear_winner-direct-1", "query": "is the top score a clear winner over the runner-up by some margin", "expected": "is_clear_winner", "category": "direct"}
 {"id": "is_clear_winner-para-1", "query": "did this plan win decisively or was it basically a tie with the next best", "expected": "is_clear_winner", "category": "paraphrase"}
+
+# ── GSM8K math campaign: fractions (Phase 2.3, M1 5/5) ──
+{"id": "frac_reduce-direct-1", "query": "reduce a fraction to lowest terms", "expected": "frac_reduce", "category": "direct"}
+{"id": "frac_reduce-para-1", "query": "simplify this fraction as much as possible", "expected": "frac_reduce", "category": "paraphrase"}
+{"id": "frac_add-direct-1", "query": "add two fractions together", "expected": "frac_add", "category": "direct"}
+{"id": "frac_add-para-1", "query": "what's the sum if I combine these two parts of a whole", "expected": "frac_add", "category": "paraphrase"}
+{"id": "frac_sub-direct-1", "query": "subtract one fraction from another", "expected": "frac_sub", "category": "direct"}
+{"id": "frac_sub-para-1", "query": "how much of the whole is left after taking away this fractional part", "expected": "frac_sub", "category": "paraphrase"}
+{"id": "frac_mul-direct-1", "query": "multiply two fractions", "expected": "frac_mul", "category": "direct"}
+{"id": "frac_mul-para-1", "query": "what's a fraction of a fraction of the total", "expected": "frac_mul", "category": "paraphrase"}
+{"id": "frac_div-direct-1", "query": "divide one fraction by another", "expected": "frac_div", "category": "direct"}
+{"id": "frac_div-para-1", "query": "how many portions of this fractional size fit into that other fraction", "expected": "frac_div", "category": "paraphrase"}
+{"id": "frac_cmp-direct-1", "query": "compare two fractions, which is bigger", "expected": "frac_cmp", "category": "direct"}
+{"id": "frac_cmp-para-1", "query": "order these two fractional amounts from smallest to largest", "expected": "frac_cmp", "category": "paraphrase"}
+{"id": "frac_eq-direct-1", "query": "check whether two fractions are equal even if not in the same form", "expected": "frac_eq", "category": "direct"}
+{"id": "frac_eq-para-1", "query": "do these two fractions represent the same amount", "expected": "frac_eq", "category": "paraphrase"}
+{"id": "is_integer-direct-1", "query": "check whether a fraction is actually a whole number", "expected": "is_integer", "category": "direct"}
+{"id": "is_integer-para-1", "query": "does this split come out to an exact whole number of items", "expected": "is_integer", "category": "paraphrase"}
+{"id": "frac_to_mixed-direct-1", "query": "convert an improper fraction to a mixed number", "expected": "frac_to_mixed", "category": "direct"}
+{"id": "frac_to_mixed-para-1", "query": "express this fraction as a whole number plus a remaining part", "expected": "frac_to_mixed", "category": "paraphrase"}
+{"id": "ratio_split2-direct-1", "query": "split a total into two parts by a given ratio", "expected": "ratio_split2", "category": "direct"}
+{"id": "ratio_split2-para-1", "query": "divide this quantity between two people according to a ratio, so the parts still add up exactly", "expected": "ratio_split2", "category": "paraphrase"}

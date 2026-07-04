@@ -85,6 +85,23 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     large enough on its own to trigger it, but **direct has now dipped for two
     checkpoints running** (0.9363, then 0.9255) — worth a closer look next checkpoint
     before assuming this one is noise too.
+  - Checkpoint 10 (`checkpoint-10-fractions-m1-complete`, 163 cells, fractions — GSM8K M1
+    5/5, the campaign's last authored pack): P@1 direct 0.92 / paraphrase 0.40 /
+    adversarial 0.41. **Direct's third consecutive decline** (0.9363 → 0.9255 → 0.9181)
+    and **paraphrase's first measurable drop below baseline** (0.4016 vs 0.4247, ~2.3
+    points — larger than the earlier "within noise" deltas of ~0.005). Of 6 flipped
+    cases, 4 lost hit@1 and 2 gained it; of the 4 losses, 3 are directly attributable to
+    this pack: `frac_sub`/`frac_cmp`/`frac_add`'s own summaries lead with generic
+    arithmetic verbs ("subtract," "compare," "add") that now outrank `sub_sat`, `eq`, and
+    `same_unit_check` on their own established queries (`sub_sat-para-1`, `eq-adv-1`,
+    `same_unit_check-para-1`). The 4th (`fits_u16-direct-1` losing to `abs_i16`) is
+    unrelated drift from the earlier signed-deltas pack. Adversarial held steady above
+    baseline. **This is the first checkpoint where the kill-gate's literal condition
+    (paraphrase or adversarial dropping meaningfully from baseline) arguably applies** —
+    paraphrase's drop is real and attributable, not a single-query coincidence, and it
+    rides on top of a genuine multi-checkpoint direct decline. Flagged to the user as a
+    decision point rather than auto-continuing past it (see the session's response for
+    the resolution reached).
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

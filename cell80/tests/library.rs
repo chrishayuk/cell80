@@ -1120,3 +1120,145 @@ fn scoring_choice_cells_match_defined_behaviour() {
     assert_eq!(run_cell("is_clear_winner", &[70, 60, 20]), 0); // margin 10 < 20
     assert_eq!(run_cell("is_clear_winner", &[60, 90, 20]), 0); // malformed: top < second
 }
+
+#[test]
+fn fractions_cells_match_defined_behaviour() {
+    // The GSM8K math-campaign fractions pack (Phase 2.3, M1 5/5 — the last authored pack)
+    // — u32 numerator/denominator, eager reduction via an inline Euclidean GCD in every
+    // cell that needs one (no shared gcd_u32 helper: M0's Tier 2 allows at most one u32
+    // param per call, still not the two a general gcd_u32(a, b) needs — see
+    // docs/library-growth.md). frac_floor/frac_ceil were skipped: they're exact duplicates
+    // of the already-shipped div_floor_u32/div_ceil_u32.
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    let (_, c) = verify("frac_reduce", "FracReduce", &[("n", 6), ("d", 8)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(3), Some(4)));
+    let (_, c) = verify("frac_reduce", "FracReduce", &[("n", 0), ("d", 5)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(0), Some(1)));
+    let (report, _) = verify("frac_reduce", "FracReduce", &[("n", 5), ("d", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, c) = verify(
+        "frac_add",
+        "FracAdd",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(5), Some(6))); // 1/2 + 1/3 = 5/6
+    let (_, c) = verify(
+        "frac_add",
+        "FracAdd",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 2)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(1))); // 1/2 + 1/2 = 1
+    let (report, _) = verify(
+        "frac_add",
+        "FracAdd",
+        &[("na", 1), ("da", 0), ("nb", 1), ("db", 2)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, c) = verify(
+        "frac_sub",
+        "FracSub",
+        &[("na", 3), ("da", 4), ("nb", 1), ("db", 4)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2))); // 3/4 - 1/4 = 1/2
+    let (report, _) = verify(
+        "frac_sub",
+        "FracSub",
+        &[("na", 1), ("da", 4), ("nb", 3), ("db", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05)); // 1/4 - 3/4 is negative
+
+    let (_, c) = verify(
+        "frac_mul",
+        "FracMul",
+        &[("na", 2), ("da", 3), ("nb", 3), ("db", 4)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2))); // 2/3 * 3/4 = 1/2
+
+    let (_, c) = verify(
+        "frac_div",
+        "FracDiv",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(3), Some(2))); // (1/2) / (1/3) = 3/2
+    let (report, _) = verify(
+        "frac_div",
+        "FracDiv",
+        &[("na", 1), ("da", 2), ("nb", 0), ("db", 3)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // dividing by a zero fraction
+
+    let (report, _) = verify(
+        "frac_cmp",
+        "FracCmp",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!(report.result, 2); // 1/2 > 1/3
+    let (report, _) = verify(
+        "frac_cmp",
+        "FracCmp",
+        &[("na", 1), ("da", 2), ("nb", 2), ("db", 4)],
+    );
+    assert_eq!(report.result, 1); // 1/2 == 2/4
+    let (report, _) = verify(
+        "frac_cmp",
+        "FracCmp",
+        &[("na", 1), ("da", 3), ("nb", 1), ("db", 2)],
+    );
+    assert_eq!(report.result, 0); // 1/3 < 1/2
+
+    let (report, _) = verify(
+        "frac_eq",
+        "FracEq",
+        &[("na", 1), ("da", 2), ("nb", 2), ("db", 4)],
+    );
+    assert_eq!(report.result, 1); // equal despite unreduced 2/4
+    let (report, _) = verify(
+        "frac_eq",
+        "FracEq",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!(report.result, 0);
+
+    let (report, _) = verify("is_integer", "IsInteger", &[("n", 10), ("d", 5)]);
+    assert_eq!(report.result, 1);
+    let (report, _) = verify("is_integer", "IsInteger", &[("n", 10), ("d", 3)]);
+    assert_eq!(report.result, 0);
+    let (report, _) = verify("is_integer", "IsInteger", &[("n", 5), ("d", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, c) = verify("frac_to_mixed", "FracToMixed", &[("n", 10), ("d", 4)]);
+    assert_eq!(
+        (c.get("whole"), c.get("num"), c.get("den")),
+        (Some(2), Some(1), Some(2))
+    ); // 10/4 = 2 1/2
+    let (_, c) = verify("frac_to_mixed", "FracToMixed", &[("n", 9), ("d", 3)]);
+    assert_eq!(
+        (c.get("whole"), c.get("num"), c.get("den")),
+        (Some(3), Some(0), Some(1))
+    ); // 9/3 = 3 exactly
+
+    let (_, c) = verify(
+        "ratio_split2",
+        "RatioSplit2",
+        &[("total", 100), ("ratio_a", 3), ("ratio_b", 2)],
+    );
+    assert_eq!((c.get("part_a"), c.get("part_b")), (Some(60), Some(40)));
+    let (_, c) = verify(
+        "ratio_split2",
+        "RatioSplit2",
+        &[("total", 10), ("ratio_a", 1), ("ratio_b", 3)],
+    );
+    // truncated split, but the two parts always sum exactly to total.
+    assert_eq!((c.get("part_a"), c.get("part_b")), (Some(2), Some(8)));
+}
