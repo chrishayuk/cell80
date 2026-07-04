@@ -54,13 +54,18 @@ wave 3i   142 cells   + M1 pack 4/5: verifier/ranker (sum_equals, diff_equals,
 wave 3j   145 cells   + stateful/RNG, first slice (lcg_next, xorshift16,
                         counter_step) — bounded_rand deferred (exact duplicate of
                         safe_mod)
-now       149 cells   + signed deltas, first slice (sign_i16, abs_i16, clamp_i16,
+wave 3k   149 cells   + signed deltas, first slice (sign_i16, abs_i16, clamp_i16,
                         apply_delta_clamped) — the library's first i16 cells; also
                         widened DEFAULT_PROBES (fingerprint.rs) with a negative-i16
                         value, which fixed the long-standing snap_down false
                         positive as a side effect (see the pack note below)
+now       153 cells   + scoring/choice, second slice (weighted_sum2, weighted_sum3,
+                        choose_best3, is_clear_winner) — generalizes weighted_sum's
+                        fixed weights to caller-supplied ones (a genuine u32
+                        overflow is now reachable and escalates); choose_best3
+                        picks by score where value != score, unlike argmax3
 next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
-                        confirmed still unbuilt even after Cond32) · scoring/choice
+                        confirmed still unbuilt even after Cond32) · cosine_score_approx
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -188,6 +193,26 @@ positive (they'd agreed on the whole ten-probe bank since Wave 3 but diverge at 
 (`snap_down(65531, 3) = 65529` vs `round_to_multiple(65531, 3) = 65532`), so the gate is
 now fully clean: 149 admitted, 0 refused, not the long-standing 1.
 
+**Scoring/choice, second slice.** `weighted_sum2`/`weighted_sum3` generalize
+`weighted_sum`/`weighted_sum_wide`'s fixed weights (1, 2, 3) to caller-supplied ones —
+`score_2factor` from the original next-waves list is the same formula as `weighted_sum2`
+under a different name, so its vocabulary was folded into `weighted_sum2`'s tags rather
+than shipping a duplicate. Unlike their fixed-small-weight siblings (whose additions can
+never overflow `u32`), arbitrary weights genuinely can, so both escalate
+(`halt(0xFF05)`) on a real `u32` overflow instead of silently wrapping — verified directly
+(`a=b=wa=wb=65535` overflows; `a=1000,wa=1000,b=1,wb=1` doesn't overflow `u32` but does
+saturate the `u16` return, exactly like `weighted_sum_wide`'s existing convention).
+`choose_best3` picks the *value* of whichever of three (value, score) pairs has the
+highest score — genuinely different from `argmax3`, which only works when the value you
+want back **is** the value being compared; ties go to the lowest index, matching
+`argmax3`'s own convention. `is_clear_winner` checks whether a margin is decisive (top −
+second ≥ margin) rather than just picking a winner, catching the "basically a tie" case
+`argmax3`/`choose_best3` can't express. `tie_break_*` from the original list was too
+under-specified to build — every existing ranking cell already bakes in its own concrete
+tie-break rule (lowest index for `argmax3`/`choose_best3`, "value that repeats" for
+`mode3`), so a separate abstract tie-break cell has no clear GSM8K/agent-facing use case
+yet.
+
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
 and `chebyshev` calls `iabs_diff`/`imax` instead of re-implementing them — and a cell that uses
@@ -287,7 +312,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (149 cells)
+### Landed (153 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -350,8 +375,12 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
 
 ### Next waves (prioritized — keep them distinct)
 
-- **scoring / choice** (mostly state cells — need > 3 args): `weighted_sum2/3`, `score_2factor`,
-  `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
+- **scoring / choice — second slice landed** (see the pack note above): `weighted_sum2`,
+  `weighted_sum3`, `choose_best3`, `is_clear_winner`. `score_2factor` folded into
+  `weighted_sum2`'s tags (identical formula); `choose_best4` and `tie_break_*` still open
+  (the former is a straightforward generalization when a 4th candidate is actually
+  needed; the latter is under-specified — no concrete use case beyond what
+  `argmax3`/`choose_best3`/`mode3` already bake in).
 - **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
   fixed-point sqrt-of-a-product).
 - **stateful / RNG — first slice landed** (see the pack note above): `lcg_next`,
@@ -413,7 +442,14 @@ search is worse than the 114-cell one that can be searched today. Checkpoint 5 (
 pack, 138 cells) dipped *under* the adversarial baseline (0.38 vs 0.39), traced to two
 pre-existing confusable pairs re-ranking from a corpus-wide TF-IDF weight shift, not a
 units-pack collision; checkpoint 6 (verifier/ranker, 142 cells) recovered to 0.41,
-confirming it was noise, not a trend.
+confirming it was noise, not a trend. The kill-gate rule itself only names paraphrase/
+adversarial, but **direct P@1 has dipped below checkpoint 1's baseline (0.9426) for two
+checkpoints running**: checkpoint 8 (signed-deltas, 0.9363 — `abs_i16`/`abs_diff`
+vocabulary overlap) and checkpoint 9 (scoring/choice, 0.9255 — this pack's own
+`weighted_sum2`/`weighted_sum3` losing their own direct query to the pre-existing
+`weighted_sum`, both still in hit@3). Neither is individually large enough to call a
+trend, but it's the first back-to-back direct decline in the curve's history and worth a
+closer look at checkpoint 10 before assuming it's noise the way the adversarial dip was.
 
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells

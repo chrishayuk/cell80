@@ -352,3 +352,13 @@
 {"id": "clamp_i16-para-1", "query": "keep a value that can go negative within some floor and ceiling", "expected": "clamp_i16", "category": "paraphrase"}
 {"id": "apply_delta_clamped-direct-1", "query": "apply a signed delta to a value, clamped between zero and a cap", "expected": "apply_delta_clamped", "category": "direct"}
 {"id": "apply_delta_clamped-para-1", "query": "adjust a health or resource value by a gain or loss without going below zero or over the max", "expected": "apply_delta_clamped", "category": "paraphrase"}
+
+# ── scoring / choice (Phase 2.3, library-growth next-waves) ──
+{"id": "weighted_sum2-direct-1", "query": "weighted sum of two inputs with custom weights", "expected": "weighted_sum2", "category": "direct"}
+{"id": "weighted_sum2-para-1", "query": "combine two scored factors into one score using their own weights", "expected": "weighted_sum2", "category": "paraphrase"}
+{"id": "weighted_sum3-direct-1", "query": "weighted sum of three inputs with custom weights", "expected": "weighted_sum3", "category": "direct"}
+{"id": "weighted_sum3-para-1", "query": "combine three scored factors into one score using their own weights", "expected": "weighted_sum3", "category": "paraphrase"}
+{"id": "choose_best3-direct-1", "query": "pick the value with the highest of three scores", "expected": "choose_best3", "category": "direct"}
+{"id": "choose_best3-para-1", "query": "which of these three candidates ranked best, give me its value not its index", "expected": "choose_best3", "category": "paraphrase"}
+{"id": "is_clear_winner-direct-1", "query": "is the top score a clear winner over the runner-up by some margin", "expected": "is_clear_winner", "category": "direct"}
+{"id": "is_clear_winner-para-1", "query": "did this plan win decisively or was it basically a tie with the next best", "expected": "is_clear_winner", "category": "paraphrase"}

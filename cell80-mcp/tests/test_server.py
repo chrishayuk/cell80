@@ -13,7 +13,7 @@ from cell80_mcp.library import CellLibrary  # noqa: E402
 
 def test_library_search_inspect_run_warm():
     lib = CellLibrary(str(CELLS))
-    assert len(lib) == 149
+    assert len(lib) == 153
 
     # search ranks by relevance. ("grid distance" now hits the whole distance family —
     # manhattan/chebyshev/euclid_sq — so the cell-specific name disambiguates.)

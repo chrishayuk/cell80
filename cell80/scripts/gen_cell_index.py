@@ -24,7 +24,7 @@ PACKS = {
     "bit-encoding": ["low_byte", "high_byte", "swap_bytes", "rotl16", "rotr16", "reverse_bits", "leading_zeros", "trailing_zeros", "bit_length"],
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
     "bucket/convert": ["bucket3", "percent_to_byte", "byte_to_percent"],
-    "scoring/choice": ["weighted_sum", "weighted_sum_wide"],
+    "scoring/choice": ["weighted_sum", "weighted_sum_wide", "weighted_sum2", "weighted_sum3", "choose_best3", "is_clear_winner"],
     "calendrical/checksum": ["is_leap_year", "days_in_month", "day_of_week", "luhn_check"],
     "fixed-point": ["q_mul", "q_div", "q_lerp"],
     "agentic-runtime": ["token_bucket_step", "backoff_next", "circuit_breaker_step", "debounce_step", "hysteresis"],
@@ -104,10 +104,11 @@ def main():
     print("## planned (not yet landed)")
     print()
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
-          "(stateful/RNG and signed-deltas above are landed first slices — bounded_rand and "
-          "time/budget's five named candidates were all found to be exact duplicates of "
-          "existing cells, not built; scoring/choice and cosine_score_approx still ahead), "
-          "the Phase 2.3 "
+          "(stateful/RNG, signed-deltas, and scoring/choice's second slice above are landed "
+          "— bounded_rand and time/budget's five named candidates were all found to be "
+          "exact duplicates of existing cells, not built; score_2factor's vocabulary was "
+          "merged into weighted_sum2's tags rather than shipping a duplicate; "
+          "cosine_score_approx still ahead), the Phase 2.3 "
           "pilot-batch section for the author->verify->admit loop, and "
           "`docs/math-campaign-spec.md` for the "
           "GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and "
