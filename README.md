@@ -32,7 +32,7 @@ Compile and run it on the cell VM — deterministic, sandboxed, headless:
 
 ```console
 $ cell80 run score.rs --args 10,5 --json
-{"abi":1,"entry":"run","result":155,"regs":[155,125,5],"cycles":327,"trapped_ops":2,
+{"abi":2,"entry":"run","result":155,"regs":[155,125,5],"cycles":327,"trapped_ops":2,
  "halt":"returned","code_bytes":47,"functions":1,"memory_touched":[[36864,36867],[65516,65519]]}
 ```
 
@@ -235,7 +235,9 @@ not when it's a hot kernel you'd keep resident.
 
 The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`/`i16`, arithmetic (incl. `if`/`match` as values), comparisons as
 values (`(a < b) as u16`) + `&&`/`||`, runtime bit shifts, `if`/`while`/`for`/`loop`, arrays,
-`struct`/`enum`/`match`, functions and methods, `poke`/`peek`. A few of the cells
+`struct`/`enum`/`match`, functions and methods, generics (monomorphized), top-level `const`
+items (scalar substitution + a by-address const-data section — tiles, tables, and string
+literals as interned length-prefixed bytes), `poke`/`peek`. A few of the cells
 (`cell80/cells/`):
 
 ```rust
@@ -286,7 +288,8 @@ kernel is byte-identical to having no prelude at all.
 | fractional | — | a **fixed-point convention on integers** (Q8.8: `(a * w) >> 8`), not a float type |
 
 no floats,
-fixed-size structs/arrays, 64 KiB, no strings/syscalls. That's a real class: a tiny
+fixed-size structs/arrays, 64 KiB, no string *type*/syscalls (string **literals** compile
+as addressable const data — length-prefixed bytes, not a `String`). That's a real class: a tiny
 deterministic integer **stdlib** (predicates, percentages, bounds, ranking, bit/flag ops —
 the [first wave](./docs/library-growth.md)), scoring, validators, range/move checks, small
 state machines, reducers, grid logic, RNGs, reward kernels. It is *not* "any tool an agent wants" (most of those want a float, a string, or a

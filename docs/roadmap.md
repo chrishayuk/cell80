@@ -229,15 +229,16 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — two waves ✓ (98 cells).** `cell80/cells/`: predicates,
+6. **Grow the standard cell library — two waves ✓ (98 cells; 100 with the wide `u32` siblings).** `cell80/cells/`: predicates,
    safe arithmetic, bounds, percent, ranking/stats, bit/mask, number theory, distance, encoding,
    hashing, bucketing/conversion — each with retrieval rows + a host-oracle test, and now
    **modular** via the shared kernel prelude + DCE (see `docs/library-growth.md`). Keep going
    (driven by what the evals need, not taxonomy) — next: packing/BCD, multi-weight scoring &
    choice (state cells), vector dot/norm, time/budget arithmetic, and stateful/RNG cells
    (`lcg_next`/counters/`ema_update`).
-7. **Signed `i16`** — unblocks scoring/delta cells (`x_y_delta`, signed `lerp`, risk deltas).
-   (Compiler ergonomics groundwork landed: `bool` flags + unary `!`.)
+7. **Signed `i16` — ✓ done (Phase 1.4; see "Built" above).** Signed compare via S ⊕ V,
+   truncating `__sdivmod16`, arithmetic `>>`; unblocks scoring/delta cells (`x_y_delta`,
+   signed `lerp`, risk deltas) — the library's signed wave can now land.
 8. **Experimental: outcome-specified synthesis** (`cell80/src/synth.rs`) — the *inverse* of
    `CellGraph`: given input→output **examples**, search over short cell chains and verify
    candidates by execution (the verifier is the engine). A deliberately separate mode from
@@ -370,13 +371,15 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   struct recursion) and `lower/expr.rs:235` (*"nested struct fields are not supported"*). This is
   the gate on the whole composable kit — `Sprite`/`Actor`/`TileMap`/`Hud` as fields. Today only a
   `[Struct; N]` element array carries sub-structure (`a[i].x` via `elem_field_addr`).
-- **Wider persisted struct fields — `u32` and signed `i16`.** Struct fields are 16-bit slots
-  (`layout.rs:103`); `u32` exists only as a *local* in the `HL:DE` pair, so it cannot persist in
-  state. This forced the pure Snake's `u32` xorshift `Rng` down to a `u16` xorshift, and blocks
-  signed state. (Pairs with **Next #7, signed `i16`** — same widening, for both cells and games.)
-- **`[u8; N]` byte-array fields.** Only `[u16; N]` (and `[Struct; N]`) array fields lay out
-  (`layout.rs:104`, `is_u16`); a byte array falls into the struct-element path and errors.
-  Unblocks compact byte buffers — tile rows, packed grids, string bytes — without 2× `u16` waste.
+- **Wider persisted struct fields — `u32` and signed `i16`. ✓ done.** A `u32` field lays out
+  as two consecutive little-endian slots (`layout.rs`, `Width::DWord` — the ABI-v2 wide
+  typed-state lane, drivable/readable by name at full width) and `i16` fields carry
+  `Width::SWord`. A pure game's `u32` xorshift `Rng` can persist in state again.
+- **Compact `[u8; N]` byte-array fields.** `[u8/bool/i16; N]` array fields *lay out* now
+  (`layout.rs`, `is_scalar_array_elem`) — but at one 2-byte slot per element, like locals.
+  The remaining ask is **byte-packed** field storage: compact byte buffers — tile rows, packed
+  grids, string bytes — without the 2× `u16` waste. (Const *data* already byte-packs; this is
+  about mutable state fields.)
 - **`&CONST → addr` — a const-data section. ✓ done (2026-07-04).** Top-level `const` items
   compile: scalars (`u16`/`u8`/`i16`/`bool`) substitute as literals; **data consts** —
   `[u8/u16/i16; N]`, `&str`, struct literals (`Tile { rows: […] }`), `[Struct; N]` — are

@@ -11,6 +11,7 @@ one instead of writing code. This guide is how to grow it well.*
 ```
 wave 1 ✓   59 cells   predicates · safe arithmetic · bounds · percent · ranking · bit/mask
 wave 2 ✓   98 cells   + number theory · distance · bit/encoding · hashing · stats · conversion
+now       100 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide)
 next      ~200+        + packing/BCD · scoring/choice · vector · time/budget · stateful/RNG
 ```
 
@@ -50,9 +51,10 @@ confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmar
 
 ## Principles (what makes a cell worth adding)
 
-- **Fits the integer envelope** (`u8`/`u16`/`u32`, no float/string/syscall, bounded cycles).
-  The compile error *is* the "this belongs in host code" signal. Keep cells
-  **unsigned-friendly** until `i16` lands (abs via a branch, like `abs_diff`/`manhattan`).
+- **Fits the integer envelope** (`u8`/`u16`/`u32`/`i16`, no float/string/syscall, bounded
+  cycles). The compile error *is* the "this belongs in host code" signal. `i16` has landed
+  (signed compare/divide/`>>`), so signed deltas are in-envelope; the unsigned abs-via-a-branch
+  idiom (`abs_diff`/`manhattan`) remains fine where a cell doesn't need negatives.
 - **≤ 3 args, or a state cell.** The calling convention takes 3 args (`HL`/`DE`/`BC`); a cell
   that needs more (4-point distance, multi-weight scoring) is a **state cell** (a `struct` with
   named fields + `fn run(&mut self)`), like `manhattan`/`chebyshev`.
@@ -99,7 +101,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (98 cells)
+### Landed (98 cells; 100 with the wide `u32` siblings)
 
 ```
 predicates     eq neq is_lt is_le is_gt is_ge is_zero nonzero is_even is_odd
@@ -125,7 +127,7 @@ bucket/convert bucket3 quantize percent_to_byte byte_to_percent
   `ema_update`, `moving_avg_update`.
 - **time / budget** (only the *non-alias* ones — skip `time_until`=`sub_sat`,
   `deadline_missed`=`is_ge`): `cooldown_remaining`, `used_percent`, `fits_budget`.
-- **needs `i16`**: signed deltas / `lerp` / risk deltas.
+- **signed (`i16` now available)**: signed deltas / `lerp` / risk deltas.
 
 ## Mine the ecosystem first
 

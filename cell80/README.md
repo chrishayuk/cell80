@@ -18,7 +18,8 @@ composable tool.
   O(touched) reset between runs; a decode-once fast path (~0.05–0.25 µs/call warm).
 - **`.cell` cartridge** (`Cartridge` / `Manifest`) — a named, versioned, self-describing
   artifact: id, summary, tags, entry, typed signature (params/ret/state), source hash, ABI +
-  format version, capability policy, the compiled image, and (v3) the state field addresses.
+  format version, capability policy, the compiled image, and (v4) the state field addresses
+  with per-field widths (`Ty`); v3/v2 cartridges still load.
 - **`CellHost` + `CellIndex`** — a warm session: `search` → `inspect` → `load` → `run` many →
   `unload`, with relevance search over the manifests.
 - **Typed state I/O** (`StateCell`, `CellHost::run_state`) — drive a state cell **by field

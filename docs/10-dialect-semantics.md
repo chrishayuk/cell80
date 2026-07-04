@@ -19,7 +19,32 @@ explicitly (`x as u16 as u32`). Negative literals need the suffix (`-5i16`), and
 **Fractional values are a fixed-point convention on integers, not a type**: a Q8.8
 weight is a `u32` (or `u16` for small ranges) with an implied point — multiply then
 shift (`(a * w) >> 8`). This keeps every cell bit-exact and cross-target deterministic;
-there are no floats and there will be none (see the non-goals).
+there are no floats and there will be none (see the non-goals). Float and `char`
+literals are rejected with instructive errors.
+
+## Const items and const data
+
+Top-level `const` items are in the dialect. **Scalar consts** (`u16`/`u8`/`i16`/`bool`;
+the initializer an int/bool literal, a negated `i16` literal, or an earlier scalar const)
+substitute as literals at every use site — they occupy no image bytes. **Data consts** —
+`[u8/u16/i16; N]` arrays, `&str`, struct literals (`Tile { rows: […] }`), and
+`[Struct; N]` tables — are **byte-packed into the image after the code**, each at its own
+symbol, little-endian in declaration order. Note this packed layout is *not* the 2-byte-
+per-slot state layout: a `[u8; N]` const is `N` bytes, and a packed struct element's
+stride is its packed size. Data consts have their own DCE — only consts referenced by a
+kept function are laid.
+
+Addressing: `&CONST` evaluates to the data's address; `&CONST[i]` addresses element `i`
+at the packed stride (literal indices are bounds-checked at compile time); a scalar read
+`CONST[i]` loads the element; and a `&[u8; N]` parameter receives such an address and
+reads packed elements through the pointer — so a table helper is real Rust both ways,
+diff-tested against rustc.
+
+**String literals** are const data, not strings-the-type: a `"…"` literal is interned
+(deduplicated by content), stored **length-prefixed** (byte 0 = length, capped at 255),
+and **evaluates to its address** — `peek(s)` is the length, `peek(s + 1 + i)` is byte
+`i`. There is still no `String`, no heap, and no string operations; the literal is
+addressable bytes for the host or screen routines to consume.
 
 ## `if`/`match` as values
 
@@ -100,6 +125,8 @@ don't compile). Rejection tests pin the reject-don't-approximate rule.
 
 ## Out of the dialect (by design, not omission)
 
-Strings, floats, `u64`, heap allocation, closures, traits, recursion, I/O. These are the
-escalation path — a cell that needs them isn't a cell, and the honest answer is a typed
-hand-off to the host, not a bigger ISA. See the roadmap's non-goals.
+Strings as a *type* (string literals compile as addressable const data — see above — but
+there is no `String`, no slices, no string ops), floats, `u64`, heap allocation, closures,
+traits, recursion, I/O. These are the escalation path — a cell that needs them isn't a
+cell, and the honest answer is a typed hand-off to the host, not a bigger ISA. See the
+roadmap's non-goals.

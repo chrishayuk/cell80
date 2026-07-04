@@ -42,9 +42,9 @@ Supported today (all differential-tested):
 
 | Feature | Notes |
 |---|---|
-| Types | `u16` (default) and `u8` (wraps at 256). `as u8` truncates, `as u16`/`as usize` widen. `u32` (two slots, computed in `HL:DE`) for `^ & \|` + constant shifts + `as u16`/`as u8` — enough for a 32-bit xorshift RNG. |
-| Arithmetic | `+ - * / %`, `wrapping_add/sub/mul`. `*`/`/`/`%` use the appended micro-runtime — *except by a constant*: `× k` is shift-and-add, `/ 2ⁿ` / `% 2ⁿ` are shift/mask, and literal-only ops const-fold (no runtime call). (16-bit; `u32` arithmetic beyond bitwise/shift is not done yet.) |
-| Bitwise | `\|` `&` `^`, and `<<` / `>>` by a **constant** amount (`u16` and `u32`) or a **runtime** amount (`u16`; a counted shift loop — a count ≥ 16 shifts out to `0`). |
+| Types | `u16` (default) and `u8` (wraps at 256). `as u8` truncates, `as u16`/`as usize` widen. `i16` (one slot, two's complement): signed compare/divide/`>>`; negative literals need the suffix (`-5i16`); `i16 as u32` is rejected (sign-extension — write `x as u16 as u32`). `u32` (two slots, computed in `HL:DE`): full `+ - * / %` and `^ & \|` + constant shifts, `as u32` widens, `as u16`/`as u8` narrow — but `u32` never crosses a call boundary (params/returns/args are 16-bit; widen inside the callee). |
+| Arithmetic | `+ - * / %`, `wrapping_add/sub/mul` — all wrapping at width (release-mode rustc semantics). `*`/`/`/`%` use the appended micro-runtime (`__mul16`/`__divmod16`; `__sdivmod16` for `i16`, truncating toward zero; `__mul32`/`__divmod32` for `u32`) — *except by a constant*: `× k` is shift-and-add, `/ 2ⁿ` / `% 2ⁿ` are shift/mask, and literal-only ops const-fold (no runtime call). |
+| Bitwise | `\|` `&` `^`, and `<<` / `>>` by a **constant** amount (`u16`, `i16`, `u32`) or a **runtime** amount (`u16`; a counted shift loop — a count ≥ 16 shifts out to `0`). `i16 >>` is an **arithmetic** shift (sign-propagating). |
 | Booleans | Comparisons (`< <= > >= == !=`) work as **conditions** *and* as **values** — `(a < b) as u16` materialises `1`/`0`. Short-circuit `&&` / `\|\|` on bool operands. So a predicate is a one-liner: `fn run(a: u16, b: u16) -> u16 { (a <= b) as u16 }`. |
 | Control flow | `if`/`else if`/`else`, `while`, `for` over integer ranges (`a..b` / `a..=b`, `for _ in`), `loop` / `break` / `continue`, early `return`. |
 | Arrays | `let a = [0u16; N];` (a single block fill — `LDIR`, or an `ED FE` trap in Cell mode) / `[e0, e1, …]`; `a[i]`, `a[i] = v`. Index with `i as usize`. `[u8; N]` are byte-packed-per-slot. Arrays of structs `let a = [Cell { … }; N]` — element field access `a[i].x` (read/write) + whole-element assign `a[i] = Cell { … }`. |
@@ -53,16 +53,19 @@ Supported today (all differential-tested):
 | Functions + methods | Free fns and `impl T { fn m(&mut self, …) }` — up to 3 args in `HL`/`DE`/`BC`, result in `HL`; `self.field` through the receiver. |
 | Generics | Generic *free functions* (`fn max<T: Ord>(…)`, `fn buf<const N: usize>()`), monomorphized per call — a type argument (turbofish or inferred) sets the instance's width, a const argument (turbofish) sizes arrays and substitutes as a value. Generic *structs* + methods (`struct Pair<T>`): type args erased to 16-bit. **Const-generic structs** (`struct Buf<const N: usize> { data: [u16; N], … }`) are monomorphized per `N` — a per-instance layout + methods (`Buf$8::push`), `N` inferred at the struct literal from the array field's length. The field may itself be an array of structs — **`Entities<Cell, const N> { data: [Cell; N], … }`**, the fixed-capacity entity pool. |
 | Tuples | Multiple return values: `fn divmod(…) -> (u16, u16)` (in `HL`/`DE`/`BC`) destructured with `let (q, r) = …` — a tuple literal or a call. |
+| Consts + data | Top-level `const` items. **Scalars** (`u16`/`u8`/`i16`/`bool`) substitute as literals at use sites — no image bytes. **Data consts** — `[u8/u16/i16; N]`, `&str`, struct literals (`Tile { rows: […] }`), `[Struct; N]` — byte-pack into the image after the code, each at its own symbol, with their own DCE (only consts a kept function references are laid). `&CONST`, `&CONST[i]` (packed stride; literal indices bounds-checked), and scalar `CONST[i]` reads resolve **by address**; `&[u8; N]` reference params read packed elements through the pointer. |
+| Strings | String **literals** compile as const data: interned (deduplicated by content), length-prefixed, ≤ 255 bytes — the literal evaluates to its address, so `peek(s)` is the length and `peek(s + 1 + i)` is byte `i`. Owned `String`/heap stays out. |
 | Raw I/O | `poke(addr, val)` / `peek(addr)` (memory) and `inport(port)` (I/O ports, e.g. the keyboard at `0xFE`). |
 | Cell80 | `halt(code)` — stop the cell early with a status code (`ED FE` host trap; surfaces as `Halt::Halted(code)` in the report). A no-op on real hardware, so it's harmless in a Spectrum build. |
 
-Out of scope (use `rustc`-only host code, or wait for later stages): recursion
-(needs stack frames — Stage 4), references / `&mut` params, `>3` params, slices,
-`String`/`Vec`/`alloc`, floats, traits, `u32` *arithmetic* (`+ - * /`) and `u32`
-params/returns (bitwise/shift `u32` works), `u32` *variable* shift amounts (`u16`
-variable shifts work), closures, nested
-struct *fields*. Anything unsupported is a **clear compile error** — that error is the
-"this is host-only" budget detector.
+Out of scope (use `rustc`-only host code): recursion (**rejected by design** — direct
+or mutual, the error names the cycle; locals are static slots, not stack frames),
+general references / `&mut` params (`&self`/`&mut self` receivers and read-only
+`&[T; N]` data params *do* work), `>3` params, slices, `String`/`Vec`/`alloc` (string
+*literals* are const data — see above), floats, `char` literals, traits, closures,
+nested struct *fields*, `u32` params/returns/comparisons/array elements, `u32`
+*variable* shift amounts (`u16` variable shifts work). Anything unsupported is a
+**clear compile error** — that error is the "this is host-only" budget detector.
 
 ## A whole program
 
@@ -175,8 +178,8 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
 - **Frontend** (`lower/`): `syn::parse_str` → accepted subset → typed IR (`ir.rs`).
   Unsupported nodes become errors. Split by concern: `vars` (the register file),
   `layout` (struct/enum layout + parse helpers), `prelude` (handle routing),
-  `generics` (monomorphization), `expr`, and `stmt`; `mod.rs` owns the `Ctx` and the
-  function-level orchestration.
+  `generics` (monomorphization), `consts` (const items + the interned data pool),
+  `expr`, and `stmt`; `mod.rs` owns the `Ctx` and the function-level orchestration.
 - **Codegen** (`codegen/`: `asm` · `ins` · `peephole` · `runtime` · `expr` · `stmt`):
   IR → Z80. Emission goes through a **symbolic instruction stream** (`Ins`): labels, call
   targets, and locals slots stay symbolic; a final encode pass assigns PCs and resolves

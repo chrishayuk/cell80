@@ -22,11 +22,16 @@ micro-runtime.
 > grown into bounded data structures: **generics + const-generics** (functions *and*
 > structs, monomorphized — `max$u16`, `Stack$8`), **struct-element arrays** (`[Cell; N]`
 > local, as a struct field, and the **`Entities<Cell, const N>`** combo — fixed-capacity
-> pools), and **`u32`** (two-slot, `HL:DE`) with bitwise + constant shifts — a 32-bit
-> xorshift RNG runs. Everything is differential-tested against `rustc` on the emulator
-> (`rustz80/tests/`); coverage is ≥90% line/region per file. Some Stage 2 peephole work
-> has landed too: const-fold, `× constant` via shift-and-add, `/ 2ⁿ`/`% 2ⁿ` via
-> shift/mask, and faster mul/div runtimes.
+> pools), **signed `i16`** (comparisons/divide/`>>` by sign), full **`u32`** arithmetic
+> (two-slot, `HL:DE` — `+ - * / %` via runtime or trap, bitwise, constant shifts), and
+> **top-level `const` items with a const-data section** (scalars substitute as literals;
+> `[T; N]`/`&str`/struct/table data byte-packs into the image and resolves by address —
+> string literals interned, length-prefixed). Everything is differential-tested against
+> `rustc` on the emulator (`rustz80/tests/`); coverage is ≥90% line/region per file.
+> Stage 2 codegen shipped: emission goes through the symbolic **`Ins` layer** (one final
+> encode pass assigns PCs/operands) with a **measured six-rule peephole** run to fixpoint
+> (−4.3 % across the cell corpus), on top of the earlier const-fold, `× constant` via
+> shift-and-add, and `/ 2ⁿ`/`% 2ⁿ` via shift/mask.
 >
 > **A second crate builds on this frontend: [`cell80`](../cell80/)** — a
 > deterministic agent micro-VM (compile-once/run-many on a flat-RAM Z80, cycle budget,
@@ -88,6 +93,18 @@ objects / `dyn` / vtables / capturing closures (non-capturing `fn` pointers OK);
 most of `core` (a tiny supported prelude instead); generics (add via
 monomorphization later, §7). Anything outside the dialect is a compile error with
 a clear "not supported on Z80" message — which doubles as the host-only signal.
+
+*As built* (the paragraphs above are the design surface; the authoritative
+per-feature status is [dialect semantics](./10-dialect-semantics.md) and the
+[`rustz80` README](../rustz80/README.md)): the shipped widths are `u8 u16 i16 u32`
+— no `i8`/`i32`, and **`char` literals are rejected** rather than mapped to `u8`.
+`static`/`static mut` didn't land; state lives in structs (typed state region) and
+top-level `const` items cover the data side — scalars substitute as literals, data
+consts (`[T; N]`, `&str`, struct literals, `[Struct; N]`) byte-pack into the image
+and resolve **by address** (`&CONST`, string literals interned length-prefixed).
+Generics + const-generics *did* land (monomorphized, §7's "later" happened).
+References are receivers (`&self`/`&mut self`), handle params, and read-only
+`&[T; N]` data pointers — not general borrows.
 
 ---
 

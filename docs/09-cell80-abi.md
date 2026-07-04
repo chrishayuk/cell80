@@ -22,7 +22,7 @@ identical result, identical cycle count, identical touched-set (asserted by
 | region | address | purpose |
 |---|---|---|
 | trampoline | `0x7000` | argument loader + `CALL entry` + `HALT` (written per run) |
-| code (`ORG`) | `0x8000` | the compiled program |
+| code (`ORG`) | `0x8000` | the compiled program; **const data** (data `const` items, interned string literals) is byte-packed immediately after the code, each blob at its own symbol |
 | scratch / locals | `0x9000` | the "virtual register file": local `i` at `0x9000 + i*2` |
 | typed state (convention) | `0xB000` (`STATE_BASE`) | where `StateCell` lays a state struct |
 | stack | `0xFFF0` (`SP_TOP`), grows down | |
@@ -107,12 +107,12 @@ is a no-op (also uncounted).
 A program using a denied intrinsic fails to compile under that policy. The policy travels
 with a compiled `CellProgram` (and its serialized image).
 
-## Report JSON (v1)
+## Report JSON
 
-`Report::to_json()` emits, in order:
+`Report::to_json()` emits, in order (`abi` carries the current `ABI_VERSION` — 2):
 
 ```json
-{"abi":1,"entry":"run","entry_addr":32768,"result":42,"regs":[42,0,0],
+{"abi":2,"entry":"run","entry_addr":32768,"result":42,"regs":[42,0,0],
  "cycles":67,"trapped_ops":0,"budget":2000000,"halt":"returned","code_bytes":47,"functions":1,
  "symbols":{"run":32768},"memory_touched":[[36864,36867]],"reads":{}}
 ```
