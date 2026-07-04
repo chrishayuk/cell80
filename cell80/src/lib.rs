@@ -14,6 +14,7 @@ const SP_TOP: u16 = 0xFFF0;
 /// A generous default T-state budget (well past any bounded computation).
 pub const DEFAULT_CYCLES: u64 = 2_000_000;
 
+mod admission;
 mod cartridge;
 mod cli;
 mod config;
@@ -32,6 +33,7 @@ mod synth_value;
 mod tfidf;
 mod typeled;
 
+pub use admission::{admit, AdmissionReport, RefusalReason, DUPLICATE_AGREEMENT};
 pub use cartridge::{Cartridge, CartridgeOpts, Manifest};
 pub use cli::{parse_args, run_cli, USAGE};
 pub use config::{CellConfig, DivByZero};

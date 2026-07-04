@@ -55,6 +55,10 @@
 {"id": "weighted_sum-para-1", "query": "score a candidate from three features", "expected": "weighted_sum", "category": "paraphrase"}
 {"id": "weighted_sum-para-2", "query": "a linear combination of three signals into one score", "expected": "weighted_sum", "category": "adversarial"}
 
+# ── weighted_sum_wide (wide u32-in-state sibling) ───────────────────────────────
+{"id": "weighted_sum_wide-direct-1", "query": "weighted sum of three inputs with a wide u32 result, no wrap", "expected": "weighted_sum_wide", "category": "direct"}
+{"id": "weighted_sum_wide-para-1", "query": "score a candidate from three features without the total overflowing", "expected": "weighted_sum_wide", "category": "paraphrase"}
+
 # --- first library wave (predicates, safe arithmetic, bounds, percent, ranking, bitops) ---
 {"id": "eq-direct-1", "query": "return 1 if two numbers are equal", "expected": "eq", "category": "direct"}
 {"id": "neq-direct-1", "query": "return 1 if two numbers are not equal", "expected": "neq", "category": "direct"}
@@ -74,8 +78,10 @@
 {"id": "ceil_div-direct-1", "query": "integer ceiling division quotient", "expected": "ceil_div", "category": "direct"}
 {"id": "avg2-direct-1", "query": "average of two values midpoint", "expected": "avg2", "category": "direct"}
 {"id": "square-direct-1", "query": "saturating square of a number", "expected": "square", "category": "direct"}
+{"id": "square_wide-direct-1", "query": "exact square with a wide u32 result, no cap", "expected": "square_wide", "category": "direct"}
+{"id": "square_wide-para-1", "query": "square a number without losing precision to overflow", "expected": "square_wide", "category": "paraphrase"}
 {"id": "between_exclusive-direct-1", "query": "strictly between exclusive bounds", "expected": "between_exclusive", "category": "direct"}
-{"id": "wrap-direct-1", "query": "wrap value modulo into cycle", "expected": "wrap", "category": "direct"}
+{"id": "wrap-direct-1", "query": "wrap value modulo into cycle", "expected": "safe_mod", "category": "direct"}
 {"id": "normalize_0_100-direct-1", "query": "rescale value to 0..100 percentage", "expected": "normalize_0_100", "category": "direct"}
 {"id": "snap_down-direct-1", "query": "round down to nearest multiple floor grid", "expected": "snap_down", "category": "direct"}
 {"id": "snap_up-direct-1", "query": "snap a value up to the next step boundary", "expected": "snap_up", "category": "direct"}
@@ -90,8 +96,8 @@
 {"id": "min3-direct-1", "query": "smallest of three values", "expected": "min3", "category": "direct"}
 {"id": "max3-direct-1", "query": "largest of three values", "expected": "max3", "category": "direct"}
 {"id": "median3-direct-1", "query": "median middle of three values", "expected": "median3", "category": "direct"}
-{"id": "argmax2-direct-1", "query": "index of the larger of two", "expected": "argmax2", "category": "direct"}
-{"id": "argmin2-direct-1", "query": "index of the smaller of two", "expected": "argmin2", "category": "direct"}
+{"id": "argmax2-direct-1", "query": "index of the larger of two", "expected": "is_lt", "category": "direct"}
+{"id": "argmin2-direct-1", "query": "index of the smaller of two", "expected": "is_gt", "category": "direct"}
 {"id": "argmax3-direct-1", "query": "index of the largest of three", "expected": "argmax3", "category": "direct"}
 {"id": "argmin3-direct-1", "query": "index of the smallest of three", "expected": "argmin3", "category": "direct"}
 {"id": "sum3-direct-1", "query": "saturating sum of three values", "expected": "sum3", "category": "direct"}
@@ -116,7 +122,7 @@
 {"id": "ceil_div-para-1", "query": "how many pages for n items at b per page", "expected": "ceil_div", "category": "paraphrase"}
 {"id": "between_exclusive-para-1", "query": "keep a number inside a window but not touching the edges", "expected": "between_exclusive", "category": "paraphrase"}
 {"id": "snap_down-para-1", "query": "snap a coordinate down onto a grid", "expected": "snap_down", "category": "paraphrase"}
-{"id": "wrap-para-1", "query": "make an angle wrap around back to the start", "expected": "wrap", "category": "paraphrase"}
+{"id": "wrap-para-1", "query": "make an angle wrap around back to the start", "expected": "safe_mod", "category": "paraphrase"}
 {"id": "percent-para-1", "query": "what fraction out of a hundred is this", "expected": "percent", "category": "paraphrase"}
 {"id": "discount_percent-para-1", "query": "knock a percentage off a price", "expected": "discount_percent", "category": "paraphrase"}
 {"id": "within_percent-para-1", "query": "is the reading close enough to the target", "expected": "within_percent", "category": "paraphrase"}
@@ -170,7 +176,7 @@
 {"id": "majority3-direct-1", "query": "do at least two of three agree majority", "expected": "majority3", "category": "direct"}
 {"id": "midrange3-direct-1", "query": "midrange of three", "expected": "midrange3", "category": "direct"}
 {"id": "bucket3-direct-1", "query": "bucket into three by thresholds", "expected": "bucket3", "category": "direct"}
-{"id": "quantize-direct-1", "query": "quantize to a bucket index by step", "expected": "quantize", "category": "direct"}
+{"id": "quantize-direct-1", "query": "quantize to a bucket index by step", "expected": "safe_div", "category": "direct"}
 {"id": "byte_to_percent-direct-1", "query": "convert byte 255 scale to percent", "expected": "byte_to_percent", "category": "direct"}
 {"id": "lcm-para-1", "query": "smallest number that is a multiple of both", "expected": "lcm", "category": "paraphrase"}
 {"id": "is_prime-para-1", "query": "check the primality of a number", "expected": "is_prime", "category": "paraphrase"}
@@ -190,7 +196,7 @@
 {"id": "max-adv-1", "query": "the bigger of two numbers, not the smaller one", "expected": "max", "category": "adversarial"}
 {"id": "median3-adv-1", "query": "the middle one of three, neither smallest nor largest", "expected": "median3", "category": "adversarial"}
 {"id": "clamp-adv-1", "query": "limit a value so it never leaves the low and high bound", "expected": "clamp", "category": "adversarial"}
-{"id": "wrap-adv-1", "query": "fold a value back inside the low and high bound", "expected": "wrap", "category": "adversarial"}
+{"id": "wrap-adv-1", "query": "fold a value back inside the low and high bound", "expected": "safe_mod", "category": "adversarial"}
 {"id": "gcd-adv-1", "query": "the common factor shared by two numbers", "expected": "gcd", "category": "adversarial"}
 {"id": "lcm-adv-1", "query": "the common multiple of two numbers", "expected": "lcm", "category": "adversarial"}
 {"id": "abs_diff-adv-1", "query": "the distance between two numbers on a line", "expected": "abs_diff", "category": "adversarial"}

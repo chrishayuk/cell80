@@ -677,7 +677,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("100 cells"));
+    assert!(listing.contains("range_check") && listing.contains("96 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -734,6 +734,96 @@ fn cli_index_mixed_dir_with_compiled_cells() {
     assert!(out.contains("3 cells"), "got: {out}"); // 2 .rs + 1 .cell, not .txt
     assert!(out.contains("doubler") && out.contains("adder"));
     assert!(out.contains("bare — (no summary)")); // header-less source
+}
+
+#[test]
+fn cli_index_without_gate_is_unchanged() {
+    // Locks the existing no-flag contract: `--gate` must be strictly additive.
+    let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
+    let listing = cell::run_cli(&["index".into(), dir]).unwrap();
+    assert!(listing.contains("manhattan") && listing.contains("96 cells"));
+    assert!(!listing.contains("REFUSED"));
+}
+
+#[test]
+fn cli_index_gate_over_the_real_library() {
+    // The admission gate against the real 96-cell library + its own retrieval dataset — the
+    // true end-to-end proof, not a synthetic fixture. The first run against the (then-100-
+    // cell) library surfaced four genuine, previously-unknown behavioural duplicates —
+    // `is_gt` ≡ `argmin2`, `is_lt` ≡ `argmax2`, `safe_div` ≡ `quantize`, `wrap` ≡ `safe_mod`,
+    // the identical formula under a different name for *every* u16 input, not just the probe
+    // bank — since aliased away (`argmin2`/`argmax2`/`quantize`/`wrap` removed, their
+    // vocabulary merged into `is_gt`/`is_lt`/`safe_div`/`safe_mod`'s tags; see
+    // docs/library-growth.md). What's left is one known false positive inherent to a
+    // 10-probe bank: `snap_down`/`round_to_multiple` agree on every default probe but
+    // diverge at e.g. `x=8, step=5` (see the module doc) — a real, different-but-untold-
+    // apart-yet pair, not a duplicate to remove.
+    let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
+    let retrieval = format!(
+        "{}/../cell-eval/datasets/retrieval.jsonl",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
+    assert!(out.contains("95 admitted, 1 refused"), "got: {out}");
+    assert!(
+        out.contains("snap_down — behavioural duplicate of `round_to_multiple`"),
+        "got: {out}"
+    );
+}
+
+#[test]
+fn cli_index_gate_refuses_a_planted_duplicate() {
+    let dir = std::env::temp_dir().join("cell80_cli_gate_duplicate");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = "//! Smaller of two values.\n//! tags: math\nfn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }";
+    std::fs::write(dir.join("min.rs"), src).unwrap();
+    std::fs::write(dir.join("min2.rs"), src).unwrap(); // exact behavioural duplicate
+    let retrieval = dir.join("retrieval.jsonl");
+    std::fs::write(
+        &retrieval,
+        "{\"id\": \"min-1\", \"query\": \"minimum of two values\", \"expected\": \"min\", \"category\": \"direct\"}\n\
+         {\"id\": \"min2-1\", \"query\": \"the smaller of two numbers\", \"expected\": \"min2\", \"category\": \"paraphrase\"}\n",
+    )
+    .unwrap();
+    let out = cell::run_cli(&[
+        "index".into(),
+        dir.to_str().unwrap().to_string(),
+        "--gate".into(),
+        retrieval.to_str().unwrap().to_string(),
+    ])
+    .unwrap();
+    assert!(out.contains("1 admitted, 1 refused"), "got: {out}");
+    assert!(
+        out.contains("min2 — behavioural duplicate of `min`"),
+        "got: {out}"
+    );
+}
+
+#[test]
+fn cli_index_gate_refuses_missing_eval_rows() {
+    let dir = std::env::temp_dir().join("cell80_cli_gate_norows");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("novel.rs"),
+        "//! A genuinely new cell.\n//! tags: math\nfn run(a: u16) -> u16 { a * 3u16 }",
+    )
+    .unwrap();
+    let retrieval = dir.join("retrieval.jsonl"); // empty — no rows for `novel`
+    std::fs::write(&retrieval, "").unwrap();
+    let out = cell::run_cli(&[
+        "index".into(),
+        dir.to_str().unwrap().to_string(),
+        "--gate".into(),
+        retrieval.to_str().unwrap().to_string(),
+    ])
+    .unwrap();
+    assert!(out.contains("0 admitted, 1 refused"), "got: {out}");
+    assert!(
+        out.contains("novel — no retrieval.jsonl rows"),
+        "got: {out}"
+    );
 }
 
 #[test]

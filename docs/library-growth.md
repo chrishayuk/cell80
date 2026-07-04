@@ -11,7 +11,8 @@ one instead of writing code. This guide is how to grow it well.*
 ```
 wave 1 ✓   59 cells   predicates · safe arithmetic · bounds · percent · ranking · bit/mask
 wave 2 ✓   98 cells   + number theory · distance · bit/encoding · hashing · stats · conversion
-now       100 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide)
+now        96 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide);
+                        4 folded into aliases by the admission gate (see below)
 next      ~200+        + packing/BCD · scoring/choice · vector · time/budget · stateful/RNG
 ```
 
@@ -40,7 +41,12 @@ A library that just accumulates functions rots in two ways — these rules preve
    deadline)` is `sub_sat`; `deadline_missed` is `is_ge`; inclusive `between` is `range_check`.
    Don't ship a second cell with the same behaviour — add the alias as a **tag/summary** on the
    existing one so search still finds it. Duplicates *hurt* retrieval (two right answers = no
-   signal) and bloat the shelf without adding capability.
+   signal) and bloat the shelf without adding capability. **Enforced, not just requested:** the
+   Phase 2.2 admission gate (`cell80 index --gate`, `cell80/src/admission.rs`) found four
+   cells that had shipped as exact duplicates without anyone noticing — `argmin2` ≡ `is_gt`,
+   `argmax2` ≡ `is_lt`, `quantize` ≡ `safe_div`, `wrap` ≡ `safe_mod`, the identical formula
+   under a different name for every `u16` input. All four were removed and their vocabulary
+   merged into the surviving cell's tags.
 2. **Grow in confusable families, and pay the eval tax per cell.** Retrieval only gets *teeth*
    from 3-4+ cells per family that collide in text but differ in behaviour; composition needs
    predicates + transforms that chain. A new cell ships with its eval pressure or it's just
@@ -74,8 +80,10 @@ confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmar
 ### Standardise these semantics
 
 - **Predicate convention:** `false = 0`, `true = 1` (built on `bool as u16`).
-- **Divide/remainder by zero:** the cell returns a sentinel — **guard explicitly**
-  (`if b != 0 { a / b } else { 0 }`); `safe_div`/`safe_mod` are canonical.
+- **Divide/remainder by zero:** unguarded `/` and `%` **halt the cell**
+  (`Halt::DivByZero`, the Phase 0.3 default) rather than returning a value — **guard
+  explicitly** when zero is a valid input (`if b != 0 { a / b } else { 0 }`); `safe_div`/
+  `safe_mod` are canonical.
 - **`u16` overflow is silent** (wraps); saturating cells (`add_sat`, `mul_sat`, `sum3`, …) cap
   at `65535`; percent/scale/`euclid_sq`/`triangular` assume their product fits `u16` (beyond is
   the host-code signal).
@@ -90,6 +98,11 @@ confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmar
 4. cell80/tests/library.rs                       — edge-case rows (the host oracle)
 ```
 
+Steps 1-2 are enforced, not just requested: `cell80 index cell80/cells --gate
+cell-eval/datasets/retrieval.jsonl` (the Phase 2.2 admission gate, `cell80/src/admission.rs`)
+refuses a candidate that's behaviourally identical to an already-shipped cell (alias it in
+metadata instead) or that carries no retrieval rows to survive. Run it before opening a PR.
+
 ## Packs (organise discovery by family via tags)
 
 The loader reads a flat `cell80/cells/`, so a "pack" is a **tag**, not a directory. Build them
@@ -101,21 +114,24 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (98 cells; 100 with the wide `u32` siblings)
+### Landed (94 cells; 96 with the wide `u32` siblings)
 
 ```
 predicates     eq neq is_lt is_le is_gt is_ge is_zero nonzero is_even is_odd
 safe-arith     add_sat sub_sat mul_sat safe_div safe_mod ceil_div avg2 square
-bounds         between_exclusive wrap normalize_0_100 snap_down snap_up round_to_multiple
+bounds         between_exclusive normalize_0_100 snap_down snap_up round_to_multiple
 percent        percent permille ratio_255 scale_percent increase_percent discount_percent within_percent
-ranking-stats  min3 max3 median3 argmax2 argmin2 argmax3 argmin3 sum3 mean3 range3 mode3 majority3 midrange3
+ranking-stats  min3 max3 median3 argmax3 argmin3 sum3 mean3 range3 mode3 majority3 midrange3
 bit/mask       popcount parity bit_is_set set_bit clear_bit toggle_bit mask_has_all mask_has_any mask_union mask_intersection mask_xor
 number-theory  lcm gcd3 divides is_coprime is_prime is_square isqrt digit_sum num_digits factor_count triangular next_pow2 is_pow2 pow_small cube_sat pow_mod
 distance       chebyshev euclid_sq          (state-cell siblings of manhattan)
 bit-encoding   low_byte high_byte swap_bytes rotl16 rotr16 reverse_bits leading_zeros trailing_zeros bit_length
 hashing        hash_pair fnv1a_step crc8_step mix16
-bucket/convert bucket3 quantize percent_to_byte byte_to_percent
+bucket/convert bucket3 percent_to_byte byte_to_percent
 ```
+
+**Aliases (behaviour-identical to a landed cell; not separate code — see rule 1 above):**
+`argmin2` → `is_gt`, `argmax2` → `is_lt`, `quantize` → `safe_div`, `wrap` → `safe_mod`.
 
 ### Next waves (prioritized — keep them distinct)
 

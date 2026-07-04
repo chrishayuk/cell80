@@ -78,9 +78,8 @@ fn first_wave_cells_match_defined_behaviour() {
         ("between_exclusive", &[5, 0, 10], 1),
         ("between_exclusive", &[0, 0, 10], 0),
         ("between_exclusive", &[10, 0, 10], 0),
-        ("wrap", &[13, 10], 3),
-        ("wrap", &[10, 10], 0),
-        ("wrap", &[5, 0], 0),
+        // `wrap` is an alias of `safe_mod` (admission gate: identical for every input) —
+        // covered by `safe_mod`'s own rows below, not a separate cell.
         ("normalize_0_100", &[50, 0, 200], 25),
         ("normalize_0_100", &[300, 0, 200], 100),
         ("normalize_0_100", &[5, 10, 10], 0),
@@ -123,9 +122,8 @@ fn first_wave_cells_match_defined_behaviour() {
         ("median3", &[5, 2, 8], 5),
         ("median3", &[1, 2, 3], 2),
         ("median3", &[40000, 65535, 1], 40000),
-        ("argmax2", &[5, 8], 1),
-        ("argmax2", &[5, 5], 0),
-        ("argmin2", &[8, 5], 1),
+        // `argmax2`/`argmin2` are aliases of `is_lt`/`is_gt` (admission gate: identical for
+        // every input) — covered by their rows above, not separate cells.
         ("argmax3", &[5, 2, 8], 2),
         ("argmax3", &[9, 9, 9], 0),
         ("argmin3", &[5, 8, 2], 2),
@@ -236,8 +234,8 @@ fn first_wave_cells_match_defined_behaviour() {
         ("bucket3", &[5, 10, 20], 0),
         ("bucket3", &[15, 10, 20], 1),
         ("bucket3", &[25, 10, 20], 2),
-        ("quantize", &[47, 10], 4),
-        ("quantize", &[5, 0], 0),
+        // `quantize` is an alias of `safe_div` (admission gate: identical for every input) —
+        // covered by `safe_div`'s own rows above, not a separate cell.
         ("percent_to_byte", &[100], 255),
         ("percent_to_byte", &[50], 127),
         ("byte_to_percent", &[255], 100),
