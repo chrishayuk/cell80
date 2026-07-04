@@ -176,7 +176,9 @@ pub fn struct_layout(src: &str, name: &str) -> Result<Vec<FieldLayout>, String> 
             name: f.name.clone(),
             offset,
             slots: f.slots as u16,
-            dword: f.width == ir::Width::DWord,
+            // A `[u32; N]` field is wide-*elemented*, not a wide scalar — `dword`
+            // must not fire for it (the cell layer would misread it as one u32).
+            dword: f.width == ir::Width::DWord && f.wide_len.is_none(),
             bytes: f.packed_len.map(|n| n as u16),
         });
         offset += f.slots as u16;

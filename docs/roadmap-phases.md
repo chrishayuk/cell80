@@ -303,11 +303,17 @@ diff case (`tests/diff/peephole.rs`) *and* a fired-proof shape assertion
 (Also fixed en route: the `is_prime` cell diverged for `n > 65025` — `d*d` wraps in u16;
 bounded to `d < 256`, the `factor_count` idiom, complete for the whole u16 domain.)
 
-**4.3 u32 completion + array elements.**
-Finish the half-open u32 surface (array elements are currently rejected), keep u64/floats
-gated behind capability flags — resist the drift toward "worse Wasm."
-*DoD:* u32 arrays diff-tested; capability flags reject u64/float syntax with
-Phase-1-quality diagnostics.
+**4.3 u32 completion + array elements. ✓ shipped (2026-07-04, with Cond32).**
+The half-open u32 surface closed: **comparisons** (condition + value position, the
+SBC-borrow chain), **saturating_add/sub**, and **array elements** — `[u32; N]`
+locals (`declare_wide_array`, two slots per element) and struct fields
+(`FieldDef::wide_len`, elements at `field + i*4` through the existing
+`Deref32`/`Store32` nodes — no new codegen). All diff-tested, including the
+sliding-wide-window shape the running-statistics pack wants. Bare
+wide-array names/fields reject with "index it"; `FieldLayout::dword` deliberately
+does *not* fire for wide arrays, so the cell layer never misreads `[u32; 2]` as a
+scalar. u64/floats stay out (the remaining DoD half: capability-flagged rejection
+diagnostics).
 
 ---
 

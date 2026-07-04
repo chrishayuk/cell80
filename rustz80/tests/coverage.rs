@@ -200,7 +200,6 @@ fn by_value_struct_array_field() {
 #[test]
 fn layout_rejections() {
     bad_prog("struct S(u16, u16); fn run() -> u16 { 0u16 }"); // tuple struct (unnamed fields)
-    bad_prog("struct S { a: [u32; 2] } fn run() -> u16 { 0u16 }"); // non-u16 array field
     bad_prog("struct S { a: (u16, [u16; 2]) } fn run() -> u16 { 0u16 }"); // non-scalar tuple element
     bad_prog("struct S { a: &u16 } fn run() -> u16 { 0u16 }"); // unsupported field type (reference)
     bad_prog("enum E { A = 1u16 + 1u16 } fn run() -> u16 { 0u16 }"); // non-literal discriminant
