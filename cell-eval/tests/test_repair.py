@@ -23,9 +23,12 @@ DATASET = "repair"
 
 def test_every_row_is_rejected_with_prose_not_debug_dumps():
     rows = load_jsonl(DATASET)
-    assert len(rows) >= 20, "the repair dataset should cover ~10 classes twice"
+    # range_pattern graduated from a repair class to a supported dialect feature (rows
+    # removed from the dataset), so this floor tracks the current 9-class/18-row reality,
+    # not a fixed "~10 classes twice" — a class retiring is a win, not a regression.
+    assert len(rows) >= 18
     classes = {r["klass"] for r in rows}
-    assert len(classes) >= 10, f"want >=10 diagnostic classes, got {sorted(classes)}"
+    assert len(classes) >= 9, f"want >=9 diagnostic classes, got {sorted(classes)}"
     for r in rows:
         err = try_compile(r["src"])
         assert err is not None, f"{r['id']}: row compiles — retire or update it"

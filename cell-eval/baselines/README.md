@@ -25,5 +25,12 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
   example-carrying requests (`match_examples`) and register-time metadata — not as
   escalation payload.
 
+- `library-scale-curve.json` — Phase 2.3's retrieval-quality-vs-scale curve: one record
+  per checkpoint, appended by `cell-eval curve` (`cell-eval/src/cell_eval/curve.py`), each
+  a real run against `cell80/cells/` as it stood at that commit — never a fabricated
+  point. Adoption/composition are `{"skipped": "..."}` when no model endpoint is
+  configured, not faked. Checkpoint 1 (`checkpoint-1-wave3-complete`, 114 cells): retrieval
+  P@1 direct 0.94 / paraphrase 0.42 / adversarial 0.39.
+
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

@@ -4,6 +4,7 @@
     cell-eval retrieval --k 3 --json
     cell-eval adoption --model qwen2.5   # talks to Ollama at :11434 by default
     cell-eval adoption --model llama3.1 --base-url http://host:11434/v1
+    cell-eval curve                      # Phase 2.3: append a library-scale checkpoint
 
 Exit code is 0 on a clean run regardless of scores — these are measurements, not pass/fail
 gates. (Use `--fail-under` on retrieval if you want to wire it into CI as a guard.)
@@ -157,6 +158,16 @@ def _cmd_cells_compare(args) -> int:
     return 0 if rep.identical else 1
 
 
+def _cmd_curve(args) -> int:
+    from .curve import append_checkpoint, record_checkpoint
+
+    record = record_checkpoint(label=args.label, library_dir=args.library, model=args.model)
+    out = append_checkpoint(record, pathlib.Path(args.out) if args.out else None)
+    print(json.dumps(record, indent=2))
+    print(f"\nappended checkpoint to {out}", file=sys.stderr)
+    return 0
+
+
 def _cmd_composition(args) -> int:
     from .composition import run_composition
     from .report import render_composition
@@ -255,6 +266,16 @@ def main(argv: list[str] | None = None) -> int:
     cc.add_argument("after")
     cc.add_argument("--json", action="store_true")
     cc.set_defaults(func=_cmd_cells_compare)
+
+    cv = sub.add_parser(
+        "curve",
+        help="append a library-scale checkpoint (Phase 2.3) — retrieval always, "
+        "adoption/composition if a model is configured",
+    )
+    cv.add_argument("--label", default=None, help="checkpoint label (default: '<N>-cells')")
+    cv.add_argument("--model", default=None, help="model for adoption/composition (or set CELL_EVAL_MODEL)")
+    cv.add_argument("--out", default=None, help="curve JSON path (default: cell-eval/baselines/library-scale-curve.json)")
+    cv.set_defaults(func=_cmd_curve)
 
     c = sub.add_parser("composition", help="LLM composition eval — does the agent wire cells?")
     c.add_argument("--dataset", default="composition_tasks")
