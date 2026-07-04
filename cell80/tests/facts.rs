@@ -533,8 +533,14 @@ fn cli_route_end_to_end_with_facts() {
     let d = dir.to_str().unwrap();
     let s = |v: &[&str]| -> Vec<String> { v.iter().map(|t| t.to_string()).collect() };
 
-    let facts_text =
-        run_cli(&s(&["facts", "export", d, "--calls", calls.to_str().unwrap()])).unwrap();
+    let facts_text = run_cli(&s(&[
+        "facts",
+        "export",
+        d,
+        "--calls",
+        calls.to_str().unwrap(),
+    ]))
+    .unwrap();
     let facts_file = dir.join("min.facts");
     std::fs::write(&facts_file, &facts_text).unwrap();
 
