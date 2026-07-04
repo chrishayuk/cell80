@@ -25,6 +25,10 @@ struct VarInfo {
     /// Reads route through the string methods (`s.len()`, `s.as_bytes()[i]`, …),
     /// never direct indexing.
     is_str: bool,
+    /// A local `[u32; N]` array: two slots per element (`ty` is `DWord`). Element
+    /// access goes wide (`Deref32`/`Store32` at `&base + i*4`); the bare name is
+    /// not a value.
+    wide_array: bool,
 }
 
 /// Name → variable info. `next` is the next free slot.
@@ -54,6 +58,7 @@ impl Vars {
                 elem_struct: None,
                 elem_ptr: None,
                 is_str: false,
+                wide_array: false,
             },
         );
         self.next += size;
@@ -73,6 +78,7 @@ impl Vars {
                 elem_struct: None,
                 elem_ptr: None,
                 is_str: false,
+                wide_array: false,
             },
         );
         self.next += 1;
@@ -92,6 +98,7 @@ impl Vars {
                 elem_struct: None,
                 elem_ptr: None,
                 is_str: false,
+                wide_array: false,
             },
         );
         self.next += 1;
@@ -141,6 +148,7 @@ impl Vars {
                 elem_struct: Some(elem_struct.to_string()),
                 elem_ptr: None,
                 is_str: false,
+                wide_array: false,
             },
         );
         self.next += slots;
@@ -165,6 +173,7 @@ impl Vars {
                 elem_struct: None,
                 elem_ptr: Some((elem, stride)),
                 is_str: false,
+                wide_array: false,
             },
         );
         self.next += 1;
@@ -189,6 +198,7 @@ impl Vars {
                 elem_struct: None,
                 elem_ptr: None,
                 is_str: true,
+                wide_array: false,
             },
         );
         self.next += 1;
@@ -197,5 +207,15 @@ impl Vars {
     /// Is `name` a `&str` parameter?
     pub(crate) fn str_param(&self, name: &str) -> bool {
         self.map.get(name).is_some_and(|v| v.is_str)
+    }
+    /// Declare a local `[u32; N]` array: `2 * n` slots, wide element access.
+    pub(crate) fn declare_wide_array(&mut self, name: &str, n: usize) -> usize {
+        let base = self.declare(name, 2 * n, None, Width::DWord);
+        self.map.get_mut(name).expect("just declared").wide_array = true;
+        base
+    }
+    /// Is `name` a local `[u32; N]` array?
+    pub(crate) fn wide_array(&self, name: &str) -> bool {
+        self.map.get(name).is_some_and(|v| v.wide_array)
     }
 }

@@ -21,6 +21,10 @@ pub(crate) struct FieldDef {
     /// `ceil(N / 2)` slots, element access byte-addressed at `field_base + i`. Other
     /// scalar arrays stay one 2-byte slot per element.
     pub(crate) packed_len: Option<usize>,
+    /// `Some(N)` for a `[u32; N]` field: `N` wide elements in `2N` slots, element
+    /// access through the 32-bit nodes at `field_base + i*4`. (`width` is `DWord`
+    /// with `slots = 2N` — distinguished from a scalar `u32`'s `slots = 2` by this.)
+    pub(crate) wide_len: Option<usize>,
 }
 
 /// Struct layouts: name → fields in declaration order. A field occupies `slots`
@@ -107,6 +111,7 @@ fn field_def(
 ) -> Result<FieldDef, String> {
     let name = f.ident.as_ref().unwrap().to_string();
     let mut packed_len = None;
+    let mut wide_len = None;
     let (slots, elem_struct, width) = match &f.ty {
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
@@ -120,6 +125,14 @@ fn field_def(
             let n = array_len(&arr.len, consts)?;
             packed_len = Some(n);
             (n.div_ceil(2), None, Width::Byte)
+        }
+        // `[u32; N]` — wide elements: two slots each, element access through the
+        // 32-bit load/store nodes at `field + i*4`.
+        syn::Type::Array(arr) if matches!(&*arr.elem, syn::Type::Path(p) if p.path.is_ident("u32")) =>
+        {
+            let n = array_len(&arr.len, consts)?;
+            wide_len = Some(n);
+            (2 * n, None, Width::DWord)
         }
         syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
             (array_len(&arr.len, consts)?, None, Width::Word)
@@ -168,6 +181,7 @@ fn field_def(
         elem_struct,
         width,
         packed_len,
+        wide_len,
     })
 }
 
@@ -247,6 +261,9 @@ pub(crate) fn elem_width(e: &syn::Expr) -> Width {
             }
             if i.suffix() == "i16" {
                 return Width::SWord;
+            }
+            if i.suffix() == "u32" {
+                return Width::DWord;
             }
         }
     }
