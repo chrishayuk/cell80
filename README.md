@@ -158,7 +158,7 @@ cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1
 printf 'min 3 7\nmin 10 4\nmin 255 1\n' > /tmp/calls.txt
 cargo run -q -p cell80 --bin cell80 -- facts export cell80/cells --calls /tmp/calls.txt > /tmp/min.facts
 cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1 --facts /tmp/min.facts
-# → probe runs: 459 — 3 answered from imported facts, 456 computed locally
+# → probe runs: 489 — 3 answered from imported facts, 486 computed locally
 ```
 
 CLI verbs: `run` (source) · `compile` (→ `.cell`) · `exec` (a `.cell`) · `inspect` ·

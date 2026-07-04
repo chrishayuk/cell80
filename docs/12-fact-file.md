@@ -148,7 +148,7 @@ Decisions, each with its reason:
   `cell80 route <dir> 3,7=3 10,4=4 --facts lib.facts` (retrieval riding the file:
   the import is spot-checked exactly like `facts import`, matching claims answer
   probe runs without execution, and the output ends with the split —
-  `probe runs: 459 — 3 answered from imported facts, 456 computed locally`).
+  `probe runs: 489 — 3 answered from imported facts, 486 computed locally`).
 - **MCP:** `cell_facts_import` / `cell_facts_stats` — the agent-visible face;
   import returns the `ImportReport` as data so an agent can *read* "9,999 verified
   claims accepted, 1 falsified" and act on it.
