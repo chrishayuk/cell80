@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (153 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (163 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -292,6 +292,21 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 
+## fractions (10)
+
+| id | signature | summary |
+|---|---|---|
+| `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via an inline Euclidean GCD (no shared gcd_u32 helper — a two-u32-param function still can't cross a call boundary, so the loop is duplicated in every fraction cell that needs it). |
+| `frac_add` | `FracAdd::run() -> u16` | Add two fractions na/da + nb/db, reduced to lowest terms via an inline GCD. |
+| `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via an inline GCD. |
+| `frac_mul` | `FracMul::run() -> u16` | Multiply two fractions na/da * nb/db, reduced to lowest terms via an inline GCD. |
+| `frac_div` | `FracDiv::run() -> u16` | Divide two fractions (na/da) / (nb/db) = (na*db)/(da*nb), reduced to lowest terms via an inline GCD. |
+| `frac_cmp` | `FracCmp::run() -> u16` | Compare two fractions na/da vs nb/db via cross-multiplication (works on unreduced fractions, e.g. 1/2 vs 2/4): 0 if less, 1 if equal, 2 if greater. |
+| `frac_eq` | `FracEq::run() -> u16` | Returns 1 if two fractions na/da and nb/db are equal, else 0 — via cross-multiplication, so unreduced-but-equivalent fractions (e.g. 1/2 vs 2/4) still compare equal without needing to reduce first. |
+| `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
+| `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via an inline GCD (num=0, den=1 if n divides evenly by d). |
+| `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -305,4 +320,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, signed-deltas, and scoring/choice's second slice above are landed — bounded_rand and time/budget's five named candidates were all found to be exact duplicates of existing cells, not built; score_2factor's vocabulary was merged into weighted_sum2's tags rather than shipping a duplicate; cosine_score_approx still ahead), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and verifier-ranker above are the first four authored packs; fractions is the last, gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, signed-deltas, and scoring/choice's second slice above are landed — bounded_rand and time/budget's five named candidates were all found to be exact duplicates of existing cells, not built; score_2factor's vocabulary was merged into weighted_sum2's tags rather than shipping a duplicate; cosine_score_approx still ahead), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1 complete: checked-arithmetic, money-bps, units, verifier-ranker, and fractions above are all five authored packs — M0 landed Tier 2, one u32 param per call, so fractions inlines its own GCD-reduction loop per cell rather than sharing a two-u32-param gcd_u32 helper; M2-M4 remain gated behind cell_solve). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.

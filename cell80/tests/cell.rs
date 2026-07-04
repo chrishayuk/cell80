@@ -677,7 +677,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("153 cells"));
+    assert!(listing.contains("range_check") && listing.contains("163 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -741,7 +741,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("153 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("163 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -752,7 +752,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 153, "got: {out}");
+    assert_eq!(cells.len(), 163, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -764,7 +764,7 @@ fn cli_index_json_lists_every_manifest() {
 
 #[test]
 fn cli_index_gate_over_the_real_library() {
-    // The admission gate against the real 153-cell library + its own retrieval dataset — the
+    // The admission gate against the real 163-cell library + its own retrieval dataset — the
     // true end-to-end proof, not a synthetic fixture. Wave 3's calendrical/checksum pack
     // found (and fixed at the root) a `luhn_check`/`is_zero` false positive by widening
     // `DEFAULT_PROBES` (fingerprint.rs) rather than touching luhn_check; every pack since
@@ -785,14 +785,15 @@ fn cli_index_gate_over_the_real_library() {
     // `round_to_multiple` false positive (they now diverge on the new probe too), so the
     // gate is fully clean. The scoring/choice pack (weighted_sum2/3 state cells,
     // choose_best3 state cell, is_clear_winner arity-3 free-fn — all exempt from the
-    // fingerprint check) added no new collisions either — still 0 refusals.
+    // fingerprint check) added no new collisions either. The fractions pack (M1 5/5, all 10
+    // state cells) closes out the GSM8K campaign — still 0 refusals.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("153 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("163 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

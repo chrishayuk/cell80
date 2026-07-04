@@ -1,9 +1,11 @@
 # The math campaign — GSM-Symbolic as the first `cell_solve` field campaign
 
-*Status: M1 pack 4/5 landed (checked/exact arithmetic, money/basis-points, units,
-verifier/ranker — `docs/library-growth.md` "GSM8K math campaign"); only the fraction
-pack (M1 5/5) remains, gated on M0 (u32-across-a-call-boundary, tested directly and
-still rejected even after `Cond32` landed); M2-M4 (the plan IR, renderer, and campaign
+*Status: **M1 complete** — all five authored packs landed (checked/exact arithmetic,
+money/basis-points, units, verifier/ranker, fractions — `docs/library-growth.md` "GSM8K
+math campaign"). M0 (u32-across-a-call-boundary) landed from a parallel session as Tier
+2 (one u32 param per call, not the two a shared `gcd_u32` reducer needs); the fractions
+pack shipped anyway by inlining its own GCD-reduction loop per cell instead, a workaround
+available even before M0 landed. M2-M4 (the plan IR, renderer, and campaign
 itself) remain gated behind `cell_solve` (`docs/escalation-ladder.md` item 2 — the u32/Ins
 compiler branch it was held on has since landed, so the compiler prerequisite for
 `cell_solve` is clear, but `cell_solve` itself is not built) and the admission gate (Phase
@@ -118,9 +120,13 @@ hash-precipitation work.
 
 ## Prerequisites — shorter but harder than "175 cells"
 
-1. **One u32 across a call boundary** (demand-confirmed by the fraction pack: `frac_add`
-   needs a `gcd_u32` kernel it currently cannot call across a function boundary within one
-   compiled unit). Lands first; without it the fraction pack is copy-paste.
+1. **One u32 across a call boundary** — landed (Tier 2: one u32 param per call, must be
+   first; a u32 return; confirmed *not* enough for a shared two-u32-param `gcd_u32`
+   kernel, which still can't be called). The fraction pack shipped anyway: each cell
+   inlines its own GCD-reduction loop, so it *is* copy-paste, as predicted — just via a
+   workaround available even before this landed (a `while` loop over u32 locals inside
+   one function was never gated by the call-boundary limit), not because the limit was
+   fully lifted.
 2. **Signed-32 decision: convention before dialect.** `i32` is not in the dialect and this
    campaign does not add it. GSM-scale quantities are non-negative except transiently in
    differences; the renderer emits sign-tracked u32 (sign-magnitude convention cells:
