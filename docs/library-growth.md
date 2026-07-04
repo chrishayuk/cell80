@@ -201,6 +201,62 @@ stepper is also still open.
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
 - **signed (`i16` now available)**: signed deltas / `lerp` / risk deltas.
 
+## Phase 2.3 — growing toward ~1,000 cells
+
+Wave 3's 20 cells were each authored, then hand-traced against known reference values
+(Zeller's congruence checked against 2000-01-01 and 2024-01-01, state-machine transitions
+walked by hand) before being written to source. That doesn't scale to ~886 more cells.
+The **author → verify → admit** loop below keeps the same rigor but makes the verify step
+mechanical instead of hand-traced, so it can run at batch size:
+
+1. **Spec** — one line per candidate: pack, id, intended behaviour, arity hint (free-fn
+   ≤3 args vs state cell — remember `u32` can only be a state field, never a free-fn
+   call param/return, the constraint the calendrical/checksum pack found). Pull specs from
+   this file's "Next waves" list first — already-scoped, not invented fresh.
+2. **Author** — draft the cell source + 2-3 retrieval rows (direct/paraphrase) + 2-3
+   proposed host-oracle `(args, expected)` triples, using the dialect gotchas already
+   learned the hard way this session:
+   - `self.field = if ... else ...` **directly** is not supported — bind to a `let` first,
+     then assign the field (hit twice: `backoff_next`, `accumulate_step`).
+   - `!` is supported logical-not on the 0/1 boolean convention (not bitwise).
+   - value-`match` needs a `_` arm; range/or-patterns lower to if-chains.
+   - `.saturating_add/sub/mul` work on `u8`/`u16` now (means what it means in host Rust).
+3. **Verify — mechanical, not agent-judgment.** This is the step that replaces
+   hand-tracing:
+   - Compile the candidate; a compile error gets one repair attempt (same shape as the
+     `cell-eval repair` eval), else discard.
+   - **Actually run** the proposed oracle rows against the real compiled cell and require
+     the output to match the claimed expected value — a mismatch means either the cell or
+     the claimed expectation is wrong, so it's discarded/flagged either way, never trusted
+     on say-so alone.
+   - Run `cell80 index --gate` (Phase 2.2) against a scratch copy of the library +
+     retrieval dataset with the candidate included — a refusal gets the same treatment as
+     every real Wave 3 refusal (alias if it's a true duplicate, discard if not, never
+     silently forced through).
+4. **Admit** — only candidates passing all three land for real: source file, golden
+   regenerated, host-oracle rows, retrieval rows, `docs/cell-index.md` regenerated, a
+   `cell-eval curve` checkpoint after the batch (not per-cell) recorded in
+   `cell-eval/baselines/library-scale-curve.json`.
+
+**The kill-gate.** Mirroring the escalation ladder's own standing rule (θ calibrated
+against a 0.75 precision-on-answered floor, `docs/escalation-ladder.md`): if a checkpoint's
+retrieval precision on the paraphrase or adversarial split drops meaningfully from
+checkpoint 1's baseline (114 cells: direct 0.94 / paraphrase 0.42 / adversarial 0.39;
+`cell-eval/baselines/library-scale-curve.json`), **pause cell growth** and prioritize
+discovery/retrieval work instead of adding more cells. A 1,000-cell library nobody can
+search is worse than the 114-cell one that can be searched today.
+
+**Known gaps, not yet blocking, worth tracking as the library scales further:**
+- The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells
+  and arity-3 cells are exempt — `cell80/src/admission.rs`'s own doc explains why:
+  `Fingerprint`'s probe bank only drives two scalar registers). Generalizing it to typed
+  state and arity-3+ is real future work, not done here.
+- The admission report isn't wired into CI yet — worth doing whenever CI config is next
+  touched, so a duplicate can't land even by accident.
+- Keep synthesis (`cell80/src/synth.rs`) gated and narrow, per
+  `docs/escalation-ladder.md`'s own "do-not-build" list — it's for outcome-specified tasks
+  over a known op family, not a general cell-generation path.
+
 ## Mine the ecosystem first
 
 `chuk-math` / `chuk-mcp-math` / `chuk-synthetic-data` likely already hold integer kernels worth
