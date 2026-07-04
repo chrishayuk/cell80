@@ -21,12 +21,19 @@ mechanism wins; the LLM is the last rung, not the first.
 | 4 | **local brain + verifier loop** | seconds, zero frontier tokens | *shallow* leftovers only (see admission criteria) |
 | 5 | frontier brain + verifier | $ + seconds–minutes | everything that survives 1–4; also authors metadata at register time |
 
-## Item 1 — CellIndex tiering (potion → rerank → margin gate)
+## Item 1 — CellIndex tiering (potion → rerank → margin gate) ✓ (shipped, floor upgraded)
 
 Measured baseline (cell-eval three signals): direct **1.00** / paraphrase **0.53** /
 adversarial **0.50** for token-overlap; the firm-up run put static potion ~0.55–0.58
 and MiniLM-class rerank ~0.72 **on the paraphrase split** — every tier must be
 reported on all three splits, not a single P@1.
+
+*Outcome:* the calibrated gate shipped (`cell-eval tiers`, θ per embedder), and rung 2's
+static floor is no longer generic potion but the domain-trained **cell-potion** (v2,
+margin-shaped training): answered-coverage 0.824 / 0.472 / 0.308 at 34 µs in-process —
+paraphrase coverage at parity with the served nomic transformer, three orders of
+magnitude faster ([cell-potion-training-spec.md](cell-potion-training-spec.md) Results;
+baselines in `cell-eval/`).
 
 **The margin gate is the new work, and calibration is a first-class deliverable.**
 A confidence margin is only as good as its placement, and the adversarial split is

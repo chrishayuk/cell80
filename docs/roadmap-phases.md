@@ -299,6 +299,12 @@ Phase-1-quality diagnostics.
 - **JIT / speed chasing** — Wasm wins warm compute; the moat is exact metering,
   auditability, byte-scale artifacts, and determinism. Protect the moat, don't race the
   loser's race.
+- **ISA attachment.** The Z80 is an implementation detail *behind* the `.cell` ABI, not
+  the product: the contract is determinism + exact metering + capability gating, and the
+  conformance suites (1.53M SingleStepTests vectors, ZEXDOC) are why the Z80 currently
+  earns its seat. Codegen emits symbolic `Ins`, encoded once at the end — so a second
+  backend target, if the contract ever needs one, is an encoder swap behind a stable
+  artifact format, not a rewrite. The format survives the chip.
 
 The failure mode that would dissolve everything is feature drift toward a worse Wasm; the
 implicit bet is that a narrow thing that's *actually true* beats a broad thing that's
@@ -308,5 +314,8 @@ approximately true, in a field currently drowning in the latter.
 
 Phase 0 was a single "close the determinism contract" commit-set and gates everything.
 Phase 1 makes the compiler usable by its actual author. Phase 2 is the product bet and
-the long pole. Phase 3 rides alongside. Phase 4 lands before the next dialect expansion,
-or the retrofit price keeps compounding.
+the long pole — 2.1 shipped (the calibrated ladder + the cell-potion floor); 2.2 (the
+admission gate) and 2.3 (the scale curve) are the open items, in that order, since
+growing to 1K cells before ingest gating would manufacture the collision problem.
+Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
+the next dialect expansion, as required.
