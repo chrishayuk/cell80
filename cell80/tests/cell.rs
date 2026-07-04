@@ -2143,3 +2143,21 @@ fn run_state_fast_budget_and_order_rules() {
     assert_eq!(f4.halt, cell80::Halt::CycleBudget);
     let _ = StateCell::bind(src, "S", None).unwrap(); // still binds (sanity)
 }
+
+#[test]
+fn u32_param_entry_drives_from_host_as_two_words() {
+    // The one-wide-param convention meets the host args convention exactly: a
+    // `fn run(w: u32)` entry takes `args = [low, high]` (HL:DE *is* the u32),
+    // and a wide return comes back as regs[0] (low) / regs[1] (high).
+    let mut r = Runner::compile("fn run(w: u32) -> u32 { w + w }").unwrap();
+    let w: u32 = 0x0001_8003; // 98307
+    let f = r
+        .run_fast(
+            None,
+            &[(w & 0xFFFF) as u16, (w >> 16) as u16],
+            DEFAULT_CYCLES,
+        )
+        .unwrap();
+    let got = f.regs[0] as u32 | (f.regs[1] as u32) << 16;
+    assert_eq!(got, w + w);
+}

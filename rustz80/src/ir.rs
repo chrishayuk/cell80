@@ -224,7 +224,8 @@ pub enum Stmt {
 }
 
 /// A lowered function. Parameters occupy local slots `0..params` (loaded from
-/// the calling-convention registers in the prologue).
+/// the calling-convention registers in the prologue — `params` counts **slots**,
+/// which equals registers: a wide first param's `[low, high]` pair is `[HL, DE]`).
 #[derive(Debug, Clone)]
 pub struct Func {
     pub params: usize,
@@ -233,4 +234,9 @@ pub struct Func {
     /// Return values, in the result convention `HL`/`DE`/`BC`: empty for a void fn,
     /// one entry for a scalar, two or three for a tuple return.
     pub ret: Vec<Expr>,
+    /// The first parameter is a `u32` riding `HL:DE` (the one-wide-param call
+    /// convention). Excluded from inlining (slot plans assume 1 slot/param).
+    pub wide_param: bool,
+    /// The single return value is a `u32` in `HL:DE` (evaluated by `gen_expr32`).
+    pub wide_ret: bool,
 }

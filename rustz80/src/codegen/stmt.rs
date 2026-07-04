@@ -12,6 +12,8 @@ use crate::ir::*;
 pub(super) fn gen_return(a: &mut Asm, rets: &[Expr]) {
     match rets.len() {
         0 => {}
+        // A wide return evaluates in HL:DE (the fn's `wide_ret` set this flag).
+        1 if a.func_ret_wide => super::expr::gen_expr32(a, &rets[0]),
         1 => gen_expr(a, &rets[0]),
         n => {
             for e in rets {
@@ -249,7 +251,11 @@ pub(super) fn gen_stmt(a: &mut Asm, s: &Stmt) {
         }
         Stmt::Return(val) => {
             if let Some(e) = val {
-                gen_expr(a, e); // result in HL
+                if a.func_ret_wide {
+                    super::expr::gen_expr32(a, e); // result in HL:DE
+                } else {
+                    gen_expr(a, e); // result in HL
+                }
             }
             let end = a.func_end.expect("`return` outside a function");
             a.jump(0xC3, end);

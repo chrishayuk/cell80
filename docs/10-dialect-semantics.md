@@ -174,10 +174,31 @@ recursion is not supported (Stage 1: static locals) — rewrite as a loop (cycle
 
 ## Calls
 
-At most **3 parameters** (the `HL`/`DE`/`BC` register convention; no stack args), at most
-3 tuple-return values (same registers). `u32` values do not cross call boundaries —
-params, returns, and arguments are 16-bit; widen inside the callee (`as u32`) and narrow
-before returning. A `u32` in any 16-bit position is a compile error, never a truncation.
+At most **3 registers of parameters** (the `HL`/`DE`/`BC` convention; no stack args), at
+most 3 tuple-return values (same registers).
+
+**One u32 may cross a call boundary** (the Tier-2 convention — deliberately minimal so
+the register contract stays intact):
+
+- **At most one `u32` parameter, and it must be first**: it rides `HL:DE` (low word in
+  `HL` — the same pair every u32 computes in), leaving `BC` for at most one more 16-bit
+  parameter. The prologue is unchanged by construction: registers store to consecutive
+  slots, and a wide slot pair *is* `[low, high]`.
+- **A `u32` return** rides `HL:DE` likewise. A wide return can't be part of a tuple.
+- Everything else stays out: a second `u32` param, a `u32` in a non-first position, a
+  `u32` on a method (`self` holds `HL`), a wide argument to a 16-bit slot — each a
+  steering compile error, never a truncation.
+
+This is what makes shared kernels modular: `fn scale(acc: u32, k: u16) -> u32` is
+callable from many sites without the inliner's help, so an accumulate/step family
+stops hand-inlining its widen-multiply-shift. The honest residual: a *two*-wide-param
+kernel (`q_mul(a: u32, b: u32)`) still doesn't fit three registers — widen inside, or
+pass through state. Host note: a u32-param **entry** is drivable from the host by
+passing the two words as `args = [low, high]` — the register convention makes the
+split exact.
+
+A 16-bit argument in a wide slot zero-extends (the value rustc would infer for an
+in-range literal); a wide value in a 16-bit slot stays an error.
 
 ## What `check!` actually guarantees
 
