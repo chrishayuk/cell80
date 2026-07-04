@@ -200,14 +200,34 @@ not guess. The **cell-potion** static-embedder experiment is specced (kill-gated
 in [cell-potion-training-spec.md](cell-potion-training-spec.md) — a *training*, not
 a distillation, justified by the reflex-tier latency budget no served model meets.
 
-**2.2 Per-cell admission gate.**
-A cell enters the library only if it survives its own paraphrase + adversarial query set
-(eval-driven growth as definition of done, applied at ingest).
-*DoD:* `cell80 index` refuses (with a report) cells whose queries collide with an
-existing cell's fingerprint.
+**2.2 Per-cell admission gate. ✓**
+`cell80 index <dir> --gate <retrieval.jsonl>` (`cell80/src/admission.rs`) admits a cell only
+if (a) it's behaviourally distinct from every already-admitted cell —
+`Fingerprint::agreement` (`cell80/src/fingerprint.rs`) against the already-admitted set, an
+exact match refusing as a duplicate-in-metadata candidate — and (b) it carries at least one
+retrieval-dataset row of its own. A refusal's report additionally names which of the
+candidate's own queries also rank the duplicate #1 — the literal query-collision evidence
+the DoD names, attached to the fingerprint finding rather than gated on independently (an
+independent text-collision gate would refuse most legitimate new confusable-family members,
+since plain lexical paraphrase P@1 is already ≈0.45 on the accepted 98-cell library).
+Fingerprint comparison is restricted to cells of arity ≤ 2 (state cells and 3-argument
+free-fn cells are exempt): `Fingerprint`'s probe bank only ever supplies two scalar
+registers, so a 3-arg cell's unset third register silently defaults, and every arity-3 cell
+in the real library was found to collapse to the same degenerate constant and false-positive
+against unrelated cells until this was added.
+*DoD met:* running the gate over the real (then-100-cell) library (`cell80/tests/cell.rs`)
+surfaced four genuine, previously-unknown behavioural duplicates — `is_gt`≡`argmin2`,
+`is_lt`≡`argmax2`, `safe_div`≡`quantize`, `wrap`≡`safe_mod`, each the identical formula under
+a different name for *every* `u16` input, not just the probe bank. All four were folded into
+aliases (`argmin2`/`argmax2`/`quantize`/`wrap` removed, their vocabulary merged into
+`is_gt`/`is_lt`/`safe_div`/`safe_mod`'s tags; see `docs/library-growth.md`), leaving a
+96-cell library with one demonstrated false positive inherent to a 10-probe bank
+(`snap_down`/`round_to_multiple` agree on every default probe but diverge at e.g. `x=8,
+step=5`), documented in `admission.rs` as the honest scope of an `agreement == 1.0` finding:
+strong evidence a maintainer should review, not proof.
 
 **2.3 Scale the eval library.**
-100 cells can't surface collision behavior. Grow to ~1,000 (generated + curated), track
+96 cells can't surface collision behavior. Grow to ~1,000 (generated + curated), track
 P@1/adoption/composition as the library grows — the retrieval-quality-vs-scale curve is
 the headline chart for the vision section.
 *DoD:* eval runs at 1K cells; curve published in README.
@@ -314,8 +334,9 @@ approximately true, in a field currently drowning in the latter.
 
 Phase 0 was a single "close the determinism contract" commit-set and gates everything.
 Phase 1 makes the compiler usable by its actual author. Phase 2 is the product bet and
-the long pole — 2.1 shipped (the calibrated ladder + the cell-potion floor); 2.2 (the
-admission gate) and 2.3 (the scale curve) are the open items, in that order, since
-growing to 1K cells before ingest gating would manufacture the collision problem.
+the long pole — 2.1 (the calibrated ladder + the cell-potion floor) and 2.2 (the
+admission gate) are shipped; 2.3 (the scale curve) is the remaining open item, gated
+behind 2.2 by design since growing to 1K cells before ingest gating would manufacture
+the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
 the next dialect expansion, as required.

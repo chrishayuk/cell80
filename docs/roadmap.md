@@ -84,7 +84,10 @@ real Rust* → every program is differential-tested against `rustc` on the emula
   six real core bugs — the EI/IFF timing model, the undocumented repeat-flag rules for the
   LDIR/CPIR/INIR families, the DD/FD-prefixed SCF/CCF Q-latch, and `LD (IX+d),n` timing —
   now fixed.
-- **Standard library** — `cell80/cells/` is now **100 cells**: the 8 originals plus ~12
+- **Standard library** — `cell80/cells/` is now **96 cells** (100 minus four cells the
+  Phase 2.2 admission gate found were exact behavioural duplicates — `argmin2`/`argmax2`/
+  `quantize`/`wrap`, folded into `is_gt`/`is_lt`/`safe_div`/`safe_mod` as aliases; see
+  `docs/library-growth.md`): the 8 originals plus ~12
   confusable families — **predicates**, **safe arithmetic**, **bounds**, **percent/ratio**,
   **ranking/stats**, **bit/mask**, **number theory** (`lcm`, `is_prime`, `isqrt`,
   `factor_count`, `pow_mod`, …), **distance** (`chebyshev`, `euclid_sq` — state-cell siblings of

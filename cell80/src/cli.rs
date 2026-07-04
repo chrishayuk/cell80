@@ -12,7 +12,7 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell inspect <file.cell> [--json] [--no-verify]\n  \
      rustz80-cell keygen <out.key>             (new ed25519 signing key)\n  \
      rustz80-cell sign <file.cell> --key <key> (sign the artifact hash in place)\n  \
-     rustz80-cell index <dir>                 (list the cell library in <dir>)\n  \
+     rustz80-cell index <dir> [--gate <retrieval.jsonl>] [--json]  (list, or admit/refuse)\n  \
      rustz80-cell search <query> <dir>        (rank library cells by relevance)\n  \
      rustz80-cell serve <dir>                 (persistent stdio session over a warm host)\n  \
      rustz80-cell graph <graph.json> <dir> [--input k=v,...] [--cycles N] [--json]\n  \
@@ -147,8 +147,9 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
 }
 
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
-/// or load a `.cell`. Returns `None` for any other extension.
-fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>> {
+/// or load a `.cell`. Returns `None` for any other extension. `pub(crate)` so the admission
+/// gate (`crate::admission`) walks a directory the same way `cmd_index`/`host_from_dir` do.
+pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>> {
     match path.extension().and_then(|e| e.to_str()) {
         Some("rs") => Some((|| {
             let src =
@@ -195,9 +196,31 @@ fn render(m: &crate::Manifest) -> String {
     )
 }
 
-/// `index <dir>` — list the cell library (in id order).
+/// `index <dir> [--gate <retrieval.jsonl>] [--json]` — list the cell library (in id order),
+/// or, with `--gate`, run the admission gate (roadmap 2.2): admit each cell only if it's
+/// behaviourally distinct from every already-admitted cell and carries retrieval-dataset
+/// rows, refusing (with a report) the ones that don't.
 fn cmd_index(args: &[String]) -> Result<String, String> {
     let dir = args.first().ok_or(USAGE)?;
+    let mut gate: Option<&str> = None;
+    let mut json = false;
+    let mut it = args[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--gate" => gate = Some(it.next().ok_or("--gate needs a retrieval.jsonl path")?),
+            "--json" => json = true,
+            other => return Err(format!("unknown option `{other}`\n{USAGE}")),
+        }
+    }
+    if let Some(path) = gate {
+        let report = crate::admission::admit(dir, std::path::Path::new(path))?;
+        return Ok(if json {
+            report.to_json()
+        } else {
+            render_admission(dir, &report)
+        });
+    }
+
     let mut paths: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| format!("{dir}: {e}"))?
         .filter_map(|e| e.ok().map(|e| e.path()))
@@ -214,6 +237,54 @@ fn cmd_index(args: &[String]) -> Result<String, String> {
         rows.len(),
         rows.join("\n")
     ))
+}
+
+/// Render an [`AdmissionReport`](crate::AdmissionReport): admitted cells exactly like plain
+/// `index`, with a `REFUSED:` section appended only when non-empty.
+fn render_admission(dir: &str, report: &crate::AdmissionReport) -> String {
+    let rows: Vec<String> = report.admitted.iter().map(render).collect();
+    let mut out = format!(
+        "cell library `{dir}` admission ({} admitted, {} refused):\n{}",
+        report.admitted.len(),
+        report.refused.len(),
+        rows.join("\n")
+    );
+    if !report.refused.is_empty() {
+        out.push_str("\nREFUSED:\n");
+        for (m, reasons) in &report.refused {
+            for r in reasons {
+                out.push_str(&format!("  {} — {}\n", m.id, render_reason(r)));
+            }
+        }
+    }
+    out
+}
+
+/// Human-readable rendering of one [`RefusalReason`](crate::RefusalReason).
+fn render_reason(r: &crate::RefusalReason) -> String {
+    use crate::RefusalReason::*;
+    match r {
+        BehaviouralDuplicate {
+            of,
+            agreement,
+            colliding_queries,
+        } => {
+            let mut s = format!(
+                "behavioural duplicate of `{of}` (agreement {agreement:.2}) — \
+                 alias it on `{of}` in metadata instead of shipping new code \
+                 (docs/library-growth.md: no behavioural duplicates)"
+            );
+            for (case_id, query, category) in colliding_queries {
+                s += &format!(
+                    "\n    query collision: {category} row `{case_id}` (\"{query}\") ranks `{of}` first"
+                );
+            }
+            s
+        }
+        NoRetrievalRows => "no retrieval.jsonl rows — ships without a paraphrase/adversarial \
+             query set (docs/library-growth.md: pay the eval tax per cell)"
+            .to_string(),
+    }
 }
 
 /// `search <query> <dir>` — rank the library by relevance to `query`.
@@ -729,7 +800,7 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        assert_eq!(h.len(), 100); // 98 + the wide (u32-in-state) siblings
+        assert_eq!(h.len(), 96); // 98 + the wide (u32-in-state) siblings - 4 folded into aliases
 
         // The library now holds a *distance family* (manhattan/chebyshev/euclid_sq), so a
         // bare "grid distance" is ambiguous; the cell-specific name still resolves.
