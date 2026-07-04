@@ -264,6 +264,9 @@ fn first_wave_cells_match_defined_behaviour() {
         ("q_lerp", &[200, 100, 64], 175),  // t=0.25, b < a (reverse branch)
         ("q_lerp", &[100, 200, 0], 100),   // t=0 → a
         ("q_lerp", &[100, 200, 256], 200), // t=1.0 → b
+        // ── spatial / grid (wave 3) ──
+        ("grid_index", &[3, 2, 10], 23),
+        ("grid_index", &[0, 0, 10], 0),
     ];
 
     let mut failures = Vec::new();
@@ -563,4 +566,115 @@ fn running_stats_state_cells_match_defined_behaviour() {
         &[("value", 100), ("sum", 65_500), ("count", 5)],
     );
     assert_eq!(saturated, 65535);
+}
+
+#[test]
+fn spatial_grid_state_cells_match_defined_behaviour() {
+    // point_in_rect / aabb_intersect (wave 3): both half-open — edge-touching doesn't count.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    assert_eq!(
+        step(
+            "point_in_rect",
+            "PointInRect",
+            &[
+                ("px", 5),
+                ("py", 5),
+                ("rx", 0),
+                ("ry", 0),
+                ("rw", 10),
+                ("rh", 10)
+            ],
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "point_in_rect",
+            "PointInRect",
+            &[
+                ("px", 15),
+                ("py", 5),
+                ("rx", 0),
+                ("ry", 0),
+                ("rw", 10),
+                ("rh", 10)
+            ],
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "point_in_rect",
+            "PointInRect",
+            &[
+                ("px", 10),
+                ("py", 5),
+                ("rx", 0),
+                ("ry", 0),
+                ("rw", 10),
+                ("rh", 10)
+            ],
+        ),
+        0 // on the right edge — half-open, doesn't count
+    );
+
+    assert_eq!(
+        step(
+            "aabb_intersect",
+            "AabbIntersect",
+            &[
+                ("x1", 0),
+                ("y1", 0),
+                ("w1", 10),
+                ("h1", 10),
+                ("x2", 5),
+                ("y2", 5),
+                ("w2", 10),
+                ("h2", 10),
+            ],
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "aabb_intersect",
+            "AabbIntersect",
+            &[
+                ("x1", 0),
+                ("y1", 0),
+                ("w1", 10),
+                ("h1", 10),
+                ("x2", 20),
+                ("y2", 20),
+                ("w2", 5),
+                ("h2", 5),
+            ],
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "aabb_intersect",
+            "AabbIntersect",
+            &[
+                ("x1", 0),
+                ("y1", 0),
+                ("w1", 10),
+                ("h1", 10),
+                ("x2", 10),
+                ("y2", 0),
+                ("w2", 5),
+                ("h2", 5),
+            ],
+        ),
+        0 // edge-touching, not overlapping
+    );
 }

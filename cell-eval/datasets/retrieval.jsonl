@@ -258,3 +258,12 @@
 {"id": "accumulate_step-direct-1", "query": "running sum and count over a stream of values", "expected": "accumulate_step", "category": "direct"}
 {"id": "accumulate_step-para-1", "query": "keep a running total so I can compute an average later", "expected": "accumulate_step", "category": "paraphrase"}
 {"id": "accumulate_step-adv-1", "query": "an online accumulator for a mean, not the mean itself", "expected": "accumulate_step", "category": "adversarial"}
+
+# ── spatial / grid (wave 3) ──
+{"id": "grid_index-direct-1", "query": "flat array index of a grid cell", "expected": "grid_index", "category": "direct"}
+{"id": "grid_index-para-1", "query": "convert a row and column into a single index into a 1d array", "expected": "grid_index", "category": "paraphrase"}
+{"id": "point_in_rect-direct-1", "query": "is this point inside this rectangle", "expected": "point_in_rect", "category": "direct"}
+{"id": "point_in_rect-para-1", "query": "hit test a coordinate against a bounding box", "expected": "point_in_rect", "category": "paraphrase"}
+{"id": "aabb_intersect-direct-1", "query": "do these two axis-aligned bounding boxes overlap", "expected": "aabb_intersect", "category": "direct"}
+{"id": "aabb_intersect-para-1", "query": "check two rectangles for collision", "expected": "aabb_intersect", "category": "paraphrase"}
+{"id": "aabb_intersect-adv-1", "query": "do two sprites overlap on screen", "expected": "aabb_intersect", "category": "adversarial"}
