@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (108 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (111 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -197,6 +197,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
 
+## running-stats (3)
+
+| id | signature | summary |
+|---|---|---|
+| `running_min_max_step` | `RunningMinMax::run() -> u16` | Running min/max tracker over a stream of values: updates min/max (self-initializing on the first call via `seen`), returns the current range (max - min). |
+| `streak_step` | `Streak::run() -> u16` | Consecutive-streak counter: increments while input is nonzero, resets to 0 the moment input is 0. |
+| `accumulate_step` | `Accumulate::run() -> u16` | Running sum + count over a stream of values (sum saturates at 65535). Compose with safe_div(sum, count) for a running mean. |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -210,4 +218,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the still-open wave-3+ packs (running statistics, spatial/grid). calendrical/checksum, fixed-point, and agentic-runtime above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/piecewise sigmoid-tanh, and rate_window_update are still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the still-open wave-3+ pack (spatial/grid). calendrical/checksum, fixed-point, agentic-runtime, and running-stats above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, and a fixed-point running variance (Welford) are still open.

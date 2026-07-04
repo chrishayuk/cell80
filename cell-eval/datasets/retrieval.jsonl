@@ -249,3 +249,12 @@
 {"id": "debounce_step-para-1", "query": "only confirm a change once it's been consistent for a few readings in a row", "expected": "debounce_step", "category": "paraphrase"}
 {"id": "hysteresis-direct-1", "query": "hysteresis with a low and high threshold", "expected": "hysteresis", "category": "direct"}
 {"id": "hysteresis-para-1", "query": "a schmitt trigger that avoids flickering near a single threshold", "expected": "hysteresis", "category": "paraphrase"}
+
+# ── running statistics (wave 3) ──
+{"id": "running_min_max_step-direct-1", "query": "track the running min and max over a stream of values", "expected": "running_min_max_step", "category": "direct"}
+{"id": "running_min_max_step-para-1", "query": "the smallest and largest values seen so far, updated as new ones arrive", "expected": "running_min_max_step", "category": "paraphrase"}
+{"id": "streak_step-direct-1", "query": "count a consecutive streak of nonzero values", "expected": "streak_step", "category": "direct"}
+{"id": "streak_step-para-1", "query": "how many times in a row has this condition held true", "expected": "streak_step", "category": "paraphrase"}
+{"id": "accumulate_step-direct-1", "query": "running sum and count over a stream of values", "expected": "accumulate_step", "category": "direct"}
+{"id": "accumulate_step-para-1", "query": "keep a running total so I can compute an average later", "expected": "accumulate_step", "category": "paraphrase"}
+{"id": "accumulate_step-adv-1", "query": "an online accumulator for a mean, not the mean itself", "expected": "accumulate_step", "category": "adversarial"}

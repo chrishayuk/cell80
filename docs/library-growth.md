@@ -23,11 +23,13 @@ wave 3a   100 cells   + calendrical/checksum, first slice (is_leap_year, days_in
                         day_of_week, luhn_check) — ISBN/IBAN/UPC deferred (see below)
 wave 3b   103 cells   + Q8.8 fixed-point, first slice (q_mul, q_div, q_lerp) —
                         q_sqrt/piecewise sigmoid-tanh still open
-now       108 cells   + agentic runtime primitives, first slice (token_bucket_step,
+wave 3c   108 cells   + agentic runtime primitives, first slice (token_bucket_step,
                         backoff_next, circuit_breaker_step, debounce_step, hysteresis) —
                         rate_window_update still open
+now       111 cells   + running statistics, first slice (running_min_max_step,
+                        streak_step, accumulate_step) — Welford variance still open
 next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas ·
-                        running statistics · spatial/grid
+                        spatial/grid
 ```
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
@@ -129,7 +131,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (108 cells)
+### Landed (111 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -161,6 +163,14 @@ and were never built, exactly the kind of check `docs/cell-index.md` is for. `ba
 guards against a real overflow: doubling `current` directly can wrap past `u16::MAX` before
 the cap check runs, so it compares against `cap / 2` first and only multiplies when doubling
 is provably safe. `rate_window_update` is still open.
+
+**Running statistics, first slice (wave 3): `running_min_max_step`, `streak_step`,
+`accumulate_step`.** Deliberately doesn't reach for Welford's algorithm (which needs care in
+fixed point) or a histogram (which needs array state fields, not yet exercised by any landed
+cell) — instead `accumulate_step` keeps a running sum + count and composes with the
+already-landed `safe_div` for the mean, rather than shipping a monolithic "running mean"
+cell that would just re-implement `safe_div` internally. A fixed-point running variance and
+percentile-from-histogram are still open, gated on that array-state-field question.
 
 ### Next waves (prioritized — keep them distinct)
 
