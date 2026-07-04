@@ -43,12 +43,20 @@ wave 3g   134 cells   + M1 pack 2/5: money/basis-points (bps_of, increase_by_bps
                         original_before_bps_decrease, cents_mul_qty) — tax/tip/markup
                         consolidated into one increase_by_bps cell rather than three
                         near-identical ones
-now       138 cells   + M1 pack 3/5: units (same_unit_check, unit_mul, unit_div,
+wave 3h   138 cells   + M1 pack 3/5: units (same_unit_check, unit_mul, unit_div,
                         unit_cancel_check) — the campaign's first free-fn pack (all
                         prior GSM8K cells were u32 state cells)
-next      ~200+        + verifier/ranker · fractions (blocked on M0:
-                        u32-across-a-call-boundary, confirmed still unbuilt even after
-                        Cond32) · time/budget · stateful/RNG · signed deltas
+wave 3i   142 cells   + M1 pack 4/5: verifier/ranker (sum_equals, diff_equals,
+                        product_equals_u32, quotient_equals_exact_u32) — reverse-
+                        equation-satisfaction checks that always return a verdict,
+                        never escalate; answer_eq/multi-plan-agreement/tie-break
+                        needed no new code (see the pack note below)
+now       145 cells   + stateful/RNG, first slice (lcg_next, xorshift16,
+                        counter_step) — bounded_rand deferred (exact duplicate of
+                        safe_mod)
+next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
+                        confirmed still unbuilt even after Cond32) · time/budget ·
+                        signed deltas
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -113,6 +121,45 @@ smaller set is what's concretely load-bearing for the one worked example in
 `docs/math-campaign-spec.md` (`count * rate_money_per_count = money`, round-tripped
 through `unit_div(money, count)` first); a full exponent-vector unit algebra is deferred
 until real GSM8K plans demand it.
+
+**M1 pack 4/5: verifier/ranker.** `sum_equals`, `diff_equals`, `product_equals_u32`,
+`quotient_equals_exact_u32` — each re-derives one side of a candidate plan's claimed
+equation and returns a plain `0`/`1` verdict, **never escalating**: a verifier's whole job
+is to answer, so a genuine overflow (`product_equals_u32`) or a divide-by-zero
+(`quotient_equals_exact_u32`) is just a `0` (the claim doesn't hold), not a
+`halt(0xFF05)` hand-off — a deliberately different contract from the arithmetic packs,
+which compute a value and escalate when they can't. `sum_equals` widens its addition to a
+local `u32` internally (no function boundary, so M0 doesn't block it) so a genuine `u16`
+overflow can't wrap into a false match. Checking `docs/cell-index.md` and the spec's own
+`~20`-cell estimate before authoring found most of it already covered by existing cells,
+so nothing new was built for: `answer_eq` (an exact alias of the predicates pack's `eq` —
+no new code), multi-plan agreement and tie-breaks (`majority3`/`mode3`, ranking-stats,
+already do "do at least two of three plans agree" and "which value repeats"), and range
+constraints (`range_check`, validation pack). `answer_in_options` (checking an answer
+against an arbitrary-length option list) is deferred — GSM8K is free-response, not
+multiple-choice, so the motivation is thin, and a real implementation would need an array
+state field this session hasn't risked yet.
+
+**Stateful/RNG, first slice.** `lcg_next` (seed = seed \* 1664525 + 1013904223 mod 2^32,
+Numerical Recipes constants, top 16 bits returned), `xorshift16` (x ^= x<<7; x ^= x>>9;
+x ^= x<<8 — a distinct recurrence from lcg_next, no multiply), `counter_step` (a modular
+increment-and-wrap counter for round-robin dispatch). `bounded_rand` — the fourth item on
+`library-growth.md`'s own next-waves list — was **not** built: `raw % bound` (0 on
+`bound == 0`) is an exact behavioural duplicate of the already-shipped `safe_mod`, the
+same reasoning that folded `wrap` into `safe_mod` as an alias earlier. Verifying these
+cells surfaced an important, easy-to-miss point about `StateCell`/`Runner::run`'s
+contract: **a state cell does not persist memory across separate `.run()` calls** —
+`Runner::run`'s own doc says "memory the previous run touched is zeroed first, so
+repeated runs start from the same clean state." A naive test that calls `.run()` twice on
+the same instance expecting `self.seed`'s prior mutation to carry over silently resets to
+0 — not a compiler bug (confirmed by reproducing the identical pattern against the
+already-shipped `streak_step`, whose own host-oracle test already re-`set`s the carried
+field from the previous `.get()` before every call, per `cell80/tests/library.rs`). Every
+"step" cell in the library (this pack included) relies on the *caller* threading the
+carried field through explicitly, matching the real host/agent loop's own calling
+convention (`run_state`/`run_state_fast` take the full current field set on every call) —
+documented here since it cost real debugging time to pin down and will bite the next
+stateful pack's author again if it isn't written down.
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -213,7 +260,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (138 cells)
+### Landed (145 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -280,9 +327,11 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
 - **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
   fixed-point sqrt-of-a-product).
-- **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`.
-  (`ema_update`/`moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample,
-  alpha)` is one EMA step.)
+- **stateful / RNG — first slice landed** (see the pack note above): `lcg_next`,
+  `xorshift16`, `counter_step`. `bounded_rand` was checked against `docs/cell-index.md`
+  and found to be an exact duplicate of `safe_mod` — not built. (`ema_update`/
+  `moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample, alpha)` is
+  one EMA step.)
 - **time / budget** — checked against `docs/cell-index.md` before building: `used_percent` is
   `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
@@ -332,11 +381,10 @@ checkpoint 1's baseline (114 cells: direct 0.94 / paraphrase 0.42 / adversarial 
 `cell-eval/baselines/library-scale-curve.json`), **pause cell growth** and prioritize
 discovery/retrieval work instead of adding more cells. A 1,000-cell library nobody can
 search is worse than the 114-cell one that can be searched today. Checkpoint 5 (units
-pack, 138 cells) is the first to dip *under* the adversarial baseline (0.38 vs 0.39) —
-traced to two pre-existing confusable pairs re-ranking from a corpus-wide TF-IDF weight
-shift, not a units-pack collision, so it didn't trigger the gate — but it's the first
-sub-baseline reading and worth checking again at the next checkpoint before assuming it's
-noise for good.
+pack, 138 cells) dipped *under* the adversarial baseline (0.38 vs 0.39), traced to two
+pre-existing confusable pairs re-ranking from a corpus-wide TF-IDF weight shift, not a
+units-pack collision; checkpoint 6 (verifier/ranker, 142 cells) recovered to 0.41,
+confirming it was noise, not a trend.
 
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells

@@ -871,3 +871,129 @@ fn units_free_fn_cells_match_defined_behaviour() {
     assert_eq!(report("unit_cancel_check", &[2, 1]).result, 0);
     assert_eq!(report("unit_cancel_check", &[100, 4]).result, 0); // out-of-domain codes too
 }
+
+#[test]
+fn verifier_ranker_cells_match_defined_behaviour() {
+    // The GSM8K math-campaign verifier/ranker pack (Phase 2.3, M1 pack 4/5) — each cell
+    // re-derives one side of a candidate plan's claimed equation and returns a plain 0/1
+    // verdict, never escalating (a verifier always answers; escalation is for the
+    // arithmetic packs that *compute* a value). answer_eq is an alias of the predicates
+    // pack's `eq`; multi-plan agreement/tie-break are already covered by
+    // `majority3`/`mode3` (ranking-stats) — neither needed new code.
+    assert_eq!(run_cell("sum_equals", &[3, 4, 7]), 1);
+    assert_eq!(run_cell("sum_equals", &[3, 4, 8]), 0);
+    // 40000 + 30000 wraps to 4464 in u16; sum_equals must not false-positive on that.
+    assert_eq!(run_cell("sum_equals", &[40000, 30000, 4464]), 0);
+
+    assert_eq!(run_cell("diff_equals", &[10, 3, 7]), 1);
+    assert_eq!(run_cell("diff_equals", &[10, 3, 6]), 0);
+    assert_eq!(run_cell("diff_equals", &[3, 10, 0]), 0); // a < b → 0, not a wrapped u16
+
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Halt) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt)
+    }
+
+    let (ok, halt) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 12), ("b", 5), ("total", 60)],
+    );
+    assert_eq!((ok, halt), (1, cell80::Halt::Returned));
+    let (ok, _) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 12), ("b", 5), ("total", 61)],
+    );
+    assert_eq!(ok, 0);
+    // a genuine u32*u32 overflow is a false claim, not an escalation — a verifier always
+    // returns a verdict.
+    let (ok, halt) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 4_294_967_295), ("b", 2), ("total", 0)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned));
+
+    let (ok, _) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 48), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 1);
+    let (ok, _) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 50), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 0); // remainder 2 — inexact
+    let (ok, halt) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 48), ("b", 0), ("quotient", 4)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned)); // divide-by-zero is a false verdict too
+}
+
+#[test]
+fn stateful_rng_cells_match_defined_behaviour() {
+    // The stateful/RNG pack (library-growth.md "Next waves") — deterministic pseudo-random
+    // steps. `StateCell::run` zeros memory the previous run touched (Runner::run's own
+    // doc), so the carried field must be re-`set` from the prior `get` before every call —
+    // there's no implicit persistence across separate `.run()` invocations.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> StateCell {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+
+    // lcg_next: seed = seed * 1664525 + 1013904223 (mod 2^32), top 16 bits returned —
+    // matches the classic Numerical Recipes LCG exactly (checked against a reference
+    // computation), not just "changes each step."
+    let mut seed = 42u64;
+    let expect = [1083814273u64, 378494188, 2479403867, 955863294];
+    for want_seed in expect {
+        let cell = step("lcg_next", "Lcg", &[("seed", seed)]);
+        seed = cell.get("seed").unwrap();
+        assert_eq!(seed, want_seed);
+    }
+
+    // xorshift16: a distinct recurrence from lcg_next (shift/xor, no multiply); a zero
+    // seed is a documented fixed point (stays 0 forever).
+    let cell = step("xorshift16", "Xorshift16", &[("x", 1)]);
+    let x1 = cell.get("x").unwrap();
+    assert_ne!(x1, 0);
+    let cell = step("xorshift16", "Xorshift16", &[("x", x1)]);
+    let x2 = cell.get("x").unwrap();
+    assert_ne!(x2, x1); // genuinely advances, not a fixed point at a nonzero seed
+    let cell = step("xorshift16", "Xorshift16", &[("x", 0)]);
+    assert_eq!(cell.get("x"), Some(0)); // documented zero-seed degeneracy
+
+    // counter_step: wraps to 0 the instant it would reach `limit`; limit 0 disables
+    // wrapping (up to the native u16 boundary, which is out of the cell's control).
+    let mut count = 0u64;
+    for want in [1u64, 2, 0, 1, 2, 0] {
+        let cell = step(
+            "counter_step",
+            "CounterStep",
+            &[("count", count), ("limit", 3)],
+        );
+        count = cell.get("count").unwrap();
+        assert_eq!(count, want);
+    }
+    let cell = step(
+        "counter_step",
+        "CounterStep",
+        &[("count", 65534), ("limit", 0)],
+    );
+    assert_eq!(cell.get("count"), Some(65535)); // no wrap when limit == 0
+}
