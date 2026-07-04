@@ -44,6 +44,16 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     2/5): P@1 direct 0.94 / paraphrase 0.46 / adversarial 0.44 — both paraphrase and
     adversarial ticked up from checkpoint 1's baseline (0.42/0.39), direct flat. Kill-gate
     did not trigger.
+  - Checkpoint 5 (`checkpoint-5-gsm8k-units`, 138 cells, GSM8K math campaign M1 pack 3/5):
+    P@1 direct 0.95 / paraphrase 0.45 / adversarial 0.38 — adversarial dipped below
+    checkpoint 1's baseline (0.39). Traced to the exact 2 flipped cases (of 34): a
+    corpus-wide TF-IDF weight shift re-ranked two *pre-existing* confusable pairs
+    (`percent_to_byte`/`byte_to_percent`, `accumulate_step`/`mean3`) — neither involves a
+    units-pack cell, and the units pack's own 8 direct/paraphrase cases hit 7/8 (the one
+    miss, `unit_mul`/`unit_div` under paraphrase, is an ordinary same-shape-sibling miss).
+    Not attributable to a units-pack collision; kill-gate did not trigger, but this is the
+    first checkpoint to dip under the baseline on any split and is worth watching if the
+    trend continues.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
