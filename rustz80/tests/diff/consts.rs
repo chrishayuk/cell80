@@ -166,11 +166,12 @@ fn struct_array_const_elements_address() {
 
 #[test]
 fn string_literals_intern_length_prefixed() {
-    // A string literal argument becomes a pointer to length-prefixed bytes:
-    // `peek(s)` = length, `peek(s + 1 + i)` = byte `i`. Duplicates intern once.
+    // A string literal argument becomes a pointer to length-prefixed bytes — a
+    // little-endian u16 length at `s` (the Phase S wire format), byte `i` at
+    // `s + 2 + i`. Duplicates intern once.
     let src = r#"
-        fn len_of(s: u16) -> u16 { peek(s) as u16 }
-        fn char_at(s: u16, i: u16) -> u16 { peek(s + 1u16 + i) as u16 }
+        fn len_of(s: u16) -> u16 { peek(s) as u16 + ((peek(s + 1u16) as u16) << 8) }
+        fn char_at(s: u16, i: u16) -> u16 { peek(s + 2u16 + i) as u16 }
         fn run() -> u16 {
             len_of("SCORE") * 1000u16 + char_at("SCORE", 0u16)
         }
@@ -189,7 +190,7 @@ fn str_const_is_an_address() {
     // A `&str` const's bare name is its (length-prefixed) address.
     let src = r#"
         const MSG: &str = "HI";
-        fn len_of(s: u16) -> u16 { peek(s) as u16 }
+        fn len_of(s: u16) -> u16 { peek(s) as u16 + ((peek(s + 1u16) as u16) << 8) }
         fn run() -> u16 { len_of(MSG) }
     "#;
     assert_eq!(run_program(src, "run"), 2);

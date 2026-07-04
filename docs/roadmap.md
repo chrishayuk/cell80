@@ -385,8 +385,9 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   `[u8/u16/i16; N]`, `&str`, struct literals (`Tile { rows: […] }`), `[Struct; N]` — are
   **byte-packed into the image after the code** (`Ins::Bytes` at a `Def` symbol each, with
   its own DCE: only consts a kept function references are laid). `&TILE`, `&SHEET[i]`,
-  `CONST[i]`, and string literals (interned, length-prefixed: `peek(s)` = len,
-  `peek(s+1+i)` = byte) all resolve by address (`Expr::ConstAddr` → `LD HL, sym`);
+  `CONST[i]`, and string literals (interned, length-prefixed: at the time a u8 len
+  byte; **since Phase S0 a little-endian u16** — `docs/11-machine-text.md` §1) all
+  resolve by address (`Expr::ConstAddr` → `LD HL, sym`);
   `t: &[u8; N]` params read packed elements through the pointer, so a tile helper is *real
   Rust both ways* (diff-tested against rustc; 13 tests in `tests/diff/consts.rs`). New API:
   `lower_program_full` → `Lowered` + `codegen_loop_full` (old entries unchanged). The payoff

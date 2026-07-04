@@ -41,10 +41,19 @@ reads packed elements through the pointer — so a table helper is real Rust bot
 diff-tested against rustc.
 
 **String literals** are const data, not strings-the-type: a `"…"` literal is interned
-(deduplicated by content), stored **length-prefixed** (byte 0 = length, capped at 255),
-and **evaluates to its address** — `peek(s)` is the length, `peek(s + 1 + i)` is byte
-`i`. There is still no `String`, no heap, and no string operations; the literal is
-addressable bytes for the host or screen routines to consume.
+(deduplicated by content), stored **length-prefixed** (a little-endian **u16** length,
+capped at 1024 — the Phase S wire format, `docs/11-machine-text.md` §1), and
+**evaluates to its address** — the length's low byte is `peek(s)`, high byte
+`peek(s + 1)`, and byte `i` is `peek(s + 2 + i)`. There is still no `String`, no heap,
+and no string operations; the literal is addressable bytes for the host or screen
+routines to consume. (Pre-Phase-S the prefix was a single length byte — a consumer
+routine written against that convention, e.g. an SDK text renderer, reads the length
+low byte identically for strings under 256 bytes but must skip **2** prefix bytes,
+not 1.)
+
+**Byte-string literals** (`b"…"`) and `const B: &[u8; N] = b"…";` are the raw
+sibling: packed bytes with **no** prefix (the `[u8; N]` type carries the length),
+deduplicated, evaluating to their address. `b'a'` is a `u8` value literal.
 
 ## `if`/`match` as values
 

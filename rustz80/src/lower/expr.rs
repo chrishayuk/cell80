@@ -108,8 +108,9 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             }
             syn::Lit::Bool(b) => Ok((Expr::Lit(b.value as u16), Width::Byte)),
             // A string literal is interned into the const-data pool (length-prefixed:
-            // `peek(s)` = length, `peek(s + 1 + i)` = byte `i`) and evaluates to its
-            // address — so `frame.text(x, y, "SCORE")` hands the routine a pointer.
+            // a little-endian u16 length at `s`, byte `i` at `s + 2 + i` — the Phase S
+            // wire format) and evaluates to its address — so
+            // `frame.text(x, y, "SCORE")` hands the routine a pointer.
             syn::Lit::Str(s) => {
                 let name = ctx.consts.borrow_mut().intern_str(&s.value())?;
                 Ok((Expr::ConstAddr(name), Width::Word))
