@@ -8,7 +8,13 @@ use std::collections::HashMap;
 // fields (two little-endian slots) drivable/readable by name (`.cell` format v4 carries
 // a width per state field). Additive, but a v2 cartridge that traps 0x12/0x13 needs a
 // v2 host — an older host treats unknown trap ids as no-ops and would compute garbage.
-pub const ABI_VERSION: u32 = 2;
+// v3 (Phase S, `docs/11-machine-text.md` §3): the buffer manifest types — `bytes[N]`
+// (a byte-packed `[u8; N]` state field: N raw bytes at the address) and `str[N]` (a
+// length-prefixed UTF-8 buffer: u16 LE length + up to N bytes, valid by the §4
+// contract). Additive: scalar fields are unchanged; `.cell` format v6 carries the
+// capacity per buffer field. Buffer fields are *declared* in v3; the host byte-I/O
+// surface (packing/promotion) arrives with Phase S3.
+pub const ABI_VERSION: u32 = 3;
 
 /// The first halt code of the **escalation band** (`0xFF00..=0xFFFF`): a `halt(code)`
 /// in this range is not a failure but a structured *hand-off* — the cell declares the
@@ -78,41 +84,91 @@ impl Halt {
     }
 }
 
-/// A scalar width for typed memory read-back.
+/// A typed state-field kind: a scalar width for typed memory read-back, or (ABI v3)
+/// a fixed-capacity buffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ty {
     U8,
     U16,
     U32,
+    /// `bytes[N]` — a byte-packed `[u8; N]` state field: `N` raw bytes at the field
+    /// address. Declared in the manifest so a caller can read the envelope; scalar
+    /// `set`/`get` paths reject it (the byte-buffer I/O surface is Phase S3).
+    Bytes(u16),
+    /// `str[N]` — a length-prefixed UTF-8 buffer (u16 LE length, then up to `N`
+    /// bytes), valid by the host-boundary contract. Manifest annotation for the
+    /// Phase S3 `str_out` promotion; no field lowers to it before then.
+    Str(u16),
 }
 
 impl Ty {
-    /// Parse `u8`/`u16`/`u32`.
+    /// Parse `u8`/`u16`/`u32`, or the v3 buffer forms `bytes[N]`/`str[N]`.
     pub fn parse(s: &str) -> Result<Ty, String> {
         match s {
             "u8" => Ok(Ty::U8),
             "u16" => Ok(Ty::U16),
             "u32" => Ok(Ty::U32),
-            other => Err(format!("unknown type `{other}` (want u8/u16/u32)")),
+            other => {
+                let buf = |prefix: &str| -> Option<Result<Ty, String>> {
+                    let inner = other.strip_prefix(prefix)?.strip_suffix(']')?;
+                    Some(match inner.parse::<u16>() {
+                        Ok(n) if prefix.starts_with("bytes") => Ok(Ty::Bytes(n)),
+                        Ok(n) => Ok(Ty::Str(n)),
+                        Err(_) => Err(format!("bad capacity in `{other}`")),
+                    })
+                };
+                buf("bytes[").or_else(|| buf("str[")).unwrap_or_else(|| {
+                    Err(format!(
+                        "unknown type `{other}` (want u8/u16/u32/bytes[N]/str[N])"
+                    ))
+                })
+            }
         }
     }
 
     /// The one-byte wire code (the `.cell` manifest's `state_addrs` encoding).
+    /// Buffer codes (`3`/`4`) are followed on the wire by a u16 capacity —
+    /// format v6+ only (see `cartridge.rs`).
     pub fn code(self) -> u8 {
         match self {
             Ty::U16 => 0,
             Ty::U32 => 1,
             Ty::U8 => 2,
+            Ty::Bytes(_) => 3,
+            Ty::Str(_) => 4,
         }
     }
 
-    /// Decode a [`code`](Ty::code) byte.
-    pub fn from_code(c: u8) -> Result<Ty, String> {
+    /// Decode a [`code`](Ty::code) byte; buffer codes take the capacity that
+    /// followed on the wire.
+    pub fn from_code(c: u8, capacity: u16) -> Result<Ty, String> {
         match c {
             0 => Ok(Ty::U16),
             1 => Ok(Ty::U32),
             2 => Ok(Ty::U8),
+            3 => Ok(Ty::Bytes(capacity)),
+            4 => Ok(Ty::Str(capacity)),
             other => Err(format!("unknown state-field type code {other}")),
+        }
+    }
+
+    /// `Some(N)` for the v3 buffer kinds; `None` for scalars.
+    pub fn capacity(self) -> Option<u16> {
+        match self {
+            Ty::Bytes(n) | Ty::Str(n) => Some(n),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for Ty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Ty::U8 => write!(f, "u8"),
+            Ty::U16 => write!(f, "u16"),
+            Ty::U32 => write!(f, "u32"),
+            Ty::Bytes(n) => write!(f, "bytes[{n}]"),
+            Ty::Str(n) => write!(f, "str[{n}]"),
         }
     }
 }

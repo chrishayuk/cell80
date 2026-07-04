@@ -1,8 +1,19 @@
-# Cell80 ABI — v2
+# Cell80 ABI — v3
 
 The frozen contract every `cell80` consumer (CLI, MCP server, tool index, future
-`.cell` cartridge) relies on. **`ABI_VERSION = 2`** (`cell80::ABI_VERSION`, also the
+`.cell` cartridge) relies on. **`ABI_VERSION = 3`** (`cell80::ABI_VERSION`, also the
 `"abi"` field of the JSON report). Bump only on a breaking change to anything below.
+
+**v3 (the buffer manifest types — Phase S, `docs/11-machine-text.md` §3).** Additive
+over v2: `Ty` grows **`bytes[N]`** (a byte-packed `[u8; N]` state field — `N` raw
+bytes at the field address, `ceil(N/2)` slots) and **`str[N]`** (a length-prefixed
+UTF-8 buffer: u16 LE length + up to `N` bytes, host-validated at the boundary).
+`state_addrs` declares buffer fields with their capacity (`.cell` v6 wire: type code
+3/4 followed by a u16 capacity), so a caller reads the envelope before wiring.
+Scalar `set`/`get`/`read_named` paths **reject/skip** buffer fields with a steering
+error; the byte-buffer I/O surface (host packing, `str_out` promotion, graph `str`
+edges) arrives with Phase S3. No new traps — string work lowers to `LDIR`/`CPIR`-shaped
+loops with honest cycle costs (spec §5).
 
 **v2 (the 32-bit lane).** Two additions over v1: the `ED FE` traps `0x12` (MUL32) and
 `0x13` (DIVMOD32), and **`u32` state fields** — two consecutive little-endian slots (low
@@ -136,10 +147,10 @@ with a compiled `CellProgram` (and its serialized image).
 
 ## Report JSON
 
-`Report::to_json()` emits, in order (`abi` carries the current `ABI_VERSION` — 2):
+`Report::to_json()` emits, in order (`abi` carries the current `ABI_VERSION` — 3):
 
 ```json
-{"abi":2,"entry":"run","entry_addr":32768,"result":42,"regs":[42,0,0],
+{"abi":3,"entry":"run","entry_addr":32768,"result":42,"regs":[42,0,0],
  "cycles":67,"trapped_ops":0,"budget":2000000,"halt":"returned","code_bytes":47,"functions":1,
  "symbols":{"run":32768},"memory_touched":[[36864,36867]],"reads":{}}
 ```
@@ -162,17 +173,20 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v5**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v6**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
-`state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
-0 = u16, 1 = u32, 2 = u8) at `STATE_BASE` (so a host or a peer cell in a graph drives the
-cell **by field name without the source** — a `u32` field at its full width), and the
+`state_addrs`: each addressable state field's byte address **and kind** (`Ty`, one byte:
+0 = u16, 1 = u32, 2 = u8, 3 = bytes[N], 4 = str[N] — buffer codes followed by a u16
+capacity) at `STATE_BASE` (so a host or a peer cell in a graph drives the
+cell **by field name without the source** — a `u32` field at its full width, a buffer
+field with a known envelope), and the
 `limits` list (the escalation contract's static half, above). `from_bytes`
-still reads v4 (no `limits`, no content addressing), v3 (addresses without widths →
-fields read as `u16`), and v2 (no `state_addrs`) cartridges. This named, versioned,
+still reads v5 (no buffer types), v4 (no `limits`, no content addressing), v3
+(addresses without widths → fields read as `u16`), and v2 (no `state_addrs`)
+cartridges. This named, versioned,
 manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
-`CellGraph` pass around. (Note: the `.cell` *file* format version — v5 — is distinct
-from the runtime `ABI_VERSION` above, now 2.)
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v6 — is distinct
+from the runtime `ABI_VERSION` above, now 3.)
 
 ### Content addressing & signing (v5)
 

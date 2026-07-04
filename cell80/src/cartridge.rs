@@ -15,7 +15,10 @@ const MAGIC: &[u8; 4] = b"CELL";
 // addressing (roadmap 3.1): a SHA-256 artifact hash over the serialized manifest +
 // image, verified on load by default, plus an optional ed25519 signature over that
 // hash. Pre-v5 cartridges carry no hash and load unverified (grandfathered).
-const VERSION: u8 = 5;
+// v6 (ABI v3, Phase S): buffer state-field types — a `bytes[N]`/`str[N]` entry's
+// type code (3/4) is followed by a u16 LE capacity. Scalar entries are unchanged,
+// and pre-v6 cartridges never contain codes 3/4, so back-compat reads hold.
+const VERSION: u8 = 6;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -36,12 +39,16 @@ fn read_pairs(r: &mut ImageReader) -> Result<Vec<(String, String)>, String> {
 
 /// Serialize / read a `(name, u16 address, ty)` list (the state field addresses). A v3
 /// cartridge has no `ty` byte — its fields read back as `u16` (the only width v3 knew).
+/// A v6+ buffer entry (type code 3/4) carries a u16 capacity after the code.
 fn put_addrs(b: &mut Vec<u8>, v: &[(String, u16, Ty)]) {
     b.extend_from_slice(&(v.len() as u16).to_le_bytes());
     for (n, a, ty) in v {
         put_string(b, n);
         b.extend_from_slice(&a.to_le_bytes());
         b.push(ty.code());
+        if let Some(cap) = ty.capacity() {
+            b.extend_from_slice(&cap.to_le_bytes());
+        }
     }
 }
 fn read_addrs(r: &mut ImageReader, ver: u8) -> Result<Vec<(String, u16, Ty)>, String> {
@@ -51,7 +58,10 @@ fn read_addrs(r: &mut ImageReader, ver: u8) -> Result<Vec<(String, u16, Ty)>, St
         let name = r.string()?;
         let addr = r.u16()?;
         let ty = if ver >= 4 {
-            Ty::from_code(r.u8()?)?
+            let code = r.u8()?;
+            // Buffer codes carry a capacity; pre-v6 formats never wrote them.
+            let cap = if matches!(code, 3 | 4) { r.u16()? } else { 0 };
+            Ty::from_code(code, cap)?
         } else {
             Ty::U16
         };
@@ -241,7 +251,7 @@ impl Cartridge {
             return Err("not a .cell cartridge".into());
         }
         let ver = r.u8()?;
-        if !(2..=5).contains(&ver) {
+        if !(2..=VERSION).contains(&ver) {
             return Err(format!("unsupported .cell version {ver}"));
         }
         let abi_version = r.u32()?;

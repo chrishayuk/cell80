@@ -227,6 +227,15 @@ impl Runner {
         inputs: &[(u16, Ty, u64)],
         budget: u64,
     ) -> Result<Report, String> {
+        // Buffer fields (`bytes[N]`/`str[N]`) can't ride the scalar input triple —
+        // the byte-buffer write surface is Phase S3. Reject before exec, which
+        // assumes validated scalars.
+        if let Some((addr, ty, _)) = inputs.iter().find(|(_, ty, _)| ty.capacity().is_some()) {
+            return Err(format!(
+                "input at {addr:#06x} is {ty} — a buffer, not a scalar; the \
+                 byte-buffer I/O surface arrives with Phase S3"
+            ));
+        }
         let (entry, entry_addr) = self.resolve_entry(entry)?;
         let (regs, cycles, trapped_ops, halt) = self.exec(entry_addr, args, inputs, budget);
         // Observability: clone the symbol map + size report + coalesce the memory diff.
@@ -434,6 +443,9 @@ impl Runner {
                 Ty::U8 => 1,
                 Ty::U16 => 2,
                 Ty::U32 => 4,
+                // Validated out by `run_with_inputs` (buffers don't ride the
+                // scalar input triple until the S3 byte-I/O surface).
+                Ty::Bytes(_) | Ty::Str(_) => unreachable!("buffer input reached exec"),
             };
             for i in 0..bytes {
                 let a = addr.wrapping_add(i as u16) as usize;
@@ -518,13 +530,16 @@ impl Runner {
     pub fn read_named(&self, fields: &[(String, u16, Ty)]) -> Vec<(String, u64)> {
         fields
             .iter()
-            .map(|(name, addr, ty)| {
+            .filter_map(|(name, addr, ty)| {
                 let v = match ty {
                     Ty::U8 => self.peek_u8(*addr) as u64,
                     Ty::U16 => self.peek_u16(*addr) as u64,
                     Ty::U32 => self.peek_u32(*addr) as u64,
+                    // A buffer field has no scalar reading — skipped rather than
+                    // misreported; the byte read-back surface is Phase S3.
+                    Ty::Bytes(_) | Ty::Str(_) => return None,
                 };
-                (name.clone(), v)
+                Some((name.clone(), v))
             })
             .collect()
     }
