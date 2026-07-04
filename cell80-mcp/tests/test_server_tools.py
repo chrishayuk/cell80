@@ -88,3 +88,29 @@ def test_cell_graph_run_handler_composes_and_validates():
     # A structurally bad graph is reported as data, not raised.
     bad = {"nodes": {"x": "clamp"}, "wires": [{"to": "x.bogus", "const": 1}], "outputs": {}}
     assert "error" in h["cell_graph_run"](bad)
+
+
+def test_escalation_is_a_typed_result_not_an_error(tmp_path, monkeypatch):
+    """The escalation contract (roadmap 3.2) over the MCP surface: a `//! limits:` header
+    lands in the inspect manifest, and a halt in the escalation band comes back as a
+    typed hand-off (halt='escalate' + reason), distinct from {'error': ...}."""
+    (tmp_path / "bounded_double.rs").write_text(
+        "//! Double a small reading.\n"
+        "//! tags: math, double\n"
+        "//! limits: floats, inputs > 1000\n"
+        "fn run(n: u16) -> u16 { if n > 1000 { halt(0xFF06u16); } n * 2 }\n"
+    )
+    from cell80_mcp.library import CellLibrary
+
+    lib = CellLibrary(str(tmp_path))
+    m = lib.inspect("bounded_double")
+    assert m["limits"] == ["floats", "inputs > 1000"]
+
+    ok = lib.run("bounded_double", [21])
+    assert ok["result"] == 42 and ok["halt"] == "returned"
+
+    esc = lib.run("bounded_double", [5000])
+    assert "error" not in esc
+    assert esc["halt"] == "escalate"
+    assert esc["escalate"] == "out_of_domain"
+    assert esc["escalate_code"] == 0xFF06

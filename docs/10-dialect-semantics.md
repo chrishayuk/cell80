@@ -130,3 +130,11 @@ there is no `String`, no slices, no string ops), floats, `u64`, heap allocation,
 traits, recursion, I/O. These are the escalation path — a cell that needs them isn't a
 cell, and the honest answer is a typed hand-off to the host, not a bigger ISA. See the
 roadmap's non-goals.
+
+That hand-off is a language-level idiom, not new syntax: `halt(code)` with a code in
+the **escalation band** (`0xFF00`–`0xFFFF`) reports as `halt: "escalate"` with a named
+reason (`0xFF01` = `needs_strings`, `0xFF02` = `needs_floats`, `0xFF03` = `needs_io`,
+`0xFF06` = `out_of_domain`, …) instead of `halted` — the orchestrator routes the
+request up a rung rather than treating it as a failure. A cell's *static* boundary is
+declared in its manifest (`//! limits:` header → the `.cell` `limits` field). Codes and
+the full table live in [09-cell80-abi.md](09-cell80-abi.md).

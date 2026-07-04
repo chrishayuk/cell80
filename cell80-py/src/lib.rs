@@ -17,10 +17,23 @@ fn halt_str(h: Halt) -> &'static str {
     match h {
         Halt::Returned => "returned",
         Halt::Halted(_) => "halted",
+        Halt::Escalate(_) => "escalate",
         Halt::CycleBudget => "cycle_budget",
         Halt::MemoryLimit => "memory_limit",
         Halt::DivByZero => "div_by_zero",
     }
+}
+
+/// Write the halt tag — and, for an escalation, the typed hand-off (`escalate` reason +
+/// raw code) — so an orchestrator can tell "exceeds the kernel class" from "failed"
+/// without string-matching error text.
+fn set_halt(d: &Bound<'_, PyDict>, h: Halt) -> PyResult<()> {
+    d.set_item("halt", halt_str(h))?;
+    if let (Halt::Escalate(code), Some(reason)) = (h, h.escalate_reason()) {
+        d.set_item("escalate", reason)?;
+        d.set_item("escalate_code", code)?;
+    }
+    Ok(())
 }
 
 /// A brief manifest (what `search` returns — enough to choose a cell).
@@ -42,6 +55,7 @@ fn full<'py>(py: Python<'py>, m: &Manifest) -> PyResult<Bound<'py, PyDict>> {
     d.set_item("ret", &m.signature.ret)?;
     d.set_item("state", m.signature.state.clone())?;
     d.set_item("source_hash", format!("0x{:016x}", m.source_hash))?;
+    d.set_item("limits", m.limits.clone())?;
     Ok(d)
 }
 
@@ -62,7 +76,7 @@ impl CellHost {
     }
 
     /// Compile a dialect `.rs` source into the catalog. `entry` defaults to `run`/`main`.
-    #[pyo3(signature = (id, src, summary="", tags=Vec::new(), entry=None))]
+    #[pyo3(signature = (id, src, summary="", tags=Vec::new(), entry=None, limits=Vec::new()))]
     fn add_source(
         &mut self,
         id: &str,
@@ -70,6 +84,7 @@ impl CellHost {
         summary: &str,
         tags: Vec<String>,
         entry: Option<String>,
+        limits: Vec<String>,
     ) -> PyResult<()> {
         let cart = Cartridge::compile(
             src,
@@ -79,6 +94,7 @@ impl CellHost {
                 summary: summary.to_string(),
                 tags,
                 entry,
+                limits,
             },
         )
         .map_err(PyValueError::new_err)?;
@@ -180,7 +196,7 @@ impl CellHost {
         d.set_item("regs", vec![f.regs[0], f.regs[1], f.regs[2]])?;
         d.set_item("cycles", f.cycles)?;
         d.set_item("trapped_ops", f.trapped_ops)?;
-        d.set_item("halt", halt_str(f.halt))?;
+        set_halt(&d, f.halt)?;
         Ok(d)
     }
 
@@ -208,7 +224,7 @@ impl CellHost {
         d.set_item("regs", vec![rep.regs[0], rep.regs[1], rep.regs[2]])?;
         d.set_item("cycles", rep.cycles)?;
         d.set_item("trapped_ops", rep.trapped_ops)?;
-        d.set_item("halt", halt_str(rep.halt))?;
+        set_halt(&d, rep.halt)?;
         let sd = PyDict::new_bound(py);
         for (name, val) in state {
             sd.set_item(name, val)?;
@@ -254,6 +270,18 @@ impl CellHost {
     /// Release a loaded handle (returns its bus to the pool).
     fn unload(&mut self, handle: usize) -> PyResult<()> {
         self.host.unload(handle).map_err(PyValueError::new_err)
+    }
+
+    /// Enable memoization for cells loaded from now on (roadmap 3.3): repeated `run`
+    /// calls with the same args become hash lookups.
+    fn set_cache(&mut self, on: bool) {
+        self.host.set_cache(on);
+    }
+
+    /// `(hits, lookups)` of a loaded cell's memoization cache, or `None` if caching
+    /// wasn't enabled when it was loaded.
+    fn cache_stats(&mut self, handle: usize) -> PyResult<Option<(u64, u64)>> {
+        self.host.cache_stats(handle).map_err(PyValueError::new_err)
     }
 }
 

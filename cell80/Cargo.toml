@@ -20,6 +20,11 @@ serde_json = "1"
 # The capability scan walks the parsed AST; the cell layer parses + cap-checks before
 # handing the file to `rustz80::compile_file`.
 syn = { version = "2", features = ["full", "visit"] }
+# Content addressing + optional signing (roadmap 3.1): the artifact hash covers the
+# serialized manifest + image; a signature (when present) covers the hash. A registry of
+# executable artifacts invites poisoning — answered before anyone asks.
+sha2 = "0.10"
+ed25519-dalek = "2"
 
 [[bin]]
 name = "cell80"

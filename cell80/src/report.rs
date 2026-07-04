@@ -10,6 +10,26 @@ use std::collections::HashMap;
 // v2 host — an older host treats unknown trap ids as no-ops and would compute garbage.
 pub const ABI_VERSION: u32 = 2;
 
+/// The first halt code of the **escalation band** (`0xFF00..=0xFFFF`): a `halt(code)`
+/// in this range is not a failure but a structured *hand-off* — the cell declares the
+/// request exceeded the kernel class (needs strings / floats / I/O / …), so an
+/// orchestrator routes it up the ladder instead of retrying or reporting an error. The
+/// band rides the existing `halt` trap, so it needs **no compiler surface**: any cell
+/// can `halt(0xFF03)` today. See [`Halt::Escalate`] and `docs/09-cell80-abi.md`.
+pub const ESCALATE_BASE: u16 = 0xFF00;
+
+/// The named reasons of the escalation band (`ESCALATE_BASE + offset`). Codes in the
+/// band beyond the named set decode as `"custom"` — the code itself is always carried.
+pub const ESCALATE_REASONS: [(u16, &str); 7] = [
+    (0xFF00, "unspecified"),
+    (0xFF01, "needs_strings"),
+    (0xFF02, "needs_floats"),
+    (0xFF03, "needs_io"),
+    (0xFF04, "needs_network"),
+    (0xFF05, "needs_wider_math"),
+    (0xFF06, "out_of_domain"),
+];
+
 /// Why a run stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Halt {
@@ -17,6 +37,11 @@ pub enum Halt {
     Returned,
     /// The program called `halt(code)` (Cell80 `ED FE` HALT) — an explicit stop.
     Halted(u16),
+    /// The program called `halt(code)` with a code in the [`ESCALATE_BASE`] band — a
+    /// structured escalation: *this request exceeds the kernel class; hand it to the
+    /// next rung* (vs [`Halted`](Halt::Halted), an outcome, and the limit stops,
+    /// failures). Decode the reason with [`escalate_reason`](Halt::escalate_reason).
+    Escalate(u16),
     /// The T-state budget was reached first.
     CycleBudget,
     /// The `max_touched` memory ceiling was reached.
@@ -31,9 +56,24 @@ impl Halt {
         match self {
             Halt::Returned => "returned",
             Halt::Halted(_) => "halted",
+            Halt::Escalate(_) => "escalate",
             Halt::CycleBudget => "cycle_budget",
             Halt::MemoryLimit => "memory_limit",
             Halt::DivByZero => "div_by_zero",
+        }
+    }
+
+    /// The escalation reason name for an [`Escalate`](Halt::Escalate) code
+    /// (`"custom"` for unnamed codes in the band), `None` for any other halt.
+    pub fn escalate_reason(self) -> Option<&'static str> {
+        match self {
+            Halt::Escalate(c) => Some(
+                ESCALATE_REASONS
+                    .iter()
+                    .find(|(code, _)| *code == c)
+                    .map_or("custom", |(_, name)| name),
+            ),
+            _ => None,
         }
     }
 }
@@ -134,6 +174,10 @@ pub struct Report {
     pub symbols: Vec<(String, u16)>,
     /// Contiguous RAM ranges written during the run, as `(start, end_inclusive)`.
     pub touched: Vec<(u16, u16)>,
+    /// `(hits, lookups)` of this runner's memoization cache — `None` unless the cache was
+    /// [enabled](crate::Runner::enable_cache). The cache serves the fast path; this is the
+    /// hit-rate counter riding along on the rich report.
+    pub cache_stats: Option<(u64, u64)>,
 }
 
 impl Report {
@@ -142,6 +186,10 @@ impl Report {
         let halt = match self.halt {
             Halt::Returned => "returned".to_string(),
             Halt::Halted(c) => format!("halted (code {c})"),
+            Halt::Escalate(c) => format!(
+                "escalated ({}, code {c:#06x}) — request exceeds the kernel class",
+                self.halt.escalate_reason().unwrap_or("custom")
+            ),
             Halt::CycleBudget => format!("CYCLE BUDGET EXCEEDED (≥ {} T-states)", self.budget),
             Halt::MemoryLimit => "MEMORY LIMIT EXCEEDED".to_string(),
             Halt::DivByZero => "DIVIDE BY ZERO".to_string(),
@@ -209,15 +257,25 @@ impl Report {
             .iter()
             .map(|(n, v)| format!("\"{n}\":{v}"))
             .collect();
-        // `halt_code` only appears for an explicit `halt(code)`.
+        // `halt_code` only appears for an explicit `halt(code)`; an escalation carries
+        // its machine-readable reason + raw code.
         let halt_code = match self.halt {
             Halt::Halted(c) => format!(",\"halt_code\":{c}"),
+            Halt::Escalate(c) => format!(
+                ",\"escalate\":\"{}\",\"escalate_code\":{c}",
+                self.halt.escalate_reason().unwrap_or("custom")
+            ),
             _ => String::new(),
+        };
+        // `cache` only appears when memoization is enabled on the runner.
+        let cache = match self.cache_stats {
+            Some((h, n)) => format!(",\"cache\":{{\"hits\":{h},\"lookups\":{n}}}"),
+            None => String::new(),
         };
         format!(
             "{{\"abi\":{},\"entry\":\"{}\",\"entry_addr\":{},\"result\":{},\"regs\":[{},{},{}],\"cycles\":{},\
              \"trapped_ops\":{},\"budget\":{},\"halt\":\"{}\"{},\"code_bytes\":{},\"functions\":{},\
-             \"symbols\":{{{}}},\"memory_touched\":[{}],\"reads\":{{{}}}}}",
+             \"symbols\":{{{}}},\"memory_touched\":[{}],\"reads\":{{{}}}{cache}}}",
             ABI_VERSION,
             self.entry,
             self.entry_addr,

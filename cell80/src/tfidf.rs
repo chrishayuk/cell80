@@ -243,6 +243,7 @@ mod tests {
             abi_version: 0,
             signature: Default::default(),
             state_addrs: vec![],
+            limits: Vec::new(),
         };
         let idx = TfidfIndex::build(vec![
             mk(

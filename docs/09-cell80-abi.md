@@ -89,9 +89,33 @@ is a no-op (also uncounted).
 |---|---|
 | `returned` | the entry returned cleanly |
 | `halted` (+ `halt_code`) | the program called `halt(code)` (an `ED FE` trap) |
+| `escalate` (+ `escalate`, `escalate_code`) | the program called `halt(code)` with a code in the **escalation band** — see below |
 | `cycle_budget` | the T-state budget was reached first |
 | `memory_limit` | the `max_touched` ceiling was reached |
 | `div_by_zero` | a `/ 0` / `% 0` reached a divide trap under the default `DivByZero::Halt` policy (the `Saturate` opt-in keeps the legacy bounded-garbage value instead) |
+
+### The escalation band (`0xFF00`–`0xFFFF`)
+
+A `halt(code)` in this band is not an outcome or a failure but a **structured
+hand-off** (roadmap 3.2): the cell declares that the request exceeded the kernel
+class, so an orchestrator should route it up the escalation ladder rather than retry
+or report an error. The band rides the ordinary `halt` trap — any cell can escalate
+today, no new compiler surface. Named reasons:
+
+| code | `escalate` |
+|---|---|
+| `0xFF00` | `unspecified` |
+| `0xFF01` | `needs_strings` |
+| `0xFF02` | `needs_floats` |
+| `0xFF03` | `needs_io` |
+| `0xFF04` | `needs_network` |
+| `0xFF05` | `needs_wider_math` |
+| `0xFF06` | `out_of_domain` |
+
+Unnamed codes in the band decode as `custom`; the raw code always rides along as
+`escalate_code`. The static half of the contract is the manifest's `limits` field
+(`.cell` v5, `//! limits:` in a library source header): what the cell *can't* do,
+declared so a router can avoid the escalation round-trip entirely.
 
 ## Capability model
 
@@ -122,7 +146,10 @@ with a compiled `CellProgram` (and its serialized image).
 - `result` / `regs` — `HL`, and `[HL, DE, BC]`.
 - `cycles` / `budget` — see the caveat above.
 - `trapped_ops` — count of cost-bearing traps (the honest companion to `cycles`).
-- `halt` — one of the statuses above; `halt_code` is present only for `halted`.
+- `halt` — one of the statuses above; `halt_code` is present only for `halted`;
+  `escalate` + `escalate_code` only for an escalation.
+- `cache` — `{hits, lookups}` of the runner's memoization cache; present only when
+  the cache is enabled (`Runner::enable_cache` / `CellHost::set_cache`).
 - `code_bytes` / `functions` — compiled size and function count.
 - `symbols` — name → address, sorted by address.
 - `memory_touched` — contiguous written ranges, `[start, end_inclusive]`.
@@ -132,12 +159,28 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v4**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v5**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
-and `state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
-0 = u16, 1 = u32, 2 = u8) at `STATE_BASE`, so a host or a peer cell in a graph drives the
-cell **by field name without the source** — a `u32` field at its full width. `from_bytes`
-still reads v3 (addresses without widths → fields read as `u16`) and v2 (no `state_addrs`)
-cartridges. This named, versioned, manifest-bearing artifact is the object the CLI, a tool
-index, the MCP server, and a `CellGraph` pass around. (Note: the `.cell` *file* format
-version — v4 — is distinct from the runtime `ABI_VERSION` above, now 2.)
+`state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
+0 = u16, 1 = u32, 2 = u8) at `STATE_BASE` (so a host or a peer cell in a graph drives the
+cell **by field name without the source** — a `u32` field at its full width), and the
+`limits` list (the escalation contract's static half, above). `from_bytes`
+still reads v4 (no `limits`, no content addressing), v3 (addresses without widths →
+fields read as `u16`), and v2 (no `state_addrs`) cartridges. This named, versioned,
+manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v5 — is distinct
+from the runtime `ABI_VERSION` above, now 2.)
+
+### Content addressing & signing (v5)
+
+After the manifest, a v5 cartridge carries its **artifact hash** — SHA-256 over the
+serialized manifest + the image, i.e. the whole tool: metadata, entry, capability
+policy, code — and an optional **ed25519 signature block** (`(verifying key,
+signature)` over that hash). `Cartridge::from_bytes` **verifies both by default** and
+refuses a mismatch; every loader (`exec`, `inspect`, `index`, `serve`, the MCP
+library's `.cell` path) inherits the check. `--no-verify` (CLI) /
+`from_bytes_unverified` is the dev escape hatch. Pre-v5 cartridges carry no hash and
+load as before (grandfathered — recompile to pin them). `cell80 keygen` mints a
+signing key; `cell80 sign <file.cell> --key <key>` embeds the signature in place.
+Signing does not change the artifact hash: the signature *wraps* the address, so a
+signed and an unsigned serialization of the same tool share it.

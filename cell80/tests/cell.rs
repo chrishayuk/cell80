@@ -396,6 +396,7 @@ fn cartridge_roundtrip_and_inspect() {
             summary: "product".into(),
             tags: vec!["math".into(), "demo".into()],
             entry: None, // resolves to `run`
+            limits: Vec::new(),
         },
     )
     .unwrap();
@@ -483,6 +484,7 @@ fn cell_host_warm_session() {
                 entry: Some("S::run".into()),
                 summary: "sum two fields".into(),
                 tags: vec!["state".into()],
+                limits: Vec::new(),
             },
         )
         .unwrap(),
@@ -658,6 +660,7 @@ fn cell_index_search_ranks_by_relevance() {
                 summary: format!("the {id} cell"),
                 tags: tags.iter().map(|s| s.to_string()).collect(),
                 entry: None,
+                limits: Vec::new(),
             },
         )
         .unwrap();
@@ -1461,6 +1464,7 @@ fn wide_u32_state_field_end_to_end() {
             entry: Some("Acc::run".into()),
             summary: "wide accumulator".into(),
             tags: vec!["state".into()],
+            limits: Vec::new(),
         },
     )
     .unwrap();
@@ -1547,4 +1551,283 @@ fn div_by_zero_saturates_under_the_legacy_policy() {
         r2.run(None, &[9, 0], DEFAULT_CYCLES).unwrap().result,
         0xFFFF
     );
+}
+
+// ── the memoization cache (roadmap 3.3) ────────────────────────────────────────────
+
+#[test]
+fn cache_replays_identical_outcomes_and_counts_hits() {
+    let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a * b + 1 }").unwrap();
+    r.enable_cache();
+    let first = r.run_fast(None, &[6, 7], DEFAULT_CYCLES).unwrap();
+    let hit = r.run_fast(None, &[6, 7], DEFAULT_CYCLES).unwrap();
+    // Byte-for-byte the same outcome: result, cycles, trapped_ops, halt.
+    assert_eq!(hit.result, first.result);
+    assert_eq!(hit.cycles, first.cycles);
+    assert_eq!(hit.trapped_ops, first.trapped_ops);
+    assert_eq!(hit.halt, first.halt);
+    assert_eq!(r.cache_stats(), Some((1, 2)));
+
+    // A different argument set is its own entry (miss, then hit).
+    assert_eq!(r.run_fast(None, &[2, 3], DEFAULT_CYCLES).unwrap().result, 7);
+    assert_eq!(r.run_fast(None, &[2, 3], DEFAULT_CYCLES).unwrap().result, 7);
+    assert_eq!(r.cache_stats(), Some((2, 4)));
+}
+
+#[test]
+fn cache_respects_the_budget_and_never_stores_budget_stops() {
+    // A loop that takes real cycles: cached at a generous budget, then re-asked with a
+    // budget smaller than the stored cycles — must NOT replay (a live run would have
+    // stopped with CycleBudget first).
+    let src = "fn run(n: u16) -> u16 { let mut s = 0u16; let mut i = 0u16;
+               while i < n { s = s + i; i = i + 1; } s }";
+    let mut r = Runner::compile(src).unwrap();
+    r.enable_cache();
+    let full = r.run_fast(None, &[100], DEFAULT_CYCLES).unwrap();
+    assert_eq!(full.halt, cell80::Halt::Returned);
+    assert!(full.cycles > 50);
+
+    let tight = r.run_fast(None, &[100], 50).unwrap();
+    assert_eq!(tight.halt, cell80::Halt::CycleBudget); // fresh run, not the cached return
+    // The budget stop itself must not have been stored: a full-budget ask still succeeds.
+    let again = r.run_fast(None, &[100], DEFAULT_CYCLES).unwrap();
+    assert_eq!(again.halt, cell80::Halt::Returned);
+    assert_eq!(again.result, full.result);
+}
+
+#[test]
+fn cache_disabled_by_default_and_cleared_on_pool_reuse() {
+    use cell80::{CellPool, CellProgram};
+    let mut r = Runner::compile("fn run() -> u16 { 1 }").unwrap();
+    r.run_fast(None, &[], DEFAULT_CYCLES).unwrap();
+    assert_eq!(r.cache_stats(), None); // opt-in, off by default
+
+    // A pooled bus re-pointed at a different program must not replay the old one.
+    let p1 = CellProgram::compile("fn run() -> u16 { 11 }").unwrap();
+    let p2 = CellProgram::compile("fn run() -> u16 { 22 }").unwrap();
+    let mut pool = CellPool::new();
+    let mut a = pool.acquire(&p1);
+    a.enable_cache();
+    assert_eq!(a.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 11);
+    assert_eq!(a.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 11);
+    assert_eq!(a.cache_stats(), Some((1, 2)));
+    pool.release(a);
+    let mut b = pool.acquire(&p2);
+    assert_eq!(b.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 22);
+    assert_eq!(b.cache_stats(), Some((0, 1))); // entries and counters both reset
+}
+
+#[test]
+fn cache_stats_ride_the_report_and_its_json() {
+    let mut r = Runner::compile("fn run(a: u16) -> u16 { a + 1 }").unwrap();
+    let rep = r.run(None, &[1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.cache_stats, None);
+    assert!(!rep.to_json().contains("\"cache\""));
+
+    r.enable_cache();
+    r.run_fast(None, &[5], DEFAULT_CYCLES).unwrap();
+    r.run_fast(None, &[5], DEFAULT_CYCLES).unwrap();
+    let rep = r.run(None, &[1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.cache_stats, Some((1, 2)));
+    assert!(rep.to_json().contains("\"cache\":{\"hits\":1,\"lookups\":2}"));
+}
+
+#[test]
+fn host_enables_caching_on_load() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
+    let cart = Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap();
+    let mut host = CellHost::new();
+    host.add(cart);
+    host.set_cache(true);
+    let h = host.load("adder").unwrap();
+    host.run_fast(h, &[3, 4], DEFAULT_CYCLES).unwrap();
+    host.run_fast(h, &[3, 4], DEFAULT_CYCLES).unwrap();
+    assert_eq!(host.cache_stats(h).unwrap(), Some((1, 2)));
+    host.unload(h).unwrap();
+}
+
+// ── the escalation contract (roadmap 3.2) ──────────────────────────────────────────
+
+#[test]
+fn escalation_band_decodes_as_a_typed_handoff() {
+    use cell80::{Halt, ESCALATE_BASE};
+    // A cell that answers small inputs and escalates past its domain.
+    let src = "fn run(n: u16) -> u16 { if n > 1000 { halt(0xFF06u16); } n * 2 }";
+    let mut r = Runner::compile(src).unwrap();
+    assert_eq!(r.run(None, &[21], DEFAULT_CYCLES).unwrap().result, 42);
+
+    let rep = r.run(None, &[2000], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.halt, Halt::Escalate(0xFF06));
+    assert_eq!(rep.halt.escalate_reason(), Some("out_of_domain"));
+    assert!(rep.to_json().contains("\"halt\":\"escalate\""));
+    assert!(rep.to_json().contains("\"escalate\":\"out_of_domain\""));
+    assert!(rep.to_json().contains("\"escalate_code\":65286"));
+    assert!(rep.to_human().contains("escalated (out_of_domain"));
+
+    // Below the band it's an ordinary explicit stop, exactly as before.
+    let src = "fn run() -> u16 { halt(7u16); 0 }";
+    let rep = cell80::run(src, None, &[], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.halt, Halt::Halted(7));
+    assert_eq!(rep.halt.escalate_reason(), None);
+
+    // The band floor itself escalates as "unspecified"; unnamed codes are "custom".
+    assert_eq!(Halt::Escalate(ESCALATE_BASE).escalate_reason(), Some("unspecified"));
+    assert_eq!(Halt::Escalate(0xFFAA).escalate_reason(), Some("custom"));
+}
+
+#[test]
+fn manifest_limits_round_trip_and_render() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
+    let cart = Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("adder".into()),
+            limits: vec!["floats".into(), "sums > 65535".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let bytes = cart.to_bytes();
+    let back = Cartridge::from_bytes(&bytes).unwrap();
+    assert_eq!(back.manifest.limits, vec!["floats", "sums > 65535"]);
+    assert!(back.to_human().contains("limits: floats, sums > 65535"));
+    assert!(back.to_json().contains("\"limits\":[\"floats\",\"sums > 65535\"]"));
+
+    // No declared limits → empty list, absent from the human view.
+    let plain = Cartridge::compile(
+        "fn run() -> u16 { 1 }",
+        CellConfig::sandboxed(),
+        CartridgeOpts::default(),
+    )
+    .unwrap();
+    let back = Cartridge::from_bytes(&plain.to_bytes()).unwrap();
+    assert!(back.manifest.limits.is_empty());
+    assert!(!back.to_human().contains("limits:"));
+}
+
+#[test]
+fn escalation_caches_like_any_deterministic_stop() {
+    // An escalation is a property of (entry, args) — the memoization cache may replay it.
+    let src = "fn run(n: u16) -> u16 { if n > 10 { halt(0xFF01u16); } n }";
+    let mut r = Runner::compile(src).unwrap();
+    r.enable_cache();
+    let first = r.run_fast(None, &[99], DEFAULT_CYCLES).unwrap();
+    let hit = r.run_fast(None, &[99], DEFAULT_CYCLES).unwrap();
+    assert_eq!(first.halt, cell80::Halt::Escalate(0xFF01));
+    assert_eq!(hit.halt, first.halt);
+    assert_eq!(r.cache_stats(), Some((1, 2)));
+}
+
+// ── content-addressed, signed artifacts (roadmap 3.1) ─────────────────────────────
+
+#[cfg(test)]
+fn adder_cart() -> cell80::Cartridge {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
+    Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap()
+}
+
+#[test]
+fn artifact_hash_round_trips_and_pins_content() {
+    use cell80::Cartridge;
+    let cart = adder_cart();
+    let bytes = cart.to_bytes();
+    let back = Cartridge::from_bytes(&bytes).unwrap();
+    assert_eq!(back.artifact_hash(), cart.artifact_hash());
+    assert!(back.to_json().contains("\"artifact_hash\":\"sha256:"));
+    assert!(back.to_json().contains("\"signed\":false"));
+    assert!(back.to_human().contains("(unsigned)"));
+
+    // A different program is a different address; so is a different manifest.
+    use cell80::{Cartridge as C, CartridgeOpts, CellConfig};
+    let other = C::compile(
+        "fn run(a: u16, b: u16) -> u16 { a - b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap();
+    assert_ne!(other.artifact_hash(), cart.artifact_hash());
+}
+
+#[test]
+fn tampered_bytes_are_refused_by_default_and_loadable_unverified() {
+    use cell80::Cartridge;
+    let bytes = adder_cart().to_bytes();
+
+    // Flip a bit in the image (the last byte): parses fine, so only the hash refuses it.
+    let mut evil = bytes.clone();
+    let n = bytes.len();
+    evil[n - 1] ^= 0x01;
+    let err = Cartridge::from_bytes(&evil).err().expect("tampered load must fail");
+    assert!(err.contains("hash mismatch"), "{err}");
+
+    // A manifest-region flip must not load cleanly either (structural error or hash
+    // mismatch, depending on which byte the flip lands in — refusal is the contract).
+    let mut evil = bytes.clone();
+    evil[10] ^= 0x01;
+    assert!(Cartridge::from_bytes(&evil).is_err());
+
+    // The dev escape hatch parses (structure permitting) without the hash check.
+    let mut evil = bytes.clone();
+    let n = evil.len();
+    evil[n - 1] ^= 0x01;
+    assert!(Cartridge::from_bytes_unverified(&evil).is_ok());
+}
+
+#[test]
+fn signing_round_trips_and_forgeries_fail() {
+    use cell80::Cartridge;
+    let mut cart = adder_cart();
+    let seed = [7u8; 32];
+    cart.sign(&seed);
+    let bytes = cart.to_bytes();
+
+    let back = Cartridge::from_bytes(&bytes).unwrap(); // hash + signature both verify
+    assert!(back.signature.is_some());
+    assert!(back.to_json().contains("\"signed\":true"));
+    assert!(back.to_human().contains("signed, key ed25519:"));
+
+    // Corrupt one signature byte: the hash still matches, the signature must not.
+    // Layout: [manifest][hash 32][marker 1][vk 32][sig 64][img_len 4][img] — the
+    // signature block ends 4 + img_len bytes before the end.
+    let img_len = cart.program.to_bytes().len();
+    let sig_last = bytes.len() - 4 - img_len - 1;
+    let mut forged = bytes.clone();
+    forged[sig_last] ^= 0x01;
+    let err = Cartridge::from_bytes(&forged).err().expect("forged load must fail");
+    assert!(err.contains("signature"), "{err}");
+
+    // An unsigned re-serialization of the same content keeps the same address.
+    let unsigned = adder_cart();
+    assert_eq!(unsigned.artifact_hash(), cart.artifact_hash());
+}
+
+#[test]
+fn pre_v5_cartridges_still_load() {
+    use cell80::Cartridge;
+    // A v4 image has no limits list, no hash, no signature block: rebuild one from a
+    // v5 byte stream by splicing those fields out and rewriting the version byte.
+    let cart = adder_cart();
+    let v5 = cart.to_bytes();
+    let img = cart.program.to_bytes();
+    let img_block_len = 4 + img.len();
+    let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
+    let mut v4 = Vec::new();
+    v4.extend_from_slice(&v5[..manifest_end - 2]); // manifest minus the empty limits u16
+    v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
+    v4[4] = 4; // version byte
+    let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path
+    assert_eq!(back.manifest.id, "adder");
+    assert!(back.manifest.limits.is_empty());
+    assert!(back.signature.is_none());
 }

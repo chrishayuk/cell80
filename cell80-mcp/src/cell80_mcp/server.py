@@ -64,7 +64,8 @@ def build_server() -> ChukMCPServer:
     @mcp.tool(
         read_only_hint=True,
         description="Full manifest for a cell id: typed signature (params/ret/state), "
-        "abi version, source hash.",
+        "abi version, source hash, and `limits` — the cell's declared boundary (what it "
+        "CAN'T do); a request past it comes back as halt='escalate', not an error.",
     )
     def cell_inspect(id: str) -> dict:
         m = lib.inspect(id)
@@ -81,7 +82,10 @@ def build_server() -> ChukMCPServer:
         description="Run a cell by id. For a plain cell pass `args` (u16 ints, in signature "
         "order). For a STATE cell — one whose manifest lists `state` fields, e.g. manhattan — "
         "pass `fields` as {name: int} to drive it by name; the reply then includes the full "
-        "post-run `state`. Returns result + regs + cost (cycles, trapped_ops) + halt. The "
+        "post-run `state`. Returns result + regs + cost (cycles, trapped_ops) + halt. "
+        "halt='escalate' is a typed hand-off, NOT an error: the cell declares the request "
+        "exceeds its kernel class (`escalate` names why — needs_strings/needs_floats/"
+        "needs_io/...); route the request to a more capable tool instead of retrying. The "
         "runner stays warm across calls.",
     )
     def cell_run(

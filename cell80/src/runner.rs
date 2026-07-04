@@ -138,6 +138,15 @@ pub struct Runner {
     mem: Vec<u8>,
     seen: Vec<bool>,   // was this address written this run? (dedup for `touched`)
     touched: Vec<u16>, // distinct addresses written by the last run
+    /// The opt-in memoization cache (roadmap 3.3): every run starts from reset memory and
+    /// the substrate is deterministic, so `(entry, args)` **fully determines** the outcome
+    /// — a repeated scoring/verification call is a hash lookup, not a run. `None` until
+    /// [`enable_cache`](Runner::enable_cache). Serves [`run_fast`](Runner::run_fast) only:
+    /// the rich [`run`](Runner::run) path reports post-run memory (`touched`, `reads`),
+    /// which a memoized result cannot faithfully reproduce.
+    cache: Option<std::collections::HashMap<(u16, Vec<u16>), Fast>>,
+    cache_hits: u64,
+    cache_lookups: u64,
 }
 
 impl Runner {
@@ -154,7 +163,28 @@ impl Runner {
             mem,
             seen: vec![false; 0x1_0000],
             touched: Vec::new(),
+            cache: None,
+            cache_hits: 0,
+            cache_lookups: 0,
         }
+    }
+
+    /// Opt in to memoization (see the field doc on [`Runner::cache`]): subsequent
+    /// [`run_fast`](Runner::run_fast) calls consult a `(entry, args) → Fast` map before
+    /// executing. Only **budget-independent** outcomes are stored (a clean return, an
+    /// explicit `halt(code)`, a div-by-zero — never a budget/memory-limit stop), and a
+    /// hit requires the stored run to have fit strictly inside the caller's budget, so a
+    /// cached answer is byte-for-byte what the run would have produced.
+    pub fn enable_cache(&mut self) {
+        if self.cache.is_none() {
+            self.cache = Some(std::collections::HashMap::new());
+        }
+    }
+
+    /// `(hits, lookups)` since the cache was enabled — `None` if it never was. The
+    /// hit-rate counter the memoization economics are measured by.
+    pub fn cache_stats(&self) -> Option<(u64, u64)> {
+        self.cache.as_ref().map(|_| (self.cache_hits, self.cache_lookups))
     }
 
     /// Compile `src` (permissive) and instantiate — back-compat for trusted/game code.
@@ -215,6 +245,7 @@ impl Runner {
             symbols: sorted_symbols(&self.prog.symbols),
             touched: coalesce(&self.touched),
             reads: Vec::new(),
+            cache_stats: self.cache_stats(),
         })
     }
 
@@ -229,6 +260,25 @@ impl Runner {
         budget: u64,
     ) -> Result<Fast, String> {
         let entry_addr = self.resolve_addr(entry)?;
+        if self.cache.is_some() {
+            self.cache_lookups += 1;
+            let key = (entry_addr, args.to_vec());
+            // A stored outcome replays only if it fit *strictly* inside this budget —
+            // at cycles == budget the live loop would stop with `CycleBudget` first.
+            if let Some(f) = self.cache.as_ref().and_then(|c| c.get(&key)) {
+                if f.cycles < budget {
+                    self.cache_hits += 1;
+                    return Ok(*f);
+                }
+            }
+            let f = self.exec_fast(entry_addr, args, budget);
+            // Budget/memory stops are budget- or config-relative; everything else is a
+            // deterministic property of (entry, args) and caches forever.
+            if !matches!(f.halt, Halt::CycleBudget | Halt::MemoryLimit) {
+                self.cache.as_mut().expect("checked above").insert(key, f);
+            }
+            return Ok(f);
+        }
         Ok(self.exec_fast(entry_addr, args, budget))
     }
 
@@ -422,7 +472,13 @@ impl Runner {
         let halt = if bus.div0 {
             Halt::DivByZero
         } else if let Some(code) = bus.halt {
-            Halt::Halted(code)
+            // The escalation band: a structured "this exceeds the kernel class" hand-off,
+            // not an outcome — see `ESCALATE_BASE`.
+            if code >= crate::ESCALATE_BASE {
+                Halt::Escalate(code)
+            } else {
+                Halt::Halted(code)
+            }
         } else if cpu.halted {
             Halt::Returned
         } else if mem_limit {
@@ -488,6 +544,13 @@ impl Runner {
         self.prog = program.prog.clone();
         self.cfg = program.cfg.clone();
         self.mem[org..org + self.prog.code.len()].copy_from_slice(&self.prog.code);
+        // Memoized results belong to the *previous* program — drop them (and the
+        // counters: stats are per-program, or the hit-rate lies across a pool reuse).
+        if let Some(c) = self.cache.as_mut() {
+            c.clear();
+            self.cache_hits = 0;
+            self.cache_lookups = 0;
+        }
     }
 }
 
