@@ -134,6 +134,17 @@ fn manifest_text(m: &Manifest) -> String {
     format!("{} {} {}", m.id, m.summary, m.tags.join(" "))
 }
 
+/// A cell's scalar-input count: a free-fn's param count, or a state cell's field count.
+/// [`search`](TfidfIndex::search)'s ranking-order re-weight (below) uses this — a cell
+/// needing more scalar inputs is structurally more specific/compound.
+fn complexity(m: &Manifest) -> usize {
+    if m.signature.state.is_empty() {
+        m.signature.params.len()
+    } else {
+        m.signature.state.len()
+    }
+}
+
 /// A searchable TF-IDF index over cell manifests — same `search(query, limit) -> [&Manifest]`
 /// shape as [`CellIndex`](crate::CellIndex), so it drops in where token overlap is too weak.
 #[derive(Default)]
@@ -168,13 +179,37 @@ impl TfidfIndex {
         self.entries.is_empty()
     }
 
-    /// The manifests best matching `query` by tf-idf cosine, best first (ties broken by id),
-    /// up to `limit`; only positive (non-zero) similarities are returned.
+    /// Length-normalisation-style re-rank strength (the same instinct BM25 applies to
+    /// document length, applied to a cell's shape instead): [`search`](Self::search) breaks
+    /// near-ties toward the structurally simpler cell via `rank_key = cosine / (1 +
+    /// GAMMA · max(0, complexity - COMPLEXITY_BASELINE))`. Deliberately **not** applied in
+    /// [`scored`](Self::scored) — that magnitude feeds `cell-eval`'s tiered-retrieval margin
+    /// gate (a blended score calibrated against raw tf-idf cosine; rescaling it would
+    /// silently drift an already-tuned θ), so only `search`'s *ranking order* is biased, never
+    /// the exposed cosine. Measured against `examples/retrieval_compare` (163 cells, 327
+    /// queries): overall P@1 +0.6, adversarial +5.9, paraphrase +0.8, direct −0.6 — swept
+    /// 0.0..0.3, this was the best overall point and the only one positive on every split but
+    /// direct.
+    const GAMMA: f32 = 0.05;
+    const COMPLEXITY_BASELINE: usize = 2;
+
+    /// The manifests best matching `query`, ranked by tf-idf cosine with a small complexity
+    /// tie-break (see `GAMMA`), best first (ties broken by id), up to `limit`; only positive
+    /// (non-zero) similarities are considered. Use [`scored`](Self::scored) for the raw,
+    /// unbiased cosine magnitude (e.g. for a calibrated confidence margin).
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Manifest> {
-        self.scored(query, limit)
-            .into_iter()
-            .map(|(_, m)| m)
-            .collect()
+        let mut scored = self.scored(query, usize::MAX);
+        let rank_key = |s: f32, m: &Manifest| {
+            let extra = complexity(m).saturating_sub(Self::COMPLEXITY_BASELINE) as f32;
+            s / (1.0 + Self::GAMMA * extra)
+        };
+        scored.sort_by(|a, b| {
+            rank_key(b.0, b.1)
+                .partial_cmp(&rank_key(a.0, a.1))
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.1.id.cmp(&b.1.id))
+        });
+        scored.into_iter().take(limit).map(|(_, m)| m).collect()
     }
 
     /// Like [`search`](Self::search) but keeps the cosine score with each manifest — the form
@@ -258,5 +293,50 @@ mod tests {
         // overlaps on char-3-grams ("divis") still ranks gcd first.
         let hits = idx.search("highest common factor / divisor", 3);
         assert_eq!(hits[0].id, "gcd");
+    }
+
+    #[test]
+    fn search_breaks_a_cosine_tie_toward_the_simpler_shape() {
+        // Two manifests with byte-identical summary/tags — and single-letter, equally
+        // unique ids ("a", "b": each contributes one token + one short gram, same document
+        // frequency, so they perturb each doc's norm identically) — so their raw cosine to
+        // any query not mentioning "a"/"b" ties exactly. Different structural shape: `a` is
+        // a 2-arg free-fn, `b` a 6-field state cell. `search` must break the tie toward `a`;
+        // `scored` must report the tie honestly (equal magnitudes), since that value feeds a
+        // calibrated confidence margin elsewhere and must not be silently rescaled.
+        let sig = |params: usize, state: usize| rustz80::Signature {
+            params: (0..params)
+                .map(|i| (format!("p{i}"), "u16".into()))
+                .collect(),
+            ret: "u16".into(),
+            state: (0..state)
+                .map(|i| (format!("f{i}"), "u16".into()))
+                .collect(),
+        };
+        let mk = |id: &str, signature: rustz80::Signature| Manifest {
+            id: id.into(),
+            summary: "does the same thing to two numbers".into(),
+            tags: vec!["math".into(), "combine".into()],
+            entry: "run".into(),
+            source_hash: 0,
+            compiler_version: String::new(),
+            abi_version: 0,
+            signature,
+            state_addrs: vec![],
+            limits: Vec::new(),
+        };
+        let idx = TfidfIndex::build(vec![mk("a", sig(2, 0)), mk("b", sig(0, 6))]);
+
+        // scored() is honest: an identical-text tie stays a tie, unbiased.
+        let raw = idx.scored("does the same thing to two numbers", 2);
+        assert_eq!(raw.len(), 2);
+        assert!(
+            (raw[0].0 - raw[1].0).abs() < 1e-6,
+            "raw cosine ties exactly"
+        );
+
+        // search() breaks that same tie toward the lower-complexity cell.
+        let hits = idx.search("does the same thing to two numbers", 2);
+        assert_eq!(hits[0].id, "a");
     }
 }

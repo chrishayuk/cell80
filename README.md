@@ -114,8 +114,10 @@ changes and prompt changes never get conflated:
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
 Retrieval on the 163-cell library (`cargo run --example retrieval_compare -p cell80`): the
-default index is now **TF-IDF** (word + char-3-gram cosine) — **direct P@1 0.92**, **paraphrase
-0.40** — a few points over the old token overlap, but paraphrase stays well under direct as confusable
+default index is now **TF-IDF** (word + char-3-gram cosine), with a small complexity-based
+tie-break (`search` only — the ranking order, never the raw cosine `scored` exposes, since
+that magnitude feeds the escalation ladder's calibrated confidence margin) — **direct P@1
+0.92**, **paraphrase 0.46** — a few points over the old token overlap, but paraphrase stays well under direct as confusable
 siblings multiply (twenty-seven families: predicates, bounds, distance, number theory, bit ops,
 hashing, …). A **type-led** re-rank by the cell's *behaviour* (is it a predicate? — learned from
 the corpus, not hardcoded) was measured **neutral** on this set, for an honest reason: the
