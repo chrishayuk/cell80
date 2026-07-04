@@ -122,7 +122,9 @@ the corpus, not hardcoded) was measured **neutral** on this set, for an honest r
 residual misses are *same-shape siblings* (`min`/`max`, `gcd`/`lcm`, `manhattan`/`chebyshev`) no
 text or signature signal can separate. The lever for those is **behavioural I/O-example routing**
 (`cell_route_by_example`): on `(3,7)→3` only `min` matches, not `max` — selection grounded in
-what the cell *does*, phrasing- and language-independent.
+what the cell *does*, phrasing- and language-independent. Now also a top-level CLI verb
+(`cell80 route`, see Quick start), and with `--facts` the probes are answered from an imported
+fact file (docs/12) instead of execution — retrieval served from claims, falsifiable by re-running.
 Adoption/composition (`granite4.1:3b`): **adoption 1.00 / correct 1.00**; composition once read
 **composed 0.50 / correct 0.83 — but `used_graph` 0.00**: the small model *chains* cell calls
 and never authors the wire-level graph manifest. That finding drove a fix — **`cell_compose`**,
@@ -146,11 +148,23 @@ cargo run -p cell80 --bin cell80 -- run cell80/cells/gcd.rs --args 1071,462
 cargo run -p cell80 --bin cell80 -- index  cell80/cells
 cargo run -p cell80 --bin cell80 -- search "validate a value in range" cell80/cells
 printf 'load gcd\nrun 0 1071,462\nquit\n' | cargo run -q -p cell80 --bin cell80 -- serve cell80/cells
+
+# don't know the name? route by BEHAVIOUR — which cells reproduce these input→output examples?
+cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1
+# → min — Minimum of two values.  [3/3]   (flip the outputs and `max` wins instead;
+#   `median3` ties min at [3/3] — with the third register 0, median3(a,b,0) IS min(a,b))
+
+# the same route riding the FACT LIBRARY (docs/12): imported claims answer probes, no execution
+printf 'min 3 7\nmin 10 4\nmin 255 1\n' > /tmp/calls.txt
+cargo run -q -p cell80 --bin cell80 -- facts export cell80/cells --calls /tmp/calls.txt > /tmp/min.facts
+cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1 --facts /tmp/min.facts
+# → probe runs: 459 — 3 answered from imported facts, 456 computed locally
 ```
 
 CLI verbs: `run` (source) · `compile` (→ `.cell`) · `exec` (a `.cell`) · `inspect` ·
-`index` · `search` · `serve` (a persistent warm session). Same commands, drivable by an
-agent over JSON.
+`index` · `search` · `route` (by I/O examples, optionally answered from a fact file) ·
+`serve` (a persistent warm session) · `facts` (export / import / verify — docs/12).
+Same commands, drivable by an agent over JSON.
 
 ---
 

@@ -137,11 +137,18 @@ Decisions, each with its reason:
 ## 4. Surfaces
 
 - **Rust:** `CellHost::export_facts(w) -> ExportStats`,
-  `CellHost::import_facts(r, policy) -> ImportReport`.
+  `CellHost::import_facts(r, policy) -> ImportReport`,
+  `CellHost::route_by_examples_facts(examples, limit) -> RouteReport` (behavioural
+  routing through loaded runners: a probe covered by an imported fact is a cache
+  hit, not an execution; the report carries the provenance split).
 - **CLI:** `cell80 facts export [--sign KEY] > lib.facts`,
   `cell80 facts import lib.facts [--verify-fraction 0.01] [--quarantine]`,
   `cell80 facts verify lib.facts --all` (the audit verb: re-execute every line,
-  exit nonzero on any failure — CI-able).
+  exit nonzero on any failure — CI-able),
+  `cell80 route <dir> 3,7=3 10,4=4 --facts lib.facts` (retrieval riding the file:
+  the import is spot-checked exactly like `facts import`, matching claims answer
+  probe runs without execution, and the output ends with the split —
+  `probe runs: 459 — 3 answered from imported facts, 456 computed locally`).
 - **MCP:** `cell_facts_import` / `cell_facts_stats` — the agent-visible face;
   import returns the `ImportReport` as data so an agent can *read* "9,999 verified
   claims accepted, 1 falsified" and act on it.
