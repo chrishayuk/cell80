@@ -54,6 +54,10 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     Not attributable to a units-pack collision; kill-gate did not trigger, but this is the
     first checkpoint to dip under the baseline on any split and is worth watching if the
     trend continues.
+  - Checkpoint 6 (`checkpoint-6-gsm8k-verifier-ranker`, 142 cells, GSM8K math campaign M1
+    pack 4/5): P@1 direct 0.95 / paraphrase 0.45 / adversarial 0.41 — adversarial recovered
+    above checkpoint 1's baseline (0.39), confirming checkpoint 5's dip was the flagged
+    IDF-reordering noise, not a trend. Kill-gate did not trigger.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
