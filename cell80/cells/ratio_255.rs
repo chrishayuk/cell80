@@ -4,10 +4,7 @@ fn run(part: u16, whole: u16) -> u16 {
     let mut r = 0u16;
     if whole != 0u16 {
         let q = part as u32 * 255u32 / whole as u32;
-        r = q as u16;
-        if (q >> 16u32) as u16 != 0u16 {
-            r = 65535u16;
-        }
+        r = if (q >> 16u32) as u16 != 0u16 { 65535u16 } else { q as u16 };
     }
     r
 }

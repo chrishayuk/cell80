@@ -5,10 +5,6 @@ struct Ws { a: u16, b: u16, c: u16, sum: u32 }
 impl Ws {
     fn run(&mut self) -> u16 {
         self.sum = self.a as u32 + self.b as u32 * 2u32 + self.c as u32 * 3u32;
-        let mut r = self.sum as u16;
-        if (self.sum >> 16u32) as u16 != 0u16 {
-            r = 65535u16;
-        }
-        r
+        if (self.sum >> 16u32) as u16 != 0u16 { 65535u16 } else { self.sum as u16 }
     }
 }
