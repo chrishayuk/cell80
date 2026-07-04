@@ -188,7 +188,9 @@ macro_rules! check {
 /// `check_str!(s, { s.len() as u16 }, "", "hello");`
 macro_rules! check_str {
     ($s:ident, $body:block, $($input:expr),+ $(,)?) => {{
-        #[allow(unused_assignments, clippy::needless_range_loop)]
+        // The dialect's long-form comparisons (`s.len() == 0`, `c >= b'A'`) are the
+        // constructs under test — not style to lint away.
+        #[allow(unused_assignments, clippy::needless_range_loop, clippy::len_zero)]
         fn host($s: &str) -> u16 $body
         let src = format!("fn f({}: &str) -> u16 {}", stringify!($s), stringify!($body));
         for target in crate::harness::TARGETS {
