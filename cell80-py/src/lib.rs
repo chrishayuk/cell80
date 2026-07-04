@@ -233,6 +233,39 @@ impl CellHost {
         Ok(d)
     }
 
+    /// The **cached** state-cell hot path (docs/12 §2): like `run_state`, but through the
+    /// memo table when `set_cache(True)` — repeated identical field sets become hash
+    /// lookups. Returns `{result, regs, cycles, trapped_ops, halt, state: {name: value}}`.
+    #[pyo3(signature = (handle, fields, cycles=2_000_000))]
+    fn run_state_fast<'py>(
+        &mut self,
+        py: Python<'py>,
+        handle: usize,
+        fields: &Bound<'py, PyDict>,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut named = Vec::with_capacity(fields.len());
+        for (k, v) in fields.iter() {
+            named.push((k.extract::<String>()?, v.extract::<u64>()?));
+        }
+        let (f, state) = self
+            .host
+            .run_state_fast(handle, &named, cycles)
+            .map_err(PyValueError::new_err)?;
+        let d = PyDict::new_bound(py);
+        d.set_item("result", f.result)?;
+        d.set_item("regs", vec![f.regs[0], f.regs[1], f.regs[2]])?;
+        d.set_item("cycles", f.cycles)?;
+        d.set_item("trapped_ops", f.trapped_ops)?;
+        set_halt(&d, f.halt)?;
+        let sd = PyDict::new_bound(py);
+        for (name, val) in state {
+            sd.set_item(name, val)?;
+        }
+        d.set_item("state", sd)?;
+        Ok(d)
+    }
+
     /// Validate + run a JSON `CellGraph` manifest over this warm library, routing typed values
     /// between cells (the host owns the bus; cells never see each other). `inputs` is the
     /// external `{name: int}`. Returns `{id, outputs:{name:val}, cycles, trapped_ops,
