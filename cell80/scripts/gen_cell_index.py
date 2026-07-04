@@ -34,6 +34,7 @@ PACKS = {
     "vector": ["dot2", "norm2_sq"],
     "checked-arithmetic": ["mul_u16_u16_to_u32", "add_checked_u32", "sub_checked_u32", "div_exact_u32", "div_floor_u32", "div_ceil_u32", "mod_u32", "fits_u16"],
     "money-bps": ["bps_of", "increase_by_bps", "decrease_by_bps", "original_before_bps_increase", "original_before_bps_decrease", "cents_mul_qty"],
+    "units": ["same_unit_check", "unit_mul", "unit_div", "unit_cancel_check"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -102,8 +103,8 @@ def main():
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
           "(stateful/RNG, time/budget, signed deltas), the Phase 2.3 pilot-batch section "
           "for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the "
-          "GSM8K math campaign (M1: checked-arithmetic and money-bps above are the first "
-          "two authored packs; units/verifier-ranker still ahead, and fractions is gated "
+          "GSM8K math campaign (M1: checked-arithmetic, money-bps, and units above are the "
+          "first three authored packs; verifier-ranker still ahead, and fractions is gated "
           "on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt "
           "this session even after Cond32 landed). All five originally-planned wave-3 packs "
           "plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice "

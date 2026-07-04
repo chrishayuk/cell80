@@ -38,12 +38,15 @@ wave 3f   128 cells   + the GSM8K math campaign, M1 pack 1/5: checked/exact arit
                         (mul_u16_u16_to_u32, add_checked_u32, sub_checked_u32,
                         div_exact_u32, div_floor_u32, div_ceil_u32, mod_u32, fits_u16) —
                         see `docs/math-campaign-spec.md`
-now       134 cells   + M1 pack 2/5: money/basis-points (bps_of, increase_by_bps,
+wave 3g   134 cells   + M1 pack 2/5: money/basis-points (bps_of, increase_by_bps,
                         decrease_by_bps, original_before_bps_increase,
                         original_before_bps_decrease, cents_mul_qty) — tax/tip/markup
                         consolidated into one increase_by_bps cell rather than three
                         near-identical ones
-next      ~200+        + units, verifier/ranker · fractions (blocked on M0:
+now       138 cells   + M1 pack 3/5: units (same_unit_check, unit_mul, unit_div,
+                        unit_cancel_check) — the campaign's first free-fn pack (all
+                        prior GSM8K cells were u32 state cells)
+next      ~200+        + verifier/ranker · fractions (blocked on M0:
                         u32-across-a-call-boundary, confirmed still unbuilt even after
                         Cond32) · time/budget · stateful/RNG · signed deltas
 ```
@@ -88,6 +91,28 @@ real behavioural difference, not a renamed duplicate. "Cents" names the minor un
 decimal currency (cents, pence, kopecks, ...), not USD specifically — kept over a more
 generic `minor_units` name because it's the de facto term in decimal-money code regardless
 of actual currency (Stripe et al. use `amount_in_cents` the same way).
+
+**M1 pack 3/5: units.** `same_unit_check`, `unit_mul`, `unit_div`, `unit_cancel_check` —
+the campaign's first *free-fn* pack (every prior GSM8K cell was a `u32` state cell; these
+are plain arity-2 `u16` functions, so they go through the admission gate's fingerprint
+check for real rather than being exempted as a state cell — confirmed no collisions).
+Dimension codes: `0=count, 1=money, 2=time, 3=distance, 4=area, 5=volume,
+6=rate_money_per_count, 7=rate_distance_per_time` — a fixed small enum with hand-written
+pairwise composition rules (`count*money=money`, `distance*distance=area`,
+`money/count=rate_money_per_count`, same-unit-divided-by-itself always cancels to
+`count`, ...), not a general symbolic exponent-vector algebra; unmodeled pairs escalate
+(`halt(0xFF06)`, `out_of_domain` — genuinely a *different* escalation reason than the
+arithmetic packs' `needs_wider_math`, since a unit mismatch isn't a wide-math problem).
+`same_unit_check` returns the shared dimension code on a match (useful for tagging an
+addition's result) rather than a bare boolean, so it doubles as the compatibility check
+for both `+` and `-` (same requirement) instead of shipping a second, redundant
+`unit_add_check`. `unit_cancel_check` is `unit_div`'s table restated as a non-escalating
+predicate, for a caller (e.g. a future plan verifier) that wants to try several candidate
+unit pairs without committing to a halt. Landed 4 of the spec's `~10` estimate — the
+smaller set is what's concretely load-bearing for the one worked example in
+`docs/math-campaign-spec.md` (`count * rate_money_per_count = money`, round-tripped
+through `unit_div(money, count)` first); a full exponent-vector unit algebra is deferred
+until real GSM8K plans demand it.
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -188,7 +213,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (134 cells)
+### Landed (138 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -306,7 +331,12 @@ retrieval precision on the paraphrase or adversarial split drops meaningfully fr
 checkpoint 1's baseline (114 cells: direct 0.94 / paraphrase 0.42 / adversarial 0.39;
 `cell-eval/baselines/library-scale-curve.json`), **pause cell growth** and prioritize
 discovery/retrieval work instead of adding more cells. A 1,000-cell library nobody can
-search is worse than the 114-cell one that can be searched today.
+search is worse than the 114-cell one that can be searched today. Checkpoint 5 (units
+pack, 138 cells) is the first to dip *under* the adversarial baseline (0.38 vs 0.39) —
+traced to two pre-existing confusable pairs re-ranking from a corpus-wide TF-IDF weight
+shift, not a units-pack collision, so it didn't trigger the gate — but it's the first
+sub-baseline reading and worth checking again at the next checkpoint before assuming it's
+noise for good.
 
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells

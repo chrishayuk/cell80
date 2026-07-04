@@ -314,3 +314,13 @@
 {"id": "original_before_bps_decrease-para-1", "query": "given the discounted price, what was the price before the discount", "expected": "original_before_bps_decrease", "category": "paraphrase"}
 {"id": "cents_mul_qty-direct-1", "query": "total price in cents for a quantity of items", "expected": "cents_mul_qty", "category": "direct"}
 {"id": "cents_mul_qty-para-1", "query": "how much do I owe for several units at this unit price in cents", "expected": "cents_mul_qty", "category": "paraphrase"}
+
+# ── GSM8K math campaign: units / dimension codes (Phase 2.3, M1) ──
+{"id": "same_unit_check-direct-1", "query": "check two quantities have the same unit before adding them", "expected": "same_unit_check", "category": "direct"}
+{"id": "same_unit_check-para-1", "query": "can I add these two amounts, or do their units not match", "expected": "same_unit_check", "category": "paraphrase"}
+{"id": "unit_mul-direct-1", "query": "resulting unit when multiplying two typed quantities", "expected": "unit_mul", "category": "direct"}
+{"id": "unit_mul-para-1", "query": "if I multiply a count by a price per item, what unit do I get", "expected": "unit_mul", "category": "paraphrase"}
+{"id": "unit_div-direct-1", "query": "resulting unit when dividing one typed quantity by another", "expected": "unit_div", "category": "direct"}
+{"id": "unit_div-para-1", "query": "what unit results from dividing total money by a count of items", "expected": "unit_div", "category": "paraphrase"}
+{"id": "unit_cancel_check-direct-1", "query": "check whether dividing these two units is dimensionally defined", "expected": "unit_cancel_check", "category": "direct"}
+{"id": "unit_cancel_check-para-1", "query": "would this division even make sense, unit-wise, without committing to it", "expected": "unit_cancel_check", "category": "paraphrase"}

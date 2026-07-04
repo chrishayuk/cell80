@@ -1,6 +1,6 @@
 # The math campaign — GSM-Symbolic as the first `cell_solve` field campaign
 
-*Status: M1 pack 2/5 landed (checked/exact arithmetic, money/basis-points —
+*Status: M1 pack 3/5 landed (checked/exact arithmetic, money/basis-points, units —
 `docs/library-growth.md` "GSM8K math campaign"); M0 confirmed still open
 (u32-across-a-call-boundary, tested directly and still rejected even after `Cond32`
 landed, blocking the fraction pack specifically); M2-M4 (the plan IR, renderer, and campaign
