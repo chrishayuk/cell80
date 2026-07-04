@@ -33,6 +33,7 @@ PACKS = {
     "packing/BCD": ["pack_u8", "pack_nibbles", "bcd_encode", "bcd_decode"],
     "vector": ["dot2", "norm2_sq"],
     "checked-arithmetic": ["mul_u16_u16_to_u32", "add_checked_u32", "sub_checked_u32", "div_exact_u32", "div_floor_u32", "div_ceil_u32", "mod_u32", "fits_u16"],
+    "money-bps": ["bps_of", "increase_by_bps", "decrease_by_bps", "original_before_bps_increase", "original_before_bps_decrease", "cents_mul_qty"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -101,10 +102,10 @@ def main():
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
           "(stateful/RNG, time/budget, signed deltas), the Phase 2.3 pilot-batch section "
           "for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the "
-          "GSM8K math campaign (M1: checked-arithmetic above is the first authored pack; "
-          "fractions/money-bps/units/verifier-ranker still ahead, gated on M0's "
-          "u32-across-a-call-boundary compiler feature, confirmed still unbuilt this "
-          "session even after Cond32 landed). All five originally-planned wave-3 packs "
+          "GSM8K math campaign (M1: checked-arithmetic and money-bps above are the first "
+          "two authored packs; units/verifier-ranker still ahead, and fractions is gated "
+          "on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt "
+          "this session even after Cond32 landed). All five originally-planned wave-3 packs "
           "plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice "
           "above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md "
           "before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. "

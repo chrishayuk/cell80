@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (128 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (134 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -242,6 +242,17 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mod_u32` | `ModU32::run() -> u16` | Remainder of two u32 values: a % b. Escalates (needs_wider_math) if b is zero. |
 | `fits_u16` | `FitsU16::run() -> u16` | Returns 1 if a wide u32 value fits in u16 (<= 65535) without narrowing loss, else 0. |
 
+## money-bps (6)
+
+| id | signature | summary |
+|---|---|---|
+| `bps_of` | `BpsOf::run() -> u16` | Basis points of a wide value: value * bps / 10000 (e.g. 500 bps of 1000 is 50 — 5%). Escalates (needs_wider_math) on multiply overflow. |
+| `increase_by_bps` | `IncreaseByBps::run() -> u16` | Increase a wide value by bps basis points (covers tax/tip/markup — same formula: value + value*bps/10000). Escalates on multiply or add overflow. |
+| `decrease_by_bps` | `DecreaseByBps::run() -> u16` | Decrease a wide value by bps basis points (covers discount: value - value*bps/10000). Escalates if the discount would exceed the value, or on multiply overflow. |
+| `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
+| `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
+| `cents_mul_qty` | `CentsMulQty::run() -> u16` | Total price in cents (the minor unit of any decimal currency — cents, pence, kopecks, not USD specifically): unit_cents * qty. Escalates (needs_wider_math) on multiply overflow — distinct from mul_u16_u16_to_u32 (that one always fits u32 exactly; this one's unit_cents is already wide and can genuinely overflow). |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -255,4 +266,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, time/budget, signed deltas), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic above is the first authored pack; fractions/money-bps/units/verifier-ranker still ahead, gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, time/budget, signed deltas), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic and money-bps above are the first two authored packs; units/verifier-ranker still ahead, and fractions is gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.

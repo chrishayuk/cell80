@@ -34,13 +34,18 @@ pilot     120 cells   + the Phase 2.3 pilot batch: packing/BCD (pack_u8, pack_ni
                         bcd_encode, bcd_decode) + vector (dot2, norm2_sq) —
                         unpack_lo/unpack_hi never built (exact duplicates of
                         low_byte/high_byte, caught before authoring)
-now       128 cells   + the GSM8K math campaign, M1 pack 1/5: checked/exact arithmetic
+wave 3f   128 cells   + the GSM8K math campaign, M1 pack 1/5: checked/exact arithmetic
                         (mul_u16_u16_to_u32, add_checked_u32, sub_checked_u32,
                         div_exact_u32, div_floor_u32, div_ceil_u32, mod_u32, fits_u16) —
                         see `docs/math-campaign-spec.md`
-next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
-                        confirmed still unbuilt even after Cond32) · money/bps · units ·
-                        verifier/ranker · time/budget · stateful/RNG · signed deltas
+now       134 cells   + M1 pack 2/5: money/basis-points (bps_of, increase_by_bps,
+                        decrease_by_bps, original_before_bps_increase,
+                        original_before_bps_decrease, cents_mul_qty) — tax/tip/markup
+                        consolidated into one increase_by_bps cell rather than three
+                        near-identical ones
+next      ~200+        + units, verifier/ranker · fractions (blocked on M0:
+                        u32-across-a-call-boundary, confirmed still unbuilt even after
+                        Cond32) · time/budget · stateful/RNG · signed deltas
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -63,6 +68,26 @@ call-boundary prerequisite is still unbuilt**, even after `Cond32` (u32 comparis
 landed from a parallel session mid-pack — a local helper function can't yet take or
 return `u32`, so the fraction pack (which wants a shared `gcd_u32` reducer) stays blocked
 until that lands.
+
+**M1 pack 2/5: money/basis-points.** `bps_of`, `increase_by_bps`, `decrease_by_bps`,
+`original_before_bps_increase`, `original_before_bps_decrease`, `cents_mul_qty` — basis
+points (1% = 100 bps), never float percentages, so `value * bps / 10000` stays exact
+integer math. All six escalate (`halt(0xFF05)`) on multiply overflow via the same
+"divide back and compare" trick as the checked-arithmetic pack
+(`let p = a.wrapping_mul(b); if a != 0 && p / a != b { halt(...) }`) rather than needing a
+u64. Checked `docs/cell-index.md` before authoring and dropped several near-duplicates of
+the checked-arithmetic pack from the original spec's money list (`cents_add`/`cents_sub`
+duplicate `add_checked_u32`/`sub_checked_u32`; `cents_div_qty`/`unit_price_cents`
+duplicate `div_floor_u32`; `price_total`/`change_due` duplicate `cents_mul_qty`/
+`sub_checked_u32`), and consolidated `tax_bps`/`tip_bps`/`markup_bps` — identical formula
+under different names — into one canonical `increase_by_bps` cell instead of shipping
+three copies. `cents_mul_qty` is kept distinct from `mul_u16_u16_to_u32` even though both
+multiply: `mul_u16_u16_to_u32` takes two `u16`s and always fits `u32` exactly, while
+`cents_mul_qty`'s `unit_cents` is already a wide `u32` and can genuinely overflow — a
+real behavioural difference, not a renamed duplicate. "Cents" names the minor unit of any
+decimal currency (cents, pence, kopecks, ...), not USD specifically — kept over a more
+generic `minor_units` name because it's the de facto term in decimal-money code regardless
+of actual currency (Stripe et al. use `amount_in_cents` the same way).
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -163,7 +188,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (128 cells)
+### Landed (134 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against

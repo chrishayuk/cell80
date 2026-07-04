@@ -300,3 +300,17 @@
 {"id": "mod_u32-para-1", "query": "what's left over after dividing two large values", "expected": "mod_u32", "category": "paraphrase"}
 {"id": "fits_u16-direct-1", "query": "does this wide value fit in a 16-bit result", "expected": "fits_u16", "category": "direct"}
 {"id": "fits_u16-para-1", "query": "check whether a large number can be narrowed without losing precision", "expected": "fits_u16", "category": "paraphrase"}
+
+# ── GSM8K math campaign: money / basis points (Phase 2.3, M1) ──
+{"id": "bps_of-direct-1", "query": "basis points of a wide value", "expected": "bps_of", "category": "direct"}
+{"id": "bps_of-para-1", "query": "what's 5% of this amount, exactly, using basis points", "expected": "bps_of", "category": "paraphrase"}
+{"id": "increase_by_bps-direct-1", "query": "increase a value by a basis-point percentage", "expected": "increase_by_bps", "category": "direct"}
+{"id": "increase_by_bps-para-1", "query": "add sales tax or a tip to a price given the rate in basis points", "expected": "increase_by_bps", "category": "paraphrase"}
+{"id": "decrease_by_bps-direct-1", "query": "decrease a value by a basis-point percentage", "expected": "decrease_by_bps", "category": "direct"}
+{"id": "decrease_by_bps-para-1", "query": "apply a discount given as basis points off the price", "expected": "decrease_by_bps", "category": "paraphrase"}
+{"id": "original_before_bps_increase-direct-1", "query": "recover the original value before a basis-point increase was applied", "expected": "original_before_bps_increase", "category": "direct"}
+{"id": "original_before_bps_increase-para-1", "query": "given the price after tax, what was the price before tax", "expected": "original_before_bps_increase", "category": "paraphrase"}
+{"id": "original_before_bps_decrease-direct-1", "query": "recover the original value before a basis-point decrease was applied", "expected": "original_before_bps_decrease", "category": "direct"}
+{"id": "original_before_bps_decrease-para-1", "query": "given the discounted price, what was the price before the discount", "expected": "original_before_bps_decrease", "category": "paraphrase"}
+{"id": "cents_mul_qty-direct-1", "query": "total price in cents for a quantity of items", "expected": "cents_mul_qty", "category": "direct"}
+{"id": "cents_mul_qty-para-1", "query": "how much do I owe for several units at this unit price in cents", "expected": "cents_mul_qty", "category": "paraphrase"}

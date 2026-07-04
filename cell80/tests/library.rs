@@ -762,3 +762,64 @@ fn checked_arithmetic_state_cells_match_defined_behaviour() {
     assert_eq!(step("fits_u16", "FitsU16", &[("x", 65535)]).0, 1);
     assert_eq!(step("fits_u16", "FitsU16", &[("x", 65536)]).0, 0);
 }
+
+#[test]
+fn money_bps_state_cells_match_defined_behaviour() {
+    // The GSM8K math-campaign money/basis-points pack (Phase 2.3, M1 pack 2/5) — basis
+    // points, never float percentages, per the campaign spec.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    let (_, _, cell) = step("bps_of", "BpsOf", &[("value", 1000), ("bps", 500)]);
+    assert_eq!(cell.get("result"), Some(50)); // 5% of 1000
+
+    let (_, _, cell) = step(
+        "increase_by_bps",
+        "IncreaseByBps",
+        &[("value", 1000), ("bps", 500)],
+    );
+    assert_eq!(cell.get("result"), Some(1050));
+
+    let (_, _, cell) = step(
+        "decrease_by_bps",
+        "DecreaseByBps",
+        &[("value", 1000), ("bps", 500)],
+    );
+    assert_eq!(cell.get("result"), Some(950));
+
+    // The reverse-percent pair recovers the original value exactly.
+    let (_, _, cell) = step(
+        "original_before_bps_increase",
+        "OriginalBeforeIncrease",
+        &[("final_value", 1050), ("bps", 500)],
+    );
+    assert_eq!(cell.get("original"), Some(1000));
+    let (_, _, cell) = step(
+        "original_before_bps_decrease",
+        "OriginalBeforeDecrease",
+        &[("final_value", 950), ("bps", 500)],
+    );
+    assert_eq!(cell.get("original"), Some(1000));
+    // bps == 10000 (100% discount) escalates rather than dividing by zero.
+    let (_, report, _) = step(
+        "original_before_bps_decrease",
+        "OriginalBeforeDecrease",
+        &[("final_value", 950), ("bps", 10000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    let (_, _, cell) = step(
+        "cents_mul_qty",
+        "CentsMulQty",
+        &[("unit_cents", 150), ("qty", 3)],
+    );
+    assert_eq!(cell.get("total"), Some(450));
+}
