@@ -40,6 +40,10 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     M1 pack 1/5): P@1 direct 0.95 / paraphrase 0.43 / adversarial 0.41 — flat within noise
     (paraphrase 0.4304→0.4253 on a denominator that grew 79→87 queries). Kill-gate did not
     trigger.
+  - Checkpoint 4 (`checkpoint-4-gsm8k-money-bps`, 134 cells, GSM8K math campaign M1 pack
+    2/5): P@1 direct 0.94 / paraphrase 0.46 / adversarial 0.44 — both paraphrase and
+    adversarial ticked up from checkpoint 1's baseline (0.42/0.39), direct flat. Kill-gate
+    did not trigger.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
