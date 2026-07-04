@@ -11,9 +11,10 @@ The two are kept honest by **differential testing**: every feature is run both w
 and the results must match (see [`tests/`](./tests)). Design rationale lives in
 [spec 07](../docs/07-rust-z80-compiler-spec.md).
 
-Not an LLVM backend and not real `core`: a `syn` frontend → a small typed IR → naive
-Z80 codegen (`HL` accumulator, `DE` secondary, a fixed RAM "register file"), plus a
-hand-written mul/div micro-runtime.
+Not an LLVM backend and not real `core`: a `syn` frontend → a small typed IR → Z80
+codegen (`HL` accumulator, `DE` secondary, a fixed RAM "register file") through a
+symbolic instruction layer with a measured peephole pass, plus a hand-written mul/div
+micro-runtime.
 
 `rustz80` is **generic** — it knows nothing about games or any SDK. The Spectrum game layer
 (`impl Game`, the dialect prelude, the symbol map, the `speccy-compile` CLI, and the
@@ -124,7 +125,12 @@ The `bitmap` demo prints what it drew straight from the framebuffer:
 ```
 
 `tests/examples.rs` locks every showcase result, so a codegen regression fails
-`cargo test` even without running the demos.
+`cargo test` even without running the demos. The peephole is held to a double
+standard: `tests/diff/peephole.rs` proves each rule changes nothing (rustc as the
+oracle) and `tests/peephole_shape.rs` proves it *fired* (exact emitted bytes).
+Byte-level regressions across the whole corpus are caught by the committed golden
+in the cell80 crate (`cell80/tests/codegen_golden.rs` — regenerate with
+`UPDATE_GOLDEN=1` and review the diff when output changes deliberately).
 
 ## Running compiled programs → the `cell80` crate
 
@@ -171,12 +177,18 @@ cargo run --release --bin speccy-gui -- testroms/48.rom move.tap   # then press 
   `layout` (struct/enum layout + parse helpers), `prelude` (handle routing),
   `generics` (monomorphization), `expr`, and `stmt`; `mod.rs` owns the `Ctx` and the
   function-level orchestration.
-- **Codegen** (`codegen/`: `asm` · `runtime` · `expr` · `stmt`): IR → Z80. Locals (incl.
-  params) live in a per-function scratch region; expressions evaluate via `HL` + the stack;
-  `*`/`/`/`%` `CALL` an appended `__mul16`/`__divmod16` (Spectrum) or trap (Cell). The frame
-  loop (`codegen_loop`) places that scratch region **just above the emitted code** (measure
-  then place) so a large program's code can't grow into its own locals, and **errors** if the
-  code + locals won't fit below the state region.
+- **Codegen** (`codegen/`: `asm` · `ins` · `peephole` · `runtime` · `expr` · `stmt`):
+  IR → Z80. Emission goes through a **symbolic instruction stream** (`Ins`): labels, call
+  targets, and locals slots stay symbolic; a final encode pass assigns PCs and resolves
+  operands. Locals (incl. params) live in a per-function scratch region; expressions evaluate
+  via `HL` + the stack; `*`/`/`/`%` `CALL` an appended `__mul16`/`__divmod16` (Spectrum) or
+  trap (Cell). The frame loop (`codegen_loop`) places that scratch region **just above the
+  emitted code** (measure the stream, then encode) so a large program's code can't grow into
+  its own locals, and **errors** if the code + locals won't fit below the state region.
+  The **peephole** runs over the stream to a fixpoint (leaf-operand `PUSH`/`POP` pairs →
+  `EX DE,HL`, store-then-reload elision, call-convention dead pairs, cleanups): −4.3 % code
+  size across the cell80 stdlib corpus, every rule double-tested (a rustc-oracle diff case +
+  an exact-bytes assertion that the rule fired).
 - **Optimization** (`inline.rs`, `dce.rs`, run before codegen): the **inliner** folds each
   single-call-site, return-free, scalar/void function into its one caller — argument
   substitution (pure read-only params) + slot reuse make decomposed source compile as

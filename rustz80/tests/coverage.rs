@@ -531,3 +531,25 @@ fn diagnostics_are_instructive_not_debug_dumps() {
         "should point at compile_program: {e}"
     );
 }
+
+#[test]
+fn unknown_call_target_is_a_clean_error() {
+    // A call to a `fn` that is never defined surfaces at the encode pass (the symbol
+    // table) as a compile error naming the target — never a panic or a bad image.
+    let e = compile_fn("fn f() -> u16 { missing(1u16) }").unwrap_err();
+    assert!(e.contains("missing"), "should name the call target: {e}");
+}
+
+#[test]
+fn whole_program_over_scratch_is_a_clean_error() {
+    // The fixed-SCRATCH path (`codegen_program`): code growing up past 0x9000 must be
+    // a loud error, not slot writes silently corrupting the emitted code — the same
+    // class of bug the frame loop's dynamic placement guards. ~800 add-assigns is
+    // ~5.6 KB, over the 4 KB ORG→SCRATCH window.
+    let mut body = String::from("let mut x = 0u16;\n");
+    for i in 0..800u32 {
+        body.push_str(&format!("x = x + {}u16;\n", 1000 + i));
+    }
+    let e = compile_fn(&format!("fn f() -> u16 {{ {body} x }}")).unwrap_err();
+    assert!(e.contains("too large"), "expected the too-large diagnostic: {e}");
+}

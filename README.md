@@ -353,8 +353,9 @@ The execution plan is phased in [`docs/roadmap-phases.md`](docs/roadmap-phases.m
 **Phase 0 (shipped)** closed the determinism contract — recursion rejected at compile time,
 the Cell trap path differential-tested against rustc, `/ 0` a typed halt, the dialect
 semantics written down — then the LLM-facing compiler (if/match expressions, diagnostics,
-signed `i16`), retrieval as the product, trust (signed cells, escalation contract,
-memoization), and codegen stage 2.
+signed `i16` — shipped), retrieval as the product, trust (signed cells, escalation contract,
+memoization), and codegen stage 2 (the symbolic `Ins` layer + the measured peephole —
+shipped, −4.3 % corpus code size; u32 array elements remain).
 
 ---
 
