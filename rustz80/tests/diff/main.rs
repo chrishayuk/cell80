@@ -17,7 +17,9 @@
     clippy::needless_range_loop,
     clippy::manual_range_contains,
     clippy::manual_is_multiple_of,
-    clippy::manual_range_patterns
+    clippy::manual_range_patterns,
+    // `!(a >= b)` on u32 deliberately exercises negated wide conditions.
+    clippy::nonminimal_bool
 )]
 
 #[macro_use]
