@@ -431,3 +431,137 @@ fn cli_facts_verbs_end_to_end() {
     assert!(err.contains("run(3,7)"), "{err}");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+// ── routing over the fact library ───────────────────────────────────────────────
+
+fn min_cart() -> Cartridge {
+    Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("min".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+}
+
+fn max_cart() -> Cartridge {
+    Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("max".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+}
+
+#[test]
+fn route_rides_imported_facts() {
+    // Export claims about min from host A; import into host B; route by the same
+    // examples — min's probes are answered from the imported facts (no execution),
+    // max's are executed, and the ranking picks min by behaviour.
+    let mut producer = CellHost::new();
+    producer.set_cache(true);
+    producer.add(min_cart());
+    let h = producer.load("min").unwrap();
+    for (a, b) in [(3u16, 7u16), (10, 4)] {
+        producer.run_fast(h, &[a, b], DEFAULT_CYCLES).unwrap();
+    }
+    let mut file = Vec::new();
+    producer.export_facts(&mut file, "route@dod").unwrap();
+
+    let mut consumer = CellHost::new();
+    consumer.set_cache(true);
+    consumer.add(min_cart());
+    consumer.add(max_cart());
+    let rep = consumer
+        .import_facts(
+            &file[..],
+            &ImportPolicy {
+                seed: Some(1),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert!(rep.failures.is_empty() && !rep.file_failed);
+
+    let examples = vec![(vec![3u16, 7], 3u16), (vec![10, 4], 4)];
+    let route = consumer.route_by_examples_facts(&examples, 10).unwrap();
+    assert_eq!(route.ranked, vec![(2, "min".to_string())]); // max reproduces neither
+    assert_eq!(route.probe_runs, 4); // 2 cells × 2 examples
+    assert_eq!(route.from_facts, 2); // min: both answered from claims
+    assert_eq!(route.local, 2); // max: both executed
+}
+
+#[test]
+fn route_without_facts_executes_everything() {
+    // No import: the fact-aware route degrades to the execute-everything path —
+    // same ranking contract, zero probes answered from facts.
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    host.add(min_cart());
+    host.add(max_cart());
+    let examples = vec![(vec![3u16, 7], 7u16), (vec![10, 4], 10)];
+    let route = host.route_by_examples_facts(&examples, 10).unwrap();
+    assert_eq!(route.ranked, vec![(2, "max".to_string())]);
+    assert_eq!((route.from_facts, route.local), (0, 4));
+}
+
+#[test]
+fn cli_route_end_to_end_with_facts() {
+    // The card-catalogue beat through the actual CLI: export min's claims, then
+    // `route <dir> 3,7=3 10,4=4 --facts` finds min *from the fact library* — and
+    // the behavioural flip (same inputs, opposite outputs) finds max by execution.
+    use cell80::run_cli;
+    let dir = std::env::temp_dir().join(format!("cell80-route-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("min.rs"),
+        "//! smaller of two\nfn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("max.rs"),
+        "//! larger of two\nfn run(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }\n",
+    )
+    .unwrap();
+    let calls = dir.join("calls.txt");
+    std::fs::write(&calls, "min 3 7\nmin 10 4\n").unwrap();
+    let d = dir.to_str().unwrap();
+    let s = |v: &[&str]| -> Vec<String> { v.iter().map(|t| t.to_string()).collect() };
+
+    let facts_text =
+        run_cli(&s(&["facts", "export", d, "--calls", calls.to_str().unwrap()])).unwrap();
+    let facts_file = dir.join("min.facts");
+    std::fs::write(&facts_file, &facts_text).unwrap();
+
+    let out = run_cli(&s(&[
+        "route",
+        d,
+        "3,7=3",
+        "10,4=4",
+        "--facts",
+        facts_file.to_str().unwrap(),
+    ]))
+    .unwrap();
+    assert!(out.contains("min —"), "min must match:\n{out}");
+    assert!(
+        !out.lines().any(|l| l.contains("max —")),
+        "max must not match:\n{out}"
+    );
+    assert!(
+        out.contains("2 answered from imported facts"),
+        "provenance split:\n{out}"
+    );
+
+    let flipped = run_cli(&s(&["route", d, "3,7=7", "10,4=10"])).unwrap();
+    assert!(flipped.contains("max —"), "flip finds max:\n{flipped}");
+    assert!(
+        flipped.contains("0 answered from imported facts"),
+        "no facts imported:\n{flipped}"
+    );
+    std::fs::remove_dir_all(&dir).ok();
+}

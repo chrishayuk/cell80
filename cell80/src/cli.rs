@@ -14,6 +14,8 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell sign <file.cell> --key <key> (sign the artifact hash in place)\n  \
      rustz80-cell index <dir> [--gate <retrieval.jsonl>] [--json]  (list, or admit/refuse)\n  \
      rustz80-cell search <query> <dir>        (rank library cells by relevance)\n  \
+     rustz80-cell route <dir> <in,..>=<out> [more examples] [--facts <file.facts>] [--json]\n  \
+     \x20                                        (rank cells by BEHAVIOUR; facts answer probes without executing)\n  \
      rustz80-cell serve <dir>                 (persistent stdio session over a warm host)\n  \
      rustz80-cell graph <graph.json> <dir> [--input k=v,...] [--cycles N] [--json]\n  \
      rustz80-cell facts export <dir> --calls <file> [--producer P]  (run calls, print .facts)\n  \
@@ -108,6 +110,7 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
         Some("inspect") => cmd_inspect(&args[1..]),
         Some("index") => cmd_index(&args[1..]),
         Some("search") => cmd_search(&args[1..]),
+        Some("route") => cmd_route(&args[1..]),
         Some("serve") => cmd_serve(&args[1..]),
         Some("graph") => cmd_graph(&args[1..]),
         Some("facts") => cmd_facts(&args[1..]),
@@ -321,6 +324,78 @@ fn cmd_search(args: &[String]) -> Result<String, String> {
         out += &render(m);
         out.push('\n');
     }
+    Ok(out)
+}
+
+/// `route <dir> <in,..>=<out> ... [--facts <file.facts>] [--json]` — rank the library by
+/// **behaviour**: which cells reproduce the given input→output examples. The
+/// phrasing-independent lookup that tells `min` from `max` where their manifests are
+/// identical. With `--facts`, the file is imported first (spot-checked, exactly like
+/// `facts import`) and matching claims answer probe runs without executing — the
+/// provenance split is reported either way.
+fn cmd_route(args: &[String]) -> Result<String, String> {
+    let dir = args.first().ok_or(USAGE)?;
+    let mut facts_file: Option<&str> = None;
+    let mut json = false;
+    let mut example_toks: Vec<&str> = Vec::new();
+    let mut it = args[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--facts" => facts_file = Some(it.next().ok_or("--facts needs a file")?),
+            "--json" => json = true,
+            tok if tok.starts_with("--") => return Err(format!("unknown option `{tok}`\n{USAGE}")),
+            tok => example_toks.push(tok),
+        }
+    }
+    let examples = parse_examples(&example_toks)?;
+    if examples.is_empty() {
+        return Err("route needs at least one example: <in,..>=<out>".into());
+    }
+    let mut host = host_from_dir(dir)?;
+    host.set_cache(true); // imported facts stamp at load; probe runs memoize
+    if let Some(file) = facts_file {
+        let f = std::fs::File::open(file).map_err(|e| format!("{file}: {e}"))?;
+        let rep = host.import_facts(std::io::BufReader::new(f), &crate::ImportPolicy::default())?;
+        if rep.file_failed || !rep.failures.is_empty() {
+            return Err(rep.to_human());
+        }
+    }
+    let cells = host.len();
+    let rep = host.route_by_examples_facts(&examples, 10)?;
+    if json {
+        use serde_json::json;
+        let results: Vec<_> = rep
+            .ranked
+            .iter()
+            .filter_map(|(hits, id)| {
+                host.manifest(id).map(|m| {
+                    json!({
+                        "id": m.id, "summary": m.summary, "tags": m.tags,
+                        "signature": m.signature.to_decl(&m.entry), "hits": hits,
+                    })
+                })
+            })
+            .collect();
+        return Ok(json!({
+            "dir": dir, "cells": cells, "examples": examples.len(), "results": results,
+            "probe_runs": rep.probe_runs, "from_facts": rep.from_facts, "local": rep.local,
+        })
+        .to_string());
+    }
+    let mut out = format!(
+        "routed {cells} cells on {} example(s) → {} match(es):\n",
+        examples.len(),
+        rep.ranked.len()
+    );
+    for (hits, id) in &rep.ranked {
+        if let Some(m) = host.manifest(id) {
+            out += &format!("{}  [{}/{}]\n", render(m), hits, examples.len());
+        }
+    }
+    out += &format!(
+        "probe runs: {} — {} answered from imported facts, {} computed locally",
+        rep.probe_runs, rep.from_facts, rep.local
+    );
     Ok(out)
 }
 

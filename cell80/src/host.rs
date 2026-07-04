@@ -17,6 +17,22 @@ pub(crate) struct Loaded {
     pub(crate) state_addrs: Vec<(String, u16, Ty)>,
 }
 
+/// What a fact-aware behavioural route did — the ranking plus the provenance split
+/// (docs/12 §2) of its probe runs. From [`CellHost::route_by_examples_facts`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct RouteReport {
+    /// `(examples reproduced, cell id)`, best first (ties by id), positive scores only —
+    /// the [`route_by_examples`](CellHost::route_by_examples) ranking contract.
+    pub ranked: Vec<(usize, String)>,
+    /// Total probe runs: cells routed × examples (`from_facts + local`).
+    pub probe_runs: u64,
+    /// Probe runs answered from **imported facts** — claims served without execution.
+    pub from_facts: u64,
+    /// Probe runs computed locally: executed on the VM, or a repeated example served
+    /// by an entry this route itself just computed.
+    pub local: u64,
+}
+
 /// A persistent host over a library of cells: discover (`search`/`manifest`), then
 /// `load` → `run` many → `unload`, keeping runners warm between calls.
 #[derive(Default)]
@@ -122,6 +138,57 @@ impl CellHost {
         );
         hits.truncate(limit);
         hits
+    }
+
+    /// [`route_by_examples`](Self::route_by_examples) riding the fact library (docs/12):
+    /// the same ranking contract (reproduced-example count, best first, ties by id,
+    /// positive only), but each candidate is **loaded** — so staged imported facts stamp
+    /// into its memo cache and answer probe runs as hash lookups instead of executions.
+    /// The report carries the provenance split: probe runs answered from imported facts
+    /// vs computed locally (executed, or a repeated example served by this route's own
+    /// fresh cache entry). With no facts imported — or the cache off — every run is
+    /// local and the ranking is identical to the execute-everything path.
+    pub fn route_by_examples_facts(
+        &mut self,
+        examples: &[(Vec<u16>, u16)],
+        limit: usize,
+    ) -> Result<RouteReport, String> {
+        let mut ids: Vec<String> = self.catalog.keys().cloned().collect();
+        ids.sort();
+        let mut ranked: Vec<(usize, String)> = Vec::new();
+        let (mut from_facts, mut local) = (0u64, 0u64);
+        for id in ids {
+            let h = self.load(&id)?;
+            // A pool reuse resets the cache and its counters (`Runner::reset_for`),
+            // so this handle's imported-hit count is exactly this route's.
+            let mut hits = 0usize;
+            for (inputs, want) in examples {
+                if matches!(
+                    self.run_fast(h, inputs, DEFAULT_CYCLES),
+                    Ok(f) if f.halt == Halt::Returned && f.result == *want
+                ) {
+                    hits += 1;
+                }
+            }
+            let imported = self
+                .cache_split(h)?
+                .map(|(_, imported)| imported)
+                .unwrap_or(0);
+            from_facts += imported;
+            local += examples.len() as u64 - imported;
+            self.unload(h)?;
+            if hits > 0 {
+                ranked.push((hits, id));
+            }
+        }
+        ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+        ranked.truncate(limit);
+        Ok(RouteReport {
+            probe_runs: from_facts + local,
+            ranked,
+            from_facts,
+            local,
+        })
     }
 
     /// Inspect a cell's manifest by id (the typed signature, caps, tags, …).
