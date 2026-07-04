@@ -623,6 +623,30 @@ pub(crate) fn array_base(arr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, String
 /// Lower an index read `base[idx]`: a local array (`arr[i]`) or an array *field*
 /// reached through a struct receiver (`self.arr[i]`).
 fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
+    // `s.as_bytes()[i]` on a `&str` param — a byte load at `s + 2 + i` (past the
+    // u16 length prefix). The one accepted indexed-method shape.
+    if let syn::Expr::MethodCall(mc) = &*ix.expr {
+        if mc.method == "as_bytes" {
+            if let Ok(name) = path_ident(&mc.receiver) {
+                if ctx.vars.str_param(&name) {
+                    let base = ctx.vars.base(&name);
+                    let idx = lower_expr16(&ix.index, ctx, "byte index")?;
+                    let addr = Expr::Bin(
+                        BinOp::Add,
+                        Box::new(Expr::Var(base)),
+                        Box::new(Expr::Bin(
+                            BinOp::Add,
+                            Box::new(idx),
+                            Box::new(Expr::Lit(2)),
+                            Width::Word,
+                        )),
+                        Width::Word,
+                    );
+                    return Ok((Expr::LoadAt(Box::new(addr), Width::Byte), Width::Byte));
+                }
+            }
+        }
+    }
     if let syn::Expr::Field(f) = &*ix.expr {
         let r = field_target(f, ctx)?;
         if r.elem_struct.is_some() {
@@ -645,6 +669,12 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
         return Ok((e, Width::Word));
     }
     let arr = path_ident(&ix.expr)?;
+    if ctx.vars.str_param(&arr) {
+        return Err(format!(
+            "`{arr}[…]` — a `&str` isn't directly indexable (that's real Rust too); \
+             read a byte with `{arr}.as_bytes()[i]`"
+        ));
+    }
     if ctx.vars.elem_struct(&arr).is_some() {
         return Err(format!(
             "a struct-array element isn't a scalar — read a field, e.g. `{arr}[i].x`"
@@ -714,7 +744,24 @@ pub(crate) fn lower_index_store(
             Stmt::StoreIndex(r.base + r.off, idx, val, Width::Word)
         });
     }
+    if let syn::Expr::MethodCall(mc) = &*ix.expr {
+        if mc.method == "as_bytes" {
+            if let Ok(name) = path_ident(&mc.receiver) {
+                if ctx.vars.str_param(&name) {
+                    return Err(format!(
+                        "cannot assign through `{name}.as_bytes()` — a `&str` is \
+                         read-only; build output in a `[u8; N]` field instead"
+                    ));
+                }
+            }
+        }
+    }
     let arr = path_ident(&ix.expr)?;
+    if ctx.vars.str_param(&arr) {
+        return Err(format!(
+            "cannot assign through `{arr}` — a `&str` is read-only"
+        ));
+    }
     if ctx.vars.elem_ptr(&arr).is_some() {
         return Err(format!(
             "cannot assign through `{arr}` — a `&[T; N]` reference is read-only"
@@ -846,6 +893,11 @@ pub(crate) fn lower_method_call(
     if let Some(handle) = ctx.vars.handle_of(&recv) {
         return lower_prelude_call(&handle, &method, &m.args, ctx);
     }
+    // `&str` parameters: the accepted string methods (Phase S §2.1).
+    if ctx.vars.str_param(&recv) {
+        let base = ctx.vars.base(&recv);
+        return lower_str_method(base, &recv, &method, &m.args, ctx);
+    }
     let (base, sname, is_ptr) = ctx
         .vars
         .receiver(&recv)
@@ -863,6 +915,127 @@ pub(crate) fn lower_method_call(
         return Err("method receiver + args exceed 3 registers".into());
     }
     Ok((Expr::Call(format!("{sname}::{method}"), args), Width::Word))
+}
+
+/// Lower a method call on a `&str` parameter (Phase S §2.1). Every accepted method
+/// is real Rust with identical semantics, so `check_str!` keeps the rustc oracle:
+///
+/// | call | lowering |
+/// |---|---|
+/// | `s.len()` | 16-bit load at `s` (the u16 LE length prefix) |
+/// | `s.is_empty()` | that load `== 0` |
+/// | `s.as_bytes()[i]` | byte load at `s + 2 + i` (handled in [`lower_index_read`]) |
+/// | `s.is_char_boundary(i)` | `i == 0 \|\| i == len \|\| (i < len && (b[i] & 0xC0) != 0x80)` |
+///
+/// `is_char_boundary` matches `str::is_char_boundary` exactly — including
+/// `i > len` ⇒ `false` — and short-circuits so the byte read stays in bounds.
+fn lower_str_method(
+    base: usize,
+    recv: &str,
+    method: &str,
+    args: &syn::punctuated::Punctuated<syn::Expr, syn::token::Comma>,
+    ctx: &mut Ctx,
+) -> Result<(Expr, Width), String> {
+    // The length: a 16-bit load at the buffer address.
+    let len = || Expr::LoadAt(Box::new(Expr::Var(base)), Width::Word);
+    let cmp = |cmp, lhs: Expr, rhs: Expr| Expr::Cmp {
+        cmp,
+        lhs: Box::new(lhs),
+        rhs: Box::new(rhs),
+        signed: false,
+    };
+    match method {
+        "len" => Ok((len(), Width::Word)),
+        "is_empty" => Ok((cmp(Cmp::Eq, len(), Expr::Lit(0)), Width::Byte)),
+        "as_bytes" => Err(format!(
+            "`{recv}.as_bytes()` is only indexed in the dialect — read a byte with \
+             `{recv}.as_bytes()[i]` (no slice values)"
+        )),
+        "is_char_boundary" => {
+            let arg = args
+                .first()
+                .ok_or("`is_char_boundary` takes the byte index")?;
+            let idx = lower_expr16(arg, ctx, "char-boundary index")?;
+            // The index is reused across the comparisons, so it must be pure —
+            // a call could be re-invoked with side effects.
+            if has_effects(&idx) {
+                return Err(format!(
+                    "`{recv}.is_char_boundary(…)` needs a simple index here — bind it \
+                     first: `let i = …;`"
+                ));
+            }
+            // b[i] & 0xC0 != 0x80 — "not a UTF-8 continuation byte".
+            let byte_addr = Expr::Bin(
+                BinOp::Add,
+                Box::new(Expr::Var(base)),
+                Box::new(Expr::Bin(
+                    BinOp::Add,
+                    Box::new(idx.clone()),
+                    Box::new(Expr::Lit(2)),
+                    Width::Word,
+                )),
+                Width::Word,
+            );
+            let not_cont = cmp(
+                Cmp::Ne,
+                Expr::Bin(
+                    BinOp::And,
+                    Box::new(Expr::LoadAt(Box::new(byte_addr), Width::Byte)),
+                    Box::new(Expr::Lit(0xC0)),
+                    Width::Byte,
+                ),
+                Expr::Lit(0x80),
+            );
+            // i == 0 || i == len || (i < len && not_cont) — `i > len` is false,
+            // exactly `str::is_char_boundary`.
+            let in_bounds = Expr::Logic {
+                and: true,
+                lhs: Box::new(cmp(Cmp::Lt, idx.clone(), len())),
+                rhs: Box::new(not_cont),
+            };
+            let tail = Expr::Logic {
+                and: false,
+                lhs: Box::new(cmp(Cmp::Eq, idx.clone(), len())),
+                rhs: Box::new(in_bounds),
+            };
+            Ok((
+                Expr::Logic {
+                    and: false,
+                    lhs: Box::new(cmp(Cmp::Eq, idx, Expr::Lit(0))),
+                    rhs: Box::new(tail),
+                },
+                Width::Byte,
+            ))
+        }
+        other => Err(format!(
+            "`{other}` isn't a `&str` method in the dialect — a string is \
+             length-prefixed bytes: `{recv}.len()`, `{recv}.is_empty()`, \
+             `{recv}.as_bytes()[i]`, `{recv}.is_char_boundary(i)`; anything more \
+             is host/escalation territory"
+        )),
+    }
+}
+
+/// Does this IR expression have (or could it have) side effects — so it must not be
+/// duplicated? Calls may mutate state; `inport` reads a device; `halt` stops the run.
+fn has_effects(e: &Expr) -> bool {
+    match e {
+        Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => true,
+        Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => false,
+        Expr::Lit32(_) | Expr::Var32(_) => false,
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => has_effects(a) || has_effects(b),
+        Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+            has_effects(lhs) || has_effects(rhs)
+        }
+        Expr::Index(_, i, _) => has_effects(i),
+        Expr::Trunc(x) | Expr::Trunc32(x) | Expr::Widen(x) | Expr::Peek(x) => has_effects(x),
+        Expr::Deref(p, _) | Expr::Deref32(p, _) => has_effects(p),
+        Expr::PtrIndex { ptr, index, .. } => has_effects(ptr) || has_effects(index),
+        Expr::MulConst(x, _) => has_effects(x),
+        Expr::LoadAt(a, _) => has_effects(a),
+        Expr::ShiftVar { e, amount, .. } => has_effects(e) || has_effects(amount),
+        Expr::Shift32 { e, .. } => has_effects(e),
+    }
 }
 
 /// Route `<handle>.<method>(args)` to the configured prelude function (the receiver

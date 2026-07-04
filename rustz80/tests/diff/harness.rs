@@ -93,14 +93,37 @@ impl z80::Bus for Ram {
 /// Load `bytes` at `ORG`, `CALL` the trampoline target, run to the halt, and return the
 /// final CPU + bus. The core loop shared by every helper below.
 fn exec(bytes: &[u8], entry_addr: u16) -> (z80::Cpu, Ram) {
+    exec_args(bytes, entry_addr, &[], &[])
+}
+
+/// [`exec`] with register arguments and pre-laid data blobs: `args` load into
+/// `HL`/`DE`/`BC` (the parameter convention) before the `CALL`; each `(addr, bytes)`
+/// in `data` is written to memory first — how `run_str` plants a string buffer.
+fn exec_args(
+    bytes: &[u8],
+    entry_addr: u16,
+    args: &[u16],
+    data: &[(u16, &[u8])],
+) -> (z80::Cpu, Ram) {
     let mut bus = Ram {
         mem: vec![0u8; 0x1_0000],
     };
-    // trampoline @ 0x7000:  CALL entry ; HALT
-    bus.mem[0x7000] = 0xCD;
-    bus.mem[0x7001] = entry_addr as u8;
-    bus.mem[0x7002] = (entry_addr >> 8) as u8;
-    bus.mem[0x7003] = 0x76;
+    for (addr, blob) in data {
+        bus.mem[*addr as usize..*addr as usize + blob.len()].copy_from_slice(blob);
+    }
+    // trampoline @ 0x7000:  [LD HL/DE/BC, arg]* ; CALL entry ; HALT
+    const LD: [u8; 3] = [0x21, 0x11, 0x01];
+    let mut p = 0x7000usize;
+    for (i, &v) in args.iter().enumerate().take(3) {
+        bus.mem[p] = LD[i];
+        bus.mem[p + 1] = v as u8;
+        bus.mem[p + 2] = (v >> 8) as u8;
+        p += 3;
+    }
+    bus.mem[p] = 0xCD;
+    bus.mem[p + 1] = entry_addr as u8;
+    bus.mem[p + 2] = (entry_addr >> 8) as u8;
+    bus.mem[p + 3] = 0x76;
     let org = rustz80::ORG as usize;
     bus.mem[org..org + bytes.len()].copy_from_slice(bytes);
 
@@ -123,6 +146,22 @@ pub(crate) fn run(bytes: &[u8]) -> u16 {
     exec(bytes, rustz80::ORG).0.regs.hl()
 }
 
+/// Where `run_str` plants the input buffer — far above the code + scratch region.
+const STR_INPUT: u16 = 0xB000;
+
+/// Run compiled `fn f(s: &str) -> u16` bytes: pack `s` as a length-prefixed buffer
+/// (u16 LE length, then the bytes — the Phase S wire format) at [`STR_INPUT`], pass
+/// its address in `HL`, and return `HL` after the run.
+pub(crate) fn run_str(bytes: &[u8], s: &str) -> u16 {
+    let mut buf = Vec::with_capacity(s.len() + 2);
+    buf.extend_from_slice(&(s.len() as u16).to_le_bytes());
+    buf.extend_from_slice(s.as_bytes());
+    exec_args(bytes, rustz80::ORG, &[STR_INPUT], &[(STR_INPUT, &buf)])
+        .0
+        .regs
+        .hl()
+}
+
 /// Compile + run one block on **both targets** and assert they match the rustc oracle.
 macro_rules! check {
     ($body:block) => {{
@@ -138,6 +177,32 @@ macro_rules! check {
                 "rustz80 vs rustc diverged on {target:?}\nsrc: {src}\n  z80={got} host={}",
                 host()
             );
+        }
+    }};
+}
+
+/// Compile + run one `fn f(s: &str) -> u16` body on **both targets**, over one or
+/// more input strings, asserting each against the rustc oracle. The single-source
+/// property of `check!`, for string kernels. The parameter name is passed first
+/// (macro hygiene: the body's `s` must be a call-site binding):
+/// `check_str!(s, { s.len() as u16 }, "", "hello");`
+macro_rules! check_str {
+    ($s:ident, $body:block, $($input:expr),+ $(,)?) => {{
+        #[allow(unused_assignments, clippy::needless_range_loop)]
+        fn host($s: &str) -> u16 $body
+        let src = format!("fn f({}: &str) -> u16 {}", stringify!($s), stringify!($body));
+        for target in crate::harness::TARGETS {
+            let bytes = rustz80::compile_fn_for(&src, target)
+                .unwrap_or_else(|e| panic!("compile failed ({target:?}): {e}\nsrc: {src}"));
+            $(
+                let got = crate::harness::run_str(&bytes, $input);
+                assert_eq!(
+                    got,
+                    host($input),
+                    "rustz80 vs rustc diverged on {:?} for input {:?}\nsrc: {}\n  z80={} host={}",
+                    target, $input, src, got, host($input)
+                );
+            )+
         }
     }};
 }

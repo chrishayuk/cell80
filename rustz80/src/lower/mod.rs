@@ -403,6 +403,16 @@ fn ref_array_param(t: &syn::Type) -> Option<(Width, u16)> {
     None
 }
 
+/// A `s: &str` (immutable) parameter — one register holding the address of a
+/// length-prefixed buffer (u16 LE length at `s`, bytes at `s + 2` — the Phase S
+/// wire format, `docs/11-machine-text.md` §2.1).
+fn is_str_param(t: &syn::Type) -> bool {
+    let syn::Type::Reference(r) = t else {
+        return false;
+    };
+    r.mutability.is_none() && matches!(&*r.elem, syn::Type::Path(p) if p.path.is_ident("str"))
+}
+
 /// Declare a function's parameters, returning the count. `self_ty` is `Some` for
 /// methods — then a leading `&self`/`&mut self` receiver is a pointer parameter.
 fn lower_inputs(
@@ -430,6 +440,10 @@ fn lower_inputs(
                     // `TILE: [u8; 8]`.
                     None => match ref_array_param(&pt.ty) {
                         Some((w, stride)) => ctx.vars.declare_elem_ptr(&name, w, stride),
+                        // `s: &str` — the runtime-length sibling of `&[u8; N]`:
+                        // one register, the address of a length-prefixed buffer;
+                        // reads go through `s.len()` / `s.as_bytes()[i]`.
+                        None if is_str_param(&pt.ty) => ctx.vars.declare_str(&name),
                         None => {
                             let w = ctx.width_of_type(&pt.ty);
                             if w == Width::DWord {

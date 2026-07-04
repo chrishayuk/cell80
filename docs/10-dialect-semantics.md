@@ -55,6 +55,17 @@ not 1.)
 sibling: packed bytes with **no** prefix (the `[u8; N]` type carries the length),
 deduplicated, evaluating to their address. `b'a'` is a `u8` value literal.
 
+**`&str` parameters** (Phase S §2.1) occupy one register — the address of a
+length-prefixed buffer — and expose exactly four methods, each real Rust with
+identical semantics (diff-tested via `check_str!`): `s.len()` (a 16-bit load at
+`s`), `s.is_empty()`, `s.as_bytes()[i]` (a byte load at `s + 2 + i`, **no bounds
+check** — guard with `i < s.len()`, the library idiom), and
+`s.is_char_boundary(i)` (the exact `str::is_char_boundary` truth table, including
+`i > len` ⇒ `false`; the byte read short-circuits behind `i < len`). Direct
+indexing `s[i]`, slicing `&s[a..b]`, `chars()`, and any `String`-producing
+operation stay out with steering diagnostics; strings are read-only — output
+builds into `[u8; N]` state fields (§2.3 of the Phase S spec).
+
 ## `if`/`match` as values
 
 `let x = if c { a } else { b };` and `match`-with-value-arms are accepted in `let`,
