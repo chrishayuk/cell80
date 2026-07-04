@@ -132,6 +132,10 @@ fn codegen_golden() {
             golden_path.display()
         )
     });
+    // A Windows checkout may materialise the golden with CRLF (git autocrlf);
+    // the rendered output is always LF. Normalise so the comparison is about
+    // codegen, not line endings.
+    let want = want.replace("\r\n", "\n");
     if got != want {
         let mismatch = got
             .lines()
