@@ -2026,3 +2026,118 @@ fn abi_v3_ty_parse_display() {
     assert!(Ty::parse("bytes[x]").is_err());
     assert!(Ty::parse("float").is_err());
 }
+
+#[test]
+fn run_state_fast_caches_the_scoring_workhorse() {
+    // docs/12 §2 (delta two): state cells — the scoring family — go through the
+    // memo table. The cached outcome is byte-for-byte the live one, repeats are
+    // hash lookups, and a different field set is a different fact.
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
+    let src = "
+        struct Score { wx: u16, wy: u16, x: u16, y: u16, total: u32 }
+        impl Score {
+            fn run(&mut self) -> u16 {
+                self.total = (self.wx as u32) * (self.x as u32)
+                    + (self.wy as u32) * (self.y as u32);
+                (self.total >> 16) as u16
+            }
+        }
+    ";
+    let cart = Cartridge::compile(
+        src,
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("score.v1".into()),
+            entry: Some("Score::run".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    host.add(cart);
+    let h = host.load("score.v1").unwrap();
+
+    let fields = vec![
+        ("wx".into(), 3u64),
+        ("wy".into(), 5),
+        ("x".into(), 17),
+        ("y".into(), 40),
+    ];
+    let (f1, s1) = host.run_state_fast(h, &fields, DEFAULT_CYCLES).unwrap();
+    let (f2, s2) = host.run_state_fast(h, &fields, DEFAULT_CYCLES).unwrap();
+    // Identical outcome, and the repeat was a hit.
+    assert_eq!(
+        (f1.result, f1.regs, f1.cycles, f1.trapped_ops),
+        (f2.result, f2.regs, f2.cycles, f2.trapped_ops)
+    );
+    assert_eq!(s1, s2);
+    let by = |s: &Vec<(String, u64)>, n: &str| s.iter().find(|(k, _)| k == n).unwrap().1;
+    assert_eq!(by(&s1, "total"), 3 * 17 + 5 * 40);
+    assert_eq!(host.cache_stats(h).unwrap(), Some((1, 2)));
+
+    // Matches the uncached rich path field-for-field.
+    let (_, live) = host.run_state(h, &fields, DEFAULT_CYCLES).unwrap();
+    assert_eq!(s1, live);
+
+    // A different field set misses (a different fact).
+    let fields2 = vec![
+        ("wx".into(), 4u64),
+        ("wy".into(), 5),
+        ("x".into(), 17),
+        ("y".into(), 40),
+    ];
+    let (f3, s3) = host.run_state_fast(h, &fields2, DEFAULT_CYCLES).unwrap();
+    assert_eq!(by(&s3, "total"), 4 * 17 + 5 * 40);
+    assert_ne!(
+        f3.result * 0 + by(&s3, "total") as u16,
+        by(&s1, "total") as u16
+    );
+    assert_eq!(host.cache_stats(h).unwrap(), Some((1, 3)));
+}
+
+#[test]
+fn run_state_fast_budget_and_order_rules() {
+    // The strict-replay rule holds for state facts, and field order doesn't
+    // change the fact (canonical key: sorted by address).
+    use cell80::StateCell;
+    let src = "
+        struct S { a: u16, b: u16, out: u16 }
+        impl S { fn run(&mut self) -> u16 { self.out = self.a + self.b; self.out } }
+    ";
+    let mut r = Runner::compile(src).unwrap();
+    r.enable_cache();
+    let layout = rustz80::struct_layout(src, "S").unwrap();
+    let addr =
+        |n: &str| cell80::STATE_BASE + layout.iter().find(|f| f.name == n).unwrap().offset * 2;
+    let reads = vec![("out".to_string(), addr("out"), cell80::Ty::U16)];
+    let ab = vec![
+        (addr("a"), cell80::Ty::U16, 30u64),
+        (addr("b"), cell80::Ty::U16, 12u64),
+    ];
+    let ba = vec![ab[1], ab[0]];
+    let (f1, s1) = r
+        .run_state_fast(Some("S::run"), &ab, &reads, DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(s1, vec![("out".to_string(), 42u64)]);
+    // Same fields, different order → the same fact (a hit).
+    let (_, s2) = r
+        .run_state_fast(Some("S::run"), &ba, &reads, DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(s1, s2);
+    assert_eq!(r.cache_stats(), Some((1, 2)));
+    // The replay rule is strict `<`: at budget == stored cycles the cache is
+    // skipped — and the live run *completes* (the final instruction starts while
+    // cycles < budget), so equality is a conservative miss with the same outcome.
+    let (f3, _) = r
+        .run_state_fast(Some("S::run"), &ab, &reads, f1.cycles)
+        .unwrap();
+    assert_eq!(f3.halt, cell80::Halt::Returned);
+    assert_eq!(f3.cycles, f1.cycles);
+    // Well under the recorded cost, the live run is out of budget. (Near-misses
+    // can still return: the guard is checked at loop top, so the final
+    // instruction may finish up to one instruction past the budget.)
+    let (f4, _) = r.run_state_fast(Some("S::run"), &ab, &reads, 8).unwrap();
+    assert_eq!(f4.halt, cell80::Halt::CycleBudget);
+    let _ = StateCell::bind(src, "S", None).unwrap(); // still binds (sanity)
+}
