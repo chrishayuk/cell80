@@ -496,6 +496,31 @@ RNG) was: `docs/cell-index.md` catches true behavioural duplicates before author
 it doesn't catch "this wording will out-rank an existing cell on a shared verb" —
 that's what the retrieval curve is for.
 
+**The response: paused growth, fixed the live index (checkpoint 11), not just noted it.**
+Per the user's explicit call ("pause growth, fix retrieval first") over the alternatives
+(a narrow wording patch, or continuing regardless). Diagnosed all 3 losses directly: each
+was a simple 2-arg free-fn (`sub_sat`, `eq`, `same_unit_check`) losing to a 4-6-field
+fraction state cell sharing one core verb — a real same-verb-different-*shape* confound.
+Fix: `TfidfIndex::search` (the live path everything routes through — `CellHost`, the CLI,
+MCP, and `cell-eval`'s own `lib.search`) now breaks near-ties toward the structurally
+simpler cell (a free-fn's param count or a state cell's field count), the same
+length-normalisation instinct BM25 applies to document length, applied to shape instead.
+Swept γ 0.0–0.3 on the full 327-query set first; 0.05 was the best overall point and the
+only one positive on every split but direct. Deliberately scoped to `search`'s *ranking
+order* only, never `scored`'s exposed cosine magnitude — that value feeds `cell-eval`'s
+tiered-retrieval margin gate, calibrated against raw tf-idf cosine (a per-embedder θ,
+`cell-eval/src/cell_eval/tiers.py`); rescaling it would have silently drifted an
+already-tuned threshold without re-running that calibration.
+
+Result, honestly: **partial, not complete, recovery.** Adversarial jumped well above
+checkpoint 1's baseline (0.47 vs 0.39). Paraphrase recovered about a third of checkpoint
+10's drop (0.41 vs 0.40, still under the 0.4247 baseline). Direct ticked down another 0.6
+points, continuing a now-four-checkpoint decline — though that decline's *rate* has been
+slowing each checkpoint, consistent with a growing corpus's natural denominator effect
+rather than something this specific fix caused. This was reported to the user as
+validated-but-partial progress, not declared a full fix — see
+`cell-eval/baselines/README.md`'s checkpoint 11 entry for the complete numbers.
+
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells
   and arity-3 cells are exempt — `cell80/src/admission.rs`'s own doc explains why:
