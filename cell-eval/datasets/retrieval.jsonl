@@ -236,3 +236,16 @@
 {"id": "q_lerp-direct-1", "query": "linearly interpolate between two values by a fraction", "expected": "q_lerp", "category": "direct"}
 {"id": "q_lerp-para-1", "query": "blend smoothly from one value toward another", "expected": "q_lerp", "category": "paraphrase"}
 {"id": "q_lerp-adv-1", "query": "one step of an exponential moving average update", "expected": "q_lerp", "category": "adversarial"}
+
+# ── agentic runtime primitives (wave 3) ──
+{"id": "token_bucket_step-direct-1", "query": "token bucket rate limiter step", "expected": "token_bucket_step", "category": "direct"}
+{"id": "token_bucket_step-para-1", "query": "check whether an agent has enough budget left to make this call and spend it", "expected": "token_bucket_step", "category": "paraphrase"}
+{"id": "backoff_next-direct-1", "query": "the next exponential backoff delay", "expected": "backoff_next", "category": "direct"}
+{"id": "backoff_next-para-1", "query": "how long to wait before retrying again, doubling each time up to a cap", "expected": "backoff_next", "category": "paraphrase"}
+{"id": "circuit_breaker_step-direct-1", "query": "circuit breaker state transition", "expected": "circuit_breaker_step", "category": "direct"}
+{"id": "circuit_breaker_step-para-1", "query": "stop calling a failing service until it recovers", "expected": "circuit_breaker_step", "category": "paraphrase"}
+{"id": "circuit_breaker_step-adv-1", "query": "closed open half-open resilience state machine", "expected": "circuit_breaker_step", "category": "adversarial"}
+{"id": "debounce_step-direct-1", "query": "debounce a noisy signal", "expected": "debounce_step", "category": "direct"}
+{"id": "debounce_step-para-1", "query": "only confirm a change once it's been consistent for a few readings in a row", "expected": "debounce_step", "category": "paraphrase"}
+{"id": "hysteresis-direct-1", "query": "hysteresis with a low and high threshold", "expected": "hysteresis", "category": "direct"}
+{"id": "hysteresis-para-1", "query": "a schmitt trigger that avoids flickering near a single threshold", "expected": "hysteresis", "category": "paraphrase"}
