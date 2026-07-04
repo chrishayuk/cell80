@@ -74,6 +74,15 @@ the statement form through the destination slot. A value-`if` needs an `else`; a
 value-`match` needs a `_` arm; every branch must end with the value (no trailing `;`) —
 each violation is its own instructive compile error.
 
+`match` arms accept integer/byte literals, enum variants, **range patterns**
+(`0..=9 =>`, exclusive `0..10 =>`, byte bounds `b'a'..=b'z' =>`) and **or-patterns**
+(`1 | 2 =>`, ranges allowed inside the or-list) — everything lowers to the existing
+if-chain over the scrutinee temp; a lone equality stays a direct comparison, compound
+arms materialise a `0`/`1` test. Range bounds are non-negative literals, which keeps
+the unsigned comparison exact for `i16` scrutinees. Bindings, tuple patterns, and
+open-ended ranges stay out with steering diagnostics. (The `range_pattern` repair
+class graduated to a feature with this — its rows left the repair dataset.)
+
 ## Arithmetic
 
 All integer arithmetic is **wrapping** (mod 2^width) — the semantics of release-mode

@@ -489,23 +489,17 @@ pub(crate) fn lower_stmt_expr(
             body.push(Stmt::Assign(temp, scrut));
 
             let mut default: Vec<Stmt> = Vec::new();
-            let mut arms: Vec<(Expr, Vec<Stmt>)> = Vec::new();
+            let mut arms: Vec<(Vec<PatTest>, Vec<Stmt>)> = Vec::new();
             for arm in &m.arms {
                 let arm_body = lower_arm_body(&arm.body, ctx)?;
-                match pattern_value(&arm.pat, ctx)? {
-                    Some(v) => arms.push((v, arm_body)),
+                match pattern_tests(&arm.pat, ctx)? {
+                    Some(t) => arms.push((t, arm_body)),
                     None => default = arm_body, // `_` wildcard
                 }
             }
             let mut chain = default;
-            for (val, arm_body) in arms.into_iter().rev() {
-                let cond = Cond {
-                    cmp: Cmp::Eq,
-                    lhs: Expr::Var(temp),
-                    rhs: val,
-                    signed: false,
-                };
-                chain = vec![Stmt::If(cond, arm_body, chain)];
+            for (tests, arm_body) in arms.into_iter().rev() {
+                chain = vec![Stmt::If(arm_cond(temp, tests), arm_body, chain)];
             }
             body.extend(chain);
         }
@@ -768,28 +762,126 @@ fn lower_arm_body(e: &syn::Expr, ctx: &mut Ctx) -> Result<Vec<Stmt>, String> {
     }
 }
 
-/// A match pattern's value, or `None` for the `_` wildcard.
-fn pattern_value(pat: &syn::Pat, ctx: &Ctx) -> Result<Option<Expr>, String> {
-    match pat {
-        syn::Pat::Wild(_) => Ok(None),
-        syn::Pat::Lit(pl) => match &pl.lit {
-            syn::Lit::Int(i) => Ok(Some(Expr::Lit(
+/// One test of a `match` arm against the scrutinee: equality with a value, or
+/// membership in a (non-negative) literal range.
+enum PatTest {
+    Eq(Expr),
+    Range { lo: Expr, hi: Expr, inclusive: bool },
+}
+
+/// A match arm's pattern as an or-list of tests, or `None` for the `_` wildcard.
+/// Accepts integer/byte literals, enum variants, ranges (`0..=9`, `b'a'..=b'z'`),
+/// and or-patterns (`1 | 2`) — including ranges inside or-patterns. Range bounds
+/// are non-negative literals, so the unsigned comparison is exact for `i16`
+/// scrutinees too (a negative value fails the upper bound either way).
+fn pattern_tests(pat: &syn::Pat, ctx: &Ctx) -> Result<Option<Vec<PatTest>>, String> {
+    let lit_value = |l: &syn::Lit| -> Result<Expr, String> {
+        match l {
+            syn::Lit::Int(i) => Ok(Expr::Lit(
                 i.base10_parse::<u16>().map_err(|e| e.to_string())?,
-            ))),
-            syn::Lit::Byte(b) => Ok(Some(Expr::Lit(b.value() as u16))),
+            )),
+            syn::Lit::Byte(b) => Ok(Expr::Lit(b.value() as u16)),
             other => Err(format!(
                 "unsupported `match` pattern: {} — arms match integer/byte literals, \
-                 enum variants, or `_`",
+                 ranges (`0..=9`), or-patterns (`1 | 2`), enum variants, or `_`",
                 super::expr::describe_lit_kind(other)
             )),
-        },
+        }
+    };
+    match pat {
+        syn::Pat::Wild(_) => Ok(None),
+        syn::Pat::Paren(p) => pattern_tests(&p.pat, ctx),
+        syn::Pat::Lit(pl) => Ok(Some(vec![PatTest::Eq(lit_value(&pl.lit)?)])),
         syn::Pat::Path(pp) => resolve_enum_path(&pp.path, ctx.enums)
-            .map(|v| Some(Expr::Lit(v)))
+            .map(|v| Some(vec![PatTest::Eq(Expr::Lit(v))]))
             .ok_or_else(|| "unknown enum variant in pattern".into()),
-        _ => Err("unsupported `match` pattern — arms match integer literals \
-                  (`0u16 => …`), enum variants (`Dir::Up => …`), or `_` (no ranges, \
-                  bindings, or tuples)"
-            .into()),
+        // `1 | 2 | Dir::Up` — flatten the cases into one or-list.
+        syn::Pat::Or(o) => {
+            let mut all = Vec::new();
+            for p in &o.cases {
+                match pattern_tests(p, ctx)? {
+                    Some(mut t) => all.append(&mut t),
+                    None => {
+                        return Err("`_` inside an or-pattern already matches everything — \
+                             use a bare `_` arm"
+                            .into())
+                    }
+                }
+            }
+            Ok(Some(all))
+        }
+        // `lo..=hi` / `lo..hi` — both bounds required (no open ranges).
+        syn::Pat::Range(r) => {
+            let bound = |e: &Option<Box<syn::Expr>>| -> Result<Expr, String> {
+                let e = e
+                    .as_deref()
+                    .ok_or("open-ended range patterns are not supported — give both bounds")?;
+                match e {
+                    syn::Expr::Lit(l) => lit_value(&l.lit),
+                    _ => Err("range-pattern bounds must be integer/byte literals".into()),
+                }
+            };
+            Ok(Some(vec![PatTest::Range {
+                lo: bound(&r.start)?,
+                hi: bound(&r.end)?,
+                inclusive: matches!(r.limits, syn::RangeLimits::Closed(_)),
+            }]))
+        }
+        _ => Err(
+            "unsupported `match` pattern — arms match integer/byte literals \
+                  (`0u16 => …`), ranges (`0..=9 => …`), or-patterns (`1 | 2 => …`), \
+                  enum variants (`Dir::Up => …`), or `_` (no bindings or tuples)"
+                .into(),
+        ),
+    }
+}
+
+/// The branch condition testing scrutinee `temp` against an arm's or-list. A single
+/// equality stays a direct [`Cond`] comparison (the cheap common case); anything
+/// compound materialises a `0`/`1` test expression and branches on `!= 0`.
+fn arm_cond(temp: usize, tests: Vec<PatTest>) -> Cond {
+    if let [PatTest::Eq(_)] = tests.as_slice() {
+        let Some(PatTest::Eq(v)) = tests.into_iter().next() else {
+            unreachable!()
+        };
+        return Cond {
+            cmp: Cmp::Eq,
+            lhs: Expr::Var(temp),
+            rhs: v,
+            signed: false,
+        };
+    }
+    let cmp = |cmp, lhs: Expr, rhs: Expr| Expr::Cmp {
+        cmp,
+        lhs: Box::new(lhs),
+        rhs: Box::new(rhs),
+        signed: false,
+    };
+    let test_expr = tests
+        .into_iter()
+        .map(|t| match t {
+            PatTest::Eq(v) => cmp(Cmp::Eq, Expr::Var(temp), v),
+            PatTest::Range { lo, hi, inclusive } => Expr::Logic {
+                and: true,
+                lhs: Box::new(cmp(Cmp::Ge, Expr::Var(temp), lo)),
+                rhs: Box::new(cmp(
+                    if inclusive { Cmp::Le } else { Cmp::Lt },
+                    Expr::Var(temp),
+                    hi,
+                )),
+            },
+        })
+        .reduce(|acc, t| Expr::Logic {
+            and: false,
+            lhs: Box::new(acc),
+            rhs: Box::new(t),
+        })
+        .expect("an or-list is never empty");
+    Cond {
+        cmp: Cmp::Ne,
+        lhs: test_expr,
+        rhs: Expr::Lit(0),
+        signed: false,
     }
 }
 
@@ -939,7 +1031,7 @@ pub(crate) fn lower_value_into(
             body.push(Stmt::Assign(temp, scrut));
 
             let mut default: Option<Vec<Stmt>> = None;
-            let mut arms: Vec<(Expr, Vec<Stmt>)> = Vec::new();
+            let mut arms: Vec<(Vec<PatTest>, Vec<Stmt>)> = Vec::new();
             for arm in &m.arms {
                 let mut ab = Vec::new();
                 match &*arm.body {
@@ -948,8 +1040,8 @@ pub(crate) fn lower_value_into(
                     }
                     e => lower_value_into(slot, dword, e, ctx, &mut ab)?,
                 }
-                match pattern_value(&arm.pat, ctx)? {
-                    Some(v) => arms.push((v, ab)),
+                match pattern_tests(&arm.pat, ctx)? {
+                    Some(t) => arms.push((t, ab)),
                     None => default = Some(ab),
                 }
             }
@@ -961,14 +1053,8 @@ pub(crate) fn lower_value_into(
                 );
             };
             let mut chain = default;
-            for (val, ab) in arms.into_iter().rev() {
-                let cond = Cond {
-                    cmp: Cmp::Eq,
-                    lhs: Expr::Var(temp),
-                    rhs: val,
-                    signed: false,
-                };
-                chain = vec![Stmt::If(cond, ab, chain)];
+            for (tests, ab) in arms.into_iter().rev() {
+                chain = vec![Stmt::If(arm_cond(temp, tests), ab, chain)];
             }
             body.extend(chain);
         }

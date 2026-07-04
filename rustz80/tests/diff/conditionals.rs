@@ -168,3 +168,75 @@ fn tail_if_statement_stays_a_statement() {
         r
     });
 }
+
+#[test]
+fn match_range_patterns() {
+    // Range patterns — the graduated `range_pattern` repair class, now a feature.
+    // The two shapes straight from the old repair rows:
+    check!({
+        let x = 5u16;
+        match x {
+            0u16..=9u16 => 1u16,
+            _ => 0u16,
+        }
+    });
+    check!({
+        let mut total = 0u16;
+        for s in 0..100u16 {
+            let band = match s {
+                0u16..=49u16 => 0u16,
+                50u16..=79u16 => 1u16,
+                _ => 2u16,
+            };
+            total = total + band;
+        }
+        total
+    });
+    // Exclusive ranges and byte-literal bounds.
+    check!({
+        let c = b'7';
+        match c {
+            b'0'..=b'9' => 1u16,
+            b'a'..=b'z' => 2u16,
+            _ => 0u16,
+        }
+    });
+    check!({
+        let x = 10u16;
+        match x {
+            0u16..10u16 => 1u16,
+            _ => 9u16,
+        }
+    });
+}
+
+#[test]
+fn match_or_patterns() {
+    // Or-patterns, including a range inside an or-list.
+    check!({
+        let mut acc = 0u16;
+        for x in 0..12u16 {
+            let k = match x {
+                1u16 | 2u16 | 3u16 => 1u16,
+                5u16 | 7u16 => 2u16,
+                8u16..=9u16 | 11u16 => 3u16,
+                _ => 0u16,
+            };
+            acc = acc * 2u16 + k;
+        }
+        acc
+    });
+}
+
+#[test]
+fn match_pattern_rejections() {
+    // Open ranges and bindings keep instructive rejections.
+    let err = rustz80::compile_fn("fn f(x: u16) -> u16 { match x { 5u16.. => 1u16, _ => 0u16 } }")
+        .err()
+        .unwrap();
+    assert!(err.contains("both bounds"), "unexpected: {err}");
+    let err = rustz80::compile_fn("fn f(x: u16) -> u16 { match x { y => y } }")
+        .err()
+        .unwrap();
+    assert!(err.contains("no bindings"), "unexpected: {err}");
+}

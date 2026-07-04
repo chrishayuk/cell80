@@ -14,7 +14,5 @@
 {"id": "repair.closure.thrice", "klass": "closure", "src": "fn run(n: u16) -> u16 { let t = |x: u16| x * 3u16; t(n) }", "intent": "3n", "examples": [[[5], 15], [[0], 0]]}
 {"id": "repair.try.div", "klass": "try_operator", "src": "fn run(a: u16, b: u16) -> u16 { a.checked_div(b)? }", "intent": "a/b, and 0 when b is 0", "examples": [[[17, 5], 3], [[9, 0], 0]]}
 {"id": "repair.try.sub", "klass": "try_operator", "src": "fn run(a: u16, b: u16) -> u16 { a.checked_sub(b)? }", "intent": "a-b saturating at 0", "examples": [[[9, 4], 5], [[4, 9], 0]]}
-{"id": "repair.range_pat.decade", "klass": "range_pattern", "src": "fn run(x: u16) -> u16 { match x { 0u16..=9u16 => 1u16, _ => 0u16 } }", "intent": "1 if x <= 9 else 0", "examples": [[[5], 1], [[12], 0]]}
-{"id": "repair.range_pat.grade", "klass": "range_pattern", "src": "fn run(s: u16) -> u16 { match s { 0u16..=49u16 => 0u16, 50u16..=79u16 => 1u16, _ => 2u16 } }", "intent": "0 for s<50, 1 for 50..=79, 2 otherwise", "examples": [[[30], 0], [[60], 1], [[95], 2]]}
 {"id": "repair.neg.negate", "klass": "neg_unsigned", "src": "fn run(a: u16) -> u16 { -a }", "intent": "two's-complement negation of a, as u16 bits", "examples": [[[5], 65531], [[0], 0]]}
 {"id": "repair.neg.delta", "klass": "neg_unsigned", "src": "fn run(a: u16, b: u16) -> u16 { let d = -(b as i16); (a as i16 + d) as u16 }", "intent": "a - b as i16 bits (may go negative)", "examples": [[[10, 3], 7], [[3, 10], 65529]]}

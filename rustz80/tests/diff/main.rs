@@ -16,7 +16,8 @@
     clippy::manual_swap,
     clippy::needless_range_loop,
     clippy::manual_range_contains,
-    clippy::manual_is_multiple_of
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_patterns
 )]
 
 #[macro_use]
