@@ -111,6 +111,14 @@ the `0`/`1` materialises and branches on `!= 0`, the same compound-condition sha
 `&&`/`||` use. The word-split idiom (`hi != hi || lo < lo`) retires; the
 `q_max`/Q-clamp family writes `if a < b { b } else { a }` as intended.
 
+**`[u32; N]` arrays** work as locals and struct state fields: two slots per
+element, element access through the wide load/store nodes at `base + i*4` —
+reads, writes, `[v; N]`/`[e0, e1, …]` init, all oracle-checked (including the
+sliding-window accumulate shape). A bare wide-array name or field is not a value
+(index it); `[u32; N]` fields are not name-addressed by the cell layer (2N slots,
+never mistaken for a scalar `u32`). Wide *elements* don't change the call rule:
+`u32` still never crosses a call boundary.
+
 Shifts: a constant amount unrolls; a runtime amount shifts by the **low byte** of the
 operand, and a count ≥ the width shifts out to `0` (matching rustc's behaviour for the
 in-range counts the oracle tests; rustc panics on out-of-range constants in debug — the

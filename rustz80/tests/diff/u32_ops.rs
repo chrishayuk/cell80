@@ -321,3 +321,94 @@ fn u32_saturating() {
             + (a.saturating_add(1u32) == 70_001u32) as u16
     });
 }
+
+#[test]
+fn u32_local_arrays() {
+    // `[u32; N]` locals — repeat and literal init, runtime-index read/write,
+    // a wide accumulate loop. Checked against rustc.
+    check!({
+        let mut a = [0u32; 4];
+        a[0] = 100_000u32;
+        a[3] = a[0] + 30_000u32;
+        let i = 3u16;
+        ((a[i as usize] - a[0]) >> 8) as u16
+    });
+    check!({
+        let a = [70_000u32, 5u32, 0xFFFF_FFFFu32];
+        (a[2] >> 24) as u16 + (a[0] > a[1]) as u16 * 10u16 + (a[0] & 0xFFu32) as u16
+    });
+    check!({
+        // Sliding wide accumulator — the running-statistics pack shape.
+        let mut win = [0u32; 3];
+        let mut total = 0u32;
+        for i in 0..9u16 {
+            let slot = i % 3u16;
+            total = total - win[slot as usize] + (i as u32) * 40_000u32;
+            win[slot as usize] = (i as u32) * 40_000u32;
+        }
+        (total >> 16) as u16
+    });
+}
+
+#[test]
+fn u32_array_state_fields() {
+    // `[u32; N]` struct fields — by value and through `&mut self`, with a field
+    // after the array proving the 2N-slot offset arithmetic.
+    let src = "
+        struct W { hist: [u32; 3], n: u16 }
+        impl W {
+            fn bump(&mut self, i: u16, k: u16) {
+                self.hist[i] = self.hist[i] + (k as u32) * 35_000u32;
+                self.n = self.n + 1u16;
+            }
+            fn run(&mut self) -> u16 {
+                self.bump(0u16, 2u16);
+                self.bump(2u16, 2u16);
+                self.bump(2u16, 0u16);
+                (self.hist[2] >> 16) as u16 * 100u16 + self.n * 10u16
+                    + (self.hist[2] > self.hist[0]) as u16
+            }
+        }
+        fn run() -> u16 {
+            let mut w = W { hist: [0u32; 3], n: 0u16 };
+            w.run()
+        }
+    ";
+    struct W {
+        hist: [u32; 3],
+        n: u16,
+    }
+    impl W {
+        fn bump(&mut self, i: u16, k: u16) {
+            self.hist[i as usize] += (k as u32) * 35_000;
+            self.n += 1;
+        }
+        fn run(&mut self) -> u16 {
+            self.bump(0, 2);
+            self.bump(2, 2);
+            self.bump(2, 0);
+            (self.hist[2] >> 16) as u16 * 100 + self.n * 10 + (self.hist[2] > self.hist[0]) as u16
+        }
+    }
+    fn host() -> u16 {
+        let mut w = W { hist: [0; 3], n: 0 };
+        w.run()
+    }
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn u32_array_rejections() {
+    // Bare names/fields aren't values; the steering names the fix.
+    let err = rustz80::compile_fn("fn f() -> u16 { let a = [0u32; 2]; (a + 1u32) as u16 }")
+        .err()
+        .unwrap();
+    assert!(err.contains("index it"), "unexpected: {err}");
+    let err = rustz80::compile_program(
+        "struct S { a: [u32; 2] }
+         impl S { fn run(&mut self) -> u16 { (self.a + 1u32) as u16 } }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("index it"), "unexpected: {err}");
+}

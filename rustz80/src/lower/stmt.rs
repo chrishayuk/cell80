@@ -92,6 +92,22 @@ pub(crate) fn lower_local(
             // `[v; N]` — a block fill (one evaluation of `v`, repeated over N slots).
             let n = array_len(&r.len, ctx)?;
             let elem = elem_width(&r.expr);
+            // `[v; N]` of u32: per-element wide stores. Rust evaluates the repeat
+            // value once, so an effectful `v` (a call) steers to a binding.
+            if elem == Width::DWord {
+                let (v, vw) = lower_expr(&r.expr, ctx)?;
+                let v = coerce32(v, vw);
+                if super::expr::has_effects(&v) {
+                    return Err("a `[v; N]` u32 initialiser needs a simple value (it is \
+                         stored per element) — bind it first: `let v = …;`"
+                        .into());
+                }
+                let base = ctx.vars.declare_wide_array(&name, n);
+                for i in 0..n {
+                    body.push(Stmt::Assign32(base + 2 * i, v.clone()));
+                }
+                return Ok(());
+            }
             let base = ctx.vars.declare(&name, n, None, elem);
             let value = lower_expr16(&r.expr, ctx, "array element (u16 slots)")?;
             body.push(Stmt::Fill {
@@ -102,6 +118,14 @@ pub(crate) fn lower_local(
         }
         syn::Expr::Array(arr) => {
             let elem = arr.elems.first().map(elem_width).unwrap_or(Width::Word);
+            if elem == Width::DWord {
+                let base = ctx.vars.declare_wide_array(&name, arr.elems.len());
+                for (i, e) in arr.elems.iter().enumerate() {
+                    let (v, vw) = lower_expr(e, ctx)?;
+                    body.push(Stmt::Assign32(base + 2 * i, coerce32(v, vw)));
+                }
+                return Ok(());
+            }
             let base = ctx.vars.declare(&name, arr.elems.len(), None, elem);
             for (i, e) in arr.elems.iter().enumerate() {
                 let v = lower_expr16(e, ctx, "array element (u16 slots)")?;
@@ -152,7 +176,35 @@ pub(crate) fn lower_local(
                     continue;
                 }
                 let packed_len = fd.and_then(|f| f.packed_len);
+                let wide_len = fd.and_then(|f| f.wide_len);
                 match &fv.expr {
+                    // A `[u32; N]` field initialised `[v; N]`: per-element wide
+                    // stores (two slots each).
+                    syn::Expr::Repeat(r) if wide_len.is_some() => {
+                        let n = wide_len.unwrap();
+                        let (v, vw) = lower_expr(&r.expr, ctx)?;
+                        let v = coerce32(v, vw);
+                        if super::expr::has_effects(&v) {
+                            return Err(format!(
+                                "field `{fname}`: a `[v; N]` u32 initialiser needs a \
+                                 simple value — bind it first: `let v = …;`"
+                            ));
+                        }
+                        for i in 0..n {
+                            body.push(Stmt::Assign32(base + off + 2 * i, v.clone()));
+                        }
+                    }
+                    // A `[u32; N]` field initialised `[e0, e1, …]`.
+                    syn::Expr::Array(arr) if wide_len.is_some() => {
+                        let n = wide_len.unwrap();
+                        if arr.elems.len() != n {
+                            return Err(format!("array field `{fname}` expects {n} values"));
+                        }
+                        for (i, e) in arr.elems.iter().enumerate() {
+                            let (v, vw) = lower_expr(e, ctx)?;
+                            body.push(Stmt::Assign32(base + off + 2 * i, coerce32(v, vw)));
+                        }
+                    }
                     // A tuple field is initialised by a tuple literal — one value per slot.
                     syn::Expr::Tuple(t) => {
                         if t.elems.len() != slots {

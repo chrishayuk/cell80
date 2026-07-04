@@ -158,6 +158,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         ));
                     }
                 }
+                if ctx.vars.wide_array(&name) {
+                    return Err(format!(
+                        "`{name}` is a `[u32; N]` array, not a value — index it \
+                         (`{name}[i]`)"
+                    ));
+                }
                 let base = ctx.vars.base(&name);
                 match ctx.vars.ty(&name) {
                     Width::DWord => Ok((Expr::Var32(base), Width::DWord)),
@@ -477,6 +483,9 @@ struct FieldRef {
     /// `Some(N)` — a byte-packed `[u8; N]` field: element `i` is the byte at
     /// `field_base + i` (not a 2-byte slot). See `FieldDef::packed_len`.
     packed_len: Option<usize>,
+    /// `Some(N)` — a `[u32; N]` field: element `i` is the 4-byte value at
+    /// `field_base + i*4`. See `FieldDef::wide_len`.
+    wide_len: Option<usize>,
 }
 
 /// Resolve `obj.field` (and a tuple element of a struct field, `obj.field.N`).
@@ -493,6 +502,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
             width: Width::Word,
             elem_struct: None,
             packed_len: None,
+            wide_len: None,
             ..r
         });
     }
@@ -515,6 +525,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
         width: fd.map_or(Width::Word, |d| d.width),
         elem_struct: fd.and_then(|d| d.elem_struct.clone()),
         packed_len: fd.and_then(|d| d.packed_len),
+        wide_len: fd.and_then(|d| d.wide_len),
     })
 }
 
@@ -533,6 +544,27 @@ fn packed_elem_addr(r: &FieldRef, idx: Expr) -> Expr {
         Expr::AddrOf(r.base + r.off)
     };
     Expr::Bin(BinOp::Add, Box::new(field_base), Box::new(idx), Width::Word)
+}
+
+/// The byte address of element `i` of a `[u32; N]` field: the field's base byte
+/// address plus `i * 4`. No bounds check — same as every array access.
+fn wide_elem_addr(r: &FieldRef, idx: Expr) -> Expr {
+    let field_base = if r.is_ptr {
+        Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::Var(r.base)),
+            Box::new(Expr::Lit((r.off * 2) as u16)),
+            Width::Word,
+        )
+    } else {
+        Expr::AddrOf(r.base + r.off)
+    };
+    Expr::Bin(
+        BinOp::Add,
+        Box::new(field_base),
+        Box::new(scaled(idx, 4)),
+        Width::Word,
+    )
 }
 
 /// Scale an element index by a byte stride (stride 1 passes through; powers of two
@@ -682,6 +714,11 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
             );
         }
         let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        // A `[u32; N]` field: element `i` is the 4-byte value at `field + i*4`.
+        if r.wide_len.is_some() {
+            let addr = wide_elem_addr(&r, idx);
+            return Ok((Expr::Deref32(Box::new(addr), 0), Width::DWord));
+        }
         // A byte-packed `[u8; N]` field: element `i` is the byte at `field + i`.
         if r.packed_len.is_some() {
             let addr = packed_elem_addr(&r, idx);
@@ -706,6 +743,18 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
             "`{arr}[…]` — a `&str` isn't directly indexable (that's real Rust too); \
              read a byte with `{arr}.as_bytes()[i]`"
         ));
+    }
+    // A local `[u32; N]` array: a wide load at `&base + i*4`.
+    if ctx.vars.wide_array(&arr) {
+        let base = ctx.vars.base(&arr);
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        let addr = Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::AddrOf(base)),
+            Box::new(scaled(idx, 4)),
+            Width::Word,
+        );
+        return Ok((Expr::Deref32(Box::new(addr), 0), Width::DWord));
     }
     if ctx.vars.elem_struct(&arr).is_some() {
         return Err(format!(
@@ -764,6 +813,12 @@ pub(crate) fn lower_index_store(
     if let syn::Expr::Field(f) = &*ix.expr {
         let r = field_target(f, ctx)?;
         let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        // A `[u32; N]` field: a wide store at `field + i*4`.
+        if r.wide_len.is_some() {
+            let (v, vw) = lower_expr(rhs, ctx)?;
+            let addr = wide_elem_addr(&r, idx);
+            return Ok(Stmt::Store32(addr, 0, coerce32(v, vw)));
+        }
         let val = lower_expr16(rhs, ctx, "array element (u16 slots)")?;
         // A byte-packed `[u8; N]` field: store the low byte at `field + i`.
         if r.packed_len.is_some() {
@@ -807,6 +862,19 @@ pub(crate) fn lower_index_store(
     if !ctx.vars.is_declared(&arr) && ctx.consts.borrow().get(&arr).is_some() {
         return Err(format!("cannot assign to const data `{arr}`"));
     }
+    // A local `[u32; N]` array: a wide store at `&base + i*4`.
+    if ctx.vars.wide_array(&arr) {
+        let base = ctx.vars.base(&arr);
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        let (v, vw) = lower_expr(rhs, ctx)?;
+        let addr = Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::AddrOf(base)),
+            Box::new(scaled(idx, 4)),
+            Width::Word,
+        );
+        return Ok(Stmt::Store32(addr, 0, coerce32(v, vw)));
+    }
     let base = ctx.vars.base(&arr);
     let w = ctx.vars.ty(&arr);
     let idx = lower_expr16(&ix.index, ctx, "array index")?;
@@ -826,6 +894,9 @@ fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<(Expr, Width), 
         ));
     }
     let r = field_target(f, ctx)?;
+    if r.wide_len.is_some() {
+        return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i]`)".into());
+    }
     if r.width == Width::DWord {
         return Ok(if r.is_ptr {
             (
@@ -874,6 +945,9 @@ pub(crate) fn lower_field_store(
         ));
     }
     let r = field_target(f, ctx)?;
+    if r.wide_len.is_some() {
+        return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i] = v`)".into());
+    }
     if r.width == Width::DWord {
         let val = coerce32(val, vw);
         return Ok(if r.is_ptr {
@@ -1319,7 +1393,7 @@ fn lower_str_method(
 
 /// Does this IR expression have (or could it have) side effects — so it must not be
 /// duplicated? Calls may mutate state; `inport` reads a device; `halt` stops the run.
-fn has_effects(e: &Expr) -> bool {
+pub(crate) fn has_effects(e: &Expr) -> bool {
     match e {
         Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => true,
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => false,
