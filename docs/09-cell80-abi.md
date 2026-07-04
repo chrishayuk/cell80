@@ -43,7 +43,10 @@ only the bytes a run *touched* before the next run.
 
 State lives as a `struct` in memory (by convention at `STATE_BASE = 0xB000`).
 `rustz80::struct_layout(src, "State")` returns each field's slot `offset` and `slots`; a
-scalar field is one 2-byte slot at `base + offset*2` (`u8` in the low byte). Callers:
+scalar field is one 2-byte slot at `base + offset*2` (`u8` in the low byte). A `[u8; N]`
+field is **byte-packed** (Phase S): `N` raw bytes at `base + offset*2` in `ceil(N/2)`
+slots, flagged by `FieldLayout::bytes` — not name-addressed until the ABI-v3 `bytes[N]`
+manifest type. Callers:
 
 - **inputs**: write typed values before the run (`Runner::run_with_inputs`, CLI
   `--set addr:ty=val`), applied after the reset and cleaned before the next run;

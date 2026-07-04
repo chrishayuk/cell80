@@ -83,8 +83,12 @@ impl StateCell {
 
 /// The addressable width of a layout field: one slot → `u16` (a `u8` field also reads
 /// fine as its low byte), a two-slot `dword` → `u32`; arrays/tuples are not name-addressed.
+/// A byte-packed `[u8; N]` field (`bytes: Some`) is excluded here even at one slot —
+/// it becomes name-addressable as `bytes[N]` with ABI v3, not as a misread `u16`.
 fn scalar_ty(f: &rustz80::FieldLayout) -> Option<Ty> {
-    if f.dword {
+    if f.bytes.is_some() {
+        None
+    } else if f.dword {
         Some(Ty::U32)
     } else if f.slots == 1 {
         Some(Ty::U16)

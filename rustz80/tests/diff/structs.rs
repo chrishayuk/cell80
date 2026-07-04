@@ -254,3 +254,125 @@ fn struct_field_struct_arrays() {
     ";
     assert_eq!(run_program(src, "run"), host()); // 912 + 1 = 913
 }
+
+#[test]
+fn packed_u8_field_bytes() {
+    // A `[u8; N]` field is **byte-packed** (Phase S §2.3): N bytes in ceil(N/2)
+    // slots. Reads/writes are real u8 semantics — checked against rustc, with a
+    // field *after* the array proving the packed offset arithmetic.
+    struct Slug {
+        buf: [u8; 5], // odd length: 3 slots, one padding byte
+        tail: u16,
+    }
+    fn host() -> u16 {
+        let mut s = Slug {
+            buf: [1, 2, 3, 4, 5],
+            tail: 700,
+        };
+        s.buf[0] = s.buf[4] + 250; // u8 wrap: 255
+        s.buf[3] = b'x';
+        s.buf[0] as u16 + s.buf[3] as u16 + s.tail
+    }
+    let src = "
+        struct Slug { buf: [u8; 5], tail: u16 }
+        fn run() -> u16 {
+            let mut s = Slug { buf: [1u8, 2u8, 3u8, 4u8, 5u8], tail: 700u16 };
+            s.buf[0] = s.buf[4] + 250u8;
+            s.buf[3] = b'x';
+            s.buf[0] as u16 + s.buf[3] as u16 + s.tail
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn packed_u8_field_via_method() {
+    // The output-buffer shape from the Phase S spec: a method (`&mut self`
+    // pointer receiver) appends bytes and bumps a length — the `str_out` idiom.
+    struct Out {
+        len: u16,
+        buf: [u8; 8],
+    }
+    impl Out {
+        fn push(&mut self, b: u8) {
+            self.buf[self.len as usize] = b;
+            self.len += 1;
+        }
+        fn run(&mut self) -> u16 {
+            self.push(b'h');
+            self.push(b'i');
+            self.buf[0] as u16 * 256 + self.buf[1] as u16 + self.len * 10
+        }
+    }
+    fn host() -> u16 {
+        let mut o = Out {
+            len: 0,
+            buf: [0; 8],
+        };
+        o.run()
+    }
+    let src = "
+        struct Out { len: u16, buf: [u8; 8] }
+        impl Out {
+            fn push(&mut self, b: u8) {
+                self.buf[self.len] = b;
+                self.len = self.len + 1u16;
+            }
+            fn run(&mut self) -> u16 {
+                self.push(b'h');
+                self.push(b'i');
+                self.buf[0] as u16 * 256u16 + self.buf[1] as u16 + self.len * 10u16
+            }
+        }
+        fn run() -> u16 {
+            let mut o = Out { len: 0u16, buf: [0u8; 8] };
+            o.run()
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn packed_u8_field_repeat_init() {
+    // `[v; N]` fill on a packed field: every byte set, tail field untouched.
+    struct B {
+        buf: [u8; 4],
+        tail: u16,
+    }
+    fn host() -> u16 {
+        let mut b = B {
+            buf: [0xAB; 4],
+            tail: 9,
+        };
+        b.buf[2] = 1;
+        b.buf[0] as u16 + b.buf[1] as u16 + b.buf[2] as u16 + b.buf[3] as u16 + b.tail
+    }
+    let src = "
+        struct B { buf: [u8; 4], tail: u16 }
+        fn run() -> u16 {
+            let mut b = B { buf: [0xABu8; 4], tail: 9u16 };
+            b.buf[2] = 1u8;
+            b.buf[0] as u16 + b.buf[1] as u16 + b.buf[2] as u16 + b.buf[3] as u16 + b.tail
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn packed_u8_field_layout() {
+    // The layout contract: ceil(N/2) slots, `bytes` reported, following fields
+    // shifted accordingly — and a [u8; 2] field is never mistaken for a u16 scalar.
+    let src = "
+        struct S { a: [u8; 5], b: u16, c: [u8; 2], d: u32 }
+        impl S { fn run(&mut self) -> u16 { self.b } }
+    ";
+    let l = rustz80::struct_layout(src, "S").expect("layout");
+    let by_name = |n: &str| l.iter().find(|f| f.name == n).unwrap();
+    assert_eq!(
+        (by_name("a").slots, by_name("a").bytes, by_name("a").offset),
+        (3, Some(5), 0)
+    );
+    assert_eq!((by_name("b").slots, by_name("b").offset), (1, 3));
+    assert_eq!((by_name("c").slots, by_name("c").bytes), (1, Some(2)));
+    assert_eq!((by_name("d").offset, by_name("d").dword), (5, true));
+}

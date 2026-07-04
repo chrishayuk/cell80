@@ -17,6 +17,10 @@ pub(crate) struct FieldDef {
     pub(crate) slots: usize,
     pub(crate) elem_struct: Option<String>,
     pub(crate) width: Width,
+    /// `Some(N)` for a **byte-packed** `[u8; N]` field (Phase S §2.3): `N` bytes in
+    /// `ceil(N / 2)` slots, element access byte-addressed at `field_base + i`. Other
+    /// scalar arrays stay one 2-byte slot per element.
+    pub(crate) packed_len: Option<usize>,
 }
 
 /// Struct layouts: name → fields in declaration order. A field occupies `slots`
@@ -102,12 +106,21 @@ fn field_def(
     owner: &str,
 ) -> Result<FieldDef, String> {
     let name = f.ident.as_ref().unwrap().to_string();
+    let mut packed_len = None;
     let (slots, elem_struct, width) = match &f.ty {
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
         syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
         syn::Type::Path(p) if p.path.is_ident("i16") => (1, None, Width::SWord),
         syn::Type::Path(_) => (1, None, Width::Word),
+        // `[u8; N]` — **byte-packed** (Phase S §2.3): N bytes in ceil(N/2) slots, so
+        // an output buffer costs its own size, not double. Access is byte-addressed.
+        syn::Type::Array(arr) if matches!(&*arr.elem, syn::Type::Path(p) if p.path.is_ident("u8")) =>
+        {
+            let n = array_len(&arr.len, consts)?;
+            packed_len = Some(n);
+            (n.div_ceil(2), None, Width::Byte)
+        }
         syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
             (array_len(&arr.len, consts)?, None, Width::Word)
         }
@@ -154,6 +167,7 @@ fn field_def(
         slots,
         elem_struct,
         width,
+        packed_len,
     })
 }
 
@@ -257,11 +271,11 @@ fn lit_u16(e: &syn::Expr) -> Result<u16, String> {
     Err("enum discriminant must be an integer literal".into())
 }
 
-/// Is `ty` a scalar array-element type — one that occupies a single `u16` slot? Field
-/// arrays are Word-stride (a slot per element), so `u16`, `u8`, and `bool` all qualify
-/// (`[bool; N]` lets game flags be a real `bool` array instead of `[u16; N]` of 0/1).
+/// Is `ty` a scalar array-element type occupying a single `u16` slot per element?
+/// `u16`, `i16`, and `bool` (`[bool; N]` lets game flags be a real `bool` array
+/// instead of `[u16; N]` of 0/1). `u8` is handled *before* this check — a `[u8; N]`
+/// field byte-packs (Phase S §2.3).
 fn is_scalar_array_elem(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Path(p)
-        if p.path.is_ident("u16") || p.path.is_ident("u8") || p.path.is_ident("bool")
-            || p.path.is_ident("i16"))
+        if p.path.is_ident("u16") || p.path.is_ident("bool") || p.path.is_ident("i16"))
 }
