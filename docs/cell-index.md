@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (100 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (103 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -179,6 +179,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
 
+## fixed-point (3)
+
+| id | signature | summary |
+|---|---|---|
+| `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
+| `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
+| `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -192,4 +200,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime primitives, running statistics, spatial/grid; calendrical/checksum above is a first slice — ISBN/IBAN/UPC checksums need a wider-than-u32 input and are deferred, see library-growth.md).
+See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (agentic runtime primitives, running statistics, spatial/grid). calendrical/checksum and fixed-point above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/q_ema-as-lerp/piecewise sigmoid-tanh are still open.

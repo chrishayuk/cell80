@@ -227,3 +227,12 @@
 {"id": "luhn_check-direct-1", "query": "luhn checksum validity of a number", "expected": "luhn_check", "category": "direct"}
 {"id": "luhn_check-para-1", "query": "is this card-like number's check digit correct", "expected": "luhn_check", "category": "paraphrase"}
 {"id": "luhn_check-adv-1", "query": "mod 10 double-every-other-digit validation", "expected": "luhn_check", "category": "adversarial"}
+
+# ── Q8.8 fixed-point (wave 3) ──
+{"id": "q_mul-direct-1", "query": "multiply two fixed-point q8.8 values", "expected": "q_mul", "category": "direct"}
+{"id": "q_mul-para-1", "query": "scale one fractional value by another without floats", "expected": "q_mul", "category": "paraphrase"}
+{"id": "q_div-direct-1", "query": "divide two fixed-point q8.8 values", "expected": "q_div", "category": "direct"}
+{"id": "q_div-para-1", "query": "how many times does one fractional value fit into another", "expected": "q_div", "category": "paraphrase"}
+{"id": "q_lerp-direct-1", "query": "linearly interpolate between two values by a fraction", "expected": "q_lerp", "category": "direct"}
+{"id": "q_lerp-para-1", "query": "blend smoothly from one value toward another", "expected": "q_lerp", "category": "paraphrase"}
+{"id": "q_lerp-adv-1", "query": "one step of an exponential moving average update", "expected": "q_lerp", "category": "adversarial"}

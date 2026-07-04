@@ -255,6 +255,15 @@ fn first_wave_cells_match_defined_behaviour() {
         ("luhn_check", &[1230], 1),        // valid Luhn number
         ("luhn_check", &[1231], 0),        // one digit off — invalid
         ("luhn_check", &[0], 1),           // trivial single-zero-digit edge case
+        // ── Q8.8 fixed-point (wave 3) ──
+        ("q_mul", &[384, 512], 768),       // 1.5 * 2.0 = 3.0
+        ("q_mul", &[256, 256], 256),       // 1.0 * 1.0 = 1.0 (identity)
+        ("q_div", &[768, 512], 384),       // 3.0 / 2.0 = 1.5
+        ("q_div", &[768, 0], 0),           // divide by zero — safe
+        ("q_lerp", &[0, 256, 128], 128),   // halfway, forward
+        ("q_lerp", &[200, 100, 64], 175),  // t=0.25, b < a (reverse branch)
+        ("q_lerp", &[100, 200, 0], 100),   // t=0 → a
+        ("q_lerp", &[100, 200, 256], 200), // t=1.0 → b
     ];
 
     let mut failures = Vec::new();
