@@ -214,3 +214,16 @@
 {"id": "is_gt-para-1", "query": "does one value exceed another", "expected": "is_gt", "category": "paraphrase"}
 {"id": "avg2-para-1", "query": "add two numbers and halve the result", "expected": "avg2", "category": "paraphrase"}
 {"id": "safe_mod-para-1", "query": "what is left over when one number is divided by another", "expected": "safe_mod", "category": "paraphrase"}
+
+# ── calendrical / checksum (wave 3) ──
+{"id": "is_leap_year-direct-1", "query": "is this a leap year", "expected": "is_leap_year", "category": "direct"}
+{"id": "is_leap_year-para-1", "query": "does this year have a February 29th", "expected": "is_leap_year", "category": "paraphrase"}
+{"id": "is_leap_year-adv-1", "query": "check the calendar rule for extra days in a year", "expected": "is_leap_year", "category": "adversarial"}
+{"id": "days_in_month-direct-1", "query": "how many days are in this month", "expected": "days_in_month", "category": "direct"}
+{"id": "days_in_month-para-1", "query": "the length of a given calendar month", "expected": "days_in_month", "category": "paraphrase"}
+{"id": "day_of_week-direct-1", "query": "what day of the week does this date fall on", "expected": "day_of_week", "category": "direct"}
+{"id": "day_of_week-para-1", "query": "given a year month and day, which weekday is it", "expected": "day_of_week", "category": "paraphrase"}
+{"id": "day_of_week-adv-1", "query": "zeller's congruence for a calendar date", "expected": "day_of_week", "category": "adversarial"}
+{"id": "luhn_check-direct-1", "query": "luhn checksum validity of a number", "expected": "luhn_check", "category": "direct"}
+{"id": "luhn_check-para-1", "query": "is this card-like number's check digit correct", "expected": "luhn_check", "category": "paraphrase"}
+{"id": "luhn_check-adv-1", "query": "mod 10 double-every-other-digit validation", "expected": "luhn_check", "category": "adversarial"}

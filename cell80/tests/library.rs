@@ -240,6 +240,21 @@ fn first_wave_cells_match_defined_behaviour() {
         ("percent_to_byte", &[50], 127),
         ("byte_to_percent", &[255], 100),
         ("byte_to_percent", &[127], 49),
+        // ── calendrical / checksum (wave 3) ──
+        ("is_leap_year", &[2000], 1), // divisible by 400
+        ("is_leap_year", &[1900], 0), // divisible by 100, not 400
+        ("is_leap_year", &[2024], 1), // divisible by 4, not 100
+        ("is_leap_year", &[2023], 0),
+        ("days_in_month", &[2, 1], 29), // Feb, leap
+        ("days_in_month", &[2, 0], 28), // Feb, non-leap
+        ("days_in_month", &[4, 0], 30),
+        ("days_in_month", &[12, 0], 31),
+        ("days_in_month", &[13, 0], 0),    // invalid month
+        ("day_of_week", &[2000, 1, 1], 0), // Saturday
+        ("day_of_week", &[2024, 1, 1], 2), // Monday
+        ("luhn_check", &[1230], 1),        // valid Luhn number
+        ("luhn_check", &[1231], 0),        // one digit off — invalid
+        ("luhn_check", &[0], 1),           // trivial single-zero-digit edge case
     ];
 
     let mut failures = Vec::new();

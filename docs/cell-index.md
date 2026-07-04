@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (96 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (100 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -170,6 +170,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `weighted_sum` | `run(a: u16, b: u16, c: u16) -> u16` | Weighted sum of three inputs with fixed weights 1, 2, 3 (a candidate score). |
 | `weighted_sum_wide` | `Ws::run() -> u16` | Exact weighted sum with a wide u32 result field: sum = a + 2b + 3c, no u16 wrap (sibling of weighted_sum). |
 
+## calendrical/checksum (4)
+
+| id | signature | summary |
+|---|---|---|
+| `is_leap_year` | `run(year: u16) -> u16` | Returns 1 if year is a Gregorian leap year, else 0: divisible by 4, except centuries not divisible by 400. |
+| `days_in_month` | `run(month: u16, is_leap: u16) -> u16` | Number of days in a month (1-12; 0 for an invalid month), given a leap-year flag for February. |
+| `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
+| `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -183,4 +192,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime primitives, calendrical/checksum validation, running statistics, spatial/grid).
+See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime primitives, running statistics, spatial/grid; calendrical/checksum above is a first slice — ISBN/IBAN/UPC checksums need a wider-than-u32 input and are deferred, see library-growth.md).

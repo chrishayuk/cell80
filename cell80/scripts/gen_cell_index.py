@@ -25,6 +25,7 @@ PACKS = {
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
     "bucket/convert": ["bucket3", "percent_to_byte", "byte_to_percent"],
     "scoring/choice": ["weighted_sum", "weighted_sum_wide"],
+    "calendrical/checksum": ["is_leap_year", "days_in_month", "day_of_week", "luhn_check"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -93,7 +94,9 @@ def main():
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
           "(packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap "
           "discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime "
-          "primitives, calendrical/checksum validation, running statistics, spatial/grid).")
+          "primitives, running statistics, spatial/grid; calendrical/checksum above is a "
+          "first slice — ISBN/IBAN/UPC checksums need a wider-than-u32 input and are "
+          "deferred, see library-growth.md).")
 
 
 if __name__ == "__main__":

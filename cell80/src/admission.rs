@@ -43,7 +43,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Exact fingerprint agreement counts as a behavioural duplicate. Not a softer band: real
-/// confusable-but-distinct siblings sit well under this (`min`/`max` agree on only 4/10 of
+/// confusable-but-distinct siblings sit well under this (`min`/`max` agree on only 4/11 of
 /// [`crate::DEFAULT_PROBES`]), so `1.0` is the only value that can't false-positive a
 /// genuine new family member.
 pub const DUPLICATE_AGREEMENT: f32 = 1.0;
