@@ -2089,12 +2089,9 @@ fn run_state_fast_caches_the_scoring_workhorse() {
         ("x".into(), 17),
         ("y".into(), 40),
     ];
-    let (f3, s3) = host.run_state_fast(h, &fields2, DEFAULT_CYCLES).unwrap();
+    let (_f3, s3) = host.run_state_fast(h, &fields2, DEFAULT_CYCLES).unwrap();
     assert_eq!(by(&s3, "total"), 4 * 17 + 5 * 40);
-    assert_ne!(
-        f3.result * 0 + by(&s3, "total") as u16,
-        by(&s1, "total") as u16
-    );
+    assert_ne!(by(&s3, "total"), by(&s1, "total"));
     assert_eq!(host.cache_stats(h).unwrap(), Some((1, 3)));
 }
 
