@@ -36,6 +36,10 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     pilot batch): P@1 direct 0.95 / paraphrase 0.43 / adversarial 0.41 — **no split
     degraded**, all three ticked up slightly. The kill-gate
     (`docs/library-growth.md` "Phase 2.3") did not trigger.
+  - Checkpoint 3 (`checkpoint-3-gsm8k-checked-arithmetic`, 128 cells, GSM8K math campaign
+    M1 pack 1/5): P@1 direct 0.95 / paraphrase 0.43 / adversarial 0.41 — flat within noise
+    (paraphrase 0.4304→0.4253 on a denominator that grew 79→87 queries). Kill-gate did not
+    trigger.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
