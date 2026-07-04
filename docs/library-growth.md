@@ -30,11 +30,17 @@ wave 3d   111 cells   + running statistics, first slice (running_min_max_step,
                         streak_step, accumulate_step) — Welford variance still open
 wave 3e   114 cells   + spatial/grid, first slice (grid_index, point_in_rect,
                         aabb_intersect) — Morton encode/decode, Bresenham still open
-now       120 cells   + the Phase 2.3 pilot batch: packing/BCD (pack_u8, pack_nibbles,
+pilot     120 cells   + the Phase 2.3 pilot batch: packing/BCD (pack_u8, pack_nibbles,
                         bcd_encode, bcd_decode) + vector (dot2, norm2_sq) —
                         unpack_lo/unpack_hi never built (exact duplicates of
                         low_byte/high_byte, caught before authoring)
-next      ~200+        + time/budget · stateful/RNG · signed deltas
+now       128 cells   + the GSM8K math campaign, M1 pack 1/5: checked/exact arithmetic
+                        (mul_u16_u16_to_u32, add_checked_u32, sub_checked_u32,
+                        div_exact_u32, div_floor_u32, div_ceil_u32, mod_u32, fits_u16) —
+                        see `docs/math-campaign-spec.md`
+next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
+                        confirmed still unbuilt even after Cond32) · money/bps · units ·
+                        verifier/ranker · time/budget · stateful/RNG · signed deltas
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -42,6 +48,21 @@ runtime, running statistics, spatial/grid) landed a first slice; each deferred i
 items (see the per-pack notes below and `docs/cell-index.md`'s "planned" section). The
 Phase 2.3 pilot batch (packing/BCD + vector) exercised the author→verify→admit loop
 end-to-end for the first time — see the "Phase 2.3" section below for what it found.
+
+**The GSM8K math campaign (`docs/math-campaign-spec.md`), M1 pack 1/5: checked/exact
+arithmetic.** `mul_u16_u16_to_u32`, `add_checked_u32`, `sub_checked_u32`, `div_exact_u32`,
+`div_floor_u32`, `div_ceil_u32`, `mod_u32`, `fits_u16` — all `u32` state cells (a free-fn
+entry still can't take/return `u32`, the same constraint the calendrical/checksum pack
+found). "Checked" here means the escalation contract (`halt(0xFF05)`, `needs_wider_math`,
+Phase 3.2), not the saturating/sentinel convention `add_sat`/`safe_div` already use — a
+caller can tell "this genuinely didn't fit" apart from an ordinary result, which a
+saturated or sentinel value can't. `div_ceil_u32` computes via `a/b` plus a remainder
+check rather than `(a+b-1)/b`, so a large `a` can't overflow the *overflow guard itself* —
+"checked" was the whole point. Confirmed by testing directly: **M0's u32-across-a-
+call-boundary prerequisite is still unbuilt**, even after `Cond32` (u32 comparisons)
+landed from a parallel session mid-pack — a local helper function can't yet take or
+return `u32`, so the fraction pack (which wants a shared `gcd_u32` reducer) stays blocked
+until that lands.
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -142,7 +163,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (120 cells)
+### Landed (128 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against

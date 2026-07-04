@@ -699,3 +699,66 @@ fn vector_state_cells_match_defined_behaviour() {
     }
     assert_eq!(cell.run(DEFAULT_CYCLES).unwrap().result, 10); // 3*2 + 4*1
 }
+
+#[test]
+fn checked_arithmetic_state_cells_match_defined_behaviour() {
+    // The GSM8K math-campaign foundation pack (Phase 2.3): checked u32 arithmetic that
+    // escalates (Halt::Escalate(0xFF05), needs_wider_math) instead of silently wrapping —
+    // distinct from safe_div/safe_mod's guard-and-sentinel convention, which hides a real
+    // error behind an ordinary-looking 0.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // mul_u16_u16_to_u32: always exact, never escalates (max product fits u32 exactly).
+    let (_, _, cell) = step(
+        "mul_u16_u16_to_u32",
+        "MulWide",
+        &[("a", 65535), ("b", 65535)],
+    );
+    assert_eq!(cell.get("product"), Some(65_535u64 * 65_535));
+
+    // add_checked_u32: normal case returns; overflow escalates.
+    let (_, report, cell) = step("add_checked_u32", "AddChecked", &[("a", 10), ("b", 20)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("sum"), Some(30));
+    let (_, report, _) = step(
+        "add_checked_u32",
+        "AddChecked",
+        &[("a", (u32::MAX - 5) as u64), ("b", 10)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // sub_checked_u32: normal case returns; b > a escalates.
+    let (_, report, cell) = step("sub_checked_u32", "SubChecked", &[("a", 30), ("b", 12)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("diff"), Some(18));
+    let (_, report, _) = step("sub_checked_u32", "SubChecked", &[("a", 5), ("b", 12)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // div_exact_u32: evenly divisible returns; a remainder escalates (wrong-plan signal).
+    let (_, report, cell) = step("div_exact_u32", "DivExact", &[("a", 100), ("b", 25)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("quotient"), Some(4));
+    let (_, report, _) = step("div_exact_u32", "DivExact", &[("a", 100), ("b", 30)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // div_floor_u32 / div_ceil_u32 / mod_u32.
+    let (_, _, cell) = step("div_floor_u32", "DivFloor", &[("a", 17), ("b", 5)]);
+    assert_eq!(cell.get("quotient"), Some(3));
+    let (_, _, cell) = step("div_ceil_u32", "DivCeil", &[("a", 17), ("b", 5)]);
+    assert_eq!(cell.get("quotient"), Some(4));
+    let (_, _, cell) = step("mod_u32", "ModU32", &[("a", 17), ("b", 5)]);
+    assert_eq!(cell.get("rem"), Some(2));
+
+    // fits_u16.
+    assert_eq!(step("fits_u16", "FitsU16", &[("x", 65535)]).0, 1);
+    assert_eq!(step("fits_u16", "FitsU16", &[("x", 65536)]).0, 0);
+}

@@ -83,7 +83,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 120 cells; query `distance between grid points` → 10 match(es):
+indexed 128 cells; query `distance between grid points` → 10 match(es):
   manhattan — Manhattan distance between two grid points (typed state).  [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt).  [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
   chebyshev — Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
@@ -113,10 +113,10 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval on the 120-cell library (`cargo run --example retrieval_compare -p cell80`): the
+Retrieval on the 128-cell library (`cargo run --example retrieval_compare -p cell80`): the
 default index is now **TF-IDF** (word + char-3-gram cosine) — **direct P@1 0.95**, **paraphrase
 0.43** — a few points over the old token overlap, but paraphrase stays a coin-flip as confusable
-siblings multiply (twenty families: predicates, bounds, distance, number theory, bit ops,
+siblings multiply (twenty-one families: predicates, bounds, distance, number theory, bit ops,
 hashing, …). A **type-led** re-rank by the cell's *behaviour* (is it a predicate? — learned from
 the corpus, not hardcoded) was measured **neutral** on this set, for an honest reason: the
 residual misses are *same-shape siblings* (`min`/`max`, `gcd`/`lcm`, `manhattan`/`chebyshev`) no
@@ -346,7 +346,7 @@ cell_compose(
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard library** (done — **120 cells** across 20 families incl. wide u32-in-state siblings, plus the compiler
+(done), the **standard library** (done — **128 cells** across 21 families incl. wide u32-in-state siblings, plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
 elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
 **host-routed `CellGraph` composition** (cells wired into a static, type-checked graph the host

@@ -1,9 +1,12 @@
 # The math campaign — GSM-Symbolic as the first `cell_solve` field campaign
 
-*Status: specified, not started. Gated behind `cell_solve` (`docs/escalation-ladder.md`
-item 2 — held until the u32/Ins compiler branch merges, which has since landed, so the
-compiler prerequisite is clear but `cell_solve` itself is not built) and the admission gate
-(Phase 2.2, shipped). This replaces an earlier "GSM8K Ace Pack" draft: same evidence base,
+*Status: M1 pack 1/5 landed (checked/exact arithmetic — `docs/library-growth.md` "GSM8K
+math campaign"); M0 confirmed still open (u32-across-a-call-boundary, tested directly and
+still rejected even after `Cond32` landed); M2-M4 (the plan IR, renderer, and campaign
+itself) remain gated behind `cell_solve` (`docs/escalation-ladder.md` item 2 — the u32/Ins
+compiler branch it was held on has since landed, so the compiler prerequisite for
+`cell_solve` is clear, but `cell_solve` itself is not built) and the admission gate (Phase
+2.2, shipped). This replaces an earlier "GSM8K Ace Pack" draft: same evidence base,
 different shape. That draft proposed cell80 acquire a math runtime to chase a benchmark.
 This spec proposes the inverse: **the benchmark is the first field campaign for the loop
 cell80 already built.** Nothing here is a new subsystem; everything is the existing

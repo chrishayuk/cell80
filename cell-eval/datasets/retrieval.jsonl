@@ -282,3 +282,21 @@
 {"id": "dot2-direct-1", "query": "dot product of two 2d vectors", "expected": "dot2", "category": "direct"}
 {"id": "dot2-para-1", "query": "how aligned are these two directions", "expected": "dot2", "category": "paraphrase"}
 {"id": "dot2-adv-1", "query": "a similarity score for two vectors, not their sum", "expected": "dot2", "category": "adversarial"}
+
+# ── GSM8K math campaign: checked/exact arithmetic (Phase 2.3, M1) ──
+{"id": "mul_u16_u16_to_u32-direct-1", "query": "exact wide product of two 16-bit values", "expected": "mul_u16_u16_to_u32", "category": "direct"}
+{"id": "mul_u16_u16_to_u32-para-1", "query": "multiply two numbers without losing precision to overflow", "expected": "mul_u16_u16_to_u32", "category": "paraphrase"}
+{"id": "add_checked_u32-direct-1", "query": "checked addition that reports overflow instead of wrapping", "expected": "add_checked_u32", "category": "direct"}
+{"id": "add_checked_u32-para-1", "query": "add two numbers and flag it if the total is too big to represent", "expected": "add_checked_u32", "category": "paraphrase"}
+{"id": "sub_checked_u32-direct-1", "query": "checked subtraction that flags a negative result", "expected": "sub_checked_u32", "category": "direct"}
+{"id": "sub_checked_u32-para-1", "query": "how much is left over, and tell me if it would go below zero", "expected": "sub_checked_u32", "category": "paraphrase"}
+{"id": "div_exact_u32-direct-1", "query": "exact division that flags a nonzero remainder", "expected": "div_exact_u32", "category": "direct"}
+{"id": "div_exact_u32-para-1", "query": "does this number divide evenly into equal groups", "expected": "div_exact_u32", "category": "paraphrase"}
+{"id": "div_floor_u32-direct-1", "query": "floor division of two wide numbers", "expected": "div_floor_u32", "category": "direct"}
+{"id": "div_floor_u32-para-1", "query": "how many whole groups fit, rounding down", "expected": "div_floor_u32", "category": "paraphrase"}
+{"id": "div_ceil_u32-direct-1", "query": "ceiling division of two wide numbers", "expected": "div_ceil_u32", "category": "direct"}
+{"id": "div_ceil_u32-para-1", "query": "how many containers are needed, rounding up", "expected": "div_ceil_u32", "category": "paraphrase"}
+{"id": "mod_u32-direct-1", "query": "remainder of two wide numbers", "expected": "mod_u32", "category": "direct"}
+{"id": "mod_u32-para-1", "query": "what's left over after dividing two large values", "expected": "mod_u32", "category": "paraphrase"}
+{"id": "fits_u16-direct-1", "query": "does this wide value fit in a 16-bit result", "expected": "fits_u16", "category": "direct"}
+{"id": "fits_u16-para-1", "query": "check whether a large number can be narrowed without losing precision", "expected": "fits_u16", "category": "paraphrase"}

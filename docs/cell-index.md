@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (120 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (128 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -229,6 +229,19 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
 
+## checked-arithmetic (8)
+
+| id | signature | summary |
+|---|---|---|
+| `mul_u16_u16_to_u32` | `MulWide::run() -> u16` | Exact product of two u16 values as a wide u32 (never overflows: 65535*65535 fits u32). The math-campaign foundation cell — most checked arithmetic composes from this. |
+| `add_checked_u32` | `AddChecked::run() -> u16` | Checked u32 add: escalates (needs_wider_math) instead of silently wrapping if a + b overflows u32. |
+| `sub_checked_u32` | `SubChecked::run() -> u16` | Checked u32 subtract: escalates (needs_wider_math) instead of wrapping if b > a (the result would be negative). |
+| `div_exact_u32` | `DivExact::run() -> u16` | Exact u32 division: escalates (needs_wider_math) if b is zero or a doesn't divide evenly by b — a wrong-plan signal for word problems that declared an exact division. |
+| `div_floor_u32` | `DivFloor::run() -> u16` | Floor division of two u32 values: a / b, rounded down. Escalates (needs_wider_math) if b is zero. |
+| `div_ceil_u32` | `DivCeil::run() -> u16` | Ceiling division of two u32 values: the smallest integer >= a / b. Escalates (needs_wider_math) if b is zero. |
+| `mod_u32` | `ModU32::run() -> u16` | Remainder of two u32 values: a % b. Escalates (needs_wider_math) if b is zero. |
+| `fits_u16` | `FitsU16::run() -> u16` | Returns 1 if a wide u32 value fits in u16 (<= 65535) without narrowing loss, else 0. |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -242,4 +255,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, time/budget, signed deltas) and the Phase 2.3 pilot-batch section for the author->verify->admit loop. All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) have landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG, time/budget, signed deltas), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic above is the first authored pack; fractions/money-bps/units/verifier-ranker still ahead, gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.
