@@ -58,6 +58,10 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     pack 4/5): P@1 direct 0.95 / paraphrase 0.45 / adversarial 0.41 — adversarial recovered
     above checkpoint 1's baseline (0.39), confirming checkpoint 5's dip was the flagged
     IDF-reordering noise, not a trend. Kill-gate did not trigger.
+  - Checkpoint 7 (`checkpoint-7-stateful-rng`, 145 cells, first stateful/RNG slice —
+    library-growth.md "Next waves", outside the GSM8K campaign): P@1 direct 0.95 /
+    paraphrase 0.44 / adversarial 0.41 — all three above checkpoint 1's baseline. Kill-gate
+    did not trigger.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
