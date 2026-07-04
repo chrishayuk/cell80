@@ -25,7 +25,7 @@ def test_tool_bodies_cover_all_four_verbs():
     assert "error" in h["cell_route_by_example"]([{"bad": 1}])
     assert h["cell_inspect"]("gcd")["signature"] == "run(a: u16, b: u16) -> u16"
     assert "error" in h["cell_inspect"]("ghost")
-    assert len(h["cell_list"]()["cells"]) == 138
+    assert len(h["cell_list"]()["cells"]) == 142
     assert h["cell_run"]("gcd", [48, 36])["result"] == 12
     assert "result" in h["cell_run"]("gcd", None)  # None args → [] (the `args or []` branch)
     assert "error" in h["cell_run"]("ghost", [1])

@@ -871,3 +871,71 @@ fn units_free_fn_cells_match_defined_behaviour() {
     assert_eq!(report("unit_cancel_check", &[2, 1]).result, 0);
     assert_eq!(report("unit_cancel_check", &[100, 4]).result, 0); // out-of-domain codes too
 }
+
+#[test]
+fn verifier_ranker_cells_match_defined_behaviour() {
+    // The GSM8K math-campaign verifier/ranker pack (Phase 2.3, M1 pack 4/5) — each cell
+    // re-derives one side of a candidate plan's claimed equation and returns a plain 0/1
+    // verdict, never escalating (a verifier always answers; escalation is for the
+    // arithmetic packs that *compute* a value). answer_eq is an alias of the predicates
+    // pack's `eq`; multi-plan agreement/tie-break are already covered by
+    // `majority3`/`mode3` (ranking-stats) — neither needed new code.
+    assert_eq!(run_cell("sum_equals", &[3, 4, 7]), 1);
+    assert_eq!(run_cell("sum_equals", &[3, 4, 8]), 0);
+    // 40000 + 30000 wraps to 4464 in u16; sum_equals must not false-positive on that.
+    assert_eq!(run_cell("sum_equals", &[40000, 30000, 4464]), 0);
+
+    assert_eq!(run_cell("diff_equals", &[10, 3, 7]), 1);
+    assert_eq!(run_cell("diff_equals", &[10, 3, 6]), 0);
+    assert_eq!(run_cell("diff_equals", &[3, 10, 0]), 0); // a < b → 0, not a wrapped u16
+
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Halt) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt)
+    }
+
+    let (ok, halt) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 12), ("b", 5), ("total", 60)],
+    );
+    assert_eq!((ok, halt), (1, cell80::Halt::Returned));
+    let (ok, _) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 12), ("b", 5), ("total", 61)],
+    );
+    assert_eq!(ok, 0);
+    // a genuine u32*u32 overflow is a false claim, not an escalation — a verifier always
+    // returns a verdict.
+    let (ok, halt) = verify(
+        "product_equals_u32",
+        "ProductEquals",
+        &[("a", 4_294_967_295), ("b", 2), ("total", 0)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned));
+
+    let (ok, _) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 48), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 1);
+    let (ok, _) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 50), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 0); // remainder 2 — inexact
+    let (ok, halt) = verify(
+        "quotient_equals_exact_u32",
+        "QuotientEqualsExact",
+        &[("a", 48), ("b", 0), ("quotient", 4)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned)); // divide-by-zero is a false verdict too
+}

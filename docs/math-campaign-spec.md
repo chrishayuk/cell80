@@ -1,9 +1,9 @@
 # The math campaign — GSM-Symbolic as the first `cell_solve` field campaign
 
-*Status: M1 pack 3/5 landed (checked/exact arithmetic, money/basis-points, units —
-`docs/library-growth.md` "GSM8K math campaign"); M0 confirmed still open
-(u32-across-a-call-boundary, tested directly and still rejected even after `Cond32`
-landed, blocking the fraction pack specifically); M2-M4 (the plan IR, renderer, and campaign
+*Status: M1 pack 4/5 landed (checked/exact arithmetic, money/basis-points, units,
+verifier/ranker — `docs/library-growth.md` "GSM8K math campaign"); only the fraction
+pack (M1 5/5) remains, gated on M0 (u32-across-a-call-boundary, tested directly and
+still rejected even after `Cond32` landed); M2-M4 (the plan IR, renderer, and campaign
 itself) remain gated behind `cell_solve` (`docs/escalation-ladder.md` item 2 — the u32/Ins
 compiler branch it was held on has since landed, so the compiler prerequisite for
 `cell_solve` is clear, but `cell_solve` itself is not built) and the admission gate (Phase

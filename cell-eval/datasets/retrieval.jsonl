@@ -324,3 +324,13 @@
 {"id": "unit_div-para-1", "query": "what unit results from dividing total money by a count of items", "expected": "unit_div", "category": "paraphrase"}
 {"id": "unit_cancel_check-direct-1", "query": "check whether dividing these two units is dimensionally defined", "expected": "unit_cancel_check", "category": "direct"}
 {"id": "unit_cancel_check-para-1", "query": "would this division even make sense, unit-wise, without committing to it", "expected": "unit_cancel_check", "category": "paraphrase"}
+
+# ── GSM8K math campaign: verifier / ranker (Phase 2.3, M1) ──
+{"id": "sum_equals-direct-1", "query": "verify that two numbers sum to a claimed total", "expected": "sum_equals", "category": "direct"}
+{"id": "sum_equals-para-1", "query": "does adding these two amounts actually give the answer this plan claims", "expected": "sum_equals", "category": "paraphrase"}
+{"id": "diff_equals-direct-1", "query": "verify that subtracting one number from another gives a claimed remainder", "expected": "diff_equals", "category": "direct"}
+{"id": "diff_equals-para-1", "query": "check whether the leftover amount this plan claims is actually correct", "expected": "diff_equals", "category": "paraphrase"}
+{"id": "product_equals_u32-direct-1", "query": "verify that two wide numbers multiply to a claimed total", "expected": "product_equals_u32", "category": "direct"}
+{"id": "product_equals_u32-para-1", "query": "double-check this plan's total price against quantity times unit price", "expected": "product_equals_u32", "category": "paraphrase"}
+{"id": "quotient_equals_exact_u32-direct-1", "query": "verify a claimed exact quotient of two wide numbers", "expected": "quotient_equals_exact_u32", "category": "direct"}
+{"id": "quotient_equals_exact_u32-para-1", "query": "confirm this plan's per-item count divides the total evenly with no leftover", "expected": "quotient_equals_exact_u32", "category": "paraphrase"}

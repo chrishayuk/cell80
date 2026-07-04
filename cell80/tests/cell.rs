@@ -677,7 +677,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("138 cells"));
+    assert!(listing.contains("range_check") && listing.contains("142 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -741,7 +741,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("138 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("142 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -752,7 +752,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 138, "got: {out}");
+    assert_eq!(cells.len(), 142, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -764,7 +764,7 @@ fn cli_index_json_lists_every_manifest() {
 
 #[test]
 fn cli_index_gate_over_the_real_library() {
-    // The admission gate against the real 138-cell library + its own retrieval dataset — the
+    // The admission gate against the real 142-cell library + its own retrieval dataset — the
     // true end-to-end proof, not a synthetic fixture. Wave 3's calendrical/checksum pack
     // found (and fixed at the root) a `luhn_check`/`is_zero` false positive by widening
     // `DEFAULT_PROBES` (fingerprint.rs) rather than touching luhn_check; every pack since
@@ -773,17 +773,19 @@ fn cli_index_gate_over_the_real_library() {
     // fingerprint check entirely) added no new collisions. The units pack (same_unit_check,
     // unit_mul, unit_div, unit_cancel_check) is the campaign's first *free-fn* pack — its
     // arity-2 u16 cells go through the fingerprint check for real, and still collided with
-    // nothing. What's left is the pre-existing known false positive:
-    // `snap_down`/`round_to_multiple` agree on every default probe but diverge at e.g.
-    // `x=8, step=5` (see the module doc) — a real, different-but-untold-apart-yet pair, not
-    // a duplicate to remove.
+    // nothing. The verifier/ranker pack's sum_equals/diff_equals are arity-3 (exempt by
+    // design — admission.rs only fingerprints arity-≤2 free-fns) and its
+    // product_equals_u32/quotient_equals_exact_u32 are state cells (exempt too). What's
+    // left is the pre-existing known false positive: `snap_down`/`round_to_multiple` agree
+    // on every default probe but diverge at e.g. `x=8, step=5` (see the module doc) — a
+    // real, different-but-untold-apart-yet pair, not a duplicate to remove.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("137 admitted, 1 refused"), "got: {out}");
+    assert!(out.contains("141 admitted, 1 refused"), "got: {out}");
     assert!(
         out.contains("snap_down — behavioural duplicate of `round_to_multiple`"),
         "got: {out}"
