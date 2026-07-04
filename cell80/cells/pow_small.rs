@@ -4,7 +4,7 @@ fn run(base: u16, exp: u16) -> u16 {
     let mut r = 1u16;
     let mut i = 0u16;
     while i < exp {
-        if base != 0u16 && r > 65535u16 / base { r = 65535u16; } else { r = r * base; }
+        r = if base != 0u16 && r > 65535u16 / base { 65535u16 } else { r * base };
         i = i + 1u16;
     }
     r
