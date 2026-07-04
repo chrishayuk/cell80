@@ -1,5 +1,5 @@
 //! Greatest common divisor (Euclid's algorithm).
-//! tags: math, bench, gcd, number
+//! tags: math, bench, gcd, number, divisor, common, factor, highest
 fn run(a: u16, b: u16) -> u16 {
     let mut x = a;
     let mut y = b;

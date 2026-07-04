@@ -521,6 +521,24 @@ rather than something this specific fix caused. This was reported to the user as
 validated-but-partial progress, not declared a full fix — see
 `cell-eval/baselines/README.md`'s checkpoint 11 entry for the complete numbers.
 
+**Checkpoint 12 fully resolves it.** Asked to keep pushing, a fresh diagnostic (dumping
+every current miss across all three splits, not just the fractions-specific ones) found
+a different, more widespread root cause than checkpoint 11's: several of the library's
+*oldest* cells (`gcd`, `min`, `max`, `chebyshev`, `pack_u8`, `same_unit_check`) were
+authored early in the project with much sparser tags than the richer, synonym-heavy
+convention every later pack settled into — so newer, better-tagged siblings (`gcd3`,
+`min3`, `max3`, `manhattan`) routinely out-ranked them on their *own* queries. Six
+targeted tag/wording fixes, each verified individually against
+`examples/retrieval_compare` before and after (a seventh — adding vocabulary to
+`abs_diff` — measurably regressed adversarial and was reverted; not every added synonym
+helps, verify each one). Result: **paraphrase (0.459) and adversarial (0.50) are both now
+above checkpoint 1's baseline for the first time since checkpoint 7**, direct (0.9181)
+recovered fully to checkpoint 10's pre-fix level (ending the four-checkpoint decline),
+and overall P@1 (0.7034) now exceeds checkpoint 1's own overall (0.6974) despite the
+library growing 114→163 cells. The kill-gate concern is resolved, not just mitigated —
+see `cell-eval/baselines/README.md`'s checkpoint 12 entry for the full breakdown and the
+six specific fixes.
+
 **Known gaps, not yet blocking, worth tracking as the library scales further:**
 - The admission gate's fingerprint check only covers arity-≤2 free-fn cells (state cells
   and arity-3 cells are exempt — `cell80/src/admission.rs`'s own doc explains why:
