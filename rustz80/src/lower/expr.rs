@@ -1113,15 +1113,7 @@ fn lower_saturating(
         );
     }
     // u32: the same mask trick over the 32-bit nodes (`Cmp32` supplies the flag).
-    // `saturating_mul` would need the 64-bit product — still out.
     if rw == Width::DWord || aw == Width::DWord {
-        if method == "saturating_mul" {
-            return Err(
-                "u32 saturating_mul is not supported (needs a 64-bit product) — \
-                 clamp explicitly against a known bound"
-                    .into(),
-            );
-        }
         let (recv, re) = (coerce32(recv, rw), coerce32(re, aw));
         let bin32 = |op, a: Expr, b: Expr| Expr::Bin32(op, Box::new(a), Box::new(b));
         let cmp32 = |c, lhs: Expr, rhs: Expr| Expr::Cmp32 {
@@ -1131,14 +1123,35 @@ fn lower_saturating(
         };
         // `0 - flag` widened: `0xFFFF_FFFF` when set, `0` otherwise.
         let mask32 = |flag: Expr| bin32(BinOp::Sub, Expr::Lit32(0), Expr::Widen(Box::new(flag)));
-        let e = if method == "saturating_add" {
-            let s = bin32(BinOp::Add, recv.clone(), re);
-            let ovf = cmp32(Cmp::Lt, s.clone(), recv);
-            bin32(BinOp::Or, s, mask32(ovf))
-        } else {
-            let ok = cmp32(Cmp::Ge, recv.clone(), re.clone());
-            let d = bin32(BinOp::Sub, recv, re);
-            bin32(BinOp::And, d, mask32(ok))
+        let e = match method {
+            "saturating_add" => {
+                let s = bin32(BinOp::Add, recv.clone(), re);
+                let ovf = cmp32(Cmp::Lt, s.clone(), recv);
+                bin32(BinOp::Or, s, mask32(ovf))
+            }
+            "saturating_sub" => {
+                let ok = cmp32(Cmp::Ge, recv.clone(), re.clone());
+                let d = bin32(BinOp::Sub, recv, re);
+                bin32(BinOp::And, d, mask32(ok))
+            }
+            // No 64-bit product needed: with the wrapped product `p = a * b`,
+            // overflow ⇔ `a != 0 && p / a != b` (the classic post-hoc check —
+            // wrapping subtracts `k·2^32 ≥ 2^32 > a·b'` from the true product, so
+            // the quotient can't land back on `b`). The division is a real cost
+            // (one more trap) and short-circuits behind the zero test, which also
+            // keeps the div-by-zero policy out of reach.
+            _ => {
+                let p = bin32(BinOp::Mul, recv.clone(), re.clone());
+                let nz = cmp32(Cmp::Ne, recv.clone(), Expr::Lit32(0));
+                let q = bin32(BinOp::Div, p.clone(), recv);
+                let bad = cmp32(Cmp::Ne, q, re);
+                let ovf = Expr::Logic {
+                    and: true,
+                    lhs: Box::new(nz),
+                    rhs: Box::new(bad),
+                };
+                bin32(BinOp::Or, p, mask32(ovf))
+            }
         };
         return Ok((e, Width::DWord));
     }

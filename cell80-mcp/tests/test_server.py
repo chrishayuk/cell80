@@ -72,6 +72,9 @@ def test_mcp_surface_is_a_small_router():
     names = sorted(t.name for t in mcp.get_tools())
     assert names == [
         "cell_compose",
+        "cell_facts_export",
+        "cell_facts_import",
+        "cell_facts_stats",
         "cell_graph_run",
         "cell_inspect",
         "cell_list",

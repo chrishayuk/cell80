@@ -114,3 +114,28 @@ def test_escalation_is_a_typed_result_not_an_error(tmp_path, monkeypatch):
     assert esc["halt"] == "escalate"
     assert esc["escalate"] == "out_of_domain"
     assert esc["escalate_code"] == 0xFF06
+
+
+def test_facts_verbs_export_import_stats():
+    # The sharing loop through the MCP surface (docs/12 §4): run → export → the
+    # claims re-import cleanly, a tampered digit is caught, and the stats verb
+    # shows the provenance split.
+    h = _handlers()
+    assert h["cell_run"]("gcd", [48, 36])["result"] == 12
+    exported = h["cell_facts_export"]("test@mcp")
+    assert exported["count"] >= 1
+    assert '"args":[48,36]' in exported["facts"]
+
+    # A clean import verifies and accepts (fraction 1.0 → every line re-executed).
+    rep = h["cell_facts_import"](exported["facts"], verify_fraction=1.0)
+    assert rep["accepted"] >= 1 and not rep["file_failed"] and not rep["failures"]
+
+    # One flipped digit: the file is rejected and the report names the line.
+    tampered = exported["facts"].replace('"r":[12,', '"r":[13,')
+    rep = h["cell_facts_import"](tampered, verify_fraction=1.0)
+    assert rep["file_failed"] and rep["failures"][0]["line"] > 1
+
+    # Stats: gcd has been run and hit at least once by the verification replays.
+    stats = h["cell_facts_stats"]()
+    assert "gcd" in stats["cells"]
+    assert stats["cells"]["gcd"]["lookups"] >= 1
