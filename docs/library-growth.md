@@ -17,9 +17,11 @@ one instead of writing code. This guide is how to grow it well.*
 ```
 wave 1 ✓   59 cells   predicates · safe arithmetic · bounds · percent · ranking · bit/mask
 wave 2 ✓   98 cells   + number theory · distance · bit/encoding · hashing · stats · conversion
-now        96 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide);
+wave 2.5    96 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide);
                         4 folded into aliases by the admission gate (see below)
-next      ~200+        + packing/BCD · scoring/choice · vector · time/budget · stateful/RNG
+now       100 cells   + calendrical/checksum, first slice (is_leap_year, days_in_month,
+                        day_of_week, luhn_check) — ISBN/IBAN/UPC deferred (see below)
+next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas
 ```
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
@@ -121,24 +123,21 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (94 cells; 96 with the wide `u32` siblings)
+### Landed (100 cells)
 
-```
-predicates     eq neq is_lt is_le is_gt is_ge is_zero nonzero is_even is_odd
-safe-arith     add_sat sub_sat mul_sat safe_div safe_mod ceil_div avg2 square
-bounds         between_exclusive normalize_0_100 snap_down snap_up round_to_multiple
-percent        percent permille ratio_255 scale_percent increase_percent discount_percent within_percent
-ranking-stats  min3 max3 median3 argmax3 argmin3 sum3 mean3 range3 mode3 majority3 midrange3
-bit/mask       popcount parity bit_is_set set_bit clear_bit toggle_bit mask_has_all mask_has_any mask_union mask_intersection mask_xor
-number-theory  lcm gcd3 divides is_coprime is_prime is_square isqrt digit_sum num_digits factor_count triangular next_pow2 is_pow2 pow_small cube_sat pow_mod
-distance       chebyshev euclid_sq          (state-cell siblings of manhattan)
-bit-encoding   low_byte high_byte swap_bytes rotl16 rotr16 reverse_bits leading_zeros trailing_zeros bit_length
-hashing        hash_pair fnv1a_step crc8_step mix16
-bucket/convert bucket3 percent_to_byte byte_to_percent
-```
+See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
+duplicated here, so there's exactly one place this can go stale (and it's checked against
+the real library every time it's regenerated).
 
-**Aliases (behaviour-identical to a landed cell; not separate code — see rule 1 above):**
-`argmin2` → `is_gt`, `argmax2` → `is_lt`, `quantize` → `safe_div`, `wrap` → `safe_mod`.
+**Calendrical / checksum, first slice (wave 3): `is_leap_year`, `days_in_month`,
+`day_of_week`, `luhn_check`.** A real constraint surfaced authoring this pack: a free-fn
+cell's calling convention is 16-bit registers, so **`u32` can only exist as a state field,
+not a call param or return type** — a classic multi-digit checksum (Luhn over a real
+13-19-digit card number, ISBN-13, IBAN mod-97) needs far more digits than even a `u32` state
+field holds. `luhn_check` is scoped to a `u16` input (≤ 5 decimal digits, documented via
+`//! limits:`) to stay a plain free function; ISBN-10/13, IBAN mod-97, and UPC are deferred
+until either a state-cell version (carrying digits as array/state fields) or wider host-side
+preprocessing is worth the design cost.
 
 ### Next waves (prioritized — keep them distinct)
 

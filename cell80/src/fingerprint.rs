@@ -14,6 +14,12 @@ use super::{Cartridge, Manifest, Runner, DEFAULT_CYCLES};
 /// A default probe bank separating the common confusable families — order (`3,7` vs `7,3`),
 /// equality (`5,5`), magnitude, and identity. Two-argument; a lower-arity cell simply
 /// ignores the unused register, so every cell is probed uniformly.
+///
+/// `[1230, 0]` was added by the admission gate (roadmap 2.2): a multi-digit,
+/// Luhn-checksum-valid value distinguishing `luhn_check` from `is_zero`, which the original
+/// ten probes couldn't separate (none of them happened to be Luhn-valid, so `luhn_check`
+/// degenerated to "is n exactly 0" on this bank alone) — a live example of the "widening the
+/// probe bank is the honest fix" note in `admission.rs`.
 pub const DEFAULT_PROBES: &[[u16; 2]] = &[
     [3, 7],
     [7, 3],
@@ -25,6 +31,7 @@ pub const DEFAULT_PROBES: &[[u16; 2]] = &[
     [255, 1],
     [100, 4],
     [12, 12],
+    [1230, 0],
 ];
 
 /// A cell's behavioural fingerprint: its primary result on each probe, or `None` if the run
