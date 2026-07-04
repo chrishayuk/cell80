@@ -71,6 +71,20 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     expected cost of growing a confusable family the project's own pitch accepts (both
     cells still surface in the top-3). Paraphrase/adversarial both stayed above baseline.
     Kill-gate did not trigger.
+  - Checkpoint 9 (`checkpoint-9-scoring-choice`, 153 cells, scoring/choice second slice):
+    P@1 direct 0.93 / paraphrase 0.42 / adversarial 0.41. Direct's own second consecutive
+    dip below checkpoint 1's baseline (0.9255 vs 0.9426) — this time attributable to the
+    new pack itself: `weighted_sum2`/`weighted_sum3`'s own direct queries both rank the
+    shorter, pre-existing `weighted_sum` #1 instead of themselves (both still land in
+    hit@3, which held steady). Paraphrase dipped fractionally under baseline for the
+    first time too (0.4196 vs 0.4247) — all three flipped paraphrase cases are
+    pre-existing pairs re-ranked by the usual corpus-wide TF-IDF shift
+    (`range_check`/`between_exclusive`, `weighted_sum`/`choose_best3`,
+    `is_ge`/`is_clear_winner`), not new collisions. Adversarial stayed above baseline.
+    The kill-gate rule names paraphrase/adversarial specifically and neither dip is
+    large enough on its own to trigger it, but **direct has now dipped for two
+    checkpoints running** (0.9363, then 0.9255) — worth a closer look next checkpoint
+    before assuming this one is noise too.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
