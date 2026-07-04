@@ -137,6 +137,26 @@ def _cmd_potion_pairs(args) -> int:
     return 0 if not stats["validation_problems"] and not stats["failed_cells"] else 1
 
 
+def _cmd_cells_snapshot(args) -> int:
+    from .celldiff import save_snapshot, snapshot
+
+    snap = snapshot(library_dir=args.library)
+    save_snapshot(snap, args.out)
+    print(f"snapshot: {len(snap)} cells -> {args.out}")
+    return 0
+
+
+def _cmd_cells_compare(args) -> int:
+    from .celldiff import compare, load_snapshot
+
+    rep = compare(load_snapshot(args.before), load_snapshot(args.after))
+    if args.json:
+        print(json.dumps(rep.as_dict(), indent=2))
+    else:
+        print(rep.render())
+    return 0 if rep.identical else 1
+
+
 def _cmd_composition(args) -> int:
     from .composition import run_composition
     from .report import render_composition
@@ -218,6 +238,23 @@ def main(argv: list[str] | None = None) -> int:
     pp.add_argument("--cells", default=None, help="comma-separated ids (library growth: new cells only)")
     pp.add_argument("--out", default=None)
     pp.set_defaults(func=_cmd_potion_pairs)
+
+    cs = sub.add_parser(
+        "cells-snapshot",
+        help="record every library cell's behaviour over the edge battery (before a source pass)",
+    )
+    cs.add_argument("--library", default=None)
+    cs.add_argument("--out", required=True)
+    cs.set_defaults(func=_cmd_cells_snapshot)
+
+    cc = sub.add_parser(
+        "cells-compare",
+        help="diff two behaviour snapshots — exit 1 on ANY divergence (byte-identical or fail)",
+    )
+    cc.add_argument("before")
+    cc.add_argument("after")
+    cc.add_argument("--json", action="store_true")
+    cc.set_defaults(func=_cmd_cells_compare)
 
     c = sub.add_parser("composition", help="LLM composition eval — does the agent wire cells?")
     c.add_argument("--dataset", default="composition_tasks")
