@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (103 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (108 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -187,6 +187,16 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
 | `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
 
+## agentic-runtime (5)
+
+| id | signature | summary |
+|---|---|---|
+| `token_bucket_step` | `TokenBucket::run() -> u16` | Token-bucket rate limiter step: refill by `refill`, cap at `capacity`, then try to spend `cost`; 1 if allowed, 0 if not enough tokens (tokens still refill either way). |
+| `backoff_next` | `Backoff::run() -> u16` | Capped exponential backoff: next = min(current * 2, cap), starting at 1 when current is 0. |
+| `circuit_breaker_step` | `CircuitBreaker::run() -> u16` | Circuit-breaker state machine step: closed(0) counts failures and opens at the threshold; open(1) waits for cooldown then tries half-open(2); half-open resolves to closed on success or back to open on failure. |
+| `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
+| `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -200,4 +210,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (agentic runtime primitives, running statistics, spatial/grid). calendrical/checksum and fixed-point above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/q_ema-as-lerp/piecewise sigmoid-tanh are still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the still-open wave-3+ packs (running statistics, spatial/grid). calendrical/checksum, fixed-point, and agentic-runtime above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/piecewise sigmoid-tanh, and rate_window_update are still open.

@@ -21,10 +21,13 @@ wave 2.5    96 cells   + the wide u32-in-state siblings (square_wide, weighted_s
                         4 folded into aliases by the admission gate (see below)
 wave 3a   100 cells   + calendrical/checksum, first slice (is_leap_year, days_in_month,
                         day_of_week, luhn_check) — ISBN/IBAN/UPC deferred (see below)
-now       103 cells   + Q8.8 fixed-point, first slice (q_mul, q_div, q_lerp) —
+wave 3b   103 cells   + Q8.8 fixed-point, first slice (q_mul, q_div, q_lerp) —
                         q_sqrt/piecewise sigmoid-tanh still open
+now       108 cells   + agentic runtime primitives, first slice (token_bucket_step,
+                        backoff_next, circuit_breaker_step, debounce_step, hysteresis) —
+                        rate_window_update still open
 next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas ·
-                        agentic runtime primitives · running statistics · spatial/grid
+                        running statistics · spatial/grid
 ```
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
@@ -126,7 +129,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (103 cells)
+### Landed (108 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -149,16 +152,28 @@ follow. `q_lerp` also serves as an EMA step (`q_lerp(prev, sample, alpha)`) — 
 *not* shipped as a second `q_ema` cell, since the formula is identical; the admission gate
 would refuse it anyway. `q_sqrt` and piecewise `q_sigmoid`/`q_tanh` are still open.
 
+**Agentic runtime primitives, first slice (wave 3): `token_bucket_step`, `backoff_next`,
+`circuit_breaker_step`, `debounce_step`, `hysteresis`.** All genuinely need state (each
+depends on outcomes from prior calls, not just this call's arguments), unlike the other
+"time/budget" names already flagged in Next waves below — `used_percent`/`fits_budget`/
+`cooldown_remaining` turned out to be aliases of `percent`/`is_le`/`sub_sat` respectively
+and were never built, exactly the kind of check `docs/cell-index.md` is for. `backoff_next`
+guards against a real overflow: doubling `current` directly can wrap past `u16::MAX` before
+the cap check runs, so it compares against `cap / 2` first and only multiplies when doubling
+is provably safe. `rate_window_update` is still open.
+
 ### Next waves (prioritized — keep them distinct)
 
 - **packing / BCD**: `pack_u8`/`unpack_lo`/`unpack_hi`, `pack_nibbles`, `bcd_encode`/`bcd_decode`.
 - **scoring / choice** (mostly state cells — need > 3 args): `weighted_sum2/3`, `score_2factor`,
   `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
 - **vector** (state cells): `dot2`, `norm2_sq`, `cosine_score_approx`.
-- **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`,
-  `ema_update`, `moving_avg_update`.
-- **time / budget** (only the *non-alias* ones — skip `time_until`=`sub_sat`,
-  `deadline_missed`=`is_ge`): `cooldown_remaining`, `used_percent`, `fits_budget`.
+- **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`.
+  (`ema_update`/`moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample,
+  alpha)` is one EMA step.)
+- **time / budget** — checked against `docs/cell-index.md` before building: `used_percent` is
+  `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
+  `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
 - **signed (`i16` now available)**: signed deltas / `lerp` / risk deltas.
 
 ## Mine the ecosystem first
