@@ -128,6 +128,15 @@ impl z80::Bus for CellBus<'_> {
     }
 }
 
+/// The value-cell memo table: `(entry, args) → (outcome, imported?)`.
+type ValueCache = std::collections::HashMap<(u16, Vec<u16>), (Fast, bool)>;
+/// The state-cell memo table: `(entry, sorted input triples, read set) →
+/// (outcome, named fields, imported?)`.
+type StateCache = std::collections::HashMap<
+    (u16, Vec<(u16, u8, u64)>, Vec<(u16, u8)>),
+    (Fast, Vec<(String, u64)>, bool),
+>;
+
 /// A compiled cell, runnable many times. One 64 KiB bus is allocated up front and the
 /// code loaded once; each [`run`](Runner::run) resets only the previous run's writes,
 /// re-lays the argument trampoline, and steps — so reuse pays for the computation, not a
@@ -144,21 +153,19 @@ pub struct Runner {
     /// [`enable_cache`](Runner::enable_cache). Serves [`run_fast`](Runner::run_fast) only:
     /// the rich [`run`](Runner::run) path reports post-run memory (`touched`, `reads`),
     /// which a memoized result cannot faithfully reproduce.
-    cache: Option<std::collections::HashMap<(u16, Vec<u16>), Fast>>,
+    cache: Option<ValueCache>,
     /// The state-cell sibling of [`cache`](Runner::cache) (docs/12 §2 — the scoring
     /// workhorses are state cells): keyed by `(entry, sorted input triples, read
     /// set)`, storing the named post-run fields alongside the [`Fast`]. The read
     /// set is part of the key because a fact is only well-defined given what was
     /// read back. Enabled together with `cache`.
-    #[allow(clippy::type_complexity)]
-    state_cache: Option<
-        std::collections::HashMap<
-            (u16, Vec<(u16, u8, u64)>, Vec<(u16, u8)>),
-            (Fast, Vec<(String, u64)>),
-        >,
-    >,
+    state_cache: Option<StateCache>,
     cache_hits: u64,
     cache_lookups: u64,
+    /// Hits served from **imported** facts (vs locally computed) — the provenance
+    /// split the Act-3 screen wants (docs/12 §2). The `bool` on each cache value is
+    /// the entry's origin.
+    cache_hits_imported: u64,
     /// The content address facts are keyed by (docs/12 §2): a cartridge-backed load
     /// stamps the v5 artifact hash via [`set_artifact_hash`](Runner::set_artifact_hash);
     /// a bare program self-hashes its serialized image (config included — the image
@@ -184,6 +191,7 @@ impl Runner {
             state_cache: None,
             cache_hits: 0,
             cache_lookups: 0,
+            cache_hits_imported: 0,
             artifact_hash: self_hash(program),
         }
     }
@@ -223,6 +231,181 @@ impl Runner {
         self.cache
             .as_ref()
             .map(|_| (self.cache_hits, self.cache_lookups))
+    }
+
+    /// The provenance split of the hits: `(locally computed, served from imported
+    /// facts)` — the Act-3 screen's number (docs/12 §2). `None` until the cache is on.
+    pub fn cache_split(&self) -> Option<(u64, u64)> {
+        self.cache.as_ref().map(|_| {
+            (
+                self.cache_hits - self.cache_hits_imported,
+                self.cache_hits_imported,
+            )
+        })
+    }
+
+    /// Every budget-independent cached outcome as a [`Fact`](crate::Fact) (docs/12):
+    /// value entries by register args, state entries with fields named through
+    /// `state_addrs`. Entries whose input addresses aren't name-mapped are skipped —
+    /// facts are name-keyed, and a raw-address drive has no name to claim. Order is
+    /// unspecified (the exporter sorts).
+    pub(crate) fn cached_facts(
+        &self,
+        state_addrs: &[(String, u16, crate::Ty)],
+    ) -> Vec<crate::Fact> {
+        use crate::facts::FactInput;
+        let mut out = Vec::new();
+        // Reverse symbol map, smallest name winning ties deterministically.
+        let mut names: Vec<(&String, &u16)> = self.prog.symbols.iter().collect();
+        names.sort();
+        let name_of = |addr: u16| -> Option<&str> {
+            names
+                .iter()
+                .find(|(_, a)| **a == addr)
+                .map(|(n, _)| n.as_str())
+        };
+        if let Some(c) = self.cache.as_ref() {
+            for ((entry_addr, args), (f, _)) in c {
+                let Some(entry) = name_of(*entry_addr) else {
+                    continue;
+                };
+                out.push(crate::Fact {
+                    artifact: self.artifact_hash,
+                    entry: entry.to_string(),
+                    input: FactInput::Args(args.clone()),
+                    regs: f.regs,
+                    cycles: f.cycles,
+                    trapped_ops: f.trapped_ops,
+                    halt: f.halt,
+                    out: Vec::new(),
+                });
+            }
+        }
+        if let Some(c) = self.state_cache.as_ref() {
+            for ((entry_addr, inputs, _reads), (f, state, _)) in c {
+                let Some(entry) = name_of(*entry_addr) else {
+                    continue;
+                };
+                // Name each input address; skip the entry if any is unnameable.
+                let mut fields = Vec::with_capacity(inputs.len());
+                let mut ok = true;
+                for (addr, _, val) in inputs {
+                    match state_addrs.iter().find(|(_, a, _)| a == addr) {
+                        Some((n, _, _)) => fields.push((n.clone(), *val)),
+                        None => {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                fields.sort();
+                // Canonical form sorts `out` keys too; the importer restores the
+                // declaration order from the artifact's own state_addrs.
+                let mut sorted_out = state.clone();
+                sorted_out.sort();
+                out.push(crate::Fact {
+                    artifact: self.artifact_hash,
+                    entry: entry.to_string(),
+                    input: FactInput::Fields(fields),
+                    regs: f.regs,
+                    cycles: f.cycles,
+                    trapped_ops: f.trapped_ops,
+                    halt: f.halt,
+                    out: sorted_out,
+                });
+            }
+        }
+        out
+    }
+
+    /// Stamp an imported fact into the cache (marked `imported` for the provenance
+    /// split). Returns `Ok(false)` when an identical entry already exists,
+    /// `Ok(true)` when inserted, and `Err` (carrying the existing outcome) on a
+    /// **collision with a differing outcome** — the caller decides it by execution
+    /// (two contradictory facts cannot both be true of a deterministic machine).
+    /// Existing local entries win upstream tie-breaks: they *are* execution results.
+    pub(crate) fn insert_fact(
+        &mut self,
+        f: &crate::Fact,
+        state_addrs: &[(String, u16, crate::Ty)],
+    ) -> Result<bool, String> {
+        use crate::facts::FactInput;
+        let entry_addr = *self
+            .prog
+            .symbols
+            .get(&f.entry)
+            .ok_or_else(|| format!("no entry `{}` in this artifact", f.entry))?;
+        let fast = Fast {
+            result: f.regs[0],
+            regs: f.regs,
+            cycles: f.cycles,
+            trapped_ops: f.trapped_ops,
+            halt: f.halt,
+        };
+        match &f.input {
+            FactInput::Args(args) => {
+                let cache = self
+                    .cache
+                    .as_mut()
+                    .ok_or("cache is not enabled on this runner")?;
+                let key = (entry_addr, args.clone());
+                if let Some((have, _)) = cache.get(&key) {
+                    if same_fast(have, &fast) {
+                        return Ok(false);
+                    }
+                    return Err(crate::facts::fact_outcome(
+                        have.regs,
+                        have.cycles,
+                        have.trapped_ops,
+                        have.halt,
+                        &[],
+                    ));
+                }
+                cache.insert(key, (fast, true));
+                Ok(true)
+            }
+            FactInput::Fields(fields) => {
+                let inputs = crate::facts::resolve_fields(fields, state_addrs)?;
+                let mut key_in: Vec<(u16, u8, u64)> =
+                    inputs.iter().map(|(a, t, v)| (*a, t.code(), *v)).collect();
+                key_in.sort_unstable();
+                // The host read-set convention: every scalar field, declaration order.
+                let key_rd: Vec<(u16, u8)> =
+                    state_addrs.iter().map(|(_, a, t)| (*a, t.code())).collect();
+                let cache = self
+                    .state_cache
+                    .as_mut()
+                    .ok_or("cache is not enabled on this runner")?;
+                // Store the read-back in declaration order (what a live
+                // `run_state_fast` returns), not the fact's canonical key order.
+                let mut decl_out = Vec::with_capacity(f.out.len());
+                for (name, _, _) in state_addrs {
+                    if let Some((_, v)) = f.out.iter().find(|(k, _)| k == name) {
+                        decl_out.push((name.clone(), *v));
+                    }
+                }
+                let key = (entry_addr, key_in, key_rd);
+                if let Some((have, have_out, _)) = cache.get(&key) {
+                    let mut have_sorted = have_out.clone();
+                    have_sorted.sort();
+                    if same_fast(have, &fast) && have_sorted == f.out {
+                        return Ok(false);
+                    }
+                    return Err(crate::facts::fact_outcome(
+                        have.regs,
+                        have.cycles,
+                        have.trapped_ops,
+                        have.halt,
+                        have_out,
+                    ));
+                }
+                cache.insert(key, (fast, decl_out, true));
+                Ok(true)
+            }
+        }
     }
 
     /// Compile `src` (permissive) and instantiate — back-compat for trusted/game code.
@@ -314,9 +497,12 @@ impl Runner {
             // (Conservative: at cycles == budget the live run in fact completes —
             // the final instruction starts while cycles < budget — so equality is
             // a miss that re-executes to the same outcome, never a wrong answer.)
-            if let Some(f) = self.cache.as_ref().and_then(|c| c.get(&key)) {
+            if let Some((f, imported)) = self.cache.as_ref().and_then(|c| c.get(&key)) {
                 if f.cycles < budget {
                     self.cache_hits += 1;
+                    if *imported {
+                        self.cache_hits_imported += 1;
+                    }
                     return Ok(*f);
                 }
             }
@@ -324,7 +510,10 @@ impl Runner {
             // Budget/memory stops are budget- or config-relative; everything else is a
             // deterministic property of (entry, args) and caches forever.
             if !matches!(f.halt, Halt::CycleBudget | Halt::MemoryLimit) {
-                self.cache.as_mut().expect("checked above").insert(key, f);
+                self.cache
+                    .as_mut()
+                    .expect("checked above")
+                    .insert(key, (f, false));
             }
             return Ok(f);
         }
@@ -362,9 +551,13 @@ impl Runner {
             key_in.sort_unstable();
             let key_rd: Vec<(u16, u8)> = reads.iter().map(|(_, a, t)| (*a, t.code())).collect();
             let key = (entry_addr, key_in, key_rd);
-            if let Some((f, state)) = self.state_cache.as_ref().and_then(|c| c.get(&key)) {
+            if let Some((f, state, imported)) = self.state_cache.as_ref().and_then(|c| c.get(&key))
+            {
                 if f.cycles < budget {
                     self.cache_hits += 1;
+                    if *imported {
+                        self.cache_hits_imported += 1;
+                    }
                     return Ok((*f, state.clone()));
                 }
             }
@@ -382,7 +575,7 @@ impl Runner {
                 self.state_cache
                     .as_mut()
                     .expect("checked above")
-                    .insert(key, (f, state.clone()));
+                    .insert(key, (f, state.clone(), false));
             }
             return Ok((f, state));
         }
@@ -673,6 +866,7 @@ impl Runner {
             c.clear();
             self.cache_hits = 0;
             self.cache_lookups = 0;
+            self.cache_hits_imported = 0;
         }
         if let Some(c) = self.state_cache.as_mut() {
             c.clear();
@@ -681,6 +875,12 @@ impl Runner {
         // re-stamps via `set_artifact_hash` after this.
         self.artifact_hash = self_hash(program);
     }
+}
+
+/// Field-for-field equality of two [`Fast`] outcomes (no `PartialEq` on `Fast` —
+/// this is the one comparison site, and it should stay explicit).
+fn same_fast(a: &Fast, b: &Fast) -> bool {
+    a.regs == b.regs && a.cycles == b.cycles && a.trapped_ops == b.trapped_ops && a.halt == b.halt
 }
 
 /// The content address of a **bare** (cartridge-less) program: SHA-256 over its

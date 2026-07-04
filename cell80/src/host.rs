@@ -11,17 +11,17 @@ use std::collections::HashMap;
 
 /// A loaded cell: a warm runner plus the entry to invoke on it, and (for a state cell) the
 /// `(field, address)` map that lets it be driven by name.
-struct Loaded {
-    runner: Runner,
-    entry: String,
-    state_addrs: Vec<(String, u16, Ty)>,
+pub(crate) struct Loaded {
+    pub(crate) runner: Runner,
+    pub(crate) entry: String,
+    pub(crate) state_addrs: Vec<(String, u16, Ty)>,
 }
 
 /// A persistent host over a library of cells: discover (`search`/`manifest`), then
 /// `load` → `run` many → `unload`, keeping runners warm between calls.
 #[derive(Default)]
 pub struct CellHost {
-    catalog: HashMap<String, Cartridge>,
+    pub(crate) catalog: HashMap<String, Cartridge>,
     /// Lazily-(re)built TF-IDF search index over the catalog. `None` means stale; the next
     /// `search` rebuilds it from the catalog's manifests, and `add` invalidates it. TF-IDF
     /// fits IDF over the *whole* corpus (unlike [`CellIndex`]'s incremental `add`), so we
@@ -29,10 +29,14 @@ pub struct CellHost {
     /// scale, and a warm host is typically filled once at startup then served from.
     index: std::cell::RefCell<Option<TfidfIndex>>,
     pool: CellPool,
-    live: Vec<Option<Loaded>>,
+    pub(crate) live: Vec<Option<Loaded>>,
     /// When set, every [`load`](Self::load) enables the runner's memoization cache —
     /// repeated `run_fast` calls with the same args become hash lookups (roadmap 3.3).
     cache_loads: bool,
+    /// Imported facts staged by artifact hash (docs/12 §3): stamped into a runner's
+    /// cache at [`load`](Self::load) (and immediately into already-loaded handles at
+    /// import time), so a warm host serves them without re-execution.
+    pub(crate) imported: HashMap<[u8; 32], Vec<Fact>>,
 }
 
 impl CellHost {
@@ -139,6 +143,16 @@ impl CellHost {
         if self.cache_loads {
             runner.enable_cache();
         }
+        // Stamp any staged imported facts (a fresh runner has no conflicting entries;
+        // a fact that doesn't resolve — renamed entry, changed layout — can't happen
+        // under the same hash, but is skipped defensively rather than failing a load).
+        if let Some(facts) = self.imported.get(&cart.artifact_hash()) {
+            if self.cache_loads {
+                for f in facts {
+                    let _ = runner.insert_fact(f, &cart.manifest.state_addrs);
+                }
+            }
+        }
         let loaded = Loaded {
             runner,
             entry: cart.manifest.entry.clone(),
@@ -157,7 +171,7 @@ impl CellHost {
         }
     }
 
-    fn loaded(&mut self, handle: usize) -> Result<&mut Loaded, String> {
+    pub(crate) fn loaded(&mut self, handle: usize) -> Result<&mut Loaded, String> {
         self.live
             .get_mut(handle)
             .and_then(Option::as_mut)
@@ -291,5 +305,11 @@ impl CellHost {
     /// enabled when it was loaded.
     pub fn cache_stats(&mut self, handle: usize) -> Result<Option<(u64, u64)>, String> {
         Ok(self.loaded(handle)?.runner.cache_stats())
+    }
+
+    /// The provenance split of a loaded cell's cache hits: `(local, imported)` —
+    /// the Act-3 number (docs/12 §2).
+    pub fn cache_split(&mut self, handle: usize) -> Result<Option<(u64, u64)>, String> {
+        Ok(self.loaded(handle)?.runner.cache_split())
     }
 }

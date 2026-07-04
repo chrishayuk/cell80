@@ -311,6 +311,67 @@ impl CellHost {
         self.host.set_cache(on);
     }
 
+    /// Export every cached outcome across loaded cells as a `.facts` file (docs/12) —
+    /// returns the JSONL text (header + one canonical claim per line).
+    #[pyo3(signature = (producer="cell80-py"))]
+    fn export_facts(&mut self, producer: &str) -> PyResult<String> {
+        let mut buf = Vec::new();
+        self.host
+            .export_facts(&mut buf, producer)
+            .map_err(PyValueError::new_err)?;
+        Ok(String::from_utf8(buf).expect("facts are utf-8"))
+    }
+
+    /// Import a `.facts` text with a spot-check (docs/12 §3): a locally-seeded
+    /// sample is re-executed under each fact's own claimed cost; one caught lie
+    /// rejects the whole file unless `quarantine`. Returns the import report dict.
+    #[pyo3(signature = (text, verify_fraction=0.01, quarantine=false))]
+    fn import_facts<'py>(
+        &mut self,
+        py: Python<'py>,
+        text: &str,
+        verify_fraction: f64,
+        quarantine: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let policy = cell80::ImportPolicy {
+            verify_fraction,
+            quarantine,
+            ..Default::default()
+        };
+        let rep = self
+            .host
+            .import_facts(text.as_bytes(), &policy)
+            .map_err(PyValueError::new_err)?;
+        let d = PyDict::new_bound(py);
+        d.set_item("read", rep.read)?;
+        d.set_item("accepted", rep.accepted)?;
+        d.set_item("verified", rep.verified)?;
+        d.set_item("rejected_unknown_artifact", rep.rejected_unknown_artifact)?;
+        d.set_item("rejected_budget_halt", rep.rejected_budget_halt)?;
+        d.set_item("rejected_malformed", rep.rejected_malformed)?;
+        d.set_item("file_failed", rep.file_failed)?;
+        let fails: Vec<Bound<'py, PyDict>> = rep
+            .failures
+            .iter()
+            .map(|f| {
+                let fd = PyDict::new_bound(py);
+                fd.set_item("line", f.line).unwrap();
+                fd.set_item("key", &f.key).unwrap();
+                fd.set_item("expected", &f.expected).unwrap();
+                fd.set_item("got", &f.got).unwrap();
+                fd
+            })
+            .collect();
+        d.set_item("failures", fails)?;
+        Ok(d)
+    }
+
+    /// `(local, imported)` hit split of a loaded cell's cache — the provenance the
+    /// sharing demo shows. `None` if caching wasn't enabled.
+    fn cache_split(&mut self, handle: usize) -> PyResult<Option<(u64, u64)>> {
+        self.host.cache_split(handle).map_err(PyValueError::new_err)
+    }
+
     /// `(hits, lookups)` of a loaded cell's memoization cache, or `None` if caching
     /// wasn't enabled when it was loaded.
     fn cache_stats(&mut self, handle: usize) -> PyResult<Option<(u64, u64)>> {

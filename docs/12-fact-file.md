@@ -1,6 +1,7 @@
 # The fact file — an exportable, spot-checkable memo table (3.3+)
 
-*Status: specified, not started. Follows shipped 3.3 (the in-process cache) and rides
+*Status: **shipped 2026-07-04** (both deliverables — see the shipped-notes inline;
+DoD battery in `cell80/tests/facts.rs`). Follows shipped 3.3 (the in-process cache) and rides
 shipped 3.1 (the v5 artifact hash). Two deliverables: the **key upgrade** (image-hash
 keyed, state-cell coverage) and the **file** (export / import-with-spot-check). The
 design goal is stated once and enforced everywhere: **boring on purpose** — a fact
@@ -64,6 +65,16 @@ name: `Attribution`, not `Proof`.
 
 ## 2. The key upgrade (in-process, precedes the file)
 
+*Shipped: `Runner` carries the artifact hash (cartridge v5 stamp at `CellHost::load`,
+image self-hash for bare programs — the image bytes carry the whole `CellConfig`, so
+no knob escapes). `run_state_fast` keys on `(entry, sorted input triples, read set)`
+— the read set is in the key because a fact is only well-defined given what was read
+back. The provenance split is `Runner::cache_split()` / `CellHost::cache_split()`
+rather than a new `Report` field (the JSON shape stays stable). One 3.3 correction
+banked en route: at `budget == cycles` the live loop in fact completes (the final
+instruction starts while `cycles < budget`), so the strict `<` replay rule is
+conservative, not load-bearing — the comment now says so.*
+
 - Cache key becomes `(artifact_hash, entry, canonical_args)` — `Runner` gets the
   hash at construction from the cartridge (a plain program without a cartridge
   hashes its own image + config on the spot, so `Runner::compile` paths stay
@@ -77,6 +88,13 @@ name: `Attribution`, not `Proof`.
   computed — provenance is one u64, and the Act-3 screen wants the split.
 
 ## 3. Import — the spot-check is the product
+
+*Shipped: `ImportPolicy { verify_fraction, quarantine, seed, dry_run }` (the enum
+collapsed to a bool + the audit verb's dry-run; `verify_budget` is always the
+fact's own `cy + 1`). Contradictions are decided by execution in three places:
+file-internal groups, file-vs-staged (an earlier import), and file-vs-live (a warm
+runner's own entry — which already *is* an execution result, so it wins). Sampling
+is xorshift64\* seeded from local entropy, `Some(seed)` for tests only.*
 
 ```rust
 pub struct ImportPolicy {
