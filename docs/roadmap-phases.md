@@ -227,7 +227,7 @@ step=5`), documented in `admission.rs` as the honest scope of an `agreement == 1
 strong evidence a maintainer should review, not proof.
 
 **2.3 Scale the eval library.**
-96 cells can't surface collision behavior. Grow to ~1,000 (generated + curated), track
+114 cells can't surface collision behavior. Grow to ~1,000 (generated + curated), track
 P@1/adoption/composition as the library grows — the retrieval-quality-vs-scale curve is
 the headline chart for the vision section.
 *DoD:* eval runs at 1K cells; curve published in README.
