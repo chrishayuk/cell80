@@ -35,5 +35,6 @@ mod misc;
 mod peephole;
 mod recursion;
 mod signed;
+mod strings;
 mod structs;
 mod u32_ops;

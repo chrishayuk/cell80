@@ -20,6 +20,11 @@ struct VarInfo {
     /// `let t = &CONST;`): the slot holds a byte address; `t[i]` loads through it at
     /// `(element width, byte stride)`. Distinct from a local array (slot-per-element).
     elem_ptr: Option<(Width, u16)>,
+    /// A `&str` parameter: the slot holds the address of a length-prefixed buffer
+    /// (little-endian u16 length at `s`, bytes at `s + 2` — the Phase S wire format).
+    /// Reads route through the string methods (`s.len()`, `s.as_bytes()[i]`, …),
+    /// never direct indexing.
+    is_str: bool,
 }
 
 /// Name → variable info. `next` is the next free slot.
@@ -48,6 +53,7 @@ impl Vars {
                 handle: None,
                 elem_struct: None,
                 elem_ptr: None,
+                is_str: false,
             },
         );
         self.next += size;
@@ -66,6 +72,7 @@ impl Vars {
                 handle: None,
                 elem_struct: None,
                 elem_ptr: None,
+                is_str: false,
             },
         );
         self.next += 1;
@@ -84,6 +91,7 @@ impl Vars {
                 handle: Some(handle.to_string()),
                 elem_struct: None,
                 elem_ptr: None,
+                is_str: false,
             },
         );
         self.next += 1;
@@ -132,6 +140,7 @@ impl Vars {
                 handle: None,
                 elem_struct: Some(elem_struct.to_string()),
                 elem_ptr: None,
+                is_str: false,
             },
         );
         self.next += slots;
@@ -155,6 +164,7 @@ impl Vars {
                 handle: None,
                 elem_struct: None,
                 elem_ptr: Some((elem, stride)),
+                is_str: false,
             },
         );
         self.next += 1;
@@ -163,5 +173,29 @@ impl Vars {
     /// The `(element width, byte stride)` of an element-pointer var, if it is one.
     pub(crate) fn elem_ptr(&self, name: &str) -> Option<(Width, u16)> {
         self.map.get(name).and_then(|v| v.elem_ptr)
+    }
+    /// Declare a `&str` parameter: one slot holding the address of a
+    /// length-prefixed buffer (u16 LE length at `s`, bytes at `s + 2`).
+    pub(crate) fn declare_str(&mut self, name: &str) -> usize {
+        let base = self.next;
+        self.map.insert(
+            name.to_string(),
+            VarInfo {
+                base,
+                sty: None,
+                ty: Width::Word,
+                is_ptr: false,
+                handle: None,
+                elem_struct: None,
+                elem_ptr: None,
+                is_str: true,
+            },
+        );
+        self.next += 1;
+        base
+    }
+    /// Is `name` a `&str` parameter?
+    pub(crate) fn str_param(&self, name: &str) -> bool {
+        self.map.get(name).is_some_and(|v| v.is_str)
     }
 }

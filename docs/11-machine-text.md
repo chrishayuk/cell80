@@ -56,7 +56,12 @@ Every accepted construct below compiles identically under rustc; `check!` keeps 
 guarantee. Nothing in Phase S introduces a semantics rustc doesn't share.
 
 **2.1 Inputs — `&str` parameters.** A `&str` param occupies one register (the address
-of a §1 buffer). Accepted methods, each a few instructions:
+of a §1 buffer). Accepted methods, each a few instructions. *Shipped (S1), with one
+correction to the table below: `is_char_boundary` lowers to the exact std truth
+table — `i == 0 || i == len || (i < len && (b[i] & 0xC0) != 0x80)` — because the
+formula as first specified returned `true` for `i > len` where `str::is_char_boundary`
+returns `false`; the rustc oracle caught the divergence class before it shipped.
+`check_str!` (§7) landed alongside.*
 
 | construct | lowering | note |
 |---|---|---|
