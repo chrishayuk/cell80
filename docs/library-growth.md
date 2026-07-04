@@ -1,5 +1,11 @@
 # Growing the cell library — toward a large prebuilt collection
 
+> **Before authoring a new cell, check [`docs/cell-index.md`](cell-index.md)** — every
+> landed cell, grouped by pack, generated from the actual library (not hand-transcribed, so
+> it can't drift the way this file's old cell-count prose once did). It's the fastest way to
+> confirm a behaviour doesn't already exist before writing a duplicate the admission gate
+> would just refuse.
+
 *The goal is a **big, growing library of prebuilt cells** — hundreds of small, distinct,
 deterministic integer utilities an agent can retrieve, run, and compose, organized into
 **packs**. cell80's whole pitch is "millions of tiny tools, retrieved" — so the library should
@@ -96,6 +102,7 @@ confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmar
                                                    (verify with `cell80 search`), + paraphrase
 3. composition or adoption task (if user-facing) — composition_tasks.jsonl / tasks.jsonl
 4. cell80/tests/library.rs                       — edge-case rows (the host oracle)
+5. docs/cell-index.md                            — regenerate (command at the top of the file)
 ```
 
 Steps 1-2 are enforced, not just requested: `cell80 index cell80/cells --gate
