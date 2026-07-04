@@ -107,10 +107,17 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 ))
             }
             syn::Lit::Bool(b) => Ok((Expr::Lit(b.value as u16), Width::Byte)),
+            // A string literal is interned into the const-data pool (length-prefixed:
+            // `peek(s)` = length, `peek(s + 1 + i)` = byte `i`) and evaluates to its
+            // address — so `frame.text(x, y, "SCORE")` hands the routine a pointer.
+            syn::Lit::Str(s) => {
+                let name = ctx.consts.borrow_mut().intern_str(&s.value())?;
+                Ok((Expr::ConstAddr(name), Width::Word))
+            }
             other => Err(format!(
-                "unsupported literal: {} — the dialect's values are integers and bools \
-                 (strings/floats/chars are out; for fractional values use fixed-point on \
-                 integers, e.g. Q8.8: `(a * w) >> 8`)",
+                "unsupported literal: {} — the dialect's values are integers, bools, and \
+                 (as data) string literals; floats/chars are out — for fractional values \
+                 use fixed-point on integers, e.g. Q8.8: `(a * w) >> 8`",
                 describe_lit(other)
             )),
         },
@@ -121,6 +128,23 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 // A const-generic parameter is substituted by its instance value.
                 if let Some(v) = ctx.const_args.get(&name) {
                     return Ok((Expr::Lit(*v), Width::Word));
+                }
+                // Program consts (a declared local shadows them): a scalar const
+                // substitutes as a literal; a `&str` const's name *is* its address.
+                if !ctx.vars.is_declared(&name) {
+                    let consts = ctx.consts.borrow();
+                    if let Some((v, w)) = consts.scalars.get(&name) {
+                        return Ok((Expr::Lit(*v), *w));
+                    }
+                    if let Some(d) = consts.get(&name) {
+                        if d.is_str {
+                            return Ok((Expr::ConstAddr(name), Width::Word));
+                        }
+                        return Err(format!(
+                            "const `{name}` is data, not a value — index it (`{name}[i]`) \
+                             or pass its address (`&{name}`)"
+                        ));
+                    }
                 }
                 let base = ctx.vars.base(&name);
                 match ctx.vars.ty(&name) {
@@ -205,6 +229,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 Ok((e, Width::Word))
             }
         }
+        // `&CONST` / `&CONST[i]` — the address of const data (or of one packed
+        // element). This is what lets a routed prelude routine receive a pointer to
+        // real tile/string bytes: `frame.tile(&HERO, x, y)`. Borrows of anything
+        // else stay out of the subset (locals live in 2-byte slots, so a `&local`
+        // would not point at packed data).
+        syn::Expr::Reference(r) => lower_const_ref(&r.expr, ctx),
         syn::Expr::Field(f) => lower_field_read(f, ctx),
         syn::Expr::Index(ix) => lower_index_read(ix, ctx),
         syn::Expr::Binary(b) => lower_binary(b, ctx),
@@ -466,6 +496,80 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
     })
 }
 
+/// Scale an element index by a byte stride (stride 1 passes through; powers of two
+/// shift via [`Expr::MulConst`]).
+fn scaled(idx: Expr, stride: u16) -> Expr {
+    if stride == 1 {
+        idx
+    } else {
+        Expr::MulConst(Box::new(idx), stride)
+    }
+}
+
+/// Lower `&CONST` or `&CONST[i]` to the (symbolic) address of packed const data.
+fn lower_const_ref(referent: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
+    match referent {
+        syn::Expr::Path(_) => {
+            let name = path_ident(referent)?;
+            let consts = ctx.consts.borrow();
+            let Some(d) = consts.get(&name) else {
+                return Err(format!(
+                    "`&{name}` — the dialect borrows only const data (`&CONST`, \
+                     `&CONST[i]`); `{name}` is not a data const"
+                ));
+            };
+            if d.is_str {
+                return Err(format!(
+                    "`&{name}` is a reference to a reference — a `&str` const is \
+                     already an address; pass `{name}` directly"
+                ));
+            }
+            Ok((Expr::ConstAddr(name), Width::Word))
+        }
+        syn::Expr::Index(ix) => {
+            let name = path_ident(&ix.expr)?;
+            let (stride, len) = {
+                let consts = ctx.consts.borrow();
+                let Some(d) = consts.get(&name) else {
+                    return Err(format!(
+                        "`&{name}[…]` — `{name}` is not a data const (the dialect \
+                         borrows only const data)"
+                    ));
+                };
+                if d.stride == 0 {
+                    return Err(format!("`{name}` is not an array const"));
+                }
+                (d.stride, d.len)
+            };
+            // A literal index is bounds-checked here; a runtime index is the
+            // program's responsibility (same as local array indexing).
+            if let syn::Expr::Lit(l) = &*ix.index {
+                if let syn::Lit::Int(i) = &l.lit {
+                    let v = i.base10_parse::<u16>().map_err(|e| e.to_string())?;
+                    if v >= len {
+                        return Err(format!("`&{name}[{v}]` is out of bounds (length {len})"));
+                    }
+                }
+            }
+            let idx = lower_expr16(&ix.index, ctx, "const element index")?;
+            Ok((
+                Expr::Bin(
+                    BinOp::Add,
+                    Box::new(Expr::ConstAddr(name)),
+                    Box::new(scaled(idx, stride)),
+                    Width::Word,
+                ),
+                Width::Word,
+            ))
+        }
+        other => Err(format!(
+            "cannot borrow {} — the dialect borrows only const data (`&CONST`, \
+             `&CONST[i]`); `&`/`&mut` locals exist only as method receivers",
+            describe_expr(other)
+        )),
+    }
+}
+
 /// The byte base address of an indexable array + its element struct — for a local array
 /// var (`a`) or a struct field that is an array of structs (`self.cells`).
 pub(crate) fn array_base(arr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, String), String> {
@@ -534,6 +638,43 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
             "a struct-array element isn't a scalar — read a field, e.g. `{arr}[i].x`"
         ));
     }
+    // `t[i]` through an element pointer (`t: &[u8; N]` param, `let t = &CONST;`):
+    // a load at `t + i*stride` from packed data.
+    if let Some((w, stride)) = ctx.vars.elem_ptr(&arr) {
+        let base = ctx.vars.base(&arr);
+        let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        let addr = Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::Var(base)),
+            Box::new(scaled(idx, stride)),
+            Width::Word,
+        );
+        return Ok((Expr::LoadAt(Box::new(addr), w), w));
+    }
+    // `CONST[i]` — a load straight out of the const-data section.
+    if !ctx.vars.is_declared(&arr) {
+        let meta = ctx
+            .consts
+            .borrow()
+            .get(&arr)
+            .map(|d| (d.elem_width, d.stride));
+        if let Some((elem_width, stride)) = meta {
+            let Some(w) = elem_width else {
+                return Err(format!(
+                    "`{arr}[i]` — this const's elements aren't scalars; take the \
+                     element's address instead (`&{arr}[i]`)"
+                ));
+            };
+            let idx = lower_expr16(&ix.index, ctx, "array index")?;
+            let addr = Expr::Bin(
+                BinOp::Add,
+                Box::new(Expr::ConstAddr(arr)),
+                Box::new(scaled(idx, stride)),
+                Width::Word,
+            );
+            return Ok((Expr::LoadAt(Box::new(addr), w), w));
+        }
+    }
     let base = ctx.vars.base(&arr);
     let w = ctx.vars.ty(&arr);
     let idx = lower_expr16(&ix.index, ctx, "array index")?;
@@ -562,6 +703,14 @@ pub(crate) fn lower_index_store(
         });
     }
     let arr = path_ident(&ix.expr)?;
+    if ctx.vars.elem_ptr(&arr).is_some() {
+        return Err(format!(
+            "cannot assign through `{arr}` — a `&[T; N]` reference is read-only"
+        ));
+    }
+    if !ctx.vars.is_declared(&arr) && ctx.consts.borrow().get(&arr).is_some() {
+        return Err(format!("cannot assign to const data `{arr}`"));
+    }
     let base = ctx.vars.base(&arr);
     let w = ctx.vars.ty(&arr);
     let idx = lower_expr16(&ix.index, ctx, "array index")?;

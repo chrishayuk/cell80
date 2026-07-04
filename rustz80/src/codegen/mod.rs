@@ -6,6 +6,7 @@
 //! bytes happens once at the end — see `ins.rs`.
 
 use crate::ir::*;
+use crate::lower::consts::DataConst;
 use std::collections::HashMap;
 
 mod asm;
@@ -44,6 +45,19 @@ pub fn codegen_program(
     entry: Option<&str>,
     target: Target,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
+    codegen_program_c(funcs, &[], org, entry, target)
+}
+
+/// [`codegen_program`] with a **const-data section**: after the functions, every
+/// const the program references (`Expr::ConstAddr`) is laid into the image at its
+/// own symbol; unreferenced consts are dropped (nothing could address them).
+pub(crate) fn codegen_program_c(
+    funcs: &[(String, Func)],
+    consts: &[DataConst],
+    org: u16,
+    entry: Option<&str>,
+    target: Target,
+) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
     let mut a = Asm::new(org, target);
     if let Some(e) = entry {
         a.fx(&[0xF3]); // DI
@@ -58,6 +72,7 @@ pub fn codegen_program(
         emit_func(&mut a, func);
         base += func.n_locals as u16;
     }
+    emit_const_data(&mut a, funcs, consts);
     let (code, symbols) = a.finish()?;
     // Locals live at the fixed `SCRATCH` base (slot `i` at `SCRATCH + i*2`), *above* the code.
     // If the emitted code (incl. the appended runtime) grows up into that region, the per-call
@@ -95,6 +110,20 @@ pub fn codegen_loop(
     state_base: u16,
     state_bytes: u16,
 ) -> Result<Vec<u8>, String> {
+    codegen_loop_c(funcs, &[], org, entry, state_base, state_bytes)
+}
+
+/// [`codegen_loop`] with a **const-data section** (see [`codegen_program_c`]) —
+/// the data lays after the pruned functions, *below* the placed scratch region, so
+/// the size guard covers code + data + locals against `state_base`.
+pub(crate) fn codegen_loop_c(
+    funcs: &[(String, Func)],
+    consts: &[DataConst],
+    org: u16,
+    entry: &str,
+    state_base: u16,
+    state_bytes: u16,
+) -> Result<Vec<u8>, String> {
     // Inline single-call-site helpers, then DCE.
     let inlined = crate::inline::inline(funcs.to_vec(), &[entry]);
     let pruned = crate::dce::prune(inlined, &[entry]);
@@ -104,7 +133,7 @@ pub fn codegen_loop(
     // corrupted execution). Slot operands stay symbolic in the instruction stream and the
     // encoded length is independent of the scratch *value* (slot refs are always 2-byte
     // immediates), so one emission suffices: measure, place scratch, encode.
-    let mut a = emit_loop(&pruned, org, entry, state_base, state_bytes);
+    let mut a = emit_loop(&pruned, consts, org, entry, state_base, state_bytes);
     a.seal();
     let code_end = org.wrapping_add(a.encoded_len());
     let scratch = (code_end + 1) & !1; // round up to a u16 boundary
@@ -124,6 +153,7 @@ pub fn codegen_loop(
 /// symbolic — [`codegen_loop`] measures the stream, then encodes with scratch placed.
 fn emit_loop(
     pruned: &[(String, Func)],
+    consts: &[DataConst],
     org: u16,
     entry: &str,
     state_base: u16,
@@ -161,7 +191,23 @@ fn emit_loop(
         emit_func(&mut a, func);
         base += func.n_locals as u16;
     }
+    emit_const_data(&mut a, pruned, consts);
     a
+}
+
+/// Lay the referenced const data into the image: for each const some kept function
+/// addresses (via `Expr::ConstAddr`), define its symbol and append its packed bytes.
+/// Sits after the last function's `RET` (never fallen into) and inside the measured
+/// stream, so scratch placement and the size guards account for it.
+fn emit_const_data(a: &mut Asm, funcs: &[(String, Func)], consts: &[DataConst]) {
+    if consts.is_empty() {
+        return;
+    }
+    let used = crate::dce::const_refs(funcs);
+    for d in consts.iter().filter(|d| used.contains(&d.name)) {
+        a.define(&d.name);
+        a.data_bytes(d.bytes.clone());
+    }
 }
 
 fn emit_func(a: &mut Asm, f: &Func) {
@@ -169,9 +215,9 @@ fn emit_func(a: &mut Asm, f: &Func) {
     for i in 0..f.params {
         let slot = a.slot(i);
         match i {
-            0 => a.st_hl_mem(slot),                 // LD (slot), HL
-            1 => a.st_wide_mem(R16::De, slot),      // LD (slot), DE
-            2 => a.st_wide_mem(R16::Bc, slot),      // LD (slot), BC
+            0 => a.st_hl_mem(slot),            // LD (slot), HL
+            1 => a.st_wide_mem(R16::De, slot), // LD (slot), DE
+            2 => a.st_wide_mem(R16::Bc, slot), // LD (slot), BC
             _ => unreachable!(),
         }
     }

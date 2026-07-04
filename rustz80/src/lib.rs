@@ -24,8 +24,28 @@ mod tap;
 
 pub use codegen::{codegen_loop, Target};
 pub use ir::Func;
-pub use lower::{lower_program, PreludeConfig};
+pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
 pub use tap::to_tap;
+
+/// [`codegen_loop`] over a [`Lowered`] program — lays the **const-data section**
+/// (tiles, strings, tables) into the image after the code, so `&CONST` / string
+/// literals resolve to real addresses. The pairing for [`lower_program_full`].
+pub fn codegen_loop_full(
+    lowered: &Lowered,
+    org: u16,
+    entry: &str,
+    state_base: u16,
+    state_bytes: u16,
+) -> Result<Vec<u8>, String> {
+    codegen::codegen_loop_c(
+        &lowered.funcs,
+        &lowered.consts.data,
+        org,
+        entry,
+        state_base,
+        state_bytes,
+    )
+}
 
 use std::collections::HashMap;
 
@@ -92,9 +112,10 @@ pub fn compile_program_for(src: &str, target: Target) -> Result<Program, String>
 /// Compile an already-parsed file for `target` — lets a caller that has parsed the source
 /// (e.g. the `cell80` crate's capability scan) avoid a second parse, and pick the backend.
 pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
-    let funcs = lower_program(file, &PreludeConfig::default())?;
-    let funcs = inline::inline(funcs, &[]);
-    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target)?;
+    let lowered = lower_program_full(file, &PreludeConfig::default())?;
+    let funcs = inline::inline(lowered.funcs, &[]);
+    let (code, symbols) =
+        codegen::codegen_program_c(&funcs, &lowered.consts.data, ORG, None, target)?;
     Ok(Program { code, symbols })
 }
 
@@ -109,10 +130,11 @@ pub fn compile_file_pruned(
     target: Target,
     roots: &[&str],
 ) -> Result<Program, String> {
-    let funcs = lower_program(file, &PreludeConfig::default())?;
-    let funcs = inline::inline(funcs, roots);
+    let lowered = lower_program_full(file, &PreludeConfig::default())?;
+    let funcs = inline::inline(lowered.funcs, roots);
     let funcs = dce::prune(funcs, roots);
-    let (code, symbols) = codegen::codegen_program(&funcs, ORG, None, target)?;
+    let (code, symbols) =
+        codegen::codegen_program_c(&funcs, &lowered.consts.data, ORG, None, target)?;
     Ok(Program { code, symbols })
 }
 
@@ -295,14 +317,20 @@ pub fn entry_signature(src: &str, entry: &str) -> Result<Signature, String> {
 /// matters on a 48 K Spectrum, where carrying an SDK's unused helpers may not fit.
 pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, String> {
     let file: syn::File = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
-    let funcs = lower_program(&file, &PreludeConfig::default())?;
-    if !funcs.iter().any(|(n, _)| n == entry) {
+    let lowered = lower_program_full(&file, &PreludeConfig::default())?;
+    if !lowered.funcs.iter().any(|(n, _)| n == entry) {
         return Err(format!("no `{entry}` function"));
     }
-    let funcs = inline::inline(funcs, &[entry]);
+    let funcs = inline::inline(lowered.funcs, &[entry]);
     let funcs = dce::prune(funcs, &[entry]);
     // Emit a DI/EI trampoline at ORG and boot into it (`USR ORG`).
-    let (code, _) = codegen::codegen_program(&funcs, ORG, Some(entry), Target::Spectrum48)?;
+    let (code, _) = codegen::codegen_program_c(
+        &funcs,
+        &lowered.consts.data,
+        ORG,
+        Some(entry),
+        Target::Spectrum48,
+    )?;
     Ok(to_tap(&code, ORG, ORG, name))
 }
 

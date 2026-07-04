@@ -187,7 +187,12 @@ fn expand(
 fn pure(e: &Expr) -> bool {
     matches!(
         e,
-        Expr::Var(_) | Expr::Lit(_) | Expr::AddrOf(_) | Expr::Var32(_) | Expr::Lit32(_)
+        Expr::Var(_)
+            | Expr::Lit(_)
+            | Expr::AddrOf(_)
+            | Expr::ConstAddr(_)
+            | Expr::Var32(_)
+            | Expr::Lit32(_)
     )
 }
 
@@ -269,7 +274,7 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
                 ex(e, out);
                 ex(amount, out);
             }
-            Expr::Lit(_) | Expr::Var(_) | Expr::Var32(_) | Expr::Lit32(_) => {}
+            Expr::Lit(_) | Expr::Var(_) | Expr::ConstAddr(_) | Expr::Var32(_) | Expr::Lit32(_) => {}
         }
     }
     fn st(s: &Stmt, out: &mut HashSet<usize>) {
@@ -410,7 +415,12 @@ fn count_expr(e: &Expr, m: &mut HashMap<String, usize>) {
             count_expr(e, m);
             count_expr(amount, m);
         }
-        Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::Lit32(_) | Expr::Var32(_) => {}
+        Expr::Lit(_)
+        | Expr::Var(_)
+        | Expr::AddrOf(_)
+        | Expr::ConstAddr(_)
+        | Expr::Lit32(_)
+        | Expr::Var32(_) => {}
     }
 }
 
@@ -501,6 +511,7 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         Expr::Index(s, i, w) => Expr::Index(reloc(plan, *s), e(i), *w),
         Expr::Lit(n) => Expr::Lit(*n),
         Expr::Lit32(n) => Expr::Lit32(*n),
+        Expr::ConstAddr(n) => Expr::ConstAddr(n.clone()),
         Expr::Bin(op, a, c, w) => Expr::Bin(*op, e(a), e(c), *w),
         Expr::Bin32(op, a, c) => Expr::Bin32(*op, e(a), e(c)),
         Expr::Call(n, args) => Expr::Call(

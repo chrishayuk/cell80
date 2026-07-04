@@ -192,6 +192,27 @@ pub(crate) fn lower_local(
                 }
             }
         }
+        // `let t = &CONST;` — bind a read-only pointer to packed const data. A
+        // scalar-array const keeps its element width/stride so `t[i]` loads through
+        // the pointer; other const refs bind as an opaque address (pass it on).
+        syn::Expr::Reference(r) => {
+            let (addr, _) = lower_expr(&init.expr, ctx)?;
+            let elem = if let syn::Expr::Path(p) = &*r.expr {
+                p.path.get_ident().and_then(|id| {
+                    ctx.consts
+                        .borrow()
+                        .get(&id.to_string())
+                        .and_then(|d| d.elem_width.map(|w| (w, d.stride)))
+                })
+            } else {
+                None
+            };
+            let base = match elem {
+                Some((w, stride)) => ctx.vars.declare_elem_ptr(&name, w, stride),
+                None => ctx.vars.declare(&name, 1, None, Width::Word),
+            };
+            body.push(Stmt::Assign(base, addr));
+        }
         // `let x = if c { a } else { b };` / `let x = match … { … };` — the value-position
         // conditional lowers to its statement form assigning into `x`'s slot.
         cond @ (syn::Expr::If(_) | syn::Expr::Match(_)) => {

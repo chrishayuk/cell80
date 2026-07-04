@@ -12,6 +12,7 @@
 //! - [`expr`] — expression lowering (and field/index/method access);
 //! - [`stmt`] — statements and control flow (`if`/`while`/`for`/`loop`/`match`).
 
+pub(crate) mod consts;
 mod expr;
 mod generics;
 pub(crate) mod layout;
@@ -57,6 +58,9 @@ pub(crate) struct Ctx<'a> {
     pub(crate) const_args: &'a HashMap<String, u16>,
     /// Shared monomorphization registry/worklist (calls register instances here).
     pub(crate) mono: &'a RefCell<Mono>,
+    /// The program's `const` items (scalars substituted, data consts addressed) —
+    /// shared mutably so string literals intern into the pool during lowering.
+    pub(crate) consts: &'a RefCell<consts::ConstTable>,
 }
 
 impl Ctx<'_> {
@@ -112,12 +116,32 @@ impl Ctx<'_> {
     }
 }
 
+/// A lowered program: the functions plus its **const-data pool** (`const` bytes to
+/// lay into the image after the code, which `Expr::ConstAddr` references resolve
+/// against). Produced by [`lower_program_full`]; consumed by the codegen entries
+/// that emit a data section (`codegen_loop_full`, and the internal compile paths).
+pub struct Lowered {
+    pub funcs: Vec<(String, Func)>,
+    pub(crate) consts: consts::ConstTable,
+}
+
 /// Lower every `fn` in a file to `(name, Func)`, using the file's struct layouts and
 /// the caller's handle-routing config (empty for plain generic compilation).
+///
+/// Convenience over [`lower_program_full`] for programs without const *data* — any
+/// data const referenced by the code will surface as an unknown symbol at encode
+/// (pass the [`Lowered`] to a `*_full` codegen entry to lay the data section).
 pub fn lower_program(
     file: &syn::File,
     prelude: &PreludeConfig,
 ) -> Result<Vec<(String, Func)>, String> {
+    Ok(lower_program_full(file, prelude)?.funcs)
+}
+
+/// [`lower_program`] carrying the program's const-data pool ([`Lowered`]) — the
+/// `&CONST → addr` feature: `const` bytes (tiles, strings, tables) lay into the
+/// image and `&TILE` / `TILE[i]` / `"text"` resolve to addresses in it.
+pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<Lowered, String> {
     let structs = collect_structs(file)?;
     let enums = collect_enums(file)?;
     let generic_structs = collect_generic_structs(file)?;
@@ -126,6 +150,7 @@ pub fn lower_program(
     let mut mono_state = Mono::new(generic_fns);
     mono_state.generic_structs = generic_structs;
     let mono = RefCell::new(mono_state);
+    let consts_cell = RefCell::new(consts::collect_consts(file)?);
     let no_args = HashMap::new();
     let no_const = HashMap::new();
     let mut out = Vec::new();
@@ -138,7 +163,15 @@ pub fn lower_program(
             syn::Item::Fn(f) => out.push((
                 f.sig.ident.to_string(),
                 lower_with(
-                    f, &structs, &enums, prelude, &mono, &no_args, &no_const, None,
+                    f,
+                    &structs,
+                    &enums,
+                    prelude,
+                    &mono,
+                    &no_args,
+                    &no_const,
+                    None,
+                    &consts_cell,
                 )?,
             )),
             // `impl T { fn m(&mut self, …) }` — each method becomes a `T::m` function
@@ -162,12 +195,21 @@ pub fn lower_program(
                     out.push((
                         name,
                         lower_method(
-                            m, &self_ty, &structs, &enums, prelude, &mono, &no_args, &no_const,
+                            m,
+                            &self_ty,
+                            &structs,
+                            &enums,
+                            prelude,
+                            &mono,
+                            &no_args,
+                            &no_const,
+                            &consts_cell,
                         )?,
                     ));
                 }
             }
             syn::Item::Struct(_) | syn::Item::Enum(_) => {} // already collected
+            syn::Item::Const(_) => {}                       // collected into the const table above
             syn::Item::Use(_) => {} // host-only imports — rustz80 has its own prelude
             other => {
                 return Err(format!(
@@ -215,6 +257,7 @@ pub fn lower_program(
             &type_args,
             &const_args,
             self_ty.as_deref(),
+            &consts_cell,
         )?;
         out.push((inst.name, func));
     }
@@ -231,12 +274,16 @@ pub fn lower_program(
              (cycle: {cycle})"
         ));
     }
-    Ok(out)
+    Ok(Lowered {
+        funcs: out,
+        consts: consts_cell.into_inner(),
+    })
 }
 
 /// Lower a standalone function (no struct/enum context — used by `compile_fn`).
 pub fn lower(item: &syn::ItemFn) -> Result<Func, String> {
     let mono = RefCell::new(Mono::default());
+    let consts_cell = RefCell::new(consts::ConstTable::default());
     let no_args = HashMap::new();
     let no_const = HashMap::new();
     lower_with(
@@ -248,6 +295,7 @@ pub fn lower(item: &syn::ItemFn) -> Result<Func, String> {
         &no_args,
         &no_const,
         None,
+        &consts_cell,
     )
 }
 
@@ -263,8 +311,9 @@ fn lower_method<'a>(
     mono: &'a RefCell<Mono>,
     type_args: &'a HashMap<String, Width>,
     const_args: &'a HashMap<String, u16>,
+    consts: &'a RefCell<consts::ConstTable>,
 ) -> Result<Func, String> {
-    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args);
+    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args, consts);
     let params = lower_inputs(&m.sig.inputs, &mut ctx, Some(self_ty))?;
     let (body, ret) = lower_fn_block(&m.block, &mut ctx)?;
     Ok(Func {
@@ -285,8 +334,9 @@ fn lower_with<'a>(
     type_args: &'a HashMap<String, Width>,
     const_args: &'a HashMap<String, u16>,
     self_ty: Option<&str>,
+    consts: &'a RefCell<consts::ConstTable>,
 ) -> Result<Func, String> {
-    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args);
+    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args, consts);
     let params = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
     let (body, ret) = lower_fn_block(&item.block, &mut ctx)?;
     Ok(Func {
@@ -305,6 +355,7 @@ fn new_ctx<'a>(
     mono: &'a RefCell<Mono>,
     type_args: &'a HashMap<String, Width>,
     const_args: &'a HashMap<String, u16>,
+    consts: &'a RefCell<consts::ConstTable>,
 ) -> Ctx<'a> {
     Ctx {
         vars: Vars::default(),
@@ -316,12 +367,40 @@ fn new_ctx<'a>(
         type_args,
         const_args,
         mono,
+        consts,
     }
 }
 
 /// Names the compiler handles itself (their host definitions are prelude-only).
 fn is_intrinsic(name: &str) -> bool {
     matches!(name, "poke" | "peek" | "inport")
+}
+
+/// A `&[u8/u16/i16; N]` (immutable) parameter type → its `(element width, byte
+/// stride)`. These are read-only pointers into **packed** data (const tiles/tables);
+/// a `&mut` reference or any other referent is not one.
+fn ref_array_param(t: &syn::Type) -> Option<(Width, u16)> {
+    let syn::Type::Reference(r) = t else {
+        return None;
+    };
+    if r.mutability.is_some() {
+        return None;
+    }
+    let syn::Type::Array(arr) = &*r.elem else {
+        return None;
+    };
+    if let syn::Type::Path(p) = &*arr.elem {
+        if p.path.is_ident("u8") {
+            return Some((Width::Byte, 1));
+        }
+        if p.path.is_ident("u16") {
+            return Some((Width::Word, 2));
+        }
+        if p.path.is_ident("i16") {
+            return Some((Width::SWord, 2));
+        }
+    }
+    None
 }
 
 /// Declare a function's parameters, returning the count. `self_ty` is `Some` for
@@ -345,16 +424,24 @@ fn lower_inputs(
                 let name = pat_ident(&pt.pat)?;
                 match handle_type(&pt.ty, ctx.prelude) {
                     Some(h) => ctx.vars.declare_handle(&name, &h),
-                    None => {
-                        let w = ctx.width_of_type(&pt.ty);
-                        if w == Width::DWord {
-                            return Err(format!(
-                                "u32 parameter `{name}` is not supported yet (params pass in \
-                                 16-bit registers) — pass the words and widen with `as u32`"
-                            ));
+                    // `t: &[u8; N]` / `&[u16; N]` — a read-only pointer to *packed*
+                    // element data (a const tile/table passed by address); `t[i]`
+                    // loads through it. Mirrors real Rust: `f(&TILE)` where
+                    // `TILE: [u8; 8]`.
+                    None => match ref_array_param(&pt.ty) {
+                        Some((w, stride)) => ctx.vars.declare_elem_ptr(&name, w, stride),
+                        None => {
+                            let w = ctx.width_of_type(&pt.ty);
+                            if w == Width::DWord {
+                                return Err(format!(
+                                    "u32 parameter `{name}` is not supported yet (params pass \
+                                     in 16-bit registers) — pass the words and widen with \
+                                     `as u32`"
+                                ));
+                            }
+                            ctx.vars.declare(&name, 1, None, w)
                         }
-                        ctx.vars.declare(&name, 1, None, w)
-                    }
+                    },
                 };
             }
         }

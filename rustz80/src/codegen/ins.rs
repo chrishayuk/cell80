@@ -58,6 +58,12 @@ pub(super) enum Ins {
     Jp(u8, usize),
     /// `CALL name`, resolved against the symbol table at encode.
     Call(String),
+    /// `LD rr, name` — an immediate load of a *symbol's* address (a const-data
+    /// item), resolved against the symbol table at encode like [`Ins::Call`].
+    LdImmSym(R16, String),
+    /// Raw data bytes laid into the image (the const-data section) — owned, unlike
+    /// the `'static` runtime [`Ins::Blob`]s.
+    Bytes(Vec<u8>),
     /// Any other single instruction, as its exact bytes (`RET`, `LD r,r'`, `CB`/`ED`
     /// prefixed ops, immediates like `LD A,n` — one instruction per entry, so
     /// boundaries survive).
@@ -102,11 +108,17 @@ impl Ins {
         match self {
             Ins::Push(_) | Ins::Pop(_) | Ins::ExDeHl | Ins::AddHl(_) => 1,
             Ins::Word(_) => 2,
-            Ins::LdImm(..) | Ins::LdHlMem(_) | Ins::StHlMem(_) | Ins::Jp(..) | Ins::Call(_) => 3,
+            Ins::LdImm(..)
+            | Ins::LdImmSym(..)
+            | Ins::LdHlMem(_)
+            | Ins::StHlMem(_)
+            | Ins::Jp(..)
+            | Ins::Call(_) => 3,
             Ins::LdWideMem(..) | Ins::StWideMem(..) => 4,
             Ins::Fx(fx) => fx.len as u16,
             Ins::At(_) | Ins::Def(_) => 0,
             Ins::Blob(b) => b.len() as u16,
+            Ins::Bytes(b) => b.len() as u16,
         }
     }
 }
@@ -143,9 +155,7 @@ pub(super) fn encode(
     let imm = |m: &Imm| -> Result<u16, String> {
         Ok(match m {
             Imm::Abs(v) => *v,
-            Imm::Slot(idx, off) => scratch
-                .wrapping_add(idx.wrapping_mul(2))
-                .wrapping_add(*off),
+            Imm::Slot(idx, off) => scratch.wrapping_add(idx.wrapping_mul(2)).wrapping_add(*off),
             Imm::Label(l) => {
                 labels[*l].ok_or("rustz80: internal codegen error — unplaced label")?
             }
@@ -226,10 +236,26 @@ pub(super) fn encode(
                     .ok_or_else(|| format!("rustz80: unknown call target `{name}`"))?;
                 word(&mut code, a);
             }
+            Ins::LdImmSym(r, name) => {
+                code.push(match r {
+                    R16::Hl => 0x21,
+                    R16::De => 0x11,
+                    R16::Bc => 0x01,
+                    R16::Af => unreachable!("LD AF,imm does not exist"),
+                });
+                let a = *symbols.get(name).ok_or_else(|| {
+                    format!(
+                        "rustz80: unknown const-data symbol `{name}` — was the const's \
+                         data section emitted (a `*_full` codegen entry)?"
+                    )
+                })?;
+                word(&mut code, a);
+            }
             Ins::Fx(fx) => code.extend_from_slice(fx.bytes()),
             Ins::At(_) | Ins::Def(_) => {}
             Ins::Word(m) => word(&mut code, imm(m)?),
             Ins::Blob(b) => code.extend_from_slice(b),
+            Ins::Bytes(b) => code.extend_from_slice(b),
         }
     }
     Ok((code, symbols))

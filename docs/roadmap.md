@@ -14,8 +14,10 @@ restricted-Rust → Z80 compiler (`rustz80`), and the cell micro-VM + tooling. T
 
 ## Built
 
-**Compiler (`rustz80`).** `syn` frontend → typed IR → naive Z80 codegen (HL accumulator,
-RAM scratch register file, ORG 0x8000). Subset: `u8`/`u16`/`u32`, arithmetic, `if`/`while`/
+**Compiler (`rustz80`).** `syn` frontend → typed IR → Z80 codegen through the symbolic
+instruction layer (`Ins` — labels/calls/slots resolve at one final encode pass) with a
+measured fixpoint **peephole** (−4.3 % corpus code size; HL accumulator, RAM scratch
+register file, ORG 0x8000). Subset: `u8`/`u16`/`u32`, arithmetic, `if`/`while`/
 `for`/`loop`, early return, arrays, `struct`/`enum`, functions, methods, `poke`/`peek`/`inport`.
 **Booleans:** comparisons (`< <= > >= == !=`) work both as branch conditions *and* as `0`/`1`
 **values** (`(a < b) as u16`), short-circuit `&&` / `||`, and bit shifts take a **runtime**
@@ -375,12 +377,19 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
 - **`[u8; N]` byte-array fields.** Only `[u16; N]` (and `[Struct; N]`) array fields lay out
   (`layout.rs:104`, `is_u16`); a byte array falls into the struct-element path and errors.
   Unblocks compact byte buffers — tile rows, packed grids, string bytes — without 2× `u16` waste.
-- **`&CONST → addr` — a const-data section** (lay `const` bytes for tile bitmaps / strings into
-  the image and resolve `&TILE` / `&str` to that address, so a handle method receives a pointer).
-  The single biggest unlock: it lets `Frame::tile(&Tile)` and `Frame::text(&str)` route **by
-  address**, i.e. real sprite bitmaps **and a text HUD** in pure games, and gives the
-  `chuk-speccy-assets` tile pipeline a pure target. Today pure games draw only data-free solid
-  cells (`fill_cell`, colour passed by value).
+- **`&CONST → addr` — a const-data section. ✓ done (2026-07-04).** Top-level `const` items
+  compile: scalars (`u16`/`u8`/`i16`/`bool`) substitute as literals; **data consts** —
+  `[u8/u16/i16; N]`, `&str`, struct literals (`Tile { rows: […] }`), `[Struct; N]` — are
+  **byte-packed into the image after the code** (`Ins::Bytes` at a `Def` symbol each, with
+  its own DCE: only consts a kept function references are laid). `&TILE`, `&SHEET[i]`,
+  `CONST[i]`, and string literals (interned, length-prefixed: `peek(s)` = len,
+  `peek(s+1+i)` = byte) all resolve by address (`Expr::ConstAddr` → `LD HL, sym`);
+  `t: &[u8; N]` params read packed elements through the pointer, so a tile helper is *real
+  Rust both ways* (diff-tested against rustc; 13 tests in `tests/diff/consts.rs`). New API:
+  `lower_program_full` → `Lowered` + `codegen_loop_full` (old entries unchanged). The payoff
+  landed in `chuk-speccy`: `Frame::tile(&HERO, …)` + `Frame::text(…, "SCORE")` route by
+  address, verified drawing on the real 48K ROM — real sprite bitmaps **and a text HUD** in
+  pure games, and a pure target for the `speccy-assets` tile pipeline.
 - **(convention, not a compiler feature) one struct definition, both sides of the dial.** A type
   used in a *pure* game today must be prelude-provided, so the host can't also `use` it without a
   redeclaration clash — pure samples are limited to the prelude's `Frame`/`Input`/`Colour`/
@@ -431,9 +440,9 @@ chuk-speccy is now on 0.6:*
   tape. *Follow-up:* return a `Result` instead of panicking, and extend the guard to `codegen_program`.
 
 *Already in 0.5/0.6 (the SDK is now on 0.6):* `&mut self` methods that mutate through the receiver,
-`+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (Re-verify the *frontend* asks above —
-nested struct fields, signed/`u32` fields, `[u8; N]` *fields*, `&CONST→addr` — against 0.6; some may
-already be done, e.g. a `bitmap` example suggests const-data progressed.)
+`+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (Re-verify the remaining *frontend*
+asks above — nested struct fields, signed/`u32` fields, `[u8; N]` *fields* — against the current
+compiler; `&CONST→addr` is done, see above.)
 
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —

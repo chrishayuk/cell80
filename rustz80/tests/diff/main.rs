@@ -25,6 +25,7 @@ mod harness;
 mod arrays;
 mod basics;
 mod conditionals;
+mod consts;
 mod control_flow;
 mod functions;
 mod generics;

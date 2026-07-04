@@ -16,6 +16,10 @@ struct VarInfo {
     /// For a struct-element array (`[Cell; N]`), the element struct's name — so element
     /// access (`a[i].x`) knows the element stride + field layout.
     elem_struct: Option<String>,
+    /// A read-only pointer to **packed** element data (`t: &[u8; N]` parameter, or
+    /// `let t = &CONST;`): the slot holds a byte address; `t[i]` loads through it at
+    /// `(element width, byte stride)`. Distinct from a local array (slot-per-element).
+    elem_ptr: Option<(Width, u16)>,
 }
 
 /// Name → variable info. `next` is the next free slot.
@@ -43,6 +47,7 @@ impl Vars {
                 is_ptr: false,
                 handle: None,
                 elem_struct: None,
+                elem_ptr: None,
             },
         );
         self.next += size;
@@ -60,6 +65,7 @@ impl Vars {
                 is_ptr: true,
                 handle: None,
                 elem_struct: None,
+                elem_ptr: None,
             },
         );
         self.next += 1;
@@ -77,6 +83,7 @@ impl Vars {
                 is_ptr: false,
                 handle: Some(handle.to_string()),
                 elem_struct: None,
+                elem_ptr: None,
             },
         );
         self.next += 1;
@@ -84,6 +91,11 @@ impl Vars {
     }
     pub(crate) fn handle_of(&self, name: &str) -> Option<String> {
         self.map.get(name).and_then(|v| v.handle.clone())
+    }
+    /// Is `name` a declared variable? (A declared local shadows a program const;
+    /// an undeclared name falls through to the const table before auto-declaring.)
+    pub(crate) fn is_declared(&self, name: &str) -> bool {
+        self.map.contains_key(name)
     }
     pub(crate) fn base(&mut self, name: &str) -> usize {
         match self.map.get(name) {
@@ -119,6 +131,7 @@ impl Vars {
                 is_ptr: false,
                 handle: None,
                 elem_struct: Some(elem_struct.to_string()),
+                elem_ptr: None,
             },
         );
         self.next += slots;
@@ -127,5 +140,28 @@ impl Vars {
     /// The element struct of a struct-element array var, if it is one.
     pub(crate) fn elem_struct(&self, name: &str) -> Option<String> {
         self.map.get(name).and_then(|v| v.elem_struct.clone())
+    }
+    /// Declare a read-only element pointer (`&[T; N]` param / `let t = &CONST;`):
+    /// one slot holding a byte address into packed data.
+    pub(crate) fn declare_elem_ptr(&mut self, name: &str, elem: Width, stride: u16) -> usize {
+        let base = self.next;
+        self.map.insert(
+            name.to_string(),
+            VarInfo {
+                base,
+                sty: None,
+                ty: Width::Word,
+                is_ptr: false,
+                handle: None,
+                elem_struct: None,
+                elem_ptr: Some((elem, stride)),
+            },
+        );
+        self.next += 1;
+        base
+    }
+    /// The `(element width, byte stride)` of an element-pointer var, if it is one.
+    pub(crate) fn elem_ptr(&self, name: &str) -> Option<(Width, u16)> {
+        self.map.get(name).and_then(|v| v.elem_ptr)
     }
 }

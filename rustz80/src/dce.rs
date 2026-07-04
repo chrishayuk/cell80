@@ -44,7 +44,12 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
         | Expr::Widen(e)
         | Expr::Shift32 { e, .. }
         | Expr::Halt(e) => calls_in_expr(e, out),
-        Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::Lit32(_) | Expr::Var32(_) => {}
+        Expr::Lit(_)
+        | Expr::Var(_)
+        | Expr::AddrOf(_)
+        | Expr::ConstAddr(_)
+        | Expr::Lit32(_)
+        | Expr::Var32(_) => {}
     }
 }
 
@@ -145,6 +150,110 @@ pub(crate) fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, 
         .into_iter()
         .filter(|(n, _)| keep.contains(n))
         .collect()
+}
+
+/// The const-data names referenced (via [`Expr::ConstAddr`]) anywhere in `funcs` —
+/// the data section's own DCE: only consts a kept function actually addresses are
+/// laid into the image. Walks with the same traversal as `calls_in_*`, collecting
+/// `ConstAddr` leaves instead of call names.
+pub(crate) fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
+    fn in_expr(e: &Expr, out: &mut HashSet<String>) {
+        if let Expr::ConstAddr(n) = e {
+            out.insert(n.clone());
+            return;
+        }
+        // Reuse the call walker's traversal by piggybacking on `calls_in_expr`'s
+        // shape — a `ConstAddr` never nests inside itself, so a manual recursion
+        // over the same arms keeps the two walkers in sync via the exhaustive match.
+        match e {
+            Expr::Call(_, args) => args.iter().for_each(|a| in_expr(a, out)),
+            Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r) => {
+                in_expr(l, out);
+                in_expr(r, out);
+            }
+            Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+                in_expr(lhs, out);
+                in_expr(rhs, out);
+            }
+            Expr::ShiftVar { e, amount, .. } => {
+                in_expr(e, out);
+                in_expr(amount, out);
+            }
+            Expr::Index(_, idx, _) => in_expr(idx, out),
+            Expr::PtrIndex { ptr, index, .. } => {
+                in_expr(ptr, out);
+                in_expr(index, out);
+            }
+            Expr::Trunc(e)
+            | Expr::Peek(e)
+            | Expr::InPort(e)
+            | Expr::Deref(e, _)
+            | Expr::Deref32(e, _)
+            | Expr::MulConst(e, _)
+            | Expr::LoadAt(e, _)
+            | Expr::Trunc32(e)
+            | Expr::Widen(e)
+            | Expr::Shift32 { e, .. }
+            | Expr::Halt(e) => in_expr(e, out),
+            Expr::Lit(_)
+            | Expr::Var(_)
+            | Expr::AddrOf(_)
+            | Expr::ConstAddr(_)
+            | Expr::Lit32(_)
+            | Expr::Var32(_) => {}
+        }
+    }
+    fn in_stmt(s: &Stmt, out: &mut HashSet<String>) {
+        match s {
+            Stmt::Assign(_, e) | Stmt::Assign32(_, e) | Stmt::Eval(e) | Stmt::AssignTuple(_, e) => {
+                in_expr(e, out)
+            }
+            Stmt::StoreIndex(_, a, b, _) | Stmt::Poke(a, b) | Stmt::StoreAt(a, b, _) => {
+                in_expr(a, out);
+                in_expr(b, out);
+            }
+            Stmt::Store(a, _, b) | Stmt::Store32(a, _, b) => {
+                in_expr(a, out);
+                in_expr(b, out);
+            }
+            Stmt::PtrStoreIndex {
+                ptr, index, value, ..
+            } => {
+                in_expr(ptr, out);
+                in_expr(index, out);
+                in_expr(value, out);
+            }
+            Stmt::Fill { value, .. } => in_expr(value, out),
+            Stmt::If(c, t, e) => {
+                in_expr(&c.lhs, out);
+                in_expr(&c.rhs, out);
+                t.iter().for_each(|s| in_stmt(s, out));
+                e.iter().for_each(|s| in_stmt(s, out));
+            }
+            Stmt::While(c, b) => {
+                in_expr(&c.lhs, out);
+                in_expr(&c.rhs, out);
+                b.iter().for_each(|s| in_stmt(s, out));
+            }
+            Stmt::Loop(b) => b.iter().for_each(|s| in_stmt(s, out)),
+            Stmt::ForRange { end, body, .. } => {
+                in_expr(end, out);
+                body.iter().for_each(|s| in_stmt(s, out));
+            }
+            Stmt::Return(Some(e)) => in_expr(e, out),
+            Stmt::Return(None) | Stmt::Break | Stmt::Continue => {}
+        }
+    }
+    let mut out = HashSet::new();
+    for (_, f) in funcs {
+        for s in &f.body {
+            in_stmt(s, &mut out);
+        }
+        for e in &f.ret {
+            in_expr(e, &mut out);
+        }
+    }
+    out
 }
 
 /// The names a function's body (and tail returns) directly calls — its outgoing edges

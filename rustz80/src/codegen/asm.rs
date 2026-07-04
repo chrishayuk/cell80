@@ -106,6 +106,15 @@ impl Asm {
     pub(super) fn data_word(&mut self, m: Imm) {
         self.ins.push(Ins::Word(m));
     }
+    /// `LD rr, name` — load a symbol's address (a const-data item), resolved at
+    /// encode against the symbol table.
+    pub(super) fn ld_sym(&mut self, r: R16, name: &str) {
+        self.ins.push(Ins::LdImmSym(r, name.to_string()));
+    }
+    /// Owned raw bytes laid into the image — the const-data section's payload.
+    pub(super) fn data_bytes(&mut self, bytes: Vec<u8>) {
+        self.ins.push(Ins::Bytes(bytes));
+    }
 
     // ── labels, symbols, slots ──────────────────────────────────────────────────
 

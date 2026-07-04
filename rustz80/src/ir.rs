@@ -59,6 +59,10 @@ pub enum Expr {
     InPort(Box<Expr>),
     /// Absolute address of a local slot (`&local`) — for passing `&self`.
     AddrOf(usize),
+    /// The absolute address of a named **const-data** item (`&TILE`, an interned
+    /// string literal) — symbolic here, resolved against the data section laid
+    /// after the code at encode.
+    ConstAddr(String),
     /// Read a `u16` at `*(ptr + byte_offset)` — field access through a pointer
     /// (`self.field`).
     Deref(Box<Expr>, usize),

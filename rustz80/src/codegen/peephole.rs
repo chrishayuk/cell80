@@ -48,8 +48,12 @@ pub struct PeepholeCounts {
 }
 
 /// Is `i` a leaf load into `HL` — reads neither `DE`, flags, nor the stack?
+/// (`LdImmSym` is `LdImm` with the operand resolved later — same instruction.)
 fn leaf_load_hl(i: &Ins) -> bool {
-    matches!(i, Ins::LdImm(R16::Hl, _) | Ins::LdHlMem(_))
+    matches!(
+        i,
+        Ins::LdImm(R16::Hl, _) | Ins::LdImmSym(R16::Hl, _) | Ins::LdHlMem(_)
+    )
 }
 
 /// The doubled-`LD H,0` byte pattern.

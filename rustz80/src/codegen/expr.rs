@@ -133,6 +133,9 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             let addr = a.slot(*slot);
             a.ld_imm(R16::Hl, addr); // LD HL, &local
         }
+        Expr::ConstAddr(name) => {
+            a.ld_sym(R16::Hl, name); // LD HL, <const-data symbol>
+        }
         Expr::Deref(ptr, off) => {
             gen_expr(a, ptr); // HL = base pointer
             gen_add_offset(a, *off);
