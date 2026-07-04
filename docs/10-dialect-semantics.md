@@ -89,8 +89,17 @@ All integer arithmetic is **wrapping** (mod 2^width) — the semantics of releas
 rustc, which is what the differential oracle runs. `u8` ops mask to 8 bits, `u16` to 16,
 `u32` to 32. `wrapping_add`/`wrapping_sub`/`wrapping_mul` are accepted and identical to
 the bare operators (everything wraps). There is no overflow trap and no checked
-arithmetic; a cell that must not wrap uses the library's saturating cells (`add_sat`,
-`mul_sat`) or guards explicitly.
+arithmetic.
+
+**`saturating_add`/`saturating_sub`/`saturating_mul`** are accepted for `u8`/`u16` —
+real Rust, oracle-checked — lowering to branch-free mask clamps (`s | (0 - overflow)`
+for add, `d & (0 - in_range)` for sub, a widened product with a high-part test for
+mul). The clamp re-reads its operands, so effectful operands (a call in operand
+position) are rejected with a "bind it first" message. `u32` saturating waits on
+32-bit comparisons; `i16` saturating clamps to a *signed* range the mask trick
+doesn't express — both reject instructively. This removes the compiles-but-wraps
+class in machine-authored cells: `a.saturating_add(b)` now means what it means in
+host Rust.
 
 Shifts: a constant amount unrolls; a runtime amount shifts by the **low byte** of the
 operand, and a count ≥ the width shifts out to `0` (matching rustc's behaviour for the

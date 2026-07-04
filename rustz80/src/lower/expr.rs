@@ -920,6 +920,9 @@ pub(crate) fn lower_method_call(
         }
         return Ok((Expr::Bin(op, Box::new(recv), Box::new(re), rw), rw));
     }
+    if let "saturating_add" | "saturating_sub" | "saturating_mul" = method.as_str() {
+        return lower_saturating(&method, m, ctx);
+    }
     let recv = path_ident(&m.receiver)?;
     // Prelude handles (`frame`/`input`): route methods to intrinsic prelude fns.
     if let Some(handle) = ctx.vars.handle_of(&recv) {
@@ -947,6 +950,101 @@ pub(crate) fn lower_method_call(
         return Err("method receiver + args exceed 3 registers".into());
     }
     Ok((Expr::Call(format!("{sname}::{method}"), args), Width::Word))
+}
+
+/// Lower `a.saturating_add(b)` / `_sub` / `_mul` (u8/u16) — real Rust, so the
+/// oracle checks it. Clamping desugars to branch-free mask arithmetic:
+///
+/// - `add`: `s = a + b (wrapping)`, overflow iff `s < a` → `s | (0 - ovf)`
+/// - `sub`: `d = a - b (wrapping)`, in range iff `a >= b` → `d & (0 - ok)`
+/// - `mul`: the full product (u16: via a u32 widen; u8: a 16-bit product),
+///   overflow iff the high part is nonzero → `lo | (0 - ovf)`
+///
+/// Operands are re-read by the clamp, so they must be pure (`has_effects`).
+/// `u32` saturating waits on 32-bit comparisons; `i16` clamps to a *signed* range
+/// (`-32768..=32767`) that this mask trick doesn't express — both reject with
+/// steering messages.
+fn lower_saturating(
+    method: &str,
+    m: &syn::ExprMethodCall,
+    ctx: &mut Ctx,
+) -> Result<(Expr, Width), String> {
+    let (recv, rw) = lower_expr(&m.receiver, ctx)?;
+    let arg = m.args.first().ok_or("saturating_* needs an argument")?;
+    let (re, aw) = lower_expr(arg, ctx)?;
+    if rw == Width::DWord || aw == Width::DWord {
+        return Err(
+            "u32 saturating_* is not supported yet — clamp explicitly: compute wide, \
+             test, and select"
+                .into(),
+        );
+    }
+    if rw == Width::SWord || aw == Width::SWord {
+        return Err(
+            "i16 saturating_* is not supported — the clamp bounds are signed \
+             (-32768/32767); write the comparison explicitly"
+                .into(),
+        );
+    }
+    if has_effects(&recv) || has_effects(&re) {
+        return Err(
+            "saturating_* needs simple operands here (the clamp re-reads them) — \
+             bind them first: `let x = …;`"
+                .into(),
+        );
+    }
+    // The receiver decides the width (as Rust's inference does for the argument).
+    let w = rw;
+    let bin = |op, a: Expr, b: Expr, w| Expr::Bin(op, Box::new(a), Box::new(b), w);
+    let cmp = |c, lhs: Expr, rhs: Expr| Expr::Cmp {
+        cmp: c,
+        lhs: Box::new(lhs),
+        rhs: Box::new(rhs),
+        signed: false,
+    };
+    // `0 - flag` at width `w`: `0xFFFF`/`0xFF` when the flag is set, `0` otherwise.
+    let mask = |flag: Expr, w| bin(BinOp::Sub, Expr::Lit(0), flag, w);
+    let e = match method {
+        "saturating_add" => {
+            let s = bin(BinOp::Add, recv.clone(), re, w);
+            let ovf = cmp(Cmp::Lt, s.clone(), recv);
+            bin(BinOp::Or, s, mask(ovf, w), w)
+        }
+        "saturating_sub" => {
+            let ok = cmp(Cmp::Ge, recv.clone(), re.clone());
+            let d = bin(BinOp::Sub, recv, re, w);
+            bin(BinOp::And, d, mask(ok, w), w)
+        }
+        _ => match w {
+            // u8: the full product fits a 16-bit word.
+            Width::Byte => {
+                let p = bin(BinOp::Mul, recv, re, Width::Word);
+                let ovf = cmp(Cmp::Gt, p.clone(), Expr::Lit(0xFF));
+                bin(BinOp::Or, p, mask(ovf, Width::Byte), Width::Byte)
+            }
+            // u16: widen to a u32 product; overflow iff the high word is nonzero.
+            _ => {
+                let p = Expr::Bin32(
+                    BinOp::Mul,
+                    Box::new(Expr::Widen(Box::new(recv))),
+                    Box::new(Expr::Widen(Box::new(re))),
+                );
+                let hi = Expr::Trunc32(Box::new(Expr::Shift32 {
+                    left: false,
+                    e: Box::new(p.clone()),
+                    k: 16,
+                }));
+                let ovf = cmp(Cmp::Ne, hi, Expr::Lit(0));
+                bin(
+                    BinOp::Or,
+                    Expr::Trunc32(Box::new(p)),
+                    mask(ovf, Width::Word),
+                    Width::Word,
+                )
+            }
+        },
+    };
+    Ok((e, w))
 }
 
 /// Lower a method call on a `&str` parameter (Phase S §2.1). Every accepted method
