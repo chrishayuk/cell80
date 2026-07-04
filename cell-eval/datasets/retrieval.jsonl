@@ -342,3 +342,13 @@
 {"id": "xorshift16-para-1", "query": "cheap shift-and-xor way to get the next random-looking number", "expected": "xorshift16", "category": "paraphrase"}
 {"id": "counter_step-direct-1", "query": "increment a counter that wraps back to zero at a limit", "expected": "counter_step", "category": "direct"}
 {"id": "counter_step-para-1", "query": "cycle through round-robin dispatch slots one step at a time", "expected": "counter_step", "category": "paraphrase"}
+
+# ── signed deltas (Phase 2.3, library-growth next-waves) ──
+{"id": "sign_i16-direct-1", "query": "sign of a signed value, positive negative or zero", "expected": "sign_i16", "category": "direct"}
+{"id": "sign_i16-para-1", "query": "which direction did this change go, up or down", "expected": "sign_i16", "category": "paraphrase"}
+{"id": "abs_i16-direct-1", "query": "absolute value of a signed number", "expected": "abs_i16", "category": "direct"}
+{"id": "abs_i16-para-1", "query": "how big is this change, ignoring whether it went up or down", "expected": "abs_i16", "category": "paraphrase"}
+{"id": "clamp_i16-direct-1", "query": "clamp a signed value to a signed range", "expected": "clamp_i16", "category": "direct"}
+{"id": "clamp_i16-para-1", "query": "keep a value that can go negative within some floor and ceiling", "expected": "clamp_i16", "category": "paraphrase"}
+{"id": "apply_delta_clamped-direct-1", "query": "apply a signed delta to a value, clamped between zero and a cap", "expected": "apply_delta_clamped", "category": "direct"}
+{"id": "apply_delta_clamped-para-1", "query": "adjust a health or resource value by a gain or loss without going below zero or over the max", "expected": "apply_delta_clamped", "category": "paraphrase"}

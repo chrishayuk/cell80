@@ -20,11 +20,15 @@
 //!
 //! Even within the fingerprintable (arity ≤ 2) class, `agreement == 1.0` means "these two
 //! cells agree on every probe in [`crate::DEFAULT_PROBES`]," not "these are provably
-//! identical for all `u16` inputs" — ten probes can coincidentally agree for two cells that
-//! differ elsewhere (e.g. `snap_down`/`round_to_multiple` agree on the whole default probe
-//! bank but diverge at `x=8, step=5`). A refusal is strong evidence, not proof; a maintainer
-//! reviewing a `REFUSED` report should treat it as "no probe has ever told these apart yet,"
-//! and widening the probe bank is the honest fix if a pair keeps false-positiving.
+//! identical for all `u16` inputs" — a finite bank can coincidentally agree for two cells
+//! that differ elsewhere. Two real examples surfaced this way and were fixed by widening
+//! the bank rather than touching the colliding cell: `luhn_check`/`is_zero` (no probe was
+//! Luhn-valid) and `snap_down`/`round_to_multiple` (they agreed on the whole ten-probe bank
+//! but diverge at e.g. `x=8, step=5` — fixed as a side effect of widening for a *different*
+//! pair, `sign_i16`/`nonzero`, once `DEFAULT_PROBES` gained a negative-`i16`-domain value).
+//! A refusal is strong evidence, not proof; a maintainer reviewing a `REFUSED` report should
+//! treat it as "no probe has ever told these apart yet," and widening the probe bank is the
+//! honest fix if a pair keeps false-positiving.
 //!
 //! **Query collision is corroborating evidence on (1), not an independent gate.** The DoD
 //! names it as "queries collide with an existing cell's fingerprint" — but treating "this

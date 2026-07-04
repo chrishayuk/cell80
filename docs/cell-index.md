@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (145 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (149 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -279,6 +279,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `xorshift16` | `Xorshift16::run() -> u16` | 16-bit xorshift generator step (x ^= x<<7; x ^= x>>9; x ^= x<<8) — a distinct pseudo-random recurrence from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
 | `counter_step` | `CounterStep::run() -> u16` | Modular counter step: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap — a plain saturating-free incrementer). Useful for round-robin dispatch or a bounded retry index. The caller threads `count` through — re-supply the field each call. |
 
+## signed-deltas (4)
+
+| id | signature | summary |
+|---|---|---|
+| `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
+| `abs_i16` | `run(x: i16) -> u16` | Absolute value of a signed 16-bit value, returned as u16 (correctly handles i16::MIN, whose magnitude 32768 doesn't fit back in i16). |
+| `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). |
+| `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -292,4 +301,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG above is the first slice landed — bounded_rand deferred, an exact duplicate of safe_mod; time/budget and signed deltas still ahead), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and verifier-ranker above are the first four authored packs; fractions is the last, gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.
+See `docs/library-growth.md` "Next waves" for the prioritized list (stateful/RNG and signed-deltas above are landed first slices — bounded_rand and time/budget's five named candidates were all found to be exact duplicates of existing cells, not built; scoring/choice and cosine_score_approx still ahead), the Phase 2.3 pilot-batch section for the author->verify->admit loop, and `docs/math-campaign-spec.md` for the GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and verifier-ranker above are the first four authored packs; fractions is the last, gated on M0's u32-across-a-call-boundary compiler feature, confirmed still unbuilt this session even after Cond32 landed). All five originally-planned wave-3 packs plus the Phase 2.3 pilot batch (packing/BCD, vector) landed a first slice above. `unpack_lo`/`unpack_hi` were never built — checking docs/cell-index.md before authoring found they'd be exact duplicates of `low_byte`/`high_byte`. Each first slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running variance (Welford), Morton encode/decode (needs a u32 state field, not yet risked), a Bresenham stepper, and cosine_score_approx (deferred: exact fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet worked out) are all still open.

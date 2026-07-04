@@ -37,6 +37,7 @@ PACKS = {
     "units": ["same_unit_check", "unit_mul", "unit_div", "unit_cancel_check"],
     "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32"],
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
+    "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -103,8 +104,10 @@ def main():
     print("## planned (not yet landed)")
     print()
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
-          "(stateful/RNG above is the first slice landed — bounded_rand deferred, an exact "
-          "duplicate of safe_mod; time/budget and signed deltas still ahead), the Phase 2.3 "
+          "(stateful/RNG and signed-deltas above are landed first slices — bounded_rand and "
+          "time/budget's five named candidates were all found to be exact duplicates of "
+          "existing cells, not built; scoring/choice and cosine_score_approx still ahead), "
+          "the Phase 2.3 "
           "pilot-batch section for the author->verify->admit loop, and "
           "`docs/math-campaign-spec.md` for the "
           "GSM8K math campaign (M1: checked-arithmetic, money-bps, units, and "

@@ -51,12 +51,16 @@ wave 3i   142 cells   + M1 pack 4/5: verifier/ranker (sum_equals, diff_equals,
                         equation-satisfaction checks that always return a verdict,
                         never escalate; answer_eq/multi-plan-agreement/tie-break
                         needed no new code (see the pack note below)
-now       145 cells   + stateful/RNG, first slice (lcg_next, xorshift16,
+wave 3j   145 cells   + stateful/RNG, first slice (lcg_next, xorshift16,
                         counter_step) — bounded_rand deferred (exact duplicate of
                         safe_mod)
+now       149 cells   + signed deltas, first slice (sign_i16, abs_i16, clamp_i16,
+                        apply_delta_clamped) — the library's first i16 cells; also
+                        widened DEFAULT_PROBES (fingerprint.rs) with a negative-i16
+                        value, which fixed the long-standing snap_down false
+                        positive as a side effect (see the pack note below)
 next      ~200+        + fractions (blocked on M0: u32-across-a-call-boundary,
-                        confirmed still unbuilt even after Cond32) · time/budget ·
-                        signed deltas
+                        confirmed still unbuilt even after Cond32) · scoring/choice
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -161,6 +165,29 @@ convention (`run_state`/`run_state_fast` take the full current field set on ever
 documented here since it cost real debugging time to pin down and will bite the next
 stateful pack's author again if it isn't written down.
 
+**Signed deltas, first slice.** `sign_i16` (-1/0/1), `abs_i16` (magnitude as `u16`,
+correctly handling `i16::MIN`'s 32768 which doesn't fit back in `i16`), `clamp_i16` (the
+signed counterpart of `clamp`), `apply_delta_clamped` (apply a signed delta to an unsigned
+value, clamped to `[0, cap]` — a health/resource/score adjustment that can't go negative
+or over a cap; the "risk delta" use case). The library's first `i16` cells, now that the
+dialect supports it (confirmed directly: `i16` params, returns, comparisons, unary
+negation, and `as`-casts between `i16`/`u16` all work). `lerp_i16` (interpolating between
+two signed values) is deferred — signed multiply/divide's rounding direction and overflow
+safety haven't been worked out.
+
+Authoring `sign_i16` surfaced a second real fingerprint-probe gap, the same class as the
+`luhn_check`/`is_zero` case from Wave 3: every value in `DEFAULT_PROBES` is non-negative
+when reinterpreted as `i16` (the largest, `1230`, is still far short of the `i16` sign
+bit), so `sign_i16`'s negative branch never fired on the bank alone — it degenerated to
+`nonzero` (agreement 1.00, both only ever emitting `0`/`1`). Fixed the same honest way:
+widened `DEFAULT_PROBES` (`cell80/src/fingerprint.rs`) with `[65531, 3]` (`-5` as an
+`i16` bit pattern), rather than touching `sign_i16`. That widening had a welcome side
+effect: it also separated the long-documented `snap_down`/`round_to_multiple` false
+positive (they'd agreed on the whole ten-probe bank since Wave 3 but diverge at e.g.
+`x=8, step=5`) — the twelfth probe happens to be one of the inputs where they disagree
+(`snap_down(65531, 3) = 65529` vs `round_to_multiple(65531, 3) = 65532`), so the gate is
+now fully clean: 149 admitted, 0 refused, not the long-standing 1.
+
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
 and `chebyshev` calls `iabs_diff`/`imax` instead of re-implementing them — and a cell that uses
@@ -260,7 +287,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (145 cells)
+### Landed (149 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -335,7 +362,9 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
 - **time / budget** — checked against `docs/cell-index.md` before building: `used_percent` is
   `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
-- **signed (`i16` now available)**: signed deltas / `lerp` / risk deltas.
+- **signed deltas — first slice landed** (see the pack note above): `sign_i16`, `abs_i16`,
+  `clamp_i16`, `apply_delta_clamped`. `lerp_i16` still open (signed multiply/divide
+  rounding direction and overflow safety not yet worked out).
 
 ## Phase 2.3 — growing toward ~1,000 cells
 

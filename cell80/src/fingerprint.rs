@@ -20,6 +20,12 @@ use super::{Cartridge, Manifest, Runner, DEFAULT_CYCLES};
 /// ten probes couldn't separate (none of them happened to be Luhn-valid, so `luhn_check`
 /// degenerated to "is n exactly 0" on this bank alone) — a live example of the "widening the
 /// probe bank is the honest fix" note in `admission.rs`.
+///
+/// `[65531, 3]` was added by the signed-deltas pack (library-growth.md "Next waves"): every
+/// prior probe is non-negative when reinterpreted as `i16` (all ≤ 1230), so an `i16`-domain
+/// cell's negative branch never fires on this bank alone — `sign_i16` degenerated to
+/// `nonzero` (both only ever emitting `0`/`1` here). `65531` is `-5` as an `i16` bit
+/// pattern, giving the first negative-domain probe.
 pub const DEFAULT_PROBES: &[[u16; 2]] = &[
     [3, 7],
     [7, 3],
@@ -32,6 +38,7 @@ pub const DEFAULT_PROBES: &[[u16; 2]] = &[
     [100, 4],
     [12, 12],
     [1230, 0],
+    [65531, 3],
 ];
 
 /// A cell's behavioural fingerprint: its primary result on each probe, or `None` if the run
