@@ -184,7 +184,9 @@ impl Runner {
     /// `(hits, lookups)` since the cache was enabled — `None` if it never was. The
     /// hit-rate counter the memoization economics are measured by.
     pub fn cache_stats(&self) -> Option<(u64, u64)> {
-        self.cache.as_ref().map(|_| (self.cache_hits, self.cache_lookups))
+        self.cache
+            .as_ref()
+            .map(|_| (self.cache_hits, self.cache_lookups))
     }
 
     /// Compile `src` (permissive) and instantiate — back-compat for trusted/game code.

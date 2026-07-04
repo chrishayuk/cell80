@@ -1589,7 +1589,7 @@ fn cache_respects_the_budget_and_never_stores_budget_stops() {
 
     let tight = r.run_fast(None, &[100], 50).unwrap();
     assert_eq!(tight.halt, cell80::Halt::CycleBudget); // fresh run, not the cached return
-    // The budget stop itself must not have been stored: a full-budget ask still succeeds.
+                                                       // The budget stop itself must not have been stored: a full-budget ask still succeeds.
     let again = r.run_fast(None, &[100], DEFAULT_CYCLES).unwrap();
     assert_eq!(again.halt, cell80::Halt::Returned);
     assert_eq!(again.result, full.result);
@@ -1629,7 +1629,9 @@ fn cache_stats_ride_the_report_and_its_json() {
     r.run_fast(None, &[5], DEFAULT_CYCLES).unwrap();
     let rep = r.run(None, &[1], DEFAULT_CYCLES).unwrap();
     assert_eq!(rep.cache_stats, Some((1, 2)));
-    assert!(rep.to_json().contains("\"cache\":{\"hits\":1,\"lookups\":2}"));
+    assert!(rep
+        .to_json()
+        .contains("\"cache\":{\"hits\":1,\"lookups\":2}"));
 }
 
 #[test]
@@ -1638,7 +1640,10 @@ fn host_enables_caching_on_load() {
     let cart = Cartridge::compile(
         "fn run(a: u16, b: u16) -> u16 { a + b }",
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+        CartridgeOpts {
+            id: Some("adder".into()),
+            ..Default::default()
+        },
     )
     .unwrap();
     let mut host = CellHost::new();
@@ -1676,7 +1681,10 @@ fn escalation_band_decodes_as_a_typed_handoff() {
     assert_eq!(rep.halt.escalate_reason(), None);
 
     // The band floor itself escalates as "unspecified"; unnamed codes are "custom".
-    assert_eq!(Halt::Escalate(ESCALATE_BASE).escalate_reason(), Some("unspecified"));
+    assert_eq!(
+        Halt::Escalate(ESCALATE_BASE).escalate_reason(),
+        Some("unspecified")
+    );
     assert_eq!(Halt::Escalate(0xFFAA).escalate_reason(), Some("custom"));
 }
 
@@ -1697,7 +1705,9 @@ fn manifest_limits_round_trip_and_render() {
     let back = Cartridge::from_bytes(&bytes).unwrap();
     assert_eq!(back.manifest.limits, vec!["floats", "sums > 65535"]);
     assert!(back.to_human().contains("limits: floats, sums > 65535"));
-    assert!(back.to_json().contains("\"limits\":[\"floats\",\"sums > 65535\"]"));
+    assert!(back
+        .to_json()
+        .contains("\"limits\":[\"floats\",\"sums > 65535\"]"));
 
     // No declared limits → empty list, absent from the human view.
     let plain = Cartridge::compile(
@@ -1732,7 +1742,10 @@ fn adder_cart() -> cell80::Cartridge {
     Cartridge::compile(
         "fn run(a: u16, b: u16) -> u16 { a + b }",
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+        CartridgeOpts {
+            id: Some("adder".into()),
+            ..Default::default()
+        },
     )
     .unwrap()
 }
@@ -1753,7 +1766,10 @@ fn artifact_hash_round_trips_and_pins_content() {
     let other = C::compile(
         "fn run(a: u16, b: u16) -> u16 { a - b }",
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+        CartridgeOpts {
+            id: Some("adder".into()),
+            ..Default::default()
+        },
     )
     .unwrap();
     assert_ne!(other.artifact_hash(), cart.artifact_hash());
@@ -1768,7 +1784,9 @@ fn tampered_bytes_are_refused_by_default_and_loadable_unverified() {
     let mut evil = bytes.clone();
     let n = bytes.len();
     evil[n - 1] ^= 0x01;
-    let err = Cartridge::from_bytes(&evil).err().expect("tampered load must fail");
+    let err = Cartridge::from_bytes(&evil)
+        .err()
+        .expect("tampered load must fail");
     assert!(err.contains("hash mismatch"), "{err}");
 
     // A manifest-region flip must not load cleanly either (structural error or hash
@@ -1804,7 +1822,9 @@ fn signing_round_trips_and_forgeries_fail() {
     let sig_last = bytes.len() - 4 - img_len - 1;
     let mut forged = bytes.clone();
     forged[sig_last] ^= 0x01;
-    let err = Cartridge::from_bytes(&forged).err().expect("forged load must fail");
+    let err = Cartridge::from_bytes(&forged)
+        .err()
+        .expect("forged load must fail");
     assert!(err.contains("signature"), "{err}");
 
     // An unsigned re-serialization of the same content keeps the same address.

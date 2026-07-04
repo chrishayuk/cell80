@@ -96,9 +96,16 @@ fn main() {
     // Determinism + per-run reset make (entry, args) → outcome cacheable forever — this
     // is the economic argument for the runtime in one table.
     println!("\nmemoization — repeated call, live vs cached (run_fast, µs)\n");
-    println!("{:11} {:>9}  {:>10}  {:>7}", "workload", "live µs", "cached µs", "speedup");
+    println!(
+        "{:11} {:>9}  {:>10}  {:>7}",
+        "workload", "live µs", "cached µs", "speedup"
+    );
     println!("{}", "-".repeat(44));
-    for (name, src) in [("tiny", tiny), ("add_loop", add_loop), ("xorshift1k", xorshift_1k)] {
+    for (name, src) in [
+        ("tiny", tiny),
+        ("add_loop", add_loop),
+        ("xorshift1k", xorshift_1k),
+    ] {
         let mut live = Runner::compile(src).unwrap();
         let live_us = time_per(|| {
             live.run_fast(None, &[], BUDGET).unwrap();
