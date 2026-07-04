@@ -412,3 +412,104 @@ fn u32_array_rejections() {
     .unwrap();
     assert!(err.contains("index it"), "unexpected: {err}");
 }
+
+#[test]
+fn u32_crosses_a_call_boundary() {
+    // The one-wide-param convention (docs 10 §Calls): a u32 first parameter rides
+    // HL:DE (+ one u16 in BC), a u32 return rides HL:DE — the shared-kernel shape
+    // that previously forced hand-inlining. Multi-call-site, so the inliner can't
+    // rescue it. Checked against rustc.
+    let src = "
+        fn scale(acc: u32, k: u16) -> u32 { acc * k as u32 + 7u32 }
+        fn run() -> u16 {
+            let a = scale(100_000u32, 3u16);
+            let b = scale(a, 2u16);
+            (b >> 16) as u16 * 100u16 + (b & 0xFFu32) as u16
+        }
+    ";
+    fn scale(acc: u32, k: u16) -> u32 {
+        acc * k as u32 + 7
+    }
+    fn host() -> u16 {
+        let a = scale(100_000, 3);
+        let b = scale(a, 2);
+        (b >> 16) as u16 * 100 + (b & 0xFF) as u16
+    }
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn u32_wide_returns_and_early_return() {
+    // Wide returns through the tail, a value-position `if`, and an early `return`;
+    // wide call results feeding u32 expressions and truncation.
+    let src = "
+        fn clamp100k(w: u32) -> u32 {
+            if w == 0u32 {
+                return 1u32;
+            }
+            if w > 100_000u32 { 100_000u32 } else { w }
+        }
+        fn run() -> u16 {
+            let big = clamp100k(999_999u32);
+            let small = clamp100k(42u32);
+            let zero = clamp100k(0u32);
+            let sum = big + small + zero;
+            (sum >> 16) as u16 * 1000u16 + clamp100k(70_000u32) as u16
+        }
+    ";
+    fn clamp100k(w: u32) -> u32 {
+        if w == 0 {
+            return 1;
+        }
+        if w > 100_000 {
+            100_000
+        } else {
+            w
+        }
+    }
+    fn host() -> u16 {
+        let sum = clamp100k(999_999) + clamp100k(42) + clamp100k(0);
+        (sum >> 16) as u16 * 1000 + clamp100k(70_000) as u16
+    }
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn u32_call_boundary_rejections() {
+    // The convention is deliberately minimal — everything outside it steers.
+    // A second u32 param (4 register slots):
+    let err = rustz80::compile_program(
+        "fn f(a: u32, b: u32) -> u32 { a + b } fn run() -> u16 { f(1u32, 2u32) as u16 }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("must be the *first*"), "unexpected: {err}");
+    // A u32 in a non-first position:
+    let err = rustz80::compile_program(
+        "fn f(k: u16, w: u32) -> u16 { (w as u16) + k } fn run() -> u16 { f(1u16, 2u32) }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("must be the *first*"), "unexpected: {err}");
+    // A wide argument into a 16-bit slot:
+    let err = rustz80::compile_program(
+        "fn f(k: u16) -> u16 { k } fn run() -> u16 { let w = 1u32; f(w) }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("narrow with `as u16`"), "unexpected: {err}");
+    // A wide value returned from a fn declared 16-bit:
+    let err = rustz80::compile_fn("fn f() -> u16 { let a = 1u16; a as u32 }")
+        .err()
+        .unwrap();
+    assert!(err.contains("declare `-> u32`"), "unexpected: {err}");
+    // A method with a wide return:
+    let err = rustz80::compile_program(
+        "struct S { x: u16 }
+         impl S { fn wide(&mut self) -> u32 { self.x as u32 } }
+         fn run() -> u16 { 0u16 }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("free functions"), "unexpected: {err}");
+}

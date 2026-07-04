@@ -61,6 +61,11 @@ pub(crate) struct Ctx<'a> {
     /// The program's `const` items (scalars substituted, data consts addressed) —
     /// shared mutably so string literals intern into the pool during lowering.
     pub(crate) consts: &'a RefCell<consts::ConstTable>,
+    /// Call-boundary signatures of the program's plain free fns — how a call site
+    /// knows a callee takes/returns a wide value (docs 10 §Calls).
+    pub(crate) fn_sigs: &'a HashMap<String, FnSig>,
+    /// The function being lowered returns `u32` (rides `HL:DE`).
+    pub(crate) ret_wide: bool,
 }
 
 impl Ctx<'_> {
@@ -120,6 +125,50 @@ impl Ctx<'_> {
 /// lay into the image after the code, which `Expr::ConstAddr` references resolve
 /// against). Produced by [`lower_program_full`]; consumed by the codegen entries
 /// that emit a data section (`codegen_loop_full`, and the internal compile paths).
+/// A function's call-boundary signature: which arg slots are wide, and whether the
+/// return rides `HL:DE` — the one-u32-across-a-call convention (docs 10 §Calls).
+pub(crate) struct FnSig {
+    pub(crate) arg_wides: Vec<bool>,
+    pub(crate) ret_wide: bool,
+}
+
+/// `-> u32`?
+fn output_is_u32(out: &syn::ReturnType) -> bool {
+    matches!(out, syn::ReturnType::Type(_, t)
+        if matches!(&**t, syn::Type::Path(p) if p.path.is_ident("u32")))
+}
+
+/// Collect the call-boundary signatures of every plain free `fn` (intrinsics,
+/// generics, and methods excluded — methods can't be wide, and generic returns
+/// resolve through the monomorphizer).
+fn collect_fn_sigs(file: &syn::File) -> HashMap<String, FnSig> {
+    let mut m = HashMap::new();
+    for item in &file.items {
+        let syn::Item::Fn(f) = item else { continue };
+        let name = f.sig.ident.to_string();
+        if is_intrinsic(&name) || is_generic_fn(f) {
+            continue;
+        }
+        let arg_wides = f
+            .sig
+            .inputs
+            .iter()
+            .map(|a| {
+                matches!(a, syn::FnArg::Typed(pt)
+                    if matches!(&*pt.ty, syn::Type::Path(p) if p.path.is_ident("u32")))
+            })
+            .collect();
+        m.insert(
+            name,
+            FnSig {
+                arg_wides,
+                ret_wide: output_is_u32(&f.sig.output),
+            },
+        );
+    }
+    m
+}
+
 pub struct Lowered {
     pub funcs: Vec<(String, Func)>,
     pub(crate) consts: consts::ConstTable,
@@ -151,6 +200,7 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
     mono_state.generic_structs = generic_structs;
     let mono = RefCell::new(mono_state);
     let consts_cell = RefCell::new(consts::collect_consts(file)?);
+    let fn_sigs = collect_fn_sigs(file);
     let no_args = HashMap::new();
     let no_const = HashMap::new();
     let mut out = Vec::new();
@@ -172,6 +222,7 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
                     &no_const,
                     None,
                     &consts_cell,
+                    &fn_sigs,
                 )?,
             )),
             // `impl T { fn m(&mut self, …) }` — each method becomes a `T::m` function
@@ -204,6 +255,7 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
                             &no_args,
                             &no_const,
                             &consts_cell,
+                            &fn_sigs,
                         )?,
                     ));
                 }
@@ -258,6 +310,7 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
             &const_args,
             self_ty.as_deref(),
             &consts_cell,
+            &fn_sigs,
         )?;
         out.push((inst.name, func));
     }
@@ -286,6 +339,9 @@ pub fn lower(item: &syn::ItemFn) -> Result<Func, String> {
     let consts_cell = RefCell::new(consts::ConstTable::default());
     let no_args = HashMap::new();
     let no_const = HashMap::new();
+    // A standalone fn can still declare a wide boundary for itself; it just has no
+    // sibling fns to call, so the signature map is empty.
+    let no_sigs = HashMap::new();
     lower_with(
         item,
         &Structs::new(),
@@ -296,6 +352,7 @@ pub fn lower(item: &syn::ItemFn) -> Result<Func, String> {
         &no_const,
         None,
         &consts_cell,
+        &no_sigs,
     )
 }
 
@@ -312,15 +369,29 @@ fn lower_method<'a>(
     type_args: &'a HashMap<String, Width>,
     const_args: &'a HashMap<String, u16>,
     consts: &'a RefCell<consts::ConstTable>,
+    fn_sigs: &'a HashMap<String, FnSig>,
 ) -> Result<Func, String> {
-    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args, consts);
-    let params = lower_inputs(&m.sig.inputs, &mut ctx, Some(self_ty))?;
+    let mut ctx = new_ctx(
+        structs, enums, prelude, mono, type_args, const_args, consts, fn_sigs,
+    );
+    // Methods stay 16-bit at the boundary: `self` holds HL, so a wide param has no
+    // register pair, and wide method returns wait on demand.
+    if output_is_u32(&m.sig.output) {
+        return Err(format!(
+            "`{self_ty}::{}` returns u32 — wide returns are for free functions \
+             (the `HL:DE` convention); return the words or use a free kernel",
+            m.sig.ident
+        ));
+    }
+    let (params, _) = lower_inputs(&m.sig.inputs, &mut ctx, Some(self_ty))?;
     let (body, ret) = lower_fn_block(&m.block, &mut ctx)?;
     Ok(Func {
         params,
         n_locals: ctx.vars.next,
         body,
         ret,
+        wide_param: false,
+        wide_ret: false,
     })
 }
 
@@ -335,15 +406,21 @@ fn lower_with<'a>(
     const_args: &'a HashMap<String, u16>,
     self_ty: Option<&str>,
     consts: &'a RefCell<consts::ConstTable>,
+    fn_sigs: &'a HashMap<String, FnSig>,
 ) -> Result<Func, String> {
-    let mut ctx = new_ctx(structs, enums, prelude, mono, type_args, const_args, consts);
-    let params = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
+    let mut ctx = new_ctx(
+        structs, enums, prelude, mono, type_args, const_args, consts, fn_sigs,
+    );
+    ctx.ret_wide = output_is_u32(&item.sig.output);
+    let (params, wide_param) = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
     let (body, ret) = lower_fn_block(&item.block, &mut ctx)?;
     Ok(Func {
         params,
         n_locals: ctx.vars.next,
         body,
         ret,
+        wide_param,
+        wide_ret: ctx.ret_wide,
     })
 }
 
@@ -356,9 +433,12 @@ fn new_ctx<'a>(
     type_args: &'a HashMap<String, Width>,
     const_args: &'a HashMap<String, u16>,
     consts: &'a RefCell<consts::ConstTable>,
+    fn_sigs: &'a HashMap<String, FnSig>,
 ) -> Ctx<'a> {
     Ctx {
         vars: Vars::default(),
+        fn_sigs,
+        ret_wide: false,
         structs,
         enums,
         prelude,
@@ -419,8 +499,9 @@ fn lower_inputs(
     inputs: &syn::punctuated::Punctuated<syn::FnArg, syn::token::Comma>,
     ctx: &mut Ctx,
     self_ty: Option<&str>,
-) -> Result<usize, String> {
-    let mut params = 0;
+) -> Result<(usize, bool), String> {
+    let mut slots = 0;
+    let mut wide_param = false;
     for (i, arg) in inputs.iter().enumerate() {
         match arg {
             syn::FnArg::Receiver(_) => {
@@ -429,42 +510,64 @@ fn lower_inputs(
                 }
                 let sty = self_ty.ok_or("`self` outside an impl block")?;
                 ctx.vars.declare_ptr("self", sty);
+                slots += 1;
             }
             syn::FnArg::Typed(pt) => {
                 let name = pat_ident(&pt.pat)?;
                 match handle_type(&pt.ty, ctx.prelude) {
-                    Some(h) => ctx.vars.declare_handle(&name, &h),
+                    Some(h) => {
+                        ctx.vars.declare_handle(&name, &h);
+                        slots += 1;
+                    }
                     // `t: &[u8; N]` / `&[u16; N]` — a read-only pointer to *packed*
                     // element data (a const tile/table passed by address); `t[i]`
                     // loads through it. Mirrors real Rust: `f(&TILE)` where
                     // `TILE: [u8; 8]`.
                     None => match ref_array_param(&pt.ty) {
-                        Some((w, stride)) => ctx.vars.declare_elem_ptr(&name, w, stride),
+                        Some((w, stride)) => {
+                            ctx.vars.declare_elem_ptr(&name, w, stride);
+                            slots += 1;
+                        }
                         // `s: &str` — the runtime-length sibling of `&[u8; N]`:
                         // one register, the address of a length-prefixed buffer;
                         // reads go through `s.len()` / `s.as_bytes()[i]`.
-                        None if is_str_param(&pt.ty) => ctx.vars.declare_str(&name),
+                        None if is_str_param(&pt.ty) => {
+                            ctx.vars.declare_str(&name);
+                            slots += 1;
+                        }
                         None => {
                             let w = ctx.width_of_type(&pt.ty);
                             if w == Width::DWord {
-                                return Err(format!(
-                                    "u32 parameter `{name}` is not supported yet (params pass \
-                                     in 16-bit registers) — pass the words and widen with \
-                                     `as u32`"
-                                ));
+                                // The one-wide-param convention: first position only
+                                // (it rides HL:DE; `self`/anything else holds HL).
+                                if i != 0 {
+                                    return Err(format!(
+                                        "u32 parameter `{name}` must be the *first* \
+                                         parameter (it rides HL:DE; one per function) — \
+                                         reorder, or pass the words and widen with `as u32`"
+                                    ));
+                                }
+                                wide_param = true;
+                                ctx.vars.declare(&name, 2, None, Width::DWord);
+                                slots += 2;
+                            } else {
+                                ctx.vars.declare(&name, 1, None, w);
+                                slots += 1;
                             }
-                            ctx.vars.declare(&name, 1, None, w)
                         }
                     },
                 };
             }
         }
-        params += 1;
     }
-    if params > 3 {
-        return Err("more than 3 parameters not supported yet (no stack args)".into());
+    if slots > 3 {
+        return Err(
+            "parameters exceed the 3 register slots (HL/DE/BC — a u32 takes two; \
+             no stack args)"
+                .into(),
+        );
     }
-    Ok(params)
+    Ok((slots, wide_param))
 }
 
 /// Lower a function body: statements + an optional tail expression. The tail may be
@@ -479,14 +582,19 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
             syn::Stmt::Local(local) => lower_local(local, ctx, &mut body)?,
             syn::Stmt::Expr(expr, semi) if last && semi.is_none() => match expr {
                 syn::Expr::Tuple(t) => {
+                    if ctx.ret_wide {
+                        return Err("a u32 return is a single value in HL:DE — it can't be a \
+                             tuple member"
+                            .into());
+                    }
                     if t.elems.len() > 3 {
                         return Err("tuple returns support up to 3 values".into());
                     }
                     for e in &t.elems {
                         let (le, w) = lower_expr(e, ctx)?;
                         if w == Width::DWord {
-                            return Err("u32 return values are not supported yet — narrow with \
-                                        `as u16`"
+                            return Err("a u32 can't be a tuple-return member (16-bit \
+                                        registers) — narrow with `as u16`"
                                 .into());
                         }
                         ret.push(le);
@@ -504,12 +612,16 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                 }
                 _ if is_value_expr(expr) => {
                     let (le, w) = lower_expr(expr, ctx)?;
-                    if w == Width::DWord {
-                        return Err(
-                            "u32 return values are not supported yet — narrow with `as u16`".into(),
-                        );
+                    if ctx.ret_wide {
+                        ret.push(expr::coerce32(le, w));
+                    } else {
+                        if w == Width::DWord {
+                            return Err("this function returns a 16-bit value — narrow \
+                                        with `as u16`, or declare `-> u32`"
+                                .into());
+                        }
+                        ret.push(le);
                     }
-                    ret.push(le);
                 }
                 _ => lower_stmt_expr(expr, ctx, &mut body)?,
             },
@@ -529,8 +641,20 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
 /// slot read the epilogue evaluates.
 fn lower_value_tail(expr: &syn::Expr, ctx: &mut Ctx, body: &mut Vec<Stmt>) -> Result<Expr, String> {
     let w = value_width(expr, ctx)?;
-    if w == Width::DWord {
-        return Err("u32 return values are not supported yet — narrow with `as u16`".into());
+    if w == Width::DWord && !ctx.ret_wide {
+        return Err(
+            "this function returns a 16-bit value — narrow with `as u16`, or declare \
+             `-> u32`"
+                .into(),
+        );
+    }
+    if ctx.ret_wide {
+        let temp = ctx
+            .vars
+            .declare(&format!("__val{}", ctx.temp), 2, None, Width::DWord);
+        ctx.temp += 1;
+        lower_value_into(temp, true, expr, ctx, body)?;
+        return Ok(Expr::Var32(temp));
     }
     let temp = ctx.vars.declare(&format!("__val{}", ctx.temp), 1, None, w);
     ctx.temp += 1;

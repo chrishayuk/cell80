@@ -101,17 +101,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                 Width::DWord => unreachable!("u32 array elements are unsupported"),
             }
         }
-        Expr::Call(name, args) => {
-            for arg in args {
-                gen_expr(a, arg);
-                a.push(R16::Hl); // PUSH HL
-            }
-            const POP: [R16; 3] = [R16::Hl, R16::De, R16::Bc];
-            for i in (0..args.len()).rev() {
-                a.pop(POP[i]);
-            }
-            a.call(name);
-        }
+        Expr::Call(name, args) => gen_call(a, name, args),
         Expr::Trunc(e) => {
             gen_expr(a, e);
             a.fx(&[0x26, 0x00]); // LD H, 0   (mask to u8)
@@ -314,6 +304,39 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
     }
 }
 
+/// Emit a call: arguments evaluated left-to-right onto the stack, popped into the
+/// convention registers, then `CALL`. A **wide first argument** (the one-u32
+/// convention, docs 10 §Calls) occupies `HL:DE` — two pushes, two pops — leaving
+/// `BC` for at most one more 16-bit argument. The result lands wherever the callee
+/// leaves it (`HL`, or `HL:DE` for a wide return — the caller knows which).
+pub(super) fn gen_call(a: &mut Asm, name: &str, args: &[Expr]) {
+    let wide_first = a.wide_sigs.get(name).map(|(wp, _)| *wp).unwrap_or(false);
+    if wide_first {
+        gen_expr32(a, &args[0]);
+        a.push(R16::De); // PUSH DE   (arg0.high)
+        a.push(R16::Hl); // PUSH HL   (arg0.low)
+        for arg in &args[1..] {
+            gen_expr(a, arg);
+            a.push(R16::Hl);
+        }
+        if args.len() > 1 {
+            a.pop(R16::Bc); // the one extra 16-bit argument
+        }
+        a.pop(R16::Hl); // arg0.low
+        a.pop(R16::De); // arg0.high
+    } else {
+        for arg in args {
+            gen_expr(a, arg);
+            a.push(R16::Hl); // PUSH HL
+        }
+        const POP: [R16; 3] = [R16::Hl, R16::De, R16::Bc];
+        for i in (0..args.len()).rev() {
+            a.pop(POP[i]);
+        }
+    }
+    a.call(name);
+}
+
 /// Materialise a **u32** comparison to `0`/`1` in `HL` (unsigned — the dialect has
 /// no `i32`). Ordering: the 32-bit `SBC` chain computes `l - r` and its final borrow
 /// *is* `l < r`; `LD HL,0 ; ADC HL,HL` turns the carry into the bool (`CCF` negates
@@ -493,6 +516,8 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             a.fx(&[0x59]); // LD E,C      -> DE = high word
         }
         Expr::Trunc32(e) => gen_expr32(a, e),
+        // A call to a wide-returning fn: the callee leaves the value in HL:DE.
+        Expr::Call(name, args) => gen_call(a, name, args),
         // `x as u32` — evaluate the 16-bit value into HL, then zero-extend: DE (high word) = 0.
         Expr::Widen(inner) => {
             gen_expr(a, inner); // HL = the u16 value

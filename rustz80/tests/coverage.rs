@@ -22,7 +22,6 @@ fn expr_rejections() {
     bad_fn("fn f() -> u16 { 1.5f32 as u16 }"); // unsupported literal
     bad_fn("fn f() -> u16 { let a = 1u32; let b = 2u32; a << b }"); // u32 variable shift (16-bit only)
     bad_fn("fn f() -> u16 { let a = 1u16; a as u32 }"); // u32 return value (u16 registers)
-    bad_fn("fn f(a: u32) -> u16 { a as u16 }"); // u32 parameter (u16 registers)
     bad_fn("fn f() -> u16 { let a = 1u32; g(a) }"); // u32 call argument
     bad_fn("fn f() -> u16 { let mut x = 1u16; x = 2u32; x }"); // u32 into a u16 var
     bad_fn("fn f() -> u16 { let x: u16 = 2u32; x }"); // u32 init on a 16-bit annotation
