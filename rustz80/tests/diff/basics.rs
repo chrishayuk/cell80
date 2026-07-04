@@ -510,3 +510,59 @@ fn bool_flags_and_logical_not() {
     ";
     assert_eq!(run_program(src, "run"), host()); // 1+2+4+0+16 = 23
 }
+
+#[test]
+fn saturating_methods() {
+    // `saturating_add`/`_sub`/`_mul` — real Rust, oracle-checked, u16 and u8,
+    // exercising both the clamped and unclamped sides.
+    check!({
+        let a = 65530u16;
+        let b = 10u16;
+        a.saturating_add(b) - 60000u16 + 40000u16.saturating_add(1000u16) / 100u16
+    });
+    check!({
+        let a = 5u16;
+        a.saturating_sub(9u16) + 9u16.saturating_sub(5u16)
+    });
+    check!({
+        let a = 300u16;
+        a.saturating_mul(300u16) - 250u16.saturating_mul(250u16)
+    });
+    check!({
+        let c = 250u8;
+        c.saturating_add(10u8) as u16 + 3u8.saturating_add(4u8) as u16
+    });
+    check!({
+        let c = 5u8;
+        c.saturating_sub(9u8) as u16 + 200u8.saturating_sub(100u8) as u16
+    });
+    check!({
+        let c = 20u8;
+        c.saturating_mul(20u8) as u16 + 15u8.saturating_mul(15u8) as u16
+    });
+    // Saturating in a loop — the accumulate shape library cells hand-roll today.
+    check!({
+        let mut acc = 60000u16;
+        for i in 0..10u16 {
+            acc = acc.saturating_add(i * 1000u16);
+        }
+        acc
+    });
+}
+
+#[test]
+fn saturating_rejections() {
+    // u32/i16 saturating and effectful operands reject with steering messages.
+    let err = rustz80::compile_fn(
+        "fn f(a: u16) -> u16 { let w = a as u32; (w.saturating_add(1u32)) as u16 }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("u32 saturating"), "unexpected: {err}");
+    let err = rustz80::compile_program(
+        "fn g(a: u16) -> u16 { a } fn f(a: u16) -> u16 { g(a).saturating_add(1u16) }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("bind them first"), "unexpected: {err}");
+}
