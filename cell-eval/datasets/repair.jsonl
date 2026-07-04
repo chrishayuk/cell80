@@ -6,8 +6,8 @@
 {"id": "repair.match_no_wild.bucket", "klass": "match_no_wildcard", "src": "fn run(k: u16) -> u16 { match k { 0u16 => 10u16, 1u16 => 20u16 } }", "intent": "k=0 gives 10, k=1 gives 20, anything else 0", "examples": [[[0], 10], [[1], 20], [[9], 0]]}
 {"id": "repair.u32_return.percent", "klass": "u32_return", "src": "fn run(part: u16, whole: u16) -> u16 { part as u32 * 100u32 / whole as u32 }", "intent": "integer percent part*100/whole (whole is nonzero in tests)", "examples": [[[700, 1000], 70], [[1, 4], 25]]}
 {"id": "repair.u32_return.scale", "klass": "u32_return", "src": "fn run(v: u16, m: u16) -> u16 { v as u32 * m as u32 / 256u32 }", "intent": "v*m/256 computed wide then narrowed (results fit u16)", "examples": [[[1000, 512], 2000], [[300, 256], 300]]}
-{"id": "repair.string.tag", "klass": "string_literal", "src": "fn run(a: u16, b: u16) -> u16 { let tag = \"greater\"; (a > b) as u16 }", "intent": "1 if a > b else 0", "examples": [[[9, 2], 1], [[2, 9], 0]]}
-{"id": "repair.string.msg", "klass": "string_literal", "src": "fn run(n: u16) -> u16 { let msg = \"even\"; n % 2u16 }", "intent": "n mod 2", "examples": [[[7], 1], [[8], 0]]}
+{"id": "repair.char.tag", "klass": "char_literal", "src": "fn run(a: u16, b: u16) -> u16 { let tag = 'g'; (a > b) as u16 }", "intent": "1 if a > b else 0", "examples": [[[9, 2], 1], [[2, 9], 0]]}
+{"id": "repair.char.msg", "klass": "char_literal", "src": "fn run(n: u16) -> u16 { let msg = 'e'; n % 2u16 }", "intent": "n mod 2", "examples": [[[7], 1], [[8], 0]]}
 {"id": "repair.float.half", "klass": "float_literal", "src": "fn run(x: u16) -> u16 { x * 0.5 }", "intent": "half of x, integer (x is even in tests)", "examples": [[[10], 5], [[64], 32]]}
 {"id": "repair.float.pct", "klass": "float_literal", "src": "fn run(x: u16) -> u16 { x * 0.25 }", "intent": "a quarter of x, integer (x divisible by 4 in tests)", "examples": [[[8], 2], [[100], 25]]}
 {"id": "repair.closure.apply", "klass": "closure", "src": "fn run(a: u16, b: u16) -> u16 { let f = |x: u16| x * 2u16; f(a) + f(b) }", "intent": "2a + 2b", "examples": [[[3, 4], 14], [[10, 1], 22]]}
