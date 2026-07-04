@@ -551,5 +551,8 @@ fn whole_program_over_scratch_is_a_clean_error() {
         body.push_str(&format!("x = x + {}u16;\n", 1000 + i));
     }
     let e = compile_fn(&format!("fn f() -> u16 {{ {body} x }}")).unwrap_err();
-    assert!(e.contains("too large"), "expected the too-large diagnostic: {e}");
+    assert!(
+        e.contains("too large"),
+        "expected the too-large diagnostic: {e}"
+    );
 }
