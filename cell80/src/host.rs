@@ -30,6 +30,9 @@ pub struct CellHost {
     index: std::cell::RefCell<Option<TfidfIndex>>,
     pool: CellPool,
     live: Vec<Option<Loaded>>,
+    /// When set, every [`load`](Self::load) enables the runner's memoization cache —
+    /// repeated `run_fast` calls with the same args become hash lookups (roadmap 3.3).
+    cache_loads: bool,
 }
 
 impl CellHost {
@@ -129,8 +132,12 @@ impl CellHost {
             .catalog
             .get(id)
             .ok_or_else(|| format!("no cell `{id}`"))?;
+        let mut runner = self.pool.acquire(&cart.program);
+        if self.cache_loads {
+            runner.enable_cache();
+        }
         let loaded = Loaded {
-            runner: self.pool.acquire(&cart.program),
+            runner,
             entry: cart.manifest.entry.clone(),
             state_addrs: cart.manifest.state_addrs.clone(),
         };
@@ -236,5 +243,18 @@ impl CellHost {
     /// How many cells are currently loaded (warm).
     pub fn live_count(&self) -> usize {
         self.live.iter().filter(|s| s.is_some()).count()
+    }
+
+    /// Enable (or disable) memoization for cells loaded **from now on** — see
+    /// [`Runner::enable_cache`] for what is (and safely isn't) cached. Already-loaded
+    /// cells keep their current setting.
+    pub fn set_cache(&mut self, on: bool) {
+        self.cache_loads = on;
+    }
+
+    /// `(hits, lookups)` of a loaded cell's memoization cache — `None` if caching wasn't
+    /// enabled when it was loaded.
+    pub fn cache_stats(&mut self, handle: usize) -> Result<Option<(u64, u64)>, String> {
+        Ok(self.loaded(handle)?.runner.cache_stats())
     }
 }

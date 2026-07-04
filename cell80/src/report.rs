@@ -134,6 +134,10 @@ pub struct Report {
     pub symbols: Vec<(String, u16)>,
     /// Contiguous RAM ranges written during the run, as `(start, end_inclusive)`.
     pub touched: Vec<(u16, u16)>,
+    /// `(hits, lookups)` of this runner's memoization cache — `None` unless the cache was
+    /// [enabled](crate::Runner::enable_cache). The cache serves the fast path; this is the
+    /// hit-rate counter riding along on the rich report.
+    pub cache_stats: Option<(u64, u64)>,
 }
 
 impl Report {
@@ -214,10 +218,15 @@ impl Report {
             Halt::Halted(c) => format!(",\"halt_code\":{c}"),
             _ => String::new(),
         };
+        // `cache` only appears when memoization is enabled on the runner.
+        let cache = match self.cache_stats {
+            Some((h, n)) => format!(",\"cache\":{{\"hits\":{h},\"lookups\":{n}}}"),
+            None => String::new(),
+        };
         format!(
             "{{\"abi\":{},\"entry\":\"{}\",\"entry_addr\":{},\"result\":{},\"regs\":[{},{},{}],\"cycles\":{},\
              \"trapped_ops\":{},\"budget\":{},\"halt\":\"{}\"{},\"code_bytes\":{},\"functions\":{},\
-             \"symbols\":{{{}}},\"memory_touched\":[{}],\"reads\":{{{}}}}}",
+             \"symbols\":{{{}}},\"memory_touched\":[{}],\"reads\":{{{}}}{cache}}}",
             ABI_VERSION,
             self.entry,
             self.entry_addr,

@@ -1548,3 +1548,101 @@ fn div_by_zero_saturates_under_the_legacy_policy() {
         0xFFFF
     );
 }
+
+// ── the memoization cache (roadmap 3.3) ────────────────────────────────────────────
+
+#[test]
+fn cache_replays_identical_outcomes_and_counts_hits() {
+    let mut r = Runner::compile("fn run(a: u16, b: u16) -> u16 { a * b + 1 }").unwrap();
+    r.enable_cache();
+    let first = r.run_fast(None, &[6, 7], DEFAULT_CYCLES).unwrap();
+    let hit = r.run_fast(None, &[6, 7], DEFAULT_CYCLES).unwrap();
+    // Byte-for-byte the same outcome: result, cycles, trapped_ops, halt.
+    assert_eq!(hit.result, first.result);
+    assert_eq!(hit.cycles, first.cycles);
+    assert_eq!(hit.trapped_ops, first.trapped_ops);
+    assert_eq!(hit.halt, first.halt);
+    assert_eq!(r.cache_stats(), Some((1, 2)));
+
+    // A different argument set is its own entry (miss, then hit).
+    assert_eq!(r.run_fast(None, &[2, 3], DEFAULT_CYCLES).unwrap().result, 7);
+    assert_eq!(r.run_fast(None, &[2, 3], DEFAULT_CYCLES).unwrap().result, 7);
+    assert_eq!(r.cache_stats(), Some((2, 4)));
+}
+
+#[test]
+fn cache_respects_the_budget_and_never_stores_budget_stops() {
+    // A loop that takes real cycles: cached at a generous budget, then re-asked with a
+    // budget smaller than the stored cycles — must NOT replay (a live run would have
+    // stopped with CycleBudget first).
+    let src = "fn run(n: u16) -> u16 { let mut s = 0u16; let mut i = 0u16;
+               while i < n { s = s + i; i = i + 1; } s }";
+    let mut r = Runner::compile(src).unwrap();
+    r.enable_cache();
+    let full = r.run_fast(None, &[100], DEFAULT_CYCLES).unwrap();
+    assert_eq!(full.halt, cell80::Halt::Returned);
+    assert!(full.cycles > 50);
+
+    let tight = r.run_fast(None, &[100], 50).unwrap();
+    assert_eq!(tight.halt, cell80::Halt::CycleBudget); // fresh run, not the cached return
+    // The budget stop itself must not have been stored: a full-budget ask still succeeds.
+    let again = r.run_fast(None, &[100], DEFAULT_CYCLES).unwrap();
+    assert_eq!(again.halt, cell80::Halt::Returned);
+    assert_eq!(again.result, full.result);
+}
+
+#[test]
+fn cache_disabled_by_default_and_cleared_on_pool_reuse() {
+    use cell80::{CellPool, CellProgram};
+    let mut r = Runner::compile("fn run() -> u16 { 1 }").unwrap();
+    r.run_fast(None, &[], DEFAULT_CYCLES).unwrap();
+    assert_eq!(r.cache_stats(), None); // opt-in, off by default
+
+    // A pooled bus re-pointed at a different program must not replay the old one.
+    let p1 = CellProgram::compile("fn run() -> u16 { 11 }").unwrap();
+    let p2 = CellProgram::compile("fn run() -> u16 { 22 }").unwrap();
+    let mut pool = CellPool::new();
+    let mut a = pool.acquire(&p1);
+    a.enable_cache();
+    assert_eq!(a.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 11);
+    assert_eq!(a.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 11);
+    assert_eq!(a.cache_stats(), Some((1, 2)));
+    pool.release(a);
+    let mut b = pool.acquire(&p2);
+    assert_eq!(b.run_fast(None, &[], DEFAULT_CYCLES).unwrap().result, 22);
+    assert_eq!(b.cache_stats(), Some((0, 1))); // entries and counters both reset
+}
+
+#[test]
+fn cache_stats_ride_the_report_and_its_json() {
+    let mut r = Runner::compile("fn run(a: u16) -> u16 { a + 1 }").unwrap();
+    let rep = r.run(None, &[1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.cache_stats, None);
+    assert!(!rep.to_json().contains("\"cache\""));
+
+    r.enable_cache();
+    r.run_fast(None, &[5], DEFAULT_CYCLES).unwrap();
+    r.run_fast(None, &[5], DEFAULT_CYCLES).unwrap();
+    let rep = r.run(None, &[1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.cache_stats, Some((1, 2)));
+    assert!(rep.to_json().contains("\"cache\":{\"hits\":1,\"lookups\":2}"));
+}
+
+#[test]
+fn host_enables_caching_on_load() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
+    let cart = Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap();
+    let mut host = CellHost::new();
+    host.add(cart);
+    host.set_cache(true);
+    let h = host.load("adder").unwrap();
+    host.run_fast(h, &[3, 4], DEFAULT_CYCLES).unwrap();
+    host.run_fast(h, &[3, 4], DEFAULT_CYCLES).unwrap();
+    assert_eq!(host.cache_stats(h).unwrap(), Some((1, 2)));
+    host.unload(h).unwrap();
+}

@@ -91,4 +91,27 @@ fn main() {
         "\n(real 48K Spectrum = 3.5 MHz. warm = Runner reuse — bus reset, not realloc;\n \
          cold = one-shot cell::run — fresh alloc + compile + run. compile is one-time.)"
     );
+
+    // The memoization cache (roadmap 3.3): the same call as a live run vs a hash lookup.
+    // Determinism + per-run reset make (entry, args) → outcome cacheable forever — this
+    // is the economic argument for the runtime in one table.
+    println!("\nmemoization — repeated call, live vs cached (run_fast, µs)\n");
+    println!("{:11} {:>9}  {:>10}  {:>7}", "workload", "live µs", "cached µs", "speedup");
+    println!("{}", "-".repeat(44));
+    for (name, src) in [("tiny", tiny), ("add_loop", add_loop), ("xorshift1k", xorshift_1k)] {
+        let mut live = Runner::compile(src).unwrap();
+        let live_us = time_per(|| {
+            live.run_fast(None, &[], BUDGET).unwrap();
+        }) * 1e6;
+        let mut cached = Runner::compile(src).unwrap();
+        cached.enable_cache();
+        cached.run_fast(None, &[], BUDGET).unwrap(); // populate
+        let cached_us = time_per(|| {
+            cached.run_fast(None, &[], BUDGET).unwrap();
+        }) * 1e6;
+        println!(
+            "{name:11} {live_us:>9.3}  {cached_us:>10.4}  {:>6.0}×",
+            live_us / cached_us
+        );
+    }
 }
