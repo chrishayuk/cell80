@@ -14,9 +14,11 @@ import pathlib
 import cell80_py
 
 
-def _parse_header(src: str) -> tuple[str, list[str], str | None]:
-    """Read a cell source's leading `//!` header → (summary, tags, entry)."""
-    summary, tags, entry = "", [], None
+def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str]]:
+    """Read a cell source's leading `//!` header → (summary, tags, entry, limits).
+    `limits` is the escalation contract: what the cell declares it can't do
+    (`//! limits: floats, inputs > 65535`)."""
+    summary, tags, entry, limits = "", [], None, []
     for line in src.splitlines():
         s = line.strip()
         if s.startswith("//!"):
@@ -25,11 +27,13 @@ def _parse_header(src: str) -> tuple[str, list[str], str | None]:
                 tags = [t.strip() for t in r[5:].split(",") if t.strip()]
             elif r.startswith("entry:"):
                 entry = r[6:].strip()
+            elif r.startswith("limits:"):
+                limits = [x.strip() for x in r[7:].split(",") if x.strip()]
             elif not summary:
                 summary = r
         elif s and not s.startswith("//"):
             break  # first code line — header done
-    return summary, tags, entry
+    return summary, tags, entry, limits
 
 
 class CellLibrary:
@@ -48,8 +52,8 @@ class CellLibrary:
         for f in sorted(d.iterdir()):
             if f.suffix == ".rs":
                 src = f.read_text()
-                summary, tags, entry = _parse_header(src)
-                self.host.add_source(f.stem, src, summary, tags, entry)
+                summary, tags, entry, limits = _parse_header(src)
+                self.host.add_source(f.stem, src, summary, tags, entry, limits)
                 self._ids.append(f.stem)
             elif f.suffix == ".cell":
                 self.host.add_cell(f.read_bytes())

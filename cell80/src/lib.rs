@@ -40,7 +40,7 @@ pub use graph::{CellGraph, Feed, GraphRun, NodeTrace, Port};
 pub use host::CellHost;
 pub use index::CellIndex;
 pub use program::CellProgram;
-pub use report::{Fast, Halt, Report, Ty, ABI_VERSION};
+pub use report::{Fast, Halt, Report, Ty, ABI_VERSION, ESCALATE_BASE, ESCALATE_REASONS};
 pub use runner::{run, CellPool, Runner};
 pub use selector::{fingerprint_features, Encoder, Rng, Routed, SlotRouter};
 pub use state::{state_field_addrs, StateCell, STATE_BASE};

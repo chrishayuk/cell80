@@ -10,8 +10,9 @@ use std::hash::{Hash, Hasher};
 
 const MAGIC: &[u8; 4] = b"CELL";
 // v2 added the typed I/O signature; v3 added state field addresses; v4 added a width
-// (`Ty`) per state field, so a `u32` field is drivable/readable wide by name.
-const VERSION: u8 = 4;
+// (`Ty`) per state field, so a `u32` field is drivable/readable wide by name; v5 added
+// the `limits` declaration (the escalation contract, roadmap 3.2).
+const VERSION: u8 = 5;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -81,6 +82,13 @@ pub struct Manifest {
     /// bytes / two slots. Lets a warm host (or a peer cell in a graph) drive the cell *by
     /// field name*, wide fields included, without the source. Empty for a free fn.
     pub state_addrs: Vec<(String, u16, Ty)>,
+    /// The escalation contract (roadmap 3.2): what this cell **can't** do, declared
+    /// machine-readably so an orchestrator can route around the kernel class *before*
+    /// running (e.g. `["floats", "inputs > 65535"]`). The substrate-wide non-goals
+    /// (strings / floats / I/O / network) hold for every cell and don't need repeating —
+    /// this field is for the cell's *own* boundary, and pairs with the structured
+    /// [`Halt::Escalate`](crate::Halt::Escalate) hand-off at run time.
+    pub limits: Vec<String>,
 }
 
 /// Options for [`Cartridge::compile`] (all optional).
@@ -90,6 +98,8 @@ pub struct CartridgeOpts {
     pub entry: Option<String>,
     pub summary: String,
     pub tags: Vec<String>,
+    /// The cell's declared boundary — see [`Manifest::limits`].
+    pub limits: Vec<String>,
 }
 
 /// A compiled cell **plus** its manifest — the `.cell` artifact.
@@ -127,6 +137,7 @@ impl Cartridge {
                 abi_version: ABI_VERSION,
                 signature,
                 state_addrs,
+                limits: opts.limits,
             },
             program,
         })
@@ -152,6 +163,10 @@ impl Cartridge {
         put_string(&mut b, &m.signature.ret);
         put_pairs(&mut b, &m.signature.state);
         put_addrs(&mut b, &m.state_addrs);
+        b.extend_from_slice(&(m.limits.len() as u16).to_le_bytes());
+        for l in &m.limits {
+            put_string(&mut b, l);
+        }
         let img = self.program.to_bytes();
         b.extend_from_slice(&(img.len() as u32).to_le_bytes());
         b.extend_from_slice(&img);
@@ -165,7 +180,7 @@ impl Cartridge {
             return Err("not a .cell cartridge".into());
         }
         let ver = r.u8()?;
-        if !(2..=4).contains(&ver) {
+        if !(2..=5).contains(&ver) {
             return Err(format!("unsupported .cell version {ver}"));
         }
         let abi_version = r.u32()?;
@@ -191,6 +206,18 @@ impl Cartridge {
         } else {
             Vec::new()
         };
+        // v5+ carries the limits declaration (the escalation contract); older
+        // cartridges have none declared.
+        let limits = if ver >= 5 {
+            let n = r.u16()?;
+            let mut v = Vec::with_capacity(n as usize);
+            for _ in 0..n {
+                v.push(r.string()?);
+            }
+            v
+        } else {
+            Vec::new()
+        };
         let img_len = r.u32()? as usize;
         let program = CellProgram::from_bytes(r.take(img_len)?)?;
         Ok(Cartridge {
@@ -204,6 +231,7 @@ impl Cartridge {
                 abi_version,
                 signature,
                 state_addrs,
+                limits,
             },
             program,
         })
@@ -237,8 +265,13 @@ impl Cartridge {
                 .collect();
             format!("\n  state: {{ {} }}", fs.join(", "))
         };
+        let limits = if m.limits.is_empty() {
+            String::new()
+        } else {
+            format!("\n  limits: {} (escalates past these)", m.limits.join(", "))
+        };
         format!(
-            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}\n  \
+            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}\n  \
              entry: {} @ 0x{:04X}\n  code: {} bytes, {} functions\n  capabilities: {}\n  \
              symbols: {}\n  source_hash: 0x{:016x}",
             m.id,
@@ -272,6 +305,7 @@ impl Cartridge {
         let p = self.program.program();
         let c = &self.program.cfg;
         let tags: Vec<String> = m.tags.iter().map(|t| format!("\"{t}\"")).collect();
+        let limits: Vec<String> = m.limits.iter().map(|l| format!("\"{l}\"")).collect();
         let syms: Vec<String> = sorted_symbols(&p.symbols)
             .iter()
             .map(|(n, a)| format!("\"{n}\":{a}"))
@@ -284,6 +318,7 @@ impl Cartridge {
         };
         format!(
             "{{\"id\":\"{}\",\"abi\":{},\"compiler\":\"{}\",\"summary\":\"{}\",\"tags\":[{}],\
+             \"limits\":[{}],\
              \"entry\":\"{}\",\"signature\":{{\"params\":[{}],\"ret\":\"{}\",\"state\":[{}]}},\
              \"code_bytes\":{},\"functions\":{},\"source_hash\":\"0x{:016x}\",\
              \"capabilities\":{{\"raw_memory\":{},\"ports\":{},\"max_code\":{},\"max_touched\":{}}},\
@@ -293,6 +328,7 @@ impl Cartridge {
             m.compiler_version,
             m.summary,
             tags.join(","),
+            limits.join(","),
             m.entry,
             pairs_json(&m.signature.params),
             m.signature.ret,

@@ -110,21 +110,28 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
     }
 }
 
-/// Parse a cell source's leading `//!` header → `(summary, tags, entry)`.
-fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
-    let (mut summary, mut tags, mut entry) = (String::new(), Vec::new(), None);
+/// Parse a cell source's leading `//!` header → `(summary, tags, entry, limits)`.
+fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
+    let (mut summary, mut tags, mut entry, mut limits) =
+        (String::new(), Vec::new(), None, Vec::new());
+    let csv = |s: &str| -> Vec<String> {
+        s.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    };
     for line in src.lines() {
         let l = line.trim();
         if let Some(rest) = l.strip_prefix("//!") {
             let rest = rest.trim();
             if let Some(t) = rest.strip_prefix("tags:") {
-                tags = t
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
+                tags = csv(t);
             } else if let Some(e) = rest.strip_prefix("entry:") {
                 entry = Some(e.trim().to_string());
+            } else if let Some(m) = rest.strip_prefix("limits:") {
+                // The escalation contract, authorable from the source header — what this
+                // cell can't do (`//! limits: floats, inputs > 65535`).
+                limits = csv(m);
             } else if summary.is_empty() {
                 summary = rest.to_string();
             }
@@ -132,7 +139,7 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
             break; // first code line — header done
         }
     }
-    (summary, tags, entry)
+    (summary, tags, entry, limits)
 }
 
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
@@ -142,7 +149,7 @@ fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>
         Some("rs") => Some((|| {
             let src =
                 std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let (summary, tags, entry) = parse_meta(&src);
+            let (summary, tags, entry, limits) = parse_meta(&src);
             let id = path
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -156,6 +163,7 @@ fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>
                     entry,
                     summary,
                     tags,
+                    limits,
                 },
             )
         })()),
@@ -607,6 +615,7 @@ mod tests {
                     summary: "multiply two".into(),
                     tags: vec!["math".into(), "product".into()],
                     entry: None,
+                    limits: Vec::new(),
                 },
             )
             .unwrap(),

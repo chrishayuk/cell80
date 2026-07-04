@@ -396,6 +396,7 @@ fn cartridge_roundtrip_and_inspect() {
             summary: "product".into(),
             tags: vec!["math".into(), "demo".into()],
             entry: None, // resolves to `run`
+            limits: Vec::new(),
         },
     )
     .unwrap();
@@ -483,6 +484,7 @@ fn cell_host_warm_session() {
                 entry: Some("S::run".into()),
                 summary: "sum two fields".into(),
                 tags: vec!["state".into()],
+                limits: Vec::new(),
             },
         )
         .unwrap(),
@@ -658,6 +660,7 @@ fn cell_index_search_ranks_by_relevance() {
                 summary: format!("the {id} cell"),
                 tags: tags.iter().map(|s| s.to_string()).collect(),
                 entry: None,
+                limits: Vec::new(),
             },
         )
         .unwrap();
@@ -1461,6 +1464,7 @@ fn wide_u32_state_field_end_to_end() {
             entry: Some("Acc::run".into()),
             summary: "wide accumulator".into(),
             tags: vec!["state".into()],
+            limits: Vec::new(),
         },
     )
     .unwrap();
@@ -1645,4 +1649,77 @@ fn host_enables_caching_on_load() {
     host.run_fast(h, &[3, 4], DEFAULT_CYCLES).unwrap();
     assert_eq!(host.cache_stats(h).unwrap(), Some((1, 2)));
     host.unload(h).unwrap();
+}
+
+// ── the escalation contract (roadmap 3.2) ──────────────────────────────────────────
+
+#[test]
+fn escalation_band_decodes_as_a_typed_handoff() {
+    use cell80::{Halt, ESCALATE_BASE};
+    // A cell that answers small inputs and escalates past its domain.
+    let src = "fn run(n: u16) -> u16 { if n > 1000 { halt(0xFF06u16); } n * 2 }";
+    let mut r = Runner::compile(src).unwrap();
+    assert_eq!(r.run(None, &[21], DEFAULT_CYCLES).unwrap().result, 42);
+
+    let rep = r.run(None, &[2000], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.halt, Halt::Escalate(0xFF06));
+    assert_eq!(rep.halt.escalate_reason(), Some("out_of_domain"));
+    assert!(rep.to_json().contains("\"halt\":\"escalate\""));
+    assert!(rep.to_json().contains("\"escalate\":\"out_of_domain\""));
+    assert!(rep.to_json().contains("\"escalate_code\":65286"));
+    assert!(rep.to_human().contains("escalated (out_of_domain"));
+
+    // Below the band it's an ordinary explicit stop, exactly as before.
+    let src = "fn run() -> u16 { halt(7u16); 0 }";
+    let rep = cell80::run(src, None, &[], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.halt, Halt::Halted(7));
+    assert_eq!(rep.halt.escalate_reason(), None);
+
+    // The band floor itself escalates as "unspecified"; unnamed codes are "custom".
+    assert_eq!(Halt::Escalate(ESCALATE_BASE).escalate_reason(), Some("unspecified"));
+    assert_eq!(Halt::Escalate(0xFFAA).escalate_reason(), Some("custom"));
+}
+
+#[test]
+fn manifest_limits_round_trip_and_render() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
+    let cart = Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("adder".into()),
+            limits: vec!["floats".into(), "sums > 65535".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let bytes = cart.to_bytes();
+    let back = Cartridge::from_bytes(&bytes).unwrap();
+    assert_eq!(back.manifest.limits, vec!["floats", "sums > 65535"]);
+    assert!(back.to_human().contains("limits: floats, sums > 65535"));
+    assert!(back.to_json().contains("\"limits\":[\"floats\",\"sums > 65535\"]"));
+
+    // No declared limits → empty list, absent from the human view.
+    let plain = Cartridge::compile(
+        "fn run() -> u16 { 1 }",
+        CellConfig::sandboxed(),
+        CartridgeOpts::default(),
+    )
+    .unwrap();
+    let back = Cartridge::from_bytes(&plain.to_bytes()).unwrap();
+    assert!(back.manifest.limits.is_empty());
+    assert!(!back.to_human().contains("limits:"));
+}
+
+#[test]
+fn escalation_caches_like_any_deterministic_stop() {
+    // An escalation is a property of (entry, args) — the memoization cache may replay it.
+    let src = "fn run(n: u16) -> u16 { if n > 10 { halt(0xFF01u16); } n }";
+    let mut r = Runner::compile(src).unwrap();
+    r.enable_cache();
+    let first = r.run_fast(None, &[99], DEFAULT_CYCLES).unwrap();
+    let hit = r.run_fast(None, &[99], DEFAULT_CYCLES).unwrap();
+    assert_eq!(first.halt, cell80::Halt::Escalate(0xFF01));
+    assert_eq!(hit.halt, first.halt);
+    assert_eq!(r.cache_stats(), Some((1, 2)));
 }

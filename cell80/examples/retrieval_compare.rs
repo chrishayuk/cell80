@@ -19,20 +19,25 @@ type Method<'a> = (&'a str, &'a dyn Fn(&str) -> Vec<String>);
 
 /// Parse a library cell's `//!` header (summary / `tags:` / `entry:`) — mirrors the CLI's
 /// `parse_meta` so the manifests here are identical to what `index <dir>` builds.
-fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
-    let (mut summary, mut tags, mut entry) = (String::new(), Vec::new(), None);
+fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
+    let (mut summary, mut tags, mut entry, mut limits) =
+        (String::new(), Vec::new(), None, Vec::new());
+    let csv = |s: &str| -> Vec<String> {
+        s.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    };
     for line in src.lines() {
         let l = line.trim();
         if let Some(rest) = l.strip_prefix("//!") {
             let rest = rest.trim();
             if let Some(t) = rest.strip_prefix("tags:") {
-                tags = t
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
+                tags = csv(t);
             } else if let Some(e) = rest.strip_prefix("entry:") {
                 entry = Some(e.trim().to_string());
+            } else if let Some(m) = rest.strip_prefix("limits:") {
+                limits = csv(m);
             } else if summary.is_empty() {
                 summary = rest.to_string();
             }
@@ -40,7 +45,7 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>) {
             break; // first code line — header done
         }
     }
-    (summary, tags, entry)
+    (summary, tags, entry, limits)
 }
 
 /// Compile every `cell80/cells/*.rs` into a cartridge (id = file stem). Cartridges, not just
@@ -56,7 +61,7 @@ fn load_carts() -> Vec<Cartridge> {
     let mut out = Vec::new();
     for p in &paths {
         let src = std::fs::read_to_string(p).unwrap();
-        let (summary, tags, entry) = parse_meta(&src);
+        let (summary, tags, entry, limits) = parse_meta(&src);
         let id = p.file_stem().and_then(|s| s.to_str()).unwrap().to_string();
         match Cartridge::compile(
             &src,
@@ -66,6 +71,7 @@ fn load_carts() -> Vec<Cartridge> {
                 entry,
                 summary,
                 tags,
+                limits,
             },
         ) {
             Ok(c) => out.push(c),

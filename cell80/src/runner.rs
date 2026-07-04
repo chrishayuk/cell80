@@ -472,7 +472,13 @@ impl Runner {
         let halt = if bus.div0 {
             Halt::DivByZero
         } else if let Some(code) = bus.halt {
-            Halt::Halted(code)
+            // The escalation band: a structured "this exceeds the kernel class" hand-off,
+            // not an outcome — see `ESCALATE_BASE`.
+            if code >= crate::ESCALATE_BASE {
+                Halt::Escalate(code)
+            } else {
+                Halt::Halted(code)
+            }
         } else if cpu.halted {
             Halt::Returned
         } else if mem_limit {
