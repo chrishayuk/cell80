@@ -1,0 +1,650 @@
+{
+ "result": {
+  "artifact": "/Users/christopherhay/chris-source/cell80/cell-eval/potion/model-v2",
+  "theta": 0.14,
+  "latency": {
+   "median_us": 34.5,
+   "p99_us": 49.0
+  },
+  "splits": {
+   "direct": {
+    "n": 102,
+    "ungated_p1": 0.98,
+    "answer_rate": 0.824,
+    "answered_n": 84,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "n": 53,
+    "ungated_p1": 0.604,
+    "answer_rate": 0.472,
+    "answered_n": 25,
+    "precision_on_answered": 0.96
+   },
+   "adversarial": {
+    "n": 26,
+    "ungated_p1": 0.538,
+    "answer_rate": 0.308,
+    "answered_n": 8,
+    "precision_on_answered": 0.75
+   }
+  }
+ },
+ "calibration_curve": [
+  {
+   "theta": 0.0,
+   "direct": {
+    "answer_rate": 1.0,
+    "precision_on_answered": 0.98
+   },
+   "paraphrase": {
+    "answer_rate": 1.0,
+    "precision_on_answered": 0.604
+   },
+   "adversarial": {
+    "answer_rate": 1.0,
+    "precision_on_answered": 0.538
+   }
+  },
+  {
+   "theta": 0.01,
+   "direct": {
+    "answer_rate": 0.98,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.943,
+    "precision_on_answered": 0.64
+   },
+   "adversarial": {
+    "answer_rate": 0.923,
+    "precision_on_answered": 0.583
+   }
+  },
+  {
+   "theta": 0.02,
+   "direct": {
+    "answer_rate": 0.971,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.906,
+    "precision_on_answered": 0.667
+   },
+   "adversarial": {
+    "answer_rate": 0.808,
+    "precision_on_answered": 0.571
+   }
+  },
+  {
+   "theta": 0.03,
+   "direct": {
+    "answer_rate": 0.971,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.849,
+    "precision_on_answered": 0.711
+   },
+   "adversarial": {
+    "answer_rate": 0.769,
+    "precision_on_answered": 0.55
+   }
+  },
+  {
+   "theta": 0.04,
+   "direct": {
+    "answer_rate": 0.971,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.811,
+    "precision_on_answered": 0.721
+   },
+   "adversarial": {
+    "answer_rate": 0.731,
+    "precision_on_answered": 0.579
+   }
+  },
+  {
+   "theta": 0.05,
+   "direct": {
+    "answer_rate": 0.961,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.774,
+    "precision_on_answered": 0.732
+   },
+   "adversarial": {
+    "answer_rate": 0.731,
+    "precision_on_answered": 0.579
+   }
+  },
+  {
+   "theta": 0.06,
+   "direct": {
+    "answer_rate": 0.941,
+    "precision_on_answered": 0.99
+   },
+   "paraphrase": {
+    "answer_rate": 0.755,
+    "precision_on_answered": 0.75
+   },
+   "adversarial": {
+    "answer_rate": 0.692,
+    "precision_on_answered": 0.611
+   }
+  },
+  {
+   "theta": 0.07,
+   "direct": {
+    "answer_rate": 0.931,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.66,
+    "precision_on_answered": 0.829
+   },
+   "adversarial": {
+    "answer_rate": 0.615,
+    "precision_on_answered": 0.625
+   }
+  },
+  {
+   "theta": 0.08,
+   "direct": {
+    "answer_rate": 0.922,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.623,
+    "precision_on_answered": 0.848
+   },
+   "adversarial": {
+    "answer_rate": 0.577,
+    "precision_on_answered": 0.667
+   }
+  },
+  {
+   "theta": 0.09,
+   "direct": {
+    "answer_rate": 0.902,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.604,
+    "precision_on_answered": 0.875
+   },
+   "adversarial": {
+    "answer_rate": 0.577,
+    "precision_on_answered": 0.667
+   }
+  },
+  {
+   "theta": 0.1,
+   "direct": {
+    "answer_rate": 0.902,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.604,
+    "precision_on_answered": 0.875
+   },
+   "adversarial": {
+    "answer_rate": 0.577,
+    "precision_on_answered": 0.667
+   }
+  },
+  {
+   "theta": 0.11,
+   "direct": {
+    "answer_rate": 0.902,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.566,
+    "precision_on_answered": 0.933
+   },
+   "adversarial": {
+    "answer_rate": 0.538,
+    "precision_on_answered": 0.643
+   }
+  },
+  {
+   "theta": 0.12,
+   "direct": {
+    "answer_rate": 0.892,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.547,
+    "precision_on_answered": 0.931
+   },
+   "adversarial": {
+    "answer_rate": 0.462,
+    "precision_on_answered": 0.667
+   }
+  },
+  {
+   "theta": 0.13,
+   "direct": {
+    "answer_rate": 0.853,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.528,
+    "precision_on_answered": 0.929
+   },
+   "adversarial": {
+    "answer_rate": 0.385,
+    "precision_on_answered": 0.6
+   }
+  },
+  {
+   "theta": 0.14,
+   "direct": {
+    "answer_rate": 0.824,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.472,
+    "precision_on_answered": 0.96
+   },
+   "adversarial": {
+    "answer_rate": 0.308,
+    "precision_on_answered": 0.75
+   }
+  },
+  {
+   "theta": 0.15,
+   "direct": {
+    "answer_rate": 0.814,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.415,
+    "precision_on_answered": 0.955
+   },
+   "adversarial": {
+    "answer_rate": 0.308,
+    "precision_on_answered": 0.75
+   }
+  },
+  {
+   "theta": 0.16,
+   "direct": {
+    "answer_rate": 0.794,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.396,
+    "precision_on_answered": 0.952
+   },
+   "adversarial": {
+    "answer_rate": 0.192,
+    "precision_on_answered": 0.6
+   }
+  },
+  {
+   "theta": 0.17,
+   "direct": {
+    "answer_rate": 0.765,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.396,
+    "precision_on_answered": 0.952
+   },
+   "adversarial": {
+    "answer_rate": 0.192,
+    "precision_on_answered": 0.6
+   }
+  },
+  {
+   "theta": 0.18,
+   "direct": {
+    "answer_rate": 0.765,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.302,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.154,
+    "precision_on_answered": 0.75
+   }
+  },
+  {
+   "theta": 0.19,
+   "direct": {
+    "answer_rate": 0.755,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.283,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.154,
+    "precision_on_answered": 0.75
+   }
+  },
+  {
+   "theta": 0.2,
+   "direct": {
+    "answer_rate": 0.735,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.245,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.154,
+    "precision_on_answered": 0.75
+   }
+  },
+  {
+   "theta": 0.21,
+   "direct": {
+    "answer_rate": 0.725,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.226,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.115,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.22,
+   "direct": {
+    "answer_rate": 0.716,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.208,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.115,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.23,
+   "direct": {
+    "answer_rate": 0.716,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.189,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.115,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.24,
+   "direct": {
+    "answer_rate": 0.716,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.189,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.077,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.25,
+   "direct": {
+    "answer_rate": 0.657,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.17,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.26,
+   "direct": {
+    "answer_rate": 0.637,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.17,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.27,
+   "direct": {
+    "answer_rate": 0.608,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.151,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.28,
+   "direct": {
+    "answer_rate": 0.569,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.151,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.29,
+   "direct": {
+    "answer_rate": 0.539,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.151,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.3,
+   "direct": {
+    "answer_rate": 0.5,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.132,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.31,
+   "direct": {
+    "answer_rate": 0.461,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.132,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.32,
+   "direct": {
+    "answer_rate": 0.441,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.132,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.33,
+   "direct": {
+    "answer_rate": 0.431,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.132,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.34,
+   "direct": {
+    "answer_rate": 0.412,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.113,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.35,
+   "direct": {
+    "answer_rate": 0.402,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.075,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.36,
+   "direct": {
+    "answer_rate": 0.363,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.057,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.37,
+   "direct": {
+    "answer_rate": 0.353,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.057,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.38,
+   "direct": {
+    "answer_rate": 0.314,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.39,
+   "direct": {
+    "answer_rate": 0.284,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.038,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.0,
+    "precision_on_answered": 1.0
+   }
+  },
+  {
+   "theta": 0.4,
+   "direct": {
+    "answer_rate": 0.255,
+    "precision_on_answered": 1.0
+   },
+   "paraphrase": {
+    "answer_rate": 0.0,
+    "precision_on_answered": 1.0
+   },
+   "adversarial": {
+    "answer_rate": 0.0,
+    "precision_on_answered": 1.0
+   }
+  }
+ ]
+}

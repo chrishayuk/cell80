@@ -53,7 +53,8 @@ BLEND_ALPHA = 0.25
 # the margin scale depends on the embedding geometry, so θ is per-model.
 OPERATING_POINTS = {
     "minishlab/potion-retrieval-32M": 0.14,
-    "cell-potion": 0.11,  # domain-trained static (cell-eval/potion/, earned in 2026-07-03)
+    "cell-potion": 0.14,  # domain-trained static, v2 margin-shaped (cell-eval/potion/,
+    # v1 earned in 2026-07-03 at theta 0.11; v2 earned in 2026-07-04)
     "ollama:granite-embedding": 0.06,
     "ollama:nomic-embed-text": 0.05,
     "ollama:embeddinggemma": 0.06,

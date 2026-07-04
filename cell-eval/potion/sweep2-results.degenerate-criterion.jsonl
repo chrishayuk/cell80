@@ -1,0 +1,54 @@
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.1, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.0929}, "adversarial": {"n": 92, "acc": 0.3261, "margin": 0.0746}, "direct": {"n": 19, "acc": 1.0, "margin": 0.189}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.093}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0748}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1893}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.0931}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0748}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1895}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.1, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.0928}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0746}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1889}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.093}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0749}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1895}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5411, "margin": 0.0932}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.075}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1898}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.1, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5362, "margin": 0.0927}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0746}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1888}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 14, "dev": {"paraphrase": {"n": 207, "acc": 0.6377, "margin": 0.112}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.0923}, "direct": {"n": 19, "acc": 1.0, "margin": 0.232}}, "gate_proxy": {"theta_dev": 0.33, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 2, "dev": {"paraphrase": {"n": 207, "acc": 0.5362, "margin": 0.0933}, "adversarial": {"n": 92, "acc": 0.337, "margin": 0.0754}, "direct": {"n": 19, "acc": 1.0, "margin": 0.1905}}, "gate_proxy": {"theta_dev": 0.3, "score": 0.3308, "paraphrase": {"answer_rate": 0.0676, "prec": 1.0}, "adversarial": {"answer_rate": 0.0, "prec": 1.0}, "direct": {"answer_rate": 0.2632, "prec": 1.0}}, "score": 0.3308}
+
+BEST: {
+ "tau": 0.05,
+ "lam": 0.0,
+ "lr": 0.05,
+ "mu": 0.5,
+ "gamma": 0.1,
+ "select": "gate",
+ "epochs": 30,
+ "best_epoch": 2,
+ "dev": {
+  "paraphrase": {
+   "n": 207,
+   "acc": 0.5411,
+   "margin": 0.0929
+  },
+  "adversarial": {
+   "n": 92,
+   "acc": 0.3261,
+   "margin": 0.0746
+  },
+  "direct": {
+   "n": 19,
+   "acc": 1.0,
+   "margin": 0.189
+  }
+ },
+ "gate_proxy": {
+  "theta_dev": 0.3,
+  "score": 0.3308,
+  "paraphrase": {
+   "answer_rate": 0.0676,
+   "prec": 1.0
+  },
+  "adversarial": {
+   "answer_rate": 0.0,
+   "prec": 1.0
+  },
+  "direct": {
+   "answer_rate": 0.2632,
+   "prec": 1.0
+  }
+ },
+ "score": 0.3308
+}

@@ -60,13 +60,21 @@ def load_corpus(path: Path, cell_ids: set[str]) -> list[dict]:
 
 
 class Trainer:
-    def __init__(self, tau: float, lam: float, lr: float):
+    # v2 margin hinge (PROTOCOL.md "v2"): mu * max(0, gamma - (s_pos - max_other)),
+    # on RAW cosine scores. Class defaults keep mu=0 == the banked v1 math exactly
+    # (the gradient-check tests build Trainer via __new__ and rely on these).
+    mu = 0.0
+    gamma = 0.0
+
+    def __init__(self, tau: float, lam: float, lr: float,
+                 mu: float = 0.0, gamma: float = 0.0):
         from model2vec import StaticModel
 
         self.base = StaticModel.from_pretrained(BASE_MODEL)
         self.E = self.base.embedding.astype(np.float64).copy()
         self.tok = self.base.tokenizer
         self.tau, self.lam, self.lr = tau, lam, lr
+        self.mu, self.gamma = mu, gamma
         # Adam state over the full table (sparse rows touched, dense state kept)
         self.m = np.zeros_like(self.E)
         self.v = np.zeros_like(self.E)
@@ -127,6 +135,23 @@ class Trainer:
                 dlogits[i, c] += self.lam * g / B
 
         dlogits /= self.tau
+
+        # v2 margin hinge on raw cosine scores (subgradient through the max;
+        # ties broken by argmax, kinks measure zero under float scores)
+        if self.mu > 0:
+            S = logits * self.tau
+            for i in range(B):
+                pos = target_idx[i]
+                srow = S[i].copy()
+                s_pos = srow[pos]
+                srow[pos] = -np.inf
+                comp = int(np.argmax(srow))
+                viol = self.gamma - (s_pos - srow[comp])
+                if viol > 0:
+                    loss += self.mu * viol / B
+                    dlogits[i, pos] -= self.mu / B
+                    dlogits[i, comp] += self.mu / B
+
         dQ = dlogits @ D
         dD = dlogits.T @ Q
 
@@ -174,6 +199,40 @@ class Trainer:
                          "margin": round(float((srt[:, -1] - srt[:, -2]).mean()), 4)}
         return out
 
+    M0 = 0.15  # fixed dev margin threshold; harness scale: blended theta ~= 0.75 x
+    # cosine margin, so the real operating band (theta 0.11-0.14) sits near 0.15-0.19
+    # in pure cosine. Fixed across configs, never tuned per run.
+
+    def eval_gate_proxy(self, rows: list[dict], doc_toks: list[list[int]],
+                        cell_pos: dict[str, int]) -> dict:
+        """Dev analogue of the frozen-eval judge (PROTOCOL.md v2, amended): net
+        coverage at a FIXED cosine-margin threshold M0, per split:
+        P(correct AND margin >= M0) - P(wrong AND margin >= M0), summed. The
+        original precision-calibrated theta_dev was degenerate on dev (the authored
+        near-misses are harder than eval adversarial; theta_dev saturated at 0.30
+        with zero adversarial coverage for every config) — see sweep2-results.jsonl."""
+        Q, _, _ = self.encode_batch([r["_qtoks"] for r in rows])
+        D, _, _ = self.encode_batch(doc_toks)
+        S = Q @ D.T
+        top = np.argmax(S, axis=1)
+        correct = np.array([top[i] == cell_pos[r["cell"]] for i, r in enumerate(rows)])
+        srt = np.sort(S, axis=1)
+        confident = (srt[:, -1] - srt[:, -2]) >= self.M0
+        kinds = np.array([r["kind"] for r in rows])
+
+        out = {"m0": self.M0, "score": 0.0}
+        for kind in ("paraphrase", "adversarial", "direct"):
+            m = kinds == kind
+            if not m.any():
+                continue
+            good = float((m & confident & correct).sum() / m.sum())
+            bad = float((m & confident & ~correct).sum() / m.sum())
+            out[kind] = {"net": round(good - bad, 4), "covered_correct": round(good, 4),
+                         "covered_wrong": round(bad, 4)}
+            out["score"] += good - bad
+        out["score"] = round(out["score"], 4)
+        return out
+
     def save(self, out: Path):
         from model2vec import StaticModel
 
@@ -189,14 +248,15 @@ class Trainer:
 
 
 def run(pairs: Path, out: Path | None, tau: float, lam: float, lr: float,
-        epochs: int, batch_size: int = 256, log=print) -> dict:
+        epochs: int, batch_size: int = 256, log=print,
+        mu: float = 0.0, gamma: float = 0.0, select: str = "acc") -> dict:
     lib = open_library(None)
     mans = lib.list()
     mans.sort(key=lambda m: m["id"])
     cell_ids = {m["id"] for m in mans}
     cell_pos = {m["id"]: i for i, m in enumerate(mans)}
 
-    tr = Trainer(tau=tau, lam=lam, lr=lr)
+    tr = Trainer(tau=tau, lam=lam, lr=lr, mu=mu, gamma=gamma)
     doc_toks = [tr.ids(_doc(m)) for m in mans]
 
     rows = load_corpus(pairs, cell_ids)
@@ -219,14 +279,22 @@ def run(pairs: Path, out: Path | None, tau: float, lam: float, lr: float,
             ep_loss += tr.step(batch, doc_toks, tgt, hn)
             nb += 1
         dv = tr.eval_rows(dev, doc_toks, cell_pos)
-        score = sum(dv[k]["acc"] for k in dv if k != "n" and isinstance(dv[k], dict))
-        log(f"epoch {ep + 1}: loss {ep_loss / nb:.4f} dev {json.dumps(dv)}")
+        if select == "gate":
+            gp = tr.eval_gate_proxy(dev, doc_toks, cell_pos)
+            score = gp["score"]
+            log(f"epoch {ep + 1}: loss {ep_loss / nb:.4f} gate-proxy {json.dumps(gp)}")
+        else:
+            gp = None
+            score = sum(dv[k]["acc"] for k in dv if k != "n" and isinstance(dv[k], dict))
+            log(f"epoch {ep + 1}: loss {ep_loss / nb:.4f} dev {json.dumps(dv)}")
         if best is None or score >= best["score"]:
-            best = {"score": score, "epoch": ep + 1, "dev": dv,
+            best = {"score": score, "epoch": ep + 1, "dev": dv, "gate_proxy": gp,
                     "E": tr.E.copy() if out else None}
 
-    result = {"tau": tau, "lam": lam, "lr": lr, "epochs": epochs,
-              "best_epoch": best["epoch"], "dev": best["dev"], "score": round(best["score"], 4)}
+    result = {"tau": tau, "lam": lam, "lr": lr, "mu": mu, "gamma": gamma,
+              "select": select, "epochs": epochs, "best_epoch": best["epoch"],
+              "dev": best["dev"], "gate_proxy": best["gate_proxy"],
+              "score": round(best["score"], 4)}
     if out:
         tr.E = best["E"]
         tr.save(out)
@@ -243,11 +311,29 @@ def main():
     ap.add_argument("--lam", type=float, default=0.5)
     ap.add_argument("--lr", type=float, default=5e-3)
     ap.add_argument("--epochs", type=int, default=30)
+    ap.add_argument("--mu", type=float, default=0.0,
+                    help="v2 margin-hinge weight (0 = banked v1 objective)")
+    ap.add_argument("--gamma", type=float, default=0.0, help="v2 margin-hinge target")
+    ap.add_argument("--select", choices=("acc", "gate"), default=None,
+                    help="best-epoch criterion (default: acc, or gate when --mu > 0)")
     ap.add_argument("--sweep", action="store_true",
                     help="dev-split hyperparameter sweep (no artifact saved)")
+    ap.add_argument("--sweep2", action="store_true",
+                    help="v2 margin sweep: mu x gamma at v1's tau/lr, gate-proxy selection")
     a = ap.parse_args()
 
-    if a.sweep:
+    if a.sweep2:
+        results = []
+        for mu in (0.5, 1.0, 2.0):
+            for gamma in (0.2, 0.3, 0.5):
+                r = run(a.pairs, None, tau=0.05, lam=0.0, lr=0.05, epochs=a.epochs,
+                        mu=mu, gamma=gamma, select="gate", log=lambda *_: None)
+                results.append(r)
+                print(json.dumps(r), flush=True)
+        results.sort(key=lambda r: (-r["score"],
+                                    -(r["gate_proxy"] or {}).get("adversarial", {}).get("answer_rate", 0)))
+        print("\nBEST:", json.dumps(results[0], indent=1))
+    elif a.sweep:
         results = []
         # lr grid extended upward per the HF static-embeddings recipe: lookup
         # tables tolerate ~100x transformer learning rates (they use 0.2 SGD;
@@ -262,7 +348,9 @@ def main():
         results.sort(key=lambda r: -r["score"])
         print("\nBEST:", json.dumps(results[0], indent=1))
     else:
-        r = run(a.pairs, a.out, a.tau, a.lam, a.lr, a.epochs)
+        select = a.select or ("gate" if a.mu > 0 else "acc")
+        r = run(a.pairs, a.out, a.tau, a.lam, a.lr, a.epochs,
+                mu=a.mu, gamma=a.gamma, select=select)
         print(json.dumps({k: v for k, v in r.items() if k != "E"}, indent=1))
 
 

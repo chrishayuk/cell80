@@ -1,0 +1,57 @@
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 29, "dev": {"paraphrase": {"n": 207, "acc": 0.6377, "margin": 0.1254}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.1106}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2789}}, "gate_proxy": {"m0": 0.15, "score": 0.9066, "paraphrase": {"net": 0.2802, "covered_correct": 0.2995, "covered_wrong": 0.0193}, "adversarial": {"net": -0.163, "covered_correct": 0.0761, "covered_wrong": 0.2391}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9066}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 29, "dev": {"paraphrase": {"n": 207, "acc": 0.6425, "margin": 0.1284}, "adversarial": {"n": 92, "acc": 0.2717, "margin": 0.1138}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2906}}, "gate_proxy": {"m0": 0.15, "score": 0.9066, "paraphrase": {"net": 0.2802, "covered_correct": 0.2995, "covered_wrong": 0.0193}, "adversarial": {"net": -0.163, "covered_correct": 0.0761, "covered_wrong": 0.2391}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9066}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 0.5, "gamma": 0.5, "select": "gate", "epochs": 30, "best_epoch": 30, "dev": {"paraphrase": {"n": 207, "acc": 0.6425, "margin": 0.1319}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.1171}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2992}}, "gate_proxy": {"m0": 0.15, "score": 0.8958, "paraphrase": {"net": 0.2802, "covered_correct": 0.3043, "covered_wrong": 0.0242}, "adversarial": {"net": -0.1739, "covered_correct": 0.0761, "covered_wrong": 0.25}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.8958}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 30, "dev": {"paraphrase": {"n": 207, "acc": 0.6377, "margin": 0.1273}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.114}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2851}}, "gate_proxy": {"m0": 0.15, "score": 0.9163, "paraphrase": {"net": 0.2899, "covered_correct": 0.3092, "covered_wrong": 0.0193}, "adversarial": {"net": -0.163, "covered_correct": 0.087, "covered_wrong": 0.25}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9163}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 13, "dev": {"paraphrase": {"n": 207, "acc": 0.6377, "margin": 0.1102}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.0886}, "direct": {"n": 19, "acc": 1.0, "margin": 0.224}}, "gate_proxy": {"m0": 0.15, "score": 0.9006, "paraphrase": {"net": 0.2415, "covered_correct": 0.2512, "covered_wrong": 0.0097}, "adversarial": {"net": -0.1304, "covered_correct": 0.0435, "covered_wrong": 0.1739}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9006}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 1.0, "gamma": 0.5, "select": "gate", "epochs": 30, "best_epoch": 13, "dev": {"paraphrase": {"n": 207, "acc": 0.6329, "margin": 0.1117}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.0896}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2266}}, "gate_proxy": {"m0": 0.15, "score": 0.9006, "paraphrase": {"net": 0.2415, "covered_correct": 0.2512, "covered_wrong": 0.0097}, "adversarial": {"net": -0.1304, "covered_correct": 0.0435, "covered_wrong": 0.1739}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9006}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.2, "select": "gate", "epochs": 30, "best_epoch": 25, "dev": {"paraphrase": {"n": 207, "acc": 0.6473, "margin": 0.1249}, "adversarial": {"n": 92, "acc": 0.2826, "margin": 0.1112}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2793}}, "gate_proxy": {"m0": 0.15, "score": 0.9115, "paraphrase": {"net": 0.285, "covered_correct": 0.2995, "covered_wrong": 0.0145}, "adversarial": {"net": -0.163, "covered_correct": 0.0761, "covered_wrong": 0.2391}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9115}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.3, "select": "gate", "epochs": 30, "best_epoch": 14, "dev": {"paraphrase": {"n": 207, "acc": 0.6377, "margin": 0.1138}, "adversarial": {"n": 92, "acc": 0.2935, "margin": 0.0945}, "direct": {"n": 19, "acc": 1.0, "margin": 0.2376}}, "gate_proxy": {"m0": 0.15, "score": 0.9163, "paraphrase": {"net": 0.2464, "covered_correct": 0.256, "covered_wrong": 0.0097}, "adversarial": {"net": -0.1196, "covered_correct": 0.0543, "covered_wrong": 0.1739}, "direct": {"net": 0.7895, "covered_correct": 0.7895, "covered_wrong": 0.0}}, "score": 0.9163}
+{"tau": 0.05, "lam": 0.0, "lr": 0.05, "mu": 2.0, "gamma": 0.5, "select": "gate", "epochs": 30, "best_epoch": 24, "dev": {"paraphrase": {"n": 207, "acc": 0.6473, "margin": 0.1365}, "adversarial": {"n": 92, "acc": 0.2935, "margin": 0.1221}, "direct": {"n": 19, "acc": 1.0, "margin": 0.3136}}, "gate_proxy": {"m0": 0.15, "score": 0.9375, "paraphrase": {"net": 0.2802, "covered_correct": 0.3092, "covered_wrong": 0.029}, "adversarial": {"net": -0.1848, "covered_correct": 0.0652, "covered_wrong": 0.25}, "direct": {"net": 0.8421, "covered_correct": 0.8421, "covered_wrong": 0.0}}, "score": 0.9375}
+
+BEST: {
+ "tau": 0.05,
+ "lam": 0.0,
+ "lr": 0.05,
+ "mu": 2.0,
+ "gamma": 0.5,
+ "select": "gate",
+ "epochs": 30,
+ "best_epoch": 24,
+ "dev": {
+  "paraphrase": {
+   "n": 207,
+   "acc": 0.6473,
+   "margin": 0.1365
+  },
+  "adversarial": {
+   "n": 92,
+   "acc": 0.2935,
+   "margin": 0.1221
+  },
+  "direct": {
+   "n": 19,
+   "acc": 1.0,
+   "margin": 0.3136
+  }
+ },
+ "gate_proxy": {
+  "m0": 0.15,
+  "score": 0.9375,
+  "paraphrase": {
+   "net": 0.2802,
+   "covered_correct": 0.3092,
+   "covered_wrong": 0.029
+  },
+  "adversarial": {
+   "net": -0.1848,
+   "covered_correct": 0.0652,
+   "covered_wrong": 0.25
+  },
+  "direct": {
+   "net": 0.8421,
+   "covered_correct": 0.8421,
+   "covered_wrong": 0.0
+  }
+ },
+ "score": 0.9375
+}

@@ -159,3 +159,45 @@ Winning config (selected on the generated-corpus dev split only, pre-registered
 criterion = sum of split accuracies): τ = 0.05, λ = 0.0, lr = 0.05 (Adam),
 best epoch 6 — the most aggressive lr in the grid, consistent with the HF
 static-embeddings finding that lookup tables want ~100× transformer LRs.
+
+## Result v2 (2026-07-04): margin-shaped training — EARNED IN
+
+v1's banked anomaly (identical ungated adversarial P@1 to nomic, 2.4x less
+certified coverage) said the gap was margin geometry, not ranking. v2 added one
+term to the objective — a hinge mu * max(0, gamma - (s_pos - max_other)) on the
+raw cosine margin (mu = 2, gamma = 0.5, selected on the generated-corpus dev
+split only) — and took the second, pre-registered shot at the frozen set:
+
+| split | v2 @ theta = 0.14 | v1 | nomic |
+|---|---|---|---|
+| direct | **0.824** @ 1.00 | 0.814 @ 1.00 | 0.91 @ 0.99 |
+| paraphrase | **0.472** @ 0.96 | 0.396 @ 0.81 | 0.47 @ 0.80 |
+| adversarial | **0.308** (8/26) @ 0.75 | 0.192 (5/26) @ 0.80 | 0.46 @ 0.75 |
+
+All three gate conditions pass: strict improvement on every split, adversarial
++3 queries (the >= +2 non-thin bar held), latency 34.5 us median / 49 us p99.
+
+**The headline: paraphrase answered-coverage now MATCHES nomic (0.472 vs 0.47)
+at higher precision (0.96 vs 0.80) and ~1000x lower latency.** On the
+text-separable residue, the domain-trained static tier no longer concedes
+anything to the served transformer. Adversarial closed from 0.192 to 0.308
+against nomic's 0.46 — margins bought back half the remaining gap; what's left
+is the same-shape-sibling residue that belongs to tier 3.
+
+Protocol notes banked with the number:
+- The pre-registered dev selection instrument (precision-calibrated theta_dev)
+  was degenerate — all 9 configs tied, best-epoch collapsed to the warm start.
+  Amended BEFORE any frozen read to fixed-threshold net coverage (M0 = 0.15);
+  the degenerate sweep is banked as sweep2-results.degenerate-criterion.jsonl.
+  The kill gate itself never moved.
+- Dev adversarial net coverage stayed NEGATIVE for every config (confidently
+  wrong 3-4x more often than confidently right on authored near-misses) — yet
+  the frozen adversarial split improved 5/26 -> 8/26. The authored near-misses
+  are harder than the eval's; dev pessimism on this split is structural.
+- Eval-shot ledger: the frozen set has now been read twice (v1, v2). Any
+  further experiment requires an independently authored eval extension FIRST.
+  This closes the static tier's training program.
+
+The v2 table replaced the `cell-potion` alias artifact (potion/model,
+rebuild: `train.py --mu 2 --gamma 0.5`, seed 80, deterministic) and theta in
+OPERATING_POINTS (0.11 -> 0.14); the bake-off row carries v2.

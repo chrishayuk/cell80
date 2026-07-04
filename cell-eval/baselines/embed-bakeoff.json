@@ -25,26 +25,26 @@
  },
  {
   "model": "cell-potion",
-  "notes": "domain-TRAINED static (model2vec shape, warm-start potion-retrieval-32M, InfoNCE over all 100 manifest docs; corpus datasets/potion-train-pairs.jsonl; protocol cell-eval/potion/PROTOCOL.md; artifact rebuilt deterministically by potion/train.py, not committed). ms_per_query is the pre-registered in-process measure (warm single-query Embedder.encode median); the potion-32M row's 1.7 includes eval-loop overhead - its in-process floor measures 0.032 the same way.",
-  "ms_per_query": 0.034,
-  "theta": 0.11,
+  "notes": "domain-TRAINED static v2, margin-shaped (model2vec shape, potion-32M warm start, InfoNCE over all 100 manifest docs + hinge mu=2 gamma=0.5 on the cosine top1-top2 margin; corpus datasets/potion-train-pairs.jsonl; protocol cell-eval/potion/PROTOCOL.md; deterministic rebuild via potion/train.py --mu 2 --gamma 0.5, artifact not committed). v1 (no hinge, theta 0.11) answered 0.814/0.396/0.192 - see spec Result history. ms_per_query is the pre-registered in-process measure (warm single-query Embedder.encode median).",
+  "ms_per_query": 0.0345,
+  "theta": 0.14,
   "ungated": {
-   "direct": 0.971,
+   "direct": 0.98,
    "paraphrase": 0.604,
    "adversarial": 0.538
   },
   "answered_at_floor": {
    "direct": {
-    "rate": 0.814,
+    "rate": 0.824,
     "prec": 1.0
    },
    "paraphrase": {
-    "rate": 0.396,
-    "prec": 0.81
+    "rate": 0.472,
+    "prec": 0.96
    },
    "adversarial": {
-    "rate": 0.192,
-    "prec": 0.8
+    "rate": 0.308,
+    "prec": 0.75
    }
   }
  },
