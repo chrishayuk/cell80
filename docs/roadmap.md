@@ -322,7 +322,7 @@ running-stat cells toward "ask the agent to write Python."
   `ratio_255`/`scale_percent`/`within_percent`) now compute wide and saturate — the audit reads
   **2/7** wrong, and what remains is precisely *result* overflow (`square(300)`, `weighted_sum`),
   i.e. the u32-in-state prize proper. `u32` **comparisons** stay unbuilt (cells compare via the
-  word-split idiom); add `Cond32` when a cell family needs them broadly.
+  word-split idiom); `Cond32` **landed 2026-07-04**: u32 comparisons in condition and value position (SBC-borrow materialisation, oracle-checked), plus u32 saturating_add/sub riding it.
 - **`u32` in state — ✓ done, end to end (ABI v2, `.cell` v4).** The compiler side:
   `layout.rs` gives a `u32` field two little-endian slots (`FieldDef.width` distinguishes it
   from a 2-element array), field access lowers wide (`Var32`/`Assign32` by value,
@@ -339,7 +339,7 @@ running-stat cells toward "ask the agent to write Python."
   `overflow_audit` example now ends **3/3 wide fields exact** — the u16 ceiling is gone
   end-to-end: compute wide, persist wide, read wide by name. (Value-cell u16 *returns* stay
   capped by the register convention — that's the honest residual, shown in the audit.)
-  **Next here:** u32 comparisons (`Cond32`) when a cell family needs them; retrieval rows for
+  **Next here (updated):** u32 comparisons shipped (see above); retrieval rows for
   the wide siblings in the cell-eval dataset (library grew 98 → 100, so the
   `retrieval_compare` baselines will shift a hair on next run).
 - **Fixed-point — a convention on `u32`, not a type.** Q-format is a `u32` with a point

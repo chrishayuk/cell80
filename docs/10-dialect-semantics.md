@@ -91,15 +91,25 @@ rustc, which is what the differential oracle runs. `u8` ops mask to 8 bits, `u16
 the bare operators (everything wraps). There is no overflow trap and no checked
 arithmetic.
 
-**`saturating_add`/`saturating_sub`/`saturating_mul`** are accepted for `u8`/`u16` —
-real Rust, oracle-checked — lowering to branch-free mask clamps (`s | (0 - overflow)`
-for add, `d & (0 - in_range)` for sub, a widened product with a high-part test for
-mul). The clamp re-reads its operands, so effectful operands (a call in operand
-position) are rejected with a "bind it first" message. `u32` saturating waits on
-32-bit comparisons; `i16` saturating clamps to a *signed* range the mask trick
-doesn't express — both reject instructively. This removes the compiles-but-wraps
-class in machine-authored cells: `a.saturating_add(b)` now means what it means in
-host Rust.
+**`saturating_add`/`saturating_sub`/`saturating_mul`** are accepted for `u8`/`u16`,
+and **`saturating_add`/`saturating_sub` for `u32`** — real Rust, oracle-checked —
+lowering to branch-free mask clamps (`s | (0 - overflow)` for add, `d & (0 -
+in_range)` for sub, a widened product with a high-part test for mul; the u32 clamps
+ride the 32-bit compare below). The clamp re-reads its operands, so effectful
+operands (a call in operand position) are rejected with a "bind it first" message.
+`u32` `saturating_mul` needs a 64-bit product and stays out; `i16` saturating clamps
+to a *signed* range the mask trick doesn't express — both reject instructively. This
+removes the compiles-but-wraps class in machine-authored cells:
+`a.saturating_add(b)` now means what it means in host Rust.
+
+**`u32` comparisons** are in, condition and value position alike: `if a < b`,
+`while total < cap`, `(a == b) as u16` — unsigned (the dialect has no `i32`),
+oracle-checked across the word seams. The lowering computes `l - r` through the
+32-bit `SBC` chain and reads the final borrow as `l < r` (equality ORs the
+difference's four bytes) — branch-free, no labels, no traps. In condition position
+the `0`/`1` materialises and branches on `!= 0`, the same compound-condition shape
+`&&`/`||` use. The word-split idiom (`hi != hi || lo < lo`) retires; the
+`q_max`/Q-clamp family writes `if a < b { b } else { a }` as intended.
 
 Shifts: a constant amount unrolls; a runtime amount shifts by the **low byte** of the
 operand, and a count ≥ the width shifts out to `0` (matching rustc's behaviour for the

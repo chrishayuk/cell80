@@ -700,11 +700,19 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
         if let Some(cmp) = cmp_op(&b.op) {
             let (le, lw) = lower_expr(&b.left, ctx)?;
             let (re, rw) = lower_expr(&b.right, ctx)?;
+            // A u32 comparison materialises `0`/`1` and branches on `!= 0` (the
+            // compound-condition shape) — `Cond` itself stays 16-bit.
             if lw == Width::DWord || rw == Width::DWord {
-                return Err(
-                    "u32 comparisons are not supported yet — compare the words (`as u16`, `>> 16`)"
-                        .into(),
-                );
+                return Ok(Cond {
+                    cmp: Cmp::Ne,
+                    lhs: Expr::Cmp32 {
+                        cmp,
+                        lhs: Box::new(coerce32(le, lw)),
+                        rhs: Box::new(coerce32(re, rw)),
+                    },
+                    rhs: Expr::Lit(0),
+                    signed: false,
+                });
             }
             return Ok(Cond {
                 cmp,

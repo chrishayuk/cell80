@@ -20,7 +20,9 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
             calls_in_expr(l, out);
             calls_in_expr(r, out);
         }
-        Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. } => {
             calls_in_expr(lhs, out);
             calls_in_expr(rhs, out);
         }
@@ -171,7 +173,9 @@ pub(crate) fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
                 in_expr(l, out);
                 in_expr(r, out);
             }
-            Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+            Expr::Cmp { lhs, rhs, .. }
+            | Expr::Logic { lhs, rhs, .. }
+            | Expr::Cmp32 { lhs, rhs, .. } => {
                 in_expr(lhs, out);
                 in_expr(rhs, out);
             }

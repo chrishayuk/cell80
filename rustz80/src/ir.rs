@@ -29,7 +29,7 @@ pub enum Width {
     DWord,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Cmp {
     Lt,
     Le,
@@ -95,6 +95,16 @@ pub enum Expr {
     /// already decide the result (Rust short-circuit semantics).
     Logic {
         and: bool,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    /// A **u32** comparison as a value: `1`/`0` in `HL` (`Width::Byte` bool).
+    /// Unsigned only (the dialect has no `i32`). Ordering rides the 32-bit `SBC`
+    /// chain's borrow; equality tests the difference's four bytes. In condition
+    /// position this materialises and branches on `!= 0` (the compound-`Cond`
+    /// pattern) — `Cond` itself stays 16-bit.
+    Cmp32 {
+        cmp: Cmp,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },

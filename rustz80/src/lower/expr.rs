@@ -382,11 +382,16 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
     if let Some(cmp) = cmp_op(&b.op) {
         let (le, lw) = lower_expr(&b.left, ctx)?;
         let (re, rw) = lower_expr(&b.right, ctx)?;
+        // A u32 side makes it a 32-bit compare (the 16-bit side zero-extends).
         if lw == Width::DWord || rw == Width::DWord {
-            return Err(
-                "u32 comparisons are not supported yet — compare the words (`as u16`, `>> 16`)"
-                    .into(),
-            );
+            return Ok((
+                Expr::Cmp32 {
+                    cmp,
+                    lhs: Box::new(coerce32(le, lw)),
+                    rhs: Box::new(coerce32(re, rw)),
+                },
+                Width::Byte,
+            ));
         }
         let signed = lw == Width::SWord || rw == Width::SWord;
         let (lhs, rhs) = (Box::new(le), Box::new(re));
@@ -977,13 +982,6 @@ fn lower_saturating(
     let (recv, rw) = lower_expr(&m.receiver, ctx)?;
     let arg = m.args.first().ok_or("saturating_* needs an argument")?;
     let (re, aw) = lower_expr(arg, ctx)?;
-    if rw == Width::DWord || aw == Width::DWord {
-        return Err(
-            "u32 saturating_* is not supported yet — clamp explicitly: compute wide, \
-             test, and select"
-                .into(),
-        );
-    }
     if rw == Width::SWord || aw == Width::SWord {
         return Err(
             "i16 saturating_* is not supported — the clamp bounds are signed \
@@ -997,6 +995,36 @@ fn lower_saturating(
              bind them first: `let x = …;`"
                 .into(),
         );
+    }
+    // u32: the same mask trick over the 32-bit nodes (`Cmp32` supplies the flag).
+    // `saturating_mul` would need the 64-bit product — still out.
+    if rw == Width::DWord || aw == Width::DWord {
+        if method == "saturating_mul" {
+            return Err(
+                "u32 saturating_mul is not supported (needs a 64-bit product) — \
+                 clamp explicitly against a known bound"
+                    .into(),
+            );
+        }
+        let (recv, re) = (coerce32(recv, rw), coerce32(re, aw));
+        let bin32 = |op, a: Expr, b: Expr| Expr::Bin32(op, Box::new(a), Box::new(b));
+        let cmp32 = |c, lhs: Expr, rhs: Expr| Expr::Cmp32 {
+            cmp: c,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        };
+        // `0 - flag` widened: `0xFFFF_FFFF` when set, `0` otherwise.
+        let mask32 = |flag: Expr| bin32(BinOp::Sub, Expr::Lit32(0), Expr::Widen(Box::new(flag)));
+        let e = if method == "saturating_add" {
+            let s = bin32(BinOp::Add, recv.clone(), re);
+            let ovf = cmp32(Cmp::Lt, s.clone(), recv);
+            bin32(BinOp::Or, s, mask32(ovf))
+        } else {
+            let ok = cmp32(Cmp::Ge, recv.clone(), re.clone());
+            let d = bin32(BinOp::Sub, recv, re);
+            bin32(BinOp::And, d, mask32(ok))
+        };
+        return Ok((e, Width::DWord));
     }
     // The receiver decides the width (as Rust's inference does for the argument).
     let w = rw;
@@ -1297,9 +1325,9 @@ fn has_effects(e: &Expr) -> bool {
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => false,
         Expr::Lit32(_) | Expr::Var32(_) => false,
         Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => has_effects(a) || has_effects(b),
-        Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
-            has_effects(lhs) || has_effects(rhs)
-        }
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. } => has_effects(lhs) || has_effects(rhs),
         Expr::Index(_, i, _) => has_effects(i),
         Expr::Trunc(x) | Expr::Trunc32(x) | Expr::Widen(x) | Expr::Peek(x) => has_effects(x),
         Expr::Deref(p, _) | Expr::Deref32(p, _) => has_effects(p),
