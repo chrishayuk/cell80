@@ -693,10 +693,13 @@ impl CellHost {
             }
             // Already-loaded runners with this artifact take the fact now; a
             // collision with a differing outcome is decided by the warm runner's
-            // own (execution-produced) entry — the newcomer loses, loudly.
+            // own (execution-produced) entry — the newcomer loses, loudly, and a
+            // fact falsified here must not be staged either.
+            let mut falsified_live = false;
             for l in self.live.iter_mut().flatten() {
                 if l.runner.artifact_hash() == f.artifact {
                     if let Err(have) = l.runner.insert_fact(&f, &l.state_addrs) {
+                        falsified_live = true;
                         rep.failures.push(FactFailure {
                             line,
                             key: crate::facts::fact_key(&f),
@@ -711,6 +714,9 @@ impl CellHost {
                         });
                     }
                 }
+            }
+            if falsified_live {
+                continue;
             }
             // Stage — a contradiction against an *earlier import's* staged fact is
             // decided by execution too: the newcomer must prove itself to displace.

@@ -231,3 +231,122 @@ fn inline_helper_then_movement_multi_array_fields() {
     ";
     assert_eq!(run_program(src, "run"), host()); // 15
 }
+
+#[test]
+fn inline_remaps_every_ir_shape() {
+    // A single-call-site helper whose body touches (nearly) every IR node — the
+    // inliner's remap walkers must relocate all of it correctly. Checked against
+    // rustc, and the helper must actually be folded away.
+    let src = "
+        const TBL: [u8; 4] = [3u8, 1u8, 4u8, 1u8];
+        fn helper(seed: u16, k: u16) -> u16 {
+            let mut acc = seed;
+            let mut arr = [0u16; 3];
+            let mask = [7u16; 2];
+            arr[0] = TBL[1] as u16;
+            arr[k % 3u16] = acc & mask[0];
+            let wide = (acc as u32) * 3u32 + 1u32;
+            let flag = (acc < 100u16) && (k != 0u16);
+            let rot = acc.rotate_left(3) ^ acc.swap_bytes();
+            let bits = acc.count_ones() as u16;
+            let mut i = 0u16;
+            loop {
+                if i >= 2u16 {
+                    break;
+                }
+                acc = acc.wrapping_add(arr[i] << 1u16);
+                i = i + 1u16;
+            }
+            for j in 0..k % 4u16 {
+                if j == 3u16 {
+                    continue;
+                }
+                acc = acc ^ (j << (k & 3u16));
+            }
+            while acc > 60000u16 {
+                acc = acc / 3u16;
+            }
+            acc = match acc & 3u16 {
+                0u16 => acc + flag as u16,
+                1u16 | 2u16 => acc + bits,
+                _ => acc + rot % 5u16,
+            };
+            acc.wrapping_add((wide >> 8u32) as u16).wrapping_sub(peek(0u16) as u16)
+        }
+        fn feeder(x: u16) -> u16 { x + 1u16 }
+        fn run() -> u16 {
+            // A statement-shaped call site (the inliner's contract) with an impure
+            // arg (a call) → the slot-bind path, not substitution.
+            let r = helper(feeder(41u16), 5u16);
+            r
+        }
+    ";
+    #[allow(clippy::needless_range_loop)]
+    fn host() -> u16 {
+        const TBL: [u8; 4] = [3, 1, 4, 1];
+        fn helper(seed: u16, k: u16) -> u16 {
+            let mut acc = seed;
+            let mut arr = [0u16; 3];
+            let mask = [7u16; 2];
+            arr[0] = TBL[1] as u16;
+            arr[(k % 3) as usize] = acc & mask[0];
+            let wide = (acc as u32) * 3 + 1;
+            let flag = (acc < 100) && (k != 0);
+            let rot = acc.rotate_left(3) ^ acc.swap_bytes();
+            let bits = acc.count_ones() as u16;
+            let mut i = 0u16;
+            loop {
+                if i >= 2 {
+                    break;
+                }
+                acc = acc.wrapping_add(arr[i as usize] << 1);
+                i += 1;
+            }
+            for j in 0..k % 4 {
+                if j == 3 {
+                    continue;
+                }
+                acc ^= j << (k & 3);
+            }
+            while acc > 60000 {
+                acc /= 3;
+            }
+            acc = match acc & 3 {
+                0 => acc + flag as u16,
+                1 | 2 => acc + bits,
+                _ => acc + rot % 5,
+            };
+            acc.wrapping_add((wide >> 8) as u16) // peek(0) is 0 in the harness RAM
+        }
+        fn feeder(x: u16) -> u16 {
+            x + 1
+        }
+        helper(feeder(41), 5)
+    }
+    assert_eq!(run_program(src, "run"), host());
+    // Through the pruned pipeline (the cell path — the one that inlines), both
+    // helpers fold away: single-call-site each, so only `run` survives.
+    let file: syn::File = syn::parse_str(src).unwrap();
+    let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &["run"]).unwrap();
+    assert!(!prog.symbols.contains_key("helper"));
+    // `feeder` rode as an argument (nested in an expression) — it stays a call.
+    assert!(prog.symbols.contains_key("feeder"));
+    assert!(prog.symbols.contains_key("run"));
+}
+
+#[test]
+fn inline_leaves_wide_boundary_and_multisite_fns_alone() {
+    // Wide-boundary fns and 2+-site helpers stay real calls.
+    let src = "
+        fn wide(acc: u32) -> u32 { acc + 1u32 }
+        fn twice(x: u16) -> u16 { x * 2u16 }
+        fn run() -> u16 {
+            (wide(70_000u32) & 0xFFu32) as u16 + twice(3u16) + twice(4u16)
+        }
+    ";
+    let file: syn::File = syn::parse_str(src).unwrap();
+    let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &["run"]).unwrap();
+    assert!(prog.symbols.contains_key("wide"));
+    assert!(prog.symbols.contains_key("twice"));
+    assert_eq!(run_program(src, "run"), (70_001u32 & 0xFF) as u16 + 6 + 8);
+}

@@ -5,7 +5,7 @@
 
 use cell80::{
     Cartridge, CartridgeOpts, CellConfig, CellHost, CellProgram, DivByZero, Fact, ImportPolicy,
-    DEFAULT_CYCLES,
+    Runner, DEFAULT_CYCLES,
 };
 
 fn mul_cart() -> Cartridge {
@@ -533,8 +533,14 @@ fn cli_route_end_to_end_with_facts() {
     let d = dir.to_str().unwrap();
     let s = |v: &[&str]| -> Vec<String> { v.iter().map(|t| t.to_string()).collect() };
 
-    let facts_text =
-        run_cli(&s(&["facts", "export", d, "--calls", calls.to_str().unwrap()])).unwrap();
+    let facts_text = run_cli(&s(&[
+        "facts",
+        "export",
+        d,
+        "--calls",
+        calls.to_str().unwrap(),
+    ]))
+    .unwrap();
     let facts_file = dir.join("min.facts");
     std::fs::write(&facts_file, &facts_text).unwrap();
 
@@ -564,4 +570,295 @@ fn cli_route_end_to_end_with_facts() {
         "no facts imported:\n{flipped}"
     );
     std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn fact_line_parse_rejections() {
+    // Every malformed shape is a per-line reject with a reason (never a panic).
+    let good = "{\"a\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"e\":\"run\",\"args\":[1],\"r\":[1,0,0],\"cy\":5,\"tr\":0,\"h\":\"ok\"}";
+    assert!(Fact::from_line(good).is_ok());
+    let bad = [
+        "not json",
+        "[1,2,3]",                                               // not an object
+        &good.replace("\"a\":\"sha256:", "\"a\":\"md5:"),        // wrong hash scheme
+        &good.replace("000000", "zzzzzz"),                       // bad hex
+        &good.replacen("0000", "00", 1),                         // short hex
+        &good.replace(",\"e\":\"run\"", ""),                     // missing entry
+        &good.replace(",\"args\":[1]", ""),                      // missing input
+        &good.replace("\"args\":[1]", "\"args\":[99999]"),       // arg > u16
+        &good.replace("\"args\":[1]", "\"args\":\"x\""),         // args not an array
+        &good.replace("\"r\":[1,0,0]", "\"r\":[1,0]"),           // short regs
+        &good.replace("\"r\":[1,0,0]", "\"r\":[1,0,99999]"),     // reg > u16
+        &good.replace(",\"cy\":5", ""),                          // missing cost
+        &good.replace(",\"tr\":0", ""),                          // missing trapped_ops
+        &good.replace("\"h\":\"ok\"", "\"h\":\"weird\""),        // unknown halt
+        &good.replace("\"h\":\"ok\"", "\"h\":\"halt:x\""),       // bad halt code
+        &good.replace("\"h\":\"ok\"", "\"h\":\"memory_limit\""), // budget-relative
+    ];
+    for (i, b) in bad.iter().enumerate() {
+        assert!(Fact::from_line(b).is_err(), "case {i} should reject: {b}");
+    }
+    // Halt encodings round-trip through the line, including state facts with `f`/`out`.
+    for h in ["div_by_zero", "halt:7", "escalate:65281"] {
+        let line = good.replace("\"h\":\"ok\"", &format!("\"h\":\"{h}\""));
+        let f = Fact::from_line(&line).unwrap();
+        assert_eq!(f.to_line(), line);
+    }
+    let state = good
+        .replace("\"args\":[1]", "\"f\":{\"a\":1,\"b\":2}")
+        .replace("\"h\":\"ok\"", "\"h\":\"ok\",\"out\":{\"y\":9}");
+    let f = Fact::from_line(&state).unwrap();
+    assert_eq!(f.to_line(), state);
+}
+
+#[test]
+fn import_conflicts_with_live_entries_lose_by_execution() {
+    // A warm runner's own cache entry *is* an execution result — an imported claim
+    // that contradicts it loses (both the value and the state shape).
+    let (buf, _) = export_workload();
+    let text = String::from_utf8(buf).unwrap();
+    let mut b = CellHost::new();
+    b.set_cache(true);
+    b.add(mul_cart());
+    b.add(score_cart());
+    // Compute local truths first (the entries the file will collide with).
+    let hm = b.load("mul.v1").unwrap();
+    b.run_fast(hm, &[3, 7], DEFAULT_CYCLES).unwrap();
+    let hs = b.load("score.v1").unwrap();
+    b.run_state_fast(hs, &[("wx".into(), 3), ("x".into(), 17)], DEFAULT_CYCLES)
+        .unwrap();
+    // Tamper both corresponding lines, then import with no sampling: the vs-live
+    // insert path catches both.
+    let tampered = text
+        .replace("\"args\":[3,7],\"r\":[21,", "\"args\":[3,7],\"r\":[22,")
+        .replace("\"out\":{\"total\":51,", "\"out\":{\"total\":52,");
+    let rep = b
+        .import_facts(
+            tampered.as_bytes(),
+            &ImportPolicy {
+                verify_fraction: 0.0,
+                quarantine: true,
+                seed: Some(9),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(rep.failures.len(), 2, "{:?}", rep.failures);
+    // The local truths still serve.
+    let f = b.run_fast(hm, &[3, 7], DEFAULT_CYCLES).unwrap();
+    assert_eq!(f.result, 21);
+    // And re-importing the *clean* file dedupes against live entries silently.
+    let rep = b
+        .import_facts(
+            text.as_bytes(),
+            &ImportPolicy {
+                verify_fraction: 0.0,
+                quarantine: true,
+                seed: Some(9),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert!(rep.failures.is_empty(), "{:?}", rep.failures);
+}
+
+#[test]
+fn import_report_json_and_cli_json_flag() {
+    // The report's JSON rendering carries the failures; the CLI --json path
+    // renders it on both success and (as the error payload) failure.
+    use cell80::run_cli;
+    let dir = std::env::temp_dir().join(format!("cell80-factsjson-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("mul.rs"),
+        "fn run(a: u16, b: u16) -> u16 { a * b }",
+    )
+    .unwrap();
+    let calls = dir.join("calls.txt");
+    std::fs::write(&calls, "# comment line\nmul 3 7\n").unwrap();
+    let d = dir.to_str().unwrap();
+    let facts_text = run_cli(&[
+        "facts".into(),
+        "export".into(),
+        d.into(),
+        "--calls".into(),
+        calls.to_str().unwrap().into(),
+    ])
+    .unwrap();
+    let ff = dir.join("lib.facts");
+    std::fs::write(&ff, &facts_text).unwrap();
+    let ok = run_cli(&[
+        "facts".into(),
+        "import".into(),
+        ff.to_str().unwrap().into(),
+        d.into(),
+        "--json".into(),
+        "--quarantine".into(),
+    ])
+    .unwrap();
+    assert!(ok.contains("\"file_failed\":false"), "{ok}");
+    std::fs::write(&ff, facts_text.replace("\"r\":[21,", "\"r\":[23,")).unwrap();
+    let err = run_cli(&[
+        "facts".into(),
+        "verify".into(),
+        ff.to_str().unwrap().into(),
+        d.into(),
+        "--json".into(),
+    ])
+    .unwrap_err();
+    assert!(err.contains("\"failures\":[{\"line\":"), "{err}");
+    // Flag/verb error paths.
+    assert!(run_cli(&["facts".into()]).is_err());
+    assert!(run_cli(&["facts".into(), "unknown".into()]).is_err());
+    assert!(run_cli(&["facts".into(), "export".into(), d.into()]).is_err()); // no --calls
+    assert!(run_cli(&["facts".into(), "export".into(), d.into(), "--bogus".into()]).is_err());
+    assert!(run_cli(&[
+        "facts".into(),
+        "import".into(),
+        ff.to_str().unwrap().into(),
+        d.into(),
+        "--bogus".into()
+    ])
+    .is_err());
+    assert!(run_cli(&[
+        "facts".into(),
+        "import".into(),
+        "/nonexistent.facts".into(),
+        d.into()
+    ])
+    .is_err());
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn cli_facts_export_state_calls() {
+    // The calls file drives a state cell by named fields (and --producer stamps).
+    use cell80::run_cli;
+    let dir = std::env::temp_dir().join(format!("cell80-factsst-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("acc.rs"),
+        "//! running accumulator\n//! entry: Acc::run\nstruct Acc { x: u16, total: u32 }
+         impl Acc { fn run(&mut self) -> u16 { self.total = self.x as u32 * 2u32; (self.total & 0xFFFFu32) as u16 } }",
+    )
+    .unwrap();
+    let calls = dir.join("calls.txt");
+    std::fs::write(&calls, "acc x=21\nacc x=1000\n").unwrap();
+    let out = run_cli(&[
+        "facts".into(),
+        "export".into(),
+        dir.to_str().unwrap().into(),
+        "--calls".into(),
+        calls.to_str().unwrap().into(),
+        "--producer".into(),
+        "state@cli".into(),
+    ])
+    .unwrap();
+    assert!(out.contains("\"producer\":\"state@cli\""), "{out}");
+    assert!(out.contains("\"f\":{\"x\":21}"), "{out}");
+    assert!(out.contains("\"out\":{"), "{out}");
+    // Bad calls lines error with the line number.
+    std::fs::write(&calls, "acc x=notanum\n").unwrap();
+    let err = run_cli(&[
+        "facts".into(),
+        "export".into(),
+        dir.to_str().unwrap().into(),
+        "--calls".into(),
+        calls.to_str().unwrap().into(),
+    ])
+    .unwrap_err();
+    assert!(err.contains("calls line 1"), "{err}");
+    std::fs::write(&calls, "acc 5 notanum\n").unwrap();
+    assert!(run_cli(&[
+        "facts".into(),
+        "export".into(),
+        dir.to_str().unwrap().into(),
+        "--calls".into(),
+        calls.to_str().unwrap().into(),
+    ])
+    .is_err());
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn runner_fact_edges() {
+    // The uncached run_state_fast tail, the buffer-input rejection, resolve errors,
+    // the branchy run_many_fast fallback, and an entropy-seeded Rng import.
+    let src = "
+        struct S { a: u16, out: u16 }
+        impl S { fn run(&mut self) -> u16 { self.out = self.a + 1u16; self.out } }
+    ";
+    let mut r = Runner::compile(src).unwrap(); // cache NOT enabled
+    let layout = rustz80::struct_layout(src, "S").unwrap();
+    let addr =
+        |n: &str| cell80::STATE_BASE + layout.iter().find(|f| f.name == n).unwrap().offset * 2;
+    let reads = vec![("out".to_string(), addr("out"), cell80::Ty::U16)];
+    let (f, s) = r
+        .run_state_fast(
+            Some("S::run"),
+            &[(addr("a"), cell80::Ty::U16, 41)],
+            &reads,
+            DEFAULT_CYCLES,
+        )
+        .unwrap();
+    assert_eq!((f.result, s[0].1), (42, 42));
+    // A buffer-typed input can't ride the scalar triple.
+    let err = r
+        .run_state_fast(
+            Some("S::run"),
+            &[(addr("a"), cell80::Ty::Bytes(4), 1)],
+            &reads,
+            DEFAULT_CYCLES,
+        )
+        .unwrap_err();
+    assert!(err.contains("bytes[4]"), "{err}");
+    // Resolve errors: no run/main; unknown entry names the available ones.
+    let mut none = Runner::compile("fn helper(a: u16) -> u16 { a }").unwrap();
+    assert!(none.run_fast(None, &[], DEFAULT_CYCLES).is_err());
+    assert!(none.run(None, &[], DEFAULT_CYCLES).is_err());
+    let err = none
+        .run_fast(Some("nope"), &[], DEFAULT_CYCLES)
+        .unwrap_err();
+    assert!(err.contains("available"), "{err}");
+    let err = none.run(Some("nope"), &[], DEFAULT_CYCLES).unwrap_err();
+    assert!(err.contains("available"), "{err}");
+    // A branchy entry can't decode for the straight-line replayer — the authentic
+    // fallback answers per input.
+    let mut br =
+        Runner::compile("fn run(a: u16) -> u16 { if a > 5u16 { a * 2u16 } else { a } }").unwrap();
+    let out = br
+        .run_many_fast(None, &[&[3u16][..], &[9u16][..]], DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!((out[0].result, out[1].result), (3, 18));
+    // An entropy-seeded import (policy.seed = None) exercises the local-entropy Rng.
+    let (buf, _) = export_workload();
+    let mut b = CellHost::new();
+    b.set_cache(true);
+    b.add(mul_cart());
+    b.add(score_cart());
+    let rep = b.import_facts(&buf[..], &ImportPolicy::default()).unwrap();
+    assert!(rep.verified >= 1 && rep.failures.is_empty());
+}
+
+#[test]
+fn search_scored_exposes_the_margin() {
+    let mut host = CellHost::new();
+    host.add(mul_cart());
+    host.add(score_cart());
+    host.add(
+        Cartridge::compile(
+            "fn run(a: u16, b: u16) -> u16 { a + b }",
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some("sum.v1".into()),
+                summary: "the sum of two numbers".into(),
+                tags: vec!["math".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap(),
+    );
+    let hits = host.search_scored("sum of two numbers", 3);
+    assert!(!hits.is_empty());
+    assert!(hits.windows(2).all(|w| w[0].0 >= w[1].0), "sorted by score");
 }

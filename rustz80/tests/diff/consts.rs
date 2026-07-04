@@ -276,3 +276,100 @@ fn const_misuse_is_rejected() {
         "index it",
     );
 }
+
+#[test]
+fn const_refs_walk_every_statement_shape() {
+    // Data-const DCE must find `ConstAddr` references wherever they hide — every
+    // statement/expression position the walker covers. Behaviour vs rustc, and
+    // both consts must survive DCE (a missed reference would drop the data).
+    let src = "
+        const T: [u16; 4] = [3u16, 1u16, 4u16, 1u16];
+        const B: [u8; 2] = [10u8, 20u8];
+        struct S { acc: u32, arr: [u16; 2], n: u16 }
+        impl S {
+            fn step(&mut self) -> u16 {
+                self.acc = self.acc + T[3] as u32;
+                self.arr[T[1]] = B[0] as u16;
+                self.n = self.n + self.arr[1];
+                self.n
+            }
+        }
+        fn run() -> u16 {
+            let mut s = S { acc: 0u32, arr: [T[0]; 2], n: 0u16 };
+            let mut acc = 0u16;
+            if T[0] > 2u16 {
+                acc = acc + B[1] as u16;
+            }
+            while acc < T[2] {
+                acc = acc + T[1];
+            }
+            for i in 0..T[1] {
+                acc = acc ^ (B[0] as u16 + i);
+            }
+            loop {
+                acc = acc + s.step();
+                if acc > T[2] * 4u16 {
+                    break;
+                }
+            }
+            if acc == 9999u16 {
+                return T[0];
+            }
+            let wide = (T[3] as u32) << 4u32;
+            let out = match acc & 1u16 {
+                0u16 => acc + T[0] + (wide & 0xFu32) as u16,
+                _ => acc + B[1] as u16,
+            };
+            out
+        }
+    ";
+    struct S {
+        acc: u32,
+        arr: [u16; 2],
+        n: u16,
+    }
+    const T: [u16; 4] = [3, 1, 4, 1];
+    const B: [u8; 2] = [10, 20];
+    impl S {
+        fn step(&mut self) -> u16 {
+            self.acc += T[3] as u32;
+            self.arr[T[1] as usize] = B[0] as u16;
+            self.n += self.arr[1];
+            self.n
+        }
+    }
+    fn host() -> u16 {
+        let mut s = S {
+            acc: 0,
+            arr: [T[0]; 2],
+            n: 0,
+        };
+        let mut acc = 0u16;
+        if T[0] > 2 {
+            acc += B[1] as u16;
+        }
+        while acc < T[2] {
+            acc += T[1];
+        }
+        for i in 0..T[1] {
+            acc ^= B[0] as u16 + i;
+        }
+        loop {
+            acc += s.step();
+            if acc > T[2] * 4 {
+                break;
+            }
+        }
+        if acc == 9999 {
+            return T[0];
+        }
+        let wide = (T[3] as u32) << 4;
+        match acc & 1 {
+            0 => acc + T[0] + (wide & 0xF) as u16,
+            _ => acc + B[1] as u16,
+        }
+    }
+    assert_eq!(run_program(src, "run"), host());
+    let prog = rustz80::compile_program(src).expect("compiles");
+    assert!(prog.symbols.contains_key("T") && prog.symbols.contains_key("B"));
+}

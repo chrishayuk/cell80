@@ -432,4 +432,39 @@ mod tests {
         assert_eq!(v["admitted"][0], "square");
         assert!(v["refused"].as_array().unwrap().is_empty());
     }
+
+    #[test]
+    fn report_renders_json_and_bad_rows_reject() {
+        // The JSON rendering of a duplicate refusal (the CI-able report shape),
+        // and a retrieval row whose `expected` is neither string nor array.
+        let dir = scratch_dir("json_refusal");
+        let src = "//! Smaller of two values.\n//! tags: math\nfn run(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }";
+        write_cell(&dir, "min", src);
+        write_cell(&dir, "min2", src);
+        let retrieval = write_retrieval(
+            &dir,
+            &[
+                ("min-1", "minimum of two values", "min", "direct"),
+                ("min2-1", "the smaller of two numbers", "min2", "paraphrase"),
+            ],
+        );
+        let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
+        let j = report.to_json().to_string();
+        assert!(j.contains("behavioural_duplicate"), "{j}");
+        assert!(j.contains("colliding_queries"), "{j}");
+
+        let bad = dir.join("bad.jsonl");
+        std::fs::write(
+            &bad,
+            "{\"id\": \"x\", \"query\": \"q\", \"expected\": 5, \"category\": \"direct\"}\n",
+        )
+        .unwrap();
+        let err = admit(dir.to_str().unwrap(), &bad).unwrap_err();
+        assert!(err.contains("must be a string or array"), "{err}");
+
+        // The array form of `expected` parses.
+        let arr = dir.join("arr.jsonl");
+        std::fs::write(&arr, "{\"id\": \"x\", \"query\": \"smaller of two\", \"expected\": [\"min\", \"min2\"], \"category\": \"direct\"}\n").unwrap();
+        assert!(admit(dir.to_str().unwrap(), &arr).is_ok());
+    }
 }

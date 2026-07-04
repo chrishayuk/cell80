@@ -532,3 +532,29 @@ fn u32_call_boundary_rejections() {
     .unwrap();
     assert!(err.contains("free functions"), "unexpected: {err}");
 }
+
+#[test]
+fn u32_wide_return_of_a_value_conditional_via_return() {
+    // `return if c { a } else { b };` inside a wide fn — the wide temp-slot path.
+    let src = "
+        fn pick(w: u32) -> u32 {
+            if w > 10u32 {
+                return if w > 100u32 { w - 100u32 } else { w + 1u32 };
+            }
+            w * 2u32
+        }
+        fn run() -> u16 {
+            (pick(5u32) + pick(50u32) + pick(70_000u32)) as u16
+        }
+    ";
+    fn pick(w: u32) -> u32 {
+        if w > 10 {
+            return if w > 100 { w - 100 } else { w + 1 };
+        }
+        w * 2
+    }
+    fn host() -> u16 {
+        (pick(5) + pick(50) + pick(70_000)) as u16
+    }
+    assert_eq!(run_program(src, "run"), host());
+}

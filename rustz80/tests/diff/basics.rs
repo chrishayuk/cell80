@@ -631,3 +631,55 @@ fn bit_method_rejections() {
         .unwrap();
     assert!(err.contains("u32 `count_ones`"), "unexpected: {err}");
 }
+
+#[test]
+fn bit_methods_over_composite_pure_operands() {
+    // The purity walker sees through every node kind: swap/rotate over reads,
+    // shifts, comparisons, and array/pointer loads all lower (and match rustc).
+    let src = "
+        const T: [u16; 2] = [0x1234u16, 0x00FFu16];
+        struct S { arr: [u16; 2], x: u16 }
+        impl S {
+            fn run(&mut self) -> u16 {
+                let k = 3u16;
+                let a = [0xAAu16, 0x55u16];
+                self.arr[0] = 0xF0F0u16;
+                (self.arr[0]).swap_bytes()
+                    ^ (a[1]).swap_bytes()
+                    ^ T[0].swap_bytes()
+                    ^ ((self.x < 5u16) as u16).swap_bytes()
+                    ^ (a[0] << k).swap_bytes()
+                    ^ (peek(0u16) as u16).rotate_left(2)
+                    ^ ((self.x as u32 + 1u32) as u16).rotate_right(1)
+            }
+        }
+        fn run() -> u16 {
+            let mut s = S { arr: [0u16; 2], x: 2u16 };
+            s.run()
+        }
+    ";
+    struct S {
+        arr: [u16; 2],
+        x: u16,
+    }
+    const T: [u16; 2] = [0x1234, 0x00FF];
+    impl S {
+        fn run(&mut self) -> u16 {
+            let k = 3u16;
+            let a = [0xAAu16, 0x55u16];
+            self.arr[0] = 0xF0F0;
+            (self.arr[0]).swap_bytes()
+                ^ (a[1]).swap_bytes()
+                ^ T[0].swap_bytes()
+                ^ ((self.x < 5) as u16).swap_bytes()
+                ^ (a[0] << k).swap_bytes()
+                ^ 0u16.rotate_left(2)
+                ^ ((self.x as u32 + 1) as u16).rotate_right(1)
+        }
+    }
+    fn host() -> u16 {
+        let mut s = S { arr: [0; 2], x: 2 };
+        s.run()
+    }
+    assert_eq!(run_program(src, "run"), host());
+}

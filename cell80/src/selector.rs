@@ -421,4 +421,42 @@ mod tests {
             other => panic!("expected abstain, got {other:?}"),
         }
     }
+
+    #[test]
+    fn routing_abstains_none_and_features() {
+        // The honest-abstention surface: an empty router routes to None, a
+        // sub-threshold score routes to None, identical twins abstain, and a
+        // clear winner routes. Plus the fingerprint-feature encoding edges.
+        let mut rng = Rng::new(7);
+        let dim = 4;
+        let empty = SlotRouter::new(dim, 8);
+        assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+        assert!(matches!(empty.route(&vec![0.0; dim], 0.05), Routed::None));
+        assert!(empty.top(&vec![0.0; dim]).is_none());
+
+        let fp = Fingerprint {
+            outputs: vec![Some(3), None, Some(60000)],
+        };
+        let feats = fingerprint_features(&fp, &[1.0, 1.0]);
+        assert_eq!(feats, vec![3.0, -1.0, 60000.0]); // None → -1, missing scale → 1
+
+        let mut r = SlotRouter::new(dim, 8);
+        let pos = cluster(1.0, &mut rng, 20, dim);
+        let neg = cluster(-1.0, &mut rng, 20, dim);
+        // Identical twins: same training data, same fingerprint → abstain.
+        r.add_cell("a", Some(fp.clone()), &pos, &neg, 200, 0.2, &mut rng);
+        r.add_cell("b", Some(fp.clone()), &pos, &neg, 200, 0.2, &mut rng);
+        let mut probe = vec![0.0; dim];
+        probe[0] = 1.0;
+        match r.route(&probe, 1.0) {
+            Routed::Abstain(both) => assert_eq!(both, vec!["a".to_string(), "b".to_string()]),
+            other => panic!("expected abstention, got {other:?}"),
+        }
+        assert!(r.top(&probe).is_some());
+        // A negative-side probe scores below threshold → None.
+        let mut low = vec![0.0; dim];
+        low[0] = -1.0;
+        assert!(matches!(r.route(&low, 0.05), Routed::None));
+    }
 }

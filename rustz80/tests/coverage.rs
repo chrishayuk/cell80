@@ -552,3 +552,169 @@ fn whole_program_over_scratch_is_a_clean_error() {
         "expected the too-large diagnostic: {e}"
     );
 }
+
+#[test]
+fn const_rejections() {
+    // The const-data collector's rejection surface — each bad form names its rule.
+    let rows = [
+        // string/byte-string caps
+        &format!("const S: &str = \"{}\"; fn run() -> u16 {{ peek(S) as u16 }}", "x".repeat(1025)),
+        &format!("fn run() -> u16 {{ peek(b\"{}\") as u16 }}", "y".repeat(1025)),
+        // array literal arity / non-literal shapes
+        "const T: [u8; 3] = [1u8, 2u8]; fn run() -> u16 { T[0] as u16 }",
+        "const T: [u16; 2] = 5u16; fn run() -> u16 { T[0] }",
+        "const T: [u8; 1] = [300u16]; fn run() -> u16 { T[0] as u16 }", // u8 range
+        // struct consts: unknown type, non-literal, missing field, bad element
+        "const H: Ghost = Ghost { x: 1u16 }; fn run() -> u16 { 0u16 }",
+        "struct T { x: u16 } const H: T = 5u16; fn run() -> u16 { 0u16 }",
+        "struct T { x: u16, y: u16 } const H: T = T { x: 1u16 }; fn run() -> u16 { peek(&H) as u16 }",
+        "struct T { x: u16 } const S: [T; 2] = [T { x: 1u16 }, 5u16]; fn run() -> u16 { 0u16 }",
+        "struct T { x: u16 } const S: [T; 2] = [T { x: 1u16 }]; fn run() -> u16 { 0u16 }",
+        "struct T { x: u16 } const S: [T; 1] = 7u16; fn run() -> u16 { 0u16 }",
+        // &str const must be a string literal (two shapes), &[u8;N] arity
+        "const M: &str = 5u16; fn run() -> u16 { 0u16 }",
+        "const A: &str = \"hi\"; const M: &str = A; fn run() -> u16 { 0u16 }",
+        // unsupported const types
+        "const M: (u16, u16) = (1u16, 2u16); fn run() -> u16 { 0u16 }",
+        "const M: [u32; 2] = [1u32, 2u32]; fn run() -> u16 { 0u16 }",
+        // scalar const initialisers: out of range, bad expr, unknown name
+        "const M: u16 = 100000; fn run() -> u16 { M }",
+        "const M: u16 = 1u16 + 2u16; fn run() -> u16 { M }",
+        "const M: u16 = OTHER; fn run() -> u16 { M }",
+        "const M: u16 = 'x'; fn run() -> u16 { M }",
+        // const misuse in code
+        "const T: [u8; 2] = [1u8, 2u8]; fn run() -> u16 { T as u16 }",
+        "struct P { x: u16 } const H: P = P { x: 1u16 }; fn run() -> u16 { H[0] as u16 }",
+    ];
+    for (i, src) in rows.iter().enumerate() {
+        assert!(
+            rustz80::compile_program(src).is_err(),
+            "row {i} should reject: {src}"
+        );
+    }
+}
+
+#[test]
+fn expr_and_stmt_rejection_surface() {
+    // A sweep across lowering's steering diagnostics — each row is a distinct
+    // rejection arm (borrows, patterns, statements, methods, wide-width misuse).
+    let fns = [
+        "fn f() -> u16 { let a = 1u16; &a; 0u16 }",
+        "fn f() -> u16 { let t = &5u16; 0u16 }",
+        "fn f() -> u16 { let c = async {}; 0u16 }",
+        "fn f() -> u16 { let v = vec![]; 0u16 }",
+        "fn f() -> u16 { loop { break 5u16; } }",
+        "fn f() -> u16 { 'a: loop { break; } 0u16 }",
+        "fn f() -> u16 { continue; }",
+        "fn f() -> u16 { break; }",
+        "fn f() -> u16 { let (a, b) = 5u16; a }",
+        "fn f() -> u16 { let x = 1u16..5u16; 0u16 }",
+        "fn f(x: u16) -> u16 { match x { Some(_) => 1u16, _ => 0u16 } }",
+        "fn f(x: u16) -> u16 { match x { 1.5 => 1u16, _ => 0u16 } }",
+        "fn f(x: u16) -> u16 { match x { 1u16 | _ => 1u16, _ => 0u16 } }",
+        "fn f(x: u16) -> u16 { match x { 5u16..=1.5 => 1u16, _ => 0u16 } }",
+        "fn f(x: u16) -> u16 { x.unknown_method() }",
+        "fn f(x: u16) -> u16 { x.wrapping_add() }",
+        "fn f(x: u16) -> u16 { let s = \"hi\"; s.len() as u16 }",
+        "fn f() -> u16 { peek() as u16 }",
+        "fn f() -> u16 { inport() as u16 }",
+        "fn f() -> u16 { halt(); 0u16 }",
+        "fn f() -> u16 { poke(1u16); 0u16 }",
+        "fn f() -> u16 { let a = [1u16, 2u16]; a[0u16] = (1u16, 2u16); 0u16 }",
+        "fn f() -> u16 { let x: u16 = if true { 1u32 } else { 2u32 }; x }",
+        "fn f() -> u16 { let mut x = 1u16; x = 5u32; x }",
+        "fn f(a: u16) -> u16 { a.rotate_left() }",
+        "fn f(a: u16) -> (u16, u16, u16, u16) { (a, a, a, a) }",
+        "fn f(a: u16) -> u16 { return (a, a); }",
+        "fn f(s: &str) -> u16 { s.is_char_boundary() as u16 }",
+    ];
+    for (i, src) in fns.iter().enumerate() {
+        assert!(
+            rustz80::compile_fn(src).is_err(),
+            "fn row {i} should reject: {src}"
+        );
+    }
+    let progs = [
+        // generic misuse + method arity + impl-item shapes
+        "fn g<T: Ord>(a: T) -> T { a } fn run() -> u16 { g::<u16, u16>(1u16) }",
+        "fn g(a: u16) -> u16 { a } fn run() -> u16 { g::<u16>(1u16) }",
+        "fn g(a: u16) -> u16 { a } fn run() -> u16 { g(1u16, 2u16) }",
+        "struct S { x: u16 } impl S { const K: u16 = 1; } fn run() -> u16 { 0u16 }",
+        "struct S { x: u16 } impl S { fn m<T>(&mut self, a: T) -> u16 { 0u16 } } fn run() -> u16 { 0u16 }",
+        "struct S { a: u16, b: u16, c: u16, d: u16 }
+         impl S { fn m(&mut self, x: u16, y: u16, z: u16) -> u16 { x } }
+         fn run() -> u16 { let mut s = S { a: 1u16, b: 2u16, c: 3u16, d: 4u16 }; s.m(1u16, 2u16, 3u16) }",
+        // enums: bad discriminant, unknown variant in pattern
+        "enum E { A = 1.5 } fn run() -> u16 { 0u16 }",
+        "enum E { A } fn run() -> u16 { let e = E::A; match e { E::B => 1u16, _ => 0u16 } }",
+        // tuple-struct field and nested items
+        "struct S(u16); fn run() -> u16 { 0u16 }",
+        "fn run() -> u16 { fn inner() -> u16 { 1u16 } inner() }",
+        "static X: u16 = 5; fn run() -> u16 { X }",
+    ];
+    for (i, src) in progs.iter().enumerate() {
+        assert!(
+            rustz80::compile_program(src).is_err(),
+            "prog row {i} should reject: {src}"
+        );
+    }
+}
+
+#[test]
+fn lowering_rejection_surface_round_two() {
+    // The remaining steering-diagnostic arms (unary misuse, generic wide args,
+    // compound assignment, borrow misuse, read-only stores, wide element fields,
+    // effectful method operands, value-position statements).
+    let fns = [
+        "fn f() -> u16 { let a = 1u16; -a }",
+        "fn f() -> u16 { let a = 1u16; let p = *a; 0u16 }",
+        "fn f() -> u16 { let mut a = 1u16; a *= 2u16; a }",
+        "fn f() -> u16 { let a = [1u16, 2u16]; let p = &a[0]; 0u16 }",
+        "fn f() -> u16 { let a = [1u16, 2u16]; a[0] = (1u16, 2u16); 0u16 }",
+        "fn f(t: &[u8; 2]) -> u16 { t[0] = 1u8; 0u16 }",
+        "fn f(s: &str) -> u16 { s[0] = 1u8; 0u16 }",
+        "fn f(a: i16) -> i16 { a.saturating_add(1i16) }",
+        "fn f(a: i16) -> u16 { a.count_ones() as u16 }",
+        "fn f() -> u16 { let x = (1u16, 2u16); 0u16 }",
+        "fn f() -> u16 { let x = { 5u16 }; x }",
+        "fn f() -> u16 { let mut a = 1u16; let x = (a = 2u16); a }",
+        "fn f() -> u16 { let x = loop { }; 0u16 }",
+        "fn f() -> u16 { let x = while true { }; 0u16 }",
+        "fn f() -> u16 { let x = return; 0u16 }",
+        "fn f() -> u16 { let f = 1.5; 0u16 }",
+        "fn f() -> u16 { let c = c\"hi\"; 0u16 }",
+    ];
+    for (i, src) in fns.iter().enumerate() {
+        assert!(
+            rustz80::compile_fn(src).is_err(),
+            "fn row {i} should reject: {src}"
+        );
+    }
+    let progs = [
+        // u32 field of a struct-array element: read and write.
+        "struct C { w: u32 } struct S { cells: [C; 2] }
+         impl S { fn run(&mut self) -> u16 { (self.cells[0].w & 1u32) as u16 } }
+         fn run() -> u16 { 0u16 }",
+        "struct C { w: u32 } struct S { cells: [C; 2] }
+         impl S { fn run(&mut self) -> u16 { self.cells[0].w = 1u32; 0u16 } }
+         fn run() -> u16 { 0u16 }",
+        // u32 argument to a generic fn.
+        "fn g<T: Ord>(a: T) -> T { a } fn run() -> u16 { g(1u32) as u16 }",
+        // Store to const data; borrow of a non-array const element.
+        "const T: [u16; 2] = [1u16, 2u16]; fn run() -> u16 { T[0] = 5u16; 0u16 }",
+        "const M: &str = \"hi\"; fn run() -> u16 { let p = &M[0]; 0u16 }",
+        // Effectful operands where the lowering re-reads.
+        "fn g(x: u16) -> u16 { x } fn run() -> u16 { g(1u16).swap_bytes() }",
+        "fn g(x: u16) -> u16 { x } fn run() -> u16 { let a = 5u16; a.rotate_left(g(1u16)) }",
+        "fn g(x: u16) -> u16 { x } fn run(s: &str) -> u16 { s.is_char_boundary(g(1u16)) as u16 }",
+        "fn g(x: u16) -> u16 { x } fn run() -> u16 { g(1u16).saturating_add(2u16) }",
+        // A wide `[v; N]` initialiser with an effectful value.
+        "fn g(x: u16) -> u32 { x as u32 } fn run() -> u16 { let a = [g(1u16); 2]; (a[0] & 1u32) as u16 }",
+    ];
+    for (i, src) in progs.iter().enumerate() {
+        assert!(
+            rustz80::compile_program(src).is_err(),
+            "prog row {i} should reject: {src}"
+        );
+    }
+}

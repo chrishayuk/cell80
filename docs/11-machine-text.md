@@ -1,8 +1,10 @@
 # Machine text — bounded string handling for cells (Phase S)
 
-*Status: specified, not started. Gated behind the 1K scale curve, the admission gate
-(2.2), and `Halt::Escalate` (3.2) — see §9. This spec decides; open questions are
-listed as decisions with a chosen default, not as musings.*
+*Status: **S0 and S1 shipped** (u16 wire format, byte literals, `[u8; N]` packed
+fields, ABI v3 manifest types, `&str` params + `check_str!` — see the inline
+shipped-notes). S2/S3 (the string packs and `str_out` promotion) stay gated behind
+the 1K scale curve and the admission gate — see §9. This spec decides; open
+questions are listed as decisions with a chosen default, not as musings.*
 
 ## The governing rule: frozen spec in, versioned spec out
 

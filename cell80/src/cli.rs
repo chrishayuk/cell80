@@ -1014,4 +1014,223 @@ mod tests {
         assert_eq!(h.search("manhattan distance", 3)[0].id, "manhattan");
         assert!(host_from_dir("/no/such/dir").is_err());
     }
+
+    #[test]
+    fn route_verb_and_example_parsing() {
+        let mut h = host();
+        // Behavioural routing through the serve dispatch: (3,7)=21 surfaces `mul`.
+        assert!(dispatch(&mut h, "route 3,7=21 2,5=10").contains("mul"));
+        assert!(dispatch(&mut h, "route 3,7=9999").contains("no cell"));
+        assert!(dispatch(&mut h, "route").starts_with("usage:"));
+        assert!(dispatch(&mut h, "route nonsense").contains("bad example"));
+        assert!(dispatch(&mut h, "route 3,7=1,2").contains("one output"));
+        // parse_examples directly: happy + both error shapes.
+        assert_eq!(parse_examples(&["3,7=21"]).unwrap(), vec![(vec![3, 7], 21)]);
+        assert!(parse_examples(&["3;7"]).is_err());
+        assert!(parse_examples(&["3=x"]).is_err());
+    }
+
+    #[test]
+    fn run_and_exec_flags_end_to_end() {
+        // The `run` flag surface: --set/--read/--cycles/--json + the safety flags,
+        // then `exec` over a compiled cartridge with the same read-back.
+        let dir = std::env::temp_dir().join(format!("cell80-cliflags-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let src_path = dir.join("cell.rs");
+        std::fs::write(
+            &src_path,
+            "struct S { x: u16, out: u16 }
+             impl S { fn run(&mut self) -> u16 { self.out = self.x * 3u16; poke(0xC000u16, 1u8); self.out } }",
+        )
+        .unwrap();
+        let layout_x = crate::STATE_BASE; // x is field 0
+        let layout_out = crate::STATE_BASE + 2;
+        let out = run_cli(&[
+            "run".into(),
+            src_path.to_str().unwrap().into(),
+            "--entry".into(),
+            "S::run".into(),
+            "--args".into(),
+            format!("{}", crate::STATE_BASE),
+            "--set".into(),
+            format!("{layout_x}:u16=14"),
+            "--read".into(),
+            format!("out@{layout_out}:u16"),
+            "--cycles".into(),
+            "100000".into(),
+            "--allow-raw-memory".into(),
+            "--allow-ports".into(),
+            "--max-code-bytes".into(),
+            "4096".into(),
+            "--max-touched".into(),
+            "512".into(),
+            "--json".into(),
+        ])
+        .unwrap();
+        assert!(out.contains("\"result\":42"), "{out}");
+        assert!(out.contains("\"out\":42") || out.contains("42"), "{out}");
+        // Unknown flag + missing file are clean errors.
+        assert!(run_cli(&[
+            "run".into(),
+            src_path.to_str().unwrap().into(),
+            "--bogus".into()
+        ])
+        .is_err());
+        assert!(run_cli(&["run".into(), "/nope.rs".into()]).is_err());
+
+        // Compile → exec with flags (the cartridge carries the policy).
+        let cell_path = dir.join("cell.cell");
+        run_cli(&[
+            "compile".into(),
+            src_path.to_str().unwrap().into(),
+            "-o".into(),
+            cell_path.to_str().unwrap().into(),
+            "--entry".into(),
+            "S::run".into(),
+            "--allow-raw-memory".into(),
+        ])
+        .unwrap();
+        let out = run_cli(&[
+            "exec".into(),
+            cell_path.to_str().unwrap().into(),
+            "--args".into(),
+            format!("{}", crate::STATE_BASE),
+            "--set".into(),
+            format!("{layout_x}:u16=10"),
+            "--read".into(),
+            format!("out@{layout_out}:u16"),
+            "--cycles".into(),
+            "100000".into(),
+            "--json".into(),
+        ])
+        .unwrap();
+        assert!(out.contains("\"result\":30"), "{out}");
+        assert!(run_cli(&[
+            "exec".into(),
+            cell_path.to_str().unwrap().into(),
+            "--bogus".into()
+        ])
+        .is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn keygen_sign_gate_graph_and_route_verbs() {
+        let dir = std::env::temp_dir().join(format!("cell80-cliverbs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let d = dir.to_str().unwrap().to_string();
+        std::fs::write(
+            dir.join("mul.rs"),
+            "//! Product of two values.\n//! tags: math\nfn run(a: u16, b: u16) -> u16 { a * b }",
+        )
+        .unwrap();
+
+        // keygen → compile → sign → exec (signature verified on load).
+        let key = dir.join("signer.key");
+        let pk = run_cli(&["keygen".into(), key.to_str().unwrap().into()]).unwrap();
+        assert!(pk.contains("public"), "{pk}");
+        assert!(run_cli(&["keygen".into()]).is_err());
+        let cell = dir.join("mul.cell");
+        run_cli(&[
+            "compile".into(),
+            dir.join("mul.rs").to_str().unwrap().into(),
+            "-o".into(),
+            cell.to_str().unwrap().into(),
+        ])
+        .unwrap();
+        let signed = run_cli(&[
+            "sign".into(),
+            cell.to_str().unwrap().into(),
+            "--key".into(),
+            key.to_str().unwrap().into(),
+        ])
+        .unwrap();
+        assert!(signed.contains("signed"), "{signed}");
+        assert!(run_cli(&["sign".into(), cell.to_str().unwrap().into()]).is_err());
+        let out = run_cli(&[
+            "exec".into(),
+            cell.to_str().unwrap().into(),
+            "--args".into(),
+            "6,7".into(),
+        ])
+        .unwrap();
+        assert!(out.contains("42"), "{out}");
+
+        // index --gate over a retrieval file (admit through the CLI), + bad flag.
+        let retrieval = dir.join("retrieval.jsonl");
+        std::fs::write(
+            &retrieval,
+            "{\"id\": \"m-1\", \"query\": \"product of two values\", \"expected\": \"mul\", \"category\": \"direct\"}\n",
+        )
+        .unwrap();
+        let gated = run_cli(&[
+            "index".into(),
+            d.clone(),
+            "--gate".into(),
+            retrieval.to_str().unwrap().into(),
+            "--json".into(),
+        ])
+        .unwrap();
+        assert!(gated.contains("\"admitted\""), "{gated}");
+        assert!(run_cli(&["index".into(), d.clone(), "--bogus".into()]).is_err());
+
+        // graph through the CLI: one node, an external input and a const wire.
+        let graph = dir.join("g.json");
+        std::fs::write(
+            &graph,
+            "{\"id\":\"g1\",\"nodes\":{\"m\":\"mul\"},\"wires\":[{\"to\":\"m.a\",\"input\":\"a\"},{\"to\":\"m.b\",\"const\":6}],\"outputs\":{\"out\":\"m.result\"}}",
+        )
+        .unwrap();
+        let g = run_cli(&[
+            "graph".into(),
+            graph.to_str().unwrap().into(),
+            d.clone(),
+            "--input".into(),
+            "a=7".into(),
+            "--cycles".into(),
+            "100000".into(),
+            "--json".into(),
+        ])
+        .unwrap();
+        assert!(g.contains("\"out\":42"), "{g}");
+        assert!(run_cli(&[
+            "graph".into(),
+            graph.to_str().unwrap().into(),
+            d.clone(),
+            "--input".into(),
+            "nonsense".into()
+        ])
+        .is_err());
+
+        // route through the CLI — plain, then seeded with an exported fact file.
+        let routed =
+            run_cli(&["route".into(), d.clone(), "3,7=21".into(), "--json".into()]).unwrap();
+        assert!(routed.contains("mul"), "{routed}");
+        let calls = dir.join("calls.txt");
+        std::fs::write(&calls, "mul 3 7\n").unwrap();
+        let facts_text = run_cli(&[
+            "facts".into(),
+            "export".into(),
+            d.clone(),
+            "--calls".into(),
+            calls.to_str().unwrap().into(),
+        ])
+        .unwrap();
+        let facts = dir.join("lib.facts");
+        std::fs::write(&facts, facts_text).unwrap();
+        let routed = run_cli(&[
+            "route".into(),
+            d.clone(),
+            "3,7=21".into(),
+            "--facts".into(),
+            facts.to_str().unwrap().into(),
+        ])
+        .unwrap();
+        assert!(routed.contains("mul"), "{routed}");
+        assert!(run_cli(&["route".into(), d.clone()]).is_err());
+        assert!(run_cli(&["route".into(), d.clone(), "--bogus".into()]).is_err());
+        assert!(run_cli(&["route".into(), d.clone(), "3,7=21".into(), "--facts".into()]).is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }
