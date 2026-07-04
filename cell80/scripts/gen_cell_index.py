@@ -26,6 +26,7 @@ PACKS = {
     "bucket/convert": ["bucket3", "percent_to_byte", "byte_to_percent"],
     "scoring/choice": ["weighted_sum", "weighted_sum_wide"],
     "calendrical/checksum": ["is_leap_year", "days_in_month", "day_of_week", "luhn_check"],
+    "fixed-point": ["q_mul", "q_div", "q_lerp"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -93,10 +94,10 @@ def main():
     print()
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
           "(packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap "
-          "discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime "
-          "primitives, running statistics, spatial/grid; calendrical/checksum above is a "
-          "first slice — ISBN/IBAN/UPC checksums need a wider-than-u32 input and are "
-          "deferred, see library-growth.md).")
+          "discussion for the larger wave-3+ packs (agentic runtime primitives, running "
+          "statistics, spatial/grid). calendrical/checksum and fixed-point above are each a "
+          "first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see "
+          "library-growth.md); q_sqrt/q_ema-as-lerp/piecewise sigmoid-tanh are still open.")
 
 
 if __name__ == "__main__":

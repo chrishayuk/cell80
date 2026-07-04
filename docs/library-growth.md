@@ -19,9 +19,12 @@ wave 1 ✓   59 cells   predicates · safe arithmetic · bounds · percent · ra
 wave 2 ✓   98 cells   + number theory · distance · bit/encoding · hashing · stats · conversion
 wave 2.5    96 cells   + the wide u32-in-state siblings (square_wide, weighted_sum_wide);
                         4 folded into aliases by the admission gate (see below)
-now       100 cells   + calendrical/checksum, first slice (is_leap_year, days_in_month,
+wave 3a   100 cells   + calendrical/checksum, first slice (is_leap_year, days_in_month,
                         day_of_week, luhn_check) — ISBN/IBAN/UPC deferred (see below)
-next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas
+now       103 cells   + Q8.8 fixed-point, first slice (q_mul, q_div, q_lerp) —
+                        q_sqrt/piecewise sigmoid-tanh still open
+next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas ·
+                        agentic runtime primitives · running statistics · spatial/grid
 ```
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
@@ -123,7 +126,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (100 cells)
+### Landed (103 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -138,6 +141,13 @@ field holds. `luhn_check` is scoped to a `u16` input (≤ 5 decimal digits, docu
 `//! limits:`) to stay a plain free function; ISBN-10/13, IBAN mod-97, and UPC are deferred
 until either a state-cell version (carrying digits as array/state fields) or wider host-side
 preprocessing is worth the design cost.
+
+**Q8.8 fixed-point, first slice (wave 3): `q_mul`, `q_div`, `q_lerp`.** Sidesteps the same
+`u32`-in-a-free-fn constraint by keeping params/return as `u16` and widening only as a
+*local* (`a as u32 * b as u32`, `>> 8u32`) — the pattern any Q8.8 free function should
+follow. `q_lerp` also serves as an EMA step (`q_lerp(prev, sample, alpha)`) — deliberately
+*not* shipped as a second `q_ema` cell, since the formula is identical; the admission gate
+would refuse it anyway. `q_sqrt` and piecewise `q_sigmoid`/`q_tanh` are still open.
 
 ### Next waves (prioritized — keep them distinct)
 
