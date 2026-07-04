@@ -214,28 +214,41 @@ the headline chart for the vision section.
 
 ---
 
-## Phase 3 — Trust and the agent loop (parallel with Phase 2)
+## Phase 3 — Trust and the agent loop ✓ (shipped)
 
-**3.1 Content-addressed, signed cells.**
-`source_hash` covers source; extend the `.cell` format so the artifact hash covers the
-emitted image + manifest, and add optional signing. A registry of executable artifacts
-invites poisoning; answer it before anyone asks.
-*DoD:* `cell80 run` verifies image hash by default; `--no-verify` exists for dev; format
-version bumped.
+**3.1 Content-addressed, signed cells. ✓**
+The `.cell` format (v5) carries a SHA-256 **artifact hash** over the serialized
+manifest + image — the whole tool: metadata, entry, capability policy, code — and
+`Cartridge::from_bytes` verifies it by default, so every loader (`exec` / `inspect` /
+`index` / `serve` / the MCP `.cell` path) refuses a tampered artifact with a named
+error. Optional ed25519 signing (`cell80 keygen` / `cell80 sign`) embeds a
+`(verifying key, signature)` block over the hash, verified whenever present; signing
+wraps the address without changing it. Pre-v5 artifacts load grandfathered.
+*DoD met:* verification is on by default at the one choke point all loaders share;
+`--no-verify` / `from_bytes_unverified` is the dev path; format bumped to v5. Tests:
+round-trip, image + manifest tamper, forgery, v4 back-compat.
 
-**3.2 Escalation contract (cell → host).**
-Make the boundary explicit and machine-readable: a manifest field declaring what the cell
-*can't* do and a structured "escalate" halt so an orchestrator knows a request exceeded
-the kernel class (needs strings / floats / I/O) versus failed. Positions cell80 honestly
-as the deterministic organ layer with a defined hand-off, not a universal runtime.
-*DoD:* `Halt::Escalate(reason)` in the taxonomy; cell80-mcp surfaces it as a typed result.
+**3.2 Escalation contract (cell → host). ✓**
+Two halves, both machine-readable. Dynamic: `halt(code)` in the reserved band
+`0xFF00`–`0xFFFF` decodes as `Halt::Escalate` with a named reason (`needs_strings` /
+`needs_floats` / `needs_io` / `needs_network` / `needs_wider_math` / `out_of_domain`)
+— the band rides the existing halt trap, so it cost zero compiler surface. Static:
+the manifest's `limits` field (authored via `//! limits:` in a library source header)
+declares what the cell *can't* do, so a router can avoid the round-trip entirely.
+*DoD met:* `Halt::Escalate` in the taxonomy; cell80-mcp returns `halt: "escalate"` +
+`escalate` reason as data, documented as a typed hand-off distinct from
+`{"error": ...}`; the band table lives in the ABI doc.
 
-**3.3 Memoization cache.**
-Determinism makes `(image_hash, args) → (result, t_states, trapped_ops)` cacheable
-forever. Trivial to build, and it turns repeated scoring/verification calls into hash
-lookups — the economic argument for the runtime in one feature.
-*DoD:* opt-in cache in `Runner`; benchmark shows cached-call cost; hit-rate counter in
-`Report`.
+**3.3 Memoization cache. ✓**
+`Runner::enable_cache()` (and `CellHost::set_cache` per load): determinism + the
+per-run memory reset make `(entry, args)` fully determine the outcome, so `run_fast`
+consults a hash map first. Only budget-independent outcomes are stored, and a hit
+must fit strictly inside the caller's budget — a cached answer is byte-for-byte what
+the live run would produce. The rich `run()` path stays uncached (it reports post-run
+memory, which a memoized result can't faithfully fake).
+*DoD met:* opt-in on `Runner`; `Report` carries `cache: {hits, lookups}`; the bench
+table shows a cached call at ~46 ns regardless of workload (`add_loop` 2.2 ms live →
+47,000×).
 
 ---
 
