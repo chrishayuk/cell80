@@ -46,6 +46,10 @@ pub(crate) fn inline(mut funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(Str
                 && !roots.contains(&n.as_str())
                 && f.ret.len() <= 1
                 && !has_return(&f.body)
+                // Wide-boundary fns stay real calls: the slot plan assumes one
+                // slot per param, and a wide return isn't a single-`HL` value.
+                && !f.wide_param
+                && !f.wide_ret
         })
         .map(|(n, f)| (n.clone(), f.clone()))
         .collect();

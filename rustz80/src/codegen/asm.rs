@@ -39,6 +39,13 @@ pub(super) struct Asm {
     /// The current function's epilogue label — `return` jumps here (the value is
     /// already in `HL`).
     pub(super) func_end: Option<usize>,
+    /// The current function returns a `u32` (a `return e` evaluates via
+    /// `gen_expr32` into `HL:DE`).
+    pub(super) func_ret_wide: bool,
+    /// Call-boundary signatures: name → `(wide first param, wide return)` — how a
+    /// call site lays `HL:DE` (+`BC`) instead of `HL`/`DE`/`BC`. Built by the
+    /// program-level entries from the lowered `Func` flags.
+    pub(super) wide_sigs: HashMap<String, (bool, bool)>,
     /// Whether the used runtime routines have been appended ([`Asm::seal`] ran).
     sealed: bool,
     /// Per-rule peephole fire counts from [`Asm::seal`] (measurement, not behaviour).
@@ -60,6 +67,8 @@ impl Asm {
             base: 0,
             scratch: SCRATCH,
             loop_stack: Vec::new(),
+            func_ret_wide: false,
+            wide_sigs: HashMap::new(),
             func_end: None,
             sealed: false,
             peep: PeepholeCounts::default(),

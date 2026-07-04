@@ -610,23 +610,40 @@ pub(crate) fn lower_stmt_expr(
             if let Some(e) = r.expr.as_deref() {
                 if matches!(e, syn::Expr::If(_) | syn::Expr::Match(_)) {
                     let w = value_width(e, ctx)?;
-                    if w == Width::DWord {
+                    if w == Width::DWord && !ctx.ret_wide {
                         return Err(
-                            "u32 return values are not supported yet — narrow with `as u16`".into(),
+                            "this function returns a 16-bit value — narrow with `as u16`, \
+                             or declare `-> u32`"
+                                .into(),
                         );
                     }
-                    let temp = ctx.vars.declare(&format!("__val{}", ctx.temp), 1, None, w);
-                    ctx.temp += 1;
-                    lower_value_into(temp, false, e, ctx, body)?;
-                    body.push(Stmt::Return(Some(Expr::Var(temp))));
+                    if ctx.ret_wide {
+                        let temp =
+                            ctx.vars
+                                .declare(&format!("__val{}", ctx.temp), 2, None, Width::DWord);
+                        ctx.temp += 1;
+                        lower_value_into(temp, true, e, ctx, body)?;
+                        body.push(Stmt::Return(Some(Expr::Var32(temp))));
+                    } else {
+                        let temp = ctx.vars.declare(&format!("__val{}", ctx.temp), 1, None, w);
+                        ctx.temp += 1;
+                        lower_value_into(temp, false, e, ctx, body)?;
+                        body.push(Stmt::Return(Some(Expr::Var(temp))));
+                    }
                     return Ok(());
                 }
             }
             let val = match &r.expr {
+                Some(e) if ctx.ret_wide => {
+                    // A wide return: the value evaluates in HL:DE (gen_expr32 at the
+                    // emit site — the function's `wide_ret` flag routes it).
+                    let (le, w) = lower_expr(e, ctx)?;
+                    Some(coerce32(le, w))
+                }
                 Some(e) => Some(lower_expr16(
                     e,
                     ctx,
-                    "return value — u32 returns are not supported yet",
+                    "return value (declare `-> u32` for a wide return)",
                 )?),
                 None => None,
             };

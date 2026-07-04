@@ -59,6 +59,7 @@ pub(crate) fn codegen_program_c(
     target: Target,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
     let mut a = Asm::new(org, target);
+    a.wide_sigs = wide_sig_map(funcs);
     if let Some(e) = entry {
         a.fx(&[0xF3]); // DI
         a.call(e); // CALL entry
@@ -161,6 +162,7 @@ fn emit_loop(
 ) -> Asm {
     // Games are authentic Z80 (real ROM); always the Spectrum target.
     let mut a = Asm::new(org, Target::Spectrum48);
+    a.wide_sigs = wide_sig_map(pruned);
     a.fx(&[0xF3]); // DI
                    // Zero the state region (memset via LD (HL),0 + LDIR).
     if state_bytes >= 2 {
@@ -210,7 +212,17 @@ fn emit_const_data(a: &mut Asm, funcs: &[(String, Func)], consts: &[DataConst]) 
     }
 }
 
+/// The call-boundary map codegen lays calls by (see `Asm::wide_sigs`).
+fn wide_sig_map(funcs: &[(String, Func)]) -> HashMap<String, (bool, bool)> {
+    funcs
+        .iter()
+        .filter(|(_, f)| f.wide_param || f.wide_ret)
+        .map(|(n, f)| (n.clone(), (f.wide_param, f.wide_ret)))
+        .collect()
+}
+
 fn emit_func(a: &mut Asm, f: &Func) {
+    a.func_ret_wide = f.wide_ret;
     // Prologue: copy parameters from the convention registers into their slots.
     for i in 0..f.params {
         let slot = a.slot(i);

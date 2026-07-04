@@ -290,17 +290,18 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 .iter()
                 .map(|a| lower_expr(a, ctx))
                 .collect::<Result<Vec<_>, String>>()?;
-            if lowered.iter().any(|(_, w)| *w == Width::DWord) {
-                return Err(format!(
-                    "u32 call arguments are not supported yet (`{name}` — args pass in 16-bit \
-                     registers); narrow with `as u16`"
-                ));
-            }
-            let args: Vec<Expr> = lowered.iter().map(|(e, _)| e.clone()).collect();
 
             // A call to a generic function instantiates a specialized copy.
             let is_generic = ctx.mono.borrow().generics.contains_key(&name);
             if is_generic {
+                if lowered.iter().any(|(_, w)| *w == Width::DWord) {
+                    return Err(format!(
+                        "u32 arguments to a generic (`{name}`) are not supported — \
+                         type args erase to 16-bit; use a plain `fn` with a `u32` \
+                         first parameter"
+                    ));
+                }
+                let args: Vec<Expr> = lowered.iter().map(|(e, _)| e.clone()).collect();
                 let (gargs, ret_w) = resolve_generic(&name, &turbofish, &lowered, ctx)?;
                 let inst = ctx.mono.borrow_mut().request(&name, gargs);
                 return Ok((Expr::Call(inst, args), ret_w));
@@ -308,7 +309,48 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             if !turbofish.is_empty() {
                 return Err(format!("`{name}` is not a generic function"));
             }
-            Ok((Expr::Call(name, args), Width::Word)) // non-generic calls assume u16 returns
+            // A known plain fn: the call boundary is typed (docs 10 §Calls) — a wide
+            // first slot takes (or widens to) a u32; a wide value in a 16-bit slot
+            // stays an error; the return width comes from the signature.
+            if let Some(sig) = ctx.fn_sigs.get(&name) {
+                if lowered.len() != sig.arg_wides.len() {
+                    return Err(format!(
+                        "`{name}` takes {} argument(s), got {}",
+                        sig.arg_wides.len(),
+                        lowered.len()
+                    ));
+                }
+                let mut args = Vec::with_capacity(lowered.len());
+                for (i, ((e, w), wide)) in lowered.into_iter().zip(&sig.arg_wides).enumerate() {
+                    if *wide {
+                        args.push(coerce32(e, w));
+                    } else {
+                        if w == Width::DWord {
+                            return Err(format!(
+                                "argument {} of `{name}` is 16-bit — narrow with `as u16` \
+                                 (only a u32 *first* parameter rides wide)",
+                                i + 1
+                            ));
+                        }
+                        args.push(e);
+                    }
+                }
+                let ret_w = if sig.ret_wide {
+                    Width::DWord
+                } else {
+                    Width::Word
+                };
+                return Ok((Expr::Call(name, args), ret_w));
+            }
+            // An unknown callee (a prelude route, an appended kernel): 16-bit only.
+            if lowered.iter().any(|(_, w)| *w == Width::DWord) {
+                return Err(format!(
+                    "u32 call arguments are not supported for `{name}` (unknown \
+                     signature — args pass in 16-bit registers); narrow with `as u16`"
+                ));
+            }
+            let args: Vec<Expr> = lowered.iter().map(|(e, _)| e.clone()).collect();
+            Ok((Expr::Call(name, args), Width::Word))
         }
         other => Err(format!(
             "unsupported expression: {} — the dialect accepts integer/bool arithmetic, \
