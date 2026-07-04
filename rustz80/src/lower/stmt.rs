@@ -151,6 +151,7 @@ pub(crate) fn lower_local(
                     }
                     continue;
                 }
+                let packed_len = fd.and_then(|f| f.packed_len);
                 match &fv.expr {
                     // A tuple field is initialised by a tuple literal — one value per slot.
                     syn::Expr::Tuple(t) => {
@@ -162,11 +163,75 @@ pub(crate) fn lower_local(
                             body.push(Stmt::Assign(base + off + i, v));
                         }
                     }
+                    // A byte-packed `[u8; N]` field initialised `[v; N]`: every slot
+                    // holds the byte doubled (`v | v << 8`), one `Fill` (an odd tail
+                    // byte lands in the field's own padding — harmless).
+                    syn::Expr::Repeat(r) if packed_len.is_some() => {
+                        let v = lower_expr16(&r.expr, ctx, "byte array element")?;
+                        let lo = Expr::Bin(
+                            BinOp::And,
+                            Box::new(v.clone()),
+                            Box::new(Expr::Lit(0xFF)),
+                            Width::Word,
+                        );
+                        let both = Expr::Bin(
+                            BinOp::Or,
+                            Box::new(lo.clone()),
+                            Box::new(Expr::Bin(
+                                BinOp::Shl,
+                                Box::new(lo),
+                                Box::new(Expr::Lit(8)),
+                                Width::Word,
+                            )),
+                            Width::Word,
+                        );
+                        body.push(Stmt::Fill {
+                            base: base + off,
+                            count: slots,
+                            value: both,
+                        });
+                    }
                     // An array field initialised `[v; N]` — fill its `slots` slots.
                     syn::Expr::Repeat(r) => {
                         for i in 0..slots {
                             let v = lower_expr16(&r.expr, ctx, "struct field (u16 slots)")?;
                             body.push(Stmt::Assign(base + off + i, v));
+                        }
+                    }
+                    // A byte-packed `[u8; N]` field initialised `[e0, e1, …]`: two
+                    // bytes per slot, little-endian (`e0 | e1 << 8`).
+                    syn::Expr::Array(arr) if packed_len.is_some() => {
+                        let n = packed_len.unwrap();
+                        if arr.elems.len() != n {
+                            return Err(format!("array field `{fname}` expects {n} values"));
+                        }
+                        let byte = |e: &syn::Expr, ctx: &mut Ctx| -> Result<Expr, String> {
+                            Ok(Expr::Bin(
+                                BinOp::And,
+                                Box::new(lower_expr16(e, ctx, "byte array element")?),
+                                Box::new(Expr::Lit(0xFF)),
+                                Width::Word,
+                            ))
+                        };
+                        for (slot, pair) in
+                            arr.elems.iter().collect::<Vec<_>>().chunks(2).enumerate()
+                        {
+                            let lo = byte(pair[0], ctx)?;
+                            let v = match pair.get(1) {
+                                Some(hi) => Expr::Bin(
+                                    BinOp::Or,
+                                    Box::new(lo),
+                                    Box::new(Expr::Bin(
+                                        BinOp::Shl,
+                                        Box::new(byte(hi, ctx)?),
+                                        Box::new(Expr::Lit(8)),
+                                        Width::Word,
+                                    )),
+                                    Width::Word,
+                                ),
+                                None => lo,
+                            };
+                            body.push(Stmt::Assign(base + off + slot, v));
                         }
                     }
                     // An array field initialised `[e0, e1, …]`.

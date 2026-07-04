@@ -153,6 +153,11 @@ pub struct FieldLayout {
     /// `true` for a `u32` field — two consecutive slots holding one little-endian
     /// 4-byte value (vs. `slots == 2` meaning a 2-element array).
     pub dword: bool,
+    /// `Some(N)` for a **byte-packed** `[u8; N]` field (Phase S §2.3): `N` raw bytes
+    /// at `base + offset * 2`, occupying `ceil(N / 2)` slots. `None` for everything
+    /// else — including `slots == 1` scalars, so a `[u8; 1]`/`[u8; 2]` field is never
+    /// mistaken for a `u16`.
+    pub bytes: Option<u16>,
 }
 
 /// The field layout of a (non-generic) named struct in `src` — `(name, slot offset, slot
@@ -172,6 +177,7 @@ pub fn struct_layout(src: &str, name: &str) -> Result<Vec<FieldLayout>, String> 
             offset,
             slots: f.slots as u16,
             dword: f.width == ir::Width::DWord,
+            bytes: f.packed_len.map(|n| n as u16),
         });
         offset += f.slots as u16;
     }

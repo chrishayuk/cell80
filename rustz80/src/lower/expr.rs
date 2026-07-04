@@ -469,6 +469,9 @@ struct FieldRef {
     slots: usize,
     width: Width,
     elem_struct: Option<String>,
+    /// `Some(N)` — a byte-packed `[u8; N]` field: element `i` is the byte at
+    /// `field_base + i` (not a 2-byte slot). See `FieldDef::packed_len`.
+    packed_len: Option<usize>,
 }
 
 /// Resolve `obj.field` (and a tuple element of a struct field, `obj.field.N`).
@@ -484,6 +487,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
             slots: 1,
             width: Width::Word,
             elem_struct: None,
+            packed_len: None,
             ..r
         });
     }
@@ -505,7 +509,25 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
         slots: fd.map_or(1, |d| d.slots),
         width: fd.map_or(Width::Word, |d| d.width),
         elem_struct: fd.and_then(|d| d.elem_struct.clone()),
+        packed_len: fd.and_then(|d| d.packed_len),
     })
+}
+
+/// The byte address of element `i` of a **byte-packed** `[u8; N]` field: the field's
+/// base byte address (through the pointer for `self`, [`Expr::AddrOf`] for a by-value
+/// local) plus the index. No bounds check — same as every array access.
+fn packed_elem_addr(r: &FieldRef, idx: Expr) -> Expr {
+    let field_base = if r.is_ptr {
+        Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::Var(r.base)),
+            Box::new(Expr::Lit((r.off * 2) as u16)),
+            Width::Word,
+        )
+    } else {
+        Expr::AddrOf(r.base + r.off)
+    };
+    Expr::Bin(BinOp::Add, Box::new(field_base), Box::new(idx), Width::Word)
 }
 
 /// Scale an element index by a byte stride (stride 1 passes through; powers of two
@@ -655,6 +677,11 @@ fn lower_index_read(ix: &syn::ExprIndex, ctx: &mut Ctx) -> Result<(Expr, Width),
             );
         }
         let idx = lower_expr16(&ix.index, ctx, "array index")?;
+        // A byte-packed `[u8; N]` field: element `i` is the byte at `field + i`.
+        if r.packed_len.is_some() {
+            let addr = packed_elem_addr(&r, idx);
+            return Ok((Expr::LoadAt(Box::new(addr), Width::Byte), Width::Byte));
+        }
         let e = if r.is_ptr {
             // `self.arr[i]` → *(self + off*2 + i*2)
             Expr::PtrIndex {
@@ -733,6 +760,11 @@ pub(crate) fn lower_index_store(
         let r = field_target(f, ctx)?;
         let idx = lower_expr16(&ix.index, ctx, "array index")?;
         let val = lower_expr16(rhs, ctx, "array element (u16 slots)")?;
+        // A byte-packed `[u8; N]` field: store the low byte at `field + i`.
+        if r.packed_len.is_some() {
+            let addr = packed_elem_addr(&r, idx);
+            return Ok(Stmt::StoreAt(addr, val, Width::Byte));
+        }
         return Ok(if r.is_ptr {
             Stmt::PtrStoreIndex {
                 ptr: Box::new(Expr::Var(r.base)),

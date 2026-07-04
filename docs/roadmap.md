@@ -378,11 +378,12 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   as two consecutive little-endian slots (`layout.rs`, `Width::DWord` — the ABI-v2 wide
   typed-state lane, drivable/readable by name at full width) and `i16` fields carry
   `Width::SWord`. A pure game's `u32` xorshift `Rng` can persist in state again.
-- **Compact `[u8; N]` byte-array fields.** `[u8/bool/i16; N]` array fields *lay out* now
-  (`layout.rs`, `is_scalar_array_elem`) — but at one 2-byte slot per element, like locals.
-  The remaining ask is **byte-packed** field storage: compact byte buffers — tile rows, packed
-  grids, string bytes — without the 2× `u16` waste. (Const *data* already byte-packs; this is
-  about mutable state fields.)
+- **Compact `[u8; N]` byte-array fields. ✓ done (2026-07-04, Phase S0).** A `[u8; N]`
+  field **byte-packs**: `N` bytes in `ceil(N/2)` slots (`layout.rs`, `FieldDef::packed_len`),
+  element access byte-addressed at `field_base + i` with real u8 semantics, `[v; N]` init
+  as one slot `Fill`. `FieldLayout::bytes` reports it, so the cell layer never misreads a
+  `[u8; 2]` field as a `u16` scalar (name-addressing as `bytes[N]` arrives with ABI v3).
+  `[bool/i16; N]` fields stay one slot per element.
 - **`&CONST → addr` — a const-data section. ✓ done (2026-07-04).** Top-level `const` items
   compile: scalars (`u16`/`u8`/`i16`/`bool`) substitute as literals; **data consts** —
   `[u8/u16/i16; N]`, `&str`, struct literals (`Tile { rows: […] }`), `[Struct; N]` — are

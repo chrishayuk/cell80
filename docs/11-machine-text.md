@@ -194,7 +194,7 @@ future proposal is one question: **does its spec version?**
 | gate | what | why it blocks |
 |---|---|---|
 | **S-pre** | 1K curve read · admission gate live · `Escalate` shipped | strings multiply the confusable-family load; landing them on an unproven index piles the hardest retrieval problem onto the least evidence. NonAscii/CapacityExceeded need the escalate verb to exist. |
-| **S0** | `[u8; N]` state fields (the speccy ask — shared cost) · u16-prefix migration · ABI v3 manifest types | the plumbing everything above rides on |
+| **S0** | `[u8; N]` state fields *(shipped: byte-packed, ceil(N/2) slots, u8 semantics oracle-checked)* · u16-prefix migration *(shipped)* · ABI v3 manifest types | the plumbing everything above rides on |
 | **S1** | `&str` params + §2.1 methods · byte literals · `check_str!` | inputs before outputs — read-only kernels are the low-risk half |
 | **S2** | validators/scanners/parsers/codecs waves through the gate · **pre-registered adoption question** | ~20 seed cells + validation-shaped adoption tasks; *kill gate:* if agents shortcut to host code on ≥ half the string tasks with the cells on the shelf, stop and diagnose (steering vs retrieval vs envelope) before authoring more |
 | **S3** | `str_out` promotion · graph `str` edges · json-structural + utf8 packs | the composition payoff; capstone eval = a `csv_field → trim → parse_u16 → range_check` graph, wired by the model |
