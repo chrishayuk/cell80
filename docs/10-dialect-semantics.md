@@ -91,16 +91,18 @@ rustc, which is what the differential oracle runs. `u8` ops mask to 8 bits, `u16
 the bare operators (everything wraps). There is no overflow trap and no checked
 arithmetic.
 
-**`saturating_add`/`saturating_sub`/`saturating_mul`** are accepted for `u8`/`u16`,
-and **`saturating_add`/`saturating_sub` for `u32`** — real Rust, oracle-checked —
-lowering to branch-free mask clamps (`s | (0 - overflow)` for add, `d & (0 -
-in_range)` for sub, a widened product with a high-part test for mul; the u32 clamps
-ride the 32-bit compare below). The clamp re-reads its operands, so effectful
-operands (a call in operand position) are rejected with a "bind it first" message.
-`u32` `saturating_mul` needs a 64-bit product and stays out; `i16` saturating clamps
-to a *signed* range the mask trick doesn't express — both reject instructively. This
-removes the compiles-but-wraps class in machine-authored cells:
-`a.saturating_add(b)` now means what it means in host Rust.
+**`saturating_add`/`saturating_sub`/`saturating_mul`** are accepted for `u8`/`u16`
+**and `u32`** — real Rust, oracle-checked — lowering to branch-free mask clamps
+(`s | (0 - overflow)` for add, `d & (0 - in_range)` for sub, a widened product with
+a high-part test for 8/16-bit mul; the u32 clamps ride the 32-bit compare below).
+`u32 saturating_mul` needs no 64-bit product: with the wrapped product `p = a * b`,
+overflow ⇔ `a != 0 && p / a != b` (the classic post-hoc check — the division is one
+extra trap of honest cost, short-circuited behind the zero test). The clamp re-reads
+its operands, so effectful operands (a call in operand position) are rejected with a
+"bind it first" message. `i16` saturating clamps to a *signed* range the mask trick
+doesn't express — rejected instructively. This removes the compiles-but-wraps class
+in machine-authored cells: `a.saturating_add(b)` now means what it means in host
+Rust.
 
 **`u32` comparisons** are in, condition and value position alike: `if a < b`,
 `while total < cap`, `(a == b) as u16` — unsigned (the dialect has no `i32`),
@@ -192,8 +194,13 @@ the register contract stays intact):
 This is what makes shared kernels modular: `fn scale(acc: u32, k: u16) -> u32` is
 callable from many sites without the inliner's help, so an accumulate/step family
 stops hand-inlining its widen-multiply-shift. The honest residual: a *two*-wide-param
-kernel (`q_mul(a: u32, b: u32)`) still doesn't fit three registers — widen inside, or
-pass through state. Host note: a u32-param **entry** is drivable from the host by
+kernel (`q_mul(a: u32, b: u32)`) still doesn't fit three registers — and for the
+Q16.16 multiply the registers aren't even the binding constraint, the **math** is: a
+32×32 product needs a 64-bit intermediate the substrate doesn't have, so the kernel
+is word-split partials (`ah·bh<<16 + ah·bl + al·bh + (al·bl)>>16`, each 16×16→32)
+regardless of how the operands arrive. That shape is a **state cell** (named `u32`
+fields in, `u32` out — the field surface has no register budget), which is the
+recommended pattern for any ≥2-wide-input kernel. Host note: a u32-param **entry** is drivable from the host by
 passing the two words as `args = [low, high]` — the register convention makes the
 split exact.
 

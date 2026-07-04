@@ -42,6 +42,9 @@ class CellLibrary:
     def __init__(self, directory: str):
         self.directory = directory
         self.host = cell80_py.CellHost()
+        # Memoization on: repeated identical runs become hash lookups, and the
+        # cached outcomes are exportable as a `.facts` file (docs/12).
+        self.host.set_cache(True)
         self._handles: dict[str, int] = {}
         self._ids: list[str] = []
         self._load(pathlib.Path(directory))
@@ -102,6 +105,40 @@ class CellLibrary:
         same return shape as `run_graph`. Lets a caller compose without wire-level JSON."""
         s = spec if isinstance(spec, str) else json.dumps(spec)
         return self.host.run_pipeline(s, dict(inputs or {}))
+
+    # ── the fact file (docs/12) ───────────────────────────────────────────────
+    def export_facts(self, producer: str = "cell80-mcp") -> str:
+        """Every cached outcome across the warm runners, as `.facts` JSONL text
+        (a header line + one canonical claim per line)."""
+        return self.host.export_facts(producer)
+
+    def import_facts(
+        self, text: str, verify_fraction: float = 0.01, quarantine: bool = False
+    ) -> dict:
+        """Import a `.facts` text with a spot-check: a locally-seeded sample is
+        re-executed under each fact's own claimed cost; one caught lie rejects the
+        whole file (quarantine salvages the verified remainder). Returns the
+        import report — an agent can *read* "N accepted, 1 falsified" and act."""
+        return self.host.import_facts(text, verify_fraction, quarantine)
+
+    def facts_stats(self) -> dict:
+        """Per-loaded-cell cache economics: hits/lookups and the local-vs-imported
+        provenance split of the hits."""
+        cells = {}
+        for cell_id, h in self._handles.items():
+            stats = self.host.cache_stats(h)
+            split = self.host.cache_split(h)
+            if stats is None:
+                continue
+            hits, lookups = stats
+            local, imported = split or (0, 0)
+            cells[cell_id] = {
+                "hits": hits,
+                "lookups": lookups,
+                "hits_local": local,
+                "hits_imported": imported,
+            }
+        return {"cells": cells}
 
     def __len__(self) -> int:
         return len(self.host)

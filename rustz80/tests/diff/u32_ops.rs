@@ -308,6 +308,25 @@ fn u32_comparisons_as_values() {
 }
 
 #[test]
+fn u32_saturating_mul() {
+    // The post-hoc overflow check (`a != 0 && p/a != b`) against rustc — clamped,
+    // clean, and the zero edges the short-circuit protects.
+    check!({
+        let a = 0x0002_0000u32;
+        let b = 0x0001_0000u32;
+        (a.saturating_mul(b) == 0xFFFF_FFFFu32) as u16 * 100u16
+            + (3_000u32.saturating_mul(1_000u32) == 3_000_000u32) as u16 * 10u16
+            + (0u32.saturating_mul(0xFFFF_FFFFu32) == 0u32) as u16
+    });
+    check!({
+        let a = 0x8000_0000u32;
+        (a.saturating_mul(2u32) == 0xFFFF_FFFFu32) as u16
+            + (a.saturating_mul(0u32) == 0u32) as u16 * 10u16
+            + (a.saturating_mul(1u32) == a) as u16 * 100u16
+    });
+}
+
+#[test]
 fn u32_saturating() {
     // saturating_add/_sub ride the new wide compare; both clamped and clean sides.
     check!({
