@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (100 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (111 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -179,6 +179,32 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
 
+## fixed-point (3)
+
+| id | signature | summary |
+|---|---|---|
+| `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
+| `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
+| `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
+
+## agentic-runtime (5)
+
+| id | signature | summary |
+|---|---|---|
+| `token_bucket_step` | `TokenBucket::run() -> u16` | Token-bucket rate limiter step: refill by `refill`, cap at `capacity`, then try to spend `cost`; 1 if allowed, 0 if not enough tokens (tokens still refill either way). |
+| `backoff_next` | `Backoff::run() -> u16` | Capped exponential backoff: next = min(current * 2, cap), starting at 1 when current is 0. |
+| `circuit_breaker_step` | `CircuitBreaker::run() -> u16` | Circuit-breaker state machine step: closed(0) counts failures and opens at the threshold; open(1) waits for cooldown then tries half-open(2); half-open resolves to closed on success or back to open on failure. |
+| `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
+| `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
+
+## running-stats (3)
+
+| id | signature | summary |
+|---|---|---|
+| `running_min_max_step` | `RunningMinMax::run() -> u16` | Running min/max tracker over a stream of values: updates min/max (self-initializing on the first call via `seen`), returns the current range (max - min). |
+| `streak_step` | `Streak::run() -> u16` | Consecutive-streak counter: increments while input is nonzero, resets to 0 the moment input is 0. |
+| `accumulate_step` | `Accumulate::run() -> u16` | Running sum + count over a stream of values (sum saturates at 65535). Compose with safe_div(sum, count) for a running mean. |
+
 ## aliases (4)
 
 Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate); removed as separate code, vocabulary merged into the surviving cell's tags.
@@ -192,4 +218,4 @@ Behaviourally identical to a landed cell (found by the Phase 2.2 admission gate)
 
 ## planned (not yet landed)
 
-See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the larger wave-3+ packs (fixed-point Q-format, agentic runtime primitives, running statistics, spatial/grid; calendrical/checksum above is a first slice — ISBN/IBAN/UPC checksums need a wider-than-u32 input and are deferred, see library-growth.md).
+See `docs/library-growth.md` "Next waves" for the prioritized list (packing/BCD, vector, stateful/RNG, time/budget, signed deltas) and the roadmap discussion for the still-open wave-3+ pack (spatial/grid). calendrical/checksum, fixed-point, agentic-runtime, and running-stats above are each a first slice: ISBN/IBAN/UPC checksums need a wider-than-u32 input (deferred, see library-growth.md); q_sqrt/piecewise sigmoid-tanh, rate_window_update, and a fixed-point running variance (Welford) are still open.

@@ -255,6 +255,15 @@ fn first_wave_cells_match_defined_behaviour() {
         ("luhn_check", &[1230], 1),        // valid Luhn number
         ("luhn_check", &[1231], 0),        // one digit off — invalid
         ("luhn_check", &[0], 1),           // trivial single-zero-digit edge case
+        // ── Q8.8 fixed-point (wave 3) ──
+        ("q_mul", &[384, 512], 768),       // 1.5 * 2.0 = 3.0
+        ("q_mul", &[256, 256], 256),       // 1.0 * 1.0 = 1.0 (identity)
+        ("q_div", &[768, 512], 384),       // 3.0 / 2.0 = 1.5
+        ("q_div", &[768, 0], 0),           // divide by zero — safe
+        ("q_lerp", &[0, 256, 128], 128),   // halfway, forward
+        ("q_lerp", &[200, 100, 64], 175),  // t=0.25, b < a (reverse branch)
+        ("q_lerp", &[100, 200, 0], 100),   // t=0 → a
+        ("q_lerp", &[100, 200, 256], 200), // t=1.0 → b
     ];
 
     let mut failures = Vec::new();
@@ -317,4 +326,241 @@ fn wide_state_cells_carry_exact_u32_results() {
     }
     assert_eq!(ws.run(DEFAULT_CYCLES).unwrap().result, 65535); // saturated scalar
     assert_eq!(ws.get("sum"), Some(100_000)); // a + 2b + 3c, exact
+}
+
+#[test]
+fn agentic_runtime_state_cells_match_defined_behaviour() {
+    // Rate-limiting / resilience state machines (wave 3): each call sets fields by name,
+    // runs one step, and reads the mutated state back — the host is responsible for
+    // re-feeding the updated fields as the next call's inputs.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // token_bucket_step: refill then spend; still refills (but doesn't go negative) on denial.
+    let (allowed, cell) = step(
+        "token_bucket_step",
+        "TokenBucket",
+        &[("tokens", 5), ("capacity", 10), ("refill", 2), ("cost", 3)],
+    );
+    assert_eq!(allowed, 1);
+    assert_eq!(cell.get("tokens"), Some(4)); // (5+2) capped at 10 = 7, minus cost 3
+    let (allowed, cell) = step(
+        "token_bucket_step",
+        "TokenBucket",
+        &[("tokens", 1), ("capacity", 10), ("refill", 0), ("cost", 5)],
+    );
+    assert_eq!(allowed, 0);
+    assert_eq!(cell.get("tokens"), Some(1)); // denied — tokens unchanged, not spent
+
+    // backoff_next: doubles, capped, without overflowing past the cap.
+    assert_eq!(
+        step("backoff_next", "Backoff", &[("current", 0), ("cap", 100)]).0,
+        1
+    );
+    assert_eq!(
+        step(
+            "backoff_next",
+            "Backoff",
+            &[("current", 100), ("cap", 10_000)]
+        )
+        .0,
+        200
+    );
+    assert_eq!(
+        step(
+            "backoff_next",
+            "Backoff",
+            &[("current", 40_000), ("cap", 65_535)]
+        )
+        .0,
+        65_535 // would overflow if doubled naively (80,000 wraps to 14,464)
+    );
+
+    // circuit_breaker_step: closed -> open -> half-open -> closed/open.
+    let (state, _) = step(
+        "circuit_breaker_step",
+        "CircuitBreaker",
+        &[
+            ("state", 0),
+            ("fail_count", 2),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 0),
+        ],
+    );
+    assert_eq!(state, 1); // 3rd consecutive failure opens the breaker
+    let (state, _) = step(
+        "circuit_breaker_step",
+        "CircuitBreaker",
+        &[
+            ("state", 1),
+            ("fail_count", 3),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 1),
+            ("success", 0),
+        ],
+    );
+    assert_eq!(state, 2); // cooldown elapsed -> try half-open
+    let (state, cell) = step(
+        "circuit_breaker_step",
+        "CircuitBreaker",
+        &[
+            ("state", 2),
+            ("fail_count", 3),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 1),
+        ],
+    );
+    assert_eq!(state, 0); // half-open trial succeeded -> closed
+    assert_eq!(cell.get("fail_count"), Some(0));
+    let (state, _) = step(
+        "circuit_breaker_step",
+        "CircuitBreaker",
+        &[
+            ("state", 2),
+            ("fail_count", 0),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 0),
+        ],
+    );
+    assert_eq!(state, 1); // half-open trial failed -> back to open
+
+    // debounce_step: three consistent readings needed to confirm a change.
+    let (mut count, mut last_stable) = (0u64, 0u64);
+    for _ in 0..2 {
+        let (out, cell) = step(
+            "debounce_step",
+            "Debounce",
+            &[
+                ("input", 1),
+                ("last_stable", last_stable),
+                ("count", count),
+                ("threshold", 3),
+            ],
+        );
+        assert_eq!(out, 0); // not yet confirmed
+        count = cell.get("count").unwrap();
+        last_stable = cell.get("last_stable").unwrap();
+    }
+    let (out, _) = step(
+        "debounce_step",
+        "Debounce",
+        &[
+            ("input", 1),
+            ("last_stable", last_stable),
+            ("count", count),
+            ("threshold", 3),
+        ],
+    );
+    assert_eq!(out, 1); // 3rd consistent reading confirms the change
+
+    // hysteresis: dead zone holds the prior state.
+    assert_eq!(
+        step(
+            "hysteresis",
+            "Hysteresis",
+            &[("value", 80), ("low", 20), ("high", 70), ("state", 0)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "hysteresis",
+            "Hysteresis",
+            &[("value", 50), ("low", 20), ("high", 70), ("state", 1)]
+        )
+        .0,
+        1
+    ); // dead zone, holds ON
+    assert_eq!(
+        step(
+            "hysteresis",
+            "Hysteresis",
+            &[("value", 10), ("low", 20), ("high", 70), ("state", 1)]
+        )
+        .0,
+        0
+    );
+    assert_eq!(
+        step(
+            "hysteresis",
+            "Hysteresis",
+            &[("value", 50), ("low", 20), ("high", 70), ("state", 0)]
+        )
+        .0,
+        0
+    ); // dead zone, holds OFF
+}
+
+#[test]
+fn running_stats_state_cells_match_defined_behaviour() {
+    // Running-statistics state cells (wave 3), each driven over a short stream: set fields
+    // by name, run, feed the updated state back as the next call's input.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // running_min_max_step: self-initializes on the first call (`seen` starts at 0).
+    let (mut min, mut max, mut seen) = (0u64, 0u64, 0u64);
+    for (value, expect_range) in [(10u64, 0u64), (3, 7), (7, 7), (20, 17), (1, 19)] {
+        let (range, cell) = step(
+            "running_min_max_step",
+            "RunningMinMax",
+            &[("value", value), ("min", min), ("max", max), ("seen", seen)],
+        );
+        assert_eq!(range as u64, expect_range);
+        min = cell.get("min").unwrap();
+        max = cell.get("max").unwrap();
+        seen = cell.get("seen").unwrap();
+    }
+    assert_eq!((min, max), (1, 20));
+
+    // streak_step: counts consecutive nonzero inputs, resets hard at a 0.
+    let mut streak = 0u64;
+    for (input, expect) in [(1u64, 1u64), (1, 2), (1, 3), (0, 0), (1, 1)] {
+        let (out, cell) = step(
+            "streak_step",
+            "Streak",
+            &[("input", input), ("streak", streak)],
+        );
+        assert_eq!(out as u64, expect);
+        streak = cell.get("streak").unwrap();
+    }
+
+    // accumulate_step: running sum + count, saturating; compose with safe_div for a mean.
+    let (mut sum, mut count) = (0u64, 0u64);
+    for value in [10u64, 20, 30] {
+        let (out, cell) = step(
+            "accumulate_step",
+            "Accumulate",
+            &[("value", value), ("sum", sum), ("count", count)],
+        );
+        sum = cell.get("sum").unwrap();
+        count = cell.get("count").unwrap();
+        assert_eq!(out as u64, sum);
+    }
+    assert_eq!((sum, count), (60, 3));
+    assert_eq!(run_cell("safe_div", &[sum as u16, count as u16]), 20); // the composed mean
+    let (saturated, _) = step(
+        "accumulate_step",
+        "Accumulate",
+        &[("value", 100), ("sum", 65_500), ("count", 5)],
+    );
+    assert_eq!(saturated, 65535);
 }

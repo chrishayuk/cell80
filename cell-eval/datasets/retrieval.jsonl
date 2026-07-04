@@ -227,3 +227,34 @@
 {"id": "luhn_check-direct-1", "query": "luhn checksum validity of a number", "expected": "luhn_check", "category": "direct"}
 {"id": "luhn_check-para-1", "query": "is this card-like number's check digit correct", "expected": "luhn_check", "category": "paraphrase"}
 {"id": "luhn_check-adv-1", "query": "mod 10 double-every-other-digit validation", "expected": "luhn_check", "category": "adversarial"}
+
+# ── Q8.8 fixed-point (wave 3) ──
+{"id": "q_mul-direct-1", "query": "multiply two fixed-point q8.8 values", "expected": "q_mul", "category": "direct"}
+{"id": "q_mul-para-1", "query": "scale one fractional value by another without floats", "expected": "q_mul", "category": "paraphrase"}
+{"id": "q_div-direct-1", "query": "divide two fixed-point q8.8 values", "expected": "q_div", "category": "direct"}
+{"id": "q_div-para-1", "query": "how many times does one fractional value fit into another", "expected": "q_div", "category": "paraphrase"}
+{"id": "q_lerp-direct-1", "query": "linearly interpolate between two values by a fraction", "expected": "q_lerp", "category": "direct"}
+{"id": "q_lerp-para-1", "query": "blend smoothly from one value toward another", "expected": "q_lerp", "category": "paraphrase"}
+{"id": "q_lerp-adv-1", "query": "one step of an exponential moving average update", "expected": "q_lerp", "category": "adversarial"}
+
+# ── agentic runtime primitives (wave 3) ──
+{"id": "token_bucket_step-direct-1", "query": "token bucket rate limiter step", "expected": "token_bucket_step", "category": "direct"}
+{"id": "token_bucket_step-para-1", "query": "check whether an agent has enough budget left to make this call and spend it", "expected": "token_bucket_step", "category": "paraphrase"}
+{"id": "backoff_next-direct-1", "query": "the next exponential backoff delay", "expected": "backoff_next", "category": "direct"}
+{"id": "backoff_next-para-1", "query": "how long to wait before retrying again, doubling each time up to a cap", "expected": "backoff_next", "category": "paraphrase"}
+{"id": "circuit_breaker_step-direct-1", "query": "circuit breaker state transition", "expected": "circuit_breaker_step", "category": "direct"}
+{"id": "circuit_breaker_step-para-1", "query": "stop calling a failing service until it recovers", "expected": "circuit_breaker_step", "category": "paraphrase"}
+{"id": "circuit_breaker_step-adv-1", "query": "closed open half-open resilience state machine", "expected": "circuit_breaker_step", "category": "adversarial"}
+{"id": "debounce_step-direct-1", "query": "debounce a noisy signal", "expected": "debounce_step", "category": "direct"}
+{"id": "debounce_step-para-1", "query": "only confirm a change once it's been consistent for a few readings in a row", "expected": "debounce_step", "category": "paraphrase"}
+{"id": "hysteresis-direct-1", "query": "hysteresis with a low and high threshold", "expected": "hysteresis", "category": "direct"}
+{"id": "hysteresis-para-1", "query": "a schmitt trigger that avoids flickering near a single threshold", "expected": "hysteresis", "category": "paraphrase"}
+
+# ── running statistics (wave 3) ──
+{"id": "running_min_max_step-direct-1", "query": "track the running min and max over a stream of values", "expected": "running_min_max_step", "category": "direct"}
+{"id": "running_min_max_step-para-1", "query": "the smallest and largest values seen so far, updated as new ones arrive", "expected": "running_min_max_step", "category": "paraphrase"}
+{"id": "streak_step-direct-1", "query": "count a consecutive streak of nonzero values", "expected": "streak_step", "category": "direct"}
+{"id": "streak_step-para-1", "query": "how many times in a row has this condition held true", "expected": "streak_step", "category": "paraphrase"}
+{"id": "accumulate_step-direct-1", "query": "running sum and count over a stream of values", "expected": "accumulate_step", "category": "direct"}
+{"id": "accumulate_step-para-1", "query": "keep a running total so I can compute an average later", "expected": "accumulate_step", "category": "paraphrase"}
+{"id": "accumulate_step-adv-1", "query": "an online accumulator for a mean, not the mean itself", "expected": "accumulate_step", "category": "adversarial"}
