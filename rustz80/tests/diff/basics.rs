@@ -552,14 +552,8 @@ fn saturating_methods() {
 
 #[test]
 fn saturating_rejections() {
-    // u32 saturating_mul (needs a 64-bit product) and effectful operands reject
-    // with steering messages; u32 add/sub graduated to features (see u32_ops.rs).
-    let err = rustz80::compile_fn(
-        "fn f(a: u16) -> u16 { let w = a as u32; (w.saturating_mul(2u32)) as u16 }",
-    )
-    .err()
-    .unwrap();
-    assert!(err.contains("saturating_mul"), "unexpected: {err}");
+    // Effectful operands reject with a steering message (the clamp re-reads them);
+    // every u32 saturating_* graduated to a feature (see u32_ops.rs).
     let err = rustz80::compile_program(
         "fn g(a: u16) -> u16 { a } fn f(a: u16) -> u16 { g(a).saturating_add(1u16) }",
     )

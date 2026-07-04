@@ -127,4 +127,41 @@ def build_server() -> ChukMCPServer:
         except Exception as e:  # bad spec / type mismatch → data, not a crash
             return {"error": str(e)}
 
+    @mcp.tool(
+        read_only_hint=True,
+        description="Export every memoized outcome across the warm cells as a `.facts` file "
+        "(JSONL text): one line per claim — artifact hash, entry, inputs, outcome, and its "
+        "cycle cost. The file is trustless by design: a receiver verifies claims by "
+        "RE-EXECUTING a sample, never by trusting the sender.",
+    )
+    def cell_facts_export(producer: str = "cell80-mcp") -> dict:
+        text = lib.export_facts(producer)
+        return {"facts": text, "count": max(0, len(text.splitlines()) - 1)}
+
+    @mcp.tool(
+        description="Import a `.facts` text with a spot-check: an unpredictably-sampled "
+        "fraction of the claims is re-executed under each fact's own claimed cost (a fact "
+        "that runs long is a lie even if the result matches). One caught lie rejects the "
+        "whole file — set quarantine=true to salvage the verified remainder instead. "
+        "Accepted facts serve future runs as cache hits (see cell_facts_stats for the "
+        "local-vs-imported split). Returns the import report: read it — 'accepted N, "
+        "1 falsified at line L' is data to act on, not an error.",
+    )
+    def cell_facts_import(
+        facts: str, verify_fraction: float = 0.01, quarantine: bool = False
+    ) -> dict:
+        try:
+            return lib.import_facts(facts, verify_fraction, quarantine)
+        except ValueError as e:
+            return {"error": str(e)}
+
+    @mcp.tool(
+        read_only_hint=True,
+        description="Cache economics per warm cell: hits/lookups, and how many hits were "
+        "served from IMPORTED facts vs computed locally — the provenance split that shows "
+        "shared facts doing real work.",
+    )
+    def cell_facts_stats() -> dict:
+        return lib.facts_stats()
+
     return mcp
