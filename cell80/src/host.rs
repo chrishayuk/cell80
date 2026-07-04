@@ -133,6 +133,9 @@ impl CellHost {
             .get(id)
             .ok_or_else(|| format!("no cell `{id}`"))?;
         let mut runner = self.pool.acquire(&cart.program);
+        // Facts key on the shareable content address, not the bare image self-hash
+        // (docs/12 §2) — stamp the cartridge's v5 artifact hash.
+        runner.set_artifact_hash(cart.artifact_hash());
         if self.cache_loads {
             runner.enable_cache();
         }
@@ -180,6 +183,38 @@ impl CellHost {
         let l = self.loaded(handle)?;
         let entry = l.entry.clone();
         l.runner.run_fast(Some(&entry), args, budget)
+    }
+
+    /// The **cached** state-cell hot path (docs/12 §2): [`run_state`](Self::run_state)'s
+    /// field-name surface over [`Runner::run_state_fast`] — named inputs in, the
+    /// [`Fast`] outcome plus every scalar field back, memoized when the cache is on.
+    /// The scoring workhorses ("score 10K candidates through `weighted_sum_wide`")
+    /// are state cells; this is the path that makes their repeats hash lookups.
+    pub fn run_state_fast(
+        &mut self,
+        handle: usize,
+        fields: &[(String, u64)],
+        budget: u64,
+    ) -> Result<(Fast, Vec<(String, u64)>), String> {
+        let l = self.loaded(handle)?;
+        if l.state_addrs.is_empty() {
+            return Err("cell has no named state (not a state cell)".into());
+        }
+        let entry = l.entry.clone();
+        let addrs = l.state_addrs.clone();
+        let mut inputs = Vec::with_capacity(fields.len());
+        for (name, val) in fields {
+            let (addr, ty) = addrs
+                .iter()
+                .find(|(n, _, _)| n == name)
+                .map(|(_, a, t)| (*a, *t))
+                .ok_or_else(|| format!("no state field `{name}`"))?;
+            inputs.push((addr, ty, *val));
+        }
+        let reads: Vec<(String, u16, Ty)> =
+            addrs.iter().map(|(n, a, t)| (n.clone(), *a, *t)).collect();
+        l.runner
+            .run_state_fast(Some(&entry), &inputs, &reads, budget)
     }
 
     /// Drive a **state cell by field name**: write the given `fields` into the state struct,

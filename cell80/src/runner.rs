@@ -145,8 +145,25 @@ pub struct Runner {
     /// the rich [`run`](Runner::run) path reports post-run memory (`touched`, `reads`),
     /// which a memoized result cannot faithfully reproduce.
     cache: Option<std::collections::HashMap<(u16, Vec<u16>), Fast>>,
+    /// The state-cell sibling of [`cache`](Runner::cache) (docs/12 §2 — the scoring
+    /// workhorses are state cells): keyed by `(entry, sorted input triples, read
+    /// set)`, storing the named post-run fields alongside the [`Fast`]. The read
+    /// set is part of the key because a fact is only well-defined given what was
+    /// read back. Enabled together with `cache`.
+    #[allow(clippy::type_complexity)]
+    state_cache: Option<
+        std::collections::HashMap<
+            (u16, Vec<(u16, u8, u64)>, Vec<(u16, u8)>),
+            (Fast, Vec<(String, u64)>),
+        >,
+    >,
     cache_hits: u64,
     cache_lookups: u64,
+    /// The content address facts are keyed by (docs/12 §2): a cartridge-backed load
+    /// stamps the v5 artifact hash via [`set_artifact_hash`](Runner::set_artifact_hash);
+    /// a bare program self-hashes its serialized image (config included — the image
+    /// bytes carry the whole policy) at construction.
+    artifact_hash: [u8; 32],
 }
 
 impl Runner {
@@ -164,14 +181,17 @@ impl Runner {
             seen: vec![false; 0x1_0000],
             touched: Vec::new(),
             cache: None,
+            state_cache: None,
             cache_hits: 0,
             cache_lookups: 0,
+            artifact_hash: self_hash(program),
         }
     }
 
     /// Opt in to memoization (see the field doc on [`Runner::cache`]): subsequent
     /// [`run_fast`](Runner::run_fast) calls consult a `(entry, args) → Fast` map before
-    /// executing. Only **budget-independent** outcomes are stored (a clean return, an
+    /// executing (and [`run_state_fast`](Runner::run_state_fast) its state-cell
+    /// sibling). Only **budget-independent** outcomes are stored (a clean return, an
     /// explicit `halt(code)`, a div-by-zero — never a budget/memory-limit stop), and a
     /// hit requires the stored run to have fit strictly inside the caller's budget, so a
     /// cached answer is byte-for-byte what the run would have produced.
@@ -179,6 +199,22 @@ impl Runner {
         if self.cache.is_none() {
             self.cache = Some(std::collections::HashMap::new());
         }
+        if self.state_cache.is_none() {
+            self.state_cache = Some(std::collections::HashMap::new());
+        }
+    }
+
+    /// The content address this runner's facts are keyed by — the cartridge's v5
+    /// artifact hash when loaded from one ([`set_artifact_hash`]), else the bare
+    /// image's self-hash. Same hash ⇒ same machine ⇒ same facts, forever.
+    pub fn artifact_hash(&self) -> [u8; 32] {
+        self.artifact_hash
+    }
+
+    /// Stamp the v5 artifact hash on a cartridge-backed runner, so cached facts key
+    /// on the shareable content address rather than the bare image self-hash.
+    pub fn set_artifact_hash(&mut self, hash: [u8; 32]) {
+        self.artifact_hash = hash;
     }
 
     /// `(hits, lookups)` since the cache was enabled — `None` if it never was. The
@@ -274,8 +310,10 @@ impl Runner {
         if self.cache.is_some() {
             self.cache_lookups += 1;
             let key = (entry_addr, args.to_vec());
-            // A stored outcome replays only if it fit *strictly* inside this budget —
-            // at cycles == budget the live loop would stop with `CycleBudget` first.
+            // A stored outcome replays only if it fit *strictly* inside this budget.
+            // (Conservative: at cycles == budget the live run in fact completes —
+            // the final instruction starts while cycles < budget — so equality is
+            // a miss that re-executes to the same outcome, never a wrong answer.)
             if let Some(f) = self.cache.as_ref().and_then(|c| c.get(&key)) {
                 if f.cycles < budget {
                     self.cache_hits += 1;
@@ -291,6 +329,74 @@ impl Runner {
             return Ok(f);
         }
         Ok(self.exec_fast(entry_addr, args, budget))
+    }
+
+    /// The cached **state-cell** hot path (docs/12 §2 — the delta that puts the
+    /// scoring workhorses under the memo table): write typed `inputs` into the state
+    /// at [`STATE_BASE`], run the entry (state base in `HL`, the state-cell
+    /// convention), and read `reads` back — the whole outcome (named fields +
+    /// [`Fast`]) memoized under `(entry, sorted inputs, read set)`. The same
+    /// budget-independence and strict-replay rules as [`run_fast`](Runner::run_fast)
+    /// apply, so a hit is byte-for-byte what the run would have produced.
+    pub fn run_state_fast(
+        &mut self,
+        entry: Option<&str>,
+        inputs: &[(u16, Ty, u64)],
+        reads: &[(String, u16, Ty)],
+        budget: u64,
+    ) -> Result<(Fast, Vec<(String, u64)>), String> {
+        // Buffer fields can't ride the scalar triple (same rule as `run_with_inputs`).
+        if let Some((addr, ty, _)) = inputs.iter().find(|(_, ty, _)| ty.capacity().is_some()) {
+            return Err(format!(
+                "input at {addr:#06x} is {ty} — a buffer, not a scalar; the \
+                 byte-buffer I/O surface arrives with Phase S3"
+            ));
+        }
+        let entry_addr = self.resolve_addr(entry)?;
+        if self.state_cache.is_some() {
+            self.cache_lookups += 1;
+            // Canonical key: inputs sorted by address (unique per field), plus the
+            // read set — a fact is only well-defined given what was read back.
+            let mut key_in: Vec<(u16, u8, u64)> =
+                inputs.iter().map(|(a, t, v)| (*a, t.code(), *v)).collect();
+            key_in.sort_unstable();
+            let key_rd: Vec<(u16, u8)> = reads.iter().map(|(_, a, t)| (*a, t.code())).collect();
+            let key = (entry_addr, key_in, key_rd);
+            if let Some((f, state)) = self.state_cache.as_ref().and_then(|c| c.get(&key)) {
+                if f.cycles < budget {
+                    self.cache_hits += 1;
+                    return Ok((*f, state.clone()));
+                }
+            }
+            let (regs, cycles, trapped_ops, halt) =
+                self.exec(entry_addr, &[STATE_BASE], inputs, budget);
+            let f = Fast {
+                result: regs[0],
+                regs,
+                cycles,
+                trapped_ops,
+                halt,
+            };
+            let state = self.read_named(reads);
+            if !matches!(f.halt, Halt::CycleBudget | Halt::MemoryLimit) {
+                self.state_cache
+                    .as_mut()
+                    .expect("checked above")
+                    .insert(key, (f, state.clone()));
+            }
+            return Ok((f, state));
+        }
+        let (regs, cycles, trapped_ops, halt) =
+            self.exec(entry_addr, &[STATE_BASE], inputs, budget);
+        let f = Fast {
+            result: regs[0],
+            regs,
+            cycles,
+            trapped_ops,
+            halt,
+        };
+        let state = self.read_named(reads);
+        Ok((f, state))
     }
 
     /// Run the same entry over many argument sets, reusing **all** setup — the "score N
@@ -568,7 +674,25 @@ impl Runner {
             self.cache_hits = 0;
             self.cache_lookups = 0;
         }
+        if let Some(c) = self.state_cache.as_mut() {
+            c.clear();
+        }
+        // The content address follows the program; a cartridge-backed reload
+        // re-stamps via `set_artifact_hash` after this.
+        self.artifact_hash = self_hash(program);
     }
+}
+
+/// The content address of a **bare** (cartridge-less) program: SHA-256 over its
+/// serialized image — which carries the code, symbols, *and* the whole `CellConfig`
+/// (capabilities, ceilings, div-by-zero policy), so no outcome-affecting knob
+/// escapes the hash. Distinct from a cartridge's v5 artifact hash (that one also
+/// covers the manifest); facts verify against whichever machine produced them.
+fn self_hash(program: &CellProgram) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(program.to_bytes());
+    h.finalize().into()
 }
 
 /// A pool of reusable 64 KiB buses. Acquiring a cell for *any* program recycles an idle bus
