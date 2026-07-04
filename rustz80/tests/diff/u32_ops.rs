@@ -242,3 +242,82 @@ fn u32_field_by_value_local() {
     ";
     assert_eq!(run_program(src, "run"), host());
 }
+
+#[test]
+fn u32_comparisons_as_conditions() {
+    // Direct u32 comparisons in `if`/`while` — the word-split idiom retires.
+    // The q_max shape the fixed-point pack hand-splits today:
+    check!({
+        let a = 100_000u32;
+        let b = 70_000u32;
+        let m = if a < b { b } else { a };
+        (m >> 16) as u16 * 1000u16 + (m & 0xFFFFu32) as u16 / 100u16
+    });
+    // Boundary pairs around the high/low word seams, every operator.
+    check!({
+        let mut n = 0u16;
+        let pairs_a = 65_536u32;
+        let pairs_b = 65_535u32;
+        if pairs_a > pairs_b {
+            n = n + 1u16;
+        }
+        if pairs_b >= pairs_a {
+            n = n + 10u16;
+        }
+        if pairs_a != pairs_b {
+            n = n + 100u16;
+        }
+        if pairs_a - 1u32 == pairs_b {
+            n = n + 1000u16;
+        }
+        n
+    });
+    // A wide loop guard: while over a u32 accumulator.
+    check!({
+        let mut total = 0u32;
+        let mut steps = 0u16;
+        while total < 300_000u32 {
+            total = total + 70_000u32;
+            steps = steps + 1u16;
+        }
+        steps
+    });
+    // Negated wide condition.
+    check!({
+        let x = 5u32;
+        let mut r = 0u16;
+        if !(x >= 100_000u32) {
+            r = 7u16;
+        }
+        r
+    });
+}
+
+#[test]
+fn u32_comparisons_as_values() {
+    // Materialised 0/1 — mixed-width sides widen (the annotated-literal shape).
+    check!({
+        let w = 100_000u32;
+        (w > 65_535u32) as u16 * 100u16 + (w == 100_000u32) as u16 * 10u16 + (w <= 99_999u32) as u16
+    });
+    check!({
+        let small = 42u16;
+        let wide = 42u32;
+        (wide == small as u32) as u16 + (wide < 43u32) as u16 * 10u16
+    });
+}
+
+#[test]
+fn u32_saturating() {
+    // saturating_add/_sub ride the new wide compare; both clamped and clean sides.
+    check!({
+        let a = 0xFFFF_0000u32;
+        let b = 0x2_0000u32;
+        (a.saturating_add(b) >> 24) as u16 + (a.saturating_sub(b) >> 24) as u16 * 10u16
+    });
+    check!({
+        let a = 70_000u32;
+        (a.saturating_sub(80_000u32) == 0u32) as u16 * 10u16
+            + (a.saturating_add(1u32) == 70_001u32) as u16
+    });
+}

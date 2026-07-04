@@ -266,7 +266,9 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
                 ex(ptr, out);
                 ex(index, out);
             }
-            Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+            Expr::Cmp { lhs, rhs, .. }
+            | Expr::Logic { lhs, rhs, .. }
+            | Expr::Cmp32 { lhs, rhs, .. } => {
                 ex(lhs, out);
                 ex(rhs, out);
             }
@@ -407,7 +409,9 @@ fn count_expr(e: &Expr, m: &mut HashMap<String, usize>) {
             count_expr(ptr, m);
             count_expr(index, m);
         }
-        Expr::Cmp { lhs, rhs, .. } | Expr::Logic { lhs, rhs, .. } => {
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. } => {
             count_expr(lhs, m);
             count_expr(rhs, m);
         }
@@ -546,6 +550,11 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         },
         Expr::Logic { and, lhs, rhs } => Expr::Logic {
             and: *and,
+            lhs: e(lhs),
+            rhs: e(rhs),
+        },
+        Expr::Cmp32 { cmp, lhs, rhs } => Expr::Cmp32 {
+            cmp: *cmp,
             lhs: e(lhs),
             rhs: e(rhs),
         },

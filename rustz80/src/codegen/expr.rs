@@ -216,6 +216,8 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             a.place(done);
             mask_to_width(a, *w);
         }
+        // A u32 comparison materialised to `0`/`1` in HL.
+        Expr::Cmp32 { cmp, lhs, rhs } => gen_cmp32(a, *cmp, lhs, rhs),
         // `x as u16` — the low word of a `u32` value (the high word is discarded).
         Expr::Trunc32(e) => gen_expr32(a, e),
         // `halt(code)` — code in HL, then the HALT trap (no-op on real hardware).
@@ -310,6 +312,49 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
             gen_trap(a, TRAP_MUL16); // HL = BC * DE
         }
     }
+}
+
+/// Materialise a **u32** comparison to `0`/`1` in `HL` (unsigned — the dialect has
+/// no `i32`). Ordering: the 32-bit `SBC` chain computes `l - r` and its final borrow
+/// *is* `l < r`; `LD HL,0 ; ADC HL,HL` turns the carry into the bool (`CCF` negates
+/// for `>=`). `>`/`<=` swap operands. Equality: `OR` over the difference's four
+/// bytes, then `CP 1` sets carry iff zero. Branch-free — no labels.
+fn gen_cmp32(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr) {
+    // Normalise Gt/Le to Lt/Ge with swapped operands.
+    let (l, r, cmp) = match cmp {
+        Cmp::Gt => (rhs, lhs, Cmp::Lt),
+        Cmp::Le => (rhs, lhs, Cmp::Ge),
+        c => (lhs, rhs, c),
+    };
+    // The Sub32 operand sequence: r evaluated first (pushed), then l; SBC = l - r.
+    gen_expr32(a, r);
+    a.push(R16::De); // PUSH DE   (r.high)
+    a.push(R16::Hl); // PUSH HL   (r.low)
+    gen_expr32(a, l); // HL = l.low, DE = l.high
+    a.pop(R16::Bc); // POP BC    (r.low)
+    a.fx(&[0xB7]); // OR A        (clear carry)
+    a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+    a.ex_de_hl(); // EX DE,HL    (HL = l.high; EX/POP leave flags alone)
+    a.pop(R16::Bc); // POP BC    (r.high)
+    a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff − borrow → CF = l < r)
+    match cmp {
+        Cmp::Lt => {}
+        Cmp::Ge => a.fx(&[0x3F]), // CCF
+        Cmp::Eq | Cmp::Ne => {
+            // diff == 0 across all four bytes (high diff in HL, low diff in DE).
+            a.fx(&[0x7C]); // LD A,H
+            a.fx(&[0xB5]); // OR L
+            a.fx(&[0xB2]); // OR D
+            a.fx(&[0xB3]); // OR E
+            a.fx(&[0xFE, 0x01]); // CP 1   → CF = (diff == 0)
+            if cmp == Cmp::Ne {
+                a.fx(&[0x3F]); // CCF
+            }
+        }
+        _ => unreachable!("normalised above"),
+    }
+    a.ld_imm(R16::Hl, Imm::Abs(0)); // LD HL,0   (flags preserved)
+    a.fx(&[0xED, 0x6A]); // ADC HL,HL → HL = the carry (0/1)
 }
 
 /// `HL:DE = l * r` (mod 2^32). Both targets share the convention: `l` pushed on the
