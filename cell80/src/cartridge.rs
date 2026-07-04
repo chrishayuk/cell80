@@ -11,7 +11,10 @@ use std::hash::{Hash, Hasher};
 const MAGIC: &[u8; 4] = b"CELL";
 // v2 added the typed I/O signature; v3 added state field addresses; v4 added a width
 // (`Ty`) per state field, so a `u32` field is drivable/readable wide by name; v5 added
-// the `limits` declaration (the escalation contract, roadmap 3.2).
+// the `limits` declaration (the escalation contract, roadmap 3.2) **and** content
+// addressing (roadmap 3.1): a SHA-256 artifact hash over the serialized manifest +
+// image, verified on load by default, plus an optional ed25519 signature over that
+// hash. Pre-v5 cartridges carry no hash and load unverified (grandfathered).
 const VERSION: u8 = 5;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
@@ -107,6 +110,11 @@ pub struct CartridgeOpts {
 pub struct Cartridge {
     pub manifest: Manifest,
     pub program: CellProgram,
+    /// An optional ed25519 `(verifying key, signature)` over the [artifact
+    /// hash](Cartridge::artifact_hash) — attached by [`sign`](Cartridge::sign), carried
+    /// through serialization, and **verified on load** when present. Unsigned artifacts
+    /// stay first-class: the hash alone already pins content.
+    pub signature: Option<([u8; 32], [u8; 64])>,
 }
 
 impl Cartridge {
@@ -140,11 +148,13 @@ impl Cartridge {
                 limits: opts.limits,
             },
             program,
+            signature: None,
         })
     }
 
-    /// Serialize to `.cell` bytes (manifest + the [`CellProgram`] image).
-    pub fn to_bytes(&self) -> Vec<u8> {
+    /// The serialized manifest prefix (everything the artifact hash covers besides the
+    /// image): MAGIC through the `limits` list.
+    fn manifest_bytes(&self) -> Vec<u8> {
         let m = &self.manifest;
         let mut b = Vec::new();
         b.extend_from_slice(MAGIC);
@@ -167,14 +177,65 @@ impl Cartridge {
         for l in &m.limits {
             put_string(&mut b, l);
         }
+        b
+    }
+
+    /// The content address (roadmap 3.1): SHA-256 over the serialized manifest + the
+    /// emitted image. Two artifacts with the same hash are the same tool — manifest text,
+    /// entry, capability policy, code, all of it.
+    pub fn artifact_hash(&self) -> [u8; 32] {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update(self.manifest_bytes());
+        h.update(self.program.to_bytes());
+        h.finalize().into()
+    }
+
+    /// Sign the [artifact hash](Cartridge::artifact_hash) with an ed25519 seed (32
+    /// bytes, e.g. from `cell80 keygen`). The `(verifying key, signature)` pair is
+    /// embedded on the next [`to_bytes`](Cartridge::to_bytes) and verified on load.
+    pub fn sign(&mut self, seed: &[u8; 32]) {
+        use ed25519_dalek::{Signer, SigningKey};
+        let key = SigningKey::from_bytes(seed);
+        let sig = key.sign(&self.artifact_hash());
+        self.signature = Some((key.verifying_key().to_bytes(), sig.to_bytes()));
+    }
+
+    /// Serialize to `.cell` bytes: manifest, the artifact hash, the optional signature
+    /// block, then the [`CellProgram`] image.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut b = self.manifest_bytes();
+        b.extend_from_slice(&self.artifact_hash());
+        match &self.signature {
+            Some((vk, sig)) => {
+                b.push(1);
+                b.extend_from_slice(vk);
+                b.extend_from_slice(sig);
+            }
+            None => b.push(0),
+        }
         let img = self.program.to_bytes();
         b.extend_from_slice(&(img.len() as u32).to_le_bytes());
         b.extend_from_slice(&img);
         b
     }
 
-    /// Reload a `.cell` cartridge — no parse, no compile.
+    /// Reload a `.cell` cartridge — no parse, no compile. **Verifies by default** (the
+    /// roadmap-3.1 contract): the stored artifact hash must match the recomputed one,
+    /// and the signature (when present) must verify against it. Pre-v5 cartridges carry
+    /// no hash and load as before. For dev round-trips on intentionally edited bytes,
+    /// [`from_bytes_unverified`](Cartridge::from_bytes_unverified) skips both checks.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        Self::from_bytes_impl(bytes, true)
+    }
+
+    /// [`from_bytes`](Cartridge::from_bytes) without the hash/signature check — the
+    /// `--no-verify` dev path. The artifact is still parsed and structurally validated.
+    pub fn from_bytes_unverified(bytes: &[u8]) -> Result<Self, String> {
+        Self::from_bytes_impl(bytes, false)
+    }
+
+    fn from_bytes_impl(bytes: &[u8], verify: bool) -> Result<Self, String> {
         let mut r = ImageReader { b: bytes, i: 0 };
         if r.take(4)? != MAGIC {
             return Err("not a .cell cartridge".into());
@@ -218,8 +279,56 @@ impl Cartridge {
         } else {
             Vec::new()
         };
+        // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
+        let manifest_end = r.i;
+        let (stored_hash, cart_sig) = if ver >= 5 {
+            let mut hash = [0u8; 32];
+            hash.copy_from_slice(r.take(32)?);
+            let sig = match r.u8()? {
+                0 => None,
+                1 => {
+                    let mut vk = [0u8; 32];
+                    vk.copy_from_slice(r.take(32)?);
+                    let mut s = [0u8; 64];
+                    s.copy_from_slice(r.take(64)?);
+                    Some((vk, s))
+                }
+                other => return Err(format!("bad signature marker {other}")),
+            };
+            (Some(hash), sig)
+        } else {
+            (None, None)
+        };
         let img_len = r.u32()? as usize;
-        let program = CellProgram::from_bytes(r.take(img_len)?)?;
+        let img = r.take(img_len)?;
+        if verify {
+            if let Some(stored) = stored_hash {
+                use sha2::{Digest, Sha256};
+                let mut h = Sha256::new();
+                h.update(&bytes[..manifest_end]);
+                h.update(img);
+                let actual: [u8; 32] = h.finalize().into();
+                if actual != stored {
+                    return Err(
+                        "artifact hash mismatch — the .cell is corrupted or was tampered \
+                         with (recompile it, or load with --no-verify for dev)"
+                            .into(),
+                    );
+                }
+                if let Some((vk_bytes, sig_bytes)) = &cart_sig {
+                    use ed25519_dalek::{Signature, VerifyingKey};
+                    let vk = VerifyingKey::from_bytes(vk_bytes)
+                        .map_err(|e| format!("bad signing key in .cell: {e}"))?;
+                    vk.verify_strict(&stored, &Signature::from_bytes(sig_bytes))
+                        .map_err(|_| {
+                            "signature verification failed — the .cell was not signed by \
+                             the key it claims (or was altered after signing)"
+                                .to_string()
+                        })?;
+                }
+            }
+        }
+        let program = CellProgram::from_bytes(img)?;
         Ok(Cartridge {
             manifest: Manifest {
                 id,
@@ -234,6 +343,7 @@ impl Cartridge {
                 limits,
             },
             program,
+            signature: cart_sig,
         })
     }
 
@@ -270,10 +380,19 @@ impl Cartridge {
         } else {
             format!("\n  limits: {} (escalates past these)", m.limits.join(", "))
         };
+        let hash = self.artifact_hash();
+        let artifact = match &self.signature {
+            Some((vk, _)) => format!(
+                "sha256:{}  (signed, key ed25519:{}…)",
+                hex(&hash),
+                &hex(&vk[..])[..16]
+            ),
+            None => format!("sha256:{}  (unsigned)", hex(&hash)),
+        };
         format!(
             "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}\n  \
              entry: {} @ 0x{:04X}\n  code: {} bytes, {} functions\n  capabilities: {}\n  \
-             symbols: {}\n  source_hash: 0x{:016x}",
+             symbols: {}\n  source_hash: 0x{:016x}\n  artifact: {artifact}",
             m.id,
             m.abi_version,
             m.compiler_version,
@@ -321,6 +440,7 @@ impl Cartridge {
              \"limits\":[{}],\
              \"entry\":\"{}\",\"signature\":{{\"params\":[{}],\"ret\":\"{}\",\"state\":[{}]}},\
              \"code_bytes\":{},\"functions\":{},\"source_hash\":\"0x{:016x}\",\
+             \"artifact_hash\":\"sha256:{}\",\"signed\":{},\
              \"capabilities\":{{\"raw_memory\":{},\"ports\":{},\"max_code\":{},\"max_touched\":{}}},\
              \"symbols\":{{{}}}}}",
             m.id,
@@ -336,6 +456,8 @@ impl Cartridge {
             p.code.len(),
             p.size_report().len(),
             m.source_hash,
+            hex(&self.artifact_hash()),
+            self.signature.is_some(),
             c.allow_raw_memory,
             c.allow_ports,
             c.max_code_bytes.map_or("null".into(), |n| n.to_string()),
@@ -343,4 +465,9 @@ impl Cartridge {
             syms.join(","),
         )
     }
+}
+
+/// Lowercase hex of a byte slice (the artifact-hash / key rendering).
+fn hex(b: &[u8]) -> String {
+    b.iter().map(|x| format!("{x:02x}")).collect()
 }

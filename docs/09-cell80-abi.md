@@ -159,12 +159,28 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v4**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v5**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
-and `state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
-0 = u16, 1 = u32, 2 = u8) at `STATE_BASE`, so a host or a peer cell in a graph drives the
-cell **by field name without the source** — a `u32` field at its full width. `from_bytes`
-still reads v3 (addresses without widths → fields read as `u16`) and v2 (no `state_addrs`)
-cartridges. This named, versioned, manifest-bearing artifact is the object the CLI, a tool
-index, the MCP server, and a `CellGraph` pass around. (Note: the `.cell` *file* format
-version — v4 — is distinct from the runtime `ABI_VERSION` above, now 2.)
+`state_addrs`: each scalar state field's byte address **and width** (`Ty`, one byte:
+0 = u16, 1 = u32, 2 = u8) at `STATE_BASE` (so a host or a peer cell in a graph drives the
+cell **by field name without the source** — a `u32` field at its full width), and the
+`limits` list (the escalation contract's static half, above). `from_bytes`
+still reads v4 (no `limits`, no content addressing), v3 (addresses without widths →
+fields read as `u16`), and v2 (no `state_addrs`) cartridges. This named, versioned,
+manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v5 — is distinct
+from the runtime `ABI_VERSION` above, now 2.)
+
+### Content addressing & signing (v5)
+
+After the manifest, a v5 cartridge carries its **artifact hash** — SHA-256 over the
+serialized manifest + the image, i.e. the whole tool: metadata, entry, capability
+policy, code — and an optional **ed25519 signature block** (`(verifying key,
+signature)` over that hash). `Cartridge::from_bytes` **verifies both by default** and
+refuses a mismatch; every loader (`exec`, `inspect`, `index`, `serve`, the MCP
+library's `.cell` path) inherits the check. `--no-verify` (CLI) /
+`from_bytes_unverified` is the dev escape hatch. Pre-v5 cartridges carry no hash and
+load as before (grandfathered — recompile to pin them). `cell80 keygen` mints a
+signing key; `cell80 sign <file.cell> --key <key>` embeds the signature in place.
+Signing does not change the artifact hash: the signature *wraps* the address, so a
+signed and an unsigned serialization of the same tool share it.

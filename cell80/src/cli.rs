@@ -8,8 +8,10 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell compile <file.rs> -o <file.cell> [--entry NAME] [--id ID] \
      [--summary TEXT] [--tags a,b] [safety]\n  \
      rustz80-cell exec <file.cell> [--entry NAME] [--cycles N] [--args a,b,c] \
-     [--set addr:ty=val,...] [--read name@addr:ty,...] [--json]\n  \
-     rustz80-cell inspect <file.cell> [--json]\n  \
+     [--set addr:ty=val,...] [--read name@addr:ty,...] [--json] [--no-verify]\n  \
+     rustz80-cell inspect <file.cell> [--json] [--no-verify]\n  \
+     rustz80-cell keygen <out.key>             (new ed25519 signing key)\n  \
+     rustz80-cell sign <file.cell> --key <key> (sign the artifact hash in place)\n  \
      rustz80-cell index <dir>                 (list the cell library in <dir>)\n  \
      rustz80-cell search <query> <dir>        (rank library cells by relevance)\n  \
      rustz80-cell serve <dir>                 (persistent stdio session over a warm host)\n  \
@@ -105,6 +107,8 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
         Some("search") => cmd_search(&args[1..]),
         Some("serve") => cmd_serve(&args[1..]),
         Some("graph") => cmd_graph(&args[1..]),
+        Some("keygen") => cmd_keygen(&args[1..]),
+        Some("sign") => cmd_sign(&args[1..]),
         Some(other) => Err(format!("unknown command `{other}`\n{USAGE}")),
         None => Err(USAGE.into()),
     }
@@ -471,9 +475,14 @@ fn cmd_compile(args: &[String]) -> Result<String, String> {
 fn cmd_inspect(args: &[String]) -> Result<String, String> {
     let mut it = args.iter();
     let file = it.next().ok_or(USAGE)?;
-    let json = it.any(|a| a == "--json");
+    let rest: Vec<&String> = it.collect();
+    let json = rest.iter().any(|a| *a == "--json");
     let bytes = std::fs::read(file).map_err(|e| format!("{file}: {e}"))?;
-    let cart = Cartridge::from_bytes(&bytes)?;
+    let cart = if rest.iter().any(|a| *a == "--no-verify") {
+        Cartridge::from_bytes_unverified(&bytes)?
+    } else {
+        Cartridge::from_bytes(&bytes)?
+    };
     Ok(if json {
         cart.to_json()
     } else {
@@ -567,6 +576,7 @@ fn cmd_exec(args: &[String]) -> Result<String, String> {
     let mut sets: Vec<(u16, Ty, u64)> = Vec::new();
     let mut reads: Vec<(String, u16, Ty)> = Vec::new();
     let mut json = false;
+    let mut no_verify = false;
     while let Some(a) = it.next() {
         match a.as_str() {
             "--entry" => entry = Some(it.next().ok_or("--entry needs a name")?.clone()),
@@ -581,10 +591,16 @@ fn cmd_exec(args: &[String]) -> Result<String, String> {
             "--set" => sets = parse_sets(it.next().ok_or("--set needs a spec")?)?,
             "--read" => reads = parse_reads(it.next().ok_or("--read needs a spec")?)?,
             "--json" => json = true,
+            "--no-verify" => no_verify = true, // dev-only: skip the artifact hash check
             other => return Err(format!("unknown option `{other}`\n{USAGE}")),
         }
     }
-    let cart = Cartridge::from_bytes(&std::fs::read(file).map_err(|e| format!("{file}: {e}"))?)?;
+    let bytes = std::fs::read(file).map_err(|e| format!("{file}: {e}"))?;
+    let cart = if no_verify {
+        Cartridge::from_bytes_unverified(&bytes)?
+    } else {
+        Cartridge::from_bytes(&bytes)?
+    };
     // Default to the cartridge's own entry (the manifest knows it).
     let entry = entry.unwrap_or_else(|| cart.manifest.entry.clone());
     let mut runner = Runner::new(&cart.program);
@@ -597,6 +613,50 @@ fn cmd_exec(args: &[String]) -> Result<String, String> {
         cycles,
         json,
     )
+}
+
+/// `keygen <out.key>` — write a fresh 32-byte ed25519 seed (from the OS entropy pool)
+/// and print the public verifying key. Guard the file like any private key.
+fn cmd_keygen(args: &[String]) -> Result<String, String> {
+    let out = args.first().ok_or(USAGE)?;
+    use std::io::Read;
+    let mut seed = [0u8; 32];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut seed))
+        .map_err(|e| format!("no OS entropy source (/dev/urandom): {e}"))?;
+    std::fs::write(out, seed).map_err(|e| format!("{out}: {e}"))?;
+    let vk = ed25519_dalek::SigningKey::from_bytes(&seed).verifying_key();
+    let hex: String = vk.to_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    Ok(format!(
+        "wrote signing key to {out} (keep it private)\npublic key: ed25519:{hex}"
+    ))
+}
+
+/// `sign <file.cell> --key <key>` — sign the artifact hash and rewrite the `.cell` with
+/// the signature block embedded. Verifiers check it on every load.
+fn cmd_sign(args: &[String]) -> Result<String, String> {
+    let mut it = args.iter();
+    let file = it.next().ok_or(USAGE)?;
+    let mut key_path: Option<&String> = None;
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--key" => key_path = Some(it.next().ok_or("--key needs a path")?),
+            other => return Err(format!("unknown option `{other}`\n{USAGE}")),
+        }
+    }
+    let key_path = key_path.ok_or("sign needs --key <key file>")?;
+    let key = std::fs::read(key_path).map_err(|e| format!("{key_path}: {e}"))?;
+    let seed: [u8; 32] = key
+        .as_slice()
+        .try_into()
+        .map_err(|_| format!("{key_path}: want exactly 32 bytes (from `keygen`)"))?;
+    let bytes = std::fs::read(file).map_err(|e| format!("{file}: {e}"))?;
+    let mut cart = Cartridge::from_bytes(&bytes)?; // verified before signing
+    cart.sign(&seed);
+    std::fs::write(file, cart.to_bytes()).map_err(|e| format!("{file}: {e}"))?;
+    let vk = cart.signature.expect("just signed").0;
+    let hex: String = vk.iter().map(|b| format!("{b:02x}")).collect();
+    Ok(format!("signed {file} (key ed25519:{}…)", &hex[..16]))
 }
 
 #[cfg(test)]

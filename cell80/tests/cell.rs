@@ -1723,3 +1723,111 @@ fn escalation_caches_like_any_deterministic_stop() {
     assert_eq!(hit.halt, first.halt);
     assert_eq!(r.cache_stats(), Some((1, 2)));
 }
+
+// ── content-addressed, signed artifacts (roadmap 3.1) ─────────────────────────────
+
+#[cfg(test)]
+fn adder_cart() -> cell80::Cartridge {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
+    Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { a + b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap()
+}
+
+#[test]
+fn artifact_hash_round_trips_and_pins_content() {
+    use cell80::Cartridge;
+    let cart = adder_cart();
+    let bytes = cart.to_bytes();
+    let back = Cartridge::from_bytes(&bytes).unwrap();
+    assert_eq!(back.artifact_hash(), cart.artifact_hash());
+    assert!(back.to_json().contains("\"artifact_hash\":\"sha256:"));
+    assert!(back.to_json().contains("\"signed\":false"));
+    assert!(back.to_human().contains("(unsigned)"));
+
+    // A different program is a different address; so is a different manifest.
+    use cell80::{Cartridge as C, CartridgeOpts, CellConfig};
+    let other = C::compile(
+        "fn run(a: u16, b: u16) -> u16 { a - b }",
+        CellConfig::sandboxed(),
+        CartridgeOpts { id: Some("adder".into()), ..Default::default() },
+    )
+    .unwrap();
+    assert_ne!(other.artifact_hash(), cart.artifact_hash());
+}
+
+#[test]
+fn tampered_bytes_are_refused_by_default_and_loadable_unverified() {
+    use cell80::Cartridge;
+    let bytes = adder_cart().to_bytes();
+
+    // Flip a bit in the image (the last byte): parses fine, so only the hash refuses it.
+    let mut evil = bytes.clone();
+    let n = bytes.len();
+    evil[n - 1] ^= 0x01;
+    let err = Cartridge::from_bytes(&evil).err().expect("tampered load must fail");
+    assert!(err.contains("hash mismatch"), "{err}");
+
+    // A manifest-region flip must not load cleanly either (structural error or hash
+    // mismatch, depending on which byte the flip lands in — refusal is the contract).
+    let mut evil = bytes.clone();
+    evil[10] ^= 0x01;
+    assert!(Cartridge::from_bytes(&evil).is_err());
+
+    // The dev escape hatch parses (structure permitting) without the hash check.
+    let mut evil = bytes.clone();
+    let n = evil.len();
+    evil[n - 1] ^= 0x01;
+    assert!(Cartridge::from_bytes_unverified(&evil).is_ok());
+}
+
+#[test]
+fn signing_round_trips_and_forgeries_fail() {
+    use cell80::Cartridge;
+    let mut cart = adder_cart();
+    let seed = [7u8; 32];
+    cart.sign(&seed);
+    let bytes = cart.to_bytes();
+
+    let back = Cartridge::from_bytes(&bytes).unwrap(); // hash + signature both verify
+    assert!(back.signature.is_some());
+    assert!(back.to_json().contains("\"signed\":true"));
+    assert!(back.to_human().contains("signed, key ed25519:"));
+
+    // Corrupt one signature byte: the hash still matches, the signature must not.
+    // Layout: [manifest][hash 32][marker 1][vk 32][sig 64][img_len 4][img] — the
+    // signature block ends 4 + img_len bytes before the end.
+    let img_len = cart.program.to_bytes().len();
+    let sig_last = bytes.len() - 4 - img_len - 1;
+    let mut forged = bytes.clone();
+    forged[sig_last] ^= 0x01;
+    let err = Cartridge::from_bytes(&forged).err().expect("forged load must fail");
+    assert!(err.contains("signature"), "{err}");
+
+    // An unsigned re-serialization of the same content keeps the same address.
+    let unsigned = adder_cart();
+    assert_eq!(unsigned.artifact_hash(), cart.artifact_hash());
+}
+
+#[test]
+fn pre_v5_cartridges_still_load() {
+    use cell80::Cartridge;
+    // A v4 image has no limits list, no hash, no signature block: rebuild one from a
+    // v5 byte stream by splicing those fields out and rewriting the version byte.
+    let cart = adder_cart();
+    let v5 = cart.to_bytes();
+    let img = cart.program.to_bytes();
+    let img_block_len = 4 + img.len();
+    let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
+    let mut v4 = Vec::new();
+    v4.extend_from_slice(&v5[..manifest_end - 2]); // manifest minus the empty limits u16
+    v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
+    v4[4] = 4; // version byte
+    let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path
+    assert_eq!(back.manifest.id, "adder");
+    assert!(back.manifest.limits.is_empty());
+    assert!(back.signature.is_none());
+}
