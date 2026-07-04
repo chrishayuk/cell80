@@ -241,19 +241,34 @@ lookups — the economic argument for the runtime in one feature.
 
 ## Phase 4 — Codegen stage 2 (after 0–1, before feature growth resumes)
 
-**4.1 The `Ins` layer.**
+**4.1 The `Ins` layer. ✓ shipped.**
 Codegen emits raw bytes (`a.byte(0x21)`) — there is nothing for a peephole to rewrite,
 and the retrofit cost grows with every line added to `codegen/`. Introduce an instruction
 enum between codegen and encoding *now*, behaviorally neutral, validated by
 byte-identical output on the full test corpus.
 *DoD:* all codegen goes through `Ins`; emitted images byte-identical to pre-refactor for
-the whole suite.
+the whole suite. **Done:** symbolic operands (labels / call targets / locals *slots* —
+scratch resolves at encode, so the frame loop measures once instead of emitting twice);
+the hand-assembled runtime rides as `Ins::Blob`. Byte-identity proven against the
+committed golden (`cell80/tests/codegen_golden.rs`: 100 stdlib cells + showcase samples
+on both targets + `codegen_loop` + the u32/signed runtimes). Snapshotting the golden
+also surfaced and fixed a real determinism hole: monomorphized methods were laid out in
+`HashMap` order — different image per process for the same source.
 
-**4.2 Peephole pass.**
+**4.2 Peephole pass. ✓ shipped.**
 Redundant load elimination (`LD (addr),HL; LD HL,(addr)`), push/pop pairs around trivial
 RHS, dead `mask_to_width`. Measure on the size report — the win is bytes and T-states,
 both metered exactly, so the pass proves itself.
 *DoD:* corpus-wide size/T-state deltas published; diff suite green on both targets.
+**Done:** six adjacent-window rules over the `Ins` stream, label-fenced by construction,
+run to fixpoint in `seal()`. Measured sites across the 100 stdlib cells (counted, not
+assumed): leaf-operand pair 150, store-then-reload 30, 2-arg call tail 26, literal-add 15,
+cleanups 4, dead push/pop 2 — the predicted "add is everywhere" ranking holds. Prize:
+**−994 bytes (−4.3 %)** across 111 of 117 golden images. Each rule ships a behavioural
+diff case (`tests/diff/peephole.rs`) *and* a fired-proof shape assertion
+(`tests/peephole_shape.rs`); the regenerated golden carries the reviewed byte deltas.
+(Also fixed en route: the `is_prime` cell diverged for `n > 65025` — `d*d` wraps in u16;
+bounded to `d < 256`, the `factor_count` idiom, complete for the whole u16 domain.)
 
 **4.3 u32 completion + array elements.**
 Finish the half-open u32 surface (array elements are currently rejected), keep u64/floats

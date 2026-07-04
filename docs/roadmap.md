@@ -264,32 +264,33 @@ upside — no gaming surface reopens); games get room under the 4 KB code ceilin
 for disproportionate primitives*, so the test for any new width is the **contract — bounded +
 honest cost** — not "can the chip do it."
 
-**Stage 2 — codegen quality.** The blocker is structural, not effort: codegen emits raw bytes
-straight into a `Vec<u8>` (`a.byte(0xE5)`), so instruction boundaries are gone and there is no
-seam for a quality pass.
+**Stage 2 — codegen quality.** The blocker *was* structural, not effort: codegen emitted raw
+bytes straight into a `Vec<u8>` (`a.byte(0xE5)`), so instruction boundaries were gone and there
+was no seam for a quality pass. **The seam and the first peephole shipped** (roadmap-phases
+4.1/4.2 carry the full dispositions):
 
-- **Instruction-IR seam (the keystone).** Interpose a thin `Ins` list between codegen and
-  `finish()` — an enum with **symbolic operands** (labels / slot refs / call targets stay
-  symbolic, not byte offsets; the runtime appended as `Ins::Blob(&[u8])`). The address model
-  inverts: PC + scratch assignment moves to a final pass *after* peephole
-  (`emit → peephole → measure → assign PCs + scratch → lower to bytes`), which folds the
-  code-relative scratch two-pass in cleanly (code length is invariant to the scratch *value*).
-  Unlocks peephole, a small *what's-in-`HL`/`DE`* tracker, and instruction-level measurement —
-  and it's the shared substrate for the 8-bit path and a future signed-compare, so it pays off 3×.
-- **Peephole rules, ranked by pattern frequency.** `Var⊕Var` / `Var⊕Lit` for commutative ops →
-  drop the `PUSH HL` / `POP DE` and use `LD HL,(a); LD DE,(b); ADD HL,DE` (`ED 5B` / `11`) — the
-  biggest cumulative win, because add is everywhere; store-then-reload elision; redundant
-  `LD H,0` / `EX DE,HL` pairs; dead push/pop around leaf operands. Each rule's correctness
-  predicate is **effect-free leaf operands** (the PUSH/POP scheme is evaluation-order-safe; the
-  flat form isn't if an operand can `poke` / call).
+- ✓ **Instruction-IR seam (the keystone) — done.** The `Ins` list sits between codegen and
+  `finish()` — symbolic operands (labels / slot refs / call targets; the runtime as
+  `Ins::Blob`), PC + scratch assignment inverted to a final encode pass exactly as planned
+  (`emit → peephole → measure → assign PCs + scratch → lower to bytes`); the frame loop's
+  two-pass emission collapsed to one emission + two encodes. Byte-identical to the pre-seam
+  compiler over the committed golden corpus (`cell80/tests/codegen_golden.rs` — also the
+  permanent regression net: future codegen changes must regenerate it and review the deltas).
+  The 8-bit `A` path and signed-compare now have their substrate.
+- ✓ **Peephole, first six rules — done, measured.** Site counts over the 100-cell library
+  confirmed the predicted ranking (leaf `Var⊕Var`/`Var⊕Lit` pairs 150, store-then-reload 30,
+  2-arg call tail 26, literal-add 15, cleanups 4, dead push/pop 2); the leaf-pair rewrite
+  landed as `PUSH HL; <leaf>; POP DE → EX DE,HL; <leaf>` (register-state-exact, so it needs no
+  consumer analysis — the `LD DE,…` direct form is kept for the commutative-add literal case).
+  **−994 bytes (−4.3 %) across 111 of 117 corpus images.** Every rule shipped the two tests the
+  DoD demands: a rustc-oracle diff case and a fired-proof shape assertion.
 - **8-bit path (follow-on, behind the seam).** `u8` ops compute in 16-bit `HL` + mask today;
   computing in `A` is a size win for chuk-speccy byte code and pairs with the `[u8; N]` field ask.
-  Wants the seam first so peephole can clean the H/L splits at the boundaries.
-- **DoD — measure-first, double-tested.** Snapshot the library's per-fn byte sizes via
-  `Program::size_report()` *before* the seam (proves the prize is real; the golden to beat), and
-  *count* `Var⊕Var` vs general binop sites rather than assuming the ranking. Every peephole rule
-  ships **two** tests: a `tests/diff.rs` case (behaviour unchanged — the rustc-vs-emulator net)
-  **and** a size/shape assertion (a no-op rule passes diff trivially, so prove it fired).
+  The seam is in; peephole can clean the H/L splits at the boundaries.
+- **Next rules worth ranking:** window-spanning leaf pairs (the `ptr_elem_addr` shape — the
+  pop is separated from the push by an effect-free span), `INC HL`/`DEC HL` strength-reduction
+  for `± 1`/`± 2` literals (flags differ from `ADD` — needs the no-flag-consumer argument made
+  explicit), and a *what's-in-`HL`/`DE`* tracker for cross-statement reload elision.
 
 **Wider state — `u32` in state, then fixed-point (kill the overflow footgun).** `u32` already
 exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the gap is persisting
