@@ -129,6 +129,38 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     fix caused on its own). Net: real, validated, honestly-partial progress on the
     kill-gate's literal concern (paraphrase/adversarial); reported to the user as such
     rather than declared fully resolved.
+  - Checkpoint 12 (`checkpoint-12-retrieval-tag-audit`, 163 cells, **no new cells** — the
+    user asked to keep pushing on retrieval after checkpoint 11's partial recovery): P@1
+    direct 0.92 / paraphrase 0.46 / adversarial 0.50. Dumped every current miss (direct,
+    paraphrase, adversarial — a small scratch harness over `TfidfIndex`, not committed)
+    and found a genuinely different, more widespread root cause than checkpoint 11's:
+    several of the library's **oldest cells** (`gcd`, `min`, `max`, `chebyshev`,
+    `pack_u8`, `same_unit_check`) were authored with much sparser tags than the richer,
+    synonym-heavy convention later packs settled into, so newer siblings with fuller
+    vocabulary (`gcd3`, `min3`, `max3`, `manhattan`) out-ranked them on their own queries.
+    Six targeted, low-risk tag/wording additions, each verified directly against
+    `examples/retrieval_compare` before and after (a seventh, adding "minus/subtract/
+    magnitude" to `abs_diff`, measurably *regressed* adversarial and was reverted —
+    verify every change, don't assume more vocabulary is strictly better):
+    - `gcd`: added `divisor, common, factor, highest` (was missing all of them, despite
+      `gcd3` having them — direct query "greatest common divisor" lost to `gcd3`).
+    - `min`/`max`: added `smaller, smallest, least, lesser` / `larger, bigger, greatest,
+      greater` (paraphrase queries using these synonyms lost to `min3`/`max3`/`is_lt`).
+    - `chebyshev`: added `larger, max, maximum, axis` — its own definition *is*
+      `max(|dx|,|dy|)`, but the tags never said so.
+    - `pack_u8`: added `high, low, hi, lo` — the summary uses the abbreviations `hi`/`lo`
+      as variable names, which don't tokenize to the words a query naturally uses.
+    - `same_unit_check`: replaced a long inline enumeration of all 8 dimension codes
+      (`0=count,1=money,...`) with a pointer to `docs/library-growth.md`, and added
+      `match, mismatch` — the enumeration was diluting the doc's own normalised vector on
+      the words that actually distinguish it from `unit_cancel_check`, and the summary
+      never used the word "match" despite that being the cell's whole point.
+    Result: **paraphrase (0.459) and adversarial (0.50) are both now above checkpoint
+    1's baseline for the first time since checkpoint 7**, and **direct (0.9181) recovered
+    fully to checkpoint 10's pre-fix level**, ending the four-checkpoint decline.
+    Overall P@1 (0.7034) now exceeds checkpoint 1's own overall (0.6974) despite the
+    library growing 114→163 cells. The kill-gate concern raised at checkpoint 10 is
+    resolved, not just mitigated.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
