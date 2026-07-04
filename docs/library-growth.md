@@ -28,14 +28,20 @@ wave 3c   108 cells   + agentic runtime primitives, first slice (token_bucket_st
                         rate_window_update still open
 wave 3d   111 cells   + running statistics, first slice (running_min_max_step,
                         streak_step, accumulate_step) — Welford variance still open
-now       114 cells   + spatial/grid, first slice (grid_index, point_in_rect,
+wave 3e   114 cells   + spatial/grid, first slice (grid_index, point_in_rect,
                         aabb_intersect) — Morton encode/decode, Bresenham still open
-next      ~200+        + packing/BCD · vector · time/budget · stateful/RNG · signed deltas
+now       120 cells   + the Phase 2.3 pilot batch: packing/BCD (pack_u8, pack_nibbles,
+                        bcd_encode, bcd_decode) + vector (dot2, norm2_sq) —
+                        unpack_lo/unpack_hi never built (exact duplicates of
+                        low_byte/high_byte, caught before authoring)
+next      ~200+        + time/budget · stateful/RNG · signed deltas
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
-runtime, running statistics, spatial/grid) have now landed a first slice; each deferred its
-harder items (see the per-pack notes below and `docs/cell-index.md`'s "planned" section).
+runtime, running statistics, spatial/grid) landed a first slice; each deferred its harder
+items (see the per-pack notes below and `docs/cell-index.md`'s "planned" section). The
+Phase 2.3 pilot batch (packing/BCD + vector) exercised the author→verify→admit loop
+end-to-end for the first time — see the "Phase 2.3" section below for what it found.
 
 Cells are also **modular** now: a shared kernel prelude (`gcd`, `imin`, `imax`, `iabs_diff`,
 `isqrt`, `clamp_to`) is appended to every cell and dead-code-eliminated, so `lcm` calls `gcd`
@@ -136,7 +142,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (114 cells)
+### Landed (120 cells)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against
@@ -187,12 +193,22 @@ discovery — it would need a `u32` state field, and the bit-interleaving loop i
 (computed shift amounts on a wide accumulator) hasn't been risked yet. A Bresenham line
 stepper is also still open.
 
+**Packing/BCD + vector, the Phase 2.3 pilot batch: `pack_u8`, `pack_nibbles`, `bcd_encode`,
+`bcd_decode`, `dot2`, `norm2_sq`.** The first real run of the author→verify→admit loop
+(below) — and it immediately earned its keep: checking `docs/cell-index.md` before
+authoring found `unpack_lo`/`unpack_hi` would be exact duplicates of the already-landed
+`low_byte`/`high_byte`, so they were never written at all (a real duplicate caught before
+the gate ever had to refuse one). `cosine_score_approx` was scoped out for a different
+reason — an honest one: exact fixed-point cosine similarity needs `sqrt(norm_a * norm_b)`
+without overflowing a `u16` return, and that hasn't been worked out yet. `dot2` is a state
+cell purely for arg count (4 fields: two 2D vectors), not width.
+
 ### Next waves (prioritized — keep them distinct)
 
-- **packing / BCD**: `pack_u8`/`unpack_lo`/`unpack_hi`, `pack_nibbles`, `bcd_encode`/`bcd_decode`.
 - **scoring / choice** (mostly state cells — need > 3 args): `weighted_sum2/3`, `score_2factor`,
   `choose_best3/4`, `is_clear_winner`, `tie_break_*`.
-- **vector** (state cells): `dot2`, `norm2_sq`, `cosine_score_approx`.
+- **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
+  fixed-point sqrt-of-a-product).
 - **stateful / RNG** (struct state): `lcg_next`, `xorshift16`, `bounded_rand`, `counter_*`.
   (`ema_update`/`moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample,
   alpha)` is one EMA step.)

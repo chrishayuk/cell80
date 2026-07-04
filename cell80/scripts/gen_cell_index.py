@@ -30,6 +30,8 @@ PACKS = {
     "agentic-runtime": ["token_bucket_step", "backoff_next", "circuit_breaker_step", "debounce_step", "hysteresis"],
     "running-stats": ["running_min_max_step", "streak_step", "accumulate_step"],
     "spatial/grid": ["grid_index", "point_in_rect", "aabb_intersect"],
+    "packing/BCD": ["pack_u8", "pack_nibbles", "bcd_encode", "bcd_decode"],
+    "vector": ["dot2", "norm2_sq"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
@@ -96,14 +98,18 @@ def main():
     print("## planned (not yet landed)")
     print()
     print("See `docs/library-growth.md` \"Next waves\" for the prioritized list "
-          "(packing/BCD, vector, stateful/RNG, time/budget, signed deltas). All five "
-          "originally-planned wave-3 packs have landed a first slice: calendrical/checksum, "
-          "fixed-point, agentic-runtime, running-stats, and spatial/grid above. Each first "
-          "slice deferred its harder items: ISBN/IBAN/UPC checksums need a wider-than-u32 "
-          "input (see library-growth.md); q_sqrt/piecewise sigmoid-tanh, "
-          "rate_window_update, a fixed-point running variance (Welford), Morton "
-          "encode/decode (needs a u32 state field, not yet risked), and a Bresenham "
-          "stepper are all still open.")
+          "(stateful/RNG, time/budget, signed deltas) and the Phase 2.3 pilot-batch "
+          "section for the author->verify->admit loop. All five originally-planned wave-3 "
+          "packs plus the Phase 2.3 pilot batch (packing/BCD, vector) have landed a first "
+          "slice above. `unpack_lo`/`unpack_hi` were never built — checking "
+          "docs/cell-index.md before authoring found they'd be exact duplicates of "
+          "`low_byte`/`high_byte`. Each first slice deferred its harder items: "
+          "ISBN/IBAN/UPC checksums need a wider-than-u32 input (see library-growth.md); "
+          "q_sqrt/piecewise sigmoid-tanh, rate_window_update, a fixed-point running "
+          "variance (Welford), Morton encode/decode (needs a u32 state field, not yet "
+          "risked), a Bresenham stepper, and cosine_score_approx (deferred: exact "
+          "fixed-point cosine needs a wide sqrt-of-a-product without overflow, not yet "
+          "worked out) are all still open.")
 
 
 if __name__ == "__main__":

@@ -267,3 +267,18 @@
 {"id": "aabb_intersect-direct-1", "query": "do these two axis-aligned bounding boxes overlap", "expected": "aabb_intersect", "category": "direct"}
 {"id": "aabb_intersect-para-1", "query": "check two rectangles for collision", "expected": "aabb_intersect", "category": "paraphrase"}
 {"id": "aabb_intersect-adv-1", "query": "do two sprites overlap on screen", "expected": "aabb_intersect", "category": "adversarial"}
+
+# ── packing / BCD, vector (wave 3, pilot batch) ──
+{"id": "pack_u8-direct-1", "query": "pack two byte values into one u16", "expected": "pack_u8", "category": "direct"}
+{"id": "pack_u8-para-1", "query": "combine a high byte and low byte into one 16-bit value", "expected": "pack_u8", "category": "paraphrase"}
+{"id": "pack_nibbles-direct-1", "query": "pack two nibbles into one byte", "expected": "pack_nibbles", "category": "direct"}
+{"id": "pack_nibbles-para-1", "query": "combine two 4-bit values into a single byte", "expected": "pack_nibbles", "category": "paraphrase"}
+{"id": "bcd_encode-direct-1", "query": "encode a decimal number as packed bcd", "expected": "bcd_encode", "category": "direct"}
+{"id": "bcd_encode-para-1", "query": "binary coded decimal representation of a two-digit number", "expected": "bcd_encode", "category": "paraphrase"}
+{"id": "bcd_decode-direct-1", "query": "decode a packed bcd byte back to a number", "expected": "bcd_decode", "category": "direct"}
+{"id": "bcd_decode-para-1", "query": "convert binary coded decimal back to its decimal value", "expected": "bcd_decode", "category": "paraphrase"}
+{"id": "norm2_sq-direct-1", "query": "squared magnitude of a 2d vector", "expected": "norm2_sq", "category": "direct"}
+{"id": "norm2_sq-para-1", "query": "the length of a vector, squared, no square root", "expected": "norm2_sq", "category": "paraphrase"}
+{"id": "dot2-direct-1", "query": "dot product of two 2d vectors", "expected": "dot2", "category": "direct"}
+{"id": "dot2-para-1", "query": "how aligned are these two directions", "expected": "dot2", "category": "paraphrase"}
+{"id": "dot2-adv-1", "query": "a similarity score for two vectors, not their sum", "expected": "dot2", "category": "adversarial"}

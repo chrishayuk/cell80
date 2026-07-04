@@ -267,6 +267,16 @@ fn first_wave_cells_match_defined_behaviour() {
         // ── spatial / grid (wave 3) ──
         ("grid_index", &[3, 2, 10], 23),
         ("grid_index", &[0, 0, 10], 0),
+        // ── packing / BCD, vector (wave 3, pilot batch) ──
+        ("pack_u8", &[0x12, 0x34], 0x1234),
+        ("pack_u8", &[0x1FF, 0x2FF], 0xFFFF), // out-of-range inputs mask cleanly
+        ("pack_nibbles", &[0xA, 0x5], 0xA5),
+        ("bcd_encode", &[42], 0x42),
+        ("bcd_encode", &[0], 0),
+        ("bcd_decode", &[0x42], 42),
+        ("bcd_decode", &[0], 0),
+        ("norm2_sq", &[3, 4], 25),
+        ("norm2_sq", &[0, 0], 0),
     ];
 
     let mut failures = Vec::new();
@@ -677,4 +687,15 @@ fn spatial_grid_state_cells_match_defined_behaviour() {
         ),
         0 // edge-touching, not overlapping
     );
+}
+
+#[test]
+fn vector_state_cells_match_defined_behaviour() {
+    // dot2 (wave 3, pilot batch): a 4-field state cell purely for arg count (2 vectors),
+    // not width — mirrors the manhattan/chebyshev shape.
+    let mut cell = StateCell::bind(&cell_src("dot2"), "Dot2", None).unwrap();
+    for (f, v) in [("ax", 3u64), ("ay", 4), ("bx", 2), ("by", 1)] {
+        cell.set(f, v).unwrap();
+    }
+    assert_eq!(cell.run(DEFAULT_CYCLES).unwrap().result, 10); // 3*2 + 4*1
 }
