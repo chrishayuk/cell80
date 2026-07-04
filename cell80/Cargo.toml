@@ -6,6 +6,7 @@
 name = "cell80"
 description = "Deterministic, sandboxed executable tool capsules for agents: a Z80 cell micro-VM, .cell cartridges, a warm host + index, and host-routed CellGraph composition — built on the rustz80 compiler."
 edition.workspace = true
+rust-version.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true

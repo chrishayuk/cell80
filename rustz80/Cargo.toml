@@ -5,6 +5,7 @@
 name = "rustz80"
 description = "A restricted Rust -> Z80 compiler: the dialect is also real Rust; emits a bootable .tap. The cell micro-VM that runs the output lives in the `cell80` crate."
 edition.workspace = true
+rust-version.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true

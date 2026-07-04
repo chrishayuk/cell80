@@ -9,6 +9,10 @@ members = ["z80", "z80-tests", "rustz80", "cell80"]
 
 [workspace.package]
 edition = "2021"
+# MSRV: the ed25519 chain (base64ct 1.8+) needs edition2024 support — cargo/rustc >= 1.85.
+# Declared so an older toolchain gets a clean "requires rustc 1.85" instead of an opaque
+# registry-parse error deep in the dependency tree.
+rust-version = "1.85"
 version = "0.8.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/chrishayuk/cell80"

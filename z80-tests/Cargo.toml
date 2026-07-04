@@ -2,6 +2,7 @@
 name = "z80-tests"
 description = "SingleStepTests JSON harness + ZEX runner for the z80 core."
 edition.workspace = true
+rust-version.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
