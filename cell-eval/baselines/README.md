@@ -62,6 +62,15 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     library-growth.md "Next waves", outside the GSM8K campaign): P@1 direct 0.95 /
     paraphrase 0.44 / adversarial 0.41 — all three above checkpoint 1's baseline. Kill-gate
     did not trigger.
+  - Checkpoint 8 (`checkpoint-8-signed-deltas`, 149 cells, first signed-deltas slice):
+    P@1 direct 0.94 / paraphrase 0.44 / adversarial 0.41 — direct dipped a hair under
+    checkpoint 1's baseline (0.9363 vs 0.9426) for the first time, one flipped case (of
+    157): `abs_i16`'s own summary shares "absolute value" with `abs_diff`'s direct query
+    ("compute the absolute value of a minus b"), so it now edges out `abs_diff` for that
+    one query — a real, explainable same-family collision, not noise, but exactly the
+    expected cost of growing a confusable family the project's own pitch accepts (both
+    cells still surface in the top-3). Paraphrase/adversarial both stayed above baseline.
+    Kill-gate did not trigger.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
