@@ -8,10 +8,8 @@ impl WeightedSum3 {
         let p1 = self.a as u32 * self.wa as u32;
         let p2 = self.b as u32 * self.wb as u32;
         let p3 = self.c as u32 * self.wc as u32;
-        let s1 = p1.wrapping_add(p2);
-        if s1 < p1 { halt(0xFF05u16); }
-        let s2 = s1.wrapping_add(p3);
-        if s2 < s1 { halt(0xFF05u16); }
+        let s1 = add_checked_u32(p1, p2);
+        let s2 = add_checked_u32(s1, p3);
         self.sum = s2;
         if (s2 >> 16u32) as u16 != 0u16 { 65535u16 } else { s2 as u16 }
     }

@@ -5,8 +5,7 @@
 struct AddChecked { a: u32, b: u32, sum: u32 }
 impl AddChecked {
     fn run(&mut self) -> u16 {
-        let s = self.a.wrapping_add(self.b);
-        if s < self.a { halt(0xFF05u16); }
+        let s = add_checked_u32(self.a, self.b);
         self.sum = s;
         1u16
     }

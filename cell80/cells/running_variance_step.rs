@@ -8,8 +8,7 @@ impl RunningVariance {
         let old_count = self.count;
         let old_sum = self.sum;
         let value_w = self.value as u32;
-        let new_sum = old_sum.wrapping_add(value_w);
-        if new_sum < old_sum { halt(0xFF05u16); }
+        let new_sum = add_checked_u32(old_sum, value_w);
         let new_count = old_count + 1u32;
 
         if old_count != 0u32 {
@@ -24,8 +23,7 @@ impl RunningVariance {
             if mag_do != 0u32 && prod_mag / mag_do != mag_dn { halt(0xFF05u16); }
             if neg_do != neg_dn && prod_mag != 0u32 { halt(0xFF05u16); }
 
-            let new_m2 = self.m2.wrapping_add(prod_mag);
-            if new_m2 < self.m2 { halt(0xFF05u16); }
+            let new_m2 = add_checked_u32(self.m2, prod_mag);
             self.m2 = new_m2;
         }
 

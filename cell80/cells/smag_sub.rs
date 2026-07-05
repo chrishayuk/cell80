@@ -8,8 +8,7 @@ impl SmagSub {
         if self.neg_a > 1u16 || self.neg_b > 1u16 { halt(0xFF06u16); }
         let nb = 1u16 - self.neg_b;
         if self.neg_a == nb {
-            let s = self.mag_a.wrapping_add(self.mag_b);
-            if s < self.mag_a { halt(0xFF05u16); }
+            let s = add_checked_u32(self.mag_a, self.mag_b);
             self.mag = s;
             self.neg = self.neg_a;
         } else if self.mag_a >= self.mag_b {

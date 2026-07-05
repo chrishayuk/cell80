@@ -27,8 +27,7 @@ impl ModInverse {
             let mut new_mag = 0u32;
             let mut new_neg = 0u16;
             if old_s_neg == b_neg {
-                let sum = old_s_mag.wrapping_add(b_mag);
-                if sum < old_s_mag { halt(0xFF05u16); }
+                let sum = add_checked_u32(old_s_mag, b_mag);
                 new_mag = sum;
                 new_neg = old_s_neg;
             } else if old_s_mag >= b_mag {

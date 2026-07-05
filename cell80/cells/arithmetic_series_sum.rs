@@ -14,8 +14,7 @@ impl ArithmeticSeriesSum {
         if nm1 != 0u32 && dm / nm1 != self.d { halt(0xFF05u16); }
         let two_a = self.a.wrapping_mul(2u32);
         if two_a < self.a { halt(0xFF05u16); }
-        let inner = two_a.wrapping_add(dm);
-        if inner < two_a { halt(0xFF05u16); }
+        let inner = add_checked_u32(two_a, dm);
         let prod = self.n.wrapping_mul(inner);
         if self.n != 0u32 && prod / self.n != inner { halt(0xFF05u16); }
         self.result = prod / 2u32;

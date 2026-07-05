@@ -8,8 +8,7 @@ impl FracSub {
         if self.da == 0u32 || self.db == 0u32 { halt(0xFF06u16); }
         let t1 = mul_checked_u32(self.na, self.db);
         let t2 = mul_checked_u32(self.nb, self.da);
-        if t1 < t2 { halt(0xFF05u16); }
-        let num_raw = t1 - t2;
+        let num_raw = sub_checked_u32(t1, t2);
         let den_raw = mul_checked_u32(self.da, self.db);
         if num_raw == 0u32 {
             self.num = 0u32;

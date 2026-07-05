@@ -8,8 +8,7 @@ impl FracAvg2 {
         if self.da == 0u32 || self.db == 0u32 { halt(0xFF06u16); }
         let t1 = mul_checked_u32(self.na, self.db);
         let t2 = mul_checked_u32(self.nb, self.da);
-        let num_raw = t1.wrapping_add(t2);
-        if num_raw < t1 { halt(0xFF05u16); }
+        let num_raw = add_checked_u32(t1, t2);
         let dd = mul_checked_u32(self.da, self.db);
         let den_raw = dd.wrapping_mul(2u32);
         if den_raw < dd { halt(0xFF05u16); }

@@ -223,7 +223,11 @@ alone. The bigger lever is `mul_checked_u32` (the wrapping-multiply + overflow-e
 idiom, `docs/12`): factoring the 41 hand-inlined copies across 30 cells into one shared
 kernel cut **−1683 bytes** — cells that check one product fold to neutral, cells that
 check two or three (fraction add/sub/average) drop 116–261 bytes each — with behaviour
-byte-identical on the differential battery.
+byte-identical on the differential battery. `add_checked_u32`/`sub_checked_u32` complete
+the checked trio (the `wrapping_add`+`s < a` and guard-then-subtract idioms); those save
+less — the add carry-chain is cheap next to the `mul`'s `div32` — but still fold 30-plus
+copies into two kernels. All are **u32-only**: the same idiom on `u16` values keeps its
+own (narrower) overflow boundary and is left inline.
 
 The *math* residual stands: a Q16.16 `q_mul` needs a 64-bit intermediate the
 substrate doesn't have, so that kernel remains word-split partials

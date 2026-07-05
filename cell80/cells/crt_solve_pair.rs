@@ -30,8 +30,7 @@ impl CrtSolvePair {
             let mut new_mag = 0u32;
             let mut new_neg = 0u16;
             if old_s_neg == b_neg {
-                let sum = old_s_mag.wrapping_add(b_mag);
-                if sum < old_s_mag { halt(0xFF05u16); }
+                let sum = add_checked_u32(old_s_mag, b_mag);
                 new_mag = sum;
                 new_neg = old_s_neg;
             } else if old_s_mag >= b_mag {
@@ -60,8 +59,7 @@ impl CrtSolvePair {
 
         let mt = self.m1.wrapping_mul(t);
         if self.m1 != 0u32 && mt / self.m1 != t { halt(0xFF05u16); }
-        let x = a1.wrapping_add(mt);
-        if x < a1 { halt(0xFF05u16); }
+        let x = add_checked_u32(a1, mt);
 
         let modulus = self.m1.wrapping_mul(self.m2);
         if self.m1 != 0u32 && modulus / self.m1 != self.m2 { halt(0xFF05u16); }
