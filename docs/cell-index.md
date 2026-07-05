@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (221 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (225 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -101,7 +101,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 
-## number-theory (27)
+## number-theory (30)
 
 | id | signature | summary |
 |---|---|---|
@@ -132,6 +132,9 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `smallest_prime_factor` | `run(n: u16) -> u16` | Smallest prime factor of n (n >= 2) — the least prime p dividing n; returns n itself if n is prime. |
 | `digit_reverse` | `run(n: u16) -> u16` | Reverse the decimal digits of n (e.g. 123 -> 321; trailing zeros drop, so 120 -> 21). |
 | `digit_product` | `run(n: u16) -> u16` | Product of the decimal digits of n (0 has product 0, its only digit). |
+| `is_prime_u32` | `IsPrimeWide::run() -> u16` | Returns 1 if n is prime at wide u32 width, else 0 — the wide sibling of is_prime (which works over u16, up to 65535). Trial division scales with sqrt(n): a large prime near u32::MAX needs on the order of tens of millions of cycles, far past the 2,000,000 default — pass a larger --cycles budget explicitly for n much beyond a few million. |
+| `mod_inverse` | `ModInverse::run() -> u16` | Modular multiplicative inverse of a mod m: the x in [0, m) with a*x == 1 (mod m), via the iterative extended Euclidean algorithm. The Bezout coefficient tracked along the way can go negative, so it's carried as a sign-magnitude pair inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same convention smag_add/pow_mod_u32 use. |
+| `crt_solve_pair` | `CrtSolvePair::run() -> u16` | Chinese Remainder Theorem for two congruences: the unique x in [0, m1*m2) with x == r1 (mod m1) and x == r2 (mod m2), when m1 and m2 are coprime. Computes the inverse of m1 modulo m2 via an inlined extended Euclidean algorithm (the same one mod_inverse uses — duplicated here rather than called, since a u32 value still can't cross more than one call boundary), then combines it with the standard closed-form x = r1 + m1*((r2-r1)*inv(m1, m2) mod m2). |
 
 ## distance (4)
 
@@ -369,6 +372,12 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
 | `choose_u32` | `ChooseWide::run() -> u16` | Binomial coefficient "n choose k" (nCr), checked: the count of k-element subsets of an n-element set, via the multiplicative running-division formula (each step's quotient is always exact, but the pre-division product can transiently exceed the final answer, so this escalates somewhat before n choose k itself would overflow u32 — a known limitation of single-pass 32-bit intermediates, not a false claim). Escalates rather than silently wrapping. |
 | `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
+
+## geometry (1)
+
+| id | signature | summary |
+|---|---|---|
+| `shoelace_area_x2` | `ShoelaceAreaX2::run() -> u16` | Twice the area of a triangle from three integer vertices (x1,y1),(x2,y2),(x3,y3), via the shoelace formula: \|x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)\| — always an integer, unlike the raw area (which is a half-integer for e.g. a right triangle with legs 1 and 1). Coordinates are unsigned; the three (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), since a term or the running sum can go negative before the final absolute value. |
 
 ## aliases (4)
 

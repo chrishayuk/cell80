@@ -116,7 +116,7 @@ wave 3p   209 cells   + fourth slice, two cells closing the last small gaps
                         via `cell_solve` (in progress, `feat/cell-solve`) — real
                         problems surface which schemas actually recur, rather
                         than more speculative hand-authoring.
-now       221 cells   + MATH/AIME pack, first slice — an explicit, one-time
+wave 3q   221 cells   + MATH/AIME pack, first slice — an explicit, one-time
                         override of the pause above (requested ahead of M3's
                         read-out, not a reversal of it): wide modular
                         arithmetic (pow_mod_u32, mod_add_u32, mod_sub_u32,
@@ -127,6 +127,20 @@ now       221 cells   + MATH/AIME pack, first slice — an explicit, one-time
                         see the pack note below and
                         docs/math-campaign-spec.md's "scoped ahead of the
                         gate" section.
+now       225 cells   + MATH/AIME pack, second slice — the four items the
+                        first slice deferred: is_prime_u32 (wide sibling of
+                        is_prime; cost scales with sqrt(n), documented rather
+                        than silently slow), shoelace_area_x2 (a new
+                        geometry pack; the signed-arithmetic chain the first
+                        slice judged not worth the cost, built this time),
+                        mod_inverse (extended Euclid, the Bezout coefficient
+                        tracked as a sign-magnitude pair), and crt_solve_pair
+                        (two-congruence CRT, inlining mod_inverse's own
+                        algorithm since it can't be called as a subroutine).
+                        Closes out every candidate docs/math-campaign-spec.md
+                        originally scoped except count_divisors/dist_sq
+                        (still exact duplicates of factor_count/euclid_sq —
+                        never built, not deferred).
 next      ~250+        + cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -756,6 +770,60 @@ number") — the digit-family cells share near-identical vocabulary, and reorder
 to lead with `reverse`/`flip`/`mirror` didn't move it. Consistent with
 `examples/retrieval_compare`'s standing conclusion that no lexical signal separates a
 same-shape-sibling class reliably; not chased further.
+
+**MATH/AIME pack, second slice (2026-07-05) — the four deferred items, closing out the
+original scope.** The first slice named four candidates as deprioritized or deferred rather
+than built: `is_prime_u32` and `shoelace_area_x2` (judged not worth the design cost that
+pass), plus the stretch items `mod_inverse` and `crt_solve_pair`. Asked to finish them, all
+four landed:
+
+- **`is_prime_u32`** — the wide sibling of `is_prime`, trial division to `sqrt(u32::MAX) =
+  65536` (the same `d < 65536` overflow-safe bound `is_prime`'s own `d < 256` uses at u16).
+  Worth measuring before shipping: a worst-case prime near `u32::MAX` needs on the order of
+  **70-90 million cycles** — 35-45× the 2,000,000 default — confirmed empirically (a prime
+  near `u32::MAX` still hadn't finished at a 50,000,000-cycle budget). A prime near `2^20`
+  costs ~1.14M cycles, comfortably inside the default. Rather than cap the domain
+  artificially, the cell stays correct for the full u32 range and documents the real cost in
+  its own `//! limits:` line — a caller needing large-`n` primality passes a larger `--cycles`
+  budget explicitly, the same way the ABI already expects cost-scaling cells to be handled.
+- **`shoelace_area_x2`** — twice a triangle's area from three integer vertices. Needs a
+  genuinely signed intermediate (`y`-differences can go negative before the final absolute
+  value), built the same way `pow_mod_u32`/`mod_inverse` handle signed intermediates: inline
+  sign-magnitude arithmetic, not a shared `smag_*` call (still blocked by the one-`u32`
+  call-boundary limit). Verified against a brute-force Python reference across 20,000 random
+  triangles (0 mismatches) before writing the dialect version — cheap insurance against a
+  three-term signed-sum bug shipping quietly. First landed cell in a new `geometry` pack.
+- **`mod_inverse`** — general modular inverse via the iterative extended Euclidean algorithm,
+  carrying the Bezout coefficient as a sign-magnitude pair (it's the only signed quantity in
+  the algorithm; the remainders and quotients all stay nonnegative). Verified against
+  Python's built-in `pow(a, -1, m)` across 20,000 cases at moderate scale and 5,000 at full
+  u32 scale — 0 mismatches, 0 overflow-escalations even at the full range, so no `m <= 65536`
+  ceiling was needed here (unlike `pow_mod_u32`/`mod_mul_u32`, which square a residue and do
+  need one — extended Euclid never squares anything).
+- **`crt_solve_pair`** — two-congruence Chinese Remainder Theorem, inlining `mod_inverse`'s
+  own extended-Euclid loop a second time (can't call it as a subroutine) to invert `m1`
+  modulo `m2`, then the standard closed form. Verified against a brute-force checker
+  (`result % m1 == r1 && result % m2 == r2`) across thousands of random coprime-modulus
+  pairs before finalizing — the most error-prone cell in either slice, and the one most
+  worth not trusting by inspection alone.
+
+Both `mod_inverse` and `crt_solve_pair` shipped with a **property-based test** alongside the
+usual fixed cases (`cell80/tests/library.rs`) — for input spaces this large, checking the
+defining equation itself (`a*inverse == 1 mod m`; `result` satisfies both congruences) over
+a few hundred pseudo-random cases catches more than any hand-picked constant would, and
+without needing an external reference implementation. Gate: 225 admitted, 0 refused. One
+more same-shape-sibling retrieval cost, this time worth naming precisely because the fix
+looked promising and still didn't work: `mod_inverse`'s own direct query ranks #2 behind
+`mod_mul_u32` (the query's natural phrase "modular *multiplicative* inverse" token-overlaps
+"multipl*y*" hard enough that reordering `mod_inverse`'s tags to lead with `inverse`/
+`reciprocal` — the exact lever that worked for nothing in this same-shape-sibling class
+before — made no measurable difference). Kept the tag change (harmless, arguably clearer);
+didn't chase further, same call as every prior instance of this class.
+
+With this slice, every MATH/AIME candidate `docs/math-campaign-spec.md` originally scoped is
+resolved one way or another: landed, or a confirmed exact duplicate of an existing cell
+(`count_divisors`/`dist_sq` — never built, not merely deferred). The gate itself is
+unchanged by any of this — M3 still hasn't run.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

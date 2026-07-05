@@ -500,3 +500,11 @@
 {"id": "choose_u32-para-1", "query": "how many different groups of k people can you pick from a team of n, order doesn't matter", "expected": "choose_u32", "category": "paraphrase"}
 {"id": "permute_u32-direct-1", "query": "permutations of n pick k", "expected": "permute_u32", "category": "direct"}
 {"id": "permute_u32-para-1", "query": "how many ways can k runners from a field of n finish in first, second, and third", "expected": "permute_u32", "category": "paraphrase"}
+{"id": "is_prime_u32-direct-1", "query": "is n prime at wide 32-bit width", "expected": "is_prime_u32", "category": "direct"}
+{"id": "is_prime_u32-para-1", "query": "check whether this large number has no divisors besides one and itself", "expected": "is_prime_u32", "category": "paraphrase"}
+{"id": "shoelace_area_x2-direct-1", "query": "twice the area of a triangle from three integer vertices", "expected": "shoelace_area_x2", "category": "direct"}
+{"id": "shoelace_area_x2-para-1", "query": "compute the area of a triangle given its three corner coordinates on a grid", "expected": "shoelace_area_x2", "category": "paraphrase"}
+{"id": "mod_inverse-direct-1", "query": "modular multiplicative inverse of a mod m", "expected": "mod_inverse", "category": "direct"}
+{"id": "mod_inverse-para-1", "query": "what number multiplied by a lands back on 1 when wrapped around every m", "expected": "mod_inverse", "category": "paraphrase"}
+{"id": "crt_solve_pair-direct-1", "query": "chinese remainder theorem for two congruences", "expected": "crt_solve_pair", "category": "direct"}
+{"id": "crt_solve_pair-para-1", "query": "find the smallest number that leaves these two specific remainders when divided by two different numbers", "expected": "crt_solve_pair", "category": "paraphrase"}

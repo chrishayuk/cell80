@@ -2157,3 +2157,144 @@ fn math_aime_pack_cells_match_defined_behaviour() {
     let (_, report, _) = step("permute_u32", "PermuteWide", &[("n", 20), ("k", 10)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
+    // Second slice of the MATH/AIME pack (docs/math-campaign-spec.md) — the four items
+    // originally scoped but deferred: is_prime_u32, shoelace_area_x2, mod_inverse,
+    // crt_solve_pair. mod_inverse and crt_solve_pair's input space is too large to usefully
+    // hand-pick expected constants for, so alongside fixed cases they get a deterministic
+    // pseudo-random property sweep (checking the defining equation itself — a*inverse == 1
+    // mod m, or the CRT result satisfies both congruences — rather than a golden value).
+    fn gcd_u64(a: u64, b: u64) -> u64 {
+        let (mut x, mut y) = (a, b);
+        while y != 0 {
+            let t = x % y;
+            x = y;
+            y = t;
+        }
+        x
+    }
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // is_prime_u32: matches is_prime's own u16-domain answers, then goes past its 65535
+    // ceiling; cost scales with sqrt(n), so this stays well under a real prime's practical
+    // limit for the default cycle budget (~1.1M cycles at n ~ 2^20, per the cell's own
+    // limits note).
+    assert_eq!(
+        step("is_prime_u32", "IsPrimeWide", &[("n", 97)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_prime_u32", "IsPrimeWide", &[("n", 1_048_573)]).0,
+        1
+    ); // a genuine prime just under 2^20
+    assert_eq!(
+        step("is_prime_u32", "IsPrimeWide", &[("n", 1_048_574)]).0,
+        0
+    );
+    assert_eq!(step("is_prime_u32", "IsPrimeWide", &[("n", 0)]).0, 0);
+    assert_eq!(step("is_prime_u32", "IsPrimeWide", &[("n", 1)]).0, 0);
+
+    // shoelace_area_x2: twice a triangle's area; winding order doesn't change the |.|;
+    // a degenerate (all-coincident-points) triangle is 0.
+    let (_, _, cell) = step(
+        "shoelace_area_x2",
+        "ShoelaceAreaX2",
+        &[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("x3", 0), ("y3", 3)],
+    );
+    assert_eq!(cell.get("result"), Some(12)); // right triangle, legs 4 and 3, area 6, x2 = 12
+    let (_, _, cell) = step(
+        "shoelace_area_x2",
+        "ShoelaceAreaX2",
+        &[("x1", 0), ("y1", 0), ("x2", 0), ("y2", 3), ("x3", 4), ("y3", 0)],
+    );
+    assert_eq!(cell.get("result"), Some(12)); // reversed winding, same |.|
+    let (_, _, cell) = step(
+        "shoelace_area_x2",
+        "ShoelaceAreaX2",
+        &[("x1", 1), ("y1", 1), ("x2", 1), ("y2", 1), ("x3", 1), ("y3", 1)],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+
+    // mod_inverse: fixed cases (a coprime pair, a non-coprime pair, m == 0), then a sweep.
+    let (_, _, cell) = step("mod_inverse", "ModInverse", &[("a", 3), ("m", 11)]);
+    assert_eq!(cell.get("result"), Some(4)); // 3*4 = 12 == 1 mod 11
+    let (_, report, _) = step("mod_inverse", "ModInverse", &[("a", 6), ("m", 9)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // gcd(6,9) = 3, no inverse
+    let (_, report, _) = step("mod_inverse", "ModInverse", &[("a", 5), ("m", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let mut seed = 12345u64;
+    let mut checked = 0;
+    for _ in 0..300 {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let a = 1 + (seed >> 40) % 1_000_000;
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let m = 1 + (seed >> 40) % 1_000_000;
+        if gcd_u64(a, m) != 1 {
+            continue;
+        }
+        let (_, report, cell) = step("mod_inverse", "ModInverse", &[("a", a), ("m", m)]);
+        assert_eq!(report.halt, cell80::Halt::Returned, "a={a} m={m}");
+        let inv = cell.get("result").unwrap();
+        assert_eq!((a * inv) % m, 1, "a={a} m={m} inv={inv}");
+        checked += 1;
+    }
+    assert!(checked > 100, "expected most sweep pairs coprime, got {checked}");
+
+    // crt_solve_pair: fixed cases (a coprime pair, a non-coprime pair), then a sweep.
+    let (_, _, cell) = step(
+        "crt_solve_pair",
+        "CrtSolvePair",
+        &[("r1", 2), ("m1", 3), ("r2", 3), ("m2", 5)],
+    );
+    assert_eq!(cell.get("result"), Some(8)); // 8 mod 3 = 2, 8 mod 5 = 3
+    let (_, report, _) = step(
+        "crt_solve_pair",
+        "CrtSolvePair",
+        &[("r1", 1), ("m1", 2), ("r2", 1), ("m2", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // gcd(2,4) = 2, not coprime
+
+    let mut seed2 = 987_654_321u64;
+    let mut checked2 = 0;
+    for _ in 0..300 {
+        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let m1 = 1 + (seed2 >> 44) % 1000;
+        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let m2 = 1 + (seed2 >> 44) % 1000;
+        if gcd_u64(m1, m2) != 1 {
+            continue;
+        }
+        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let r1 = seed2 % m1;
+        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let r2 = seed2 % m2;
+        let (_, report, cell) = step(
+            "crt_solve_pair",
+            "CrtSolvePair",
+            &[("r1", r1), ("m1", m1), ("r2", r2), ("m2", m2)],
+        );
+        assert_eq!(
+            report.halt,
+            cell80::Halt::Returned,
+            "r1={r1} m1={m1} r2={r2} m2={m2}"
+        );
+        let x = cell.get("result").unwrap();
+        assert_eq!(x % m1, r1, "r1={r1} m1={m1} r2={r2} m2={m2} x={x}");
+        assert_eq!(x % m2, r2, "r1={r1} m1={m1} r2={r2} m2={m2} x={x}");
+        assert!(x < m1 * m2);
+        checked2 += 1;
+    }
+    assert!(checked2 > 100, "expected most sweep pairs coprime, got {checked2}");
+}

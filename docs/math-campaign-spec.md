@@ -430,25 +430,33 @@ an AIME-only corpus, not full MATH's seven categories.
 `docs/library-growth.md`'s "math-cell growth pauses here on purpose" and this section's own
 gating both still describe the *default* plan: M3 (a real corpus through `cell_solve`)
 hasn't run, so precipitation hasn't had its say, and the list above was guessed, not
-demonstrated. Asked directly to build the list rather than just scope it, 12 of the ~16
-number-theory/combinatorics/geometry candidates named above landed as real cells
+demonstrated. Asked directly to build the list rather than just scope it, a first slice
+landed 12 of the ~16 number-theory/combinatorics/geometry candidates named above
 (`docs/library-growth.md`'s "MATH/AIME pack, first slice" note has the full account,
 including two things that broke on first pass — `choose_u32`'s formula transiently
 overflowing before the true answer would, and a struct field rejecting direct `if`/`else`
 assignment): `pow_mod_u32`, `mod_add_u32`/`mod_sub_u32`/`mod_mul_u32`, `sum_divisors`,
 `euler_totient`, `smallest_prime_factor`, `digit_reverse`, `digit_product`,
-`factorial_checked_u32`, `choose_u32`, `permute_u32`. Four of the originally-scoped names
-didn't ship: `count_divisors` and `dist_sq` turned out to be exact duplicates of
+`factorial_checked_u32`, `choose_u32`, `permute_u32`. `is_prime_u32` and
+`shoelace_area_x2` were deprioritized out of that slice rather than dropped — `is_prime`
+already covers the full u16 domain (0..65535), which is most of what AIME primality checks
+need, and `shoelace_area_x2` needs genuinely signed intermediate arithmetic (a chained
+sign-magnitude computation, not a single checked op) that wasn't judged worth the design
+cost that pass. `count_divisors` and `dist_sq` turned out to be exact duplicates of
 already-landed `factor_count`/`euclid_sq` (caught by checking `docs/cell-index.md` before
-authoring, same discipline every prior pack has used); `is_prime_u32` and
-`shoelace_area_x2` were deprioritized out of this slice — `is_prime` already covers the full
-u16 domain (0..65535), which is most of what AIME primality checks need, and
-`shoelace_area_x2` needs genuinely signed intermediate arithmetic (a chained sign-magnitude
-computation, not a single checked op) that wasn't worth the design cost for this pass.
-Landing these 12 did not run M3 and does not retroactively justify skipping it — the gate's
-*reasoning* (precipitation over guessing) stands; this was a one-time, explicitly-authorized
-exception to it, not a reversal of the
-policy.
+authoring, same discipline every prior pack has used) and were never going to ship either
+way. Asked to finish the deferred work, a **second slice** landed all four remaining
+candidates — `is_prime_u32`, `shoelace_area_x2`, and the two stretch items named above,
+`mod_inverse` and `crt_solve_pair` (`docs/library-growth.md`'s "MATH/AIME pack, second
+slice" note has the full account, including the real cycle-cost finding on `is_prime_u32`
+and the property-based tests `mod_inverse`/`crt_solve_pair` needed given how large their
+input space is). That closes out every originally-scoped candidate one way or another,
+counting both the ~16-cell "net candidate list" and the two stretch items named separately:
+18 named across both scoping passes, 16 landed, 2 confirmed exact duplicates never built.
+Landing all of this did not
+run M3 and does not retroactively justify skipping it — the gate's *reasoning*
+(precipitation over guessing) stands; this was a one-time, explicitly-authorized exception
+to it, not a reversal of the policy.
 
 ## The one-sentence version
 
