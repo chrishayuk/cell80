@@ -386,12 +386,17 @@ was no seam for a quality pass. **The seam and the first peephole shipped** (roa
   `tests/peephole_shape.rs`). The `DEC` counterpart is *not* built: `x - N` lowers to
   `LD HL,N; EX DE,HL; …; OR A; SBC HL,DE` (a different, larger window), and sub-by-constant is
   rarer than the loop-increment `+1`.
-- **Next rules worth ranking (deferred — sized, lower-confidence):** window-spanning leaf pairs
-  (the `ptr_elem_addr` shape — the pop is separated from the push by an effect-free span; the
-  crude corpus count is ~675 residual `PUSH HL`, but that's dominated by the call convention, not
-  cleanly window-spanning-leaf), and a *what's-in-`HL`/`DE`* tracker for cross-statement reload
-  elision (a real dataflow pass, not a window matcher — the biggest of the three).
-  `measure_next_rules` (ignored) sizes these before building.
+- **Next rules — measured, and deferred on the numbers (not hand-waved).** `measure_next_rules`
+  (ignored, in `peephole.rs`) sizes these precisely on the post-peephole stream:
+  - **Window-spanning leaf pairs (R8, `PUSH HL; DE-free span; POP DE` → `EX DE,HL; span`).** The
+    `ptr_elem_addr` case is *created* by R7 (a field-offset add becomes `INC HL`, leaving a DE-free
+    span) — genuinely safe, not subsumed. But it's **15 candidates across 190 cells = 15 bytes**
+    (1 B each), vs R7's 497. A correctness-critical DE-free span-walker for 15 bytes is a poor
+    trade — built only if the count grows materially.
+  - **`what's-in-HL/DE` tracker for cross-statement reload elision.** Ceiling **486** same-slot
+    store→reload pairs, but that's an *upper bound*: most spans clobber `HL`, so the realisable
+    subset is a fraction, and capturing it needs a real dataflow pass (not a window matcher) — the
+    biggest, riskiest of the three. Deferred until a larger demonstrated win justifies the pass.
 
 **Wider state — `u32` in state, then fixed-point (kill the overflow footgun).** `u32` already
 exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the gap is persisting

@@ -325,10 +325,20 @@ mod tests {
             eprintln!("no cells corpus — skipping");
             return;
         };
-        let (mut inc1, mut inc2, mut span_pairs, mut files) = (0u64, 0u64, 0u64, 0u32);
-        let is_de1 = |i: &Ins| matches!(i, Ins::LdImm(R16::De, Imm::Abs(1)));
-        let is_de2 = |i: &Ins| matches!(i, Ins::LdImm(R16::De, Imm::Abs(2)));
-        let is_addde = |i: &Ins| matches!(i, Ins::AddHl(R16::De));
+        let (mut span_safe, mut reload, mut files) = (0u64, 0u64, 0u32);
+        // Conservative safe-span whitelist for a window-spanning leaf-pair rewrite
+        // (`PUSH HL; span; POP DE` → `EX DE,HL; span`): the span must neither touch DE
+        // nor the stack nor branch. These Ins read/write only HL/BC/memory.
+        let de_free = |i: &Ins| {
+            matches!(
+                i,
+                Ins::LdHlMem(_)
+                    | Ins::StHlMem(_)
+                    | Ins::LdImm(R16::Hl | R16::Bc, _)
+                    | Ins::LdImmSym(R16::Hl | R16::Bc, _)
+                    | Ins::AddHl(R16::Hl | R16::Bc)
+            ) || matches!(i, Ins::Fx(fx) if fx.bytes() == [0x23] || fx.bytes() == [0x2B])
+        };
         for e in entries {
             let p = e.unwrap().path();
             if p.extension().is_none_or(|x| x != "rs") {
@@ -338,33 +348,42 @@ mod tests {
             let Some(ins) = sealed_ins(&src, Target::Cell) else {
                 continue;
             };
-            for w in ins.windows(2) {
-                if is_de1(&w[0]) && is_addde(&w[1]) {
-                    inc1 += 1;
+            // R8 candidate: PUSH HL, then a **non-empty** span of only DE-free/stack-free
+            // instructions, then POP DE. (An empty span is the R1 case; a leaf then POP DE
+            // is also R1 — so require length ≥ 2 to count only genuinely window-spanning.)
+            for (k, i) in ins.iter().enumerate() {
+                if !matches!(i, Ins::Push(R16::Hl)) {
+                    continue;
                 }
-                if is_de2(&w[0]) && is_addde(&w[1]) {
-                    inc2 += 1;
+                let mut j = k + 1;
+                while ins.get(j).is_some_and(de_free) {
+                    j += 1;
+                }
+                if j - (k + 1) >= 2 && matches!(ins.get(j), Some(Ins::Pop(R16::De))) {
+                    span_safe += 1;
                 }
             }
-            // Window-spanning PUSH HL … POP DE: a PUSH HL whose matching POP DE is not
-            // the R1 adjacent shape (something effect-bearing sits between). Count PUSH
-            // HL not immediately followed by a leaf-load+POP DE that R1 already took.
+            // Reload-elision ceiling (the HL/DE tracker's max): a store to slot `m` and a
+            // later reload of the same `m` with no intervening store to it — non-adjacent
+            // (adjacent is R3). Upper bound only: most spans clobber HL, so the realisable
+            // subset is smaller.
             for (k, i) in ins.iter().enumerate() {
-                if matches!(i, Ins::Push(R16::Hl)) {
-                    let adjacent_taken = ins
-                        .get(k + 1)
-                        .zip(ins.get(k + 2))
-                        .is_some_and(|(a, b)| leaf_load_hl(a) && matches!(b, Ins::Pop(R16::De)));
-                    if !adjacent_taken {
-                        span_pairs += 1;
+                let Ins::StHlMem(m) = i else { continue };
+                for later in &ins[k + 2..] {
+                    match later {
+                        Ins::StHlMem(m2) if m2 == m => break,
+                        Ins::LdHlMem(m2) if m2 == m => {
+                            reload += 1;
+                            break;
+                        }
+                        _ => {}
                     }
                 }
             }
             files += 1;
         }
         println!(
-            "next-rule candidates across {files} cells: INC(+1)={inc1} INC(+2)={inc2} \
-             residual_PUSH_HL={span_pairs}  (INC saves 3B/+1, 2B/+2; residual push = window-span or call)"
+            "next-rule candidates across {files} cells: window_span_leaf(R8, safe, saves 1B each)={span_safe}  reload_elision_ceiling={reload}"
         );
     }
 }
