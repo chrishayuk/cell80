@@ -167,6 +167,26 @@ impl CellHost {
         Ok(list)
     }
 
+    /// [`route`](Self::route) for **state cells**: each example is `({field: value},
+    /// expected_result)` — the structured form `Struct::run` cells need.
+    #[pyo3(signature = (examples, limit=10))]
+    fn route_fields<'py>(
+        &self,
+        py: Python<'py>,
+        examples: Vec<(std::collections::HashMap<String, u64>, u16)>,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let examples: Vec<(Vec<(String, u64)>, u16)> = examples
+            .into_iter()
+            .map(|(f, out)| (f.into_iter().collect(), out))
+            .collect();
+        let list = PyList::empty_bound(py);
+        for m in self.host.route_by_field_examples(&examples, limit) {
+            list.append(brief(py, m)?)?;
+        }
+        Ok(list)
+    }
+
     /// Full manifest for `id` (typed signature, abi, hash) — or `None`.
     fn manifest<'py>(&self, py: Python<'py>, id: &str) -> PyResult<Option<Bound<'py, PyDict>>> {
         self.host.manifest(id).map(|m| full(py, m)).transpose()

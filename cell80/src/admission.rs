@@ -3,18 +3,18 @@
 //! enforced at ingest instead of by author discipline alone:
 //!
 //!   1. **no behavioural duplicates** — [`Fingerprint::agreement`] against every
-//!      already-admitted cell of comparable arity; an exact match (`1.0`, the fingerprint
-//!      module's own definition of "indistinguishable on this bank") refuses, with "alias
-//!      it in metadata" as the remedy. Two classes of cell are exempt because
-//!      [`Fingerprint::compute`] only ever drives the plain **2-register** calling
-//!      convention: **state cells** (entry takes no scalar params — its fields live at
-//!      [`STATE_BASE`](crate::STATE_BASE)) and **3-argument free-fn cells** (the calling
-//!      convention allows up to 3: `weighted_sum`, `clamp`, `min3`, ...). Verified against
-//!      the real library: every arity-3 cell's unset third register silently
-//!      defaults, collapsing many of them to the *same* degenerate constant output and
-//!      producing spurious matches against unrelated cells (`clamp` vs `between_exclusive`,
-//!      `min3` vs `between_exclusive`, ...). Extending `Fingerprint` with a wider probe
-//!      bank (and driving named state fields) would lift both exemptions; not built here.
+//!      already-admitted cell of the **same shape**; an exact match (`1.0`, the
+//!      fingerprint module's own definition of "indistinguishable on this bank")
+//!      refuses, with "alias it in metadata" as the remedy. The two historical
+//!      exemptions are **lifted**: the probe bank now supplies all three convention
+//!      registers (so `clamp`/`min3`/`between_exclusive` no longer collapse to the
+//!      same degenerate constant), and **state cells** are driven through their
+//!      named scalar fields (`field i ← probe[i % 3]`, declaration order — so
+//!      identical-layout duplicates, the real copy-paste risk, fingerprint
+//!      identically). Comparison is guarded to the same *shape* — value cells
+//!      compare against value cells of the same arity, state cells against state
+//!      cells with the same scalar-field count — because cross-shape agreement is
+//!      coincidence about the assignment pattern, not evidence about behaviour.
 //!   2. **pay the eval tax per cell** — a candidate with zero rows in the retrieval
 //!      dataset can't have "survived" a query set it doesn't have.
 //!
@@ -173,6 +173,33 @@ fn load_retrieval_rows(path: &Path) -> Result<HashMap<String, Vec<RetrievalRow>>
 /// `retrieval_jsonl`'s query set, admitting each candidate against the already-admitted set
 /// built up so far (so of two behavioural duplicates, the first in sorted order is admitted
 /// and the second is refused).
+/// The comparison-guard shape: value cells compare within an arity class, state
+/// cells within an **ordered field-type** class (the type codes, not just the
+/// count — `(u32, u16, u32)` and `(u32, u32, u32)` cells aren't interchangeable
+/// to any caller, and comparing them invites agree-on-the-narrow-domain false
+/// positives: `cents_mul_qty` (qty: u16) computes identically to
+/// `mul_checked_u32` on every probe a u16 can hold, while their domains differ).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CellShape {
+    Value(usize),
+    State(Vec<u8>),
+}
+
+fn cell_shape(cart: &crate::Cartridge) -> CellShape {
+    let field_tys: Vec<u8> = cart
+        .manifest
+        .state_addrs
+        .iter()
+        .filter(|(_, _, ty)| ty.capacity().is_none())
+        .map(|(_, _, ty)| ty.code())
+        .collect();
+    if field_tys.is_empty() {
+        CellShape::Value(cart.manifest.signature.params.len())
+    } else {
+        CellShape::State(field_tys)
+    }
+}
+
 pub fn admit(dir: &str, retrieval_jsonl: &Path) -> Result<AdmissionReport, String> {
     let by_id = load_retrieval_rows(retrieval_jsonl)?;
 
@@ -183,7 +210,7 @@ pub fn admit(dir: &str, retrieval_jsonl: &Path) -> Result<AdmissionReport, Strin
     paths.sort();
 
     let mut admitted: Vec<Cartridge> = Vec::new();
-    let mut fp_cache: Vec<(String, Fingerprint)> = Vec::new(); // free-fn cells only
+    let mut fp_cache: Vec<(String, CellShape, Fingerprint)> = Vec::new();
     let mut report = AdmissionReport::default();
 
     for path in paths {
@@ -194,25 +221,23 @@ pub fn admit(dir: &str, retrieval_jsonl: &Path) -> Result<AdmissionReport, Strin
         let id = cart.manifest.id.clone();
         let mut reasons = Vec::new();
 
-        // `Fingerprint::DEFAULT_PROBES` supplies only two scalar inputs per probe, so a
-        // state-cell entry (no scalar params — see the module doc) or a free-fn cell that
-        // takes 3 args (the calling convention allows up to 3: `weighted_sum`, `clamp`,
-        // `min3`, ...) has its unset register silently defaulted. Verified against the real
-        // library: every arity-3 cell degenerates to the same constant under this probing
-        // and spuriously "agrees" with unrelated cells (e.g. `clamp` and `between_exclusive`
-        // both collapse to a constant once their third argument defaults away) — so only
-        // cells with at most 2 scalar params are safe to fingerprint-compare.
-        let is_state_cell = !cart.manifest.state_addrs.is_empty();
-        let arity = cart.manifest.signature.params.len();
-        let fingerprintable = !is_state_cell && arity <= 2;
-        let fp = fingerprintable.then(|| Fingerprint::of(&cart));
+        // Every cell fingerprints now (the probe bank drives all three convention
+        // registers; state cells are driven through their named scalar fields — see
+        // the module doc). Comparison is guarded to the same *shape*: value-vs-value
+        // at equal arity, state-vs-state at equal scalar-field count — cross-shape
+        // agreement says nothing about behaviour, only about the assignment pattern.
+        let shape = cell_shape(&cart);
+        let fp = Fingerprint::of(&cart);
 
-        let dup = fp.as_ref().and_then(|fp| {
-            fp_cache.iter().find_map(|(other_id, other_fp)| {
+        let dup = fp_cache
+            .iter()
+            .find_map(|(other_id, other_shape, other_fp)| {
+                if *other_shape != shape {
+                    return None;
+                }
                 let a = fp.agreement(other_fp);
                 (a >= DUPLICATE_AGREEMENT).then(|| (other_id.clone(), a))
-            })
-        });
+            });
 
         let rows = by_id.get(&id).cloned().unwrap_or_default();
         if rows.is_empty() {
@@ -244,9 +269,7 @@ pub fn admit(dir: &str, retrieval_jsonl: &Path) -> Result<AdmissionReport, Strin
         }
 
         if reasons.is_empty() {
-            if let Some(fp) = fp {
-                fp_cache.push((id, fp));
-            }
+            fp_cache.push((id, shape, fp));
             report.admitted.push(cart.manifest.clone());
             admitted.push(cart);
         } else {
@@ -358,7 +381,7 @@ mod tests {
     }
 
     #[test]
-    fn state_cells_are_exempt_from_fingerprint_check() {
+    fn state_cells_are_fingerprinted_and_distinguished() {
         let dir = scratch_dir("state");
         write_cell(
             &dir,
@@ -466,5 +489,102 @@ mod tests {
         let arr = dir.join("arr.jsonl");
         std::fs::write(&arr, "{\"id\": \"x\", \"query\": \"smaller of two\", \"expected\": [\"min\", \"min2\"], \"category\": \"direct\"}\n").unwrap();
         assert!(admit(dir.to_str().unwrap(), &arr).is_ok());
+    }
+
+    #[test]
+    fn identical_layout_state_duplicate_is_refused() {
+        // The lifted exemption's payoff: a copy-paste state cell under a new id
+        // fingerprints identically (same layout, same field-driving) and refuses.
+        let dir = scratch_dir("state_dup");
+        let src = "//! Manhattan distance.\n//! tags: grid\n//! entry: Pts::run\nstruct Pts { x1: u16, y1: u16, x2: u16, y2: u16, dist: u16 }\nimpl Pts { fn run(&mut self) -> u16 { let dx = if self.x1 > self.x2 { self.x1 - self.x2 } else { self.x2 - self.x1 }; let dy = if self.y1 > self.y2 { self.y1 - self.y2 } else { self.y2 - self.y1 }; self.dist = dx + dy; self.dist } }";
+        write_cell(&dir, "manhattan", src);
+        write_cell(
+            &dir,
+            "taxicab",
+            &src.replace("Pts", "Taxi"), // new id + struct name, same behaviour/layout
+        );
+        let retrieval = write_retrieval(
+            &dir,
+            &[
+                ("m-1", "manhattan grid distance", "manhattan", "direct"),
+                (
+                    "t-1",
+                    "taxicab distance between points",
+                    "taxicab",
+                    "direct",
+                ),
+            ],
+        );
+        let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
+        assert_eq!(report.admitted.len(), 1, "{:?}", report.refused);
+        assert_eq!(report.refused.len(), 1);
+        assert!(matches!(
+            &report.refused[0].1[0],
+            RefusalReason::BehaviouralDuplicate { of, .. } if of == "manhattan"
+        ));
+    }
+
+    #[test]
+    fn arity3_cells_are_distinguished_and_deduped() {
+        // The third probe column retires the arity-3 exemption: clamp and min3 no
+        // longer collapse to the same degenerate constant (both admit), while an
+        // exact arity-3 duplicate refuses.
+        let dir = scratch_dir("arity3");
+        write_cell(
+            &dir,
+            "clamp",
+            "//! Clamp x into [lo, hi].\n//! tags: bounds\nfn run(x: u16, lo: u16, hi: u16) -> u16 { let mut r = x; if x < lo { r = lo; } if x > hi { r = hi; } r }",
+        );
+        write_cell(
+            &dir,
+            "min3",
+            "//! Smallest of three.\n//! tags: math\nfn run(a: u16, b: u16, c: u16) -> u16 { let mut m = a; if b < m { m = b; } if c < m { m = c; } m }",
+        );
+        write_cell(
+            &dir,
+            "min3_again",
+            "//! Minimum of three values.\n//! tags: math\nfn run(x: u16, y: u16, z: u16) -> u16 { let mut m = x; if y < m { m = y; } if z < m { m = z; } m }",
+        );
+        let retrieval = write_retrieval(
+            &dir,
+            &[
+                ("c-1", "clamp into bounds", "clamp", "direct"),
+                ("m-1", "smallest of three", "min3", "direct"),
+                ("m-2", "minimum of three values", "min3_again", "direct"),
+            ],
+        );
+        let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
+        let admitted: Vec<&str> = report.admitted.iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(admitted, ["clamp", "min3"], "{:?}", report.refused);
+        assert!(matches!(
+            &report.refused[0].1[0],
+            RefusalReason::BehaviouralDuplicate { of, .. } if of == "min3"
+        ));
+    }
+
+    #[test]
+    fn shape_guard_blocks_cross_kind_comparison() {
+        // A 1-arg value cell and a 1-field state cell that coincidentally agree on
+        // every probe must NOT collide — different shapes never compare.
+        let dir = scratch_dir("shape_guard");
+        write_cell(
+            &dir,
+            "double",
+            "//! Twice the value.\n//! tags: math\nfn run(a: u16) -> u16 { a.wrapping_mul(2u16) }",
+        );
+        write_cell(
+            &dir,
+            "double_state",
+            "//! Doubler with state.\n//! tags: math\n//! entry: D::run\nstruct D { x: u16 }\nimpl D { fn run(&mut self) -> u16 { self.x.wrapping_mul(2u16) } }",
+        );
+        let retrieval = write_retrieval(
+            &dir,
+            &[
+                ("d-1", "double a value", "double", "direct"),
+                ("d-2", "stateful doubler", "double_state", "direct"),
+            ],
+        );
+        let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
+        assert_eq!(report.admitted.len(), 2, "{:?}", report.refused);
     }
 }

@@ -50,15 +50,22 @@ def build_server() -> ChukMCPServer:
         read_only_hint=True,
         description="Discover by BEHAVIOUR, not words: given input→output examples, return the "
         "cells that actually reproduce them on the VM. `examples` is a list of "
-        "{in: [ints], out: int} — e.g. [{in:[3,7],out:3},{in:[10,3],out:3}] finds `min`. Use "
-        "this when the wording is ambiguous or confusable cells share a description: it tells "
-        "min from max where text can't. Empty results mean no cell in the library does this.",
+        "{in: [ints], out: int} — e.g. [{in:[3,7],out:3},{in:[10,3],out:3}] finds `min` — or, "
+        "for STATE cells, {fields: {name: int}, out: int} — e.g. "
+        "[{fields:{x1:3,y1:4,x2:10,y2:8}, out:11}] finds `manhattan`. Use this when the "
+        "wording is ambiguous or confusable cells share a description: it tells min from max "
+        "where text can't. Empty results mean no cell in the library does this.",
     )
     def cell_route_by_example(examples: list[dict]) -> dict:
         try:
+            if examples and "fields" in examples[0]:
+                # State-cell form: {fields: {name: int}, out: int} — drives named
+                # state fields, which register probes can't reach.
+                pairs = [(dict(e["fields"]), int(e["out"])) for e in examples]
+                return {"results": lib.route_fields(pairs)}
             pairs = [(list(e["in"]), int(e["out"])) for e in examples]
         except (KeyError, TypeError, ValueError):
-            return {"error": "each example needs {in: [ints], out: int}"}
+            return {"error": "each example needs {in: [ints], out: int} or {fields: {name: int}, out: int}"}
         return {"results": lib.route(pairs)}
 
     @mcp.tool(

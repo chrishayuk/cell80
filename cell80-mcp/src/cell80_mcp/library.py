@@ -71,6 +71,15 @@ class CellLibrary:
         confusable siblings (min vs max) apart where their descriptions can't."""
         return list(self.host.route([(list(i), o) for i, o in examples], limit))
 
+    def route_fields(
+        self, examples: list[tuple[dict, int]], limit: int = 10
+    ) -> list[dict]:
+        """Behavioural routing for STATE cells: each example is ({field: value},
+        expected_result) — register probes can't drive named state."""
+        return list(
+            self.host.route_fields([(dict(f), o) for f, o in examples], limit)
+        )
+
     def inspect(self, cell_id: str) -> dict | None:
         return self.host.manifest(cell_id)
 
