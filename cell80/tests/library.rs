@@ -2464,3 +2464,120 @@ fn library_growth_backlog_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // time moved backward
 }
+
+#[test]
+fn geometry_combinatorics_sequences_cells_match_defined_behaviour() {
+    // Geometry (shoelace_area_x2_quad, triangle_is_valid), combinatorics
+    // (fibonacci_checked_u32, catalan_number, derangement_count), and sequences
+    // (arithmetic_series_sum, geometric_series_sum) — requested as a broad next batch after
+    // the MATH/AIME and backlog packs (sort3, the batch's one "algorithm", was scoped but
+    // refused by the admission gate — see the note near the end of this test). Deliberately
+    // NOT built (compose from existing cells instead, per this session's own rule):
+    // Pythagorean-triple check (mul/add/eq), rectangle area/perimeter (mul/add),
+    // collinearity (shoelace_area_x2 == 0), subset count (pow(2,n)), permutations with
+    // repetition (pow(n,k)), stars-and-bars (choose(n-1,k-1)), multinomial coefficients
+    // (two choose calls). Still blocked: Stirling numbers, ISBN/IBAN/UPC, and
+    // percentile-from-histogram all need array/bytes[N] state fields, never yet exercised.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // shoelace_area_x2_quad: unit square -> 2; degenerate (all points coincide) -> 0.
+    let (_, _, cell) = step(
+        "shoelace_area_x2_quad",
+        "ShoelaceAreaX2Quad",
+        &[
+            ("x1", 0), ("y1", 0), ("x2", 1), ("y2", 0),
+            ("x3", 1), ("y3", 1), ("x4", 0), ("y4", 1),
+        ],
+    );
+    assert_eq!(cell.get("result"), Some(2));
+    let (_, _, cell) = step(
+        "shoelace_area_x2_quad",
+        "ShoelaceAreaX2Quad",
+        &[
+            ("x1", 5), ("y1", 5), ("x2", 5), ("y2", 5),
+            ("x3", 5), ("y3", 5), ("x4", 5), ("y4", 5),
+        ],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+
+    // triangle_is_valid: 3-4-5 is valid; 1-1-3 fails the inequality; 1-2-3 is degenerate
+    // (collinear, fails strictly).
+    assert_eq!(run_cell("triangle_is_valid", &[3, 4, 5]), 1);
+    assert_eq!(run_cell("triangle_is_valid", &[1, 1, 3]), 0);
+    assert_eq!(run_cell("triangle_is_valid", &[1, 2, 3]), 0);
+
+    // fibonacci_checked_u32: standard indexing, F(0)=0, F(1)=1, ...; escalates at n=47.
+    let (_, _, cell) = step("fibonacci_checked_u32", "FibonacciChecked", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, _, cell) = step("fibonacci_checked_u32", "FibonacciChecked", &[("n", 10)]);
+    assert_eq!(cell.get("result"), Some(55));
+    let (_, _, cell) = step("fibonacci_checked_u32", "FibonacciChecked", &[("n", 46)]);
+    assert_eq!(cell.get("result"), Some(1_836_311_903));
+    let (_, report, _) = step("fibonacci_checked_u32", "FibonacciChecked", &[("n", 47)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // catalan_number: 1, 1, 2, 5, 14, 42, 132, ...; verified safe through n=17.
+    let (_, _, cell) = step("catalan_number", "CatalanNumber", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step("catalan_number", "CatalanNumber", &[("n", 6)]);
+    assert_eq!(cell.get("result"), Some(132));
+    let (_, _, cell) = step("catalan_number", "CatalanNumber", &[("n", 17)]);
+    assert_eq!(cell.get("result"), Some(129_644_790));
+
+    // derangement_count: 1, 0, 1, 2, 9, 44, 265, 1854, 14833, ...
+    let (_, _, cell) = step("derangement_count", "DerangementCount", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step("derangement_count", "DerangementCount", &[("n", 1)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, _, cell) = step("derangement_count", "DerangementCount", &[("n", 8)]);
+    assert_eq!(cell.get("result"), Some(14_833));
+
+    // arithmetic_series_sum: 3,5,7,9,11 (a=3,d=2,n=5) sums to 35.
+    let (_, _, cell) = step(
+        "arithmetic_series_sum",
+        "ArithmeticSeriesSum",
+        &[("a", 3), ("d", 2), ("n", 5)],
+    );
+    assert_eq!(cell.get("result"), Some(35));
+    let (_, _, cell) = step(
+        "arithmetic_series_sum",
+        "ArithmeticSeriesSum",
+        &[("a", 100), ("d", 0), ("n", 0)],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+
+    // geometric_series_sum: 2,6,18,54 (a=2,r=3,n=4) sums to 80.
+    let (_, _, cell) = step(
+        "geometric_series_sum",
+        "GeometricSeriesSum",
+        &[("a", 2), ("r", 3), ("n", 4)],
+    );
+    assert_eq!(cell.get("result"), Some(80));
+    let (_, _, cell) = step(
+        "geometric_series_sum",
+        "GeometricSeriesSum",
+        &[("a", 7), ("r", 0), ("n", 3)],
+    );
+    assert_eq!(cell.get("result"), Some(7)); // 7 + 0 + 0
+
+    // sort3 was scoped (min, mid, max) as a 3-tuple) but never shipped: the admission gate
+    // refused it as a behavioural duplicate of min3, agreement 1.00 — correctly, since the
+    // fingerprint only digests the primary (HL) register for a free fn with no state
+    // (cell80/src/fingerprint.rs), and sort3's first tuple slot is, by construction, always
+    // exactly min3's entire output. No reordering of the tuple escapes this: whichever of
+    // min/mid/max lands first will always exactly match min3/median3/max3's own output for
+    // every input, since a sort's outputs are definitionally those three statistics. Not a
+    // false positive to work around — the extra capability (getting mid and max too) lives
+    // entirely in registers the gate doesn't currently compare for duplicate-detection
+    // purposes, a real gap worth someone revisiting in fingerprint.rs itself, not by hacking
+    // around it here.
+}

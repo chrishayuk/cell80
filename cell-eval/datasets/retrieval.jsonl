@@ -522,3 +522,17 @@
 {"id": "bresenham_step-para-1", "query": "figure out the next pixel on a straight line between two grid points", "expected": "bresenham_step", "category": "paraphrase"}
 {"id": "rate_window_update-direct-1", "query": "fixed-window rate limiter, N events per time window", "expected": "rate_window_update", "category": "direct"}
 {"id": "rate_window_update-para-1", "query": "only let a caller through a set number of times before a timer resets", "expected": "rate_window_update", "category": "paraphrase"}
+{"id": "shoelace_area_x2_quad-direct-1", "query": "twice the area of a quadrilateral from four integer vertices", "expected": "shoelace_area_x2_quad", "category": "direct"}
+{"id": "shoelace_area_x2_quad-para-1", "query": "compute the area of a four-sided shape given its four corner coordinates", "expected": "shoelace_area_x2_quad", "category": "paraphrase"}
+{"id": "triangle_is_valid-direct-1", "query": "check whether three side lengths form a valid triangle", "expected": "triangle_is_valid", "category": "direct"}
+{"id": "triangle_is_valid-para-1", "query": "can these three sticks actually be joined into a triangle", "expected": "triangle_is_valid", "category": "paraphrase"}
+{"id": "fibonacci_checked_u32-direct-1", "query": "the nth fibonacci number, checked for overflow", "expected": "fibonacci_checked_u32", "category": "direct"}
+{"id": "fibonacci_checked_u32-para-1", "query": "each number is the sum of the two before it, what's the nth one", "expected": "fibonacci_checked_u32", "category": "paraphrase"}
+{"id": "catalan_number-direct-1", "query": "the nth catalan number", "expected": "catalan_number", "category": "direct"}
+{"id": "catalan_number-para-1", "query": "how many ways to arrange balanced parentheses or triangulate a polygon", "expected": "catalan_number", "category": "paraphrase"}
+{"id": "derangement_count-direct-1", "query": "the nth derangement number", "expected": "derangement_count", "category": "direct"}
+{"id": "derangement_count-para-1", "query": "how many ways can everyone get someone else's hat back, nobody their own", "expected": "derangement_count", "category": "paraphrase"}
+{"id": "arithmetic_series_sum-direct-1", "query": "sum of the first n terms of an arithmetic sequence", "expected": "arithmetic_series_sum", "category": "direct"}
+{"id": "arithmetic_series_sum-para-1", "query": "add up a list of evenly-spaced numbers starting at a with a common difference", "expected": "arithmetic_series_sum", "category": "paraphrase"}
+{"id": "geometric_series_sum-direct-1", "query": "sum of the first n terms of a geometric sequence with ratio r", "expected": "geometric_series_sum", "category": "direct"}
+{"id": "geometric_series_sum-para-1", "query": "add up a list of numbers that each double or triple the one before it", "expected": "geometric_series_sum", "category": "paraphrase"}

@@ -141,7 +141,7 @@ wave 3r   225 cells   + MATH/AIME pack, second slice — the four items the
                         originally scoped except count_divisors/dist_sq
                         (still exact duplicates of factor_count/euclid_sq —
                         never built, not deferred).
-now       232 cells   + the "straightforward deferred set" backlog: q_sqrt,
+wave 3s   232 cells   + the "straightforward deferred set" backlog: q_sqrt,
                         q_sigmoid (fixed-point), running_variance_step
                         (running-stats), morton_encode/morton_decode,
                         bresenham_step (spatial/grid), rate_window_update
@@ -149,6 +149,17 @@ now       232 cells   + the "straightforward deferred set" backlog: q_sqrt,
                         was scoped but not built: it reduces exactly to
                         clamp_i16(x, -256, 256), now tagged on that cell
                         instead of shipped as a second one.
+now       239 cells   + a broad geometry/combinatorics/sequences batch,
+                        requested directly rather than pulled from a
+                        standing backlog: shoelace_area_x2_quad,
+                        triangle_is_valid (geometry); fibonacci_checked_u32,
+                        catalan_number, derangement_count (combinatorics);
+                        arithmetic_series_sum, geometric_series_sum
+                        (a new sequences pack) — see the pack note below.
+                        sort3 (returning (min, mid, max) as one call) was
+                        scoped but refused by the admission gate: a real,
+                        structural finding, not a false positive — see the
+                        pack note.
 next      ~250+        + cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -889,6 +900,50 @@ regenerated (purely additive). One more same-shape-sibling retrieval cost, expec
 chased (per the class's standing precedent): `morton_encode`'s own direct query ranks #2
 behind `morton_decode` — an encode/decode pair sharing nearly all vocabulary except the one
 word that matters.
+
+**Geometry/combinatorics/sequences, requested directly (2026-07-05) — seven landed, one
+genuinely refused, not a false positive.** Chris asked to keep expanding broadly rather than
+work from a specific backlog item; the batch: `shoelace_area_x2_quad` (the shoelace formula
+generalized from three vertices to four — |x1(y2-y4) + x2(y3-y1) + x3(y4-y2) + x4(y1-y3)|,
+same inline sign-magnitude combine as the triangle version, extended to a fourth term, round-trip
+verified against a general polygon-area reference across 20,000 random quadrilaterals),
+`triangle_is_valid` (the triangle inequality, widened to u32 internally so two large sides
+can't wrap past u16 and flip the verdict), `fibonacci_checked_u32`/`catalan_number`/
+`derangement_count` (three named combinatorial sequences, each checked and escalating past
+its own real overflow ceiling — u32-verified at n=46/17/13 respectively), and a new
+**sequences** pack, `arithmetic_series_sum`/`geometric_series_sum` (both verified in Python
+first to always be exact integers — no fractions pack needed — across 10,000+ random cases
+each).
+
+`catalan_number`'s recurrence (`C(n+1) = C(n)*2*(2n+1)/(n+2)`) hits the exact same class of
+limitation `choose_u32` already documents: the intermediate product can overflow u32 before
+the true Catalan number would (confirmed at n=18: intermediate 9,075,135,300 overflows,
+while the true C(18) = 477,638,700 fits comfortably) — documented in its own `//! limits:`,
+not treated as a bug to chase. `geometric_series_sum` was deliberately built via direct
+iterative summation rather than the textbook `a*(r^n-1)/(r-1)` closed form: computing `r^n`
+alone would overflow far sooner than a genuinely unrepresentable sum does (e.g. `r=10, n=10`
+already needs `10^10`), so the direct-sum version escalates exactly when the answer itself
+doesn't fit, not earlier — and it's exact for every `r >= 0`, not just the `r > 1` originally
+scoped.
+
+**`sort3` — scoped, then refused by the admission gate, and the refusal is correct.** The
+plan: return `(min, mid, max)` as one 3-tuple call instead of three separate calls to
+`min3`/`median3`/`max3`. The gate refused it as a behavioural duplicate of `min3` at 1.00
+agreement — not a coincidence to route around, a structural fact: `fingerprint.rs` digests
+only the primary (`HL`) register for a stateless free function (`Some(r.result)`, ignoring
+`DE`/`BC` entirely), and `sort3`'s first tuple slot is, by construction, always exactly
+`min3`'s whole output for every input. No reordering escapes this — whichever of
+min/mid/max is placed first will always exactly match `min3`/`median3`/`max3` respectively,
+since a sort's outputs are definitionally those three statistics. The real capability
+`sort3` would have added (getting `mid` and `max` in the same call) lives entirely in
+registers the fingerprint doesn't currently compare for duplicate-detection purposes — a
+genuine gap in tuple-return handling, not a bug in this cell, and not something to patch
+around from the cell-authoring side. Worth fixing in `fingerprint.rs` itself if a future
+tuple-returning cell needs to ship past it; out of scope here.
+
+Gate: 239 admitted, 0 refused (`sort3` correctly excluded, never counted). Full test suite
+green, cold clippy clean, codegen golden regenerated (purely additive). Retrieval: all seven
+landed cells rank #1 on their own direct query — no same-shape-sibling collisions this time.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

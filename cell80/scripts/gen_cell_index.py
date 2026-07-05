@@ -39,8 +39,9 @@ PACKS = {
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
     "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
-    "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32"],
-    "geometry": ["shoelace_area_x2"],
+    "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32", "fibonacci_checked_u32", "catalan_number", "derangement_count"],
+    "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid"],
+    "sequences": ["arithmetic_series_sum", "geometric_series_sum"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;

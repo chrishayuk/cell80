@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (232 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (239 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -372,19 +372,31 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via an inline GCD. |
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via an inline GCD. |
 
-## combinatorics (3)
+## combinatorics (6)
 
 | id | signature | summary |
 |---|---|---|
 | `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
 | `choose_u32` | `ChooseWide::run() -> u16` | Binomial coefficient "n choose k" (nCr), checked: the count of k-element subsets of an n-element set, via the multiplicative running-division formula (each step's quotient is always exact, but the pre-division product can transiently exceed the final answer, so this escalates somewhat before n choose k itself would overflow u32 — a known limitation of single-pass 32-bit intermediates, not a false claim). Escalates rather than silently wrapping. |
 | `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
+| `fibonacci_checked_u32` | `FibonacciChecked::run() -> u16` | The nth Fibonacci number (F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)), checked: escalates instead of silently wrapping once F(n) would exceed u32::MAX (n >= 47). |
+| `catalan_number` | `CatalanNumber::run() -> u16` | The nth Catalan number (C(0)=1, C(n+1) = C(n)*2*(2n+1)/(n+2) — an exact recurrence, each step's division always lands evenly), checked: escalates on overflow rather than silently wrapping. Note the recurrence's own pre-division intermediate can overflow u32 before the true Catalan number itself would (the same class of limitation choose_u32 documents) — verified safe through C(17); beyond that, escalation is possible even though C(18)/C(19) themselves would still fit u32. |
+| `derangement_count` | `DerangementCount::run() -> u16` | The nth derangement number (D(0)=1, D(1)=0, D(n)=(n-1)*(D(n-1)+D(n-2)) — the count of permutations of n items with no fixed point), checked: escalates instead of silently wrapping once D(n) would exceed u32::MAX (n >= 14). Unlike catalan_number's recurrence, this one's intermediate never overflows before the true result itself would (verified) — the multiplier grows linearly (n-1) against a linearly-combined sum, not against an already-exponential value. |
 
-## geometry (1)
+## geometry (3)
 
 | id | signature | summary |
 |---|---|---|
 | `shoelace_area_x2` | `ShoelaceAreaX2::run() -> u16` | Twice the area of a triangle from three integer vertices (x1,y1),(x2,y2),(x3,y3), via the shoelace formula: \|x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)\| — always an integer, unlike the raw area (which is a half-integer for e.g. a right triangle with legs 1 and 1). Coordinates are unsigned; the three (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), since a term or the running sum can go negative before the final absolute value. |
+| `shoelace_area_x2_quad` | `ShoelaceAreaX2Quad::run() -> u16` | Twice the area of a quadrilateral from four integer vertices (x1,y1)..(x4,y4), generalizing shoelace_area_x2's triangle formula to \|x1*(y2-y4) + x2*(y3-y1) + x3*(y4-y2) + x4*(y1-y3)\| — always an integer. Coordinates are unsigned; the four (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same pattern shoelace_area_x2 uses, extended to a fourth term. |
+| `triangle_is_valid` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if three side lengths (a, b, c) form a valid (non-degenerate) triangle, i.e. each side is strictly less than the sum of the other two, else 0. Sums are widened to u32 internally so a large pair (e.g. two sides near 65535) can't wrap past u16 and silently flip the verdict. |
+
+## sequences (2)
+
+| id | signature | summary |
+|---|---|---|
+| `arithmetic_series_sum` | `ArithmeticSeriesSum::run() -> u16` | Sum of the first n terms of an arithmetic sequence starting at a with common difference d: n*(2a + (n-1)*d) / 2 — always an exact integer (the product n*(2a+(n-1)*d) is provably always even), checked for overflow at each step. |
+| `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
 
 ## aliases (4)
 
