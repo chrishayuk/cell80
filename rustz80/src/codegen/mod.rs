@@ -213,24 +213,43 @@ fn emit_const_data(a: &mut Asm, funcs: &[(String, Func)], consts: &[DataConst]) 
 }
 
 /// The call-boundary map codegen lays calls by (see `Asm::wide_sigs`).
-fn wide_sig_map(funcs: &[(String, Func)]) -> HashMap<String, (bool, bool)> {
+fn wide_sig_map(funcs: &[(String, Func)]) -> HashMap<String, (bool, bool, bool)> {
     funcs
         .iter()
         .filter(|(_, f)| f.wide_param || f.wide_ret)
-        .map(|(n, f)| (n.clone(), (f.wide_param, f.wide_ret)))
+        .map(|(n, f)| (n.clone(), (f.wide_param, f.wide_second, f.wide_ret)))
         .collect()
 }
 
 fn emit_func(a: &mut Asm, f: &Func) {
     a.func_ret_wide = f.wide_ret;
-    // Prologue: copy parameters from the convention registers into their slots.
-    for i in 0..f.params {
-        let slot = a.slot(i);
-        match i {
-            0 => a.st_hl_mem(slot),            // LD (slot), HL
-            1 => a.st_wide_mem(R16::De, slot), // LD (slot), DE
-            2 => a.st_wide_mem(R16::Bc, slot), // LD (slot), BC
-            _ => unreachable!(),
+    if f.wide_second {
+        // Two-wide prologue: the first u32 arrives in HL:DE (slots 0-1); the
+        // second sits on the stack under the return address (low on top — the
+        // caller pushed high then low). Storing HL/DE first frees DE to hold
+        // the return address across the pops; BC (an optional third u16 param)
+        // stays untouched. Callee-popped: the caller does no cleanup.
+        a.st_hl_mem(a.slot(0)); //             LD (slot0), HL
+        a.st_wide_mem(R16::De, a.slot(1)); //  LD (slot1), DE
+        a.pop(R16::De); //                     POP DE      (return address)
+        a.pop(R16::Hl);
+        a.st_hl_mem(a.slot(2)); //             LD (slot2), HL   (arg1.low)
+        a.pop(R16::Hl);
+        a.st_hl_mem(a.slot(3)); //             LD (slot3), HL   (arg1.high)
+        a.push(R16::De); //                    PUSH DE     (return address back)
+        if f.params == 5 {
+            a.st_wide_mem(R16::Bc, a.slot(4)); // the third, 16-bit, param
+        }
+    } else {
+        // Prologue: copy parameters from the convention registers into their slots.
+        for i in 0..f.params {
+            let slot = a.slot(i);
+            match i {
+                0 => a.st_hl_mem(slot),            // LD (slot), HL
+                1 => a.st_wide_mem(R16::De, slot), // LD (slot), DE
+                2 => a.st_wide_mem(R16::Bc, slot), // LD (slot), BC
+                _ => unreachable!(),
+            }
         }
     }
     // The epilogue label — `return` jumps here. The body and tail fall through to

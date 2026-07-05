@@ -1,4 +1,4 @@
-//! Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via an inline GCD.
+//! Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via the shared gcd_u32 kernel.
 //! tags: fraction, frac, add, whole, integer, mixed, wide, u32, checked, escalate
 //! entry: FracAddWhole::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if d == 0; escalates (halt 0xFF05, needs_wider_math) if whole*d or the final sum overflows u32
@@ -15,15 +15,9 @@ impl FracAddWhole {
             self.den = 1u32;
             return 1u16;
         }
-        let mut x = num_raw;
-        let mut y = self.d;
-        while y != 0u32 {
-            let t = y;
-            y = x % y;
-            x = t;
-        }
-        self.num = num_raw / x;
-        self.den = self.d / x;
+        let g = gcd_u32(num_raw, self.d);
+        self.num = num_raw / g;
+        self.den = self.d / g;
         1u16
     }
 }

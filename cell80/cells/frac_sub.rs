@@ -1,4 +1,4 @@
-//! Subtract two fractions na/da - nb/db, reduced to lowest terms via an inline GCD.
+//! Subtract two fractions na/da - nb/db, reduced to lowest terms via the shared gcd_u32 kernel.
 //! tags: fraction, frac, subtract, difference, arithmetic, wide, u32, checked
 //! entry: FracSub::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if da == 0 or db == 0; escalates (halt 0xFF05, needs_wider_math) if the result would be negative (an unsigned fraction can't represent it) or a cross-product/denominator overflows u32
@@ -19,15 +19,9 @@ impl FracSub {
             self.den = 1u32;
             return 1u16;
         }
-        let mut x = num_raw;
-        let mut y = den_raw;
-        while y != 0u32 {
-            let t = y;
-            y = x % y;
-            x = t;
-        }
-        self.num = num_raw / x;
-        self.den = den_raw / x;
+        let g = gcd_u32(num_raw, den_raw);
+        self.num = num_raw / g;
+        self.den = den_raw / g;
         1u16
     }
 }

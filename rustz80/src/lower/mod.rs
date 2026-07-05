@@ -383,7 +383,7 @@ fn lower_method<'a>(
             m.sig.ident
         ));
     }
-    let (params, _) = lower_inputs(&m.sig.inputs, &mut ctx, Some(self_ty))?;
+    let (params, _, _) = lower_inputs(&m.sig.inputs, &mut ctx, Some(self_ty))?;
     let (body, ret) = lower_fn_block(&m.block, &mut ctx)?;
     Ok(Func {
         params,
@@ -391,6 +391,7 @@ fn lower_method<'a>(
         body,
         ret,
         wide_param: false,
+        wide_second: false,
         wide_ret: false,
     })
 }
@@ -412,7 +413,7 @@ fn lower_with<'a>(
         structs, enums, prelude, mono, type_args, const_args, consts, fn_sigs,
     );
     ctx.ret_wide = output_is_u32(&item.sig.output);
-    let (params, wide_param) = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
+    let (params, wide_param, wide_second) = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
     let (body, ret) = lower_fn_block(&item.block, &mut ctx)?;
     Ok(Func {
         params,
@@ -420,6 +421,7 @@ fn lower_with<'a>(
         body,
         ret,
         wide_param,
+        wide_second,
         wide_ret: ctx.ret_wide,
     })
 }
@@ -499,9 +501,10 @@ fn lower_inputs(
     inputs: &syn::punctuated::Punctuated<syn::FnArg, syn::token::Comma>,
     ctx: &mut Ctx,
     self_ty: Option<&str>,
-) -> Result<(usize, bool), String> {
+) -> Result<(usize, bool, bool), String> {
     let mut slots = 0;
     let mut wide_param = false;
+    let mut wide_second = false;
     for (i, arg) in inputs.iter().enumerate() {
         match arg {
             syn::FnArg::Receiver(_) => {
@@ -538,16 +541,21 @@ fn lower_inputs(
                         None => {
                             let w = ctx.width_of_type(&pt.ty);
                             if w == Width::DWord {
-                                // The one-wide-param convention: first position only
-                                // (it rides HL:DE; `self`/anything else holds HL).
-                                if i != 0 {
-                                    return Err(format!(
-                                        "u32 parameter `{name}` must be the *first* \
-                                         parameter (it rides HL:DE; one per function) — \
-                                         reorder, or pass the words and widen with `as u32`"
-                                    ));
+                                // The wide-param convention: u32s lead. The first
+                                // rides HL:DE; a second rides the stack (the
+                                // `__mul32` shape, docs 10 §Calls).
+                                match i {
+                                    0 => wide_param = true,
+                                    1 if wide_param => wide_second = true,
+                                    _ => {
+                                        return Err(format!(
+                                            "u32 parameter `{name}` must be a *leading* \
+                                             parameter (the first rides HL:DE, a second \
+                                             rides the stack; two per function) — reorder, \
+                                             or pass the words and widen with `as u32`"
+                                        ));
+                                    }
                                 }
-                                wide_param = true;
                                 ctx.vars.declare(&name, 2, None, Width::DWord);
                                 slots += 2;
                             } else {
@@ -560,14 +568,15 @@ fn lower_inputs(
             }
         }
     }
-    if slots > 3 {
+    // The second wide's two slots arrive via the stack, not registers.
+    if slots - if wide_second { 2 } else { 0 } > 3 {
         return Err(
             "parameters exceed the 3 register slots (HL/DE/BC — a u32 takes two; \
-             no stack args)"
+             only a *second u32* may ride the stack)"
                 .into(),
         );
     }
-    Ok((slots, wide_param))
+    Ok((slots, wide_param, wide_second))
 }
 
 /// Lower a function body: statements + an optional tail expression. The tail may be
