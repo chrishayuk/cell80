@@ -395,7 +395,7 @@ bitops         bit-encoding  hashing       packing         time            budge
 validation     vector        decimal       random/stateful scoring/choice  conversion
 ```
 
-### Landed (163 cells)
+### Landed pack notes (through the 163-cell checkpoint; the wave table above is current)
 
 See **[`docs/cell-index.md`](cell-index.md)** for the full, generated, per-pack list — not
 duplicated here, so there's exactly one place this can go stale (and it's checked against

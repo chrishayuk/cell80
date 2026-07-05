@@ -167,7 +167,13 @@ cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1 -
 
 CLI verbs: `run` (source) · `compile` (→ `.cell`) · `exec` (a `.cell`) · `inspect` ·
 `index` · `search` · `route` (by I/O examples, optionally answered from a fact file) ·
-`serve` (a persistent warm session) · `facts` (export / import / verify — docs/12).
+`serve` (a persistent warm session) · `facts` (export / import / verify — the full contract
+lives in [`docs/12-fact-file.md`](./docs/12-fact-file.md): a fact is keyed by the artifact
+hash — which covers the image *and* its capability/halt policy — carries its cycle cost, and
+is **verified by re-execution**, never trusted; a changed cell is a different hash, so facts
+cannot go stale, only unresolvable) · `solve` (candidate plans compile to cells and get
+verified/perturbed — `docs/math-campaign-spec.md` M2, demo: `cargo run --release --example
+solve_demo -p cell80`).
 Same commands, drivable by an agent over JSON.
 
 ---
