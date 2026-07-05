@@ -40,11 +40,22 @@ pub struct RouteReport {
 pub struct CellHost {
     pub(crate) catalog: HashMap<String, Cartridge>,
     /// Lazily-(re)built TF-IDF search index over the catalog. `None` means stale; the next
-    /// `search` rebuilds it from the catalog's manifests, and `add` invalidates it. TF-IDF
-    /// fits IDF over the *whole* corpus (unlike [`CellIndex`]'s incremental `add`), so we
-    /// cache-and-rebuild rather than update in place — O(n) per rebuild is cheap at library
-    /// scale, and a warm host is typically filled once at startup then served from.
+    /// `search_scored` rebuilds it from the catalog's manifests, and `add` invalidates it.
+    /// TF-IDF fits IDF over the *whole* corpus (unlike [`CellIndex`]'s incremental `add`), so
+    /// we cache-and-rebuild rather than update in place — O(n) per rebuild is cheap at
+    /// library scale, and a warm host is typically filled once at startup then served from.
+    /// Kept separate from [`type_led`](Self::type_led) deliberately: `search_scored`'s raw
+    /// cosine magnitude feeds `cell-eval`'s calibrated tiered-retrieval margin gate — it must
+    /// stay exactly plain tf-idf, never re-ranked, or that calibration silently drifts.
     index: std::cell::RefCell<Option<TfidfIndex>>,
+    /// Lazily-(re)built **type-led** index (roadmap #3) over the catalog — plain tf-idf
+    /// re-ranked by each cell's behavioural predicate/transformer signal (`docs/
+    /// library-growth.md`; `TypeLedIndex`'s own module doc has the measured honest lift:
+    /// small, ~1-3 points on paraphrase/adversarial, not a fix for the paraphrase ceiling).
+    /// Built from cartridges, not just manifests — the predicate label comes from *running*
+    /// each cell on a probe bank. Powers plain [`search`](Self::search) only;
+    /// [`search_scored`](Self::search_scored)'s calibrated magnitude is untouched.
+    type_led: std::cell::RefCell<Option<TypeLedIndex>>,
     pool: CellPool,
     pub(crate) live: Vec<Option<Loaded>>,
     /// When set, every [`load`](Self::load) enables the runner's memoization cache —
@@ -61,10 +72,12 @@ impl CellHost {
         Self::default()
     }
 
-    /// Register a cartridge in the catalog (keyed by its manifest id) and invalidate the
-    /// search index, which is rebuilt from the catalog on the next [`search`](Self::search).
+    /// Register a cartridge in the catalog (keyed by its manifest id) and invalidate both
+    /// search indexes, rebuilt from the catalog on the next [`search`](Self::search) /
+    /// [`search_scored`](Self::search_scored).
     pub fn add(&mut self, cart: Cartridge) {
         *self.index.borrow_mut() = None;
+        *self.type_led.borrow_mut() = None;
         self.catalog.insert(cart.manifest.id.clone(), cart);
     }
 
@@ -77,19 +90,22 @@ impl CellHost {
     }
 
     /// Discover: rank the catalog by relevance to `query` (returns manifests, not cells).
-    /// Rebuilds the TF-IDF index from the catalog if it went stale since the last search
-    /// (deterministic: ranking is by cosine then id, so catalog iteration order can't leak in).
+    /// Rebuilds the type-led index from the catalog if it went stale since the last search
+    /// (deterministic: ranking is by score then id, so catalog iteration order can't leak
+    /// in). Text-ranked (tf-idf), then re-ranked by each cell's behavioural predicate signal
+    /// — a same-shape confusable pair like `range_check`/`clamp` shares every bounds word,
+    /// so behaviour breaks the tie where text alone can't (`TypeLedIndex`'s module doc has
+    /// the measured lift — modest, not a fix for the paraphrase ceiling).
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Manifest> {
-        let stale = self.index.borrow().is_none();
+        let stale = self.type_led.borrow().is_none();
         if stale {
-            let manifests: Vec<Manifest> =
-                self.catalog.values().map(|c| c.manifest.clone()).collect();
-            *self.index.borrow_mut() = Some(TfidfIndex::build(manifests));
+            let carts: Vec<Cartridge> = self.catalog.values().cloned().collect();
+            *self.type_led.borrow_mut() = Some(TypeLedIndex::build(carts));
         }
         // Pull the ranked ids out (dropping the borrow), then resolve them to manifests that
         // borrow from `catalog` — so the returned references live as long as `&self`.
         let ids: Vec<String> = self
-            .index
+            .type_led
             .borrow()
             .as_ref()
             .expect("index built above")

@@ -704,6 +704,30 @@ hand-guessed candidates. That work is in progress (`feat/cell-solve`). Every han
 batch so far has cost real, only partially-recovered retrieval precision; cells with
 demonstrated use are worth that cost, more speculative ones may not be.
 
+**`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
+`CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,
+`cell80-py`'s `search`, `cell80-mcp`'s `cell_search` tool) now builds and ranks through
+`TypeLedIndex` instead of plain `TfidfIndex`. `CellHost::search_scored` is **untouched** —
+kept on the raw `TfidfIndex` deliberately, since its cosine magnitude feeds `cell-eval`'s
+calibrated tiered-retrieval margin gate, and re-ranking it would silently drift an
+already-tuned threshold (the same constraint noted when checkpoint 11's shape-tiebreak
+fix landed). All existing host/CLI tests passed unchanged — none depended on plain
+tf-idf's exact ranking order on a near-tie. **Measured honestly, the live lift is a
+wash at the current 209-cell composition:** `examples/retrieval_compare` shows tf-idf and
+type-led *identically tied* (82% / 36% / 50% direct/paraphrase/adversarial P@1) — matching
+`TypeLedIndex`'s own module-doc self-assessment, not a surprise. The reason: this session's
+own recent batches (checked-arithmetic's wide u16/u32 siblings, the five-member
+`smag_*` family) are exactly the same-shape-sibling class the module's doc already names as
+outside a predicate/transformer signal's reach — `min`/`min_u32` are both non-predicates,
+`smag_add`/`smag_mul` are both non-predicates, so there's no predicate-vs-transformer
+disagreement to re-rank on. Wiring it in was still worth doing: it's the correct default
+now that it's proven safe, it costs nothing (a wash, not a regression), and it's real
+infrastructure for whatever *other* confusable pairs it does help (the `range_check`/
+`clamp`-shaped ones its own tests target) as the library keeps growing. It is not,
+and was never claimed to be, the fix for the same-shape-sibling ceiling — that lever is
+still **behavioural routing** (`route_by_examples`, already shipped) or `cell_solve`
+answering the question directly instead of retrieving a cell to answer it.
+
 ## Mine the ecosystem first
 
 `chuk-math` / `chuk-mcp-math` / `chuk-synthetic-data` likely already hold integer kernels worth

@@ -54,9 +54,7 @@ fn main() {
             "target":"lego_money"}"#,
     );
 
-    println!(
-        "\n=== 2. Same *schema*, generic field names, across two different word problems ==="
-    );
+    println!("\n=== 2. Same *schema*, generic field names, across two different word problems ===");
     // "Maya buys 6 notebooks at 45 cents each."
     solve_one(
         &mut host,
