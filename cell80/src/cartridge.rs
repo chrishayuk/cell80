@@ -125,6 +125,16 @@ pub struct CartridgeOpts {
     pub limits: Vec<String>,
     /// Optional fixed-point scale (fractional bits) — see [`Manifest::scale`].
     pub scale: Option<u8>,
+    /// Canonicalization strength (M2.5). Defaults to `Light` — the dialect
+    /// normalizer only, byte-stable when nothing fires, so hand-authored library
+    /// cells keep their hashes. The compose/campaign path passes `Full` (slots,
+    /// folding, defer-division, width) — renaming a library cell's params would
+    /// break its named-args ABI, so `Full` is never the silent default.
+    pub canon: rustz80::CanonMode,
+    /// Unit hints for `Full` canonicalization (money → cents scaling etc.).
+    pub canon_hints: Vec<rustz80::UnitHint>,
+    /// Default the composed arithmetic lane to u32 (`Full` mode only).
+    pub canon_wide: bool,
 }
 
 /// A compiled cell **plus** its manifest — the `.cell` artifact.
@@ -137,12 +147,31 @@ pub struct Cartridge {
     /// through serialization, and **verified on load** when present. Unsigned artifacts
     /// stay first-class: the hash alone already pins content.
     pub signature: Option<([u8; 32], [u8; 64])>,
+    /// Repairs the canonicalization pass applied at compile time (typed, `E*` coded).
+    /// Compile provenance, not artifact content — empty on `from_bytes` loads.
+    pub canon_repairs: Vec<rustz80::Repair>,
+    /// `(source_name, slot)` renames from `Full` canonicalization, with unit metadata.
+    /// Compile provenance, not artifact content — empty on `from_bytes` loads.
+    pub canon_renames: Vec<rustz80::Rename>,
 }
 
 impl Cartridge {
-    /// Compile `src` under `cfg` and wrap it in a cartridge: resolves the entry (opts, then
-    /// `run`/`main`), hashes the source, and stamps the compiler + ABI versions.
+    /// Compile `src` under `cfg` and wrap it in a cartridge: **canonicalize** (M2.5 —
+    /// this is the choke point where the canonical text reaches both the manifest's
+    /// source hash and codegen; anything downstream sees only the canonical form),
+    /// then resolve the entry (opts, then `run`/`main`), hash the source, and stamp
+    /// the compiler + ABI versions.
     pub fn compile(src: &str, cfg: CellConfig, opts: CartridgeOpts) -> Result<Self, String> {
+        let canon = rustz80::canonicalize_source(
+            src,
+            &rustz80::CanonOptions {
+                mode: opts.canon,
+                hints: opts.canon_hints.clone(),
+                wide_default: opts.canon_wide,
+            },
+        )
+        .map_err(|d| d.to_string())?;
+        let src: &str = &canon.source;
         let program = CellProgram::compile_with_config(src, cfg)?;
         let syms = &program.program().symbols;
         let entry = match opts.entry {
@@ -172,6 +201,8 @@ impl Cartridge {
             },
             program,
             signature: None,
+            canon_repairs: canon.repairs,
+            canon_renames: canon.renames,
         })
     }
 
@@ -387,6 +418,8 @@ impl Cartridge {
             },
             program,
             signature: cart_sig,
+            canon_repairs: Vec::new(),
+            canon_renames: Vec::new(),
         })
     }
 

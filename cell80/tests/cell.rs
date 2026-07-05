@@ -398,6 +398,7 @@ fn cartridge_roundtrip_and_inspect() {
             entry: None, // resolves to `run`
             limits: Vec::new(),
             scale: None,
+            ..Default::default()
         },
     )
     .unwrap();
@@ -487,6 +488,7 @@ fn cell_host_warm_session() {
                 tags: vec!["state".into()],
                 limits: Vec::new(),
                 scale: None,
+                ..Default::default()
             },
         )
         .unwrap(),
@@ -664,6 +666,7 @@ fn cell_index_search_ranks_by_relevance() {
                 entry: None,
                 limits: Vec::new(),
                 scale: None,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -1590,6 +1593,7 @@ fn wide_u32_state_field_end_to_end() {
             tags: vec!["state".into()],
             limits: Vec::new(),
             scale: None,
+            ..Default::default()
         },
     )
     .unwrap();

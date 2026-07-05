@@ -8,9 +8,14 @@
 //! The renderer is deliberately dumb: one op → one checked line; units are checked
 //! *symbolically at render time* (dollars + hours dies before compilation);
 //! constraints render as trailing checks that halt in the escalation band. Output
-//! is deterministic and canonical (sorted quantity order, fixed formatting) — the
-//! detail the precipitation story hangs on: identical schemas must hash
-//! identically, or H-M3 is unfalsifiable.
+//! is deterministic and canonical — and since M2.5, **canonical means slots**:
+//! quantities render as `q0, q1, …` assigned in dataflow order (first use in the
+//! topologically sorted op sequence), op outputs as `v0, v1, …`, and the model's
+//! noun identifiers survive only as metadata in [`Rendered::renames`]. Identical
+//! structure ⇒ byte-identical source ⇒ identical artifact hash, whatever the
+//! nouns — the detail the precipitation story (H-M3) hangs on. Identifier safety
+//! is structural: natural words never become Rust identifiers, so the
+//! `final`-class keyword leak is impossible by construction.
 
 use super::{Cartridge, CartridgeOpts, CellConfig, CellHost, Halt};
 use std::collections::HashMap;
@@ -186,63 +191,169 @@ impl Plan {
         })
     }
 
-    /// Render to canonical dialect source. Every failure here happens **before**
-    /// compilation: bad identifiers, unknown/mismatched units, undefined or
-    /// reassigned names. Output is deterministic: quantities sort by id, ops keep
-    /// their (semantic) order, formatting is fixed — same plan modulo quantity
-    /// order ⇒ byte-identical source ⇒ identical artifact hash.
-    pub fn render(&self) -> Result<String, String> {
-        // Identifier discipline: everything becomes a field name.
-        let ident_ok = |s: &str| {
-            !s.is_empty()
-                && s.chars()
-                    .next()
-                    .is_some_and(|c| c.is_ascii_lowercase() || c == '_')
-                && s.chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-                && !matches!(
-                    s,
-                    // Renderer-specific collisions (the entry point, the receiver).
-                    "self" | "run"
-                    // Rust's strict keywords reachable in this lowercase+digit+underscore
-                    // charset (Self/Crate/etc capitalized forms can't match — the charset
-                    // check above already excludes them).
-                    | "as" | "break" | "const" | "continue" | "crate" | "dyn" | "else"
-                    | "enum" | "extern" | "false" | "fn" | "for" | "if" | "impl" | "in"
-                    | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref"
-                    | "return" | "static" | "struct" | "super" | "trait" | "true" | "type"
-                    | "unsafe" | "use" | "where" | "while" | "async" | "await"
-                    // Reserved for future use — not compile errors *today* by accident, but
-                    // exactly the trap `final` fell into: syn accepts them as keyword tokens
-                    // regardless of whether the current grammar defines a meaning for them.
-                    | "abstract" | "become" | "box" | "do" | "final" | "macro"
-                    | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield"
-                    | "try" | "union"
-                )
-        };
-        let mut dims: HashMap<&str, Dim> = HashMap::new();
-        let mut quantities: Vec<&Quantity> = self.quantities.iter().collect();
-        quantities.sort_by(|a, b| a.id.cmp(&b.id));
-        for q in &quantities {
-            if !ident_ok(&q.id) {
-                return Err(format!("bad quantity id `{}`", q.id));
+    /// Normalize every quantity through the compiler's **unit base-scale table**
+    /// ([`rustz80::canonical_unit`], versioned by [`rustz80::UNIT_TABLE_VERSION`]):
+    /// money → cents, time → seconds, unknown nouns → count, rates → explicit
+    /// `numerator_per_denominator`. Values scale by the (integer) factor; every
+    /// application is returned as a repair row. A rate whose combined factor is
+    /// fractional (e.g. `dollars_per_hour` → cents per second) keeps its original
+    /// spelling and value, recorded — escalate-don't-guess, never a misscale.
+    pub fn normalize_units(&mut self) -> Result<Vec<String>, String> {
+        let mut repairs = Vec::new();
+        for q in &mut self.quantities {
+            let (canon, nf, df) = rustz80::canonical_unit(&q.unit);
+            if canon == q.unit && nf == 1 && df == 1 {
+                continue;
             }
+            if nf % df != 0 {
+                repairs.push(format!(
+                    "unit_kept: `{}` `{}` (fractional factor {nf}/{df} to `{canon}`)",
+                    q.id, q.unit
+                ));
+                continue;
+            }
+            let f = nf / df;
+            if f > 1 {
+                q.value = q
+                    .value
+                    .checked_mul(f)
+                    .ok_or_else(|| format!("`{}`: unit scale ×{f} overflows u32", q.id))?;
+                repairs.push(format!(
+                    "unit_scaled: `{}` {} -> {canon} factor={f}",
+                    q.id, q.unit
+                ));
+            } else if canon != q.unit {
+                repairs.push(format!("unit_normalized: `{}` {} -> {canon}", q.id, q.unit));
+            }
+            q.unit = canon;
+        }
+        Ok(repairs)
+    }
+
+    /// Render to canonical dialect source. Every failure here happens **before**
+    /// compilation: unknown/mismatched units, undefined or reassigned names.
+    ///
+    /// Canonical means slots (M2.5): ops are **topologically sorted** with a
+    /// deterministic tie-break (op kind, then operand slots), quantities become
+    /// `q0, q1, …` in dataflow order (first use in that sequence), op outputs
+    /// become `v0, v1, …` in emission order. The model's identifiers never reach
+    /// the Rust — they survive only in [`Rendered::renames`] — so keyword traps
+    /// (`final`, `try`, `union`) are impossible by construction, and two
+    /// extractions of the same structure render byte-identically whatever nouns
+    /// or op order the model chose.
+    pub fn render_canonical(&self) -> Result<Rendered, String> {
+        for q in &self.quantities {
+            if q.id.is_empty() {
+                return Err("empty quantity id".into());
+            }
+        }
+        let mut dims: HashMap<&str, Dim> = HashMap::new();
+        for q in &self.quantities {
             if dims.insert(&q.id, unit_dim(&q.unit)?).is_some() {
                 return Err(format!("duplicate quantity `{}`", q.id));
             }
         }
-        // Type-flow the ops: inputs defined, outputs fresh, units lawful.
-        let mut op_lines = String::new();
-        for (i, op) in self.ops.iter().enumerate() {
-            if !ident_ok(&op.out) {
-                return Err(format!("bad op output id `{}`", op.out));
+        let mut outs = std::collections::HashSet::new();
+        for (i, o) in self.ops.iter().enumerate() {
+            if dims.contains_key(o.out.as_str()) || !outs.insert(o.out.as_str()) {
+                return Err(format!("op {i}: `{}` is assigned twice", o.out));
             }
-            let da = *dims
-                .get(op.a.as_str())
-                .ok_or_else(|| format!("op {i}: `{}` is not defined yet", op.a))?;
-            let db = *dims
-                .get(op.b.as_str())
-                .ok_or_else(|| format!("op {i}: `{}` is not defined yet", op.b))?;
+            if o.out.is_empty() {
+                return Err(format!("op {i}: empty output id"));
+            }
+            if !matches!(o.op.as_str(), "add" | "sub" | "mul" | "div") {
+                return Err(format!("op {i}: unknown op `{}` (add/sub/mul/div)", o.op));
+            }
+        }
+        // Topological emission order with a deterministic tie-break: among ready
+        // ops, (op kind, operand slot keys). Slots are assigned as ops emit, so
+        // the tie-break is noun-independent wherever dataflow pins an order; only
+        // genuinely symmetric unslotted operands fall back to (value, id).
+        let rank = |op: &str| match op {
+            "add" => 0u8,
+            "sub" => 1,
+            "mul" => 2,
+            _ => 3,
+        };
+        let mut slot: HashMap<&str, String> = HashMap::new();
+        let mut q_next = 0usize;
+        let mut v_next = 0usize;
+        let quantity: HashMap<&str, &Quantity> =
+            self.quantities.iter().map(|q| (q.id.as_str(), q)).collect();
+        // Key for an operand under the current slot assignment. Assigned slots
+        // order first (by kind then index); unassigned quantities by (value, id).
+        let okey = |name: &str, slot: &HashMap<&str, String>| -> (u8, u64, String) {
+            match slot.get(name) {
+                Some(s) => {
+                    let idx: u64 = s[1..].parse().unwrap_or(u64::MAX);
+                    (if s.starts_with('q') { 0 } else { 1 }, idx, String::new())
+                }
+                None => match quantity.get(name) {
+                    Some(q) => (2, q.value as u64, name.to_string()),
+                    None => (3, 0, name.to_string()),
+                },
+            }
+        };
+        let mut remaining: Vec<usize> = (0..self.ops.len()).collect();
+        let mut order: Vec<usize> = Vec::new();
+        let mut defined: std::collections::HashSet<&str> =
+            self.quantities.iter().map(|q| q.id.as_str()).collect();
+        while !remaining.is_empty() {
+            let mut ready: Vec<usize> = remaining
+                .iter()
+                .copied()
+                .filter(|&i| {
+                    let o = &self.ops[i];
+                    defined.contains(o.a.as_str()) && defined.contains(o.b.as_str())
+                })
+                .collect();
+            if ready.is_empty() {
+                let i = remaining[0];
+                let o = &self.ops[i];
+                let missing = if defined.contains(o.a.as_str()) {
+                    &o.b
+                } else {
+                    &o.a
+                };
+                return Err(format!("op {i}: `{missing}` is not defined yet"));
+            }
+            ready.sort_by_key(|&i| {
+                let o = &self.ops[i];
+                (rank(&o.op), okey(&o.a, &slot), okey(&o.b, &slot))
+            });
+            let i = ready[0];
+            let o = &self.ops[i];
+            for operand in [&o.a, &o.b] {
+                if !slot.contains_key(operand.as_str()) && quantity.contains_key(operand.as_str())
+                {
+                    slot.insert(operand.as_str(), format!("q{q_next}"));
+                    q_next += 1;
+                }
+            }
+            slot.insert(o.out.as_str(), format!("v{v_next}"));
+            v_next += 1;
+            defined.insert(o.out.as_str());
+            order.push(i);
+            remaining.retain(|&r| r != i);
+        }
+        // Unused quantities: slots after the used ones, by (value, id) — they
+        // carry state but never appear in an op line.
+        let mut unused: Vec<&Quantity> = self
+            .quantities
+            .iter()
+            .filter(|q| !slot.contains_key(q.id.as_str()))
+            .collect();
+        unused.sort_by(|a, b| (a.value, &a.id).cmp(&(b.value, &b.id)));
+        for q in unused {
+            slot.insert(&q.id, format!("q{q_next}"));
+            q_next += 1;
+        }
+        // Type-flow the ops in emission order: units lawful, one line per op.
+        let mut op_lines = String::new();
+        for (n, &i) in order.iter().enumerate() {
+            let op = &self.ops[i];
+            let da = dims[op.a.as_str()];
+            let db = dims[op.b.as_str()];
             let dout = match op.op.as_str() {
                 "add" | "sub" => {
                     if da != db {
@@ -254,18 +365,15 @@ impl Plan {
                     da
                 }
                 "mul" => [da[0] + db[0], da[1] + db[1], da[2] + db[2], da[3] + db[3]],
-                "div" => [da[0] - db[0], da[1] - db[1], da[2] - db[2], da[3] - db[3]],
-                other => return Err(format!("op {i}: unknown op `{other}` (add/sub/mul/div)")),
+                _ => [da[0] - db[0], da[1] - db[1], da[2] - db[2], da[3] - db[3]],
             };
-            if dims.insert(&op.out, dout).is_some() {
-                return Err(format!("op {i}: `{}` is assigned twice", op.out));
-            }
-            let (a, b, out) = (&op.a, &op.b, &op.out);
+            dims.insert(&op.out, dout);
+            let (a, b, out) = (&slot[op.a.as_str()], &slot[op.b.as_str()], &slot[op.out.as_str()]);
             match op.op.as_str() {
                 "add" => {
                     // Wrap detect: a checked add, escalating rather than wrapping.
                     op_lines.push_str(&format!(
-                        "        let t{i} = self.{a} + self.{b};\n        if t{i} < self.{a} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        self.{out} = t{i};\n"
+                        "        let t{n} = self.{a} + self.{b};\n        if t{n} < self.{a} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        self.{out} = t{n};\n"
                     ));
                 }
                 "sub" => {
@@ -277,7 +385,7 @@ impl Plan {
                 "mul" => {
                     // The classic post-hoc overflow check (docs 10 §Arithmetic).
                     op_lines.push_str(&format!(
-                        "        let t{i} = self.{a} * self.{b};\n        if self.{a} != 0u32 && t{i} / self.{a} != self.{b} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        self.{out} = t{i};\n"
+                        "        let t{n} = self.{a} * self.{b};\n        if self.{a} != 0u32 && t{n} / self.{a} != self.{b} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        self.{out} = t{n};\n"
                     ));
                 }
                 _ => {
@@ -301,28 +409,55 @@ impl Plan {
                         return Err(format!("exact_div: `{a}`/`{b}` must be defined"));
                     }
                     checks.push(format!(
-                        "        if self.{a} % self.{b} != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n"
+                        "        if self.{} % self.{} != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
+                        slot[a.as_str()],
+                        slot[b.as_str()]
                     ));
                 }
             }
         }
         checks.sort();
-        if !dims.contains_key(self.target.as_str()) {
-            return Err(format!("target `{}` is never defined", self.target));
-        }
-        // The struct: sorted quantities first, then op outputs in op order.
-        let mut fields: Vec<String> = quantities
-            .iter()
-            .map(|q| format!("{}: u32", q.id))
+        let target_slot = slot
+            .get(self.target.as_str())
+            .cloned()
+            .ok_or_else(|| format!("target `{}` is never defined", self.target))?;
+        // The struct: q slots then v slots, in slot order.
+        let fields: Vec<String> = (0..q_next)
+            .map(|i| format!("q{i}: u32"))
+            .chain((0..v_next).map(|i| format!("v{i}: u32")))
             .collect();
-        fields.extend(self.ops.iter().map(|o| format!("{}: u32", o.out)));
-        let target = &self.target;
-        Ok(format!(
-            "//! rendered plan — target `{target}`\nstruct P {{ {} }}\nimpl P {{\n    fn run(&mut self) -> u16 {{\n{op_lines}{}        (self.{target} & 65535u32) as u16\n    }}\n}}\n",
+        let src = format!(
+            "//! rendered plan\nstruct P {{ {} }}\nimpl P {{\n    fn run(&mut self) -> u16 {{\n{op_lines}{}        (self.{target_slot} & 65535u32) as u16\n    }}\n}}\n",
             fields.join(", "),
             checks.concat(),
-        ))
+        );
+        let mut renames: Vec<(String, String)> = slot
+            .iter()
+            .map(|(name, s)| (name.to_string(), s.clone()))
+            .collect();
+        renames.sort_by(|a, b| a.1.cmp(&b.1));
+        Ok(Rendered {
+            src,
+            renames,
+            target_slot,
+        })
     }
+
+    /// [`render_canonical`](Plan::render_canonical), source only.
+    pub fn render(&self) -> Result<String, String> {
+        self.render_canonical().map(|r| r.src)
+    }
+}
+
+/// A rendered plan: canonical source plus the metadata the slots displaced.
+#[derive(Debug, Clone)]
+pub struct Rendered {
+    pub src: String,
+    /// `(source_name, slot)` for every quantity (`q*`) and op output (`v*`) —
+    /// the only place the model's identifiers survive.
+    pub renames: Vec<(String, String)>,
+    /// The slot the plan's target landed in.
+    pub target_slot: String,
 }
 
 /// Parse one plan object **or** an array of candidate plans — the shape every
@@ -348,6 +483,11 @@ pub struct PlanOutcome {
     /// The rendered artifact was already in the catalog — retrieved, not compiled
     /// (the H-M3 precipitation counter).
     pub retrieved: bool,
+    /// Deterministic repairs applied before render (unit scaling/normalization),
+    /// plus the slot renames — the only place the model's identifiers survive.
+    pub repairs: Vec<String>,
+    /// `(source_name, slot)` for the rendered cell's state fields.
+    pub renames: Vec<(String, String)>,
 }
 
 /// What `solve` returns: per-plan outcomes and the consensus answer, if any.
@@ -372,6 +512,10 @@ impl SolveReport {
                 "answer": o.answer,
                 "kill": o.kill,
                 "retrieved": o.retrieved,
+                "repairs": o.repairs,
+                "renames": o.renames.iter()
+                    .map(|(n, s)| json!({"source_name": n, "slot": s}))
+                    .collect::<Vec<_>>(),
             })).collect::<Vec<_>>(),
         })
         .to_string()
@@ -387,22 +531,42 @@ impl CellHost {
     /// largest group agreeing across the whole sweep). `None` answer = escalate.
     pub fn solve(&mut self, plans: &[Plan], budget: u64) -> Result<SolveReport, String> {
         let mut outcomes: Vec<PlanOutcome> = Vec::new();
-        let mut live: Vec<(usize, usize, Plan)> = Vec::new(); // (plan idx, handle, plan)
+        // (plan idx, handle, normalized plan, id→slot, target slot)
+        let mut live: Vec<(usize, usize, Plan, HashMap<String, String>, String)> = Vec::new();
         for (i, plan) in plans.iter().enumerate() {
-            let src = match plan.render() {
-                Ok(s) => s,
+            // The unit base-scale table first (money → cents, unknown nouns →
+            // count, …) — deterministic, recorded, versioned in the compiler.
+            let mut plan = plan.clone();
+            let mut repairs = match plan.normalize_units() {
+                Ok(r) => r,
                 Err(e) => {
                     outcomes.push(PlanOutcome {
                         artifact: None,
                         answer: None,
                         kill: Some(format!("render: {e}")),
                         retrieved: false,
+                        repairs: Vec::new(),
+                        renames: Vec::new(),
+                    });
+                    continue;
+                }
+            };
+            let rendered = match plan.render_canonical() {
+                Ok(r) => r,
+                Err(e) => {
+                    outcomes.push(PlanOutcome {
+                        artifact: None,
+                        answer: None,
+                        kill: Some(format!("render: {e}")),
+                        retrieved: false,
+                        repairs,
+                        renames: Vec::new(),
                     });
                     continue;
                 }
             };
             let cart = match Cartridge::compile(
-                &src,
+                &rendered.src,
                 CellConfig::sandboxed(),
                 CartridgeOpts {
                     entry: Some("P::run".into()),
@@ -418,10 +582,17 @@ impl CellHost {
                         answer: None,
                         kill: Some(format!("compile: {e}")),
                         retrieved: false,
+                        repairs,
+                        renames: rendered.renames,
                     });
                     continue;
                 }
             };
+            repairs.extend(
+                cart.canon_repairs
+                    .iter()
+                    .map(|r| r.to_string()),
+            );
             let hash = crate::facts::hex(&cart.artifact_hash());
             let id = format!("plan.{}", &hash[..16]);
             // Precipitation: same schema ⇒ same hash ⇒ already catalogued.
@@ -432,15 +603,16 @@ impl CellHost {
                 self.add(cart);
             }
             let h = self.handle_for(&id)?;
+            let slots: HashMap<String, String> = rendered.renames.iter().cloned().collect();
             let fields: Vec<(String, u64)> = plan
                 .quantities
                 .iter()
-                .map(|q| (q.id.clone(), q.value as u64))
+                .map(|q| (slots[&q.id].clone(), q.value as u64))
                 .collect();
             let (fast, state) = self.run_state_fast(h, &fields, budget)?;
             let answer = state
                 .iter()
-                .find(|(k, _)| *k == plan.target)
+                .find(|(k, _)| *k == rendered.target_slot)
                 .map(|(_, v)| *v);
             match fast.halt {
                 Halt::Returned => {
@@ -449,8 +621,10 @@ impl CellHost {
                         answer,
                         kill: None,
                         retrieved,
+                        repairs,
+                        renames: rendered.renames.clone(),
                     });
-                    live.push((i, h, plan.clone()));
+                    live.push((i, h, plan, slots, rendered.target_slot));
                 }
                 other => {
                     let why = match other {
@@ -471,12 +645,15 @@ impl CellHost {
                         answer: None,
                         kill: Some(why),
                         retrieved,
+                        repairs,
+                        renames: rendered.renames,
                     });
                 }
             }
         }
         // Consensus / battery.
-        let answers: Vec<Option<u64>> = live.iter().map(|(i, _, _)| outcomes[*i].answer).collect();
+        let answers: Vec<Option<u64>> =
+            live.iter().map(|(i, _, _, _, _)| outcomes[*i].answer).collect();
         let mut battery_ran = false;
         let answer = match live.len() {
             0 => None,
@@ -494,14 +671,14 @@ impl CellHost {
                 let names: Vec<String> = {
                     let mut all: Vec<String> = live
                         .iter()
-                        .flat_map(|(_, _, p)| p.quantities.iter().map(|q| q.id.clone()))
+                        .flat_map(|(_, _, p, _, _)| p.quantities.iter().map(|q| q.id.clone()))
                         .collect();
                     all.sort();
                     all.dedup();
                     all
                 };
                 for name in &names {
-                    for (slot, (_, h, plan)) in live.iter().enumerate() {
+                    for (row, (_, h, plan, slots, target_slot)) in live.iter().enumerate() {
                         let fields: Vec<(String, u64)> = plan
                             .quantities
                             .iter()
@@ -511,7 +688,7 @@ impl CellHost {
                                 } else {
                                     q.value as u64
                                 };
-                                (q.id.clone(), v)
+                                (slots[&q.id].clone(), v)
                             })
                             .collect();
                         let out = self.run_state_fast(*h, &fields, budget).ok().and_then(
@@ -520,13 +697,13 @@ impl CellHost {
                                     .then(|| {
                                         state
                                             .iter()
-                                            .find(|(k, _)| *k == plan.target)
+                                            .find(|(k, _)| *k == *target_slot)
                                             .map(|(_, v)| *v)
                                     })
                                     .flatten()
                             },
                         );
-                        vectors[slot].push(out);
+                        vectors[row].push(out);
                     }
                 }
                 let mut groups: HashMap<(Option<u64>, Vec<Option<u64>>), usize> = HashMap::new();
