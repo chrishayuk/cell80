@@ -828,10 +828,12 @@ fn money_bps_state_cells_match_defined_behaviour() {
 fn units_free_fn_cells_match_defined_behaviour() {
     // The GSM8K math-campaign units pack (Phase 2.3, M1 pack 3/5) — dimension codes
     // 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,
-    // 7=rate_distance_per_time,8=rate_money_per_time (docs/library-growth.md; code 8 added
-    // later to cover wage-rate word problems — "$ per hour" — previously unmodeled). Free-fn
-    // cells (no u32 state needed), escalating via 0xFF06 (out_of_domain) rather than 0xFF05
-    // (needs_wider_math) — a mismatched/unmodeled unit pair isn't a wide-math problem.
+    // 7=rate_distance_per_time,8=rate_money_per_time,9=rate_count_per_time
+    // (docs/library-growth.md; codes 8/9 added later to cover wage-rate — "$ per hour" —
+    // and production-rate — "N per hour" — word problems, both previously unmodeled).
+    // Free-fn cells (no u32 state needed), escalating via 0xFF06 (out_of_domain) rather
+    // than 0xFF05 (needs_wider_math) — a mismatched/unmodeled unit pair isn't a wide-math
+    // problem.
     fn report(id: &str, args: &[u16]) -> cell80::Report {
         let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
         r.run(None, args, DEFAULT_CYCLES)
@@ -877,10 +879,18 @@ fn units_free_fn_cells_match_defined_behaviour() {
     assert_eq!(report("unit_mul", &[8, 2]).result, 1);
     assert_eq!(report("unit_mul", &[2, 8]).result, 1);
     assert_eq!(report("unit_cancel_check", &[1, 2]).result, 1);
-    // The bound check now rejects codes > 8, not > 7.
     assert_eq!(report("same_unit_check", &[8, 8]).result, 8);
+
+    // Production-rate pair (code 9, rate_count_per_time): count/time=rate, rate*time=count.
+    assert_eq!(report("unit_div", &[0, 2]).result, 9);
+    assert_eq!(report("unit_mul", &[9, 2]).result, 0);
+    assert_eq!(report("unit_mul", &[2, 9]).result, 0);
+    assert_eq!(report("unit_cancel_check", &[0, 2]).result, 1);
+    assert_eq!(report("same_unit_check", &[9, 9]).result, 9);
+
+    // The bound check now rejects codes > 9, not > 8.
     assert_eq!(
-        report("same_unit_check", &[9, 9]).halt,
+        report("same_unit_check", &[10, 10]).halt,
         cell80::Halt::Escalate(0xFF06)
     );
 }
@@ -1859,4 +1869,133 @@ fn verifier_ranker_wave2_cells_match_defined_behaviour() {
         .0,
         0
     );
+}
+
+#[test]
+fn math_wave3_cells_match_defined_behaviour() {
+    // GSM8K math-campaign, third slice: completes the sign-magnitude algebra
+    // (smag_add/sub already landed a signed add/subtract; smag_mul/smag_div complete
+    // multiply/divide — sign = same-sign-positive/different-sign-negative, magnitude
+    // multiplied/divided with the pack's usual checked-overflow / exact-division
+    // convention), two more fraction shapes (frac_avg2, frac_sub_from_whole — the
+    // subtract-direction sibling of frac_add_whole), and lcm3 (the number-theory pack's
+    // gcd/gcd3 pairing extended to lcm, inlining gcd's shared-kernel prelude call twice
+    // since `lcm` itself isn't in `CELL_PRELUDE`).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // smag_mul: (-5)*3 = -15; (-4)*(-3) = 12.
+    let (_, _, cell) = step(
+        "smag_mul",
+        "SmagMul",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(15), Some(1)));
+    let (_, _, cell) = step(
+        "smag_mul",
+        "SmagMul",
+        &[("mag_a", 4), ("neg_a", 1), ("mag_b", 3), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(12), Some(0)));
+    let (_, report, _) = step(
+        "smag_mul",
+        "SmagMul",
+        &[
+            ("mag_a", 100_000),
+            ("neg_a", 0),
+            ("mag_b", 100_000),
+            ("neg_b", 0),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // smag_div: (-15)/3 = -5; (-12)/(-3) = 4; nonzero remainder escalates.
+    let (_, _, cell) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 15), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+    let (_, _, cell) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 12), ("neg_a", 1), ("mag_b", 3), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(4), Some(0)));
+    let (_, report, _) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 10), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // frac_avg2: (1/2 + 1/3)/2 = 5/12.
+    let (_, _, cell) = step(
+        "frac_avg2",
+        "FracAvg2",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(5), Some(12)));
+
+    // frac_sub_from_whole: 3 - 1/4 = 11/4; 2 - 1/2 = 3/2; going negative escalates.
+    let (_, _, cell) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 3), ("n", 1), ("d", 4)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(11), Some(4)));
+    let (_, _, cell) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 2), ("n", 1), ("d", 2)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(3), Some(2)));
+    let (_, report, _) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 0), ("n", 1), ("d", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // lcm3: lcm(lcm(4,6),10) = lcm(12,10) = 60.
+    assert_eq!(run_cell("lcm3", &[4, 6, 10]), 60);
+    assert_eq!(run_cell("lcm3", &[2, 3, 5]), 30);
+
+    // smag_eq: the smag family's missing verifier — equal magnitude+sign match; a
+    // negative-zero canonicalizes to nonnegative so it still equals a plain zero.
+    assert_eq!(
+        step(
+            "smag_eq",
+            "SmagEq",
+            &[("mag_a", 5), ("neg_a", 1), ("mag_b", 5), ("neg_b", 1)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "smag_eq",
+            "SmagEq",
+            &[("mag_a", 5), ("neg_a", 1), ("mag_b", 5), ("neg_b", 0)]
+        )
+        .0,
+        0
+    );
+    assert_eq!(
+        step(
+            "smag_eq",
+            "SmagEq",
+            &[("mag_a", 0), ("neg_a", 1), ("mag_b", 0), ("neg_b", 0)]
+        )
+        .0,
+        1
+    ); // negative zero == positive zero
 }

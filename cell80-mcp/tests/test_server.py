@@ -13,7 +13,10 @@ from cell80_mcp.library import CellLibrary  # noqa: E402
 
 def test_library_search_inspect_run_warm():
     lib = CellLibrary(str(CELLS))
-    assert len(lib) == 203
+    # The real invariant: every .rs cell in the directory loads (an exact pin goes
+    # stale mid-wave — the library grows while suites run).
+    n_sources = len(list(CELLS.glob("*.rs")))
+    assert len(lib) == n_sources
 
     # search ranks by relevance. ("grid distance" now hits the whole distance family —
     # manhattan/chebyshev/euclid_sq — so the cell-specific name disambiguates.)
@@ -81,6 +84,7 @@ def test_mcp_surface_is_a_small_router():
         "cell_route_by_example",
         "cell_run",
         "cell_search",
+        "cell_solve",
     ]
 
 

@@ -558,3 +558,22 @@ fn u32_wide_return_of_a_value_conditional_via_return() {
     }
     assert_eq!(run_program(src, "run"), host());
 }
+
+#[test]
+fn annotated_wide_literals() {
+    // `let w: u32 = 100000;` — the M0 wide-literal fix. Oracle-checked, plus the
+    // still-working suffixed form and the suffix-mismatch rejection.
+    check!({
+        let w: u32 = 100_000;
+        let x: u32 = 5;
+        ((w + x) >> 8) as u16
+    });
+    check!({
+        let w: u32 = 4_294_967_295;
+        (w >> 24) as u16
+    });
+    let err = rustz80::compile_fn("fn f() -> u16 { let w: u32 = 100u16; 0u16 }")
+        .err()
+        .unwrap();
+    assert!(err.contains("suffixed"), "unexpected: {err}");
+}

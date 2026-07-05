@@ -372,6 +372,44 @@ impl CellHost {
         self.host.cache_split(handle).map_err(PyValueError::new_err)
     }
 
+    /// The minimal `cell_solve` loop (M2, docs/math-campaign-spec.md): `plans_json`
+    /// is one plan object or an array of candidates; each renders to canonical
+    /// dialect Rust, compiles (the plan IS a cell — a re-seen schema is retrieved,
+    /// not recompiled), runs with quantities as state fields, and dies on any
+    /// escalate/halt; disagreeing survivors face the counterfactual battery.
+    /// Returns `{answer, battery_ran, plans: [{artifact, answer, kill, retrieved}]}`
+    /// — `answer: None` means escalate up the ladder.
+    #[pyo3(signature = (plans_json, cycles=2_000_000))]
+    fn solve<'py>(
+        &mut self,
+        py: Python<'py>,
+        plans_json: &str,
+        cycles: u64,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let plans = cell80::plan::plans_from_json(plans_json).map_err(PyValueError::new_err)?;
+        let rep = self
+            .host
+            .solve(&plans, cycles)
+            .map_err(PyValueError::new_err)?;
+        let d = PyDict::new_bound(py);
+        d.set_item("answer", rep.answer)?;
+        d.set_item("battery_ran", rep.battery_ran)?;
+        let outs: Vec<Bound<'py, PyDict>> = rep
+            .outcomes
+            .iter()
+            .map(|o| {
+                let od = PyDict::new_bound(py);
+                od.set_item("artifact", &o.artifact).unwrap();
+                od.set_item("answer", o.answer).unwrap();
+                od.set_item("kill", &o.kill).unwrap();
+                od.set_item("retrieved", o.retrieved).unwrap();
+                od
+            })
+            .collect();
+        d.set_item("plans", outs)?;
+        Ok(d)
+    }
+
     /// `(hits, lookups)` of a loaded cell's memoization cache, or `None` if caching
     /// wasn't enabled when it was loaded.
     fn cache_stats(&mut self, handle: usize) -> PyResult<Option<(u64, u64)>> {

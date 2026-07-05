@@ -140,5 +140,15 @@ class CellLibrary:
             }
         return {"cells": cells}
 
+    def solve(self, plans, cycles: int = 2_000_000) -> dict:
+        """The minimal `cell_solve` loop: candidate plans (dict or list of dicts)
+        render to tiny deterministic programs, compile, run, and get verified/killed;
+        disagreeing survivors face the counterfactual battery. A re-seen schema is
+        retrieved (not recompiled) and repeats serve from the memo table."""
+        import json as _json
+
+        text = plans if isinstance(plans, str) else _json.dumps(plans)
+        return self.host.solve(text, cycles)
+
     def __len__(self) -> int:
         return len(self.host)

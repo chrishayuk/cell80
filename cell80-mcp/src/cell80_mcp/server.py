@@ -164,4 +164,23 @@ def build_server() -> ChukMCPServer:
     def cell_facts_stats() -> dict:
         return lib.facts_stats()
 
+    @mcp.tool(
+        description="Solve a word-problem PLAN (or several candidate plans) exactly: extract "
+        "quantities/ops/target yourself, then pass the plan IR — "
+        "{quantities:[{id,value,unit}...], ops:[[\"add|sub|mul|div\",a,b,out]...], target, "
+        "constraints:[[\"nonneg\",x]|[\"exact_div\",a,b]...]}. Units are checked "
+        "symbolically (cents + hours is rejected before it runs); every op is "
+        "overflow/negative/exact-checked — a bad plan is KILLED with the reason, never a "
+        "wrong number. Pass several candidate plans: survivors that disagree face a "
+        "counterfactual perturbation battery and the consistent majority wins. "
+        "answer=None means escalate: solve it yourself and consider register-back. "
+        "Values are integers — use cents (never dollars-with-decimals) and basis points "
+        "(never percent floats).",
+    )
+    def cell_solve(plans, cycles: int = 2_000_000) -> dict:
+        try:
+            return lib.solve(plans, cycles)
+        except ValueError as e:
+            return {"error": str(e)}
+
     return mcp

@@ -464,3 +464,15 @@
 {"id": "agree3_u32-para-1", "query": "do at least two of these three big totals from different attempts match each other", "expected": "agree3_u32", "category": "paraphrase"}
 {"id": "answer_within_tolerance_u32-direct-1", "query": "check whether a large candidate answer is within a tolerance of the true value", "expected": "answer_within_tolerance_u32", "category": "direct"}
 {"id": "answer_within_tolerance_u32-para-1", "query": "is this big total close enough to the actual amount, within some margin", "expected": "answer_within_tolerance_u32", "category": "paraphrase"}
+{"id": "smag_mul-direct-1", "query": "multiply two signed quantities represented as magnitude and sign", "expected": "smag_mul", "category": "direct"}
+{"id": "smag_mul-para-1", "query": "a gain multiplied by a loss, tracking which direction the result lands on", "expected": "smag_mul", "category": "paraphrase"}
+{"id": "smag_div-direct-1", "query": "divide one signed quantity by another, represented as magnitude and sign", "expected": "smag_div", "category": "direct"}
+{"id": "smag_div-para-1", "query": "split a gain or loss evenly, tracking which direction the result lands on", "expected": "smag_div", "category": "paraphrase"}
+{"id": "frac_avg2-direct-1", "query": "the average of two fractions", "expected": "frac_avg2", "category": "direct"}
+{"id": "frac_avg2-para-1", "query": "the midpoint between two fractional amounts", "expected": "frac_avg2", "category": "paraphrase"}
+{"id": "frac_sub_from_whole-direct-1", "query": "subtract a fraction from a whole number", "expected": "frac_sub_from_whole", "category": "direct"}
+{"id": "frac_sub_from_whole-para-1", "query": "three whole pizzas minus a quarter of one", "expected": "frac_sub_from_whole", "category": "paraphrase"}
+{"id": "lcm3-direct-1", "query": "the least common multiple of three numbers", "expected": "lcm3", "category": "direct"}
+{"id": "lcm3-para-1", "query": "the smallest number that all three of these values divide into evenly", "expected": "lcm3", "category": "paraphrase"}
+{"id": "smag_eq-direct-1", "query": "verify whether two signed magnitude-and-sign values are equal", "expected": "smag_eq", "category": "direct"}
+{"id": "smag_eq-para-1", "query": "did these two gains or losses land on the exact same amount and direction", "expected": "smag_eq", "category": "paraphrase"}

@@ -19,7 +19,7 @@ PACKS = {
     "percent": ["percent", "permille", "ratio_255", "scale_percent", "increase_percent", "discount_percent", "within_percent"],
     "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3"],
     "bit/mask": ["popcount", "parity", "bit_is_set", "set_bit", "clear_bit", "toggle_bit", "mask_has_all", "mask_has_any", "mask_union", "mask_intersection", "mask_xor"],
-    "number-theory": ["lcm", "gcd", "gcd3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod"],
+    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod"],
     "distance": ["abs_diff", "manhattan", "chebyshev", "euclid_sq"],
     "bit-encoding": ["low_byte", "high_byte", "swap_bytes", "rotl16", "rotr16", "reverse_bits", "leading_zeros", "trailing_zeros", "bit_length"],
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
@@ -32,13 +32,13 @@ PACKS = {
     "spatial/grid": ["grid_index", "point_in_rect", "aabb_intersect"],
     "packing/BCD": ["pack_u8", "pack_nibbles", "bcd_encode", "bcd_decode"],
     "vector": ["dot2", "norm2_sq"],
-    "checked-arithmetic": ["mul_u16_u16_to_u32", "add_checked_u32", "sub_checked_u32", "div_exact_u32", "div_floor_u32", "div_ceil_u32", "mod_u32", "fits_u16", "mul_checked_u32", "mul_add_checked_u32", "mul_sub_checked_u32", "mul3_checked_u32", "add3_checked_u32", "pow_checked_u32", "abs_diff_u32", "min_u32", "max_u32", "clamp_u32", "range_check_u32", "avg2_u32", "divides_u32", "gcd_u32", "lcm_u32", "smag_add", "smag_sub", "smag_cmp"],
+    "checked-arithmetic": ["mul_u16_u16_to_u32", "add_checked_u32", "sub_checked_u32", "div_exact_u32", "div_floor_u32", "div_ceil_u32", "mod_u32", "fits_u16", "mul_checked_u32", "mul_add_checked_u32", "mul_sub_checked_u32", "mul3_checked_u32", "add3_checked_u32", "pow_checked_u32", "abs_diff_u32", "min_u32", "max_u32", "clamp_u32", "range_check_u32", "avg2_u32", "divides_u32", "gcd_u32", "lcm_u32", "smag_add", "smag_sub", "smag_cmp", "smag_mul", "smag_div"],
     "money-bps": ["bps_of", "increase_by_bps", "decrease_by_bps", "original_before_bps_increase", "original_before_bps_decrease", "cents_mul_qty", "bps_increase_between", "bps_decrease_between"],
     "units": ["same_unit_check", "unit_mul", "unit_div", "unit_cancel_check"],
-    "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32", "answer_eq_u32", "sum_equals_u32", "diff_equals_u32", "sum3_equals_u32", "product3_equals_u32", "mul_add_equals_u32", "mul_sub_equals_u32", "pow_equals_u32", "smag_is_nonneg", "agree3_u32", "answer_within_tolerance_u32"],
+    "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32", "answer_eq_u32", "sum_equals_u32", "diff_equals_u32", "sum3_equals_u32", "product3_equals_u32", "mul_add_equals_u32", "mul_sub_equals_u32", "pow_equals_u32", "smag_is_nonneg", "agree3_u32", "answer_within_tolerance_u32", "smag_eq"],
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
-    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac"],
+    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;

@@ -13,6 +13,7 @@ use std::collections::HashMap;
 /// `(field, address)` map that lets it be driven by name.
 pub(crate) struct Loaded {
     pub(crate) runner: Runner,
+    pub(crate) id: String,
     pub(crate) entry: String,
     pub(crate) state_addrs: Vec<(String, u16, Ty)>,
 }
@@ -222,6 +223,7 @@ impl CellHost {
         }
         let loaded = Loaded {
             runner,
+            id: id.to_string(),
             entry: cart.manifest.entry.clone(),
             state_addrs: cart.manifest.state_addrs.clone(),
         };
@@ -236,6 +238,20 @@ impl CellHost {
                 Ok(self.live.len() - 1)
             }
         }
+    }
+
+    /// The live handle for `id`, loading a warm runner only if none exists — the
+    /// "one warm runner per schema" shape the solve loop's residue depends on
+    /// (an unloaded runner returns to the pool and its memo table with it).
+    pub fn handle_for(&mut self, id: &str) -> Result<usize, String> {
+        if let Some(h) = self
+            .live
+            .iter()
+            .position(|l| l.as_ref().is_some_and(|l| l.id == id))
+        {
+            return Ok(h);
+        }
+        self.load(id)
     }
 
     pub(crate) fn loaded(&mut self, handle: usize) -> Result<&mut Loaded, String> {

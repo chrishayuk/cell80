@@ -24,6 +24,7 @@ mod fingerprint;
 mod graph;
 mod host;
 mod index;
+pub mod plan;
 mod program;
 mod report;
 mod runner;

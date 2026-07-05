@@ -25,7 +25,7 @@ def test_tool_bodies_cover_all_four_verbs():
     assert "error" in h["cell_route_by_example"]([{"bad": 1}])
     assert h["cell_inspect"]("gcd")["signature"] == "run(a: u16, b: u16) -> u16"
     assert "error" in h["cell_inspect"]("ghost")
-    assert len(h["cell_list"]()["cells"]) == 203
+    assert len(h["cell_list"]()["cells"]) == len(list(CELLS.glob("*.rs")))
     assert h["cell_run"]("gcd", [48, 36])["result"] == 12
     assert "result" in h["cell_run"]("gcd", None)  # None args → [] (the `args or []` branch)
     assert "error" in h["cell_run"]("ghost", [1])
@@ -139,3 +139,44 @@ def test_facts_verbs_export_import_stats():
     stats = h["cell_facts_stats"]()
     assert "gcd" in stats["cells"]
     assert stats["cells"]["gcd"]["lookups"] >= 1
+
+
+def test_cell_solve_plans_exactly():
+    # The cell_solve rung: a good plan answers; candidate plans that disagree get
+    # the counterfactual battery; a bad plan is killed with the reason, never a
+    # wrong number.
+    h = _handlers()
+    lego = {
+        "quantities": [
+            {"id": "lego_sets", "value": 13, "unit": "count"},
+            {"id": "lego_price", "value": 1500, "unit": "cents_per_count"},
+        ],
+        "ops": [["mul", "lego_sets", "lego_price", "lego_money"]],
+        "target": "lego_money",
+    }
+    rep = h["cell_solve"](lego)
+    assert rep["answer"] == 13 * 1500
+    assert rep["plans"][0]["kill"] is None
+
+    # Same schema, new numbers: retrieved, not recompiled (procedural memory).
+    lego2 = dict(lego)
+    lego2["quantities"] = [
+        {"id": "lego_sets", "value": 4, "unit": "count"},
+        {"id": "lego_price", "value": 1500, "unit": "cents_per_count"},
+    ]
+    rep = h["cell_solve"](lego2)
+    assert rep["answer"] == 4 * 1500
+    assert rep["plans"][0]["retrieved"] is True
+
+    # A unit-mismatched plan dies at render, reported as a kill.
+    bad = {
+        "quantities": [
+            {"id": "money", "value": 5, "unit": "cents"},
+            {"id": "wait", "value": 2, "unit": "hours"},
+        ],
+        "ops": [["add", "money", "wait", "x"]],
+        "target": "x",
+    }
+    rep = h["cell_solve"](bad)
+    assert rep["answer"] is None
+    assert "unit mismatch" in rep["plans"][0]["kill"]
