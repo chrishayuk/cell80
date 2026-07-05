@@ -105,6 +105,124 @@ the method's rigor than the original clean miss, since it shows the full-domain 
 a subtler failure mode (plausible-looking, not just absent) on a target that has no real
 solution.
 
+## Follow-up 4: mapping the A*-failure boundary, not one data point
+
+Follow-up 3 found A* failing at exactly one grid point (pool=35, `max_depth=8`) and succeeding
+at another (pool=23, `max_depth=6`) — consistent with either "pool size broke it" or "depth
+broke it" or both. `bin/boundary_sweep.rs` runs a proper sweep instead of guessing: pool size
+at fixed depth, and depth at fixed pool size, for both `mystery_bits` and `mystery_bits_2`, one
+seed per grid point (mapping the boundary's *shape*, not seed variance — variance across seeds
+is already characterized in the main run above). `build_ops`'s op-pool ordering was designed so
+`mystery_bits_2`'s five needed ops (`or_0f0f`, `rotl10`, `and_aaaa`, `rotl6`, `xor_5a5a`) sit in
+the guaranteed-present "core" prefix at every pool size in `[18, 34]`, so a found→not-found
+transition for that target is genuinely about search difficulty, not the target quietly
+becoming unreachable.
+
+**A confound worth stating plainly, not hiding: `mystery_bits`'s pool-size sweep is not
+clean.** Unlike `mystery_bits_2`, `mystery_bits`'s three needed ops (`or_aaaa`, `rotl8`,
+`xor_5555`) were placed in the "extra" (distractor) list, not "core" — `xor_5555` only enters
+the pool once `pool_size ≥ 31`. So `mystery_bits`'s pool-size numbers below partly measure
+"is the required op present yet," not "does a larger pool make search harder." Its depth sweep
+(fixed at `pool=34`, where all three ops are present throughout) is unaffected by this and is
+read normally.
+
+```
+=== mystery_bits: pool-size sweep (max_depth=8, budget=500000) — CONFOUNDED, see above ===
+pool          A* tested    GA tested  MCTS tested
+18                    —            —            —
+22                    —            —            —
+26                    —            —            —
+30                    —            —            —
+34                    —        71700        37123
+
+=== mystery_bits: depth sweep (pool=34, budget=500000) ===
+depth         A* tested    GA tested  MCTS tested
+5                 51865        73500        12773
+6                417665       225750        15238
+7                     —         4050        72087
+8                     —        71700        37123
+9                     —            —        79584
+10                    —         4050        46674
+
+=== mystery_bits_2: pool-size sweep (max_depth=8, budget=500000) — clean ===
+pool          A* tested    GA tested  MCTS tested
+18                    —       390150        24355
+22                    —        33000         6181
+26                    —         5100        10359
+30                    —        12150        30055
+34                    —            —        11701
+
+=== mystery_bits_2: depth sweep (pool=34, budget=500000) ===
+depth         A* tested    GA tested  MCTS tested
+5                 30380        41700         5989
+6                225762       405150        23493
+7                     —        23850         9990
+8                     —            —        11701
+9                     —         1800         1789
+10                    —         2550        23865
+```
+('—' = no chain found within the 500,000-node/eval budget)
+
+**Finding 1 — pool size, on its own, isn't the story.** `mystery_bits_2`'s clean pool-size
+sweep shows A* failing at *every* pool size from 18 to 34 at `max_depth=8` — not a gradual
+degradation as the pool grows, an outright miss across the whole range. Whatever is breaking
+A* here, it isn't primarily branching factor. GA and MCTS both succeed at every pool size
+(GA's cost actually *drops* as the pool grows past 18, which runs against the "more ops means
+harder search" intuition too — more likely, a bigger pool gives GA's crossover/mutation more
+useful building blocks to recombine, not just more noise).
+
+**Finding 2 — depth is the real story, and it runs backwards.** Both targets' depth sweeps show
+A* succeeding at shallow depths (5, 6) and failing at every deeper one tried (7, 8, 9, 10). That
+is the opposite of the naive expectation: `max_depth` is a ceiling, not a requirement, so giving
+A* *more* room should never make an already-findable chain harder to find. Two things resolve
+why it does. First, `cell80::synthesize`'s Hamming-distance heuristic is admissible but weak —
+node expansion is bounded by budget, and a deeper ceiling multiplies the number of same-or-lower
+Hamming-score nodes competing for expansion before the true chain surfaces, so A* spends the
+budget widening the frontier instead of reaching depth 6. Second, this is a Hamming-guided best
+first search, not a length-first search: allowing depth 10 doesn't make the shared depth-5/6
+solutions harder to *represent*, it makes them harder to *find first*, because far more
+deceptive longer-and-wrong candidates now tie or beat them on the heuristic and get expanded
+first. GA/MCTS don't have this failure mode since neither is guided by a heuristic that a
+larger search radius can mislead — GA still succeeds at 9/10 depth for both targets (MCTS
+succeeds at every depth for both).
+
+**Finding 3 — the depth=5 result for `mystery_bits_2` isn't a fluke, it's a real discovery.**
+The target was designed as a 6-step chain, so A* finding *anything* at `max_depth=5` was
+suspicious enough to check by hand rather than trust the probe match. Built a throwaway
+full-domain check (`examples/verify_depth5.rs`, deleted after use) against the exact chain A*
+returned — `["and_aaaa", "or_0f0f", "and_aaaa", "popcount"]`, 4 steps, not 5 — over all 65,536
+u16 inputs: 0 mismatches. This is a genuine, shorter equivalent to the hand-designed 6-step
+target, not a coincidental probe-agreement like the `is_semiprime` false positive in Follow-up
+3 (that one failed full-domain with 18,910/65,536 wrong; this one is exactly right). A*
+succeeding at low depth isn't noise, then — it's finding the *actual* shortest solution when the
+search radius is tight enough to keep the heuristic useful, and losing that ability as soon as
+the radius widens past the point where deceptive candidates start competing.
+
+**Net:** the "A*-boundary" isn't a 2D monotonic frontier over (pool size, depth) the way the
+single Follow-up 3 data point suggested. Pool size alone (holding depth fixed, on the one clean
+target) doesn't explain the failure. Depth does, and non-monotonically — A*'s Hamming heuristic
+gets actively worse, not neutral, when given headroom it doesn't need, on targets where the
+optimal chain is shorter than the ceiling. That's a more specific and more interesting claim
+than "A* struggles as the search space grows," and it's a genuine argument for running A* at the
+tightest plausible depth ceiling for a target rather than a generous one — which cuts against
+the intuitive default of "give the search room in case it needs it."
+
+## Follow-up 5: `syn`-based codegen, closing the stated regex gap
+
+Follow-up 2's codegen was explicitly regex-based with a named limit: a cell whose entire tail
+is a leading if/else chain (e.g. `clamp.rs`) would mis-split, because the regex heuristic only
+recognized a top-level `}` or `;` as a statement boundary and couldn't reliably tell "this `}`
+closes the tail expression" from "this `}` closes a statement." Replaced `parse_cell` in
+`evolved-cells/src/lib.rs` with a real `syn::parse_file` + `syn::Item::Fn` parse: Rust's own
+grammar marks the tail expression unambiguously (`syn::Stmt::Expr(_, None)` — no trailing
+semicolon — can only be the last statement in a block, regardless of what kind of expression it
+is), so the split is now correct by construction instead of by heuristic, for `clamp.rs`-shaped
+cells as much as any other. `rename_locals`/`substitute_param` (the actual text-substitution
+steps, not the split) stayed regex-based — they were never the part with a known gap. Reran the
+full `evolved-cells` main binary after the swap: **identical result** — same 6/6 passes, same
+chains, same fingerprint agreements — confirming the AST-based split is a faithful replacement
+for the regex one on every op actually in this pool, not just a differently-implemented one.
+
 ## Three real mistakes, caught by the method working as designed
 
 **1. The first run's `digital_root` chain was wrong, and the full-domain check caught it.**
@@ -163,12 +281,15 @@ pool have that shape, but it's a known, stated gap, not a hidden one.
   would merge this" still isn't — aliasing judgment and doc/tag quality review are separate,
   human steps `library-growth.md` describes as part of a real contribution, not mechanically
   gated.
-- **General codegen is regex/text-based, not a full `syn` AST transform**, and has a known gap
-  (a cell whose entire tail is a leading if/else chain) that happens not to matter for the ops
-  in this pool, but would for a larger one.
-- **The A*-failure result is one target at one pool size/depth, not a curve.** `mystery_bits_2`
-  breaking A* at 35 ops / `max_depth=8` shows the failure mode is real; it doesn't establish
-  *where* the boundary sits between "A* strains" and "A* fails outright," only that both exist.
+- **General codegen was regex/text-based at first; now `syn`-based (Follow-up 5, below),
+  closing the leading-if/else gap** — but the sweep/main-run candidates in this doc's other
+  sections still describe the regex-era behavior, since re-running produced an identical result
+  (see Follow-up 5), not new chains or fingerprints to report.
+- **The A*-failure boundary is now mapped (Follow-up 4), and it isn't the simple pool-size
+  story a single data point suggested** — see above for the depth-driven, non-monotonic
+  finding. It's still only 2 targets, both hand-constructed by the experimenter, so "A* gets
+  worse with excess depth headroom on deceptive targets" is demonstrated, not yet shown to
+  generalize beyond this pool/probe design.
 - **n=7 targets, all arity-1, all constructed by the experimenter** (not pulled from a real
   backlog — the actual "Next waves" list in `library-growth.md` turned out to have no
   remaining un-duplicated arity-1 gaps when checked). A clean pass here is evidence the
@@ -198,9 +319,11 @@ Targets, the op pool, probes, and budgets are constants/data at the top of `main
 
 ## What would raise confidence further
 
-- Map the actual A*-failure boundary (a curve over pool size × depth) instead of the one
-  data point found here, to know how narrow or wide the "GA/MCTS actually needed" regime is.
-- Replace regex-based codegen with real `syn`-based parsing to close the leading-if/else gap.
+- ~~Map the actual A*-failure boundary~~ — done (Follow-up 4): it's depth-driven and
+  non-monotonic, not the pool-size story a single data point suggested. Still only 2 targets;
+  a third, independently-designed deceptive target would test whether the depth-headroom
+  effect generalizes or is specific to how `mystery_bits`/`mystery_bits_2` were built.
+- ~~Replace regex-based codegen with real `syn`-based parsing~~ — done (Follow-up 5).
 - Get retrieval rows and aliasing judgment from someone other than the experimenter before
   treating "admitted" as "would really be merged."
 - Now that `mystery_bits_2`'s candidate came from GA/MCTS rather than A*, check whether
