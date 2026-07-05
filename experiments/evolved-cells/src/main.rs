@@ -1,0 +1,405 @@
+//! Runs the protocol pre-registered in `../evolved-cells-preregistration.md`. For each of 5
+//! fixed arity-1 targets: search for a chain of real, existing stdlib cells (via
+//! `cell80::synthesize` — A*, already built, not GA/MCTS, since these targets aren't the
+//! deceptive "lossy" kind `cell-synth-evolve` needed heavier search for), validate the chain
+//! over the *entire* u16 domain (not just the probes used to search), hand-compose the chain
+//! into one candidate cell source, and check that candidate against the real admission-gate
+//! mechanism (`cell80::{Fingerprint, DEFAULT_PROBES}`) against every cell currently in
+//! `cell80/cells/*.rs` — not a reimplementation of the gate, the actual fingerprint code.
+//!
+//! Deliberate, stated scope reduction from the pre-registration's original 4-piece plan: no
+//! per-op cycle tracking or cost-aware acceptance rule this pass — these targets are "smooth"
+//! (not the Hamming-deceptive kind), so A*'s natural shortest-chain-first behaviour is an
+//! adequate proxy for cost without building real cycle instrumentation. Codegen (below) *is*
+//! general now — it parses each op's real source text and substitutes/renames rather than
+//! using a hand-written template per op — but it's regex/text-based, not a full `syn` AST
+//! transform; see `ParsedCell`'s doc comment for why that's a stated limit, not an oversight.
+use cell80::{synthesize, Cartridge, CartridgeOpts, CellConfig, Fingerprint, Op};
+use regex::Regex;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+const DUPLICATE_AGREEMENT: f32 = 1.0; // mirrors cell80/src/admission.rs's own threshold
+const BUDGET: usize = 500_000;
+
+fn cell_source(cells_dir: &Path, name: &str) -> String {
+    fs::read_to_string(cells_dir.join(format!("{name}.rs")))
+        .unwrap_or_else(|e| panic!("reading {name}: {e}"))
+}
+
+fn compile(id: &str, src: &str) -> Cartridge {
+    Cartridge::compile(
+        src,
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some(id.into()),
+            ..Default::default()
+        },
+    )
+    .unwrap_or_else(|e| panic!("compiling {id}: {e}"))
+}
+
+// --- Reference oracles: independent of the cell library, used both to generate search
+// examples and to validate a discovered chain over the full domain. ---
+
+fn digital_root_ref(n: u16) -> u16 {
+    if n == 0 {
+        0
+    } else {
+        (1 + (n as u32 - 1) % 9) as u16
+    }
+}
+fn low_byte_popcount_ref(x: u16) -> u16 {
+    (x & 0xFF).count_ones() as u16
+}
+fn high_byte_popcount_ref(x: u16) -> u16 {
+    (x >> 8).count_ones() as u16
+}
+fn rotated_low_byte_popcount_ref(x: u16) -> u16 {
+    (x.rotate_left(4) & 0xFF).count_ones() as u16
+}
+/// True (1) iff n is a product of exactly two primes counted with multiplicity (p*q, both
+/// prime, p possibly == q). A deliberate negative control: no existing cell captures anything
+/// like prime-factorization structure, so this is expected to fail to find a chain — that's
+/// the point, confirming the experiment doesn't just report success on everything.
+fn is_semiprime_ref(n: u16) -> u16 {
+    let mut v = n as u32;
+    if v < 4 {
+        return 0;
+    }
+    let mut count = 0u32;
+    let mut d = 2u32;
+    while d * d <= v {
+        while v % d == 0 {
+            v /= d;
+            count += 1;
+            if count > 2 {
+                return 0;
+            }
+        }
+        d += 1;
+    }
+    if v > 1 {
+        count += 1;
+    }
+    (count == 2) as u16
+}
+
+struct Target {
+    name: &'static str,
+    oracle: fn(u16) -> u16,
+    max_depth: usize,
+    /// `//! summary` / `//! tags:` for a passing candidate — real cell sources carry these,
+    /// and `library_cartridge` (`cell80/src/cli.rs`) parses them into the manifest, so a
+    /// candidate without them wouldn't look like a real contribution to the actual gate.
+    summary: &'static str,
+    tags: &'static str,
+}
+
+/// One real cell's source, parsed just enough to re-emit its body with substitutions: the
+/// parameter names in declaration order, the statements before the tail expression (may be
+/// empty), and the tail expression itself. Regex/text-based, not a full `syn` AST transform —
+/// simpler, and sufficient for this library's cell bodies (no closures, no nested nested
+/// nested items), but noted plainly as the reason this isn't a fully general Rust-source
+/// codegen tool.
+struct ParsedCell {
+    params: Vec<String>,
+    stmts: String,
+    tail: String,
+}
+
+/// Split a function body's inner text into (leading statements, final tail expression) by
+/// finding the last top-level `;` (depth-tracked so a `;` inside a `{ }`/`( )` doesn't count).
+fn split_tail(body: &str) -> (String, String) {
+    let mut depth = 0i32;
+    let mut last_top_semi = None;
+    for (i, ch) in body.char_indices() {
+        match ch {
+            '{' | '(' => depth += 1,
+            '}' | ')' => depth -= 1,
+            ';' if depth == 0 => last_top_semi = Some(i),
+            _ => {}
+        }
+    }
+    match last_top_semi {
+        Some(i) => (body[..=i].to_string(), body[i + 1..].trim().to_string()),
+        None => (String::new(), body.trim().to_string()),
+    }
+}
+
+fn parse_cell(src: &str) -> ParsedCell {
+    let sig_re = Regex::new(r"fn run\(([^)]*)\)").unwrap();
+    let m = sig_re.captures(src).unwrap_or_else(|| panic!("no `fn run(...)` found in:\n{src}"));
+    let params: Vec<String> = m[1]
+        .split(',')
+        .filter(|s| !s.trim().is_empty())
+        .map(|p| p.trim().split(':').next().unwrap().trim().to_string())
+        .collect();
+
+    let sig_end = sig_re.find(src).unwrap().end();
+    let brace_rel = src[sig_end..].find('{').unwrap_or_else(|| panic!("no fn body found in:\n{src}"));
+    let body_start = sig_end + brace_rel;
+    let last_brace = src.rfind('}').unwrap_or_else(|| panic!("no closing brace in:\n{src}"));
+    let inner = src[body_start + 1..last_brace].trim();
+
+    let (stmts, tail) = split_tail(inner);
+    ParsedCell { params, stmts, tail }
+}
+
+/// Rename every whole-word occurrence of each `name` in `locals` to `{name}_{uid}` — so
+/// applying the same op twice in one chain (e.g. `digit_sum` on `digit_sum`'s own output)
+/// doesn't redeclare the same local variable name twice in the composed function body.
+fn rename_locals(text: &str, locals: &[String], uid: usize) -> String {
+    let mut out = text.to_string();
+    for name in locals {
+        let re = Regex::new(&format!(r"\b{}\b", regex::escape(name))).unwrap();
+        out = re.replace_all(&out, format!("{name}_{uid}")).to_string();
+    }
+    out
+}
+
+fn substitute_param(text: &str, param: &str, replacement: &str) -> String {
+    let re = Regex::new(&format!(r"\b{}\b", regex::escape(param))).unwrap();
+    re.replace_all(text, format!("({replacement})")).to_string()
+}
+
+/// General codegen: parse each step's *real* source text (not a hand-written template),
+/// rename its locals to avoid cross-step collisions, substitute its parameter(s) — the first
+/// with the running input expression, a second (for the fixed-second-arg ops like
+/// `and_00ff`/`rotl4`) with the literal constant baked into that `Op` — and chain the results
+/// via `let out{i} = ...;` bindings. Emits flat statements throughout (never a block bound to
+/// a variable), since the dialect rejects `let x = { ... };` — caught by actually trying to
+/// compile the first candidate under the old hand-written version of this, not assumed.
+fn codegen(steps: &[String], op_meta: &std::collections::HashMap<String, (String, u16)>) -> String {
+    let mut body = String::new();
+    let mut cur = "x".to_string();
+    for (i, step) in steps.iter().enumerate() {
+        let (src, fixed_arg) = &op_meta[step];
+        let parsed = parse_cell(src);
+        let let_re = Regex::new(r"let\s+(?:mut\s+)?(\w+)").unwrap();
+        let locals: Vec<String> = {
+            let mut seen = std::collections::HashSet::new();
+            let_re.captures_iter(&parsed.stmts).map(|c| c[1].to_string()).filter(|n| seen.insert(n.clone())).collect()
+        };
+
+        let mut stmts = rename_locals(&parsed.stmts, &locals, i);
+        let mut tail = rename_locals(&parsed.tail, &locals, i);
+        stmts = substitute_param(&stmts, &parsed.params[0], &cur);
+        tail = substitute_param(&tail, &parsed.params[0], &cur);
+        if parsed.params.len() > 1 {
+            let konst = format!("{fixed_arg}u16");
+            stmts = substitute_param(&stmts, &parsed.params[1], &konst);
+            tail = substitute_param(&tail, &parsed.params[1], &konst);
+        }
+
+        let out = format!("out{i}");
+        body.push_str(&format!("    {stmts}\n    let {out} = {tail};\n"));
+        cur = out;
+    }
+    format!("fn run(x: u16) -> u16 {{\n{body}    {cur}\n}}\n")
+}
+
+fn indent(s: &str) -> String {
+    s.lines()
+        .map(|l| format!("    {l}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn main() {
+    let cells_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../cell80/cells");
+
+    let arity1 = [
+        "digit_sum",
+        "popcount",
+        "high_byte",
+        "low_byte",
+        "swap_bytes",
+        "is_even",
+        "is_odd",
+        "is_pow2",
+        "nonzero",
+        "bit_length",
+        "leading_zeros",
+        "trailing_zeros",
+        "reverse_bits",
+    ];
+    // `op_meta` keeps each op's real source text + fixed second arg (0 for arity-1 ops, where
+    // it's ignored) — what `codegen` needs to regenerate a step from the real cell, instead of
+    // a hand-written template.
+    let mut ops: Vec<Op> = Vec::new();
+    let mut op_meta: HashMap<String, (String, u16)> = HashMap::new();
+    for name in arity1 {
+        let src = cell_source(&cells_dir, name);
+        let cart = compile(name, &src);
+        ops.push(Op::from_cell(name, &cart, 0));
+        op_meta.insert(name.to_string(), (src, 0));
+    }
+    let mask_src = cell_source(&cells_dir, "mask_intersection");
+    let mask_cart = compile("mask_intersection", &mask_src);
+    for (label, k) in [("and_00ff", 0x00FFu16), ("and_ff00", 0xFF00), ("and_0f0f", 0x0F0F)] {
+        ops.push(Op::from_cell(label, &mask_cart, k));
+        op_meta.insert(label.to_string(), (mask_src.clone(), k));
+    }
+    let rotl_src = cell_source(&cells_dir, "rotl16");
+    let rotl_cart = compile("rotl16", &rotl_src);
+    for (label, n) in [("rotl4", 4u16), ("rotl8", 8), ("rotl12", 12)] {
+        ops.push(Op::from_cell(label, &rotl_cart, n));
+        op_meta.insert(label.to_string(), (rotl_src.clone(), n));
+    }
+    println!("Op pool: {} ops built from real stdlib cells.\n", ops.len());
+
+    // Fingerprint every currently-real library cell once, up front, for comparison — this is
+    // the actual mechanism `cell80::admission::admit` uses, applied here to a candidate
+    // outside the gate (this never calls or touches admission.rs itself).
+    let library_fps: Vec<(String, Fingerprint)> = fs::read_dir(&cells_dir)
+        .unwrap_or_else(|e| panic!("reading {}: {e}", cells_dir.display()))
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|x| x == "rs"))
+        .filter_map(|e| {
+            e.path()
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+        })
+        .filter_map(|name| {
+            let src = fs::read_to_string(cells_dir.join(format!("{name}.rs"))).ok()?;
+            let cart = Cartridge::compile(
+                &src,
+                CellConfig::sandboxed(),
+                CartridgeOpts {
+                    id: Some(name.clone()),
+                    ..Default::default()
+                },
+            )
+            .ok()?;
+            Some((name, Fingerprint::of(&cart)))
+        })
+        .collect();
+    println!(
+        "Fingerprinted {} existing library cells for comparison.\n",
+        library_fps.len()
+    );
+
+    let targets: Vec<Target> = vec![
+        Target {
+            name: "digital_root",
+            oracle: digital_root_ref,
+            max_depth: 5,
+            summary: "Digital root of n: repeatedly sum digits until one digit remains.",
+            tags: "number, digits, digital-root, decimal, reduce, math",
+        },
+        Target {
+            name: "low_byte_popcount",
+            oracle: low_byte_popcount_ref,
+            max_depth: 3,
+            summary: "Population count of just the low byte of x (high byte ignored).",
+            tags: "bits, popcount, byte, low, count, ones, bitcount",
+        },
+        Target {
+            name: "high_byte_popcount",
+            oracle: high_byte_popcount_ref,
+            max_depth: 3,
+            summary: "Population count of just the high byte of x (low byte ignored).",
+            tags: "bits, popcount, byte, high, count, ones, bitcount",
+        },
+        Target {
+            name: "is_semiprime",
+            oracle: is_semiprime_ref,
+            max_depth: 5,
+            summary: "1 if n is a product of exactly two primes (with multiplicity), else 0.",
+            tags: "number, prime, semiprime, factorization, predicate",
+        },
+        Target {
+            name: "rotated_low_byte_popcount",
+            oracle: rotated_low_byte_popcount_ref,
+            max_depth: 4,
+            summary: "Population count of the low byte of x after rotating its bits left by 4.",
+            tags: "bits, popcount, rotate, byte, count, ones",
+        },
+    ];
+
+    // 39999 is load-bearing, not decorative: digit_sum(39999)=39, digit_sum(39)=12,
+    // digit_sum(12)=3 — a chain of only 2 digit_sum applications gives 12 here, not the
+    // correct 3, which is exactly the gap the first run's full-domain check caught (a 2-pass
+    // chain matched every other probe below but was wrong for 8,075/65,536 real inputs).
+    const PROBES: &[u16] = &[
+        0, 1, 4, 6, 9, 10, 99, 255, 256, 0x0F0F, 0xAAAA, 0x5555, 0xFF00, 0x00FF, 9999, 39999,
+        59999, 65535,
+    ];
+
+    let mut passes = 0usize;
+    for t in &targets {
+        println!("=== {} (max_depth={}) ===", t.name, t.max_depth);
+        let examples: Vec<(u16, u16)> = PROBES.iter().map(|&x| (x, (t.oracle)(x))).collect();
+
+        let Some(plan) = synthesize(&examples, &ops, t.max_depth, BUDGET) else {
+            println!(
+                "  A*: no chain found (budget {BUDGET}, depth {}) — see note below\n",
+                t.max_depth
+            );
+            continue;
+        };
+        println!(
+            "  A* found: {:?} ({} nodes tested)",
+            plan.steps, plan.tested
+        );
+
+        let mut wrong = 0u32;
+        for x in 0..=u16::MAX {
+            let mut v = x;
+            for name in &plan.steps {
+                let op = ops.iter().find(|o| &o.name == name).unwrap();
+                v = op.apply(v);
+            }
+            if v != (t.oracle)(x) {
+                wrong += 1;
+            }
+        }
+        if wrong > 0 {
+            println!(
+                "  FULL-DOMAIN CHECK FAILED: {wrong}/65536 mismatches — matched the probes but \
+                 not the real function\n"
+            );
+            continue;
+        }
+        println!("  full-domain check: PASS (all 65,536 inputs correct)");
+
+        let body = codegen(&plan.steps);
+        let src = format!("//! {}\n//! tags: {}\n{body}", t.summary, t.tags);
+
+        let out_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("candidates");
+        fs::create_dir_all(&out_dir)
+            .unwrap_or_else(|e| panic!("creating {}: {e}", out_dir.display()));
+        let out_path = out_dir.join(format!("{}.rs", t.name));
+        fs::write(&out_path, &src)
+            .unwrap_or_else(|e| panic!("writing {}: {e}", out_path.display()));
+        let cart = compile(&format!("candidate_{}", t.name), &src);
+        let fp = Fingerprint::of(&cart);
+        let (best_agree, closest) = library_fps
+            .iter()
+            .map(|(name, other)| (fp.agreement(other), name.as_str()))
+            .fold(
+                (f32::MIN, ""),
+                |best, cur| if cur.0 > best.0 { cur } else { best },
+            );
+        let is_dup = best_agree >= DUPLICATE_AGREEMENT;
+        println!(
+            "  fingerprint: closest existing cell = `{closest}` (agreement {best_agree:.3}) -> {}",
+            if is_dup {
+                "DUPLICATE — would be refused"
+            } else {
+                "NOVEL — would pass the fingerprint check"
+            }
+        );
+        if !is_dup {
+            passes += 1;
+        }
+        println!("  generated candidate source:\n{}\n", indent(&src));
+    }
+
+    println!(
+        "=== {passes}/{} reachable targets passed (full-domain-correct AND non-duplicate) ===",
+        targets.len() - 1 // is_semiprime is the negative control, not counted toward the bar
+    );
+}

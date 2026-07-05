@@ -1,0 +1,17 @@
+# Runs the protocol pre-registered in ../evolved-cells-preregistration.md: for each of 5
+# fixed arity-1 targets, search for a chain of real existing stdlib cells that reproduces it,
+# validate the chain over the full u16 domain, hand-compose it into one candidate cell source,
+# and check the candidate against the REAL admission-gate fingerprint mechanism
+# (cell80::{Fingerprint, DEFAULT_PROBES}) — not a reimplementation of it.
+[package]
+name = "evolved-cells"
+description = "Pre-registered test: does selection discover admission-gate-passing cells?"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cell80 = { path = "../../cell80" }
+regex = "1"

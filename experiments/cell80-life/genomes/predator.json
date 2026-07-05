@@ -1,0 +1,16 @@
+{
+  "id": "predator.v1",
+  "initial_energy": 150,
+  "decay_amount": 2,
+  "repro_threshold": 300,
+  "repro_give_pct": 50,
+  "genes": {
+    "decay": "sub_sat",
+    "hungry_promoter": "is_gt",
+    "eat": "add_sat",
+    "sense_move": "argmax3",
+    "repro_promoter": "is_ge",
+    "split": "discount_percent"
+  },
+  "species": "predator"
+}

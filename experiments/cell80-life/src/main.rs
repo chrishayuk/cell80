@@ -1,32 +1,41 @@
 //! Cell80 Life: a minimal grid-world prototype where organism behaviour is driven by real
 //! `.cell` cartridges compiled from the existing cell80 stdlib, run through a `CellHost`.
-//! No new cells are authored here — decay, eat, movement, and reproduction all reuse curated
-//! library cells, matching the "genes are cards from the existing deck" framing in
-//! ../cell80-life.md.
+//! No new cells are authored here — decay, eat, movement, reproduction, and (for predators)
+//! hunting all reuse curated library cells, matching the "genes are cards from the existing
+//! deck" framing in ../cell80-life.md.
 //!
 //! Each organism carries its own genome (numeric thresholds plus which cell backs the
 //! `hungry_promoter`/`repro_promoter`/`sense_move` roles) and mutates it on reproduction —
 //! numeric drift on the thresholds, and a rarer swap to a *discovered* sibling cell. The
 //! candidate pool for each role isn't hand-picked: at startup this scans every cell source
 //! under `cell80/cells/` and keeps the ones with a matching signature (2 `u16` params + `u16`
-//! return for the promoters, 3 for movement) and no `&mut self` state — 54 and 25 candidates
-//! respectively in the current stdlib, not the 2-item families this used to be pinned to.
-//! Nothing filters by whether a candidate actually *behaves* like a boolean gate or a sane
-//! movement rule: the promoter check is a plain `== 1`, so a non-boolean cell just almost
-//! never fires (mostly-inert, not unsafe), and the movement match has a `_ => {}` ("stay")
-//! fallback for any out-of-range action code. Whether a swap is any good is left entirely to
-//! whether it helps the organism survive to reproduce — the same purifying-selection
-//! mechanism already observed on the old, hand-picked `argmin3` swap in
-//! ../cell80-life-findings.md, now tested against a much larger, unfiltered field.
+//! return for the promoters, 3 for movement) and no `&mut self` state. Nothing filters by
+//! whether a candidate actually *behaves* like a boolean gate or a sane movement rule: the
+//! promoter check is a plain `== 1`, so a non-boolean cell just almost never fires, and the
+//! movement match has a `_ => {}` ("stay") fallback for any out-of-range action code. Whether
+//! a swap is any good is left entirely to whether it helps the organism survive to reproduce.
 //!
-//! `decay`/`eat`/`split` stay fixed for the whole run: the stdlib doesn't have a same-scale
-//! alternative for them (e.g. a bps-based decay would need `decay_amount` to mean a different
-//! magnitude), so swapping them would need per-cell parameter semantics, not just a rename —
-//! still out of scope. The PRNG is a fixed-seed xorshift, not OS randomness, so a run with the
-//! same genome file, tick count, and seed is fully reproducible.
+//! Multiple *species* can now coexist in the same world — organisms with structurally
+//! different pipelines, not just different parameter values of the same pipeline. A grazer
+//! senses/eats food; a predator senses/hunts *other organisms* instead, using the exact same
+//! genome roles and cells (`sense_move` targets prey positions instead of food positions,
+//! `hungry_promoter` gates an attack instead of eating, `eat` still converts a captured energy
+//! value into the attacker's own energy) — no new cells needed for predation, same reuse
+//! discipline as everything else here. A successful attack is a clean kill: the victim is
+//! removed and the attacker gains its entire energy total via the same `eat` cell a grazer
+//! uses on food. Species itself doesn't mutate in this version — a predator's lineage stays
+//! predators, a grazer's stays grazers; only the numeric thresholds and role-cell choices
+//! within a species evolve, exactly as before.
+//!
+//! `decay`/`eat`/`split` stay fixed (and shared across every species in a run — mixing genomes
+//! with different cells for these roles isn't supported, asserted at startup) for the same
+//! reason as always: the stdlib doesn't have a same-scale alternative for them without
+//! changing what the numeric parameter even means. The PRNG is a fixed-seed xorshift, not OS
+//! randomness, so a run with the same genome files, tick count, and seed is fully
+//! reproducible.
 use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -41,6 +50,10 @@ const GIVE_PCT_BOUNDS: (i32, i32) = (10, 90);
 const NUMERIC_MUTATE_PCT: u64 = 25;
 const SWAP_MUTATE_PCT: u64 = 8;
 
+fn default_species() -> String {
+    "grazer".to_string()
+}
+
 #[derive(Deserialize)]
 struct StartingGenome {
     id: String,
@@ -49,6 +62,8 @@ struct StartingGenome {
     repro_threshold: u16,
     repro_give_pct: u16,
     genes: StartingGenes,
+    #[serde(default = "default_species")]
+    species: String,
 }
 
 #[derive(Deserialize)]
@@ -59,6 +74,31 @@ struct StartingGenes {
     sense_move: String,
     repro_promoter: String,
     split: String,
+}
+
+/// A structurally different pipeline, not just different parameter values. Fixed for an
+/// organism's whole lineage in this version — species itself doesn't mutate.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Species {
+    Grazer,
+    Predator,
+}
+
+impl Species {
+    fn parse(s: &str) -> Self {
+        match s {
+            "grazer" => Species::Grazer,
+            "predator" => Species::Predator,
+            other => panic!("unknown species `{other}` (expected \"grazer\" or \"predator\")"),
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Species::Grazer => "grazer",
+            Species::Predator => "predator",
+        }
+    }
 }
 
 /// The per-organism, heritable part of the genome: the numeric thresholds plus which cell
@@ -199,6 +239,19 @@ struct Organism {
     pos: usize,
     energy: u16,
     genome: OrgGenome,
+    species: Species,
+}
+
+/// The other organisms' `(position, energy)` as of the *start* of this tick, snapshotted
+/// before anyone acts — so a predator's sensing and attacking are based on a consistent view
+/// of the world, not on whatever partial state earlier-processed organisms this same tick
+/// happen to have left behind.
+fn prey_at(snapshot: &[(usize, u16)], pos: usize, self_idx: usize) -> Option<(usize, u16)> {
+    snapshot
+        .iter()
+        .enumerate()
+        .find(|&(j, &(p, _))| j != self_idx && p == pos)
+        .map(|(j, &(_, e))| (j, e))
 }
 
 /// Compile one stdlib cell source (by filename stem, from `cell80/cells/`) and load it into
@@ -286,22 +339,60 @@ fn discover_pools(cells_dir: &Path) -> Pools {
 fn main() {
     let mut args = std::env::args().skip(1);
     let ticks: u32 = args.next().and_then(|s| s.parse().ok()).unwrap_or(200);
-    let genome_path = match args.next() {
-        Some(p) => PathBuf::from(p),
-        None => Path::new(env!("CARGO_MANIFEST_DIR")).join("genomes/grazer.json"),
+    let genome_arg = args.next();
+    let genome_paths: Vec<PathBuf> = match &genome_arg {
+        Some(s) => s.split(',').map(PathBuf::from).collect(),
+        None => {
+            let default = Path::new(env!("CARGO_MANIFEST_DIR")).join("genomes/grazer.json");
+            vec![default.clone(), default]
+        }
     };
     let seed: u64 = args
         .next()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0x5eed_1234_c311_80ff);
 
-    let starting = load_starting_genome(&genome_path);
+    let startings: Vec<StartingGenome> = genome_paths
+        .iter()
+        .map(|p| load_starting_genome(p))
+        .collect();
     let cells_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../cell80/cells");
     let mut host = CellHost::new();
 
-    let decay = load_gene(&mut host, &cells_dir, &starting.genes.decay);
-    let eat = load_gene(&mut host, &cells_dir, &starting.genes.eat);
-    let split = load_gene(&mut host, &cells_dir, &starting.genes.split);
+    // decay/eat/split are shared across every species in a run — asserted consistent rather
+    // than made per-organism, since nothing yet needs them to differ.
+    let (decay_name, eat_name, split_name) = (
+        &startings[0].genes.decay,
+        &startings[0].genes.eat,
+        &startings[0].genes.split,
+    );
+    for (s, path) in startings.iter().zip(&genome_paths) {
+        assert_eq!(
+            &s.genes.decay,
+            decay_name,
+            "{}: decay cell `{}` differs from the run's shared `{decay_name}` — mixing decay \
+             cells across genomes in one run isn't supported",
+            path.display(),
+            s.genes.decay
+        );
+        assert_eq!(
+            &s.genes.eat,
+            eat_name,
+            "{}: eat cell `{}` differs from the run's shared `{eat_name}`",
+            path.display(),
+            s.genes.eat
+        );
+        assert_eq!(
+            &s.genes.split,
+            split_name,
+            "{}: split cell `{}` differs from the run's shared `{split_name}`",
+            path.display(),
+            s.genes.split
+        );
+    }
+    let decay = load_gene(&mut host, &cells_dir, decay_name);
+    let eat = load_gene(&mut host, &cells_dir, eat_name);
+    let split = load_gene(&mut host, &cells_dir, split_name);
 
     let pools = discover_pools(&cells_dir);
     let mut cells: HashMap<String, usize> = HashMap::new();
@@ -309,117 +400,198 @@ fn main() {
         cells.insert(name.clone(), load_gene(&mut host, &cells_dir, name));
     }
 
+    for (s, path) in startings.iter().zip(&genome_paths) {
+        assert!(
+            pools.promoters.contains(&s.genes.hungry_promoter),
+            "{}: hungry_promoter `{}` isn't in the discovered promoter pool",
+            path.display(),
+            s.genes.hungry_promoter
+        );
+        assert!(
+            pools.promoters.contains(&s.genes.repro_promoter),
+            "{}: repro_promoter `{}` isn't in the discovered promoter pool",
+            path.display(),
+            s.genes.repro_promoter
+        );
+        assert!(
+            pools.movement.contains(&s.genes.sense_move),
+            "{}: sense_move `{}` isn't in the discovered movement pool",
+            path.display(),
+            s.genes.sense_move
+        );
+    }
+
+    let mut world = World::new();
+    let mut organisms: Vec<Organism> = startings
+        .iter()
+        .enumerate()
+        .map(|(i, s)| Organism {
+            pos: i * WORLD_LEN / startings.len(),
+            energy: s.initial_energy,
+            genome: OrgGenome {
+                decay_amount: s.decay_amount,
+                repro_threshold: s.repro_threshold,
+                repro_give_pct: s.repro_give_pct,
+                hungry_promoter: s.genes.hungry_promoter.clone(),
+                repro_promoter: s.genes.repro_promoter.clone(),
+                sense_move: s.genes.sense_move.clone(),
+            },
+            species: Species::parse(&s.species),
+        })
+        .collect();
+    let mut rng = Rng::new(seed);
+
     println!(
-        "genome: {} ({})  seed={seed:#x}  pools: {} promoters, {} movement",
-        starting.id,
-        genome_path.display(),
+        "genomes: {}  seed={seed:#x}  pools: {} promoters, {} movement",
+        startings
+            .iter()
+            .zip(&genome_paths)
+            .map(|(s, p)| format!("{} [{}] ({})", s.id, s.species, p.display()))
+            .collect::<Vec<_>>()
+            .join(", "),
         pools.promoters.len(),
         pools.movement.len()
     );
 
-    assert!(
-        pools.promoters.contains(&starting.genes.hungry_promoter),
-        "genome's hungry_promoter `{}` isn't in the discovered promoter pool",
-        starting.genes.hungry_promoter
-    );
-    assert!(
-        pools.promoters.contains(&starting.genes.repro_promoter),
-        "genome's repro_promoter `{}` isn't in the discovered promoter pool",
-        starting.genes.repro_promoter
-    );
-    assert!(
-        pools.movement.contains(&starting.genes.sense_move),
-        "genome's sense_move `{}` isn't in the discovered movement pool",
-        starting.genes.sense_move
-    );
-
-    let starting_genome = OrgGenome {
-        decay_amount: starting.decay_amount,
-        repro_threshold: starting.repro_threshold,
-        repro_give_pct: starting.repro_give_pct,
-        hungry_promoter: starting.genes.hungry_promoter.clone(),
-        repro_promoter: starting.genes.repro_promoter.clone(),
-        sense_move: starting.genes.sense_move.clone(),
-    };
-
-    let mut world = World::new();
-    let mut organisms = vec![
-        Organism {
-            pos: 0,
-            energy: starting.initial_energy,
-            genome: starting_genome.clone(),
-        },
-        Organism {
-            pos: WORLD_LEN / 2,
-            energy: starting.initial_energy,
-            genome: starting_genome,
-        },
-    ];
-    let mut rng = Rng::new(seed);
-
     let mut births = 0u32;
-    let mut deaths = 0u32;
+    let mut starved = 0u32;
+    let mut eaten = 0u32;
     let mut last_tick = 0u32;
 
     for tick in 0..ticks {
         last_tick = tick;
+        let snapshot: Vec<(usize, u16)> = organisms.iter().map(|o| (o.pos, o.energy)).collect();
+        let mut killed: HashSet<usize> = HashSet::new();
         let mut next_gen = Vec::new();
-        let mut survivors = Vec::with_capacity(organisms.len());
+        let mut tagged_survivors: Vec<(usize, Organism)> = Vec::with_capacity(organisms.len());
 
-        for mut org in organisms.drain(..) {
-            let food_here = world.food[org.pos];
-            let food_left = if org.pos > 0 {
-                world.food[org.pos - 1]
-            } else {
-                0
-            };
-            let food_right = if org.pos + 1 < WORLD_LEN {
-                world.food[org.pos + 1]
-            } else {
-                0
-            };
+        for (idx, mut org) in organisms.into_iter().enumerate() {
+            if killed.contains(&idx) {
+                // Eaten by an earlier-processed predator this same tick — already counted
+                // in `eaten` at the point of the kill, below.
+                continue;
+            }
 
-            // gene: energy_decay
+            // gene: energy_decay (species-agnostic)
             org.energy = host
                 .run_fast(decay, &[org.energy, org.genome.decay_amount], BUDGET)
                 .unwrap()
                 .result;
 
-            // gene: sense + choose direction (0 = stay, 1 = left, 2 = right)
-            let sense_move = cells[&org.genome.sense_move];
-            let action = host
-                .run_fast(sense_move, &[food_here, food_left, food_right], BUDGET)
-                .unwrap()
-                .result;
+            match org.species {
+                Species::Grazer => {
+                    let food_here = world.food[org.pos];
+                    let food_left = if org.pos > 0 {
+                        world.food[org.pos - 1]
+                    } else {
+                        0
+                    };
+                    let food_right = if org.pos + 1 < WORLD_LEN {
+                        world.food[org.pos + 1]
+                    } else {
+                        0
+                    };
 
-            match action {
-                0 => {
-                    // promoter: if_food_here
-                    let hungry = cells[&org.genome.hungry_promoter];
-                    let is_hungry_here = host
-                        .run_fast(hungry, &[food_here, 0], BUDGET)
+                    let sense_move = cells[&org.genome.sense_move];
+                    let action = host
+                        .run_fast(sense_move, &[food_here, food_left, food_right], BUDGET)
                         .unwrap()
                         .result;
-                    if is_hungry_here == 1 {
-                        // gene: eat
-                        org.energy = host
-                            .run_fast(eat, &[org.energy, food_here], BUDGET)
-                            .unwrap()
-                            .result;
-                        world.eat_at(org.pos);
+
+                    match action {
+                        0 => {
+                            let hungry = cells[&org.genome.hungry_promoter];
+                            let is_hungry_here = host
+                                .run_fast(hungry, &[food_here, 0], BUDGET)
+                                .unwrap()
+                                .result;
+                            if is_hungry_here == 1 {
+                                org.energy = host
+                                    .run_fast(eat, &[org.energy, food_here], BUDGET)
+                                    .unwrap()
+                                    .result;
+                                world.eat_at(org.pos);
+                            }
+                        }
+                        1 if org.pos > 0 => org.pos -= 1,
+                        2 if org.pos + 1 < WORLD_LEN => org.pos += 1,
+                        _ => {}
                     }
                 }
-                1 if org.pos > 0 => org.pos -= 1,
-                2 if org.pos + 1 < WORLD_LEN => org.pos += 1,
-                _ => {}
+                Species::Predator => {
+                    let prey_here = prey_at(&snapshot, org.pos, idx).map_or(0, |(_, e)| e);
+                    let prey_left = if org.pos > 0 {
+                        prey_at(&snapshot, org.pos - 1, idx).map_or(0, |(_, e)| e)
+                    } else {
+                        0
+                    };
+                    let prey_right = if org.pos + 1 < WORLD_LEN {
+                        prey_at(&snapshot, org.pos + 1, idx).map_or(0, |(_, e)| e)
+                    } else {
+                        0
+                    };
+                    // A predator with zero prey sensed never moves (argmax3(0,0,0) == 0,
+                    // "stay"), and since prey mostly camp at food tiles rather than roam, an
+                    // idle predator can sit frozen for its entire life without ever getting a
+                    // real encounter (observed directly: a predator's position never changed
+                    // once across a 500-tick run). EXPLORE_BIAS breaks that tie toward a
+                    // direction that holds for `EXPLORE_HALF_PERIOD` ticks before flipping — a
+                    // deterministic sweep, not a random walk. Flipping every single tick was
+                    // tried first and just oscillates the predator between two adjacent tiles
+                    // (recompute position -> recompute bias -> immediately reverse), never
+                    // actually covering ground; caught by checking the position trace, not by
+                    // assuming the fix worked because it compiled and ran. The bias is
+                    // negligible next to any genuine prey signal (energy is routinely 50+).
+                    const EXPLORE_BIAS: u16 = 1;
+                    const EXPLORE_HALF_PERIOD: u32 = 20;
+                    let (prey_left, prey_right) = if (tick / EXPLORE_HALF_PERIOD) % 2 == 0 {
+                        (prey_left + EXPLORE_BIAS, prey_right)
+                    } else {
+                        (prey_left, prey_right + EXPLORE_BIAS)
+                    };
+
+                    let sense_move = cells[&org.genome.sense_move];
+                    let action = host
+                        .run_fast(sense_move, &[prey_here, prey_left, prey_right], BUDGET)
+                        .unwrap()
+                        .result;
+
+                    match action {
+                        0 => {
+                            // promoter: attack_here (reuses the `hungry_promoter` role/cell)
+                            let attack = cells[&org.genome.hungry_promoter];
+                            let can_attack = host
+                                .run_fast(attack, &[prey_here, 0], BUDGET)
+                                .unwrap()
+                                .result;
+                            if can_attack == 1 {
+                                if let Some((victim_idx, victim_energy)) =
+                                    prey_at(&snapshot, org.pos, idx)
+                                {
+                                    killed.insert(victim_idx);
+                                    eaten += 1;
+                                    // gene: eat — same cell a grazer uses on food, fed the
+                                    // victim's whole energy total (a clean kill, not a wound)
+                                    org.energy = host
+                                        .run_fast(eat, &[org.energy, victim_energy], BUDGET)
+                                        .unwrap()
+                                        .result;
+                                }
+                            }
+                        }
+                        1 if org.pos > 0 => org.pos -= 1,
+                        2 if org.pos + 1 < WORLD_LEN => org.pos += 1,
+                        _ => {}
+                    }
+                }
             }
 
             if org.energy == 0 {
-                deaths += 1;
+                starved += 1;
                 continue;
             }
 
-            // promoter: if_energy_high
+            // promoter: if_energy_high (species-agnostic)
             let repro_promoter = cells[&org.genome.repro_promoter];
             let ready = host
                 .run_fast(
@@ -430,8 +602,6 @@ fn main() {
                 .unwrap()
                 .result;
             if ready == 1 {
-                // gene: split_energy — parent keeps (100 - repro_give_pct)%, child gets the
-                // rest (host applies conservation, the cell only decides the discount)
                 let parent_keep = host
                     .run_fast(split, &[org.energy, org.genome.repro_give_pct], BUDGET)
                     .unwrap()
@@ -448,13 +618,18 @@ fn main() {
                     pos: child_pos,
                     energy: child_energy,
                     genome: child_genome,
+                    species: org.species,
                 });
                 births += 1;
             }
 
-            survivors.push(org);
+            tagged_survivors.push((idx, org));
         }
 
+        // Removes anyone eaten by a predator processed *after* they'd already been pushed
+        // to survivors this same tick.
+        tagged_survivors.retain(|(idx, _)| !killed.contains(idx));
+        let mut survivors: Vec<Organism> = tagged_survivors.into_iter().map(|(_, o)| o).collect();
         survivors.extend(next_gen);
         organisms = survivors;
         world.tick_regrow();
@@ -469,7 +644,7 @@ fn main() {
     }
 
     println!(
-        "\nfinal: {} organisms, {births} births, {deaths} deaths over {} ticks",
+        "\nfinal: {} organisms, {births} births, {starved} starved, {eaten} eaten over {} ticks",
         organisms.len(),
         last_tick + 1
     );
@@ -483,9 +658,19 @@ fn render(tick: u32, world: &World, organisms: &[Organism]) -> String {
         .map(|&f| if f > 0 { '*' } else { '.' })
         .collect();
     for org in organisms {
-        line[org.pos] = if org.energy >= 100 { '@' } else { 'o' };
+        line[org.pos] = match (org.species, org.energy >= 100) {
+            (Species::Predator, true) => 'X',
+            (Species::Predator, false) => 'x',
+            (Species::Grazer, true) => '@',
+            (Species::Grazer, false) => 'o',
+        };
     }
     let n = organisms.len();
+    let grazers = organisms
+        .iter()
+        .filter(|o| o.species == Species::Grazer)
+        .count();
+    let predators = n - grazers;
     let avg_energy = if organisms.is_empty() {
         0
     } else {
@@ -493,7 +678,8 @@ fn render(tick: u32, world: &World, organisms: &[Organism]) -> String {
     };
     let strip: String = line.into_iter().collect();
     format!(
-        "t={tick:>4}  [{strip}]  n={n:<3} avg_energy={avg_energy}  {}",
+        "t={tick:>4}  [{strip}]  n={n:<3} (grazers={grazers} predators={predators})  \
+         avg_energy={avg_energy}  {}",
         genome_stats(organisms)
     )
 }
@@ -547,4 +733,10 @@ fn genome_stats(organisms: &[Organism]) -> String {
          repro: {repro_distinct} distinct (top {repro_top}={repro_top_n}/{n})  \
          move: {move_distinct} distinct (top {move_top}={move_top_n}/{n})"
     )
+}
+
+impl std::fmt::Display for Species {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.label())
+    }
 }

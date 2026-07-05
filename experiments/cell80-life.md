@@ -53,9 +53,21 @@ open-ended part of the search space rather than the earlier hand-picked one.
 
 Still hardcoded: the *order* and *effect* of each role (decay always runs first, "eat" always
 means `energy += food`, ...) — the genome format/mutation picks the cell and the numbers, not
-the pipeline shape. Still unbuilt: more than one *species* (a structurally different pipeline,
-not just parameter drift) coexisting in the same world, and 2D/multi-directional worlds
-(blocked on the library not yet having an argmax-over-4/5 cell).
+the pipeline shape. 2D/multi-directional worlds are still unbuilt (blocked on the library not
+yet having an argmax-over-4/5 cell).
+
+Multiple *species* — structurally different pipelines, not just parameter drift — now coexist:
+a predator (`genomes/predator.json`) senses/hunts *other organisms* instead of food, reusing
+the exact same genome roles and cells a grazer uses on food (`eat` converts a captured energy
+value into the attacker's own energy either way; a successful attack is a clean kill). First
+run: a predator with only 1-tile sensing and no fallback movement just sat frozen at its start
+tile for its whole life and starved, because prey camp at food tiles rather than roam — an
+honest finding in its own right, not a bug. Giving the predator a small "explore when idle"
+bias (alternate a tie-breaking nudge left/right every 20 ticks, negligible next to any real
+prey signal) got it moving, and it swept into a grazer cluster, killed 2, reproduced once —
+then two co-located predators appear to confusedly sense *each other* as prey near the same
+tile, and the lineage starved out rather than establishing a stable population. Real, working
+predation; not yet a stable predator-prey equilibrium — that's open, not chased further yet.
 
 ## Idea
 
