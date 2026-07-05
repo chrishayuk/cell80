@@ -1,0 +1,12 @@
+**/target/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+.venv/
+.git/
+cell-bench/
+cell-eval/
+docs/
+graphs/
+*.md

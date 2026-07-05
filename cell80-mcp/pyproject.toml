@@ -9,7 +9,7 @@ description = "MCP server exposing a library of deterministic rustz80-cell micro
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "chuk-mcp-server>=0.18",
+    "chuk-mcp-server>=0.25.6",
     "cell80-py",
 ]
 

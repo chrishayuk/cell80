@@ -1,0 +1,43 @@
+# cell80-mcp over HTTP — a warm library of deterministic micro-tools (cells), served as
+# an MCP server. Two stages: build the cell80-py PyO3 binding (Rust), then a slim Python
+# runtime that installs it + cell80-mcp and serves the library over HTTP for a remote
+# MCP client (e.g. mcp-cli, or the plain-Python example in cell80-mcp/examples) to
+# connect to.
+#
+# The library is served straight from raw `.rs` sources (not precompiled `.cell`
+# cartridges): loading a `.rs` file picks up its `//!` doc-comment header (summary +
+# tags) into the manifest, which real cell_search/cell_route_by_example routing
+# depends on. Precompiling `gcd` bare (no --summary/--tags) would make its artifact
+# hash match the one shown on screen in Act 1b/Cold-Open/Act 3 of the video script —
+# but Act 1a's chat transcript never displays a hash at all, only tool names/args/
+# cycles/prose, so that match is invisible to a viewer. It's not worth the tradeoff:
+# with the summary present the model reliably routes to `gcd`; without it, it has
+# been observed picking the wrong sibling cell (e.g. the state-based `gcd_u32`) and
+# then reporting a plausible-sounding but tool-uncorroborated number — a real
+# correctness regression in the one thing viewers actually see. See
+# docs/scripts/video-1-*.md for the full writeup.
+
+FROM ghcr.io/pyo3/maturin AS builder
+WORKDIR /build
+COPY Cargo.toml Cargo.toml
+COPY z80 z80
+COPY rustz80 rustz80
+COPY cell80 cell80
+COPY cell80-py cell80-py
+RUN maturin build --release -m cell80-py/Cargo.toml --out /wheels
+
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+
+COPY --from=builder /wheels /wheels
+COPY cell80-mcp cell80-mcp
+COPY cell80/cells /app/cells
+
+RUN pip install --no-cache-dir /wheels/*.whl ./cell80-mcp
+
+ENV CELL_LIBRARY=/app/cells
+ENV CELL_HOST=0.0.0.0
+ENV CELL_PORT=8080
+
+EXPOSE 8080
+CMD ["cell80-mcp"]
