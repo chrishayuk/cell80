@@ -466,11 +466,14 @@ impl CellHost {
         let answer = match live.len() {
             0 => None,
             1 => answers[0],
-            _ if answers.windows(2).all(|w| w[0] == w[1]) => answers[0],
             _ => {
-                // Disagreement: perturb every quantity by +1 (the field sweep the
-                // substrate makes free) and keep the largest group whose whole
-                // answer vector agrees.
+                // Always perturb when more than one plan survives — even if they
+                // already agree pre-perturbation, a coincidental agreement at the
+                // given numbers (the same class of bug as the documented
+                // min/median3 register-0 coincidence) must not be accepted as
+                // consensus without being stress-tested: perturb every quantity
+                // by +1 (the field sweep the substrate makes free) and keep the
+                // largest group whose whole answer vector agrees.
                 battery_ran = true;
                 let mut vectors: Vec<Vec<Option<u64>>> = vec![Vec::new(); live.len()];
                 let names: Vec<String> = {

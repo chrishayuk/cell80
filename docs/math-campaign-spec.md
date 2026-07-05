@@ -265,9 +265,8 @@ things worth knowing *before* M3 spends real compute on them:
    coincidental_agreement` covers (genuine disagreement, correctly resolved) — that test
    doesn't exercise agreement-that-should-have-been-checked at all.
 
-   **Proposed fix, verified but not applied:** delete the early-agreement arm so the full
-   perturbation/grouping logic always runs whenever more than one plan survives, agreement
-   or not:
+   **Fixed:** deleted the early-agreement arm so the full perturbation/grouping logic
+   always runs whenever more than one plan survives, agreement or not:
    ```diff
         let answer = match live.len() {
             0 => None,
@@ -275,14 +274,15 @@ things worth knowing *before* M3 spends real compute on them:
    -        _ if answers.windows(2).all(|w| w[0] == w[1]) => answers[0],
             _ => {
    ```
-   Verified locally: all 8 existing `cell80/tests/plan.rs` cases still pass unchanged (none
-   of them rely on the shortcut — the one multi-plan agreement test already disagrees
-   pre-perturbation and takes the other arm either way), and the `mul`/`add` coincidence
-   above now correctly resolves to `None` (escalate) instead of `Some(4)`. Left unapplied
-   pending a call from whoever owns `cell_solve`'s design — it changes solve's behavior on
-   every multi-plan-agreement case (a small perf cost: always perturbing, even when
-   answers already agree), which is exactly the tradeoff M3's read-out should make
-   deliberately, not by default from a side quest.
+   All 8 pre-existing `cell80/tests/plan.rs` cases pass unchanged (none relied on the
+   shortcut — the one multi-plan agreement test already disagrees pre-perturbation and
+   takes the other arm either way), and a new regression test,
+   `counterfactual_battery_also_fires_on_a_coincidental_pre_perturbation_agreement`, locks
+   in the `mul`/`add` coincidence resolving to `None` (escalate) instead of a silent
+   `Some(4)`. The tradeoff is real and accepted: every multi-plan-agreement case now
+   always perturbs (a small, bounded cost — one extra `run_state_fast` per quantity per
+   surviving plan), trading a bit of throughput for the battery actually doing what
+   §"The architecture" claims it does.
 
 ## The one-sentence version
 

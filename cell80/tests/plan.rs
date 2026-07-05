@@ -207,6 +207,48 @@ fn counterfactual_battery_separates_coincidental_agreement() {
 }
 
 #[test]
+fn counterfactual_battery_also_fires_on_a_coincidental_pre_perturbation_agreement() {
+    // a=2, b=2: `a+b` (4) and `a*b` (4) *agree* at these specific numbers — the same
+    // failure class as the documented min/median3 register-0 coincidence. The battery
+    // must still perturb (not just when survivors already disagree): a+1,b=2 -> 5 vs 6;
+    // a=2,b+1 -> 5 vs 6 — the two plans diverge under every perturbation, so the
+    // "agreement" was coincidental and the honest answer is escalate, not a confident 4.
+    let mk = |op: &str| cell80::plan::Plan {
+        quantities: vec![
+            Quantity {
+                id: "a".into(),
+                value: 2,
+                unit: "count".into(),
+            },
+            Quantity {
+                id: "b".into(),
+                value: 2,
+                unit: "count".into(),
+            },
+        ],
+        ops: vec![cell80::plan::PlanOp {
+            op: op.into(),
+            a: "a".into(),
+            b: "b".into(),
+            out: "c".into(),
+        }],
+        target: "c".into(),
+        constraints: vec![],
+    };
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    let rep = host.solve(&[mk("mul"), mk("add")], DEFAULT_CYCLES).unwrap();
+    assert!(
+        rep.battery_ran,
+        "must perturb even when survivors already agree, to check the agreement is real"
+    );
+    assert_eq!(
+        rep.answer, None,
+        "the agreement doesn't survive perturbation — escalate, not a silent 4"
+    );
+}
+
+#[test]
 fn solve_leaves_facts_behind() {
     // The campaign's residue: after solving, the fact file holds the runs.
     let mut host = CellHost::new();
