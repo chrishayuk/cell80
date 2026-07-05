@@ -284,33 +284,37 @@ things worth knowing *before* M3 spends real compute on them:
    surviving plan), trading a bit of throughput for the battery actually doing what
    §"The architecture" claims it does.
 
-## A real smoke test (2026-07-05) — 25 genuine GSM8K problems, still not M3
+## A real smoke test (2026-07-05) — 73 genuine GSM8K problems, still not M3
 
-`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 27 rows of
-`openai/grade-school-math`'s public `test.jsonl`, fetched fresh (not written to match a
-known schema, not cherry-picked, not filtered for ease — see below for the 2 that got
+`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 77 rows of
+`openai/grade-school-math`'s public `test.jsonl` (fetched via the raw file directly after
+a lossy summarizing fetch started truncating past ~20-40 rows — not written to match a
+known schema, not cherry-picked, not filtered for ease — see below for the 4 that got
 skipped and why), hand-extracted into the plan IR by reading each English problem and doing
 the extraction the spec asks a model to do. **Read the caveats before the result** — this is
-emphatically not M3: one extractor (me, not a 3B model), N=25 not 1,319, no distractor/
-wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What it *is*: the
-first time this project's rendered-plan loop has been checked against a real, unfiltered
-slice of the benchmark, against known ground truth.
+emphatically not M3: one extractor (me, not a 3B model), N=73 not 1,319, no distractor/
+wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What it *is*: a
+meaningfully larger, still fully-verified check of this project's rendered-plan loop against
+a real, unfiltered, consecutive slice of the benchmark.
 
-**Result: 25/25 correct** (started from 27 consecutive rows; 2 skipped as genuinely
-unrepresentable in the current plan IR, not silently dropped — see the third finding
-below), spanning 2-8 op chains: subtraction, exact percentage math (the `scalar`-unit
-`mul`-then-`div` pattern, `value * pct / 100`, exact at every problem's numbers, including
-percent-of-a-percent and reverse-percentage cases), rate/time flows (`count_per_time` and
-`distance_per_time` correctly inverting to `time` on division), and one genuine
-reverse-chain algebra problem (Melanie's vacuum cleaners — "5 left, work backwards to how
-many she started with"). Two hand-perturbed variants (same ids, new numbers — James's
+**Result: 73/73 correct** (started from 77 consecutive rows; 4 skipped as genuinely
+unrepresentable in the current plan IR, not silently dropped — see the findings below —
+a ~95% representability rate on this slice), spanning 2-8 op chains: subtraction, exact
+percentage math (the `scalar`-unit `mul`-then-`div` pattern, `value * pct / 100`, exact at
+every problem's numbers, including percent-of-a-percent and reverse-percentage cases),
+rate/time flows (`count_per_time` and `distance_per_time` correctly inverting to `time` on
+division), several reverse-chain algebra problems (Melanie's vacuum cleaners, Gretchen's
+coins, Candice's post-its — "work backwards from the ending state to the starting
+quantity"), and one genuinely fiddly unit-rescale (Uriah's book bag: quarter-pound units
+resolve `0.25lb`/`0.5lb` exactly, the same fixed-base-scale lesson as the cents convention,
+generalized to weight). Two hand-perturbed variants (same ids, new numbers — James's
 sprints, the sheep problem) both correctly precipitated (`retrieved: true`) and answered
-correctly. None of the 25 distinct problems precipitated against each other, as expected —
-they're 25 genuinely different problems, not variations of one; H-M3's precipitation curve
-needs a real corpus with real recurring structure to show anything, which 25
-independently-different problems by construction can't provide.
+correctly. None of the 73 distinct problems precipitated against each other, as expected —
+they're 73 genuinely different problems, not variations of one; H-M3's precipitation curve
+needs a real corpus with real recurring structure to show anything, which independently-
+different problems can't provide by construction, however many of them there are.
 
-Four things worth carrying into a real M3 design:
+Five things worth carrying into a real M3 design:
 
 - **Genuine ambiguity exists even for a careful extractor.** Josh's house-flip problem
   ("increased the value of the house by 150%") admits two readings — *the increase equals
@@ -356,7 +360,25 @@ Four things worth carrying into a real M3 design:
   (`docs/library-growth.md`'s "cents" naming note), now also true of the plan-extraction
   side. The lesson generalizes past money: any unit with a real-world sub-integer step
   (fractional time is the same shape — row 9's skipped half-hour problem) needs its base
-  scale fixed *before* extraction starts, not discovered mid-corpus.
+  scale fixed *before* extraction starts, not discovered mid-corpus. Row 53 (Uriah's book
+  bag, quarter-pound units) shows the lesson isn't "avoid fractions" — it's "check every
+  fraction in the problem shares a rescale-able common denominator first."
+- **A real renderer bug, found and fixed: the identifier blocklist didn't cover Rust's
+  reserved-for-future-use keywords.** Row 70 (Bailey's allowance) naturally wanted a
+  quantity named `final` ("ends with a final total of $100"). `render()`'s own `ident_ok`
+  check (`cell80/src/plan.rs`) is supposed to catch bad identifiers with a clean,
+  named error *before* compilation — but its blocklist only covered `self`/`run` and a
+  handful of keywords actually hit in practice (`fn`/`let`/`mut`/`if`/`else`/`while`). `final`
+  isn't a keyword Rust's grammar assigns a meaning to today, but it's reserved for future
+  use, and `syn` accepts it as a keyword token regardless — so it fell through the
+  incomplete blocklist and hit a raw `rustc` parse error instead of the clean render-time
+  message the checker exists to give. **Fixed:** the blocklist now covers Rust's full
+  strict + reserved keyword set reachable in the lowercase-identifier charset (`as`
+  through `while`, plus `abstract`/`become`/`box`/`do`/`final`/`macro`/`override`/`priv`/
+  `typeof`/`unsized`/`virtual`/`yield`/`try`/`union`), with a regression test in
+  `cell80/tests/plan.rs` locking in the clean rejection. Unlike the counterfactual-battery
+  fix, this one had no design tradeoff to weigh — a stricter, more complete identifier
+  check is strictly safer, so it was applied directly rather than left proposed.
 
 ## MATH/AIME — scoped ahead of the gate (2026-07-05)
 

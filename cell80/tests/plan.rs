@@ -294,6 +294,16 @@ fn plan_parse_rejections() {
     )
     .render()
     .is_err());
+    // Rust's reserved-for-future-use keywords aren't compile errors *today* by coincidence —
+    // `final` slipped through the old blocklist and hit a raw rustc parse error instead of a
+    // clean render-time one (found extracting real GSM8K problems,
+    // `cell80/examples/m3_gsm8k_smoketest.rs`). Now caught at render with a named error.
+    let err = plan(
+        r#"{"quantities":[{"id":"final","value":1,"unit":"count"}],"ops":[],"target":"final"}"#,
+    )
+    .render()
+    .unwrap_err();
+    assert!(err.contains("bad quantity id"), "{err}");
 }
 
 #[test]

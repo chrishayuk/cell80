@@ -202,7 +202,22 @@ impl Plan {
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
                 && !matches!(
                     s,
-                    "self" | "run" | "fn" | "let" | "mut" | "if" | "else" | "while"
+                    // Renderer-specific collisions (the entry point, the receiver).
+                    "self" | "run"
+                    // Rust's strict keywords reachable in this lowercase+digit+underscore
+                    // charset (Self/Crate/etc capitalized forms can't match — the charset
+                    // check above already excludes them).
+                    | "as" | "break" | "const" | "continue" | "crate" | "dyn" | "else"
+                    | "enum" | "extern" | "false" | "fn" | "for" | "if" | "impl" | "in"
+                    | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub" | "ref"
+                    | "return" | "static" | "struct" | "super" | "trait" | "true" | "type"
+                    | "unsafe" | "use" | "where" | "while" | "async" | "await"
+                    // Reserved for future use — not compile errors *today* by accident, but
+                    // exactly the trap `final` fell into: syn accepts them as keyword tokens
+                    // regardless of whether the current grammar defines a meaning for them.
+                    | "abstract" | "become" | "box" | "do" | "final" | "macro"
+                    | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield"
+                    | "try" | "union"
                 )
         };
         let mut dims: HashMap<&str, Dim> = HashMap::new();

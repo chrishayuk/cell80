@@ -284,18 +284,23 @@ strictly by sequence; the library grows by eval need:
    test-driving found the original short-circuit would've accepted a coincidental agreement,
    the same failure class as the documented `min`/`median3` register-0 coincidence, without
    ever stress-testing it). Surfaced everywhere: CLI `cell80 solve`, `cell80-py`'s `solve()`,
-   MCP's `cell_solve`. **A 25-problem, unfiltered slice of the real GSM-8K test set — not
-   hand-crafted, not cherry-picked — solved 25/25** through it (`cell80/examples/
-   m3_gsm8k_smoketest.rs`), the first real evidence beyond synthetic cases that the loop
-   answers correctly end to end. Findings from that smoke test, not yet acted on: the plan IR
-   has no comparison/decision opcode at all (a "pick whichever is bigger" problem can't be
-   rendered); fractional-dollar problems need a firm cents-always convention, not per-problem
-   judgment; and genuine extraction ambiguity (not arithmetic error) is a real fragility
-   source even for a careful extractor. Full spec, sequencing gates (M0-M4), and the pre-
-   registered hypotheses: `docs/math-campaign-spec.md`. **Next** — M3, the actual field
-   campaign (a real corpus, a small model in the loop, cost measured in T-states/tokens
-   against CoT and PAL-Python baselines) — not started; this item is infrastructure + a smoke
-   test, not the campaign itself.
+   MCP's `cell_solve`. **A 77-row, unfiltered, consecutive slice of the real GSM-8K test
+   set — not hand-crafted, not cherry-picked — solved 73/73 (4 skipped as genuinely
+   unrepresentable, ~95% representability)** through it (`cell80/examples/
+   m3_gsm8k_smoketest.rs`), real evidence beyond synthetic cases that the loop answers
+   correctly end to end at meaningful scale. Findings from that smoke test: the plan IR has
+   no comparison/decision opcode at all (a "pick whichever is bigger" problem can't be
+   rendered — not yet acted on); fractional-dollar amounts need a firm cents-always
+   convention (found, then **fixed** — every money quantity in the smoke test now rescales
+   to cents); the identifier blocklist didn't cover Rust's full reserved-keyword set (`final`
+   slipped through to a raw `rustc` error instead of a clean one — found and **fixed**,
+   regression-tested); and genuine extraction ambiguity (not arithmetic error) is a real
+   fragility source even for a careful extractor (not fixable — a property of the English,
+   not the renderer). Full spec, sequencing gates (M0-M4), and the pre-registered hypotheses:
+   `docs/math-campaign-spec.md`. **Next** — M3, the actual field campaign (a real corpus, a
+   small model in the loop, cost measured in T-states/tokens against CoT and PAL-Python
+   baselines) — not started; this item is infrastructure + a smoke test, not the campaign
+   itself.
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`
