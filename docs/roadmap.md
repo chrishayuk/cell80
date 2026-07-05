@@ -480,9 +480,15 @@ eval is the gate, not VM/compiler features) but are tracked here since the compi
   The composable kit shape works: `Sprite`/`Actor`/`TileMap`/`Hud` as fields, `&mut self` methods
   drilling in, `u32` leaves wide, and an array field *inside* a nested struct (`g.hud.cells[i]`,
   composes for free through the recursive `field_target`). Diff-tested against rustc on both targets
-  (`tests/diff/nested_structs.rs`, 8 cases + rejections). **Follow-on:** a nested struct field
-  *inside* a struct-array element (`actors[i].pos.x`) — the `[Cell; N]` initialiser and
-  `elem_field_addr` step only one field level; guarded with a named error, not a silent one-word read.
+  (`tests/diff/nested_structs.rs`). **Nested struct field *inside* a struct-array element
+  (`actors[i].pos.x`) — ✓ also done:** `elem_field_addr` generalised to `elem_field_chain_addr`
+  (walks a member chain — element index + summed field offsets to a scalar leaf, at the leaf's
+  width), `indexed_field_chain` collects the chain, and both struct-array init paths (the local
+  `[Cell; N]` and the `[Cell; N]` *field*) route through the recursive `store_struct_literal`, so
+  a `[Actor { pos: Point { .. }, .. }; N]` element lays out correctly. Byte-identical for existing
+  single-level `a[i].field` (golden unchanged); oracle-tested for local + struct-field swarms and
+  the whole-element / scalar-leaf rejections. Residual: a `u32` leaf of a struct-array element
+  stays rejected (`LoadAt` has no wide form), as before.
 - **Wider persisted struct fields — `u32` and signed `i16`. ✓ done.** A `u32` field lays out
   as two consecutive little-endian slots (`layout.rs`, `Width::DWord` — the ABI-v2 wide
   typed-state lane, drivable/readable by name at full width) and `i16` fields carry
@@ -558,8 +564,9 @@ chuk-speccy is now on 0.6:*
 
 *Already in 0.5/0.6 (the SDK is now on 0.6):* `&mut self` methods that mutate through the receiver,
 `+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (The remaining *frontend* asks above —
-nested struct fields, signed/`u32` fields, `[u8; N]` *fields*, `&CONST→addr` — are now all ✓ done;
-the one open follow-on is a nested struct field *inside* a struct-array element, `actors[i].pos.x`.)
+nested struct fields (incl. `actors[i].pos.x` inside a struct-array element), signed/`u32` fields,
+`[u8; N]` *fields*, `&CONST→addr` — are now all ✓ done. The composable SDK-kit type surface is
+unblocked end to end.)
 
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —

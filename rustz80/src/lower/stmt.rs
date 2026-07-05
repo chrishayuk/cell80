@@ -80,12 +80,16 @@ pub(crate) fn lower_local(
             }
             let stride = struct_slots(&efields);
             let base = ctx.vars.declare_struct_array(&name, n * stride, &elem_name);
+            // Store each element through the recursive helper — so a nested struct
+            // sub-field (`[Actor { pos: Point { .. }, .. }; N]`) lays out correctly.
             for i in 0..n {
-                for fv in &slit.fields {
-                    let foff = field_offset(&efields, &member_name(&fv.member)?)?;
-                    let v = lower_expr16(&fv.expr, ctx, "struct field (u16 slots)")?;
-                    body.push(Stmt::Assign(base + i * stride + foff, v));
-                }
+                super::struct_init::store_struct_literal(
+                    base + i * stride,
+                    &efields,
+                    slit,
+                    ctx,
+                    body,
+                )?;
             }
         }
         syn::Expr::Repeat(r) => {

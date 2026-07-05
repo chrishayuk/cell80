@@ -263,6 +263,84 @@ fn array_field_inside_nested_struct() {
 }
 
 #[test]
+fn struct_array_element_nested_field() {
+    // The SDK swarm shape: a local `[Actor; N]` where each Actor has a nested Point.
+    // Read + write `world[i].pos.x` (element index + summed field offsets), oracle-checked.
+    #[derive(Clone, Copy)]
+    struct Point {
+        x: u16,
+        y: u16,
+    }
+    #[derive(Clone, Copy)]
+    struct Actor {
+        pos: Point,
+        hp: u16,
+    }
+    fn host() -> u16 {
+        let mut world = [Actor {
+            pos: Point { x: 1, y: 2 },
+            hp: 10,
+        }; 3];
+        world[0].pos.x = world[0].pos.x + 100; // 101
+        world[2].pos.y = world[2].pos.y + world[2].hp; // 12
+        world[0].pos.x * 500 + world[2].pos.y * 10 + world[1].pos.x // 101*500 + 120 + 1 = 50621
+    }
+    let src = "
+        struct Point { x: u16, y: u16 }
+        struct Actor { pos: Point, hp: u16 }
+        fn run() -> u16 {
+            let mut world = [Actor { pos: Point { x: 1u16, y: 2u16 }, hp: 10u16 }; 3];
+            world[0].pos.x = world[0].pos.x + 100u16;
+            world[2].pos.y = world[2].pos.y + world[2].hp;
+            world[0].pos.x * 500u16 + world[2].pos.y * 10u16 + world[1].pos.x
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn struct_field_array_nested_field() {
+    // A struct-element array that is itself a *field* of another struct, with nested
+    // elements — `w.actors[i].pos.x` (the base address walks through `w.actors`).
+    #[derive(Clone, Copy)]
+    struct Point {
+        x: u16,
+        y: u16,
+    }
+    #[derive(Clone, Copy)]
+    struct Actor {
+        pos: Point,
+        hp: u16,
+    }
+    struct World {
+        actors: [Actor; 2],
+        tick: u16,
+    }
+    fn host() -> u16 {
+        let mut w = World {
+            actors: [Actor {
+                pos: Point { x: 5, y: 6 },
+                hp: 3,
+            }; 2],
+            tick: 4,
+        };
+        w.actors[1].pos.x = w.actors[1].pos.x + w.tick + 7; // 5+4+7 = 16
+        w.actors[0].pos.y * 100 + w.actors[1].pos.x + w.actors[0].hp // 6*100 + 16 + 3 = 619
+    }
+    let src = "
+        struct Point { x: u16, y: u16 }
+        struct Actor { pos: Point, hp: u16 }
+        struct World { actors: [Actor; 2], tick: u16 }
+        fn run() -> u16 {
+            let mut w = World { actors: [Actor { pos: Point { x: 5u16, y: 6u16 }, hp: 3u16 }; 2], tick: 4u16 };
+            w.actors[1].pos.x = w.actors[1].pos.x + w.tick + 7u16;
+            w.actors[0].pos.y * 100u16 + w.actors[1].pos.x + w.actors[0].hp
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
 fn nested_struct_rejections() {
     // Reading a whole nested-struct field is not a scalar — must reach a leaf.
     assert!(rustz80::compile_program(
@@ -285,6 +363,25 @@ fn nested_struct_rejections() {
     assert!(rustz80::compile_program(
         "struct P { x: u16 } struct Q { p: P }
          fn run() -> u16 { let q = Q { p: 5u16 }; q.p.x }"
+    )
+    .is_err());
+    // Reading a whole nested-struct *array element* field (`a[i].pos`) is not a scalar.
+    assert!(rustz80::compile_program(
+        "struct P { x: u16, y: u16 } struct A { p: P, hp: u16 }
+         fn run() -> u16 { let w = [A { p: P { x: 1u16, y: 2u16 }, hp: 3u16 }; 2]; let r = w[0].p; r.x }"
+    )
+    .is_err());
+    // `.field` off a scalar array-element field (`a[i].hp.x`) — nothing to index into.
+    assert!(rustz80::compile_program(
+        "struct P { x: u16 } struct A { p: P, hp: u16 }
+         fn run() -> u16 { let w = [A { p: P { x: 1u16 }, hp: 3u16 }; 2]; w[0].hp.x }"
+    )
+    .is_err());
+    // A nested-struct sub-field of a struct-array *field* element must be a struct
+    // literal, not a scalar (the `[Cell; N]`-field init path's own check).
+    assert!(rustz80::compile_program(
+        "struct P { x: u16 } struct A { p: P, hp: u16 } struct W { actors: [A; 2] }
+         fn run() -> u16 { let w = W { actors: [A { p: 5u16, hp: 3u16 }; 2] }; w.actors[0].p.x }"
     )
     .is_err());
 }

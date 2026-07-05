@@ -44,10 +44,27 @@ pub(crate) fn store_struct_literal(
                 let syn::Expr::Struct(slit) = ev else {
                     return Err(format!("element of `{fname}` must be a `{es}` literal"));
                 };
+                let elem_base = base + off + e * esize;
                 for fv2 in &slit.fields {
-                    let foff = field_offset(&efields, &member_name(&fv2.member)?)?;
-                    let v = lower_expr(&fv2.expr, ctx)?.0;
-                    body.push(Stmt::Assign(base + off + e * esize + foff, v));
+                    let subname = member_name(&fv2.member)?;
+                    let foff = field_offset(&efields, &subname)?;
+                    let subfd = efields.iter().find(|f| f.name == subname);
+                    // A nested struct sub-field (`pos: Point { x, y }`) inside an array
+                    // element — recurse, storing its sub-fields at the field's base.
+                    if let Some(subsub) = subfd.and_then(|f| f.struct_ty.clone()) {
+                        let syn::Expr::Struct(sub_slit) = &fv2.expr else {
+                            return Err(format!(
+                                "field `{subname}` of `{es}` must be a `{subsub}` literal"
+                            ));
+                        };
+                        let subfields = ctx
+                            .struct_fields(&subsub)
+                            .ok_or_else(|| format!("unknown struct {subsub}"))?;
+                        store_struct_literal(elem_base + foff, &subfields, sub_slit, ctx, body)?;
+                    } else {
+                        let v = lower_expr(&fv2.expr, ctx)?.0;
+                        body.push(Stmt::Assign(elem_base + foff, v));
+                    }
                 }
             }
             continue;

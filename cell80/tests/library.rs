@@ -2190,10 +2190,7 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
     // ceiling; cost scales with sqrt(n), so this stays well under a real prime's practical
     // limit for the default cycle budget (~1.1M cycles at n ~ 2^20, per the cell's own
     // limits note).
-    assert_eq!(
-        step("is_prime_u32", "IsPrimeWide", &[("n", 97)]).0,
-        1
-    );
+    assert_eq!(step("is_prime_u32", "IsPrimeWide", &[("n", 97)]).0, 1);
     assert_eq!(
         step("is_prime_u32", "IsPrimeWide", &[("n", 1_048_573)]).0,
         1
@@ -2210,19 +2207,40 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
     let (_, _, cell) = step(
         "shoelace_area_x2",
         "ShoelaceAreaX2",
-        &[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("x3", 0), ("y3", 3)],
+        &[
+            ("x1", 0),
+            ("y1", 0),
+            ("x2", 4),
+            ("y2", 0),
+            ("x3", 0),
+            ("y3", 3),
+        ],
     );
     assert_eq!(cell.get("result"), Some(12)); // right triangle, legs 4 and 3, area 6, x2 = 12
     let (_, _, cell) = step(
         "shoelace_area_x2",
         "ShoelaceAreaX2",
-        &[("x1", 0), ("y1", 0), ("x2", 0), ("y2", 3), ("x3", 4), ("y3", 0)],
+        &[
+            ("x1", 0),
+            ("y1", 0),
+            ("x2", 0),
+            ("y2", 3),
+            ("x3", 4),
+            ("y3", 0),
+        ],
     );
     assert_eq!(cell.get("result"), Some(12)); // reversed winding, same |.|
     let (_, _, cell) = step(
         "shoelace_area_x2",
         "ShoelaceAreaX2",
-        &[("x1", 1), ("y1", 1), ("x2", 1), ("y2", 1), ("x3", 1), ("y3", 1)],
+        &[
+            ("x1", 1),
+            ("y1", 1),
+            ("x2", 1),
+            ("y2", 1),
+            ("x3", 1),
+            ("y3", 1),
+        ],
     );
     assert_eq!(cell.get("result"), Some(0));
 
@@ -2237,9 +2255,13 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
     let mut seed = 12345u64;
     let mut checked = 0;
     for _ in 0..300 {
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let a = 1 + (seed >> 40) % 1_000_000;
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let m = 1 + (seed >> 40) % 1_000_000;
         if gcd_u64(a, m) != 1 {
             continue;
@@ -2250,7 +2272,10 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
         assert_eq!((a * inv) % m, 1, "a={a} m={m} inv={inv}");
         checked += 1;
     }
-    assert!(checked > 100, "expected most sweep pairs coprime, got {checked}");
+    assert!(
+        checked > 100,
+        "expected most sweep pairs coprime, got {checked}"
+    );
 
     // crt_solve_pair: fixed cases (a coprime pair, a non-coprime pair), then a sweep.
     let (_, _, cell) = step(
@@ -2269,16 +2294,24 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
     let mut seed2 = 987_654_321u64;
     let mut checked2 = 0;
     for _ in 0..300 {
-        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed2 = seed2
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let m1 = 1 + (seed2 >> 44) % 1000;
-        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed2 = seed2
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let m2 = 1 + (seed2 >> 44) % 1000;
         if gcd_u64(m1, m2) != 1 {
             continue;
         }
-        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed2 = seed2
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let r1 = seed2 % m1;
-        seed2 = seed2.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed2 = seed2
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let r2 = seed2 % m2;
         let (_, report, cell) = step(
             "crt_solve_pair",
@@ -2296,7 +2329,10 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
         assert!(x < m1 * m2);
         checked2 += 1;
     }
-    assert!(checked2 > 100, "expected most sweep pairs coprime, got {checked2}");
+    assert!(
+        checked2 > 100,
+        "expected most sweep pairs coprime, got {checked2}"
+    );
 }
 
 #[test]
@@ -2326,17 +2362,16 @@ fn library_growth_backlog_cells_match_defined_behaviour() {
     assert_eq!(run_cell("q_sigmoid", &[0]), 128); // sigmoid(0) = 0.5
     assert_eq!(run_cell("q_sigmoid", &[400]), 228); // 400/4 + 128 = 228, unclamped
     assert_eq!(run_cell("q_sigmoid", &[1024]), 256); // saturates high (x = 4.0)
-    assert_eq!(run_cell("q_sigmoid", &[65536u32.wrapping_sub(1024) as u16]), 0); // -4.0, saturates low
+    assert_eq!(
+        run_cell("q_sigmoid", &[65536u32.wrapping_sub(1024) as u16]),
+        0
+    ); // -4.0, saturates low
 
     // running_variance_step: [10, 20, 30] -> population variance 200/3, exact match to a
     // hand-derived reference (mean recomputed fresh each side of the update, not compounded).
     fn variance_step(fields: &[(&str, u64)]) -> StateCell {
-        let mut cell = StateCell::bind(
-            &cell_src("running_variance_step"),
-            "RunningVariance",
-            None,
-        )
-        .unwrap();
+        let mut cell =
+            StateCell::bind(&cell_src("running_variance_step"), "RunningVariance", None).unwrap();
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }
@@ -2368,11 +2403,7 @@ fn library_growth_backlog_cells_match_defined_behaviour() {
 
     let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 0)]);
     assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
-    let (_, _, cell) = step(
-        "morton_decode",
-        "MortonDecode",
-        &[("code", 4_294_967_295)],
-    );
+    let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 4_294_967_295)]);
     assert_eq!((cell.get("x"), cell.get("y")), (Some(65535), Some(65535)));
     let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 1)]);
     assert_eq!((cell.get("x"), cell.get("y")), (Some(1), Some(0)));
@@ -2389,7 +2420,10 @@ fn library_growth_backlog_cells_match_defined_behaviour() {
     );
     assert_eq!(cell.get("step_x"), Some(1));
     assert_eq!(cell.get("step_y"), Some(0));
-    assert_eq!((cell.get("err_mag"), cell.get("err_neg")), (Some(0), Some(0)));
+    assert_eq!(
+        (cell.get("err_mag"), cell.get("err_neg")),
+        (Some(0), Some(0))
+    );
     let (_, _, cell) = step(
         "bresenham_step",
         "BresenhamStep",
@@ -2397,7 +2431,10 @@ fn library_growth_backlog_cells_match_defined_behaviour() {
     );
     assert_eq!(cell.get("step_x"), Some(1));
     assert_eq!(cell.get("step_y"), Some(1));
-    assert_eq!((cell.get("err_mag"), cell.get("err_neg")), (Some(2), Some(0)));
+    assert_eq!(
+        (cell.get("err_mag"), cell.get("err_neg")),
+        (Some(2), Some(0))
+    );
 
     // rate_window_update: limit 2 per 100-tick window; 3rd request in-window denied;
     // a request past the window rolls over and is allowed again.
@@ -2494,8 +2531,14 @@ fn geometry_combinatorics_sequences_cells_match_defined_behaviour() {
         "shoelace_area_x2_quad",
         "ShoelaceAreaX2Quad",
         &[
-            ("x1", 0), ("y1", 0), ("x2", 1), ("y2", 0),
-            ("x3", 1), ("y3", 1), ("x4", 0), ("y4", 1),
+            ("x1", 0),
+            ("y1", 0),
+            ("x2", 1),
+            ("y2", 0),
+            ("x3", 1),
+            ("y3", 1),
+            ("x4", 0),
+            ("y4", 1),
         ],
     );
     assert_eq!(cell.get("result"), Some(2));
@@ -2503,8 +2546,14 @@ fn geometry_combinatorics_sequences_cells_match_defined_behaviour() {
         "shoelace_area_x2_quad",
         "ShoelaceAreaX2Quad",
         &[
-            ("x1", 5), ("y1", 5), ("x2", 5), ("y2", 5),
-            ("x3", 5), ("y3", 5), ("x4", 5), ("y4", 5),
+            ("x1", 5),
+            ("y1", 5),
+            ("x2", 5),
+            ("y2", 5),
+            ("x3", 5),
+            ("y3", 5),
+            ("x4", 5),
+            ("y4", 5),
         ],
     );
     assert_eq!(cell.get("result"), Some(0));

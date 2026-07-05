@@ -34,47 +34,92 @@ pub(crate) fn coerce32(e: Expr, w: Width) -> Expr {
     }
 }
 
-/// The byte address of `a[i].field` for a local struct-element array `[Cell; N]`:
-/// `&a + index*(elem_stride) + field_offset` (all in bytes). Errs if `a` isn't a
-/// struct-element array.
-pub(crate) fn elem_field_addr(
-    ix: &syn::ExprIndex,
-    member: &syn::Member,
-    ctx: &mut Ctx,
-) -> Result<Expr, String> {
-    let (base_addr, elem_struct) = array_base(&ix.expr, ctx)?;
-    let efields = ctx
-        .struct_fields(&elem_struct)
-        .ok_or_else(|| format!("unknown struct {elem_struct}"))?;
-    let fname = member_name(member)?;
-    if let Some(f) = efields.iter().find(|f| f.name == fname) {
-        if f.width == Width::DWord {
-            return Err(format!(
-                "u32 field `{fname}` of a struct-array element is not supported yet"
-            ));
-        }
-        // A *nested struct* field of a struct-array element (`actors[i].pos.x`) is a
-        // follow-on: the element-address path only steps one field level, and the
-        // `[Cell; N]` initialiser doesn't build nested-struct elements. Reject clearly
-        // rather than read the field's first word as if it were a scalar.
-        if f.struct_ty.is_some() {
-            return Err(format!(
-                "nested struct field `{fname}` of a struct-array element is not supported \
-                 yet — access one field level (`a[i].x`) or flatten the element"
-            ));
+/// If `f`'s receiver chain bottoms out at an indexed struct-array element
+/// (`a[i].x`, `a[i].pos.x`, any depth), return the index expression and the member
+/// chain from the element **outward to the leaf** (`[pos, x]`). `None` for any other
+/// receiver (a plain local/`self` field access goes through [`field_target`]).
+fn indexed_field_chain(f: &syn::ExprField) -> Option<(&syn::ExprIndex, Vec<&syn::Member>)> {
+    let mut members = vec![&f.member];
+    let mut base = &*f.base;
+    loop {
+        match base {
+            syn::Expr::Index(ix) => {
+                members.reverse(); // collected leaf-first; want element-first
+                return Some((ix, members));
+            }
+            syn::Expr::Field(inner) => {
+                members.push(&inner.member);
+                base = &*inner.base;
+            }
+            _ => return None,
         }
     }
-    let foff = field_offset(&efields, &fname)?;
-    let stride = (struct_slots(&efields) * 2) as u16;
+}
+
+/// The byte address (and leaf width) of a field *chain* off a struct-array element:
+/// `a[i].field`, `a[i].pos.x`, any depth. `&a + index*elem_stride + Σ field_offsets`
+/// (all in bytes); intermediate members must be nested structs, the leaf a scalar.
+pub(crate) fn elem_field_chain_addr(
+    ix: &syn::ExprIndex,
+    members: &[&syn::Member],
+    ctx: &mut Ctx,
+) -> Result<(Expr, Width), String> {
+    let (base_addr, elem_struct) = array_base(&ix.expr, ctx)?;
+    let mut fields = ctx
+        .struct_fields(&elem_struct)
+        .ok_or_else(|| format!("unknown struct {elem_struct}"))?;
+    let stride = (struct_slots(&fields) * 2) as u16; // stride of the outermost element
+    let mut foff = 0usize; // accumulated slot offset down the chain
+    let mut width = Width::Word;
+    for (mi, member) in members.iter().enumerate() {
+        let fname = member_name(member)?;
+        foff += field_offset(&fields, &fname)?;
+        let fd = fields
+            .iter()
+            .find(|f| f.name == fname)
+            .expect("field_offset just matched it");
+        let (fd_struct, fd_width, fd_is_array) = (
+            fd.struct_ty.clone(),
+            fd.width,
+            fd.elem_struct.is_some() || fd.packed_len.is_some() || fd.wide_len.is_some(),
+        );
+        if mi == members.len() - 1 {
+            // The leaf must be a scalar — not a nested struct, array, or `u32`.
+            if let Some(s) = fd_struct {
+                return Err(format!(
+                    "`{fname}` of a struct-array element is a `{s}` struct — read a scalar field of it"
+                ));
+            }
+            if fd_is_array {
+                return Err(format!(
+                    "`{fname}` of a struct-array element is an array field — not supported here"
+                ));
+            }
+            if fd_width == Width::DWord {
+                return Err(format!(
+                    "u32 field `{fname}` of a struct-array element is not supported yet"
+                ));
+            }
+            width = fd_width;
+        } else {
+            // An intermediate member must be a nested struct to descend into.
+            let sub = fd_struct.ok_or_else(|| {
+                format!("`{fname}` of a struct-array element is not a nested struct — cannot index into it")
+            })?;
+            fields = ctx
+                .struct_fields(&sub)
+                .ok_or_else(|| format!("unknown struct {sub}"))?;
+        }
+    }
     let idx = lower_expr16(&ix.index, ctx, "array index")?;
-    // base + index*stride (+ field_offset)
+    // base + index*stride (+ Σ field_offsets)
     let elem = Expr::Bin(
         BinOp::Add,
         Box::new(base_addr),
         Box::new(Expr::MulConst(Box::new(idx), stride)),
         Width::Word,
     );
-    Ok(if foff == 0 {
+    let addr = if foff == 0 {
         elem
     } else {
         Expr::Bin(
@@ -83,7 +128,8 @@ pub(crate) fn elem_field_addr(
             Box::new(Expr::Lit((foff * 2) as u16)),
             Width::Word,
         )
-    })
+    };
+    Ok((addr, width))
 }
 
 /// Lower an expression, returning its IR and inferred width (`u8`/`u16`).
@@ -988,12 +1034,11 @@ pub(crate) fn lower_index_store(
 /// through the pointer for `self`-style receivers. A `u32` field reads wide
 /// (`Var32` / `Deref32`), so the expression carries `Width::DWord`.
 fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<(Expr, Width), String> {
-    // `a[i].field` — a field of a struct-array element at a computed address.
-    if let syn::Expr::Index(ix) = &*f.base {
-        return Ok((
-            Expr::LoadAt(Box::new(elem_field_addr(ix, &f.member, ctx)?), Width::Word),
-            Width::Word,
-        ));
+    // `a[i].field` (or `a[i].pos.x`, any depth) — a field chain of a struct-array
+    // element at a computed address, read at the leaf's width.
+    if let Some((ix, members)) = indexed_field_chain(f) {
+        let (addr, w) = elem_field_chain_addr(ix, &members, ctx)?;
+        return Ok((Expr::LoadAt(Box::new(addr), w), w));
     }
     let r = field_target(f, ctx)?;
     if let Some(sub) = &r.field_struct {
@@ -1036,8 +1081,10 @@ pub(crate) fn lower_field_store(
     vw: Width,
     ctx: &mut Ctx,
 ) -> Result<Stmt, String> {
-    // `a[i].field = v` — store a field of a struct-array element at a computed address.
-    if let syn::Expr::Index(ix) = &*f.base {
+    // `a[i].field = v` (or `a[i].pos.x = v`) — store a field chain of a struct-array
+    // element at a computed address, at the leaf's width.
+    if let Some((ix, members)) = indexed_field_chain(f) {
+        let (addr, w) = elem_field_chain_addr(ix, &members, ctx)?;
         if vw == Width::DWord {
             return Err(
                 "u32 value in a 16-bit context (struct-array element field) — narrow with \
@@ -1045,11 +1092,7 @@ pub(crate) fn lower_field_store(
                     .into(),
             );
         }
-        return Ok(Stmt::StoreAt(
-            elem_field_addr(ix, &f.member, ctx)?,
-            val,
-            Width::Word,
-        ));
+        return Ok(Stmt::StoreAt(addr, val, w));
     }
     let r = field_target(f, ctx)?;
     if let Some(sub) = &r.field_struct {
