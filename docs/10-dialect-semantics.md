@@ -262,6 +262,20 @@ traits, recursion, I/O. These are the escalation path — a cell that needs them
 cell, and the honest answer is a typed hand-off to the host, not a bigger ISA. See the
 roadmap's non-goals.
 
+**Floats specifically are rejected permanently, not deferred — the reason is the oracle.**
+`check!`'s guarantee is that both compile targets agree with each other *and* with
+release-mode rustc on the host; IEEE basic arithmetic is bit-specified, but the
+transcendentals (`sin`/`cos`/`exp`/`log`/real `pow`) are not — rustc lowers them to
+platform libm, and libm results differ across hosts. A cell whose reference behaviour is
+"whatever this machine's libm returned" breaks the differential oracle, weakens content
+addressing (same source, same inputs, host-dependent facts), and degrades the fact file
+from "memory you can't lie to" into "memory that was true on the machine that wrote it."
+Real-valued computation still has a home in the dialect — as unit-tagged, error-bounded,
+demand-gated Q-format fixed point (`q_mul`/`q_div`/`q_sqrt`/`q_lerp`/`q_sigmoid` today);
+see `docs/real-valued-cells-spec.md` for the full policy (scale joins the unit system,
+an accuracy contract for approximate cells, and the exactness taxonomy that keeps Q from
+free-riding on the fractions' "exact" claim).
+
 That hand-off is a language-level idiom, not new syntax: `halt(code)` with a code in
 the **escalation band** (`0xFF00`–`0xFFFF`) reports as `halt: "escalate"` with a named
 reason (`0xFF01` = `needs_strings`, `0xFF02` = `needs_floats`, `0xFF03` = `needs_io`,
