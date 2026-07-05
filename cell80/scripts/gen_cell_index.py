@@ -12,7 +12,7 @@ import sys
 # appear in exactly one pack below — the script asserts that, so a new cell that isn't added
 # here fails loudly instead of silently missing from the index.
 PACKS = {
-    "predicates": ["eq", "neq", "is_lt", "is_le", "is_gt", "is_ge", "is_zero", "nonzero", "is_even", "is_odd"],
+    "predicates": ["eq", "neq", "is_lt", "is_le", "is_gt", "is_ge", "is_zero", "nonzero", "is_even", "is_odd", "is_lt_u32", "is_gt_u32", "is_le_u32", "is_ge_u32"],
     "safe-arith": ["add_sat", "sub_sat", "mul_sat", "safe_div", "safe_mod", "ceil_div", "avg2", "square", "square_wide"],
     "bounds": ["between_exclusive", "normalize_0_100", "snap_down", "snap_up", "round_to_multiple", "clamp"],
     "validation": ["range_check"],
@@ -38,7 +38,7 @@ PACKS = {
     "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32", "answer_eq_u32", "sum_equals_u32", "diff_equals_u32", "sum3_equals_u32", "product3_equals_u32", "mul_add_equals_u32", "mul_sub_equals_u32", "pow_equals_u32", "smag_is_nonneg", "agree3_u32", "answer_within_tolerance_u32", "smag_eq"],
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
-    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
+    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_of_whole_floor", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
     "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32", "fibonacci_checked_u32", "catalan_number", "derangement_count"],
     "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid"],
     "sequences": ["arithmetic_series_sum", "geometric_series_sum"],

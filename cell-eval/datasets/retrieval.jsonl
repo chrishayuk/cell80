@@ -536,3 +536,15 @@
 {"id": "arithmetic_series_sum-para-1", "query": "add up a list of evenly-spaced numbers starting at a with a common difference", "expected": "arithmetic_series_sum", "category": "paraphrase"}
 {"id": "geometric_series_sum-direct-1", "query": "sum of the first n terms of a geometric sequence with ratio r", "expected": "geometric_series_sum", "category": "direct"}
 {"id": "geometric_series_sum-para-1", "query": "add up a list of numbers that each double or triple the one before it", "expected": "geometric_series_sum", "category": "paraphrase"}
+
+# ── wave 4, slice 1: width/precision gap-fill ─────────────────────────────────
+{"id": "is_lt_u32-direct-1", "query": "is a less than b at wide 32-bit width", "expected": "is_lt_u32", "category": "direct"}
+{"id": "is_lt_u32-para-1", "query": "compare two large money totals in cents, is the first smaller", "expected": "is_lt_u32", "category": "paraphrase"}
+{"id": "is_gt_u32-direct-1", "query": "is a greater than b at wide 32-bit width", "expected": "is_gt_u32", "category": "direct"}
+{"id": "is_gt_u32-para-1", "query": "check if one big total exceeds another beyond 65535", "expected": "is_gt_u32", "category": "paraphrase"}
+{"id": "is_le_u32-direct-1", "query": "is a less than or equal to b at wide 32-bit width", "expected": "is_le_u32", "category": "direct"}
+{"id": "is_le_u32-para-1", "query": "does the first large value stay at or under the second", "expected": "is_le_u32", "category": "paraphrase"}
+{"id": "is_ge_u32-direct-1", "query": "is a greater than or equal to b at wide 32-bit width", "expected": "is_ge_u32", "category": "direct"}
+{"id": "is_ge_u32-para-1", "query": "has a large running total reached or passed a target", "expected": "is_ge_u32", "category": "paraphrase"}
+{"id": "frac_of_whole_floor-direct-1", "query": "a fraction of a whole number, rounded down instead of requiring an exact split", "expected": "frac_of_whole_floor", "category": "direct"}
+{"id": "frac_of_whole_floor-para-1", "query": "90 percent of 23 items, rounding down since it doesn't split evenly", "expected": "frac_of_whole_floor", "category": "paraphrase"}

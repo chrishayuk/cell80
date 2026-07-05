@@ -2630,3 +2630,91 @@ fn geometry_combinatorics_sequences_cells_match_defined_behaviour() {
     // purposes, a real gap worth someone revisiting in fingerprint.rs itself, not by hacking
     // around it here.
 }
+
+#[test]
+fn wave4_width_precision_cells_match_defined_behaviour() {
+    // Wave 4, slice 1: width/precision gap-fill, redirected from the dead PlanFix
+    // role/op/slot-validator branch to the two concrete gaps PlanFix's own findings
+    // named — a missing wide-comparison family (is_lt/is_gt/is_le/is_ge only existed at
+    // u16; answer_eq_u32 was the only wide predicate) and a floor sibling for
+    // frac_of_whole (which only has the exact-or-escalate variant; models routinely
+    // write "90% of 23"-style reasoning that doesn't divide evenly).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // is_lt_u32 / is_gt_u32 / is_le_u32 / is_ge_u32: wide predicates, exercised past the
+    // u16 ceiling (money totals in cents routinely exceed 65535).
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_000), ("b", 100_001)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_001), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_000), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_gt_u32", "IsGtWide", &[("a", 100_001), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_gt_u32", "IsGtWide", &[("a", 100_000), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_le_u32", "IsLeWide", &[("a", 100_000), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_le_u32", "IsLeWide", &[("a", 100_001), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_ge_u32", "IsGeWide", &[("a", 100_000), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_ge_u32", "IsGeWide", &[("a", 100_000), ("b", 100_001)]).0,
+        0
+    );
+
+    // frac_of_whole_floor: 90% of 23 = 20.7 -> floors to 20, never escalates (unlike
+    // frac_of_whole, which would escalate on this exact input since it doesn't divide
+    // evenly). Exact-dividing input still works identically to frac_of_whole.
+    let (_, report, cell) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 90), ("d", 100), ("whole", 23)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(20));
+    let (_, _, cell) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 3), ("d", 4), ("whole", 20)],
+    );
+    assert_eq!(cell.get("result"), Some(15));
+    let (_, report, _) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 1), ("d", 0), ("whole", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (_, report, _) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 4_294_967_295), ("d", 1), ("whole", 2)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

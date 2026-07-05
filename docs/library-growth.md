@@ -149,7 +149,7 @@ wave 3s   232 cells   + the "straightforward deferred set" backlog: q_sqrt,
                         was scoped but not built: it reduces exactly to
                         clamp_i16(x, -256, 256), now tagged on that cell
                         instead of shipped as a second one.
-now       239 cells   + a broad geometry/combinatorics/sequences batch,
+wave 3t   239 cells   + a broad geometry/combinatorics/sequences batch,
                         requested directly rather than pulled from a
                         standing backlog: shoelace_area_x2_quad,
                         triangle_is_valid (geometry); fibonacci_checked_u32,
@@ -160,7 +160,19 @@ now       239 cells   + a broad geometry/combinatorics/sequences batch,
                         scoped but refused by the admission gate: a real,
                         structural finding, not a false positive — see the
                         pack note.
-next      ~250+        + cosine_score_approx (deferred until cell_solve reads
+wave 4a   244 cells   + wave 4, slice 1/5 — width/precision gap-fill,
+                        redirected from a dead PlanFix role/op/slot-validator
+                        proposal to the two concrete gaps PlanFix's own
+                        findings actually named: is_lt_u32/is_gt_u32/
+                        is_le_u32/is_ge_u32 (the missing wide-predicate
+                        family — only answer_eq_u32 existed at u32 width)
+                        and frac_of_whole_floor (the floor sibling of
+                        frac_of_whole, which only had the exact-or-escalate
+                        variant) — see the pack note below.
+next      ~260+        + wave 4 slices 2-5 (scoring/choice generalization,
+                        sequences nth-term, verifier-ranker gap-fill,
+                        agentic-runtime reflexes — see the pack note below);
+                        cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
                         docs/math-campaign-spec.md pending M3's read-out)
@@ -944,6 +956,71 @@ tuple-returning cell needs to ship past it; out of scope here.
 Gate: 239 admitted, 0 refused (`sort3` correctly excluded, never counted). Full test suite
 green, cold clippy clean, codegen golden regenerated (purely additive). Retrieval: all seven
 landed cells rank #1 on their own direct query — no same-shape-sibling collisions this time.
+
+**Wave 4 — a "next 100 cells" proposal, dedup'd to ~20 real gaps, built in an isolated
+worktree (`../cell80-wave4`, branch `feat/cell-library-wave4`).** An external analysis
+proposed ~100 new cells across 8 categories (PlanFix validators, comparison/choice, unit
+conversion, rate/proportion, average/mixture, sequences/age, verifier/constraint, agent
+runtime), framed as closing the GSM8K campaign's known gaps. Cross-checking all ~100
+against the live 239-cell index before authoring anything found the great majority already
+exist under a different name, or reduce to one existing cell with renamed args — exactly
+the class of thing the admission gate exists to catch (unit conversion and rate/proportion,
+15 and 12 proposed respectively, both collapsed to **zero** new cells: the proposed
+"generic scaler" cell is an exact duplicate of the already-shipped `frac_of_whole`, and
+every named conversion/rate shape reduces to it or to `div_exact_u32`/`mul_checked_u32`/
+`add_checked_u32`/`add3_checked_u32`/`sub_checked_u32`/`frac_scale`/`frac_sub_from_whole`
+with renamed args). Verifier/constraint fared similarly: 7 of 10 proposed cells were exact
+duplicates of already-shipped verifier-ranker cells (`ratio_equals_u32`/
+`proportion_equals_u32` both duplicate `frac_eq`; `rate_equals_u32`≡`product_equals_u32`;
+`average_equals_u32`≡`quotient_equals_exact_u32`; `remaining_equals_u32`≡`diff_equals_u32`;
+`parts_sum_to_total3_u32`≡`sum3_equals_u32`; `integer_solution_check`≡`is_integer`). Agent
+runtime's own "top 10" included two cells already shipped under different names
+(`rate_window_update` verbatim; `ema_step_q8` as the already-documented `q_lerp`), one
+behaviorally identical to a shipped cell despite a different algorithm name
+(`welford_step` vs the already-shipped `running_variance_step`), one duplicate of an
+existing cell whose own doc names the exact use case (`round_robin_pick`≡`counter_step`,
+"useful for round-robin dispatch"), and two duplicates of `is_ge` (an alias already
+recorded in this file's "time / budget" section). Net finding: **~20 cells survive**, not
+100 — building the other 80 would pay real retrieval-curve tax (this file's own second
+math-campaign-slice history shows a 9-point paraphrase P@1 drop from 40 new cells, several
+later found to be avoidable near-duplicates) for zero new capability.
+
+The proposal's category A (PlanFix role/op/slot-validator cells) was killed outright, not
+just deprioritized, on the user's own steer after review: it hardens the strict JSON Plan
+IR that the PlanFix experiment (`experiments/planfix/`, shipped and merged `cc9efe8`)
+demoted to an internal wire format once it converged on "model writes dialect code that
+calls library cells," resolved by a fuzzy linker + structured cross-check — wrong branch.
+And validation belongs as a compiler/renderer pass (can't be forgotten to call), not a
+library cell (can be) — wrong layer. Redirected instead to the two concrete gaps PlanFix's
+own findings actually named: a missing wide-comparison family (its row89 escalation traced
+to a width miss) and a floor sibling for the one fraction cell that only had an exact
+variant (its defer-division finding: models routinely write `x*9/10`-shaped reasoning that
+doesn't divide evenly). Category E (average/mixture) was deferred entirely, per the user's
+steer — "aggregates... speculative, no escalation in the analysis names them" — parked
+pending real M3 campaign trace evidence, consistent with this file's standing
+"math-campaign growth paused pending M3" policy.
+
+**Wave 4, slice 1/5 — width/precision gap-fill (244 cells).** `is_lt_u32`, `is_gt_u32`,
+`is_le_u32`, `is_ge_u32` — wide siblings completing the u16 predicates pack's
+`is_lt`/`is_le`/`is_gt`/`is_ge` family (only `eq`'s wide sibling, `answer_eq_u32`, existed
+before this slice); state cells (`{a: u32, b: u32}`), matching `min_u32`/`max_u32`'s shape.
+`frac_of_whole_floor` — sibling of `frac_of_whole`: identical struct shape (`n, d, whole,
+result: u32`), but skips the exact-division check (`result = mul_checked_u32(n, whole) /
+d`, floor instead of exact-or-escalate) — the same triad relationship
+`div_exact_u32`/`div_floor_u32`/`div_ceil_u32` already established, applied to a
+fraction-of-whole shape that previously only had the exact variant. Authored after
+confirming (commit `41666fc`, landed same day) that two-`u32`-parameter calls now work —
+`mul_checked_u32`/`add_checked_u32`/`gcd_u32` are shared prelude kernels rather than
+per-cell-inlined loops, simplifying every cell in this wave that touches checked wide
+arithmetic. Gate: 244 admitted, 0 refused. Full test suite green (four hardcoded
+cell-count pins in `cell80/tests/cell.rs` updated 239→244, the same recurring
+maintenance the project's git history already shows every prior wave needing), cold
+clippy clean, codegen golden regenerated (purely additive — five new entries, no existing
+cell's bytes changed). Retrieval (`examples/retrieval_compare`, tf-idf live path): 239-cell
+baseline direct 82% / paraphrase 34% / adversarial 56% / overall 60% → 244 cells direct
+81% / paraphrase 33% / adversarial 56% / overall 60% — a ~1-point direct/paraphrase wobble
+within the noise this file's own checkpoints have repeatedly called out as a natural
+denominator effect, not a regression worth pausing over.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

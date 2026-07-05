@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (239 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (244 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -9,7 +9,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 
 See `docs/library-growth.md` for the packs' purpose, the contribution rule, and the admission gate that enforces "no behavioural duplicates."
 
-## predicates (10)
+## predicates (14)
 
 | id | signature | summary |
 |---|---|---|
@@ -23,6 +23,10 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `nonzero` | `run(x: u16) -> u16` | Returns 1 if x is nonzero, else 0. |
 | `is_even` | `run(x: u16) -> u16` | Returns 1 if x is even, else 0. |
 | `is_odd` | `run(x: u16) -> u16` | Returns 1 if x is odd, else 0. |
+| `is_lt_u32` | `IsLtWide::run() -> u16` | Returns 1 if a < b (strictly less than) at wide u32 width, else 0 — the wide sibling of is_lt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
+| `is_gt_u32` | `IsGtWide::run() -> u16` | Returns 1 if a > b (strictly greater than) at wide u32 width, else 0 — the wide sibling of is_gt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
+| `is_le_u32` | `IsLeWide::run() -> u16` | Returns 1 if a <= b (at most) at wide u32 width, else 0 — the wide sibling of is_le (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
+| `is_ge_u32` | `IsGeWide::run() -> u16` | Returns 1 if a >= b (at least) at wide u32 width, else 0 — the wide sibling of is_ge (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 
 ## safe-arith (9)
 
@@ -346,31 +350,32 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 
-## fractions (21)
+## fractions (22)
 
 | id | signature | summary |
 |---|---|---|
-| `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via an inline Euclidean GCD (no shared gcd_u32 helper — a two-u32-param function still can't cross a call boundary, so the loop is duplicated in every fraction cell that needs it). |
-| `frac_add` | `FracAdd::run() -> u16` | Add two fractions na/da + nb/db, reduced to lowest terms via an inline GCD. |
-| `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via an inline GCD. |
-| `frac_mul` | `FracMul::run() -> u16` | Multiply two fractions na/da * nb/db, reduced to lowest terms via an inline GCD. |
-| `frac_div` | `FracDiv::run() -> u16` | Divide two fractions (na/da) / (nb/db) = (na*db)/(da*nb), reduced to lowest terms via an inline GCD. |
+| `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via the shared gcd_u32 kernel — a two-u32-param call (first arg rides HL:DE, second rides the stack; docs 10 §Calls), so the Euclidean loop lives once in the prelude instead of inlined in every fraction cell. |
+| `frac_add` | `FracAdd::run() -> u16` | Add two fractions na/da + nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_mul` | `FracMul::run() -> u16` | Multiply two fractions na/da * nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_div` | `FracDiv::run() -> u16` | Divide two fractions (na/da) / (nb/db) = (na*db)/(da*nb), reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_cmp` | `FracCmp::run() -> u16` | Compare two fractions na/da vs nb/db via cross-multiplication (works on unreduced fractions, e.g. 1/2 vs 2/4): 0 if less, 1 if equal, 2 if greater. |
 | `frac_eq` | `FracEq::run() -> u16` | Returns 1 if two fractions na/da and nb/db are equal, else 0 — via cross-multiplication, so unreduced-but-equivalent fractions (e.g. 1/2 vs 2/4) still compare equal without needing to reduce first. |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
-| `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via an inline GCD (num=0, den=1 if n divides evenly by d). |
+| `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `frac_reciprocal` | `FracReciprocal::run() -> u16` | Reciprocal of a fraction n/d: swaps to d/n. Escalates (halt 0xFF06, out_of_domain) if n == 0 (a zero fraction has no reciprocal) or d == 0 (not a valid fraction to begin with). |
 | `frac_of_whole` | `FracOfWhole::run() -> u16` | A fraction of a whole number, computed exactly: n/d * whole, escalating if it doesn't divide evenly (a wrong-plan signal — e.g. "3/4 of 20" should be exact for a grade-school word problem) or if the multiply overflows. |
-| `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via an inline GCD — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
+| `frac_of_whole_floor` | `FracOfWholeFloor::run() -> u16` | A fraction of a whole number, rounded down: floor(n/d * whole) — the floor sibling of frac_of_whole (which escalates if the result isn't exact). Never escalates on an inexact split (e.g. "90% of 23" is a real, non-exact GSM8K-style shape, unlike "3/4 of 20"); still escalates if the multiply overflows. |
+| `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
 | `frac_min` | `FracMin::run() -> u16` | The smaller of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
 | `frac_max` | `FracMax::run() -> u16` | The larger of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
 | `frac_is_proper` | `FracIsProper::run() -> u16` | Returns 1 if a fraction n/d is proper (n < d, i.e. less than one whole), else 0. Escalates (halt 0xFF06, out_of_domain) if d == 0. |
-| `frac_add_whole` | `FracAddWhole::run() -> u16` | Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via an inline GCD. |
+| `frac_add_whole` | `FracAddWhole::run() -> u16` | Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
-| `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via an inline GCD. |
-| `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via an inline GCD. |
+| `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 
 ## combinatorics (6)
 
