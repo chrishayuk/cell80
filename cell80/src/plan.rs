@@ -532,7 +532,8 @@ impl CellHost {
     pub fn solve(&mut self, plans: &[Plan], budget: u64) -> Result<SolveReport, String> {
         let mut outcomes: Vec<PlanOutcome> = Vec::new();
         // (plan idx, handle, normalized plan, id→slot, target slot)
-        let mut live: Vec<(usize, usize, Plan, HashMap<String, String>, String)> = Vec::new();
+        type Live = (usize, usize, Plan, HashMap<String, String>, String);
+        let mut live: Vec<Live> = Vec::new();
         for (i, plan) in plans.iter().enumerate() {
             // The unit base-scale table first (money → cents, unknown nouns →
             // count, …) — deterministic, recorded, versioned in the compiler.

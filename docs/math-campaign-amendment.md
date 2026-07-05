@@ -52,7 +52,14 @@ code-form extraction, the cross-check gate, and `correct_via_solve` accounting e
 *The centre of the plan. One pass, one place, both extraction paths converge through it.*
 
 After parse, before hashing and codegen, a deterministic normalization pass over the
-`syn::File` (`rustz80/src/lib.rs:108` is the anchor point):
+`syn::File` (`rustz80/src/canon.rs`). *Anchor-point correction (2026-07-06):* the
+artifact hash covers the manifest's `source_hash`, which is computed over raw source
+**text** (`cell80/src/cartridge.rs`), so the pass is invoked text→text at the top of
+`Cartridge::compile` — canonicalizing only the AST fed to codegen would leave two
+differently-spelled twins hashing differently and H-M3 unmeasurable. Two strengths:
+`Light` (dialect normalizer only, byte-stable when nothing fires — the default, so
+hand-authored library cells keep their hashes and their named-args ABI) and `Full`
+(everything below — the compose/campaign path and the plan renderer):
 
 - **Alpha-rename** every binding to canonical slots (`q0, q1, …` for declared quantities,
   `v0, v1, …` for derived values) **in dataflow order** — order of first use in the
@@ -93,9 +100,20 @@ and logged as such.
 
 ### M2.6 — width + dialect normalizer (the two mechanical escalations)
 
-- **Width-aware compilation:** default composed cells to `u32` return, auto-widen when
-  any literal or intermediate bound exceeds `u16::MAX`, and prefer `_u32` overloads in
-  linker resolution. Kills the row89 class (`88000/11` — correct plan, overflowed width).
+*Rescoped 2026-07-05 (review): the width fix is built as **compile-time constant
+folding with static width inference** — the stronger form. Constant subexpressions
+fold exactly (`88000/11` → `8000` at compile time, no runtime width to overflow);
+what the folded constants require decides the lane statically; exact-division
+violations on constants are typed compile errors, not runtime kills; and folded
+constants canonicalize harder, so more structurally-identical plans hash identically.
+Diagnostics are **typed** (`rustz80/src/diag.rs`): stable `E*` codes with a span-free
+message and `suggested_fix`, the normalizer keyed off codes rather than string
+matching, and repair rows carry the codes so the M3 taxonomy is a query, not a grep.*
+
+- **Width-aware compilation:** default composed cells to `u32` return
+  (`wide_default`), auto-widen when any literal or folded constant exceeds
+  `u16::MAX` (`E0301`), and record `E0503 wide_call` so linker resolution prefers
+  `_u32` overloads. Kills the row89 class (`88000/11` — correct plan, overflowed width).
 - **Dialect normalizer** (same pass family as M2.5): trailing-`let` → tail expression
   (row93), strip statement macros, bind compound call-arguments to `let`, collapse
   redundant parens.
@@ -223,6 +241,20 @@ not a score. MATH/AIME remain gated behind this readout.
 M2.5 and M2.6 are one worktree (same pass family). M2.7 and M2.8 can run in parallel with
 M2.9. Nothing in M3 starts until every M2.5 acceptance test is green and the M2.6
 prediction has been checked against the 20-slice.
+
+**Status (2026-07-06, branch `feat/canonicalization-m25`):** M2.5 has landed —
+`rustz80::canon` + `rustz80::diag`, plan renderer emits q/v slots natively
+(blocklist demoted to impossibility-by-construction), `Cartridge::compile`
+canonicalizes text-level, and **all seven acceptance tests are green**
+(`cell80/tests/canon_acceptance.rs`, `rustz80/tests/canon.rs`). The M2.6
+compiler half has landed (constant folding, static width inference, typed
+diagnostics, dialect normalizer) and the library slice is covered — wave 4
+supplied most of it; `sum4` and `scale_percent_u32` fill the last gaps
+(258 admitted, 0 refused). Cross-language defer-division parity
+(Python-`ast` arm vs direct-Rust) and the **registered M2.6 yield prediction
+(gemma4 80% → ≥90% at unchanged 100% precision)** still need model runs —
+they are the first two items of M2.8, not silently skipped. The retrieval
+curve after the new slice has not been re-measured yet either.
 
 ---
 

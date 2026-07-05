@@ -578,3 +578,7 @@
 {"id": "parts_sum_to_total4_u32-para-1", "query": "do these four cost categories actually add up to the stated grand total", "expected": "parts_sum_to_total4_u32", "category": "paraphrase"}
 {"id": "nonnegative_after_delta-direct-1", "query": "would applying a signed delta to a value keep it nonnegative", "expected": "nonnegative_after_delta", "category": "direct"}
 {"id": "nonnegative_after_delta-para-1", "query": "can we subtract this much from the remaining budget without going below zero", "expected": "nonnegative_after_delta", "category": "paraphrase"}
+{"id": "sum4-direct-1", "query": "sum of four values", "expected": "sum4", "category": "direct"}
+{"id": "sum4-para-1", "query": "add four numbers together into one total", "expected": "sum4", "category": "paraphrase"}
+{"id": "scale_percent_u32-direct-1", "query": "take a percent of a wide 32-bit value", "expected": "scale_percent_u32", "category": "direct"}
+{"id": "scale_percent_u32-para-1", "query": "compute a percentage of a large total beyond 65535 without overflow", "expected": "scale_percent_u32", "category": "paraphrase"}

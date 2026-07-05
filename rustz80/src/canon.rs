@@ -744,7 +744,7 @@ impl<'a> FnCanon<'a> {
             if init.diverge.is_some() {
                 return soft("let-else");
             }
-            let mut id = c.build(&init.expr).map_err(|e| e)?;
+            let mut id = c.build(&init.expr)?;
             id = c.scale_const(id, &name);
             c.env.insert(name.clone(), id);
             c.let_names.push((name, id));
