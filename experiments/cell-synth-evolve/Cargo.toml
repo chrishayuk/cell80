@@ -1,0 +1,15 @@
+# Experiment: can genetic search (mutation + selection over candidate cell chains) discover
+# algorithms that cell80's existing A*/Hamming-heuristic synthesizer (cell80::synth) struggles
+# with? Reuses cell80::{Op, Plan, synthesize} directly for an apples-to-apples comparison on
+# the same op representation and the same acceptance criterion (reproduce every example).
+[package]
+name = "cell-synth-evolve"
+description = "Experiment: genetic search over cell chains vs cell80's A* synthesizer."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cell80 = { path = "../../cell80" }

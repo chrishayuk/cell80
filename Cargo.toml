@@ -5,7 +5,7 @@
 # on a flat-RAM Z80 with no ROM/ULA/I/O. `cell80-py` (PyO3) keeps its own workspace.
 [workspace]
 resolver = "2"
-members = ["z80", "z80-tests", "rustz80", "cell80"]
+members = ["z80", "z80-tests", "rustz80", "cell80", "experiments/cell80-life", "experiments/cell-synth-evolve"]
 
 [workspace.package]
 edition = "2021"

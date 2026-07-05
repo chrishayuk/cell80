@@ -1,0 +1,15 @@
+{
+  "id": "decay_test_4",
+  "initial_energy": 100,
+  "decay_amount": 4,
+  "repro_threshold": 200,
+  "repro_give_pct": 50,
+  "genes": {
+    "decay": "sub_sat",
+    "hungry_promoter": "is_gt",
+    "eat": "add_sat",
+    "sense_move": "argmax3",
+    "repro_promoter": "is_ge",
+    "split": "discount_percent"
+  }
+}

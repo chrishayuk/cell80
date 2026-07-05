@@ -1,0 +1,16 @@
+# Cell80 Life: a minimal grid-world prototype where organism behaviour is driven by real
+# `.cell` cartridges (compiled from the existing cell80 stdlib), not plain Rust closures.
+# Design/status notes: ../cell80-life.md — speculative, not on the cell80 roadmap.
+[package]
+name = "cell80-life"
+description = "Experiment: organisms driven by real .cell cartridges as genes/promoters."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cell80 = { path = "../../cell80" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
