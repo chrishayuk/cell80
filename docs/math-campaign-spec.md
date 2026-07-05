@@ -220,6 +220,12 @@ Pre-registered hypotheses, with kill criteria:
 Honest limits: cells fix arithmetic, not reading — extraction remains the bottleneck;
 GSM-Symbolic fragility is partly a *reading* failure no executor repairs; MATH/AIME remain
 helper-territory, out of scope, gated. The word "ace" does not appear in this spec's claims.
+This is no longer just asserted: `experiments/gsm8k-small-model-pilot-findings.md` tested it
+against `granite4.1:3b` directly (20 problems, single-shot extraction into the real
+`cell80 solve` — 15% correct; one repair round, cell-eval's own repair.py philosophy reused
+— 30% combined), with every non-comprehension failure landing as a clean, named `render`/CLI
+rejection rather than a silent wrong number. Not M3, but the first real data point on the
+bottleneck this paragraph names.
 
 ## Sequencing gates
 
