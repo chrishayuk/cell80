@@ -19,7 +19,7 @@ PACKS = {
     "percent": ["percent", "permille", "ratio_255", "scale_percent", "increase_percent", "discount_percent", "within_percent"],
     "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3", "argmax3_u32", "argmin3_u32"],
     "bit/mask": ["popcount", "parity", "bit_is_set", "set_bit", "clear_bit", "toggle_bit", "mask_has_all", "mask_has_any", "mask_union", "mask_intersection", "mask_xor"],
-    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product", "is_prime_u32", "mod_inverse", "crt_solve_pair"],
+    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "triangular_inverse_exact", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product", "is_prime_u32", "mod_inverse", "crt_solve_pair"],
     "distance": ["abs_diff", "manhattan", "chebyshev", "euclid_sq"],
     "bit-encoding": ["low_byte", "high_byte", "swap_bytes", "rotl16", "rotr16", "reverse_bits", "leading_zeros", "trailing_zeros", "bit_length"],
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
@@ -41,7 +41,7 @@ PACKS = {
     "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_of_whole_floor", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
     "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32", "fibonacci_checked_u32", "catalan_number", "derangement_count"],
     "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid"],
-    "sequences": ["arithmetic_series_sum", "geometric_series_sum"],
+    "sequences": ["arithmetic_series_sum", "geometric_series_sum", "arithmetic_nth_u32", "geometric_nth_checked_u32", "consecutive_sum_start"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;

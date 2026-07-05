@@ -177,8 +177,18 @@ wave 4b   249 cells   + wave 4, slice 2/5 — scoring/choice generalization:
                         choose_lowest_cost2/choose_highest_profit2 as tags
                         rather than shipping four near-identical cells) —
                         see the pack note below.
-next      ~260+        + wave 4 slices 3-5 (sequences nth-term,
-                        verifier-ranker gap-fill, agentic-runtime
+wave 4c   253 cells   + wave 4, slice 3/5 — sequences nth-term gap-fill:
+                        arithmetic_nth_u32/geometric_nth_checked_u32 (the
+                        missing single-term siblings of
+                        arithmetic_series_sum/geometric_series_sum, which
+                        only ever summed the whole sequence),
+                        triangular_inverse_exact (the missing inverse of
+                        triangular), and consecutive_sum_start (one
+                        step-parameterized cell replacing the original
+                        proposal's separate odd/even "consecutive sum"
+                        variants) — see the pack note below.
+next      ~260+        + wave 4 slices 4-5 (verifier-ranker gap-fill,
+                        agentic-runtime
                         reflexes — see the pack note below);
                         cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
@@ -1046,6 +1056,29 @@ adversarial 56% / overall 60% → 249 cells direct 79% / paraphrase 33% / advers
 overall 59% — direct ticked down ~2 points, paraphrase/adversarial held flat; consistent
 with the natural-denominator wobble this file's checkpoints have repeatedly measured as
 noise rather than a real collision (no new same-shape sibling was introduced this slice).
+
+**Wave 4, slice 3/5 — sequences nth-term gap-fill (253 cells).** `arithmetic_nth_u32` —
+`start + step*(n-1)`, 1-indexed, checked (via the shared `mul_checked_u32`/
+`add_checked_u32` prelude kernels); the missing single-term sibling of
+`arithmetic_series_sum` (which only ever summed the whole sequence) — cross-checked
+directly against that cell's own test sequence (3,5,7,9,11): the 5th term is 11, matching.
+`geometric_nth_checked_u32` — `start * ratio^(n-1)` via direct iterative multiplication
+(never materializing `ratio^(n-1)` itself, the same escalate-no-earlier-than-necessary
+design `geometric_series_sum` already uses); cross-checked against that cell's own test
+sequence (2,6,18,54): the 4th term is 54. `triangular_inverse_exact` — solves
+`n*(n+1)/2 = x` for `n` by incremental summation (`t = t + n` each step) rather than a
+`sqrt(8x+1)`-based closed form: the latter would overflow `u16` well within `triangular`'s
+own domain (`8*8192+1` already exceeds 65535, while `triangular`'s own max input is 361),
+so the incremental approach was chosen specifically to avoid an intermediate overflow the
+closed form can't dodge without a wide field. `consecutive_sum_start` — one
+step-parameterized cell (`n`, `sum`, `step`) solving `first = (sum - step*n*(n-1)/2) / n`;
+replaces the original proposal's two separately-named odd/even "consecutive sum" variants
+(the same `unit_scale_exact`/`weighted_sum2`-style generalization already established
+elsewhere in this wave and the library at large). Gate: 253 admitted, 0 refused. Full test
+suite green (cell-count pins 249→253), cold clippy clean, codegen golden regenerated
+(purely additive). Retrieval: 249-cell baseline direct 79% / paraphrase 33% / adversarial
+56% / overall 59% → 253 cells direct 79% / paraphrase 34% / adversarial 56% / overall 58%
+— stable, no meaningful movement on any split.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

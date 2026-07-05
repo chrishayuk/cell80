@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (249 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (253 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -107,7 +107,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 
-## number-theory (30)
+## number-theory (31)
 
 | id | signature | summary |
 |---|---|---|
@@ -124,6 +124,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `num_digits` | `run(n: u16) -> u16` | Number of decimal digits of n (0 has 1 digit). |
 | `factor_count` | `run(n: u16) -> u16` | Number of positive divisors of n (0 for n == 0). |
 | `triangular` | `run(n: u16) -> u16` | nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361). |
+| `triangular_inverse_exact` | `run(x: u16) -> u16` | Solve n*(n+1)/2 = x for n, the exact inverse of triangular: given a triangular number x, return which n produced it. Escalates if x isn't triangular (a wrong-plan signal, e.g. GSM8K's "how many rows" problems). Domain matches triangular's own (n <= 361, x <= 65341). |
 | `next_pow2` | `run(n: u16) -> u16` | Smallest power of two >= n (0 if it would exceed 65535; next_pow2(0) = 1). |
 | `is_pow2` | `run(x: u16) -> u16` | Returns 1 if x is a power of two, else 0. |
 | `pow_small` | `run(base: u16, exp: u16) -> u16` | base raised to exp (saturating at 65535). 0^0 = 1. |
@@ -401,12 +402,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `shoelace_area_x2_quad` | `ShoelaceAreaX2Quad::run() -> u16` | Twice the area of a quadrilateral from four integer vertices (x1,y1)..(x4,y4), generalizing shoelace_area_x2's triangle formula to \|x1*(y2-y4) + x2*(y3-y1) + x3*(y4-y2) + x4*(y1-y3)\| — always an integer. Coordinates are unsigned; the four (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same pattern shoelace_area_x2 uses, extended to a fourth term. |
 | `triangle_is_valid` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if three side lengths (a, b, c) form a valid (non-degenerate) triangle, i.e. each side is strictly less than the sum of the other two, else 0. Sums are widened to u32 internally so a large pair (e.g. two sides near 65535) can't wrap past u16 and silently flip the verdict. |
 
-## sequences (2)
+## sequences (5)
 
 | id | signature | summary |
 |---|---|---|
 | `arithmetic_series_sum` | `ArithmeticSeriesSum::run() -> u16` | Sum of the first n terms of an arithmetic sequence starting at a with common difference d: n*(2a + (n-1)*d) / 2 — always an exact integer (the product n*(2a+(n-1)*d) is provably always even), checked for overflow at each step. |
 | `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
+| `arithmetic_nth_u32` | `ArithmeticNthWide::run() -> u16` | The nth term of an arithmetic sequence starting at start with common difference step: start + step*(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of arithmetic_series_sum (which only sums the sequence, not a single term). |
+| `geometric_nth_checked_u32` | `GeometricNthChecked::run() -> u16` | The nth term of a geometric sequence starting at start with ratio ratio: start * ratio^(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of geometric_series_sum (which only sums the sequence, not a single term). Computed by direct iterative multiplication rather than exponentiation, so it escalates exactly when the true term doesn't fit u32, no earlier. |
+| `consecutive_sum_start` | `ConsecutiveSumStart::run() -> u16` | Given n consecutive integers step apart summing to sum, find the first one: first = (sum - step*n*(n-1)/2) / n. Generalizes the "n consecutive integers" and "n consecutive odd/even integers" shapes into one cell via the step parameter (step=1 for consecutive integers, step=2 for consecutive odd/even). Escalates if the split isn't exact or would go negative — a wrong-plan signal. |
 
 ## aliases (4)
 

@@ -560,3 +560,13 @@
 {"id": "choose_best2-para-1", "query": "of these two options, which one has the highest profit", "expected": "choose_best2", "category": "paraphrase"}
 {"id": "choose_worst2-direct-1", "query": "pick the value of whichever of two candidates has the lowest score", "expected": "choose_worst2", "category": "direct"}
 {"id": "choose_worst2-para-1", "query": "of these two options, which one costs less", "expected": "choose_worst2", "category": "paraphrase"}
+
+# ── wave 4, slice 3: sequences nth-term gap-fill ──────────────────────────────
+{"id": "arithmetic_nth_u32-direct-1", "query": "the nth term of an arithmetic sequence", "expected": "arithmetic_nth_u32", "category": "direct"}
+{"id": "arithmetic_nth_u32-para-1", "query": "what's the value at position n in an evenly-spaced list starting at a with common difference d", "expected": "arithmetic_nth_u32", "category": "paraphrase"}
+{"id": "geometric_nth_checked_u32-direct-1", "query": "the nth term of a geometric sequence with ratio r", "expected": "geometric_nth_checked_u32", "category": "direct"}
+{"id": "geometric_nth_checked_u32-para-1", "query": "what's the value after doubling or tripling n times starting from a", "expected": "geometric_nth_checked_u32", "category": "paraphrase"}
+{"id": "triangular_inverse_exact-direct-1", "query": "solve n(n+1)/2 = x for n, the inverse of the triangular number", "expected": "triangular_inverse_exact", "category": "direct"}
+{"id": "triangular_inverse_exact-para-1", "query": "how many rows of a triangle add up to this total number of items", "expected": "triangular_inverse_exact", "category": "paraphrase"}
+{"id": "consecutive_sum_start-direct-1", "query": "find the first of n consecutive integers that sum to a given total", "expected": "consecutive_sum_start", "category": "direct"}
+{"id": "consecutive_sum_start-para-1", "query": "five consecutive odd numbers add up to this total, what's the smallest one", "expected": "consecutive_sum_start", "category": "paraphrase"}
