@@ -15,14 +15,21 @@
 //! Not an LLVM backend, no real `core`: codegen uses `HL` as the accumulator, `DE`
 //! as secondary, and a fixed RAM scratch region as the "register file".
 
+mod canon;
 mod codegen;
 mod dce;
+pub mod diag;
 mod inline;
 mod ir;
 mod lower;
 mod tap;
 
+pub use canon::{
+    canonical_unit, canonicalize_source, CanonMode, CanonOptions, CanonOutput, Rename, UnitHint,
+    UNIT_TABLE_VERSION,
+};
 pub use codegen::{codegen_loop, Target};
+pub use diag::{classify_error, Diag, DiagCode, Repair};
 pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
 pub use tap::to_tap;

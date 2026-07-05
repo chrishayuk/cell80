@@ -398,6 +398,7 @@ fn cartridge_roundtrip_and_inspect() {
             entry: None, // resolves to `run`
             limits: Vec::new(),
             scale: None,
+            ..Default::default()
         },
     )
     .unwrap();
@@ -487,6 +488,7 @@ fn cell_host_warm_session() {
                 tags: vec!["state".into()],
                 limits: Vec::new(),
                 scale: None,
+                ..Default::default()
             },
         )
         .unwrap(),
@@ -664,6 +666,7 @@ fn cell_index_search_ranks_by_relevance() {
                 entry: None,
                 limits: Vec::new(),
                 scale: None,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -680,7 +683,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("259 cells"));
+    assert!(listing.contains("range_check") && listing.contains("261 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -744,7 +747,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("259 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("261 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -755,7 +758,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 259, "got: {out}");
+    assert_eq!(cells.len(), 261, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -801,7 +804,7 @@ fn cli_index_gate_over_the_real_library() {
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("259 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("261 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
@@ -1590,6 +1593,7 @@ fn wide_u32_state_field_end_to_end() {
             tags: vec!["state".into()],
             limits: Vec::new(),
             scale: None,
+            ..Default::default()
         },
     )
     .unwrap();

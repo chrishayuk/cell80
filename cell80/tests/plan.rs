@@ -258,10 +258,10 @@ fn solve_leaves_facts_behind() {
     let n = host.export_facts(&mut buf, "m2@test").unwrap();
     assert!(n >= 1);
     let text = String::from_utf8(buf).unwrap();
-    assert!(
-        text.contains("\"f\":{\"lego_price\":1500,\"lego_sets\":13}"),
-        "{text}"
-    );
+    // Since M2.5 the rendered cell's fields are canonical slots (dataflow order:
+    // the mul's operands lego_sets → q0, lego_price → q1); the source names
+    // survive in the solve report's renames, not in the artifact or its facts.
+    assert!(text.contains("\"f\":{\"q0\":13,\"q1\":1500}"), "{text}");
 }
 
 #[test]
@@ -282,28 +282,27 @@ fn plan_parse_rejections() {
         let r = Plan::from_json(bad).and_then(|p| p.render());
         assert!(r.is_err(), "row {i} should reject: {bad}");
     }
-    // Bad identifiers and reassignment die at render.
-    assert!(plan(
-        r#"{"quantities":[{"id":"Self","value":1,"unit":"count"}],"ops":[],"target":"Self"}"#
-    )
-    .render()
-    .is_err());
+    // Reassignment dies at render.
     assert!(plan(
         r#"{"quantities":[{"id":"a","value":1,"unit":"count"}],
             "ops":[["add","a","a","a"]],"target":"a"}"#
     )
     .render()
     .is_err());
-    // Rust's reserved-for-future-use keywords aren't compile errors *today* by coincidence —
-    // `final` slipped through the old blocklist and hit a raw rustc parse error instead of a
-    // clean render-time one (found extracting real GSM8K problems,
-    // `cell80/examples/m3_gsm8k_smoketest.rs`). Now caught at render with a named error.
-    let err = plan(
-        r#"{"quantities":[{"id":"final","value":1,"unit":"count"}],"ops":[],"target":"final"}"#,
-    )
-    .render()
-    .unwrap_err();
-    assert!(err.contains("bad quantity id"), "{err}");
+    // Since M2.5, identifier safety is structural: quantities render as slots, so
+    // the `final`-class keyword trap (which the old blocklist patched after it hit
+    // a raw rustc parse error on real GSM8K extractions) is impossible by
+    // construction — reserved words render cleanly and never reach the Rust.
+    for id in ["final", "try", "union", "Self"] {
+        let json = format!(
+            r#"{{"quantities":[{{"id":"{id}","value":1,"unit":"count"}}],"ops":[],"target":"{id}"}}"#
+        );
+        let src = plan(&json).render().unwrap_or_else(|e| {
+            panic!("`{id}` must render cleanly via slots: {e}")
+        });
+        assert!(!src.contains(id), "`{id}` must not reach the source:\n{src}");
+        assert!(src.contains("q0"), "{src}");
+    }
 }
 
 #[test]

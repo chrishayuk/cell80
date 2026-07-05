@@ -73,6 +73,7 @@ fn load_carts() -> Vec<Cartridge> {
                 tags,
                 limits,
                 scale: None,
+                ..Default::default()
             },
         ) {
             Ok(c) => out.push(c),

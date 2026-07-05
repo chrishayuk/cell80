@@ -190,6 +190,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
                     tags,
                     limits,
                     scale,
+                    ..Default::default()
                 },
             )
         })()),
@@ -1081,6 +1082,7 @@ mod tests {
                     entry: None,
                     limits: Vec::new(),
                     scale: None,
+                    ..Default::default()
                 },
             )
             .unwrap(),
