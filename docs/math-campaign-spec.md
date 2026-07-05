@@ -284,27 +284,33 @@ things worth knowing *before* M3 spends real compute on them:
    surviving plan), trading a bit of throughput for the battery actually doing what
    §"The architecture" claims it does.
 
-## A real smoke test (2026-07-05) — 8 genuine GSM8K problems, still not M3
+## A real smoke test (2026-07-05) — 25 genuine GSM8K problems, still not M3
 
-`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 8 rows of
+`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 27 rows of
 `openai/grade-school-math`'s public `test.jsonl`, fetched fresh (not written to match a
-known schema, not cherry-picked), hand-extracted into the plan IR by reading each English
-problem and doing the extraction the spec asks a model to do. **Read the caveats before the
-result** — this is emphatically not M3: one extractor (me, not a 3B model), N=8 not 1,319,
-no distractor/wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What
-it *is*: the first time this project's rendered-plan loop has been checked against problems
-it didn't design, against known ground truth.
+known schema, not cherry-picked, not filtered for ease — see below for the 2 that got
+skipped and why), hand-extracted into the plan IR by reading each English problem and doing
+the extraction the spec asks a model to do. **Read the caveats before the result** — this is
+emphatically not M3: one extractor (me, not a 3B model), N=25 not 1,319, no distractor/
+wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What it *is*: the
+first time this project's rendered-plan loop has been checked against a real, unfiltered
+slice of the benchmark, against known ground truth.
 
-**Result: 8/8 correct**, spanning 2-6 op chains, subtraction, exact percentage math (via
-the `scalar`-unit `mul`-then-`div` pattern — `value * pct / 100`, always exact at these
-problems' numbers), and a rate/time flow (`count_per_time` correctly inverting to `time` on
-division, the Carla download problem). Two hand-perturbed variants (same ids, new numbers —
-James's sprints, the Toulouse/Charleston/Seattle sheep problem) both correctly precipitated
-(`retrieved: true`) and answered correctly — the field-naming finding above applied
-correctly this time, on purpose. None of the 8 distinct problems precipitated against each
-other, as expected (they're genuinely different schemas, not variations of one).
+**Result: 25/25 correct** (started from 27 consecutive rows; 2 skipped as genuinely
+unrepresentable in the current plan IR, not silently dropped — see the third finding
+below), spanning 2-8 op chains: subtraction, exact percentage math (the `scalar`-unit
+`mul`-then-`div` pattern, `value * pct / 100`, exact at every problem's numbers, including
+percent-of-a-percent and reverse-percentage cases), rate/time flows (`count_per_time` and
+`distance_per_time` correctly inverting to `time` on division), and one genuine
+reverse-chain algebra problem (Melanie's vacuum cleaners — "5 left, work backwards to how
+many she started with"). Two hand-perturbed variants (same ids, new numbers — James's
+sprints, the sheep problem) both correctly precipitated (`retrieved: true`) and answered
+correctly. None of the 25 distinct problems precipitated against each other, as expected —
+they're 25 genuinely different problems, not variations of one; H-M3's precipitation curve
+needs a real corpus with real recurring structure to show anything, which 25
+independently-different problems by construction can't provide.
 
-Two things worth carrying into a real M3 design:
+Four things worth carrying into a real M3 design:
 
 - **Genuine ambiguity exists even for a careful extractor.** Josh's house-flip problem
   ("increased the value of the house by 150%") admits two readings — *the increase equals
@@ -323,6 +329,103 @@ Two things worth carrying into a real M3 design:
   needs stated explicitly, not left implicit — I had it because I could reason about the
   renderer's dimension-checker directly; a model extracting blind from problem text alone
   won't reconstruct that convention on its own.
+- **The plan IR has no comparison or decision primitive at all.** Row 16 (a merchant
+  choosing between two investments, "pick whichever profit is bigger") can't be rendered:
+  [`PlanOp`](cell80/src/plan.rs)'s `op` field only accepts `add`/`sub`/`mul`/`div` — there is
+  no `max`/`cmp`/branch opcode, and no way to add one without extending the renderer and its
+  render-time unit checker together. This is a real, not hypothetical, gap: comparison-
+  shaped word problems are a normal GSM8K category, not an edge case. Two paths forward,
+  neither built here: extend the plan IR with a comparison op (more renderer surface, more
+  determinism risk to verify), or detect comparison-shaped problems at the extraction step
+  and route them to library cells directly (`is_gt`, `max`, `choose_best3`) instead of
+  through a rendered plan — the second matches the project's existing division of labor
+  (hand-authored cells for reusable primitives, rendered plans for the arithmetic glue
+  around them) better than growing the IR.
+- **Fractional dollar amounts need a firm cents-always convention, not per-problem
+  judgment.** Whole-dollar problems here used `unit: "money"` meaning dollars; three
+  problems with `$16.50`-style prices (Kyle's book, Marie's pizza, Mishka's clothes) got
+  rescaled to *cents* instead, same unit string, different scale. `render()`'s dimension
+  checker never catches this (it only checks *within* one plan, never compares scale
+  *across* plans), so it compiled and answered correctly every time — but a real corpus
+  mixing both conventions would make any cross-plan "same schema, same units" precipitation
+  comparison meaningless without a single fixed rule (cents, always) applied at extraction,
+  the same lesson the shipped money-bps pack already encodes for the hand-authored cells
+  (`docs/library-growth.md`'s "cents" naming note) but that a plan-extraction prompt has to
+  independently commit to.
+
+## MATH/AIME — scoped ahead of the gate (2026-07-05), not authored
+
+Chris asked to look at the MATH and AIME benchmarks and sketch what math functions a future
+pack would need. The gate above still holds — nothing here is authored or admitted; this is
+the research the spec's own "deferred to demand" line asks for, written down so it doesn't
+have to be redone when M4 actually opens this door.
+
+**What the two benchmarks actually are.** MATH (Hendrycks et al.) is 12,500 competition
+problems (12,000 train / 500 test) across seven subjects — Prealgebra, Algebra, Number
+Theory, Counting & Probability, Geometry, Intermediate Algebra, Precalculus — difficulty 1-5,
+answers frequently fractions, radicals, or symbolic expressions, not bare integers. AIME
+(American Invitational Mathematics Examination) is 15 problems per sitting, two sittings a
+year, and by contest design **every answer is an integer 0-999** — algebra, geometry,
+combinatorics, and number theory, with "find the remainder when N is divided by 1000" as a
+recurring finishing move.
+
+That last fact is the load-bearing one for this dialect: AIME's integer-answer contract
+matches u32-and-no-floats natively; MATH's doesn't. A large fraction of MATH's Precalculus,
+Intermediate Algebra, and much of its Geometry (trig, circles, complex numbers, irrational
+radicals as final answers) fails the same "no floats" rule the GSM8K spec already drew — not
+a new limitation, just one MATH hits far harder than GSM8K ever did. **If this door opens, an
+AIME-shaped pack is the tractable slice; full seven-category MATH mostly isn't**, without a
+much bigger dialect change (rationals-with-irrational-tags, at minimum) than anything this
+project has scoped.
+
+**Category-by-category, against the existing 213-cell library** (`docs/cell-index.md`):
+
+- **Number theory — the biggest real gap.** `gcd`/`gcd3`/`lcm`/`lcm3`/`is_coprime`/
+  `is_prime`/`isqrt`/`digit_sum`/`num_digits`/`pow_mod` already exist, but `pow_mod`'s
+  `m <= 256` ceiling (u16 domain, the intermediate squared value must fit u16, i.e.
+  `m*m <= 65535`) is too small for AIME's mod-1000 finishing move — a `pow_mod_u32` (u32
+  width, intermediate squared value as u32, supports `m` up to ~65535) is the single
+  highest-value candidate here. Alongside it: `mod_add_u32`/`mod_sub_u32`/`mod_mul_u32`,
+  `is_prime_u32` (wide sibling, same reasoning as `gcd_u32`), `count_divisors`,
+  `sum_divisors`, `euler_totient`, `smallest_prime_factor`, `digit_reverse`,
+  `digit_product`. `mod_inverse` (extended Euclid) and `crt_solve_pair` (two-congruence
+  Chinese Remainder) are real AIME techniques but noticeably more complex to author
+  correctly — stretch items, not a first slice.
+- **Counting & Probability — the second real gap.** Nothing like `factorial`, `choose`
+  (nCr), or `permute` (nPr) exists yet. `factorial_checked_u32` escalates past `n=12`
+  (`13!` overflows u32); `choose_u32`/`permute_u32` need the multiplicative
+  running-division formula (`result = result * (n-k+i) / i`, exact at every step) to avoid
+  overflowing before reducing, the same overflow-avoidance shape `frac_reduce`'s inline
+  GCD already models. Probability itself likely doesn't need new cells — it's
+  `choose`/`factorial` composed through the existing `frac_*` pack.
+- **Prealgebra / Algebra — mostly already covered.** These overlap heavily with the GSM8K
+  packs (checked arithmetic, fractions, money/bps). The one AIME-flavored addition is
+  Vieta's formulas (a quadratic's root sum/product as `-b/a`/`c/a`) — but that's `frac_div`
+  composed with existing checked ops, a plan-level composition, not a new cell.
+- **Geometry — partially tractable, integer-coordinate only.** `dist_sq` (avoids `isqrt`
+  for problems that only ever compare or sum squared distances) and `shoelace_area_x2`
+  (twice a polygon's area from integer vertices — always an integer, unlike the raw area)
+  are plausible; Pythagorean-triple checks (`a*a+b*b==c*c`) are composable from existing
+  `mul`/`add`/`eq`, the same call `is_perfect_square` already gets (compose, don't
+  author). Anything needing π, trig, or a non-right triangle's exact area is out.
+- **Intermediate Algebra / Precalculus — mostly out of dialect.** Symbolic polynomial
+  roots, trigonometric identities, complex numbers, and irrational final answers all fail
+  the no-floats rule outright. Same deferral the original spec already gave the
+  "polynomial mini-pack."
+
+**Net candidate list, if/when M4 opens this door** — number theory: `pow_mod_u32`,
+`mod_add_u32`/`mod_sub_u32`/`mod_mul_u32`, `is_prime_u32`, `count_divisors`,
+`sum_divisors`, `euler_totient`, `smallest_prime_factor`, `digit_reverse`, `digit_product`;
+combinatorics: `factorial_checked_u32`, `choose_u32`, `permute_u32`; geometry: `dist_sq`,
+`shoelace_area_x2` — roughly 15 cells, all AIME-shaped, none requiring a dialect change,
+smaller and more tractable than the original ~95-cell GSM8K estimate. It should start from
+an AIME-only corpus, not full MATH's seven categories.
+
+**This changes nothing about the gate.** `docs/library-growth.md`'s "math-cell growth
+pauses here on purpose" still holds — the campaign's own mechanism for further growth is
+precipitation (M3), not more hand-guessed candidates, and this list is exactly that:
+guessed, not demonstrated. It's written down so the research doesn't have to be redone, not
+as permission to start authoring.
 
 ## The one-sentence version
 
