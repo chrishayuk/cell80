@@ -25,6 +25,12 @@ pub(crate) struct FieldDef {
     /// access through the 32-bit nodes at `field_base + i*4`. (`width` is `DWord`
     /// with `slots = 2N` — distinguished from a scalar `u32`'s `slots = 2` by this.)
     pub(crate) wide_len: Option<usize>,
+    /// `Some(name)` for a **nested struct** field (`sprite: Sprite`): the field
+    /// occupies `struct_slots(name)` consecutive slots holding the sub-struct's own
+    /// fields, and `struct_ty` names it so `s.sprite.x` can drill in (offsets sum
+    /// down the chain, `width`/`slots` come from the leaf). A struct field is never
+    /// loaded whole — access always terminates in a scalar/`u32`/array leaf.
+    pub(crate) struct_ty: Option<String>,
 }
 
 /// Struct layouts: name → fields in declaration order. A field occupies `slots`
@@ -112,11 +118,28 @@ fn field_def(
     let name = f.ident.as_ref().unwrap().to_string();
     let mut packed_len = None;
     let mut wide_len = None;
+    let mut struct_ty = None;
     let (slots, elem_struct, width) = match &f.ty {
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
         syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
         syn::Type::Path(p) if p.path.is_ident("i16") => (1, None, Width::SWord),
+        // A **nested struct** field (`sprite: Sprite`) — the field is the sub-struct's
+        // whole layout, `struct_slots(sub)` consecutive slots. The element struct must
+        // be defined earlier (same ordering rule as `[Cell; N]`); a path that names no
+        // known struct (a scalar `u16`/`bool`, an enum, or an erased generic `T`) stays
+        // a single 16-bit slot.
+        syn::Type::Path(p)
+            if p.path
+                .get_ident()
+                .and_then(|i| structs.get(&i.to_string()))
+                .is_some() =>
+        {
+            let sname = p.path.get_ident().unwrap().to_string();
+            let sub = &structs[&sname];
+            struct_ty = Some(sname);
+            (struct_slots(sub), None, Width::Word)
+        }
         syn::Type::Path(_) => (1, None, Width::Word),
         // `[u8; N]` — **byte-packed** (Phase S §2.3): N bytes in ceil(N/2) slots, so
         // an output buffer costs its own size, not double. Access is byte-addressed.
@@ -182,6 +205,7 @@ fn field_def(
         width,
         packed_len,
         wide_len,
+        struct_ty,
     })
 }
 

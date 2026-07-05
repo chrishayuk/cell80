@@ -442,11 +442,18 @@ ROM), but only inside a narrow envelope. Each item is a concrete blocker found w
 SDK kit; the `file:line` is `rustz80` 0.5.0. These sit **below the agent-tool arc above** (the
 eval is the gate, not VM/compiler features) but are tracked here since the compiler lives here.
 
-- **Nested struct fields + field-of-field access** (`self.sprite.x`, a game-state field that is
-  itself a struct). Blocked at `lower/layout.rs:103` (a `Type::Path` field is always 1 slot — no
-  struct recursion) and `lower/expr.rs:235` (*"nested struct fields are not supported"*). This is
-  the gate on the whole composable kit — `Sprite`/`Actor`/`TileMap`/`Hud` as fields. Today only a
-  `[Struct; N]` element array carries sub-structure (`a[i].x` via `elem_field_addr`).
+- **Nested struct fields + field-of-field access — ✓ done.** `self.sprite.x` (and `a.b.c.d` to
+  any depth). A struct-typed field lays out as its sub-struct's whole slot range
+  (`FieldDef::struct_ty`, `lower/layout.rs`), field access recurses down the chain summing offsets
+  to a scalar/`u32` leaf (`field_target` in `lower/expr.rs`, `FieldRef::field_struct`), and nested
+  struct literals initialise the sub-fields (`store_struct_literal` in the new `lower/struct_init.rs`,
+  recursive). Reading/assigning a *whole* struct field is a named error — access must reach a leaf.
+  The composable kit shape works: `Sprite`/`Actor`/`TileMap`/`Hud` as fields, `&mut self` methods
+  drilling in, `u32` leaves wide, and an array field *inside* a nested struct (`g.hud.cells[i]`,
+  composes for free through the recursive `field_target`). Diff-tested against rustc on both targets
+  (`tests/diff/nested_structs.rs`, 8 cases + rejections). **Follow-on:** a nested struct field
+  *inside* a struct-array element (`actors[i].pos.x`) — the `[Cell; N]` initialiser and
+  `elem_field_addr` step only one field level; guarded with a named error, not a silent one-word read.
 - **Wider persisted struct fields — `u32` and signed `i16`. ✓ done.** A `u32` field lays out
   as two consecutive little-endian slots (`layout.rs`, `Width::DWord` — the ABI-v2 wide
   typed-state lane, drivable/readable by name at full width) and `i16` fields carry
@@ -521,9 +528,9 @@ chuk-speccy is now on 0.6:*
   tape. *Follow-up:* return a `Result` instead of panicking, and extend the guard to `codegen_program`.
 
 *Already in 0.5/0.6 (the SDK is now on 0.6):* `&mut self` methods that mutate through the receiver,
-`+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (Re-verify the remaining *frontend*
-asks above — nested struct fields, signed/`u32` fields, `[u8; N]` *fields* — against the current
-compiler; `&CONST→addr` is done, see above.)
+`+=`, `for` ranges, local `[u8; N]`, structs/enums/methods. (The remaining *frontend* asks above —
+nested struct fields, signed/`u32` fields, `[u8; N]` *fields*, `&CONST→addr` — are now all ✓ done;
+the one open follow-on is a nested struct field *inside* a struct-array element, `actors[i].pos.x`.)
 
 ### Design rule for SOMA / RL: cost is a **gate**, not a gradient
 Keep `cycles`/`trapped_ops` as **constraints** — gate trap-heavy cells out, halt on budget —

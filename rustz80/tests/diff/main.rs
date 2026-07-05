@@ -35,6 +35,7 @@ mod functions;
 mod generics;
 mod inline;
 mod misc;
+mod nested_structs;
 mod peephole;
 mod recursion;
 mod signed;

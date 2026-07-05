@@ -53,6 +53,16 @@ pub(crate) fn elem_field_addr(
                 "u32 field `{fname}` of a struct-array element is not supported yet"
             ));
         }
+        // A *nested struct* field of a struct-array element (`actors[i].pos.x`) is a
+        // follow-on: the element-address path only steps one field level, and the
+        // `[Cell; N]` initialiser doesn't build nested-struct elements. Reject clearly
+        // rather than read the field's first word as if it were a scalar.
+        if f.struct_ty.is_some() {
+            return Err(format!(
+                "nested struct field `{fname}` of a struct-array element is not supported \
+                 yet — access one field level (`a[i].x`) or flatten the element"
+            ));
+        }
     }
     let foff = field_offset(&efields, &fname)?;
     let stride = (struct_slots(&efields) * 2) as u16;
@@ -543,25 +553,59 @@ struct FieldRef {
     /// `Some(N)` — a `[u32; N]` field: element `i` is the 4-byte value at
     /// `field_base + i*4`. See `FieldDef::wide_len`.
     wide_len: Option<usize>,
+    /// `Some(name)` — a **nested struct** field (`sprite: Sprite`): `s.sprite.x`
+    /// drills into `name`'s layout. A `FieldRef` whose `field_struct` is set points at
+    /// a whole sub-struct, not a scalar — the read/store paths reject that and ask for
+    /// a leaf field. See `FieldDef::struct_ty`.
+    field_struct: Option<String>,
 }
 
-/// Resolve `obj.field` (and a tuple element of a struct field, `obj.field.N`).
+/// Resolve a field access: `obj.field`, a tuple element (`obj.field.N`), or a field of
+/// a **nested struct** field (`obj.sprite.x`, any depth). Offsets sum down the chain;
+/// `base`/`is_ptr` come from the outermost path receiver, the leaf's `width`/`slots`
+/// from the innermost field.
 fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
-    // `obj.field.N` — a tuple element (one slot) at the field's offset + N.
+    // A nested base (`obj.field.…`): resolve the inner field, then step into it.
     if let syn::Expr::Field(inner) = &*f.base {
-        let syn::Member::Unnamed(idx) = &f.member else {
-            return Err("nested struct fields are not supported".into());
-        };
         let r = field_target(inner, ctx)?;
-        return Ok(FieldRef {
-            off: r.off + idx.index as usize,
-            slots: 1,
-            width: Width::Word,
-            elem_struct: None,
-            packed_len: None,
-            wide_len: None,
-            ..r
-        });
+        return match &f.member {
+            // `obj.field.N` — a tuple element (one slot) at the field's offset + N.
+            syn::Member::Unnamed(idx) => Ok(FieldRef {
+                off: r.off + idx.index as usize,
+                slots: 1,
+                width: Width::Word,
+                elem_struct: None,
+                packed_len: None,
+                wide_len: None,
+                field_struct: None,
+                ..r
+            }),
+            // `obj.sprite.x` — a field of a nested struct field: drill into the
+            // sub-struct's layout. `base`/`is_ptr` stay the outermost receiver's.
+            syn::Member::Named(id) => {
+                let sub = r.field_struct.as_ref().ok_or_else(|| {
+                    format!(
+                        "`.{id}` has no such field — the value before it is not a nested struct"
+                    )
+                })?;
+                let fields = ctx
+                    .struct_fields(sub)
+                    .ok_or_else(|| format!("unknown struct {sub}"))?;
+                let name = id.to_string();
+                let foff = field_offset(&fields, &name)?;
+                let fd = fields.iter().find(|d| d.name == name);
+                Ok(FieldRef {
+                    off: r.off + foff,
+                    slots: fd.map_or(1, |d| d.slots),
+                    width: fd.map_or(Width::Word, |d| d.width),
+                    elem_struct: fd.and_then(|d| d.elem_struct.clone()),
+                    packed_len: fd.and_then(|d| d.packed_len),
+                    wide_len: fd.and_then(|d| d.wide_len),
+                    field_struct: fd.and_then(|d| d.struct_ty.clone()),
+                    ..r
+                })
+            }
+        };
     }
     let obj = path_ident(&f.base)?;
     let (base, sname, is_ptr) = ctx
@@ -583,6 +627,7 @@ fn field_target(f: &syn::ExprField, ctx: &mut Ctx) -> Result<FieldRef, String> {
         elem_struct: fd.and_then(|d| d.elem_struct.clone()),
         packed_len: fd.and_then(|d| d.packed_len),
         wide_len: fd.and_then(|d| d.wide_len),
+        field_struct: fd.and_then(|d| d.struct_ty.clone()),
     })
 }
 
@@ -951,6 +996,11 @@ fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<(Expr, Width), 
         ));
     }
     let r = field_target(f, ctx)?;
+    if let Some(sub) = &r.field_struct {
+        return Err(format!(
+            "a `{sub}` struct field isn't a scalar — read one of its fields (`s.field.x`)"
+        ));
+    }
     if r.wide_len.is_some() {
         return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i]`)".into());
     }
@@ -1002,6 +1052,11 @@ pub(crate) fn lower_field_store(
         ));
     }
     let r = field_target(f, ctx)?;
+    if let Some(sub) = &r.field_struct {
+        return Err(format!(
+            "a `{sub}` struct field isn't a scalar — assign one of its fields (`s.field.x = v`)"
+        ));
+    }
     if r.wide_len.is_some() {
         return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i] = v`)".into());
     }

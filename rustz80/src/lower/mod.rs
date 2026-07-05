@@ -18,6 +18,7 @@ mod generics;
 pub(crate) mod layout;
 mod prelude;
 mod stmt;
+mod struct_init;
 mod vars;
 
 pub use prelude::PreludeConfig;
