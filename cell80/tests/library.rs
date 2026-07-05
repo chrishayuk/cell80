@@ -2718,3 +2718,130 @@ fn wave4_width_precision_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
+    // Wave 4, slice 2: scoring/choice generalization — wide siblings of argmax3/argmin3/
+    // is_clear_winner (past the u16 ceiling), and the 2-candidate siblings of choose_best3
+    // for the common two-option case. choose_lowest_cost2/choose_highest_profit2 from the
+    // original ~100-cell proposal were folded into choose_worst2/choose_best2's own tags
+    // rather than shipped as four near-identical cells.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // argmax3_u32 / argmin3_u32: exercised past the u16 ceiling.
+    assert_eq!(
+        step(
+            "argmax3_u32",
+            "Argmax3Wide",
+            &[("a", 100_000), ("b", 200_000), ("c", 150_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "argmax3_u32",
+            "Argmax3Wide",
+            &[("a", 100_000), ("b", 100_000), ("c", 100_000)]
+        ),
+        0 // tie -> lowest index
+    );
+    assert_eq!(
+        step(
+            "argmin3_u32",
+            "Argmin3Wide",
+            &[("a", 300_000), ("b", 100_000), ("c", 200_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "argmin3_u32",
+            "Argmin3Wide",
+            &[("a", 100_000), ("b", 100_000), ("c", 100_000)]
+        ),
+        0 // tie -> lowest index
+    );
+
+    // clear_winner_u32: margin decisive; margin not met; malformed (top < second).
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 200_000), ("second", 100_000), ("margin", 50_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 150_000), ("second", 100_000), ("margin", 100_000)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 100_000), ("second", 150_000), ("margin", 10)]
+        ),
+        0
+    );
+
+    // choose_best2 / choose_worst2: b wins, a wins, and the tie -> a convention.
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+        ),
+        100 // tie -> a
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+        ),
+        100 // tie -> a
+    );
+}

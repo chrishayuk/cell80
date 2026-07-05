@@ -169,9 +169,17 @@ wave 4a   244 cells   + wave 4, slice 1/5 — width/precision gap-fill,
                         and frac_of_whole_floor (the floor sibling of
                         frac_of_whole, which only had the exact-or-escalate
                         variant) — see the pack note below.
-next      ~260+        + wave 4 slices 2-5 (scoring/choice generalization,
-                        sequences nth-term, verifier-ranker gap-fill,
-                        agentic-runtime reflexes — see the pack note below);
+wave 4b   249 cells   + wave 4, slice 2/5 — scoring/choice generalization:
+                        argmax3_u32/argmin3_u32/clear_winner_u32 (wide
+                        siblings past the u16 ceiling) and choose_best2/
+                        choose_worst2 (the 2-candidate siblings of
+                        choose_best3, absorbing the original proposal's
+                        choose_lowest_cost2/choose_highest_profit2 as tags
+                        rather than shipping four near-identical cells) —
+                        see the pack note below.
+next      ~260+        + wave 4 slices 3-5 (sequences nth-term,
+                        verifier-ranker gap-fill, agentic-runtime
+                        reflexes — see the pack note below);
                         cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -1021,6 +1029,23 @@ baseline direct 82% / paraphrase 34% / adversarial 56% / overall 60% → 244 cel
 81% / paraphrase 33% / adversarial 56% / overall 60% — a ~1-point direct/paraphrase wobble
 within the noise this file's own checkpoints have repeatedly called out as a natural
 denominator effect, not a regression worth pausing over.
+
+**Wave 4, slice 2/5 — scoring/choice generalization (249 cells).** `argmax3_u32`/
+`argmin3_u32` — wide siblings of `argmax3`/`argmin3` (state cells, `{a, b, c: u32}` →
+index, ties → lowest index, matching the u16 originals' convention). `clear_winner_u32` —
+wide sibling of `is_clear_winner` (`{top, second, margin: u32}`), same malformed-call
+handling (`top < second` → not a clear winner). `choose_best2`/`choose_worst2` — 2-candidate
+siblings of `choose_best3` (`{val_a, score_a, val_b, score_b}`, ties → `val_a`); the original
+~100-cell proposal's `choose_lowest_cost2`/`choose_highest_profit2` were folded into these
+two cells' tags rather than shipped as two more near-identical cells (`choose_best2` already
+*is* "highest profit wins"; `choose_worst2` already *is* "lowest cost wins" — same formula,
+different name, the exact case the admission gate exists to catch). Gate: 249 admitted, 0
+refused. Full test suite green (cell-count pins 244→249), cold clippy clean, codegen golden
+regenerated (purely additive). Retrieval: 244-cell baseline direct 81% / paraphrase 33% /
+adversarial 56% / overall 60% → 249 cells direct 79% / paraphrase 33% / adversarial 56% /
+overall 59% — direct ticked down ~2 points, paraphrase/adversarial held flat; consistent
+with the natural-denominator wobble this file's checkpoints have repeatedly measured as
+noise rather than a real collision (no new same-shape sibling was introduced this slice).
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

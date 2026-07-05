@@ -548,3 +548,15 @@
 {"id": "is_ge_u32-para-1", "query": "has a large running total reached or passed a target", "expected": "is_ge_u32", "category": "paraphrase"}
 {"id": "frac_of_whole_floor-direct-1", "query": "a fraction of a whole number, rounded down instead of requiring an exact split", "expected": "frac_of_whole_floor", "category": "direct"}
 {"id": "frac_of_whole_floor-para-1", "query": "90 percent of 23 items, rounding down since it doesn't split evenly", "expected": "frac_of_whole_floor", "category": "paraphrase"}
+
+# ── wave 4, slice 2: scoring/choice generalization ────────────────────────────
+{"id": "argmax3_u32-direct-1", "query": "index of the largest of three values at wide 32-bit width", "expected": "argmax3_u32", "category": "direct"}
+{"id": "argmax3_u32-para-1", "query": "which of three large money totals in cents is the biggest", "expected": "argmax3_u32", "category": "paraphrase"}
+{"id": "argmin3_u32-direct-1", "query": "index of the smallest of three values at wide 32-bit width", "expected": "argmin3_u32", "category": "direct"}
+{"id": "argmin3_u32-para-1", "query": "which of three large money totals in cents is the smallest", "expected": "argmin3_u32", "category": "paraphrase"}
+{"id": "clear_winner_u32-direct-1", "query": "is the top score a decisive win over the second-best at wide 32-bit width", "expected": "clear_winner_u32", "category": "direct"}
+{"id": "clear_winner_u32-para-1", "query": "does the leading large total beat the runner-up by a real margin, not basically tied", "expected": "clear_winner_u32", "category": "paraphrase"}
+{"id": "choose_best2-direct-1", "query": "pick the value of whichever of two candidates has the highest score", "expected": "choose_best2", "category": "direct"}
+{"id": "choose_best2-para-1", "query": "of these two options, which one has the highest profit", "expected": "choose_best2", "category": "paraphrase"}
+{"id": "choose_worst2-direct-1", "query": "pick the value of whichever of two candidates has the lowest score", "expected": "choose_worst2", "category": "direct"}
+{"id": "choose_worst2-para-1", "query": "of these two options, which one costs less", "expected": "choose_worst2", "category": "paraphrase"}

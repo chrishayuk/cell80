@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (244 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (249 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -71,7 +71,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `discount_percent` | `run(value: u16, pct: u16) -> u16` | Decrease a value by pct percent: value - value*pct/100 (0 if pct >= 100). |
 | `within_percent` | `run(actual: u16, target: u16, pct: u16) -> u16` | Returns 1 if actual is within pct percent of target (\|actual-target\|*100 <= target*pct). |
 
-## ranking-stats (13)
+## ranking-stats (15)
 
 | id | signature | summary |
 |---|---|---|
@@ -88,6 +88,8 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mode3` | `run(a: u16, b: u16, c: u16) -> u16` | Mode of three values: the value that repeats (ties/all-distinct → the first, a). |
 | `majority3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if at least two of three values are equal, else 0. |
 | `midrange3` | `run(a: u16, b: u16, c: u16) -> u16` | Midrange of three values: (min + max) / 2. |
+| `argmax3_u32` | `Argmax3Wide::run() -> u16` | Index (0, 1, or 2) of the largest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmax3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
+| `argmin3_u32` | `Argmin3Wide::run() -> u16` | Index (0, 1, or 2) of the smallest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmin3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
 
 ## bit/mask (11)
 
@@ -180,7 +182,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `percent_to_byte` | `run(p: u16) -> u16` | Convert a 0..100 percent to a 0..255 byte scale: p*255/100. |
 | `byte_to_percent` | `run(b: u16) -> u16` | Convert a 0..255 byte scale to a 0..100 percent: b*100/255. |
 
-## scoring/choice (6)
+## scoring/choice (9)
 
 | id | signature | summary |
 |---|---|---|
@@ -190,6 +192,9 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `weighted_sum3` | `WeightedSum3::run() -> u16` | Weighted sum of three inputs with caller-supplied weights: a*wa + b*wb + c*wc. Sibling of weighted_sum/weighted_sum_wide (fixed weights 1, 2, 3) generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
 | `choose_best3` | `ChooseBest3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the highest score (ties → lowest index, matching argmax3's convention) — distinct from argmax3, which assumes the value and the score are the same number. |
 | `is_clear_winner` | `run(top: u16, second: u16, margin: u16) -> u16` | Returns 1 if the top score beats the second-best by at least margin (a decisive win, not a near-tie), else 0 — including when top < second (a malformed call, treated as no clear winner). |
+| `clear_winner_u32` | `ClearWinnerWide::run() -> u16` | Returns 1 if the top score beats the second-best by at least margin at wide u32 width, else 0 — including when top < second (a malformed call, treated as no clear winner) — the wide sibling of is_clear_winner (which works over u16 and can't compare scores beyond 65535, e.g. money totals in cents). |
+| `choose_best2` | `ChooseBest2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the highest score (ties -> lowest index, matching choose_best3's convention) — the 2-candidate sibling of choose_best3, for the common case of only two options (e.g. "which of these two candidates has the highest profit"). |
+| `choose_worst2` | `ChooseWorst2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the lowest score (ties -> lowest index, matching choose_best2's convention) — the inverse-comparison sibling of choose_best2, for the common "which of these two costs less" shape. |
 
 ## calendrical/checksum (4)
 
