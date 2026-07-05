@@ -149,3 +149,66 @@ fn byte_string_rejections() {
         .unwrap();
     assert!(err.contains("b'a'"), "unexpected: {err}");
 }
+
+#[test]
+fn byte_bitwise_high_half_correct() {
+    // The 8-bit lane: a `u8` bitwise op skips the (dead) high-byte half, relying on the
+    // trailing `LD H,0` mask. Checked against rustc across bit patterns, chains, and a
+    // wrapping-add-fed operand (`wrapping_add` avoids the const-overflow the oracle would
+    // reject) — the low byte is all that's kept, and it matches every time.
+    check!({
+        let a = 0xABu8;
+        let b = 0xCDu8;
+        (a & b) as u16 // 0x89
+    });
+    check!({
+        let a = 0xF0u8;
+        let b = 0x0Fu8;
+        (a | b) as u16 // 0xFF
+    });
+    check!({ (0xABu8 ^ 0xCDu8) as u16 });
+    // A wrapping add feeding a mask — the byte path the pixel/coord code exercises.
+    check!({
+        let a = 200u8;
+        let b = 100u8;
+        let s = a.wrapping_add(b); // 44
+        (s & 0x0Fu8) as u16 // 12
+    });
+    // Chained byte bitwise — every intermediate is a byte op that skips its high half.
+    check!({
+        let a = 0xABu8;
+        let b = 0xCDu8;
+        let c = 0x0Fu8;
+        ((a ^ b) & c | 0x10u8) as u16
+    });
+}
+
+#[test]
+fn byte_bitwise_skips_high_half() {
+    // Fired-proof: after the low-byte op (`LD L,A` = 0x6F) a **u8** bitwise goes straight
+    // to the byte mask (`LD H,0` = 0x26 0x00), whereas a **u16** bitwise computes the
+    // high half (`LD A,H` = 0x7C next). The `0x6F, 0x26, 0x00` window is the skip.
+    let byte_code = rustz80::compile_program(
+        "fn f(a: u8, b: u8) -> u8 { a & b } fn run() -> u16 { f(1u8, 2u8) as u16 }",
+    )
+    .unwrap()
+    .code;
+    let word_code = rustz80::compile_program(
+        "fn f(a: u16, b: u16) -> u16 { a & b } fn run() -> u16 { f(1u16, 2u16) }",
+    )
+    .unwrap()
+    .code;
+    let has = |code: &[u8], win: &[u8]| code.windows(win.len()).any(|w| w == win);
+    assert!(
+        has(&byte_code, &[0x6F, 0x26, 0x00]),
+        "u8 bitwise should skip the high half (LD L,A; LD H,0)"
+    );
+    assert!(
+        has(&word_code, &[0x6F, 0x7C]),
+        "u16 bitwise must keep the high half (LD L,A; LD A,H)"
+    );
+    assert!(
+        !has(&word_code, &[0x6F, 0x26, 0x00]),
+        "u16 bitwise must not carry the byte-mask skip window"
+    );
+}

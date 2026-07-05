@@ -60,9 +60,9 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     }
                     _ => gen_divmod(a, l, r, true),
                 },
-                BinOp::Or => gen_bitwise(a, l, r, 0xB3, 0xB2), // OR E / OR D
-                BinOp::And => gen_bitwise(a, l, r, 0xA3, 0xA2), // AND E / AND D
-                BinOp::Xor => gen_bitwise(a, l, r, 0xAB, 0xAA), // XOR E / XOR D
+                BinOp::Or => gen_bitwise(a, l, r, 0xB3, 0xB2, *w), // OR E / OR D
+                BinOp::And => gen_bitwise(a, l, r, 0xA3, 0xA2, *w), // AND E / AND D
+                BinOp::Xor => gen_bitwise(a, l, r, 0xAB, 0xAA, *w), // XOR E / XOR D
                 // Shift by a constant amount (RHS is always a literal).
                 BinOp::Shl => {
                     gen_expr(a, l);
@@ -678,7 +678,7 @@ pub(super) fn gen_add_offset(a: &mut Asm, off: usize) {
 
 /// `HL = left <op> right` (16-bit, byte-wise), where `op_e`/`op_d` are the
 /// `OP E` / `OP D` opcodes (commutative, so operand order is irrelevant).
-pub(super) fn gen_bitwise(a: &mut Asm, l: &Expr, r: &Expr, op_e: u8, op_d: u8) {
+pub(super) fn gen_bitwise(a: &mut Asm, l: &Expr, r: &Expr, op_e: u8, op_d: u8, w: Width) {
     gen_expr(a, l);
     a.push(R16::Hl); // PUSH HL
     gen_expr(a, r);
@@ -686,9 +686,14 @@ pub(super) fn gen_bitwise(a: &mut Asm, l: &Expr, r: &Expr, op_e: u8, op_d: u8) {
     a.fx(&[0x7D]); // LD A,L
     a.fx(&[op_e]); // OP E
     a.fx(&[0x6F]); // LD L,A
-    a.fx(&[0x7C]); // LD A,H
-    a.fx(&[op_d]); // OP D
-    a.fx(&[0x67]); // LD H,A
+                   // A `u8` bitwise result is always < 256, so the caller's trailing `mask_to_width`
+                   // (`LD H,0`) supplies the correct high byte — computing `H OP D` here is dead work.
+                   // Skip it for `Width::Byte` (the 8-bit lane): three bytes saved per byte bitwise op.
+    if w != Width::Byte {
+        a.fx(&[0x7C]); // LD A,H
+        a.fx(&[op_d]); // OP D
+        a.fx(&[0x67]); // LD H,A
+    }
 }
 
 /// Evaluate so that `HL = second`, `DE = first` (the operand layout the runtime

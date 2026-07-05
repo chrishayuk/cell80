@@ -363,9 +363,18 @@ was no seam for a quality pass. **The seam and the first peephole shipped** (roa
   consumer analysis — the `LD DE,…` direct form is kept for the commutative-add literal case).
   **−994 bytes (−4.3 %) across 111 of 117 corpus images.** Every rule shipped the two tests the
   DoD demands: a rustc-oracle diff case and a fired-proof shape assertion.
-- **8-bit path (follow-on, behind the seam).** `u8` ops compute in 16-bit `HL` + mask today;
-  computing in `A` is a size win for chuk-speccy byte code and pairs with the `[u8; N]` field ask.
-  The seam is in; peephole can clean the H/L splits at the boundaries.
+- **8-bit path (follow-on, behind the seam) — first slice ✓.** `u8` ops compute in 16-bit `HL` +
+  mask; the win is chuk-speccy byte code (the cell stdlib is 0% `u8` — measured, all u16/u32), so
+  this is a games-side size play, not a cell80 one. **Shipped:** width-aware **byte-bitwise high-half
+  elision** — a `u8` `&`/`|`/`^` result is always `< 256`, and every byte operand already reaches
+  `gen_bitwise` with `H = 0` (literals `< 256`, `Trunc`/`Peek`/byte loads / byte ops all end `LD H,0`),
+  so the high-byte half (`LD A,H; OP D; LD H,A`) computed `0 OP 0 = 0` then got masked — pure dead
+  work. Skipped for `Width::Byte` (`codegen/expr.rs::gen_bitwise`), −3 bytes per byte bitwise op;
+  `showcase/draw` 586 → 583, the whole stdlib byte-identical (golden). Diff-tested vs rustc + a
+  fired-proof shape assertion (`tests/diff/bytes.rs`). **Parked (the bigger win):** a full
+  A-accumulator evaluator for chained byte arithmetic (avoids the per-op `PUSH HL`/`POP DE` spill) —
+  a larger, riskier rewrite of the HL-accumulator core, deferred until it can be measured end-to-end
+  in a byte-heavy chuk-speccy build. Byte add/sub already compute the low byte optimally in `HL`.
 - **Next rules worth ranking:** window-spanning leaf pairs (the `ptr_elem_addr` shape — the
   pop is separated from the push by an effect-free span), `INC HL`/`DEC HL` strength-reduction
   for `± 1`/`± 2` literals (flags differ from `ADD` — needs the no-flag-consumer argument made
