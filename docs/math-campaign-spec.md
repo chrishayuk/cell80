@@ -284,35 +284,40 @@ things worth knowing *before* M3 spends real compute on them:
    surviving plan), trading a bit of throughput for the battery actually doing what
    §"The architecture" claims it does.
 
-## A real smoke test (2026-07-05) — 73 genuine GSM8K problems, still not M3
+## A real smoke test (2026-07-05) — 123 genuine GSM8K problems, still not M3
 
-`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 77 rows of
+`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 127 rows of
 `openai/grade-school-math`'s public `test.jsonl` (fetched via the raw file directly after
 a lossy summarizing fetch started truncating past ~20-40 rows — not written to match a
 known schema, not cherry-picked, not filtered for ease — see below for the 4 that got
 skipped and why), hand-extracted into the plan IR by reading each English problem and doing
 the extraction the spec asks a model to do. **Read the caveats before the result** — this is
-emphatically not M3: one extractor (me, not a 3B model), N=73 not 1,319, no distractor/
+emphatically not M3: one extractor (me, not a 3B model), N=123 not 1,319, no distractor/
 wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What it *is*: a
 meaningfully larger, still fully-verified check of this project's rendered-plan loop against
 a real, unfiltered, consecutive slice of the benchmark.
 
-**Result: 73/73 correct** (started from 77 consecutive rows; 4 skipped as genuinely
+**Result: 123/123 correct** (started from 127 consecutive rows; 4 skipped as genuinely
 unrepresentable in the current plan IR, not silently dropped — see the findings below —
-a ~95% representability rate on this slice), spanning 2-8 op chains: subtraction, exact
+a ~97% representability rate on this slice), spanning 2-10 op chains: subtraction, exact
 percentage math (the `scalar`-unit `mul`-then-`div` pattern, `value * pct / 100`, exact at
 every problem's numbers, including percent-of-a-percent and reverse-percentage cases),
 rate/time flows (`count_per_time` and `distance_per_time` correctly inverting to `time` on
 division), several reverse-chain algebra problems (Melanie's vacuum cleaners, Gretchen's
 coins, Candice's post-its — "work backwards from the ending state to the starting
-quantity"), and one genuinely fiddly unit-rescale (Uriah's book bag: quarter-pound units
+quantity"), two closed-form system-of-equations problems (the football team's wins/losses,
+Marilyn and Harald's records — a two-variable system collapses to one division once you
+substitute by hand during extraction, without the plan IR ever needing to "solve" for
+anything), and one genuinely fiddly unit-rescale (Uriah's book bag: quarter-pound units
 resolve `0.25lb`/`0.5lb` exactly, the same fixed-base-scale lesson as the cents convention,
 generalized to weight). Two hand-perturbed variants (same ids, new numbers — James's
 sprints, the sheep problem) both correctly precipitated (`retrieved: true`) and answered
-correctly. None of the 73 distinct problems precipitated against each other, as expected —
-they're 73 genuinely different problems, not variations of one; H-M3's precipitation curve
+correctly. None of the 123 distinct problems precipitated against each other, as expected —
+they're 123 genuinely different problems, not variations of one; H-M3's precipitation curve
 needs a real corpus with real recurring structure to show anything, which independently-
-different problems can't provide by construction, however many of them there are.
+different problems can't provide by construction, however many of them there are. Notably,
+the newest 50-row batch (rows 78–127) hit **zero** unrepresentable problems — a sign the 4
+known gaps below are real but not frequent, not that they've been outgrown.
 
 Five things worth carrying into a real M3 design:
 

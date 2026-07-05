@@ -284,11 +284,13 @@ strictly by sequence; the library grows by eval need:
    test-driving found the original short-circuit would've accepted a coincidental agreement,
    the same failure class as the documented `min`/`median3` register-0 coincidence, without
    ever stress-testing it). Surfaced everywhere: CLI `cell80 solve`, `cell80-py`'s `solve()`,
-   MCP's `cell_solve`. **A 77-row, unfiltered, consecutive slice of the real GSM-8K test
-   set — not hand-crafted, not cherry-picked — solved 73/73 (4 skipped as genuinely
-   unrepresentable, ~95% representability)** through it (`cell80/examples/
+   MCP's `cell_solve`. **A 127-row, unfiltered, consecutive slice of the real GSM-8K test
+   set — not hand-crafted, not cherry-picked — solved 123/123 (4 skipped as genuinely
+   unrepresentable, ~97% representability)** through it (`cell80/examples/
    m3_gsm8k_smoketest.rs`), real evidence beyond synthetic cases that the loop answers
-   correctly end to end at meaningful scale. Findings from that smoke test: the plan IR has
+   correctly end to end at meaningful scale. The newest 50-row batch (rows 78-127) hit zero
+   unrepresentable problems — the 4 known gaps are real but not frequent, not outgrown.
+   Findings from that smoke test: the plan IR has
    no comparison/decision opcode at all (a "pick whichever is bigger" problem can't be
    rendered — not yet acted on); fractional-dollar amounts need a firm cents-always
    convention (found, then **fixed** — every money quantity in the smoke test now rescales
