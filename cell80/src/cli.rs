@@ -22,6 +22,8 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell facts import <file.facts> <dir> [--verify-fraction F] [--quarantine] [--json]\n  \
      rustz80-cell facts verify <file.facts> <dir> [--json]  (re-execute every line; CI-able)\n  \
      rustz80-cell solve <plans.json> [--cycles N] [--json]  (render/compile/verify candidate plans)\n  \
+     rustz80-cell compose <dir> <src.rs> [<src2.rs> ...] [--args a,b,..] [--cycles N] [--facts <file>] [--json]\n  \
+     \x20                                        (canonicalize + link against the library + run; N sources = the agreement gate)\n  \
      safety (sandboxed by default): [--allow-raw-memory] [--allow-ports] \
      [--max-code-bytes N] [--max-touched N]";
 
@@ -116,6 +118,7 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
         Some("graph") => cmd_graph(&args[1..]),
         Some("facts") => cmd_facts(&args[1..]),
         Some("solve") => cmd_solve(&args[1..]),
+        Some("compose") => cmd_compose(&args[1..]),
         Some("keygen") => cmd_keygen(&args[1..]),
         Some("sign") => cmd_sign(&args[1..]),
         Some(other) => Err(format!("unknown command `{other}`\n{USAGE}")),
@@ -624,6 +627,112 @@ fn cmd_serve(args: &[String]) -> Result<String, String> {
 /// quantities as state fields, and is killed on any escalate/halt; disagreeing
 /// survivors face the counterfactual battery. `plans.json` is one plan object or
 /// an array of candidates.
+/// `compose <dir> <src.rs> [<src2.rs> ...] [--args a,b,..] [--cycles N] [--facts f] [--json]`
+/// — the M2.9 verb: canonicalize each source (Full, wide lane), link unknown calls
+/// against the library in `<dir>`, compile, run with `--args`, and gate: one source
+/// composes, several sources must agree (unanimous / majority-flagged / escalate).
+/// With `--facts`, the accepted runs' fact rows are written out — composed answers
+/// become re-verifiable procedural memory.
+fn cmd_compose(args: &[String]) -> Result<String, String> {
+    let dir = args.first().ok_or(USAGE)?;
+    let mut sources: Vec<&String> = Vec::new();
+    let mut run_args: Vec<u16> = Vec::new();
+    let mut cycles = DEFAULT_CYCLES;
+    let mut facts_out: Option<&String> = None;
+    let mut json = false;
+    let mut it = args[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--args" => {
+                run_args = parse_args(it.next().ok_or("--args needs a,b,..")?)?;
+            }
+            "--cycles" => {
+                cycles = it
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .ok_or("--cycles needs a number")?
+            }
+            "--facts" => facts_out = Some(it.next().ok_or("--facts needs a path")?),
+            "--json" => json = true,
+            other if other.starts_with("--") => return Err(format!("unknown flag `{other}`")),
+            _ => sources.push(a),
+        }
+    }
+    if sources.is_empty() {
+        return Err("compose needs at least one source file".into());
+    }
+    let mut host = host_from_dir(dir)?;
+    host.set_cache(true);
+    let cells_dir = std::path::Path::new(dir);
+    let mut outcomes: Vec<crate::compose::DerivationOutcome> = Vec::new();
+    for path in &sources {
+        let src = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+        let outcome = match crate::compose::compose(&host, cells_dir, &src) {
+            Ok(comp) => crate::compose::run_composed(&mut host, comp, &run_args, cycles)?,
+            Err(e) => crate::compose::DerivationOutcome {
+                answer: None,
+                kill: Some(e),
+                artifact: None,
+                resolutions: Vec::new(),
+                repairs: Vec::new(),
+                retrieved: false,
+            },
+        };
+        outcomes.push(outcome);
+    }
+    let answers: Vec<Option<u64>> = outcomes.iter().map(|o| o.answer).collect();
+    let (answer, agreement, flagged) = crate::compose::agreement(&answers);
+    if let (Some(path), Some(_)) = (facts_out, answer) {
+        let mut buf = Vec::new();
+        host.export_facts(&mut buf, "compose@cell80")
+            .map_err(|e| format!("facts export: {e}"))?;
+        std::fs::write(path, &buf).map_err(|e| format!("{path}: {e}"))?;
+    }
+    Ok(if json {
+        use serde_json::json;
+        json!({
+            "answer": answer,
+            "agreement": agreement,
+            "flagged": flagged,
+            "derivations": outcomes.iter().zip(&sources).map(|(o, s)| json!({
+                "source": s,
+                "answer": o.answer,
+                "kill": o.kill,
+                "artifact": o.artifact,
+                "retrieved": o.retrieved,
+                "resolutions": o.resolutions.iter()
+                    .map(|(n, id)| json!({"call": n, "cell": id}))
+                    .collect::<Vec<_>>(),
+                "repairs": o.repairs,
+            })).collect::<Vec<_>>(),
+        })
+        .to_string()
+    } else {
+        match answer {
+            Some(a) => {
+                let mut out = format!(
+                    "answer: {a} ({agreement}{})",
+                    if flagged { ", flagged for audit" } else { "" }
+                );
+                for (o, s) in outcomes.iter().zip(&sources) {
+                    for (n, id) in &o.resolutions {
+                        out += &format!("\n  {s}: `{n}` -> {id}");
+                    }
+                }
+                out
+            }
+            None => {
+                let kills: Vec<String> = outcomes
+                    .iter()
+                    .zip(&sources)
+                    .filter_map(|(o, s)| o.kill.as_ref().map(|k| format!("{s}: {k}")))
+                    .collect();
+                format!("escalate — no agreement\n{}", kills.join("\n"))
+            }
+        }
+    })
+}
+
 fn cmd_solve(args: &[String]) -> Result<String, String> {
     let file = args.first().ok_or(USAGE)?;
     let mut cycles = DEFAULT_CYCLES;

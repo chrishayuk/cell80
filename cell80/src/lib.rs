@@ -17,6 +17,7 @@ pub const DEFAULT_CYCLES: u64 = 2_000_000;
 mod admission;
 mod cartridge;
 mod cli;
+pub mod compose;
 mod config;
 mod facts;
 mod fast;

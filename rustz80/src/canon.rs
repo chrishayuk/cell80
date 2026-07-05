@@ -984,13 +984,28 @@ impl<'a> FnCanon<'a> {
                     fresh(&mut lines, rhs)
                 }
                 Node::Call { name, args } => {
-                    let rhs = format!(
-                        "{name}({})",
-                        args.iter()
-                            .map(|d| atom_of[d].clone())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
+                    // Call arguments keep their *natural* width, not the lane width:
+                    // a u16 parameter stays `q0` (no `as u32`) and a small constant
+                    // stays `u16`-suffixed, so a u16 library callee still links in a
+                    // widened lane. A wide v-slot argument stays wide — that callee
+                    // must be a `_u32` overload (the `E0503` story), never a silent
+                    // truncation.
+                    let mut arg_atoms = Vec::with_capacity(args.len());
+                    for d in &args {
+                        let atom = match &c.nodes[*d] {
+                            Node::Param(pos) => format!("q{}", slot_of_param[pos]),
+                            Node::Const(r) => {
+                                if !widened || r.n <= 65535 {
+                                    format!("{}u16", r.n)
+                                } else {
+                                    atom_of[d].clone()
+                                }
+                            }
+                            _ => atom_of[d].clone(),
+                        };
+                        arg_atoms.push(atom);
+                    }
+                    let rhs = format!("{name}({})", arg_atoms.join(", "));
                     fresh(&mut lines, rhs)
                 }
                 Node::Param(_) | Node::Const(_) => unreachable!("leaves are pre-seeded"),

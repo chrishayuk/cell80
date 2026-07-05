@@ -256,6 +256,21 @@ supplied most of it; `sum4` and `scale_percent_u32` fill the last gaps
 they are the first two items of M2.8, not silently skipped. The retrieval
 curve after the new slice has not been re-measured yet either.
 
+**Status (2026-07-06, second slice):** the M2.9 harness half has landed —
+`cell80 compose <dir> <src.rs>…` (`cell80/src/compose.rs`): Full
+canonicalization, the `E0504`-cued link loop (search + arity + a measured
+link-confidence floor of 0.6, lexical containment rescuing the `gcd3`→`gcd`
+class — a nonsense call name is a typed refusal, never a silent guess),
+the registered N-derivation agreement gate (`unanimous` / `majority`+flag /
+`escalate`) as a first-class solve mode, `--facts` provenance for accepted
+answers, and the precipitation counter on composed schemas. Two deliberate
+deltas from the original M2.9 text: composed cells widen **when constants
+demand it** (the fold detection) rather than unconditionally — the library's
+inlinable free-fns are u16, so a blanket-wide lane would unlink every call;
+and the MCP `cell_compose` tool (Python surface) is deferred until the
+campaign harness needs it. Free-fn `_u32` siblings of the state-cell wide
+family are the natural next library slice (legal since two-u32-params).
+
 ---
 
 ## Out of scope, stated so nobody re-litigates it mid-campaign
