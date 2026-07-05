@@ -1007,7 +1007,7 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        assert_eq!(h.len(), 203); // 163 (M1 complete) + 18 checked-arithmetic + 2 money/bps + 11 verifier/ranker + 9 fractions, second slice (docs/library-growth.md)
+        assert_eq!(h.len(), 208); // 203 (second slice) + smag_mul/smag_div, frac_avg2/frac_sub_from_whole, lcm3 — third slice (docs/library-growth.md)
 
         // The library now holds a *distance family* (manhattan/chebyshev/euclid_sq), so a
         // bare "grid distance" is ambiguous; the cell-specific name still resolves.

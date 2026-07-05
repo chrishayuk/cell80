@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (203 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (208 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -101,13 +101,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 
-## number-theory (17)
+## number-theory (18)
 
 | id | signature | summary |
 |---|---|---|
 | `lcm` | `run(a: u16, b: u16) -> u16` | Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain. |
 | `gcd` | `run(a: u16, b: u16) -> u16` | Greatest common divisor (Euclid's algorithm). |
 | `gcd3` | `run(a: u16, b: u16, c: u16) -> u16` | Greatest common divisor of three values. |
+| `lcm3` | `run(a: u16, b: u16, c: u16) -> u16` | Least common multiple of three values. |
 | `divides` | `run(a: u16, b: u16) -> u16` | Returns 1 if a divides b evenly (b % a == 0, a != 0), else 0. |
 | `is_coprime` | `run(a: u16, b: u16) -> u16` | Returns 1 if a and b are coprime (gcd == 1), else 0. |
 | `is_prime` | `run(n: u16) -> u16` | Returns 1 if n is prime, else 0. |
@@ -233,7 +234,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
 
-## checked-arithmetic (26)
+## checked-arithmetic (28)
 
 | id | signature | summary |
 |---|---|---|
@@ -263,6 +264,8 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `smag_add` | `SmagAdd::run() -> u16` | Sign-magnitude add: combine two signed quantities represented as (magnitude, sign) pairs — neg_a/neg_b are 0 (nonnegative) or 1 (negative), since the dialect has no i32 and this is how the math-campaign renderer tracks signed differences at u32 width (docs/math-campaign-spec.md). Escalates on magnitude overflow. |
 | `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
 | `smag_cmp` | `SmagCmp::run() -> u16` | Compare two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add): 0 if a < b, 1 if equal, 2 if a > b — the sign-magnitude counterpart of frac_cmp's ordering-code convention. |
+| `smag_mul` | `SmagMul::run() -> u16` | Multiply two signed values: magnitudes multiply (checked for overflow), sign is same-positive/different-negative (per smag_add). |
+| `smag_div` | `SmagDiv::run() -> u16` | Divide two signed values exactly: magnitudes divide (escalating on a nonzero remainder), sign is same-positive/different-negative (per smag_add). |
 
 ## money-bps (8)
 
@@ -323,7 +326,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 
-## fractions (19)
+## fractions (21)
 
 | id | signature | summary |
 |---|---|---|
@@ -346,6 +349,8 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `frac_is_proper` | `FracIsProper::run() -> u16` | Returns 1 if a fraction n/d is proper (n < d, i.e. less than one whole), else 0. Escalates (halt 0xFF06, out_of_domain) if d == 0. |
 | `frac_add_whole` | `FracAddWhole::run() -> u16` | Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via an inline GCD. |
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
+| `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via an inline GCD. |
+| `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via an inline GCD. |
 
 ## aliases (4)
 

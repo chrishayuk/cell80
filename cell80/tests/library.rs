@@ -1860,3 +1860,97 @@ fn verifier_ranker_wave2_cells_match_defined_behaviour() {
         0
     );
 }
+
+#[test]
+fn math_wave3_cells_match_defined_behaviour() {
+    // GSM8K math-campaign, third slice: completes the sign-magnitude algebra
+    // (smag_add/sub already landed a signed add/subtract; smag_mul/smag_div complete
+    // multiply/divide — sign = same-sign-positive/different-sign-negative, magnitude
+    // multiplied/divided with the pack's usual checked-overflow / exact-division
+    // convention), two more fraction shapes (frac_avg2, frac_sub_from_whole — the
+    // subtract-direction sibling of frac_add_whole), and lcm3 (the number-theory pack's
+    // gcd/gcd3 pairing extended to lcm, inlining gcd's shared-kernel prelude call twice
+    // since `lcm` itself isn't in `CELL_PRELUDE`).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // smag_mul: (-5)*3 = -15; (-4)*(-3) = 12.
+    let (_, _, cell) = step(
+        "smag_mul",
+        "SmagMul",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(15), Some(1)));
+    let (_, _, cell) = step(
+        "smag_mul",
+        "SmagMul",
+        &[("mag_a", 4), ("neg_a", 1), ("mag_b", 3), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(12), Some(0)));
+    let (_, report, _) = step(
+        "smag_mul",
+        "SmagMul",
+        &[("mag_a", 100_000), ("neg_a", 0), ("mag_b", 100_000), ("neg_b", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // smag_div: (-15)/3 = -5; (-12)/(-3) = 4; nonzero remainder escalates.
+    let (_, _, cell) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 15), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+    let (_, _, cell) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 12), ("neg_a", 1), ("mag_b", 3), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(4), Some(0)));
+    let (_, report, _) = step(
+        "smag_div",
+        "SmagDiv",
+        &[("mag_a", 10), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // frac_avg2: (1/2 + 1/3)/2 = 5/12.
+    let (_, _, cell) = step(
+        "frac_avg2",
+        "FracAvg2",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(5), Some(12)));
+
+    // frac_sub_from_whole: 3 - 1/4 = 11/4; 2 - 1/2 = 3/2; going negative escalates.
+    let (_, _, cell) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 3), ("n", 1), ("d", 4)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(11), Some(4)));
+    let (_, _, cell) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 2), ("n", 1), ("d", 2)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(3), Some(2)));
+    let (_, report, _) = step(
+        "frac_sub_from_whole",
+        "FracSubFromWhole",
+        &[("whole", 0), ("n", 1), ("d", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // lcm3: lcm(lcm(4,6),10) = lcm(12,10) = 60.
+    assert_eq!(run_cell("lcm3", &[4, 6, 10]), 60);
+    assert_eq!(run_cell("lcm3", &[2, 3, 5]), 30);
+}

@@ -70,7 +70,7 @@ wave 3m   163 cells   + the GSM8K math campaign, M1 pack 5/5 (final): fractions
                         boundary) landed as Tier 2 (one u32 param per call), so
                         each cell inlines its own GCD-reduction loop rather than
                         sharing a two-u32-param gcd_u32 helper; M1 complete
-now       203 cells   + the GSM8K math campaign, M1 second slice: closing the gap
+wave 3n   203 cells   + the GSM8K math campaign, M1 second slice: closing the gap
                         against the spec's original ~95-cell estimate —
                         checked-arithmetic +18 (mul/mul3/mul_add/mul_sub/pow
                         checked, wide siblings of min/max/clamp/range_check/
@@ -90,6 +90,18 @@ now       203 cells   + the GSM8K math campaign, M1 second slice: closing the ga
                         raw-count gaps against the spec turned out to already be
                         covered, mirroring the score_2factor/bounded_rand
                         precedent) and the retrieval-curve cost this batch paid.
+now       208 cells   + third slice, small and deliberately so: completes the
+                        sign-magnitude algebra (smag_mul/smag_div, alongside
+                        smag_add/sub/cmp), two more fraction shapes (frac_avg2,
+                        frac_sub_from_whole — the subtract-direction sibling of
+                        frac_add_whole), and lcm3 (number-theory's gcd/gcd3
+                        pairing extended to lcm — inlines the shared-kernel
+                        prelude's gcd twice, since lcm itself isn't in
+                        CELL_PRELUDE). A smaller batch than the second slice, on
+                        purpose: the five-way smag_add/sub/cmp/mul/div family
+                        shares near-identical vocabulary and structural shape, a
+                        same-shape sibling confusion no wording fix resolves
+                        (confirmed empirically — see the pack note below).
 next      ~250+        + cosine_score_approx
 ```
 
@@ -629,6 +641,34 @@ fix for the same-shape sibling class this batch created (`min`/`min_u32` differ 
 *structural* shape — free-fn vs state cell — yet type-led's current predicate-intent signal
 doesn't discriminate on it) — wiring it into the live path remains real future work, not
 done here.
+
+**Third slice: small on purpose, and a same-shape sibling limit confirmed empirically.**
+`smag_mul`/`smag_div` complete the sign-magnitude algebra (`smag_add`/`smag_sub`/`smag_cmp`
+already landed add/subtract/compare) — sign combines same-positive/different-negative,
+magnitude multiplies (checked) or divides (exact, escalating on a nonzero remainder, the
+same convention `div_exact_u32` uses). `frac_avg2` (average of two fractions) and
+`frac_sub_from_whole` (the subtract-direction sibling of `frac_add_whole`, escalating
+`halt(0xFF05)` if the result would go negative — the same convention `frac_sub` uses) round
+out the fractions pack. `lcm3` extends number-theory's `gcd`/`gcd3` pairing to `lcm` —
+`CELL_PRELUDE` (`cell80/src/program.rs`) only exposes `gcd` (plus `imin`/`imax`/
+`iabs_diff`/`isqrt`/`clamp_to`), not `lcm`, so `lcm3` inlines `lcm`'s own `a/gcd(a,b)*b`
+formula twice rather than calling a nonexistent prelude function (a real compile error,
+`unknown call target`, caught immediately). All 5 passed the gate and the oracle suite.
+
+Retrieval cost was small and proportionate this time (paraphrase 0.3765 → 0.3593, direct
+0.8294 → 0.8194, adversarial 0.5294 → 0.5000 — a checkpoint-level dip, not a kill-gate
+trip) — *except* `smag_mul`/`smag_div`'s own direct queries, which lose outright to
+`smag_add`/`smag_sub`/`smag_cmp`. Diagnosed before shipping this time (learning from the
+second slice): the five `smag_*` cells share both structural shape (all five-plus-field
+state cells) and a dense, near-identical vocabulary cluster (“signed quantities”,
+“magnitude”, “sign pair”). Tried leading each summary with its distinguishing verb
+(`multiply`/`divide` instead of `combine`) and adding a couple of distinct tags
+(`product`/`times`, `quotient`) — measured zero change. This is the same-shape sibling
+class `examples/retrieval_compare` already names as *not* fixable by wording: no lexical
+signal reliably separates five things that are genuinely the same operation on the same
+inputs, differing only in which one op they perform — the project's own answer for a
+family this confusable by name is `cell80 route` (behavioural routing by I/O example), not
+text search. Kept the (harmless, still more accurate) wording tweak; didn't chase further.
 
 ## Mine the ecosystem first
 
