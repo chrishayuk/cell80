@@ -90,7 +90,7 @@ wave 3n   203 cells   + the GSM8K math campaign, M1 second slice: closing the ga
                         raw-count gaps against the spec turned out to already be
                         covered, mirroring the score_2factor/bounded_rand
                         precedent) and the retrieval-curve cost this batch paid.
-now       208 cells   + third slice, small and deliberately so: completes the
+wave 3o   208 cells   + third slice, small and deliberately so: completes the
                         sign-magnitude algebra (smag_mul/smag_div, alongside
                         smag_add/sub/cmp), two more fraction shapes (frac_avg2,
                         frac_sub_from_whole — the subtract-direction sibling of
@@ -102,7 +102,24 @@ now       208 cells   + third slice, small and deliberately so: completes the
                         shares near-identical vocabulary and structural shape, a
                         same-shape sibling confusion no wording fix resolves
                         (confirmed empirically — see the pack note below).
-next      ~250+        + cosine_score_approx
+now       209 cells   + fourth slice, two cells closing the last small gaps
+                        identified in the five campaign packs: smag_eq (the
+                        sign-magnitude family's missing verifier — completes
+                        the pattern every other checked op got an `_equals`
+                        counterpart) and a ninth unit-dimension code,
+                        rate_count_per_time (count/time — a production-rate
+                        word problem, "N per hour", previously unmodeled,
+                        alongside the wage-rate fix). Retrieval cost negligible
+                        (smag_eq's own direct query hits rank 1). Beyond these
+                        two, further math-cell growth is paused in favor of the
+                        campaign's own intended mechanism: M2/M3 precipitation
+                        via `cell_solve` (in progress, `feat/cell-solve`) — real
+                        problems surface which schemas actually recur, rather
+                        than more speculative hand-authoring.
+next      ~250+        + cosine_score_approx (deferred until cell_solve reads
+                        out; combinatorics/geometry/number-theory extensions
+                        remain explicitly out of scope per
+                        docs/math-campaign-spec.md)
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -669,6 +686,23 @@ signal reliably separates five things that are genuinely the same operation on t
 inputs, differing only in which one op they perform — the project's own answer for a
 family this confusable by name is `cell80 route` (behavioural routing by I/O example), not
 text search. Kept the (harmless, still more accurate) wording tweak; didn't chase further.
+
+**Fourth slice, and a deliberate pause.** Two small, clearly-motivated gap-fills: `smag_eq`
+(equal-value check on `(magnitude, sign)` pairs, canonicalizing negative-zero — the
+sign-magnitude family's missing verifier, since every other checked op from the second
+slice got an `_equals` counterpart but `smag_add/sub/mul/div` had none) and unit-dimension
+code 9, `rate_count_per_time` (`count/time` — "she makes 5 toys an hour," a genuinely
+common GSM8K production-rate shape, extending `same_unit_check`/`unit_mul`/`unit_div`/
+`unit_cancel_check`'s dispatch tables the same way the wage-rate fix did). Retrieval cost
+was negligible (overall P@1 0.6091 → 0.6134; `smag_eq`'s own direct query hits rank 1).
+Beyond these two, math-cell growth pauses here on purpose. `docs/math-campaign-spec.md`
+already scopes further speculative authoring out — combinatorics, geometry, number-theory
+extensions, and contest-math packs are all named as deferred to demand — and the spec's own
+intended mechanism for further growth is **precipitation**: M2/M3 (the plan IR, renderer,
+`cell_solve`) run real problems and admit whatever schemas actually recur, rather than more
+hand-guessed candidates. That work is in progress (`feat/cell-solve`). Every hand-authored
+batch so far has cost real, only partially-recovered retrieval precision; cells with
+demonstrated use are worth that cost, more speculative ones may not be.
 
 ## Mine the ecosystem first
 

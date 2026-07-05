@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (208 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (209 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -284,12 +284,12 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 
 | id | signature | summary |
 |---|---|---|
-| `same_unit_check` | `run(a: u16, b: u16) -> u16` | Unit-compatibility check for adding/subtracting two typed quantities: returns their shared dimension code if the units match, else escalates on a units mismatch (dimension codes documented in docs/library-growth.md, now including 8=rate_money_per_time). |
-| `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time,8=rate_money_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
-| `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `same_unit_check` | `run(a: u16, b: u16) -> u16` | Unit-compatibility check for adding/subtracting two typed quantities: returns their shared dimension code if the units match, else escalates on a units mismatch (dimension codes documented in docs/library-growth.md, now including 8=rate_money_per_time and 9=rate_count_per_time). |
+| `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time,8=rate_money_per_time,9=rate_count_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, count/time=rate_count_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
 | `unit_cancel_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if dividing a numerator-unit quantity by a denominator-unit quantity is dimensionally defined (same rule table as unit_div), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 
-## verifier-ranker (15)
+## verifier-ranker (16)
 
 | id | signature | summary |
 |---|---|---|
@@ -308,6 +308,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `smag_is_nonneg` | `SmagIsNonneg::run() -> u16` | Constraint check for a signed-magnitude quantity (magnitude, sign pair — neg 0=nonnegative, 1=negative, per smag_add): returns 1 if the value is nonnegative (neg == 0, or magnitude == 0 regardless of the sign flag), else 0. |
 | `agree3_u32` | `Agree3Wide::run() -> u16` | Multi-plan agreement check at wide u32 width: returns 1 if at least two of three candidate answers are equal, else 0 — the wide sibling of majority3 (which works over u16 and can't represent answers beyond 65535, e.g. money totals in cents). |
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
+| `smag_eq` | `SmagEq::run() -> u16` | Verifies whether two signed values (magnitude, sign pairs, per smag_add) are equal, canonicalizing negative-zero to nonnegative first — the sign-magnitude counterpart of frac_eq / answer_eq_u32. |
 
 ## stateful/RNG (3)
 

@@ -474,3 +474,5 @@
 {"id": "frac_sub_from_whole-para-1", "query": "three whole pizzas minus a quarter of one", "expected": "frac_sub_from_whole", "category": "paraphrase"}
 {"id": "lcm3-direct-1", "query": "the least common multiple of three numbers", "expected": "lcm3", "category": "direct"}
 {"id": "lcm3-para-1", "query": "the smallest number that all three of these values divide into evenly", "expected": "lcm3", "category": "paraphrase"}
+{"id": "smag_eq-direct-1", "query": "verify whether two signed magnitude-and-sign values are equal", "expected": "smag_eq", "category": "direct"}
+{"id": "smag_eq-para-1", "query": "did these two gains or losses land on the exact same amount and direction", "expected": "smag_eq", "category": "paraphrase"}
