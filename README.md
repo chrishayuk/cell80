@@ -83,7 +83,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 163 cells; query `distance between grid points` → 10 match(es):
+indexed 203 cells; query `distance between grid points` → 10 match(es):
   manhattan — Manhattan distance between two grid points (typed state).  [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt).  [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
   chebyshev — Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
@@ -113,7 +113,9 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval on the 163-cell library (`cargo run --example retrieval_compare -p cell80`): the
+Retrieval **on the 163-cell snapshot** (`cargo run --example retrieval_compare -p cell80` —
+the library has since grown to 203; these numbers are the last published checkpoint of the
+scale curve, not the current-size measurement): the
 default index is now **TF-IDF** (word + char-3-gram cosine), with a small complexity-based
 tie-break (`search` only — the ranking order, never the raw cosine `scored` exposes, since
 that magnitude feeds the escalation ladder's calibrated confidence margin) — **direct P@1
@@ -362,7 +364,7 @@ cell_compose(
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard library** (done — **163 cells** across 27 families incl. wide u32-in-state siblings, plus the compiler
+(done), the **standard library** (done — **203 cells** across 30+ families incl. the math-campaign packs: checked/exact wide arithmetic, fractions, money/bps, units, verifier/ranker, sign-magnitude — plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
 elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
 **host-routed `CellGraph` composition** (cells wired into a static, type-checked graph the host
