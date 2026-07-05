@@ -225,7 +225,12 @@ against `granite4.1:3b` directly (20 problems, single-shot extraction into the r
 `cell80 solve` — 15% correct; one repair round, cell-eval's own repair.py philosophy reused
 — 30% combined), with every non-comprehension failure landing as a clean, named `render`/CLI
 rejection rather than a silent wrong number. Not M3, but the first real data point on the
-bottleneck this paragraph names.
+bottleneck this paragraph names. A second pass in the same doc (Part 2) tested whether real
+tool-calling — `cell_solve` as an actual model-callable tool, not scripted JSON parsing —
+does better; across four models it did worse (~0% genuinely tool-verified vs. 30% scripted),
+with a consistent, worrying pattern: models silently abandon the tool and self-compute an
+unverified answer once it fails repeatedly, rather than persisting or escalating. The
+recommendation that pilot draws is to keep M3 extraction scripted, not tool-called.
 
 ## Sequencing gates
 
