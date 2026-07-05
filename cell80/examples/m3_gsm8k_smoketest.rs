@@ -18,15 +18,20 @@
 //!   real M3 either needs one, or needs to route comparison-shaped problems to library
 //!   cells (`is_gt`, `max`) directly instead of through a rendered plan.
 //!
-//! **A third finding, not a gap so much as a convention that needs stating:** GSM8K mixes
-//! whole-dollar and decimal-dollar problems freely. Whole-dollar problems (Josh's house,
-//! Kylar's glasses) used `unit: "money"` meaning *dollars* here; three problems below
-//! (Kyle's book, Marie's pizza, Mishka's clothes) have `$16.50`-style prices and were
-//! rescaled to *cents* throughout instead — same unit string, different scale, only
-//! internally consistent *within* each plan. That's fine for `render()`'s own dimension
-//! checker (it never compares scale across separate plans) but would silently corrupt any
-//! cross-plan precipitation comparison that assumed "money" always meant the same scale — a
-//! real extraction pipeline needs one firm rule (cents, always), not per-problem judgment.
+//! **A third finding, fixed here, but worth stating as a convention, not just a one-off
+//! rescale:** GSM8K mixes whole-dollar and decimal-dollar problems freely. An earlier version
+//! of this file used `unit: "money"` for whole-dollar amounts (Josh's house, Kylar's
+//! glasses) and only rescaled to cents where the English forced it (`$16.50`-style prices —
+//! Kyle's book, Marie's pizza, Mishka's clothes) — same unit string, two different scales,
+//! each internally consistent but not consistent *with each other*. `render()`'s own
+//! dimension checker never caught it (it only validates within one plan, never compares
+//! scale across plans), so every problem still compiled and answered correctly — the bug was
+//! silent, not a compile error. **Every money-valued problem below is now in cents
+//! throughout** (`$2` → `200`, `$80,000` → `8,000,000`, …), the fix a real extraction
+//! pipeline needs: one firm rule stated once, not per-problem judgment re-derived each time.
+//! The lesson generalizes past money — any unit with a real-world sub-integer step (time in
+//! fractional hours is the same shape, see row 9 above) needs its base scale fixed *before*
+//! extraction starts, not discovered mid-corpus.
 //!
 //! Run: `cargo run --release --example m3_gsm8k_smoketest -p cell80`.
 
@@ -90,12 +95,12 @@ fn main() {
         "A robe takes 2 bolts of blue fiber and half that much white fiber. Total bolts?",
     );
 
-    // 3. Josh house flip (GSM8K #3). "$80k house + $50k repairs, value +150%." Answer: 70000.
+    // 3. Josh house flip (GSM8K #3, cents). "$80k house + $50k repairs, value +150%." Ans: 7000000.
     check(
         &mut host,
         "josh",
-        r#"{"quantities":[{"id":"house_price","value":80000,"unit":"money"},
-                          {"id":"repairs","value":50000,"unit":"money"},
+        r#"{"quantities":[{"id":"house_price","value":8000000,"unit":"money"},
+                          {"id":"repairs","value":5000000,"unit":"money"},
                           {"id":"pct","value":150,"unit":"scalar"},
                           {"id":"hundred","value":100,"unit":"scalar"}],
             "ops":[["add","house_price","repairs","cost"],
@@ -104,8 +109,8 @@ fn main() {
                    ["add","increase","house_price","new_value"],
                    ["sub","new_value","cost","profit"]],
             "target":"profit"}"#,
-        70000,
-        "Josh buys an $80,000 house, $50,000 repairs, value increases 150%. Profit?",
+        7000000,
+        "Josh buys an $80,000 house, $50,000 repairs, value increases 150% (cents). Profit?",
     );
 
     // 4. James sprints (GSM8K #4). "3 sprints x3/week, 60m each." Answer: 540.
@@ -138,11 +143,11 @@ fn main() {
         "20 chickens need 3 cups each/day; fed 15 (AM) + 25 (PM). Final meal?",
     );
 
-    // 6. Kylar's glasses (GSM8K #6). "$5 each, every 2nd is 60% price, buys 16." Answer: 64.
+    // 6. Kylar's glasses (GSM8K #6, cents). "$5 each, every 2nd is 60% price, buys 16." Ans: 6400.
     check(
         &mut host,
         "kylar",
-        r#"{"quantities":[{"id":"price","value":5,"unit":"money"},
+        r#"{"quantities":[{"id":"price","value":500,"unit":"money"},
                           {"id":"disc_pct","value":60,"unit":"scalar"},
                           {"id":"hundred","value":100,"unit":"scalar"},
                           {"id":"qty","value":16,"unit":"count"},
@@ -154,8 +159,8 @@ fn main() {
                    ["mul","half_count","price","regular_total"],
                    ["add","cheaper_total","regular_total","total"]],
             "target":"total"}"#,
-        64,
-        "Glasses $5 each, every 2nd glass 60% price, buys 16. Total cost?",
+        6400,
+        "Glasses $5 each, every 2nd glass 60% price, buys 16 (cents). Total cost?",
     );
 
     // 7. Toulouse/Charleston/Seattle sheep (GSM8K #7). Answer: 260.
@@ -196,11 +201,11 @@ fn main() {
 
     println!("\n=== 17 more (rows 10-27, skipping rows 9 and 16 — see the module doc) ===\n");
 
-    // 10. Eliza's overtime (GSM8K #10). "$10/hr, 1.2x overtime past 40hrs, worked 45." Ans: 460.
+    // 10. Eliza's overtime (GSM8K #10, cents). "$10/hr, 1.2x OT past 40hrs, worked 45." Ans: 46000.
     check(
         &mut host,
         "eliza",
-        r#"{"quantities":[{"id":"rate","value":10,"unit":"money_per_time"},
+        r#"{"quantities":[{"id":"rate","value":1000,"unit":"money_per_time"},
                           {"id":"regular_hours","value":40,"unit":"time"},
                           {"id":"worked_hours","value":45,"unit":"time"},
                           {"id":"six","value":6,"unit":"scalar"},
@@ -212,8 +217,8 @@ fn main() {
                    ["mul","overtime_rate","overtime_hours","overtime_pay"],
                    ["add","regular_pay","overtime_pay","total"]],
             "target":"total"}"#,
-        460,
-        "$10/hr for 40hrs, 1.2x overtime after that (as 6/5), worked 45hrs. Total pay?",
+        46000,
+        "$10/hr for 40hrs, 1.2x overtime after that (as 6/5), worked 45hrs (cents). Total pay?",
     );
 
     // 11. Downloads program (GSM8K #11). "60, then 3x, then -30%." Answer: 366.
@@ -235,24 +240,24 @@ fn main() {
         "60 downloads month 1, 3x in month 2, -30% in month 3. Total over 3 months?",
     );
 
-    // 12. Toula's bakery (GSM8K #12). Three dozen-priced items. Answer: 694.
+    // 12. Toula's bakery (GSM8K #12, cents). Three dozen-priced items. Answer: 69400.
     check(
         &mut host,
         "toula",
         r#"{"quantities":[{"id":"donuts_qty","value":3,"unit":"count"},
-                          {"id":"donuts_price","value":68,"unit":"money_per_count"},
+                          {"id":"donuts_price","value":6800,"unit":"money_per_count"},
                           {"id":"cupcakes_qty","value":2,"unit":"count"},
-                          {"id":"cupcakes_price","value":80,"unit":"money_per_count"},
+                          {"id":"cupcakes_price","value":8000,"unit":"money_per_count"},
                           {"id":"cheesecakes_qty","value":6,"unit":"count"},
-                          {"id":"cheesecakes_price","value":55,"unit":"money_per_count"}],
+                          {"id":"cheesecakes_price","value":5500,"unit":"money_per_count"}],
             "ops":[["mul","donuts_qty","donuts_price","donuts_total"],
                    ["mul","cupcakes_qty","cupcakes_price","cupcakes_total"],
                    ["mul","cheesecakes_qty","cheesecakes_price","cheesecakes_total"],
                    ["add","donuts_total","cupcakes_total","partial"],
                    ["add","partial","cheesecakes_total","total"]],
             "target":"total"}"#,
-        694,
-        "3 dozen donuts @$68/dz, 2 dz cupcakes @$80/dz, 6 dz cheesecakes @$55/dz. Total?",
+        69400,
+        "3 dozen donuts @$68/dz, 2 dz cupcakes @$80/dz, 6 dz cheesecakes @$55/dz (cents). Total?",
     );
 
     // 13. Carlos's lemon tree (GSM8K #13, cents). "$90 tree, 7 lemons/yr @$1.50, -$3/yr upkeep."
@@ -327,13 +332,13 @@ fn main() {
         "2 trains, 80mi day 1, 150mi day 2 each. Average distance/train over 2 days?",
     );
 
-    // 18. Jill's salary (GSM8K #18). Teach + coach, 50 weeks. Answer: 57500.
+    // 18. Jill's salary (GSM8K #18, cents). Teach + coach, 50 weeks. Answer: 5750000.
     check(
         &mut host,
         "jill",
-        r#"{"quantities":[{"id":"teach_rate","value":20,"unit":"money_per_time"},
+        r#"{"quantities":[{"id":"teach_rate","value":2000,"unit":"money_per_time"},
                           {"id":"teach_hours","value":35,"unit":"time"},
-                          {"id":"coach_rate","value":30,"unit":"money_per_time"},
+                          {"id":"coach_rate","value":3000,"unit":"money_per_time"},
                           {"id":"coach_hours","value":15,"unit":"time"},
                           {"id":"weeks","value":50,"unit":"scalar"}],
             "ops":[["mul","teach_rate","teach_hours","weekly_teach"],
@@ -341,8 +346,8 @@ fn main() {
                    ["add","weekly_teach","weekly_coach","weekly_total"],
                    ["mul","weekly_total","weeks","annual"]],
             "target":"annual"}"#,
-        57500,
-        "$20/hr x35hrs teaching + $30/hr x15hrs coaching, 50 weeks/year. Annual salary?",
+        5750000,
+        "$20/hr x35hrs teaching + $30/hr x15hrs coaching, 50 weeks/year (cents). Annual salary?",
     );
 
     // 19. Claire's omelets (GSM8K #19). Answer: 7 (dozens).

@@ -342,16 +342,21 @@ Four things worth carrying into a real M3 design:
   (hand-authored cells for reusable primitives, rendered plans for the arithmetic glue
   around them) better than growing the IR.
 - **Fractional dollar amounts need a firm cents-always convention, not per-problem
-  judgment.** Whole-dollar problems here used `unit: "money"` meaning dollars; three
-  problems with `$16.50`-style prices (Kyle's book, Marie's pizza, Mishka's clothes) got
-  rescaled to *cents* instead, same unit string, different scale. `render()`'s dimension
-  checker never catches this (it only checks *within* one plan, never compares scale
-  *across* plans), so it compiled and answered correctly every time — but a real corpus
-  mixing both conventions would make any cross-plan "same schema, same units" precipitation
-  comparison meaningless without a single fixed rule (cents, always) applied at extraction,
-  the same lesson the shipped money-bps pack already encodes for the hand-authored cells
-  (`docs/library-growth.md`'s "cents" naming note) but that a plan-extraction prompt has to
-  independently commit to.
+  judgment — found, then fixed in the smoke test itself.** The first pass used
+  `unit: "money"` for whole-dollar problems (Josh's house, Kylar's glasses) and only
+  rescaled to *cents* where the English forced it (three `$16.50`-style problems — Kyle's
+  book, Marie's pizza, Mishka's clothes): same unit string, two scales, each internally
+  consistent but not with each other. `render()`'s dimension checker never caught it (it
+  only checks *within* one plan, never compares scale *across* plans), so every problem
+  still compiled and answered correctly — the bug was silent, not a compile error. Every
+  money-valued problem in `cell80/examples/m3_gsm8k_smoketest.rs` is now in cents
+  throughout (still 25/25 correct after the rescale), demonstrating the fix rather than just
+  naming it: one firm rule stated once, not per-problem judgment re-derived each time — the
+  same lesson the shipped money-bps pack already encodes for the hand-authored cells
+  (`docs/library-growth.md`'s "cents" naming note), now also true of the plan-extraction
+  side. The lesson generalizes past money: any unit with a real-world sub-integer step
+  (fractional time is the same shape — row 9's skipped half-hour problem) needs its base
+  scale fixed *before* extraction starts, not discovered mid-corpus.
 
 ## MATH/AIME — scoped ahead of the gate (2026-07-05)
 
