@@ -12,7 +12,7 @@
 //! detail the precipitation story hangs on: identical schemas must hash
 //! identically, or H-M3 is unfalsifiable.
 
-use super::{Cartridge, CartridgeOpts, CellConfig, CellHost, Halt, DEFAULT_CYCLES};
+use super::{Cartridge, CartridgeOpts, CellConfig, CellHost, Halt};
 use std::collections::HashMap;
 
 /// A candidate plan: the model's extraction, ready to render.
