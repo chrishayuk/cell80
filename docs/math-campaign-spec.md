@@ -231,6 +231,59 @@ helper-territory, out of scope, gated. The word "ace" does not appear in this sp
 | **M3** | the campaign: full grid, metrics published, precipitated schemas admitted, `.facts` exported |
 | **M4** | read-out decides: extend (contest packs) / narrow (verifier-only) / bank |
 
+## M2 test-drive, hand-crafted (2026-07-05) — two findings before M3 runs for real
+
+Before spending a model + a corpus on M3, `cell_solve` was exercised directly against a
+handful of hand-crafted word problems (`cell80/examples/solve_wordproblems.rs`, kept as a
+runnable check) — not the campaign, just "does the loop do what §The architecture claims."
+Every plan answered correctly, exact_div violations killed cleanly, and genuine
+multi-plan disagreement resolved via the battery, matching the shipped test suite. Two
+things worth knowing *before* M3 spends real compute on them:
+
+1. **Precipitation is literal-field-name-sensitive.** Two independently-authored word
+   problems sharing a structure ("N items at a unit price" — a notebook problem and a
+   pencil problem, different numbers) hashed identically and the second was correctly
+   `retrieved`, *when both used the same generic quantity ids* (`qty`, `unit_price`,
+   `total`). The identical pencil problem re-extracted with its own natural nouns
+   (`pencils`, `pencil_price`, `pencil_total`) rendered to different source and never
+   matched the generic version — because quantity ids become literal struct field names,
+   and the renderer only canonicalizes their *order*, not their *spelling*. H-M3's
+   precipitation count will undercount real schema recurrence unless the model-facing
+   extraction step normalizes quantities to canonical role names before rendering, not
+   whatever nouns the problem text used. Not a bug in `plan.rs` — a real requirement on
+   the extraction prompt/step that M3 hasn't had to satisfy yet, since nothing has run
+   more than one hand-picked plan through it before now.
+
+2. **The counterfactual battery only fires on disagreement, not to verify agreement.**
+   Constructed case: two candidate plans, `mul(a,b)` and `add(a,b)`, at `a=b=2` — both
+   equal 4, a coincidence at these specific numbers (the same class of failure this
+   project has hit before, the documented `min`/`median3` register-0 coincidence).
+   Because `solve`'s consensus check (`cell80/src/plan.rs`, the `answers.windows(2).all(…)`
+   arm) short-circuits to "they agree, done" *before* ever perturbing, the battery never
+   ran and the coincidence would have been accepted as consensus silently. This is the
+   opposite of the failure mode the shipped test `counterfactual_battery_separates_
+   coincidental_agreement` covers (genuine disagreement, correctly resolved) — that test
+   doesn't exercise agreement-that-should-have-been-checked at all.
+
+   **Proposed fix, verified but not applied:** delete the early-agreement arm so the full
+   perturbation/grouping logic always runs whenever more than one plan survives, agreement
+   or not:
+   ```diff
+        let answer = match live.len() {
+            0 => None,
+            1 => answers[0],
+   -        _ if answers.windows(2).all(|w| w[0] == w[1]) => answers[0],
+            _ => {
+   ```
+   Verified locally: all 8 existing `cell80/tests/plan.rs` cases still pass unchanged (none
+   of them rely on the shortcut — the one multi-plan agreement test already disagrees
+   pre-perturbation and takes the other arm either way), and the `mul`/`add` coincidence
+   above now correctly resolves to `None` (escalate) instead of `Some(4)`. Left unapplied
+   pending a call from whoever owns `cell_solve`'s design — it changes solve's behavior on
+   every multi-plan-agreement case (a small perf cost: always perturbing, even when
+   answers already agree), which is exactly the tradeoff M3's read-out should make
+   deliberately, not by default from a side quest.
+
 ## The one-sentence version
 
 Don't build a math runtime to pass a benchmark — run the benchmark through the runtime you
