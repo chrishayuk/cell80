@@ -149,7 +149,7 @@ wave 3s   232 cells   + the "straightforward deferred set" backlog: q_sqrt,
                         was scoped but not built: it reduces exactly to
                         clamp_i16(x, -256, 256), now tagged on that cell
                         instead of shipped as a second one.
-now       239 cells   + a broad geometry/combinatorics/sequences batch,
+wave 3t   239 cells   + a broad geometry/combinatorics/sequences batch,
                         requested directly rather than pulled from a
                         standing backlog: shoelace_area_x2_quad,
                         triangle_is_valid (geometry); fibonacci_checked_u32,
@@ -160,7 +160,44 @@ now       239 cells   + a broad geometry/combinatorics/sequences batch,
                         scoped but refused by the admission gate: a real,
                         structural finding, not a false positive — see the
                         pack note.
-next      ~250+        + cosine_score_approx (deferred until cell_solve reads
+wave 4a   244 cells   + wave 4, slice 1/5 — width/precision gap-fill,
+                        redirected from a dead PlanFix role/op/slot-validator
+                        proposal to the two concrete gaps PlanFix's own
+                        findings actually named: is_lt_u32/is_gt_u32/
+                        is_le_u32/is_ge_u32 (the missing wide-predicate
+                        family — only answer_eq_u32 existed at u32 width)
+                        and frac_of_whole_floor (the floor sibling of
+                        frac_of_whole, which only had the exact-or-escalate
+                        variant) — see the pack note below.
+wave 4b   249 cells   + wave 4, slice 2/5 — scoring/choice generalization:
+                        argmax3_u32/argmin3_u32/clear_winner_u32 (wide
+                        siblings past the u16 ceiling) and choose_best2/
+                        choose_worst2 (the 2-candidate siblings of
+                        choose_best3, absorbing the original proposal's
+                        choose_lowest_cost2/choose_highest_profit2 as tags
+                        rather than shipping four near-identical cells) —
+                        see the pack note below.
+wave 4c   253 cells   + wave 4, slice 3/5 — sequences nth-term gap-fill:
+                        arithmetic_nth_u32/geometric_nth_checked_u32 (the
+                        missing single-term siblings of
+                        arithmetic_series_sum/geometric_series_sum, which
+                        only ever summed the whole sequence),
+                        triangular_inverse_exact (the missing inverse of
+                        triangular), and consecutive_sum_start (one
+                        step-parameterized cell replacing the original
+                        proposal's separate odd/even "consecutive sum"
+                        variants) — see the pack note below.
+wave 4d   256 cells   + wave 4, slice 4/5 — verifier-ranker gap-fill:
+                        percent_equals_bps (money-bps's first verifier
+                        sibling — every other checked-arithmetic shape
+                        already had one), parts_sum_to_total4_u32 (the
+                        missing four-way sibling of sum3_equals_u32), and
+                        nonnegative_after_delta (a boolean-verdict form of
+                        apply_delta_clamped's sign-handling idiom) — see
+                        the pack note below.
+next      ~260+        + wave 4 slice 5 (agentic-runtime reflexes — see
+                        the pack note below);
+                        cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
                         docs/math-campaign-spec.md pending M3's read-out)
@@ -944,6 +981,135 @@ tuple-returning cell needs to ship past it; out of scope here.
 Gate: 239 admitted, 0 refused (`sort3` correctly excluded, never counted). Full test suite
 green, cold clippy clean, codegen golden regenerated (purely additive). Retrieval: all seven
 landed cells rank #1 on their own direct query — no same-shape-sibling collisions this time.
+
+**Wave 4 — a "next 100 cells" proposal, dedup'd to ~20 real gaps, built in an isolated
+worktree (`../cell80-wave4`, branch `feat/cell-library-wave4`).** An external analysis
+proposed ~100 new cells across 8 categories (PlanFix validators, comparison/choice, unit
+conversion, rate/proportion, average/mixture, sequences/age, verifier/constraint, agent
+runtime), framed as closing the GSM8K campaign's known gaps. Cross-checking all ~100
+against the live 239-cell index before authoring anything found the great majority already
+exist under a different name, or reduce to one existing cell with renamed args — exactly
+the class of thing the admission gate exists to catch (unit conversion and rate/proportion,
+15 and 12 proposed respectively, both collapsed to **zero** new cells: the proposed
+"generic scaler" cell is an exact duplicate of the already-shipped `frac_of_whole`, and
+every named conversion/rate shape reduces to it or to `div_exact_u32`/`mul_checked_u32`/
+`add_checked_u32`/`add3_checked_u32`/`sub_checked_u32`/`frac_scale`/`frac_sub_from_whole`
+with renamed args). Verifier/constraint fared similarly: 7 of 10 proposed cells were exact
+duplicates of already-shipped verifier-ranker cells (`ratio_equals_u32`/
+`proportion_equals_u32` both duplicate `frac_eq`; `rate_equals_u32`≡`product_equals_u32`;
+`average_equals_u32`≡`quotient_equals_exact_u32`; `remaining_equals_u32`≡`diff_equals_u32`;
+`parts_sum_to_total3_u32`≡`sum3_equals_u32`; `integer_solution_check`≡`is_integer`). Agent
+runtime's own "top 10" included two cells already shipped under different names
+(`rate_window_update` verbatim; `ema_step_q8` as the already-documented `q_lerp`), one
+behaviorally identical to a shipped cell despite a different algorithm name
+(`welford_step` vs the already-shipped `running_variance_step`), one duplicate of an
+existing cell whose own doc names the exact use case (`round_robin_pick`≡`counter_step`,
+"useful for round-robin dispatch"), and two duplicates of `is_ge` (an alias already
+recorded in this file's "time / budget" section). Net finding: **~20 cells survive**, not
+100 — building the other 80 would pay real retrieval-curve tax (this file's own second
+math-campaign-slice history shows a 9-point paraphrase P@1 drop from 40 new cells, several
+later found to be avoidable near-duplicates) for zero new capability.
+
+The proposal's category A (PlanFix role/op/slot-validator cells) was killed outright, not
+just deprioritized, on the user's own steer after review: it hardens the strict JSON Plan
+IR that the PlanFix experiment (`experiments/planfix/`, shipped and merged `cc9efe8`)
+demoted to an internal wire format once it converged on "model writes dialect code that
+calls library cells," resolved by a fuzzy linker + structured cross-check — wrong branch.
+And validation belongs as a compiler/renderer pass (can't be forgotten to call), not a
+library cell (can be) — wrong layer. Redirected instead to the two concrete gaps PlanFix's
+own findings actually named: a missing wide-comparison family (its row89 escalation traced
+to a width miss) and a floor sibling for the one fraction cell that only had an exact
+variant (its defer-division finding: models routinely write `x*9/10`-shaped reasoning that
+doesn't divide evenly). Category E (average/mixture) was deferred entirely, per the user's
+steer — "aggregates... speculative, no escalation in the analysis names them" — parked
+pending real M3 campaign trace evidence, consistent with this file's standing
+"math-campaign growth paused pending M3" policy.
+
+**Wave 4, slice 1/5 — width/precision gap-fill (244 cells).** `is_lt_u32`, `is_gt_u32`,
+`is_le_u32`, `is_ge_u32` — wide siblings completing the u16 predicates pack's
+`is_lt`/`is_le`/`is_gt`/`is_ge` family (only `eq`'s wide sibling, `answer_eq_u32`, existed
+before this slice); state cells (`{a: u32, b: u32}`), matching `min_u32`/`max_u32`'s shape.
+`frac_of_whole_floor` — sibling of `frac_of_whole`: identical struct shape (`n, d, whole,
+result: u32`), but skips the exact-division check (`result = mul_checked_u32(n, whole) /
+d`, floor instead of exact-or-escalate) — the same triad relationship
+`div_exact_u32`/`div_floor_u32`/`div_ceil_u32` already established, applied to a
+fraction-of-whole shape that previously only had the exact variant. Authored after
+confirming (commit `41666fc`, landed same day) that two-`u32`-parameter calls now work —
+`mul_checked_u32`/`add_checked_u32`/`gcd_u32` are shared prelude kernels rather than
+per-cell-inlined loops, simplifying every cell in this wave that touches checked wide
+arithmetic. Gate: 244 admitted, 0 refused. Full test suite green (four hardcoded
+cell-count pins in `cell80/tests/cell.rs` updated 239→244, the same recurring
+maintenance the project's git history already shows every prior wave needing), cold
+clippy clean, codegen golden regenerated (purely additive — five new entries, no existing
+cell's bytes changed). Retrieval (`examples/retrieval_compare`, tf-idf live path): 239-cell
+baseline direct 82% / paraphrase 34% / adversarial 56% / overall 60% → 244 cells direct
+81% / paraphrase 33% / adversarial 56% / overall 60% — a ~1-point direct/paraphrase wobble
+within the noise this file's own checkpoints have repeatedly called out as a natural
+denominator effect, not a regression worth pausing over.
+
+**Wave 4, slice 2/5 — scoring/choice generalization (249 cells).** `argmax3_u32`/
+`argmin3_u32` — wide siblings of `argmax3`/`argmin3` (state cells, `{a, b, c: u32}` →
+index, ties → lowest index, matching the u16 originals' convention). `clear_winner_u32` —
+wide sibling of `is_clear_winner` (`{top, second, margin: u32}`), same malformed-call
+handling (`top < second` → not a clear winner). `choose_best2`/`choose_worst2` — 2-candidate
+siblings of `choose_best3` (`{val_a, score_a, val_b, score_b}`, ties → `val_a`); the original
+~100-cell proposal's `choose_lowest_cost2`/`choose_highest_profit2` were folded into these
+two cells' tags rather than shipped as two more near-identical cells (`choose_best2` already
+*is* "highest profit wins"; `choose_worst2` already *is* "lowest cost wins" — same formula,
+different name, the exact case the admission gate exists to catch). Gate: 249 admitted, 0
+refused. Full test suite green (cell-count pins 244→249), cold clippy clean, codegen golden
+regenerated (purely additive). Retrieval: 244-cell baseline direct 81% / paraphrase 33% /
+adversarial 56% / overall 60% → 249 cells direct 79% / paraphrase 33% / adversarial 56% /
+overall 59% — direct ticked down ~2 points, paraphrase/adversarial held flat; consistent
+with the natural-denominator wobble this file's checkpoints have repeatedly measured as
+noise rather than a real collision (no new same-shape sibling was introduced this slice).
+
+**Wave 4, slice 3/5 — sequences nth-term gap-fill (253 cells).** `arithmetic_nth_u32` —
+`start + step*(n-1)`, 1-indexed, checked (via the shared `mul_checked_u32`/
+`add_checked_u32` prelude kernels); the missing single-term sibling of
+`arithmetic_series_sum` (which only ever summed the whole sequence) — cross-checked
+directly against that cell's own test sequence (3,5,7,9,11): the 5th term is 11, matching.
+`geometric_nth_checked_u32` — `start * ratio^(n-1)` via direct iterative multiplication
+(never materializing `ratio^(n-1)` itself, the same escalate-no-earlier-than-necessary
+design `geometric_series_sum` already uses); cross-checked against that cell's own test
+sequence (2,6,18,54): the 4th term is 54. `triangular_inverse_exact` — solves
+`n*(n+1)/2 = x` for `n` by incremental summation (`t = t + n` each step) rather than a
+`sqrt(8x+1)`-based closed form: the latter would overflow `u16` well within `triangular`'s
+own domain (`8*8192+1` already exceeds 65535, while `triangular`'s own max input is 361),
+so the incremental approach was chosen specifically to avoid an intermediate overflow the
+closed form can't dodge without a wide field. `consecutive_sum_start` — one
+step-parameterized cell (`n`, `sum`, `step`) solving `first = (sum - step*n*(n-1)/2) / n`;
+replaces the original proposal's two separately-named odd/even "consecutive sum" variants
+(the same `unit_scale_exact`/`weighted_sum2`-style generalization already established
+elsewhere in this wave and the library at large). Gate: 253 admitted, 0 refused. Full test
+suite green (cell-count pins 249→253), cold clippy clean, codegen golden regenerated
+(purely additive). Retrieval: 249-cell baseline direct 79% / paraphrase 33% / adversarial
+56% / overall 59% → 253 cells direct 79% / paraphrase 34% / adversarial 56% / overall 58%
+— stable, no meaningful movement on any split.
+
+**Wave 4, slice 4/5 — verifier-ranker gap-fill (256 cells).** `percent_equals_bps` —
+`{before, after, bps: u32}` → `1` if `after == before + before*bps/10000`, else `0`; the
+money-bps pack's first verifier-ranker sibling (every other checked-arithmetic shape
+already had an `_equals` counterpart — this one didn't). Never escalates, matching the
+pack's own rule that a verifier always returns a verdict: a multiply overflow (inlined
+`wrapping_mul` + a manual remainder check, not the halting `mul_checked_u32` prelude
+kernel) or an add-overflow just means the claim doesn't hold. `parts_sum_to_total4_u32` —
+`{a, b, c, d, total: u32}` → `1` if `a+b+c+d == total`, else `0`; the missing four-way
+sibling of `sum3_equals_u32` (a real gap — every prior verifier-ranker sum shape topped
+out at three parts), same wrapping-add-with-carry-check style. `nonnegative_after_delta` —
+`(value: u16, delta: i16) -> u16`, the boolean-verdict form of `apply_delta_clamped`'s own
+sign-handling idiom (same magnitude computation via `0u16.wrapping_sub(delta as u16)`),
+for a caller that wants to kill a wrong "subtract too much" plan cheaply without needing
+the clamped value itself. Of the original proposal's 10 category-G cells, 7 were exact
+duplicates of already-shipped verifier-ranker cells (`ratio_equals_u32`/
+`proportion_equals_u32` both duplicate `frac_eq`; `rate_equals_u32`≡`product_equals_u32`;
+`average_equals_u32`≡`quotient_equals_exact_u32`; `remaining_equals_u32`≡`diff_equals_u32`;
+`parts_sum_to_total3_u32`≡`sum3_equals_u32`; `integer_solution_check`≡`is_integer`) —
+these three are the genuine survivors. Gate: 256 admitted, 0 refused. Full test suite green
+(cell-count pins 253→256), cold clippy clean, codegen golden regenerated (purely
+additive). Retrieval: 253-cell baseline direct 79% / paraphrase 34% / adversarial 56% /
+overall 58% → 256 cells direct 79% / paraphrase 33% / adversarial 56% / overall 58% —
+stable.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

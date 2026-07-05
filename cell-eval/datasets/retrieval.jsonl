@@ -536,3 +536,45 @@
 {"id": "arithmetic_series_sum-para-1", "query": "add up a list of evenly-spaced numbers starting at a with a common difference", "expected": "arithmetic_series_sum", "category": "paraphrase"}
 {"id": "geometric_series_sum-direct-1", "query": "sum of the first n terms of a geometric sequence with ratio r", "expected": "geometric_series_sum", "category": "direct"}
 {"id": "geometric_series_sum-para-1", "query": "add up a list of numbers that each double or triple the one before it", "expected": "geometric_series_sum", "category": "paraphrase"}
+
+# ── wave 4, slice 1: width/precision gap-fill ─────────────────────────────────
+{"id": "is_lt_u32-direct-1", "query": "is a less than b at wide 32-bit width", "expected": "is_lt_u32", "category": "direct"}
+{"id": "is_lt_u32-para-1", "query": "compare two large money totals in cents, is the first smaller", "expected": "is_lt_u32", "category": "paraphrase"}
+{"id": "is_gt_u32-direct-1", "query": "is a greater than b at wide 32-bit width", "expected": "is_gt_u32", "category": "direct"}
+{"id": "is_gt_u32-para-1", "query": "check if one big total exceeds another beyond 65535", "expected": "is_gt_u32", "category": "paraphrase"}
+{"id": "is_le_u32-direct-1", "query": "is a less than or equal to b at wide 32-bit width", "expected": "is_le_u32", "category": "direct"}
+{"id": "is_le_u32-para-1", "query": "does the first large value stay at or under the second", "expected": "is_le_u32", "category": "paraphrase"}
+{"id": "is_ge_u32-direct-1", "query": "is a greater than or equal to b at wide 32-bit width", "expected": "is_ge_u32", "category": "direct"}
+{"id": "is_ge_u32-para-1", "query": "has a large running total reached or passed a target", "expected": "is_ge_u32", "category": "paraphrase"}
+{"id": "frac_of_whole_floor-direct-1", "query": "a fraction of a whole number, rounded down instead of requiring an exact split", "expected": "frac_of_whole_floor", "category": "direct"}
+{"id": "frac_of_whole_floor-para-1", "query": "90 percent of 23 items, rounding down since it doesn't split evenly", "expected": "frac_of_whole_floor", "category": "paraphrase"}
+
+# ── wave 4, slice 2: scoring/choice generalization ────────────────────────────
+{"id": "argmax3_u32-direct-1", "query": "index of the largest of three values at wide 32-bit width", "expected": "argmax3_u32", "category": "direct"}
+{"id": "argmax3_u32-para-1", "query": "which of three large money totals in cents is the biggest", "expected": "argmax3_u32", "category": "paraphrase"}
+{"id": "argmin3_u32-direct-1", "query": "index of the smallest of three values at wide 32-bit width", "expected": "argmin3_u32", "category": "direct"}
+{"id": "argmin3_u32-para-1", "query": "which of three large money totals in cents is the smallest", "expected": "argmin3_u32", "category": "paraphrase"}
+{"id": "clear_winner_u32-direct-1", "query": "is the top score a decisive win over the second-best at wide 32-bit width", "expected": "clear_winner_u32", "category": "direct"}
+{"id": "clear_winner_u32-para-1", "query": "does the leading large total beat the runner-up by a real margin, not basically tied", "expected": "clear_winner_u32", "category": "paraphrase"}
+{"id": "choose_best2-direct-1", "query": "pick the value of whichever of two candidates has the highest score", "expected": "choose_best2", "category": "direct"}
+{"id": "choose_best2-para-1", "query": "of these two options, which one has the highest profit", "expected": "choose_best2", "category": "paraphrase"}
+{"id": "choose_worst2-direct-1", "query": "pick the value of whichever of two candidates has the lowest score", "expected": "choose_worst2", "category": "direct"}
+{"id": "choose_worst2-para-1", "query": "of these two options, which one costs less", "expected": "choose_worst2", "category": "paraphrase"}
+
+# ── wave 4, slice 3: sequences nth-term gap-fill ──────────────────────────────
+{"id": "arithmetic_nth_u32-direct-1", "query": "the nth term of an arithmetic sequence", "expected": "arithmetic_nth_u32", "category": "direct"}
+{"id": "arithmetic_nth_u32-para-1", "query": "what's the value at position n in an evenly-spaced list starting at a with common difference d", "expected": "arithmetic_nth_u32", "category": "paraphrase"}
+{"id": "geometric_nth_checked_u32-direct-1", "query": "the nth term of a geometric sequence with ratio r", "expected": "geometric_nth_checked_u32", "category": "direct"}
+{"id": "geometric_nth_checked_u32-para-1", "query": "what's the value after doubling or tripling n times starting from a", "expected": "geometric_nth_checked_u32", "category": "paraphrase"}
+{"id": "triangular_inverse_exact-direct-1", "query": "solve n(n+1)/2 = x for n, the inverse of the triangular number", "expected": "triangular_inverse_exact", "category": "direct"}
+{"id": "triangular_inverse_exact-para-1", "query": "how many rows of a triangle add up to this total number of items", "expected": "triangular_inverse_exact", "category": "paraphrase"}
+{"id": "consecutive_sum_start-direct-1", "query": "find the first of n consecutive integers that sum to a given total", "expected": "consecutive_sum_start", "category": "direct"}
+{"id": "consecutive_sum_start-para-1", "query": "five consecutive odd numbers add up to this total, what's the smallest one", "expected": "consecutive_sum_start", "category": "paraphrase"}
+
+# ── wave 4, slice 4: verifier-ranker gap-fill ─────────────────────────────────
+{"id": "percent_equals_bps-direct-1", "query": "verify a claimed basis-points percent increase between two values", "expected": "percent_equals_bps", "category": "direct"}
+{"id": "percent_equals_bps-para-1", "query": "check whether this price after tax actually matches a 5 percent markup on the original", "expected": "percent_equals_bps", "category": "paraphrase"}
+{"id": "parts_sum_to_total4_u32-direct-1", "query": "verify a claimed four-way sum equals the total", "expected": "parts_sum_to_total4_u32", "category": "direct"}
+{"id": "parts_sum_to_total4_u32-para-1", "query": "do these four cost categories actually add up to the stated grand total", "expected": "parts_sum_to_total4_u32", "category": "paraphrase"}
+{"id": "nonnegative_after_delta-direct-1", "query": "would applying a signed delta to a value keep it nonnegative", "expected": "nonnegative_after_delta", "category": "direct"}
+{"id": "nonnegative_after_delta-para-1", "query": "can we subtract this much from the remaining budget without going below zero", "expected": "nonnegative_after_delta", "category": "paraphrase"}

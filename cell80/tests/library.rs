@@ -2630,3 +2630,423 @@ fn geometry_combinatorics_sequences_cells_match_defined_behaviour() {
     // purposes, a real gap worth someone revisiting in fingerprint.rs itself, not by hacking
     // around it here.
 }
+
+#[test]
+fn wave4_width_precision_cells_match_defined_behaviour() {
+    // Wave 4, slice 1: width/precision gap-fill, redirected from the dead PlanFix
+    // role/op/slot-validator branch to the two concrete gaps PlanFix's own findings
+    // named — a missing wide-comparison family (is_lt/is_gt/is_le/is_ge only existed at
+    // u16; answer_eq_u32 was the only wide predicate) and a floor sibling for
+    // frac_of_whole (which only has the exact-or-escalate variant; models routinely
+    // write "90% of 23"-style reasoning that doesn't divide evenly).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // is_lt_u32 / is_gt_u32 / is_le_u32 / is_ge_u32: wide predicates, exercised past the
+    // u16 ceiling (money totals in cents routinely exceed 65535).
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_000), ("b", 100_001)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_001), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_lt_u32", "IsLtWide", &[("a", 100_000), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_gt_u32", "IsGtWide", &[("a", 100_001), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_gt_u32", "IsGtWide", &[("a", 100_000), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_le_u32", "IsLeWide", &[("a", 100_000), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_le_u32", "IsLeWide", &[("a", 100_001), ("b", 100_000)]).0,
+        0
+    );
+    assert_eq!(
+        step("is_ge_u32", "IsGeWide", &[("a", 100_000), ("b", 100_000)]).0,
+        1
+    );
+    assert_eq!(
+        step("is_ge_u32", "IsGeWide", &[("a", 100_000), ("b", 100_001)]).0,
+        0
+    );
+
+    // frac_of_whole_floor: 90% of 23 = 20.7 -> floors to 20, never escalates (unlike
+    // frac_of_whole, which would escalate on this exact input since it doesn't divide
+    // evenly). Exact-dividing input still works identically to frac_of_whole.
+    let (_, report, cell) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 90), ("d", 100), ("whole", 23)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(20));
+    let (_, _, cell) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 3), ("d", 4), ("whole", 20)],
+    );
+    assert_eq!(cell.get("result"), Some(15));
+    let (_, report, _) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 1), ("d", 0), ("whole", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (_, report, _) = step(
+        "frac_of_whole_floor",
+        "FracOfWholeFloor",
+        &[("n", 4_294_967_295), ("d", 1), ("whole", 2)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
+    // Wave 4, slice 2: scoring/choice generalization — wide siblings of argmax3/argmin3/
+    // is_clear_winner (past the u16 ceiling), and the 2-candidate siblings of choose_best3
+    // for the common two-option case. choose_lowest_cost2/choose_highest_profit2 from the
+    // original ~100-cell proposal were folded into choose_worst2/choose_best2's own tags
+    // rather than shipped as four near-identical cells.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // argmax3_u32 / argmin3_u32: exercised past the u16 ceiling.
+    assert_eq!(
+        step(
+            "argmax3_u32",
+            "Argmax3Wide",
+            &[("a", 100_000), ("b", 200_000), ("c", 150_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "argmax3_u32",
+            "Argmax3Wide",
+            &[("a", 100_000), ("b", 100_000), ("c", 100_000)]
+        ),
+        0 // tie -> lowest index
+    );
+    assert_eq!(
+        step(
+            "argmin3_u32",
+            "Argmin3Wide",
+            &[("a", 300_000), ("b", 100_000), ("c", 200_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "argmin3_u32",
+            "Argmin3Wide",
+            &[("a", 100_000), ("b", 100_000), ("c", 100_000)]
+        ),
+        0 // tie -> lowest index
+    );
+
+    // clear_winner_u32: margin decisive; margin not met; malformed (top < second).
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 200_000), ("second", 100_000), ("margin", 50_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 150_000), ("second", 100_000), ("margin", 100_000)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 100_000), ("second", 150_000), ("margin", 10)]
+        ),
+        0
+    );
+
+    // choose_best2 / choose_worst2: b wins, a wins, and the tie -> a convention.
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+        ),
+        100 // tie -> a
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+        ),
+        100 // tie -> a
+    );
+}
+
+#[test]
+fn wave4_sequences_nth_term_cells_match_defined_behaviour() {
+    // Wave 4, slice 3: sequences nth-term gap-fill — arithmetic_series_sum and
+    // geometric_series_sum only ever summed a whole sequence, never returned a single
+    // term; triangular had no inverse; and the original ~100-cell proposal's two
+    // separately-named odd/even "consecutive sum" variants collapse into one
+    // step-parameterized cell.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // arithmetic_nth_u32: same sequence as arithmetic_series_sum's own test (3,5,7,9,11) —
+    // the 5th term is 11, cross-checked against the already-shipped sum cell.
+    let (_, _, cell) = step(
+        "arithmetic_nth_u32",
+        "ArithmeticNthWide",
+        &[("start", 3), ("step", 2), ("n", 5)],
+    );
+    assert_eq!(cell.get("result"), Some(11));
+    let (_, _, cell) = step(
+        "arithmetic_nth_u32",
+        "ArithmeticNthWide",
+        &[("start", 3), ("step", 2), ("n", 1)],
+    );
+    assert_eq!(cell.get("result"), Some(3)); // n=1 is the first term
+    let (_, report, _) = step(
+        "arithmetic_nth_u32",
+        "ArithmeticNthWide",
+        &[("start", 3), ("step", 2), ("n", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (_, report, _) = step(
+        "arithmetic_nth_u32",
+        "ArithmeticNthWide",
+        &[("start", 4_000_000_000), ("step", 4_000_000_000), ("n", 2)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // geometric_nth_checked_u32: same sequence as geometric_series_sum's own test
+    // (2,6,18,54) — the 4th term is 54.
+    let (_, _, cell) = step(
+        "geometric_nth_checked_u32",
+        "GeometricNthChecked",
+        &[("start", 2), ("ratio", 3), ("n", 4)],
+    );
+    assert_eq!(cell.get("result"), Some(54));
+    let (_, _, cell) = step(
+        "geometric_nth_checked_u32",
+        "GeometricNthChecked",
+        &[("start", 2), ("ratio", 3), ("n", 1)],
+    );
+    assert_eq!(cell.get("result"), Some(2)); // n=1 is the first term
+    let (_, report, _) = step(
+        "geometric_nth_checked_u32",
+        "GeometricNthChecked",
+        &[("start", 2), ("ratio", 3), ("n", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (_, report, _) = step(
+        "geometric_nth_checked_u32",
+        "GeometricNthChecked",
+        &[("start", 2), ("ratio", 100_000), ("n", 3)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // triangular_inverse_exact: T(5)=15, T(361)=65341 (triangular's own domain max), T(0)=0,
+    // and 14 (between T(4)=10 and T(5)=15) isn't triangular.
+    assert_eq!(run_cell("triangular_inverse_exact", &[15]), 5);
+    assert_eq!(run_cell("triangular_inverse_exact", &[65341]), 361);
+    assert_eq!(run_cell("triangular_inverse_exact", &[0]), 0);
+    {
+        let mut r = Runner::compile(&cell_src("triangular_inverse_exact")).unwrap();
+        let report = r.run(None, &[14], DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    }
+
+    // consecutive_sum_start: 5 consecutive integers (step=1) starting at 3 sum to 25
+    // (3+4+5+6+7); 4 consecutive odd numbers (step=2) starting at 3 sum to 24 (3+5+7+9).
+    let (_, _, cell) = step(
+        "consecutive_sum_start",
+        "ConsecutiveSumStart",
+        &[("n", 5), ("sum", 25), ("step", 1)],
+    );
+    assert_eq!(cell.get("first"), Some(3));
+    let (_, _, cell) = step(
+        "consecutive_sum_start",
+        "ConsecutiveSumStart",
+        &[("n", 4), ("sum", 24), ("step", 2)],
+    );
+    assert_eq!(cell.get("first"), Some(3));
+    let (_, report, _) = step(
+        "consecutive_sum_start",
+        "ConsecutiveSumStart",
+        &[("n", 5), ("sum", 26), ("step", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // not exact
+    let (_, report, _) = step(
+        "consecutive_sum_start",
+        "ConsecutiveSumStart",
+        &[("n", 5), ("sum", 5), ("step", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // would go negative
+    let (_, report, _) = step(
+        "consecutive_sum_start",
+        "ConsecutiveSumStart",
+        &[("n", 0), ("sum", 5), ("step", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // n == 0
+}
+
+#[test]
+fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
+    // Wave 4, slice 4: verifier-ranker gap-fill — the three genuinely-motivated survivors
+    // of the original ~100-cell proposal's category G (7 of the other 10 proposed cells
+    // were exact duplicates of already-shipped verifier-ranker cells, per the wave-4 pack
+    // note in docs/library-growth.md).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // percent_equals_bps: 5% of 1000 is 50, so 1000 -> 1050 is a true 500-bps increase.
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[("before", 1000), ("after", 1050), ("bps", 500)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[("before", 1000), ("after", 1051), ("bps", 500)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[
+                ("before", 4_294_967_295),
+                ("after", 0),
+                ("bps", 2)
+            ]
+        ),
+        0 // multiply overflow -> claim doesn't hold, never escalates
+    );
+
+    // parts_sum_to_total4_u32: exact match, mismatch, and a wrapping add (claim doesn't
+    // hold, never escalates).
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[("a", 10), ("b", 20), ("c", 30), ("d", 40), ("total", 100)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[("a", 10), ("b", 20), ("c", 30), ("d", 40), ("total", 99)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[
+                ("a", 4_294_967_295),
+                ("b", 1),
+                ("c", 0),
+                ("d", 0),
+                ("total", 0)
+            ]
+        ),
+        0
+    );
+
+    // nonnegative_after_delta: mirrors apply_delta_clamped's own sign-handling idiom.
+    assert_eq!(run_cell("nonnegative_after_delta", &[10, 65531]), 1); // delta -5
+    assert_eq!(run_cell("nonnegative_after_delta", &[3, 65531]), 0); // delta -5
+    assert_eq!(run_cell("nonnegative_after_delta", &[0, 0]), 1);
+    assert_eq!(
+        run_cell("nonnegative_after_delta", &[100, 65436]),
+        1 // delta -100, exactly zero still counts as nonnegative
+    );
+}

@@ -12,19 +12,19 @@ import sys
 # appear in exactly one pack below — the script asserts that, so a new cell that isn't added
 # here fails loudly instead of silently missing from the index.
 PACKS = {
-    "predicates": ["eq", "neq", "is_lt", "is_le", "is_gt", "is_ge", "is_zero", "nonzero", "is_even", "is_odd"],
+    "predicates": ["eq", "neq", "is_lt", "is_le", "is_gt", "is_ge", "is_zero", "nonzero", "is_even", "is_odd", "is_lt_u32", "is_gt_u32", "is_le_u32", "is_ge_u32"],
     "safe-arith": ["add_sat", "sub_sat", "mul_sat", "safe_div", "safe_mod", "ceil_div", "avg2", "square", "square_wide"],
     "bounds": ["between_exclusive", "normalize_0_100", "snap_down", "snap_up", "round_to_multiple", "clamp"],
     "validation": ["range_check"],
     "percent": ["percent", "permille", "ratio_255", "scale_percent", "increase_percent", "discount_percent", "within_percent"],
-    "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3"],
+    "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3", "argmax3_u32", "argmin3_u32"],
     "bit/mask": ["popcount", "parity", "bit_is_set", "set_bit", "clear_bit", "toggle_bit", "mask_has_all", "mask_has_any", "mask_union", "mask_intersection", "mask_xor"],
-    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product", "is_prime_u32", "mod_inverse", "crt_solve_pair"],
+    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "triangular_inverse_exact", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product", "is_prime_u32", "mod_inverse", "crt_solve_pair"],
     "distance": ["abs_diff", "manhattan", "chebyshev", "euclid_sq"],
     "bit-encoding": ["low_byte", "high_byte", "swap_bytes", "rotl16", "rotr16", "reverse_bits", "leading_zeros", "trailing_zeros", "bit_length"],
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
     "bucket/convert": ["bucket3", "percent_to_byte", "byte_to_percent"],
-    "scoring/choice": ["weighted_sum", "weighted_sum_wide", "weighted_sum2", "weighted_sum3", "choose_best3", "is_clear_winner"],
+    "scoring/choice": ["weighted_sum", "weighted_sum_wide", "weighted_sum2", "weighted_sum3", "choose_best3", "is_clear_winner", "clear_winner_u32", "choose_best2", "choose_worst2"],
     "calendrical/checksum": ["is_leap_year", "days_in_month", "day_of_week", "luhn_check"],
     "fixed-point": ["q_mul", "q_div", "q_lerp", "q_sqrt", "q_sigmoid"],
     "agentic-runtime": ["token_bucket_step", "backoff_next", "circuit_breaker_step", "debounce_step", "hysteresis", "rate_window_update"],
@@ -35,13 +35,13 @@ PACKS = {
     "checked-arithmetic": ["mul_u16_u16_to_u32", "add_checked_u32", "sub_checked_u32", "div_exact_u32", "div_floor_u32", "div_ceil_u32", "mod_u32", "fits_u16", "mul_checked_u32", "mul_add_checked_u32", "mul_sub_checked_u32", "mul3_checked_u32", "add3_checked_u32", "pow_checked_u32", "abs_diff_u32", "min_u32", "max_u32", "clamp_u32", "range_check_u32", "avg2_u32", "divides_u32", "gcd_u32", "lcm_u32", "smag_add", "smag_sub", "smag_cmp", "smag_mul", "smag_div"],
     "money-bps": ["bps_of", "increase_by_bps", "decrease_by_bps", "original_before_bps_increase", "original_before_bps_decrease", "cents_mul_qty", "bps_increase_between", "bps_decrease_between"],
     "units": ["same_unit_check", "unit_mul", "unit_div", "unit_cancel_check"],
-    "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32", "answer_eq_u32", "sum_equals_u32", "diff_equals_u32", "sum3_equals_u32", "product3_equals_u32", "mul_add_equals_u32", "mul_sub_equals_u32", "pow_equals_u32", "smag_is_nonneg", "agree3_u32", "answer_within_tolerance_u32", "smag_eq"],
+    "verifier-ranker": ["sum_equals", "diff_equals", "product_equals_u32", "quotient_equals_exact_u32", "answer_eq_u32", "sum_equals_u32", "diff_equals_u32", "sum3_equals_u32", "product3_equals_u32", "mul_add_equals_u32", "mul_sub_equals_u32", "pow_equals_u32", "smag_is_nonneg", "agree3_u32", "answer_within_tolerance_u32", "smag_eq", "percent_equals_bps", "parts_sum_to_total4_u32", "nonnegative_after_delta"],
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
-    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
+    "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_of_whole_floor", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
     "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32", "fibonacci_checked_u32", "catalan_number", "derangement_count"],
     "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid"],
-    "sequences": ["arithmetic_series_sum", "geometric_series_sum"],
+    "sequences": ["arithmetic_series_sum", "geometric_series_sum", "arithmetic_nth_u32", "geometric_nth_checked_u32", "consecutive_sum_start"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
