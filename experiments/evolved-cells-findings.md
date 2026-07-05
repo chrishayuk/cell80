@@ -223,6 +223,67 @@ full `evolved-cells` main binary after the swap: **identical result** — same 6
 chains, same fingerprint agreements — confirming the AST-based split is a faithful replacement
 for the regex one on every op actually in this pool, not just a differently-implemented one.
 
+## Follow-up 6: does search-method choice correlate with the resulting candidate?
+
+The last open item from "what would raise confidence further" below: now that one candidate
+(`mystery_bits_2`) came from GA instead of A*, does *which method found it* leave any trace on
+the candidate itself — chain length, fingerprint agreement, compiled size, real VM cost?
+
+**The honest answer is that this harness can't really test that, and it's worth saying why.**
+`main.rs` only falls back to GA/MCTS when A* finds *nothing at all* — there's no middle ground
+where A* "wins but barely" and a different method gets used instead. Across the 6 reachable
+targets, A* still succeeds on 5 of them; only `mystery_bits_2` breaks it outright. So the actual
+sample is 5 A*-sourced candidates against 1 GA-sourced one — nowhere near enough for a real
+correlation, and structurally capped at n=1 for as long as "does A* solve it, yes/no" is the
+only lever deciding method choice. A benchmark with several independently-designed
+A*-defeating targets (not just `mystery_bits`/`mystery_bits_2`, both built by the same
+experimenter) would be the way to actually test this — untested here.
+
+That said, the one data point is worth reporting plainly, not discarded for being n=1:
+
+| target | method | chain | steps | fingerprint agreement | compiled size | cycles (x=12345) |
+|---|---|---|---|---|---|---|
+| `digital_root` | A* | `digit_sum`×3 | 3 | 0.895 | 220 B | 2,864 |
+| `low_byte_popcount` | A* | `low_byte → popcount` | 2 | 0.842 | 80 B | 1,654 |
+| `high_byte_popcount` | A* | `high_byte → popcount` | 2 | 0.842 | 102 B | 1,744 |
+| `rotated_low_byte_popcount` | A* | `rotl12 → high_byte → popcount` | 3 | 0.737 | 175 B | 2,934 |
+| `mystery_bits` | A* | `and_5555 → rotl4 → xor_5555 → or_aaaa → popcount` | 5 | 0.105 | 179 B | 4,872 |
+| `mystery_bits_2` | **GA** | `or_0f0f → and_aaaa → popcount` | 3 | 0.263 | 93 B | 3,588 |
+
+(Compiled size / cycles from the real `cell80` CLI on each written candidate, one representative
+input. Fingerprint agreements shifted slightly from earlier sections since the library has
+grown to 221 cells since those were first measured — closest matches are current, not stale.)
+
+**No red flag on the one data point available.** The GA-sourced candidate isn't bloated or
+structurally unusual by any of these axes — at 93 compiled bytes it's the second-*smallest* of
+all six (only `low_byte_popcount` is smaller), and its 3 steps tie for the shortest chain in the
+set. If anything, size and cycles here track *which ops are in the chain* far more than *how
+many steps or which method chose them*: `digital_root` (A*, 3 steps, all `digit_sum` — itself a
+loop-bodied op applied three times) costs more (220 B / 2,864 cycles) than `mystery_bits_2` (GA,
+also 3 steps, but two of the three are cheap single-instruction masks) despite equal step count.
+Fingerprint agreement follows the same pattern — it's highest (0.842) for the two simplest
+2-step popcount compositions, both A*-sourced, and tracks how close a target's *behavior*
+happens to sit near an existing cell family, not which search method proposed the chain.
+Search cost itself was never comparable across methods to begin with (A*'s node count, GA's
+generation-evaluations, and MCTS's rollout-steps are different units measuring the same spirit
+of effort, not the same thing — already flagged in `cell-synth-evolve.md`), so it isn't a valid
+axis for a cross-method correlation claim regardless of sample size.
+
+**A genuine, unplanned update to Follow-up 4: the true minimal `mystery_bits_2` chain is 3
+steps, not 4.** Follow-up 4 verified a 4-step chain (`and_aaaa → or_0f0f → and_aaaa →
+popcount`) that A* found at a tightly-capped `max_depth=5` in the boundary sweep. Checking here
+which of the 5 GA seeds actually produced the candidate above (re-run each seed individually,
+`max_depth=8` — the target's real configured depth): seeds 2 and 3 both succeed, and both land
+on the *same* 3-step chain at the *same* cost (450 evaluations each) — seeds 1, 4, 5 fail
+outright. Two independent seeds converging on an identical, cheaper solution is good evidence
+this is the actual global optimum, not a fluke — and it's shorter than the 4-step chain
+Follow-up 4 called "genuinely new," which was itself already shorter than the hand-designed
+6-step target. The pattern across this whole sub-thread: every method that isn't handed a tight
+depth ceiling (GA at `max_depth=8`, unconstrained) keeps finding *shorter* real solutions than
+whatever came before it, while A* at the same generous depth finds nothing at all — the
+clearest illustration yet of Follow-up 4's core claim that excess depth headroom actively hurts
+A*'s Hamming-guided search rather than just failing to help it.
+
 ## Three real mistakes, caught by the method working as designed
 
 **1. The first run's `digital_root` chain was wrong, and the full-domain check caught it.**
@@ -326,7 +387,11 @@ Targets, the op pool, probes, and budgets are constants/data at the top of `main
 - ~~Replace regex-based codegen with real `syn`-based parsing~~ — done (Follow-up 5).
 - Get retrieval rows and aliasing judgment from someone other than the experimenter before
   treating "admitted" as "would really be merged."
-- Now that `mystery_bits_2`'s candidate came from GA/MCTS rather than A*, check whether
-  search-method choice itself correlates with anything about the resulting candidate (chain
-  shape, fingerprint agreement, code size) — untested so far, since every earlier candidate
-  came from A*.
+- ~~Check whether search-method choice correlates with the resulting candidate~~ — done
+  (Follow-up 6): can't really be tested with only 1 GA-sourced candidate against 5 A*-sourced
+  ones, and this harness structurally can't produce more than that (A* is used whenever it
+  finds anything at all). The one data point shows no red flag on chain length, fingerprint
+  agreement, or real compiled size/cycles — and incidentally surfaced an even shorter (3-step,
+  not 4) verified solution for `mystery_bits_2` than Follow-up 4 had found. A benchmark with
+  several independently-designed A*-defeating targets would be needed to actually test the
+  correlation question.
