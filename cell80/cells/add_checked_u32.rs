@@ -1,5 +1,5 @@
 //! Checked u32 add: escalates (needs_wider_math) instead of silently wrapping if a + b overflows u32.
-//! tags: math, add, checked, wide, u32, overflow, escalate
+//! tags: math, add, checked, wide, u32, overflow, escalate, rate, combined-rate
 //! entry: AddChecked::run
 //! limits: escalates (halt 0xFF05, needs_wider_math) if a + b would exceed u32::MAX
 struct AddChecked { a: u32, b: u32, sum: u32 }

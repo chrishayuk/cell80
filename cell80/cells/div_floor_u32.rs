@@ -1,5 +1,5 @@
 //! Floor division of two u32 values: a / b, rounded down. Escalates (needs_wider_math) if b is zero.
-//! tags: math, divide, floor, wide, u32
+//! tags: math, divide, floor, wide, u32, rate, time, unit-rate, proportion
 //! entry: DivFloor::run
 //! limits: escalates (halt 0xFF05, needs_wider_math) if b == 0
 struct DivFloor { a: u32, b: u32, quotient: u32 }

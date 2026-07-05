@@ -1,5 +1,5 @@
 //! Exact u32 division: escalates (needs_wider_math) if b is zero or a doesn't divide evenly by b — a wrong-plan signal for word problems that declared an exact division.
-//! tags: math, divide, exact, checked, wide, u32, remainder, escalate
+//! tags: math, divide, exact, checked, wide, u32, remainder, escalate, rate, time, unit-rate, proportion
 //! entry: DivExact::run
 //! limits: escalates (halt 0xFF05, needs_wider_math) if b == 0 or a % b != 0
 struct DivExact { a: u32, b: u32, quotient: u32 }

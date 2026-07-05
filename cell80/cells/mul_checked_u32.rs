@@ -1,5 +1,5 @@
 //! Checked u32 multiply: escalates (needs_wider_math) instead of wrapping if a * b overflows u32.
-//! tags: math, multiply, checked, wide, u32, overflow, escalate
+//! tags: math, multiply, checked, wide, u32, overflow, escalate, rate, time, total
 //! entry: MulChecked::run
 //! limits: escalates (halt 0xFF05, needs_wider_math) if a * b would exceed u32::MAX
 struct MulChecked { a: u32, b: u32, product: u32 }

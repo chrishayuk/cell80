@@ -1,5 +1,5 @@
 //! Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction.
-//! tags: fraction, frac, scale, multiply, integer, reduce, wide, u32, checked, escalate
+//! tags: fraction, frac, scale, multiply, integer, reduce, wide, u32, checked, escalate, work, job, done, rate, progress
 //! entry: FracScale::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if d == 0; escalates (halt 0xFF05, needs_wider_math) if n * k overflows u32
 struct FracScale { n: u32, d: u32, k: u32, num: u32, den: u32 }

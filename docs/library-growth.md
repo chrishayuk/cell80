@@ -1152,6 +1152,24 @@ Retrieval: 256-cell baseline direct 79% / paraphrase 33% / adversarial 56% / ove
 → 259 cells direct 79% / paraphrase 33% / adversarial 56% / overall 58% — unchanged on
 every split, the cleanest-landing slice of the wave.
 
+**Wave 4 tagging pass (259 cells, no new code).** The categories that collapsed to zero
+new cells (unit conversion, rate/proportion) and the mostly-duplicate ones (verifier/
+constraint, agent runtime) still carried real vocabulary worth keeping findable — the
+"aliases live in metadata, not code" rule applied at wave scale rather than per-cell.
+Added the rejected-duplicate wording as tags on the cells that actually absorb it:
+`frac_of_whole` (dollars/cents/hours/minutes/percent/ratio/recipe conversion words —
+the cell the proposal's "generic scaler" turned out to duplicate exactly),
+`div_exact_u32`/`div_floor_u32`/`mul_checked_u32` (rate/time/unit-rate wording),
+`add_checked_u32`/`add3_checked_u32` (combined-rate), `sub_checked_u32` (net-rate),
+`frac_scale` (work/job/progress — `work_done_frac`'s wording), `frac_sub_from_whole`
+(remaining/left — `remaining_work_frac`'s wording), `is_ge` (deadline/budget/cost —
+extends the alias this file's own "time / budget" section already named),
+`counter_step` (pick/next/worker — `round_robin_pick`'s wording). Verified, not assumed:
+codegen golden re-ran clean (tags are `//!` metadata, stripped before compilation — no
+compiled byte changed), the admission gate stayed 259/0, and the retrieval curve ticked
+up a point overall (58%→59%) with every split flat or better — no regression from adding
+vocabulary, unlike the one wording change checkpoint 12 had to revert.
+
 **Wave 4 complete: 239 → 259 cells, ~20 net new against the ~100 originally proposed.**
 The full dedup rationale (per-category survivor counts, the killed PlanFix-validator
 category, the deferred average/mixture category) is in this file's own wave-4 summary
