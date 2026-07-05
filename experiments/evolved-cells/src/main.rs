@@ -1,19 +1,21 @@
-//! Runs the protocol pre-registered in `../evolved-cells-preregistration.md`. For each of 5
-//! fixed arity-1 targets: search for a chain of real, existing stdlib cells (via
-//! `cell80::synthesize` — A*, already built, not GA/MCTS, since these targets aren't the
-//! deceptive "lossy" kind `cell-synth-evolve` needed heavier search for), validate the chain
-//! over the *entire* u16 domain (not just the probes used to search), hand-compose the chain
-//! into one candidate cell source, and check that candidate against the real admission-gate
-//! mechanism (`cell80::{Fingerprint, DEFAULT_PROBES}`) against every cell currently in
-//! `cell80/cells/*.rs` — not a reimplementation of the gate, the actual fingerprint code.
+//! Runs the protocol pre-registered in `../evolved-cells-preregistration.md`. For each fixed
+//! arity-1 target: search for a chain of real, existing stdlib cells (`cell80::synthesize` —
+//! A* — for every target; also `cell_synth_evolve::{evolve, mcts, portfolio}` — the *actual*
+//! GA/MCTS code from `cell-synth-evolve`, reused via its lib, not duplicated — for the
+//! deliberately harder targets, `Target::harder`), validate the chain over the *entire* u16
+//! domain (not just the probes used to search), hand-compose it into one candidate cell
+//! source (general codegen — parses each op's real source text and substitutes/renames,
+//! regex-based rather than a full `syn` AST transform; see `ParsedCell`'s doc comment for why
+//! that's a stated limit, not an oversight), and check that candidate against the real
+//! admission-gate mechanism (`cell80::{Fingerprint, DEFAULT_PROBES}`) against every cell
+//! currently in `cell80/cells/*.rs` — not a reimplementation of the gate, the actual
+//! fingerprint code.
 //!
-//! Deliberate, stated scope reduction from the pre-registration's original 4-piece plan: no
-//! per-op cycle tracking or cost-aware acceptance rule this pass — these targets are "smooth"
-//! (not the Hamming-deceptive kind), so A*'s natural shortest-chain-first behaviour is an
-//! adequate proxy for cost without building real cycle instrumentation. Codegen (below) *is*
-//! general now — it parses each op's real source text and substitutes/renames rather than
-//! using a hand-written template per op — but it's regex/text-based, not a full `syn` AST
-//! transform; see `ParsedCell`'s doc comment for why that's a stated limit, not an oversight.
+//! The pre-registration's original "smooth targets, A* suffices, skip GA/MCTS" scope
+//! reduction turned out not to hold in general: `mystery_bits_2` (a deliberately deep,
+//! Hamming-deceptive target over a broadened real-cell op pool) breaks A* outright — no chain
+//! found within budget — while GA and MCTS both find one reliably. See
+//! `../evolved-cells-findings.md` for the full account.
 use cell80::{synthesize, Cartridge, CartridgeOpts, CellConfig, Fingerprint, Op};
 use cell_synth_evolve::{evolve, mcts, portfolio, summarize};
 use regex::Regex;
@@ -117,6 +119,10 @@ struct Target {
     /// candidate without them wouldn't look like a real contribution to the actual gate.
     summary: &'static str,
     tags: &'static str,
+    /// Also run GA/MCTS/portfolio (not just A*) — reserved for the deliberately harder
+    /// targets, to bound runtime rather than running the full search-method comparison on
+    /// every easy target too.
+    harder: bool,
 }
 
 /// One real cell's source, parsed just enough to re-emit its body with substitutions: the
@@ -302,7 +308,15 @@ fn main() {
     }
     let rotl_src = cell_source(&cells_dir, "rotl16");
     let rotl_cart = compile("rotl16", &rotl_src);
-    for (label, n) in [("rotl2", 2u16), ("rotl4", 4), ("rotl6", 6), ("rotl8", 8), ("rotl10", 10), ("rotl12", 12), ("rotl14", 14)] {
+    for (label, n) in [
+        ("rotl2", 2u16),
+        ("rotl4", 4),
+        ("rotl6", 6),
+        ("rotl8", 8),
+        ("rotl10", 10),
+        ("rotl12", 12),
+        ("rotl14", 14),
+    ] {
         ops.push(Op::from_cell(label, &rotl_cart, n));
         op_meta.insert(label.to_string(), (rotl_src.clone(), n));
     }
@@ -313,13 +327,25 @@ fn main() {
     // target over a narrow pool.
     let union_src = cell_source(&cells_dir, "mask_union");
     let union_cart = compile("mask_union", &union_src);
-    for (label, k) in [("or_aaaa", 0xAAAAu16), ("or_5555", 0x5555), ("or_0f0f", 0x0F0F), ("or_00ff", 0x00FF), ("or_ff00", 0xFF00)] {
+    for (label, k) in [
+        ("or_aaaa", 0xAAAAu16),
+        ("or_5555", 0x5555),
+        ("or_0f0f", 0x0F0F),
+        ("or_00ff", 0x00FF),
+        ("or_ff00", 0xFF00),
+    ] {
         ops.push(Op::from_cell(label, &union_cart, k));
         op_meta.insert(label.to_string(), (union_src.clone(), k));
     }
     let xor_src = cell_source(&cells_dir, "mask_xor");
     let xor_cart = compile("mask_xor", &xor_src);
-    for (label, k) in [("xor_5555", 0x5555u16), ("xor_aaaa", 0xAAAA), ("xor_5a5a", 0x5A5A), ("xor_00ff", 0x00FF), ("xor_ff00", 0xFF00)] {
+    for (label, k) in [
+        ("xor_5555", 0x5555u16),
+        ("xor_aaaa", 0xAAAA),
+        ("xor_5a5a", 0x5A5A),
+        ("xor_00ff", 0x00FF),
+        ("xor_ff00", 0xFF00),
+    ] {
         ops.push(Op::from_cell(label, &xor_cart, k));
         op_meta.insert(label.to_string(), (xor_src.clone(), k));
     }
@@ -363,6 +389,7 @@ fn main() {
             max_depth: 5,
             summary: "Digital root of n: repeatedly sum digits until one digit remains.",
             tags: "number, digits, digital-root, decimal, reduce, math",
+            harder: false,
         },
         Target {
             name: "low_byte_popcount",
@@ -370,6 +397,7 @@ fn main() {
             max_depth: 3,
             summary: "Population count of just the low byte of x (high byte ignored).",
             tags: "bits, popcount, byte, low, count, ones, bitcount",
+            harder: false,
         },
         Target {
             name: "high_byte_popcount",
@@ -377,6 +405,7 @@ fn main() {
             max_depth: 3,
             summary: "Population count of just the high byte of x (low byte ignored).",
             tags: "bits, popcount, byte, high, count, ones, bitcount",
+            harder: false,
         },
         Target {
             name: "is_semiprime",
@@ -384,6 +413,7 @@ fn main() {
             max_depth: 5,
             summary: "1 if n is a product of exactly two primes (with multiplicity), else 0.",
             tags: "number, prime, semiprime, factorization, predicate",
+            harder: false,
         },
         Target {
             name: "rotated_low_byte_popcount",
@@ -391,6 +421,7 @@ fn main() {
             max_depth: 4,
             summary: "Population count of the low byte of x after rotating its bits left by 4.",
             tags: "bits, popcount, rotate, byte, count, ones",
+            harder: false,
         },
         Target {
             name: "mystery_bits",
@@ -398,6 +429,7 @@ fn main() {
             max_depth: 6,
             summary: "Popcount of x, OR'd with 0xAAAA, rotated left 8, XOR'd with 0x5555.",
             tags: "bits, popcount, mask, rotate, xor, experimental",
+            harder: true,
         },
         Target {
             name: "mystery_bits_2",
@@ -405,6 +437,7 @@ fn main() {
             max_depth: 8,
             summary: "Popcount of a 6-step OR/rotate/AND/rotate/XOR mask chain over x.",
             tags: "bits, popcount, mask, rotate, xor, experimental",
+            harder: true,
         },
     ];
 
@@ -417,22 +450,65 @@ fn main() {
         59999, 65535,
     ];
 
+    const HARDER_SEEDS: &[u64] = &[1, 2, 3, 4, 5];
+
     let mut passes = 0usize;
     for t in &targets {
         println!("=== {} (max_depth={}) ===", t.name, t.max_depth);
         let examples: Vec<(u16, u16)> = PROBES.iter().map(|&x| (x, (t.oracle)(x))).collect();
 
-        let Some(plan) = synthesize(&examples, &ops, t.max_depth, BUDGET) else {
-            println!(
-                "  A*: no chain found (budget {BUDGET}, depth {}) — see note below\n",
+        let astar_plan = synthesize(&examples, &ops, t.max_depth, BUDGET);
+        match &astar_plan {
+            Some(p) => println!("  A*:   found {:?} ({} nodes tested)", p.steps, p.tested),
+            None => println!(
+                "  A*:   no chain found (budget {BUDGET}, depth {})",
                 t.max_depth
+            ),
+        }
+
+        let plan = if t.harder {
+            // Also run GA/MCTS/portfolio — not just A* — to test whether they find something
+            // A* can't at this pool size (or find it far more cheaply), instead of only
+            // reporting whatever A* alone returns.
+            let ga_results: Vec<_> = HARDER_SEEDS
+                .iter()
+                .map(|&seed| evolve(&examples, &ops, t.max_depth, BUDGET, seed))
+                .collect();
+            let mcts_results: Vec<_> = HARDER_SEEDS
+                .iter()
+                .map(|&seed| mcts(&examples, &ops, t.max_depth, BUDGET, seed))
+                .collect();
+            println!("  GA:   {}", summarize(&ga_results));
+            println!("  MCTS: {}", summarize(&mcts_results));
+            let portfolio_results: Vec<_> = (0..HARDER_SEEDS.len())
+                .map(|i| {
+                    portfolio(&[
+                        astar_plan.clone(),
+                        ga_results[i].clone(),
+                        mcts_results[i].clone(),
+                    ])
+                })
+                .collect();
+            println!(
+                "  Portfolio (best of A*/GA/MCTS): {}",
+                summarize(&portfolio_results)
             );
+
+            // Prefer A*'s plan for the downstream full-domain/codegen/fingerprint steps if it
+            // found one (matching the non-harder targets' behaviour); otherwise fall back to
+            // whichever method actually succeeded, so a target A* can't solve still gets
+            // checked all the way through instead of being silently skipped.
+            astar_plan
+                .or_else(|| ga_results.into_iter().flatten().next())
+                .or_else(|| mcts_results.into_iter().flatten().next())
+        } else {
+            astar_plan
+        };
+
+        let Some(plan) = plan else {
+            println!("  no method found a chain within budget — see note below\n");
             continue;
         };
-        println!(
-            "  A* found: {:?} ({} nodes tested)",
-            plan.steps, plan.tested
-        );
 
         let mut wrong = 0u32;
         for x in 0..=u16::MAX {

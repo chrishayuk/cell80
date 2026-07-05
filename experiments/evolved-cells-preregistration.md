@@ -6,16 +6,19 @@ result could be checked against what we said would count as a win, rather than t
 quietly reshaping itself around whatever came out. That discipline is the same one
 `cell80-life-findings.md` and `cell-synth-evolve.md` already used after the fact (the
 crossover-bloat bug, the corrected `rapid_reproducer` decay claim); this is the same thing
-stated up front instead. Result: 5/5 reachable targets passed (beating the 2/5 placeholder bar
-below), the negative control correctly found nothing, and three real mistakes (a wrong
-`digital_root` chain, two dialect/codegen bugs) were caught mid-run rather than discovered
-later. Two of the three original scope reductions have since been closed as follow-ups: the
-real admission-gate CLI (not just the fingerprint check) now confirms all 5 candidates would be
-admitted, and codegen is now general (parses real cell source, not per-op hand templates). The
-third (cycle-cost tracking / GA-MCTS for harder targets) was tested with one deliberately harder
-target — A* still succeeded, at ~80x the search effort, so the "smooth targets, A* suffices"
-reduction held at this scale but isn't proven in general. Full account in
-`evolved-cells-findings.md`.
+stated up front instead. Result: 6/6 reachable targets passed (beating the 2/5 placeholder bar
+below), and three real mistakes (a wrong `digital_root` chain, two dialect/codegen bugs) were
+caught mid-run rather than discovered later. All three original scope reductions have since
+been closed: the real admission-gate CLI (not just the fingerprint check) confirms all 6
+candidates would be admitted; codegen is now general (parses real cell source, not per-op hand
+templates); and cycle-cost tracking / GA-MCTS was resolved definitively, not just tested at one
+scale — `cell-synth-evolve`'s actual GA/MCTS code was split into a reusable library and reused
+here (not a duplicate), the op pool was broadened to mirror `cell-synth-evolve`'s own
+escalation, and a deeper target (`mystery_bits_2`) genuinely broke A* (no chain found within
+budget) while GA and MCTS both found one reliably (5/5 seeds each). The negative control
+(`is_semiprime`) evolved too: with the broadened pool A* now finds a chain that matches every
+probe, which the full-domain check correctly rejects — a stronger demonstration of that check's
+purpose than the original clean miss. Full account in `evolved-cells-findings.md`.
 
 ## The claim being tested
 

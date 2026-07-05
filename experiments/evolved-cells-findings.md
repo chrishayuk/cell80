@@ -8,10 +8,12 @@ quietly smoothed over.
 
 ## Result
 
-**5 of 5 reachable targets passed; the negative control correctly found nothing.** That beats
-the pre-registered placeholder bar (2 of 5, `is_semiprime` excluded from the denominator as the
-calibration target) outright, and every candidate was independently confirmed by the *real*
-admission-gate CLI, not just the fingerprint check in isolation (see below).
+**6 of 6 reachable targets passed.** That beats the pre-registered placeholder bar (2 of 5,
+`is_semiprime` excluded from the denominator as the calibration target) outright, and every
+candidate was independently confirmed by the *real* admission-gate CLI, not just the
+fingerprint check in isolation (see below). One target (`mystery_bits_2`) is the result the
+original pre-registration explicitly hadn't tested: **A* genuinely fails to find a chain here
+at all — GA and MCTS both find one reliably.** See Follow-up 3.
 
 | target | chain found | full-domain check | fingerprint vs. existing library |
 |---|---|---|---|
@@ -19,12 +21,16 @@ admission-gate CLI, not just the fingerprint check in isolation (see below).
 | `low_byte_popcount` | `low_byte → popcount` | PASS | closest = `popcount`, agreement 0.833 → **novel** |
 | `high_byte_popcount` | `high_byte → popcount` | PASS | closest = `lcm3`, agreement 0.833 → **novel** |
 | `rotated_low_byte_popcount` | `rotl12 → high_byte → popcount` | PASS | closest = `popcount`, agreement 0.667 → **novel** |
-| `mystery_bits` (harder, added later) | `rotl4 → xor_5555 → or_aaaa → popcount` | PASS | closest = `leading_zeros`, agreement 0.167 → **novel** |
-| `is_semiprime` (negative control) | *no chain found* (budget 500,000, depth 5) | — | — |
+| `mystery_bits` (harder) | A*: `and_5555 → rotl6 → xor_5555 → or_aaaa → popcount` (448,447 nodes) | PASS | closest = `leading_zeros`, agreement 0.167 → **novel** |
+| `mystery_bits_2` (harder still) | **A*: not found.** GA/MCTS both found one (see below) | PASS | closest = `bit_length`, agreement 0.167 → **novel** |
+| `is_semiprime` (negative control) | A* finds a chain matching the probes; **full-domain check correctly rejects it** (18,910/65,536 wrong) | — | — |
 
 `agreement` is fraction-of-12-probes-matching; `1.0` is the real admission gate's own
 duplicate threshold (`cell80/src/admission.rs::DUPLICATE_AGREEMENT`). Every candidate here
 landed at 0.167–0.833 — related enough to *something* in most cases, never close to identical.
+`mystery_bits`'s chain and node count changed from an earlier pass (`rotl4 → xor_5555 →
+or_aaaa → popcount`, 83,029 nodes) once the op pool was broadened for Follow-up 3 below — a
+bigger pool makes A* work harder even on a target it already solved, not just on new ones.
 
 ## Follow-up 1: the real admission gate, not just the fingerprint check
 
@@ -63,22 +69,41 @@ auto-generated sources too: still all admitted, still zero refusals.
 
 ## Follow-up 3: does the "smooth targets, plain A* suffices" scope reduction hold?
 
-Added `mystery_bits` — `((x | 0xAAAA).rotate_left(8) ^ 0x5555).count_ones()` — deliberately built
-in the same spirit as `cell-synth-evolve`'s Hamming-deceptive "lossy" benchmarks (OR/rotate/XOR
-combinations), but from real library ops (`mask_union`, `rotl16`, `mask_xor`, `popcount`)
-instead of synthetic toy cells, to test whether this experiment's stated scope reduction (skip
-GA/MCTS, rely on A*'s natural shortest-chain bias) actually holds once a target isn't smooth.
+**No — not in general.** First pass (a narrower 23-op pool, `mystery_bits` alone) found A*
+straining but still succeeding (83,029 node expansions, ~80x every other target, but a valid
+chain). That result was reported honestly as "validated at this scale, not proven in general,"
+with GA/MCTS-porting listed as the way to actually test it rather than assume it. This is that
+test.
 
-**It held, but visibly strained.** A* still found a valid chain — `rotl4 → xor_5555 → or_aaaa →
-popcount`, full-domain correct — but needed 83,029 node expansions to get there, against
-≤1,008 for every other target. That's roughly two orders of magnitude harder, in the same
-direction `cell-synth-evolve` found (A* degrading, not failing, as a target gets less smooth),
-just not yet past the point of actual failure at this op-pool size (23 ops) and budget
-(500,000). `cell-synth-evolve`'s own A*-failure cases needed an 18-op pool at `max_depth=8` to
-tip over — this experiment's pool (23 ops, `max_depth≤6`) is a similar scale but didn't
-reproduce a hard failure. Honest reading: the scope reduction is *validated at this scale, not
-proven in general* — a genuinely harder or deeper target would likely need porting GA/MCTS from
-`cell-synth-evolve`, which remains unbuilt here.
+**What changed:** `cell-synth-evolve`'s own GA/MCTS/portfolio code was split into a real
+library (`cell-synth-evolve/src/lib.rs` — `evolve`, `mcts`, `portfolio`, `summarize`, all
+`pub`) instead of being private to its `main.rs`, specifically so `evolved-cells` could reuse
+the *actual* search code, not a duplicate. Verified the split was behavior-preserving first:
+reran `cell-synth-evolve`'s own benchmark suite after the refactor and got byte-identical
+output to before it. The op pool was also broadened (23 → 35 ops: more AND/OR/XOR mask
+constants, more rotate amounts — mirroring `cell-synth-evolve`'s own 11 → 18 escalation, which
+is what actually found *its* A*-failure case) and a second, deeper target was added:
+`mystery_bits_2`, a 6-step OR/rotate/AND/rotate/XOR/popcount chain, `max_depth=8`.
+
+**Result: A* found nothing for `mystery_bits_2` within the 500,000-node budget. GA succeeded
+5/5 seeds (avg 162,540 evaluations); MCTS succeeded 5/5 seeds (avg 122,304).** This is the
+actual failure case the first pass didn't reach — not strain, an outright miss, with both
+heuristic-free methods reliably finding what A* couldn't. On `mystery_bits` itself, now run
+against the broadened 35-op pool, A* still succeeded but needed *more* effort than before
+(448,447 nodes, vs. 83,029 on the narrower pool) — while GA (84,930) and MCTS (17,938 — the
+cheapest of all three by a wide margin here) barely noticed the larger pool. Both observations
+line up with `cell-synth-evolve`'s original finding: A*'s Hamming heuristic degrades as the
+search space grows on lossy targets; population/tree-based search without a heuristic doesn't,
+because it was never leaning on one.
+
+**A bonus catch, not designed for:** with the broadened pool, A* now finds a chain for
+`is_semiprime` (the negative control) that matches every probe — `low_byte → rotl14 → low_byte
+→ is_pow2` — but the full-domain check correctly rejects it (18,910/65,536 real inputs wrong).
+The negative control's story changed from "no chain found at all" to "something coincidentally
+probe-matching gets found and correctly thrown out" — arguably a *stronger* demonstration of
+the method's rigor than the original clean miss, since it shows the full-domain check catching
+a subtler failure mode (plausible-looking, not just absent) on a target that has no real
+solution.
 
 ## Three real mistakes, caught by the method working as designed
 
@@ -141,9 +166,10 @@ pool have that shape, but it's a known, stated gap, not a hidden one.
 - **General codegen is regex/text-based, not a full `syn` AST transform**, and has a known gap
   (a cell whose entire tail is a leading if/else chain) that happens not to matter for the ops
   in this pool, but would for a larger one.
-- **The "A* suffices" question is validated at this scale, not proven in general** — see
-  Follow-up 3. A genuinely harder target would likely need the GA/MCTS port, unbuilt here.
-- **n=6 targets, all arity-1, all constructed by the experimenter** (not pulled from a real
+- **The A*-failure result is one target at one pool size/depth, not a curve.** `mystery_bits_2`
+  breaking A* at 35 ops / `max_depth=8` shows the failure mode is real; it doesn't establish
+  *where* the boundary sits between "A* strains" and "A* fails outright," only that both exist.
+- **n=7 targets, all arity-1, all constructed by the experimenter** (not pulled from a real
   backlog — the actual "Next waves" list in `library-growth.md` turned out to have no
   remaining un-duplicated arity-1 gaps when checked). A clean pass here is evidence the
   mechanism works on a small, controlled draw, not a claim about how much of real library
@@ -172,9 +198,12 @@ Targets, the op pool, probes, and budgets are constants/data at the top of `main
 
 ## What would raise confidence further
 
-- Port GA/MCTS from `cell-synth-evolve` and find a target that actually breaks A* at this
-  pool's scale, to test the scope reduction properly rather than validate it by absence of
-  failure.
+- Map the actual A*-failure boundary (a curve over pool size × depth) instead of the one
+  data point found here, to know how narrow or wide the "GA/MCTS actually needed" regime is.
 - Replace regex-based codegen with real `syn`-based parsing to close the leading-if/else gap.
 - Get retrieval rows and aliasing judgment from someone other than the experimenter before
   treating "admitted" as "would really be merged."
+- Now that `mystery_bits_2`'s candidate came from GA/MCTS rather than A*, check whether
+  search-method choice itself correlates with anything about the resulting candidate (chain
+  shape, fingerprint agreement, code size) — untested so far, since every earlier candidate
+  came from A*.
