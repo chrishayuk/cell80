@@ -21,6 +21,7 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell facts export <dir> --calls <file> [--producer P]  (run calls, print .facts)\n  \
      rustz80-cell facts import <file.facts> <dir> [--verify-fraction F] [--quarantine] [--json]\n  \
      rustz80-cell facts verify <file.facts> <dir> [--json]  (re-execute every line; CI-able)\n  \
+     rustz80-cell solve <plans.json> [--cycles N] [--json]  (render/compile/verify candidate plans)\n  \
      safety (sandboxed by default): [--allow-raw-memory] [--allow-ports] \
      [--max-code-bytes N] [--max-touched N]";
 
@@ -114,6 +115,7 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
         Some("serve") => cmd_serve(&args[1..]),
         Some("graph") => cmd_graph(&args[1..]),
         Some("facts") => cmd_facts(&args[1..]),
+        Some("solve") => cmd_solve(&args[1..]),
         Some("keygen") => cmd_keygen(&args[1..]),
         Some("sign") => cmd_sign(&args[1..]),
         Some(other) => Err(format!("unknown command `{other}`\n{USAGE}")),
@@ -549,6 +551,66 @@ fn cmd_serve(args: &[String]) -> Result<String, String> {
         std::io::stdin().lock(),
         std::io::stdout().lock(),
     )
+}
+
+/// `solve <plans.json> [--cycles N] [--json]` — the minimal `cell_solve` loop (M2,
+/// docs/math-campaign-spec.md): each candidate plan renders to canonical dialect
+/// Rust, compiles (the plan IS a cell, catalogued by artifact hash), runs with its
+/// quantities as state fields, and is killed on any escalate/halt; disagreeing
+/// survivors face the counterfactual battery. `plans.json` is one plan object or
+/// an array of candidates.
+fn cmd_solve(args: &[String]) -> Result<String, String> {
+    let file = args.first().ok_or(USAGE)?;
+    let mut cycles = DEFAULT_CYCLES;
+    let mut json = false;
+    let mut it = args[1..].iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--cycles" => {
+                cycles = it
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .ok_or("--cycles needs a number")?
+            }
+            "--json" => json = true,
+            other => return Err(format!("unknown flag `{other}`")),
+        }
+    }
+    let text = std::fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+    let plans = crate::plan::plans_from_json(&text)?;
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    let rep = host.solve(&plans, cycles)?;
+    Ok(if json {
+        rep.to_json()
+    } else {
+        match rep.answer {
+            Some(a) => format!(
+                "answer: {a}{}",
+                if rep.battery_ran {
+                    " (counterfactual battery decided)"
+                } else {
+                    ""
+                }
+            ),
+            None => {
+                let kills: Vec<String> = rep
+                    .outcomes
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, o)| o.kill.as_ref().map(|k| format!("plan {i}: {k}")))
+                    .collect();
+                format!(
+                    "no surviving consensus — escalate
+{}",
+                    kills.join(
+                        "
+"
+                    )
+                )
+            }
+        }
+    })
 }
 
 /// `facts export|import|verify` — the fact-file verbs (docs/12 §4). Every beat of
@@ -1007,7 +1069,19 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        assert_eq!(h.len(), 208); // 203 (second slice) + smag_mul/smag_div, frac_avg2/frac_sub_from_whole, lcm3 — third slice (docs/library-growth.md)
+        // The real invariant: every .rs cell in the directory loads. (An exact
+        // count pin goes stale mid-wave — the library grows while suites run.)
+        let n_sources = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter(|e| {
+                e.as_ref()
+                    .unwrap()
+                    .path()
+                    .extension()
+                    .is_some_and(|x| x == "rs")
+            })
+            .count();
+        assert_eq!(h.len(), n_sources);
 
         // The library now holds a *distance family* (manhattan/chebyshev/euclid_sq), so a
         // bare "grid distance" is ambiguous; the cell-specific name still resolves.

@@ -330,6 +330,29 @@ pub(crate) fn lower_local(
             };
             body.push(Stmt::Assign(base, addr));
         }
+        // `let w: u32 = 100000;` — an annotated wide literal parses at the annotated
+        // width. (Unsuffixed literals otherwise default to the 16-bit parse, which
+        // rejects anything past 65535 — the named repair class the plan renderer and
+        // LLM authors hit constantly. `100000u32` always worked; now the annotation
+        // works too, exactly as rustc infers it.)
+        syn::Expr::Lit(l)
+            if matches!(&l.lit, syn::Lit::Int(_))
+                && matches!(&local.pat, syn::Pat::Type(t)
+                    if ctx.width_of_type(&t.ty) == Width::DWord) =>
+        {
+            let syn::Lit::Int(i) = &l.lit else {
+                unreachable!()
+            };
+            if !i.suffix().is_empty() && i.suffix() != "u32" {
+                return Err(format!(
+                    "`{name}` is annotated u32 but the literal is suffixed `{}`",
+                    i.suffix()
+                ));
+            }
+            let v = i.base10_parse::<u32>().map_err(|e| e.to_string())?;
+            let base = ctx.vars.declare(&name, 2, None, Width::DWord);
+            body.push(Stmt::Assign32(base, Expr::Lit32(v)));
+        }
         // `let x = if c { a } else { b };` / `let x = match … { … };` — the value-position
         // conditional lowers to its statement form assigning into `x`'s slot.
         cond @ (syn::Expr::If(_) | syn::Expr::Match(_)) => {

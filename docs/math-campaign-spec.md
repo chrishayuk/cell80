@@ -227,7 +227,7 @@ helper-territory, out of scope, gated. The word "ace" does not appear in this sp
 |---|---|
 | **M0** | u32-across-calls · wide-literal fix · sign-magnitude decision recorded |
 | **M1** | arithmetic/fraction/money/unit/verifier packs through the admission gate (with retrieval rows and probes, per the contribution rule — these are library cells like any other) |
-| **M2** | plan IR + renderer + counterfactual battery; renderer determinism test (same plan → same hash); repair rows from renderer rejects |
+| **M2** | plan IR + renderer + counterfactual battery; renderer determinism test (same plan → same hash); repair rows from renderer rejects — **shipped 2026-07-05** (`cell80/src/plan.rs` + `CellHost::solve`; CLI `cell80 solve`, py `solve`, MCP `cell_solve`; determinism/kill/battery tests in `cell80/tests/plan.rs`; the wide-literal prerequisite fixed the same day; render rejects surface as `kill: render/compile:` strings — repair rows harvest from a pilot run). Plan cells stay **warm** — one runner per schema, so a re-seen schema is *retrieved* (the `retrieved` flag is H-M3's counter) and its runs land in the fact file. |
 | **M3** | the campaign: full grid, metrics published, precipitated schemas admitted, `.facts` exported |
 | **M4** | read-out decides: extend (contest packs) / narrow (verifier-only) / bank |
 
