@@ -22,15 +22,19 @@ micro-runtime.
 > grown into bounded data structures: **generics + const-generics** (functions *and*
 > structs, monomorphized — `max$u16`, `Stack$8`), **struct-element arrays** (`[Cell; N]`
 > local, as a struct field, and the **`Entities<Cell, const N>`** combo — fixed-capacity
-> pools), **signed `i16`** (comparisons/divide/`>>` by sign), full **`u32`** arithmetic
+> pools), **nested struct fields** (`self.sprite.x`, any depth — a struct-typed field lays
+> out inline as its sub-struct's slots; access sums offsets to a scalar/`u32` leaf),
+> **signed `i16`** (comparisons/divide/`>>` by sign), full **`u32`** arithmetic
 > (two-slot, `HL:DE` — `+ - * / %` via runtime or trap, bitwise, constant shifts), and
 > **top-level `const` items with a const-data section** (scalars substitute as literals;
 > `[T; N]`/`&str`/struct/table data byte-packs into the image and resolves by address —
 > string literals interned, length-prefixed). Everything is differential-tested against
 > `rustc` on the emulator (`rustz80/tests/`); coverage is ≥90% line/region per file.
 > Stage 2 codegen shipped: emission goes through the symbolic **`Ins` layer** (one final
-> encode pass assigns PCs/operands) with a **measured six-rule peephole** run to fixpoint
-> (−4.3 % across the cell corpus), on top of the earlier const-fold, `× constant` via
+> encode pass assigns PCs/operands) with a **measured seven-rule peephole** run to fixpoint
+> (the first six −4.3 % across the cell corpus; R7's `+1`/`+2` → `INC HL` strength-reduction
+> a further −497 B / 76 programs), plus a width-aware **byte-op high-half elision** (a `u8`
+> `&`/`|`/`^` skips its dead high byte), on top of the earlier const-fold, `× constant` via
 > shift-and-add, and `/ 2ⁿ`/`% 2ⁿ` via shift/mask.
 >
 > **A second crate builds on this frontend: [`cell80`](../cell80/)** — a

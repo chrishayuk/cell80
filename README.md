@@ -265,7 +265,7 @@ not when it's a hot kernel you'd keep resident.
 
 The dialect is a bounded subset of real Rust — `u8`/`u16`/`u32`/`i16`, arithmetic (incl. `if`/`match` as values), comparisons as
 values (`(a < b) as u16`) + `&&`/`||`, runtime bit shifts, `if`/`while`/`for`/`loop`, arrays,
-`struct`/`enum`/`match`, functions and methods, generics (monomorphized), top-level `const`
+`struct`/`enum`/`match` (incl. nested struct fields — `self.sprite.x`), functions and methods, generics (monomorphized), top-level `const`
 items (scalar substitution + a by-address const-data section — tiles, tables, and string
 literals as interned length-prefixed bytes), `poke`/`peek`. A few of the cells
 (`cell80/cells/`):
@@ -395,7 +395,8 @@ the Cell trap path differential-tested against rustc, `/ 0` a typed halt, the di
 semantics written down — then the LLM-facing compiler (if/match expressions, diagnostics,
 signed `i16` — shipped), retrieval as the product, trust (signed cells, escalation contract,
 memoization), and codegen stage 2 (the symbolic `Ins` layer + the measured peephole —
-shipped, −4.3 % corpus code size; u32 array elements remain).
+shipped, −4.3 % corpus code size, plus a later `INC` strength-reduction rule at −497 B more;
+u32 array elements remain).
 
 ---
 
