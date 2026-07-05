@@ -438,10 +438,17 @@ running-stat cells toward "ask the agent to write Python."
   **Next here (updated):** u32 comparisons shipped (see above); retrieval rows for
   the wide siblings in the cell-eval dataset (library grew 98 → 100, so the
   `retrieval_compare` baselines will shift a hair on next run).
-- **Fixed-point — a convention on `u32`, not a type.** Q-format is a `u32` with a point
-  convention: `weighted_sum` with a Q8.8 weight is `(a*w) >> 8` — a `u32` multiply + a shift the
-  compiler already has. So it's a library convention + helper cells (`q_mul` / `q_div`) + an
-  optional manifest **scale** annotation, riding on `u32` — *not* a new type the agent must learn.
+- **Fixed-point — a convention on `u32`, not a type. ✓ (core shipped).** Q-format is a `u32`
+  (or `u16` for small ranges) with a point convention: a Q8.8 weight is `(a*w) >> 8` — a `u32`
+  multiply + a shift the compiler already has. The convention is written down
+  (`10-dialect-semantics.md`) and the helper cells **`q_mul`** / **`q_div`** ship (Q8.8,
+  computed wide through `u32` so the 16.16 intermediate doesn't overflow; `q_div` is
+  divide-by-zero-safe) — host-oracle rows (`tests/library.rs`), golden entries, and direct +
+  paraphrase retrieval rows. A Q16.16 kernel needs a 64-bit intermediate the substrate lacks, so
+  that stays the word-split `state`-cell pattern (documented). **Deferred (no consumer yet):** the
+  *optional* structured manifest **scale** field — it would need a `.cell` format bump +
+  serialization + ABI-doc round-trip, and nothing reads a structured scale today (the point
+  convention rides in the summary + `q8.8` tag). Gate it on a real consumer, per cost-is-a-gate.
 - **Determinism split (write it down before the first wide op).** Integer / fixed-point /
   **softfloat** are all deterministic (softfloat is pure-integer IEEE-754, bit-identical
   cross-arch) → **in scope, gated on size/cost** (`max_code`, `trapped_ops`); the determinism
