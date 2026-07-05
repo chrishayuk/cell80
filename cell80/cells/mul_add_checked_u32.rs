@@ -6,8 +6,7 @@ struct MulAddChecked { a: u32, b: u32, c: u32, result: u32 }
 impl MulAddChecked {
     fn run(&mut self) -> u16 {
         let p = mul_checked_u32(self.a, self.b);
-        let s = p.wrapping_add(self.c);
-        if s < p { halt(0xFF05u16); }
+        let s = add_checked_u32(p, self.c);
         self.result = s;
         1u16
     }

@@ -8,8 +8,7 @@ impl ModAddWide {
         if self.m == 0u32 { halt(0xFF06u16); }
         let ra = self.a % self.m;
         let rb = self.b % self.m;
-        let s = ra.wrapping_add(rb);
-        if s < ra { halt(0xFF05u16); }
+        let s = add_checked_u32(ra, rb);
         let r = if s >= self.m { s - self.m } else { s };
         self.result = r;
         1u16

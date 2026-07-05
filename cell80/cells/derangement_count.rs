@@ -18,8 +18,7 @@ impl DerangementCount {
         let mut i = 2u32;
         let mut d = 0u32;
         while i <= self.n {
-            let s = d_prev1.wrapping_add(d_prev2);
-            if s < d_prev1 { halt(0xFF05u16); }
+            let s = add_checked_u32(d_prev1, d_prev2);
             let mult = i - 1u32;
             let prod = mult.wrapping_mul(s);
             if mult != 0u32 && prod / mult != s { halt(0xFF05u16); }

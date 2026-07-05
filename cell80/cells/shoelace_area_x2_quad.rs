@@ -45,8 +45,7 @@ impl ShoelaceAreaX2Quad {
         let mut mag_s = 0u32;
         let mut neg_s = 0u16;
         if neg_t1 == neg_t2 {
-            let s = mag_t1.wrapping_add(mag_t2);
-            if s < mag_t1 { halt(0xFF05u16); }
+            let s = add_checked_u32(mag_t1, mag_t2);
             mag_s = s;
             neg_s = neg_t1;
         } else if mag_t1 >= mag_t2 {
@@ -58,8 +57,7 @@ impl ShoelaceAreaX2Quad {
         }
 
         if neg_s == neg_t3 {
-            let s = mag_s.wrapping_add(mag_t3);
-            if s < mag_s { halt(0xFF05u16); }
+            let s = add_checked_u32(mag_s, mag_t3);
             mag_s = s;
             neg_s = neg_t3;
         } else if mag_s >= mag_t3 {
@@ -71,8 +69,7 @@ impl ShoelaceAreaX2Quad {
 
         let mut mag_final = 0u32;
         if neg_s == neg_t4 {
-            let s = mag_s.wrapping_add(mag_t4);
-            if s < mag_s { halt(0xFF05u16); }
+            let s = add_checked_u32(mag_s, mag_t4);
             mag_final = s;
         } else if mag_s >= mag_t4 {
             mag_final = mag_s - mag_t4;

@@ -7,8 +7,7 @@ impl WeightedSum2 {
     fn run(&mut self) -> u16 {
         let p1 = self.a as u32 * self.wa as u32;
         let p2 = self.b as u32 * self.wb as u32;
-        let s = p1.wrapping_add(p2);
-        if s < p1 { halt(0xFF05u16); }
+        let s = add_checked_u32(p1, p2);
         self.sum = s;
         if (s >> 16u32) as u16 != 0u16 { 65535u16 } else { s as u16 }
     }

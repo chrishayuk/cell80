@@ -16,8 +16,7 @@ impl GeometricSeriesSum {
             let next_term = term.wrapping_mul(self.r);
             if term != 0u32 && next_term / term != self.r { halt(0xFF05u16); }
             term = next_term;
-            let next_sum = sum.wrapping_add(term);
-            if next_sum < sum { halt(0xFF05u16); }
+            let next_sum = add_checked_u32(sum, term);
             sum = next_sum;
             i = i + 1u32;
         }

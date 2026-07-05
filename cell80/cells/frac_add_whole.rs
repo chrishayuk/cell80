@@ -7,8 +7,7 @@ impl FracAddWhole {
     fn run(&mut self) -> u16 {
         if self.d == 0u32 { halt(0xFF06u16); }
         let wd = mul_checked_u32(self.whole, self.d);
-        let num_raw = self.n.wrapping_add(wd);
-        if num_raw < self.n { halt(0xFF05u16); }
+        let num_raw = add_checked_u32(self.n, wd);
         if num_raw == 0u32 {
             self.num = 0u32;
             self.den = 1u32;
