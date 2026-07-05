@@ -102,6 +102,10 @@ impl Asm {
     pub(super) fn ld_hl_mem(&mut self, m: Imm) {
         self.ins.push(Ins::LdHlMem(m));
     }
+    /// `LD A, (imm)` — the 8-bit accumulator lane.
+    pub(super) fn ld_a_mem(&mut self, m: Imm) {
+        self.ins.push(Ins::LdAMem(m));
+    }
     /// `LD (imm), HL`.
     pub(super) fn st_hl_mem(&mut self, m: Imm) {
         self.ins.push(Ins::StHlMem(m));

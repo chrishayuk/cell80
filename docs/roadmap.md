@@ -370,10 +370,18 @@ was no seam for a quality pass. **The seam and the first peephole shipped** (roa
   so the high-byte half (`LD A,H; OP D; LD H,A`) computed `0 OP 0 = 0` then got masked — pure dead
   work. Skipped for `Width::Byte` (`codegen/expr.rs::gen_bitwise`), −3 bytes per byte bitwise op;
   `showcase/draw` 586 → 583, the whole stdlib byte-identical (golden). Diff-tested vs rustc + a
-  fired-proof shape assertion (`tests/diff/bytes.rs`). **Parked (the bigger win):** a full
-  A-accumulator evaluator for chained byte arithmetic (avoids the per-op `PUSH HL`/`POP DE` spill) —
-  a larger, riskier rewrite of the HL-accumulator core, deferred until it can be measured end-to-end
-  in a byte-heavy chuk-speccy build. Byte add/sub already compute the low byte optimally in `HL`.
+  fired-proof shape assertion (`tests/diff/bytes.rs`). **✓ Full A-accumulator lane — also shipped.**
+  A byte-typed **chain** (`≥2` ops) of `+`/`-`/`&`/`|`/`^` over literal/var operands evaluates in the
+  `A` register (`gen_expr8`: `LD A,(slot)` / `ADD A,n` / `ADD A,(HL)` — a new `Ins::LdAMem`), no
+  per-op `PUSH`/`POP` spill and no intermediate `LD H,0`, then zero-extends into `HL`. **Gated to a
+  chain on purpose:** a *single* byte op breaks even or *loses* (the HL path often already holds the
+  left operand; the lane would reload it — measured `a+5` growing 10→12 before the gate), so
+  `is_a_chain` requires the left operand to be a byte op too; each op past the first then saves ~3 B.
+  Zero cell80 impact (0% u8 → golden byte-identical, no program grew) but **−24 B (−15.5 %) on a
+  byte-heavy blend/shade kernel** — the chuk-speccy pixel-code win, real at last. rustc-diff (mixed
+  ops, masks, wrapping chain) + fired-proof (`LD A,(nn)` present for a chain, absent for a single op).
+  **Still open:** storing the `A` result straight to a byte field (skip the `A→HL→store` round-trip),
+  and folding a nested right operand — both smaller follow-ons.
 - **`INC HL` strength-reduction (R7) — ✓ shipped, measured.** `LD DE,1; ADD HL,DE` → `INC HL`;
   `LD DE,2; ADD HL,DE` → `INC HL; INC HL` (the `+1`/`+2` value add R2 leaves; 3+1 bytes → 1/2).
   The no-flag-consumer argument is made explicit: the `ADD`'s flags are dead — arithmetic results

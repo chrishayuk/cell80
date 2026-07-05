@@ -39,6 +39,8 @@ pub(super) enum Ins {
     LdImm(R16, Imm),
     /// `LD HL, (imm)`.
     LdHlMem(Imm),
+    /// `LD A, (imm)` — the 8-bit accumulator lane (a `u8` value loaded from a slot).
+    LdAMem(Imm),
     /// `LD (imm), HL`.
     StHlMem(Imm),
     /// `LD DE/BC, (imm)` (the `ED` forms).
@@ -111,6 +113,7 @@ impl Ins {
             Ins::LdImm(..)
             | Ins::LdImmSym(..)
             | Ins::LdHlMem(_)
+            | Ins::LdAMem(_)
             | Ins::StHlMem(_)
             | Ins::Jp(..)
             | Ins::Call(_) => 3,
@@ -181,6 +184,10 @@ pub(super) fn encode(
             }
             Ins::LdHlMem(m) => {
                 code.push(0x2A);
+                word(&mut code, imm(m)?);
+            }
+            Ins::LdAMem(m) => {
+                code.push(0x3A);
                 word(&mut code, imm(m)?);
             }
             Ins::StHlMem(m) => {

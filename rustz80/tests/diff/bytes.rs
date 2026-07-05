@@ -184,6 +184,60 @@ fn byte_bitwise_high_half_correct() {
 }
 
 #[test]
+fn byte_chain_accumulator_lane() {
+    // A chain (≥2 ops) of byte `+`/`-`/`&`/`|`/`^` over var/lit operands computes in the A
+    // register. rustc is the oracle across mixed ops, masks, and a wrapping chain.
+    check!({
+        let a = 10u8;
+        let b = 3u8;
+        let c = 5u8;
+        ((a + b + c) & 0x3Fu8) as u16
+    });
+    check!({
+        let x = 9u8;
+        let y = 4u8;
+        ((x - y) + 7u8) as u16 // left-nested: (x-y) is the chain's left operand
+    });
+    check!({
+        let a = 0xABu8;
+        let b = 0xCDu8;
+        let c = 0x0Fu8;
+        (((a ^ b) & c) | 0x10u8) as u16
+    });
+    // A wrapping chain — the 8-bit A register wraps exactly like u8.
+    check!({
+        let a = 200u8;
+        let b = 100u8;
+        let s = a.wrapping_add(b); // 44
+        ((s + 50u8) + 20u8) as u16 // 114
+    });
+}
+
+#[test]
+fn byte_chain_uses_a_lane_single_op_stays_on_hl() {
+    // Fired-proof: a byte *chain* emits `LD A,(nn)` (0x3A, the A lane); a *single* byte op
+    // stays on the HL path (no 0x3A) — the gate that keeps single ops from regressing.
+    let chain = rustz80::compile_program(
+        "fn f(a: u8, b: u8, c: u8) -> u8 { a + b + c } fn run() -> u16 { f(1u8, 2u8, 3u8) as u16 }",
+    )
+    .unwrap()
+    .code;
+    let single = rustz80::compile_program(
+        "fn f(a: u8, b: u8) -> u8 { a + b } fn run() -> u16 { f(1u8, 2u8) as u16 }",
+    )
+    .unwrap()
+    .code;
+    assert!(
+        chain.contains(&0x3A),
+        "a byte chain should use the A lane (LD A,(nn))"
+    );
+    assert!(
+        !single.contains(&0x3A),
+        "a single byte op should stay on the HL path (no A-lane load)"
+    );
+}
+
+#[test]
 fn byte_bitwise_skips_high_half() {
     // Fired-proof: after the low-byte op (`LD L,A` = 0x6F) a **u8** bitwise goes straight
     // to the byte mask (`LD H,0` = 0x26 0x00), whereas a **u16** bitwise computes the

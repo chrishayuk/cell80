@@ -16,6 +16,18 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             a.ld_hl_mem(addr); // LD HL, (slot)
         }
         Expr::Bin(op, l, r, w) => {
+            // The 8-bit accumulator lane: a byte-typed *chain* (≥2 ops) of `+`/`-`/`&`/`|`/`^`
+            // over literal/var operands computes in `A` (`ADD A,n` / `ADD A,(HL)`) — no per-op
+            // `PUSH`/`POP` spill and no intermediate `LD H,0` mask — then zero-extends into
+            // `HL`. Restricted to a chain because a *single* byte op breaks even (or loses to
+            // the HL path, which often already holds the left operand); each extra op in a
+            // chain then saves ~3 bytes. Anything else falls through to the HL path below.
+            if is_a_chain(e) {
+                gen_expr8(a, e);
+                a.fx(&[0x6F]); // LD L, A
+                mask_to_width(a, Width::Byte); // LD H, 0  -> HL = zero-extended byte
+                return;
+            }
             // Const-fold a literal-only op (e.g. `2 * 3 + 4`).
             if let (Expr::Lit(x), Expr::Lit(y)) = (&**l, &**r) {
                 if let Some(v) = const_fold(*op, *x, *y) {
@@ -504,6 +516,84 @@ pub(super) fn gen_and_mask(a: &mut Asm, mask: u16) {
 pub(super) fn mask_to_width(a: &mut Asm, w: Width) {
     if w == Width::Byte {
         a.fx(&[0x26, 0x00]); // LD H, 0
+    }
+}
+
+/// The byte binary ops the 8-bit accumulator lane handles (`ADD`/`SUB`/`AND`/`OR`/`XOR`
+/// have direct `A, n` / `A, (HL)` forms; `*`/`/`/`%`/shifts do not).
+fn is_a_op(op: BinOp) -> bool {
+    matches!(
+        op,
+        BinOp::Add | BinOp::Sub | BinOp::And | BinOp::Or | BinOp::Xor
+    )
+}
+
+/// A right operand loadable straight against `A`: a literal (`<op> A, n`) or a byte var
+/// (`LD HL, slot; <op> A, (HL)`). Anything computed would need a spill — not worth it.
+fn a_loadable(e: &Expr) -> bool {
+    matches!(e, Expr::Lit(_) | Expr::Var(_))
+}
+
+/// Is `e` a byte expression the accumulator lane can evaluate spill-free: a chain of
+/// [`is_a_op`] ops whose left is itself favourable and whose right is [`a_loadable`]? A
+/// bare literal/var is favourable too, so a leaf recursion bottoms out — but the caller
+/// only enters this path for a byte `Bin`, so the lane always does real work.
+fn a_favorable(e: &Expr) -> bool {
+    match e {
+        Expr::Lit(_) | Expr::Var(_) => true,
+        Expr::Bin(op, l, r, Width::Byte) if is_a_op(*op) => a_favorable(l) && a_loadable(r),
+        _ => false,
+    }
+}
+
+/// The A-path is a net win only for a **chain** (≥2 ops): a single byte op breaks even
+/// with — or loses to — the HL path (which frequently already holds the left operand,
+/// while the lane must reload it). So gate on the left operand *also* being a byte op,
+/// with the whole tree [`a_favorable`]; each op beyond the first then saves ~3 bytes.
+fn is_a_chain(e: &Expr) -> bool {
+    matches!(e,
+        Expr::Bin(op, l, _, Width::Byte)
+            if is_a_op(*op)
+                && matches!(&**l, Expr::Bin(lop, _, _, Width::Byte) if is_a_op(*lop)))
+        && a_favorable(e)
+}
+
+/// Evaluate an [`a_favorable`] byte expression into the **A register** (8-bit, wrapping),
+/// no `PUSH`/`POP`. The caller zero-extends `A` into `HL` afterwards.
+fn gen_expr8(a: &mut Asm, e: &Expr) {
+    match e {
+        Expr::Lit(n) => a.fx(&[0x3E, *n as u8]), // LD A, n
+        Expr::Var(slot) => {
+            let addr = a.slot(*slot);
+            a.ld_a_mem(addr); // LD A, (slot)
+        }
+        Expr::Bin(op, l, r, _) => {
+            gen_expr8(a, l); // A = l
+            gen_op8(a, *op, r); // A = A <op> r
+        }
+        _ => unreachable!("gen_expr8 on a non-favourable expr"),
+    }
+}
+
+/// `A = A <op> r` for a loadable `r`: the immediate form for a literal, the `(HL)` form
+/// for a byte var.
+fn gen_op8(a: &mut Asm, op: BinOp, r: &Expr) {
+    let (imm_op, hl_op) = match op {
+        BinOp::Add => (0xC6u8, 0x86u8), // ADD A,n / ADD A,(HL)
+        BinOp::Sub => (0xD6, 0x96),     // SUB n   / SUB (HL)
+        BinOp::And => (0xE6, 0xA6),     // AND n   / AND (HL)
+        BinOp::Or => (0xF6, 0xB6),      // OR n    / OR (HL)
+        BinOp::Xor => (0xEE, 0xAE),     // XOR n   / XOR (HL)
+        _ => unreachable!("gen_op8 on a non-accumulator op"),
+    };
+    match r {
+        Expr::Lit(n) => a.fx(&[imm_op, *n as u8]),
+        Expr::Var(slot) => {
+            let addr = a.slot(*slot);
+            a.ld_imm(R16::Hl, addr); // LD HL, slot
+            a.fx(&[hl_op]); // <op> A, (HL)
+        }
+        _ => unreachable!("gen_op8 on a non-loadable operand"),
     }
 }
 
