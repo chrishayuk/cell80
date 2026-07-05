@@ -83,7 +83,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 203 cells; query `distance between grid points` → 10 match(es):
+indexed 209 cells; query `distance between grid points` → 10 match(es):
   manhattan — Manhattan distance between two grid points (typed state).  [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt).  [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
   chebyshev — Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
@@ -113,22 +113,25 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval **on the 163-cell snapshot** (`cargo run --example retrieval_compare -p cell80` —
-the library has since grown to 203; these numbers are the last published checkpoint of the
-scale curve, not the current-size measurement): the
-default index is now **TF-IDF** (word + char-3-gram cosine), with a small complexity-based
-tie-break (`search` only — the ranking order, never the raw cosine `scored` exposes, since
-that magnitude feeds the escalation ladder's calibrated confidence margin) — **direct P@1
-0.92**, **paraphrase 0.46** — a few points over the old token overlap, but paraphrase stays well under direct as confusable
-siblings multiply (twenty-seven families: predicates, bounds, distance, number theory, bit ops,
-hashing, …). A **type-led** re-rank by the cell's *behaviour* (is it a predicate? — learned from
-the corpus, not hardcoded) was measured **neutral** on this set, for an honest reason: the
-residual misses are *same-shape siblings* (`min`/`max`, `gcd`/`lcm`, `manhattan`/`chebyshev`) no
-text or signature signal can separate. The lever for those is **behavioural I/O-example routing**
+Retrieval **on the current 209-cell library** (`cargo run --release --example
+retrieval_compare -p cell80`, re-verified against the shipped binary): the default index is
+**TF-IDF** (word + char-3-gram cosine), with a small complexity-based tie-break — **direct
+P@1 0.82, paraphrase 0.36, adversarial 0.50**. A **type-led** re-rank (`CellHost::search`,
+the CLI, `cell80-py`, and `cell80-mcp` all route through it as of 2026-07-05) scores the
+same on this library — **82 / 36 / 50, identically tied with plain TF-IDF** — an honest,
+not-a-regression result: the residual misses are *same-shape siblings* (`min`/`min_u32`,
+the sign-magnitude family `smag_add`/`smag_sub`/`smag_mul`/`smag_div`/`smag_cmp`) that a
+predicate/transformer signal can't separate, since both sides of each pair are
+non-predicates. The lever for those is **behavioural I/O-example routing**
 (`cell_route_by_example`): on `(3,7)→3` only `min` matches, not `max` — selection grounded in
 what the cell *does*, phrasing- and language-independent. Now also a top-level CLI verb
 (`cell80 route`, see Quick start), and with `--facts` the probes are answered from an imported
 fact file (docs/12) instead of execution — retrieval served from claims, falsifiable by re-running.
+Beyond text search: **`cell80 solve`** compiles a candidate math word-problem plan directly
+to a cell and verifies/perturbs it (`docs/math-campaign-spec.md`'s M2) — 25 real, unfiltered
+GSM-8K test-set problems hand-extracted and run through it solved **25/25 correctly**
+(`cargo run --release --example m3_gsm8k_smoketest -p cell80`), the first real evidence
+beyond hand-crafted cases that the loop works end to end.
 Adoption/composition (`granite4.1:3b`): **adoption 1.00 / correct 1.00**; composition once read
 **composed 0.50 / correct 0.83 — but `used_graph` 0.00**: the small model *chains* cell calls
 and never authors the wire-level graph manifest. That finding drove a fix — **`cell_compose`**,
@@ -370,12 +373,19 @@ cell_compose(
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard library** (done — **203 cells** across 30+ families incl. the math-campaign packs: checked/exact wide arithmetic, fractions, money/bps, units, verifier/ranker, sign-magnitude — plus the compiler
+(done), the **standard library** (done — **209 cells** across 30+ families incl. the
+math-campaign packs: checked/exact wide arithmetic, fractions, money/bps, units,
+verifier/ranker, sign-magnitude — plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code
-elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them), and
+elimination** so cells reuse `gcd`/`imin`/`iabs_diff`/… instead of re-implementing them),
 **host-routed `CellGraph` composition** (cells wired into a static, type-checked graph the host
 validates before running) with the **`cell_compose`** pipeline helper that lets a small model
-actually author one (measured: composition `used_graph` 0.00 → `used_pipeline` 0.50).
+actually author one (measured: composition `used_graph` 0.00 → `used_pipeline` 0.50), and
+**`cell_solve`** (M2 of the math campaign, `docs/math-campaign-spec.md`): a candidate plan
+renders straight to a cell, compiles, runs, and gets perturbed — schemas precipitate by
+artifact hash (a re-seen structure is *retrieved*, not recompiled), and the counterfactual
+battery always stress-tests survivor agreement, not just disagreement. A 25-problem,
+unfiltered slice of the real GSM-8K test set solved 25/25 through it.
 The execution plan is phased in [`docs/roadmap-phases.md`](docs/roadmap-phases.md):
 **Phase 0 (shipped)** closed the determinism contract — recursion rejected at compile time,
 the Cell trap path differential-tested against rustc, `/ 0` a typed halt, the dialect

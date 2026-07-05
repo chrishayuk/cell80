@@ -183,19 +183,25 @@ strictly by sequence; the library grows by eval need:
    (`CellHost::run_state` → PyO3 `run_state` → MCP `cell_run(fields=…)`), and manhattan is back
    in the adoption tasks. **This is also the wiring substrate for the networked graph (edge 0):
    a CellGraph edge is one cell's named output fed into another's named input.**
-3. **Type-led / behavioural discovery — measured; the lever is behaviour, not text. ✓ shipped.**
-   The bet was that a cell's typed signature could out-rank text for paraphrases. Built and
-   measured (`cell80/src/typeled.rs`, `examples/retrieval_compare`): a **type-led** re-rank by
-   behavioural **predicate-ness** — learned from the corpus as smoothed log-odds, *no hardcoded
-   vocabulary*, labels free from running the cell — is **neutral** vs plain TF-IDF on the 98-cell
-   set. The honest reason: the residual misses are *same-shape siblings* (`min`/`max`, `gcd`/
-   `lcm`, `manhattan`/`chebyshev`) that an arity/signature signal can't separate, and inferring
-   the target shape from a paraphrase hits the same vocabulary gap. What *does* separate them is
+3. **Type-led / behavioural discovery — wired into the live path (2026-07-05); the lever is
+   behaviour, not text. ✓ shipped.**
+   The bet was that a cell's typed signature could out-rank text for paraphrases. Built,
+   measured, and **now live**: `TypeLedIndex` (`cell80/src/typeled.rs`) powers
+   `CellHost::search` — the CLI, `cell80-py`'s `search`, and `cell80-mcp`'s `cell_search` all
+   route through it (`CellHost::search_scored` deliberately stays plain TF-IDF; its raw cosine
+   feeds `cell-eval`'s calibrated tiered-retrieval margin, which must never be rescaled). A
+   **type-led** re-rank by behavioural **predicate-ness** — learned from the corpus as
+   smoothed log-odds, *no hardcoded vocabulary*, labels free from running the cell — measures
+   **identically tied** with plain TF-IDF on the current 209-cell library (82% / 36% / 50%
+   direct/paraphrase/adversarial P@1) — not a regression, but not the paraphrase fix either.
+   The honest reason: the residual misses are *same-shape siblings* (`min`/`min_u32`, the
+   five-member sign-magnitude family `smag_add`/`sub`/`mul`/`div`/`cmp`) that a
+   predicate/transformer axis can't separate — both sides of each pair are non-predicates, so
+   there's no disagreement to re-rank on. What *does* separate same-shape siblings is
    **behaviour**: on `(3,7)→3` only `min` matches, not `max`. So **behavioural I/O-example
-   routing** is now first-class — `CellHost::route_by_examples`, a `route` serve verb, and the
+   routing** is first-class — `CellHost::route_by_examples`, a `route` serve verb, and the
    **`cell_route_by_example`** MCP tool over `rank_by_examples` (`cell80/src/fingerprint.rs`):
-   phrasing- and language-independent selection grounded in what the cell *does*. (`TypeLedIndex`
-   stays as the principled re-ranker and the home for further structural axes.) **Next** — richer
+   phrasing- and language-independent selection grounded in what the cell *does*. **Next** — richer
    behavioural fingerprints (output cardinality, monotonicity) and discriminating-probe selection,
    then let the model *learn* to pick probes (where SOMA would schedule, not own).
    **Scoped before building — narrower payoff than it first looks.** Cardinality is cheap (reuses
@@ -245,13 +251,19 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — two waves ✓ (98 cells; 100 with the wide `u32` siblings).** `cell80/cells/`: predicates,
-   safe arithmetic, bounds, percent, ranking/stats, bit/mask, number theory, distance, encoding,
-   hashing, bucketing/conversion — each with retrieval rows + a host-oracle test, and now
-   **modular** via the shared kernel prelude + DCE (see `docs/library-growth.md`). Keep going
-   (driven by what the evals need, not taxonomy) — next: packing/BCD, multi-weight scoring &
-   choice (state cells), vector dot/norm, time/budget arithmetic, and stateful/RNG cells
-   (`lcg_next`/counters/`ema_update`).
+6. **Grow the standard cell library — 209 cells across 30+ families (2026-07-05).**
+   `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
+   number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
+   scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
+   plus the **GSM8K math campaign** (`docs/math-campaign-spec.md`, M1): checked/exact wide
+   arithmetic, fractions, money/basis-points, unit-dimension codes, verifier/ranker, and the
+   sign-magnitude family (`smag_add/sub/mul/div/cmp/is_nonneg/eq`) — each with retrieval rows +
+   a host-oracle test, **modular** via the shared kernel prelude + DCE (`docs/
+   library-growth.md`). Math-campaign hand-authoring is now **paused on purpose**: further
+   growth is meant to come from **precipitation** (item 9, `cell_solve`) — real problems
+   surfacing which schemas actually recur — not more speculative candidates. Every batch has
+   cost real, only partially-recovered retrieval precision; the library-growth doc tracks the
+   tradeoff checkpoint by checkpoint.
 7. **Signed `i16` — ✓ done (Phase 1.4; see "Built" above).** Signed compare via S ⊕ V,
    truncating `__sdivmod16`, arithmetic `>>`; unblocks scoring/delta cells (`x_y_delta`,
    signed `lerp`, risk deltas) — the library's signed wave can now land.
@@ -261,6 +273,29 @@ strictly by sequence; the library grows by eval need:
    normal `search → inspect → run` tool-calling — *given behaviour, discover a graph* — kept out
    of the main pitch. Honestly gated: a learned value heuristic only *ties* the hand Hamming
    heuristic at equal budget so far (a kill gate, not a given). See `examples/composition_eval`.
+9. **`cell_solve` — the math campaign's M2, ✓ shipped (2026-07-05).** The plan IR
+   (`cell80/src/plan.rs`) is a wire format between model and host, never executable: a model
+   extracts typed, unit-tagged quantities + an op chain (`add`/`sub`/`mul`/`div`) + a target,
+   the renderer emits canonical dialect Rust (deterministic — same schema, same source, same
+   artifact hash), and it compiles and runs **as a cell**. `CellHost::solve` renders → compiles
+   → runs each candidate (memoized), kills plans that escalate or halt (named reason, never a
+   wrong answer), and — when more than one plan survives — **always** perturbs every quantity
+   by +1 and keeps the largest self-consistent group, agreement or not (a fix landed after
+   test-driving found the original short-circuit would've accepted a coincidental agreement,
+   the same failure class as the documented `min`/`median3` register-0 coincidence, without
+   ever stress-testing it). Surfaced everywhere: CLI `cell80 solve`, `cell80-py`'s `solve()`,
+   MCP's `cell_solve`. **A 25-problem, unfiltered slice of the real GSM-8K test set — not
+   hand-crafted, not cherry-picked — solved 25/25** through it (`cell80/examples/
+   m3_gsm8k_smoketest.rs`), the first real evidence beyond synthetic cases that the loop
+   answers correctly end to end. Findings from that smoke test, not yet acted on: the plan IR
+   has no comparison/decision opcode at all (a "pick whichever is bigger" problem can't be
+   rendered); fractional-dollar problems need a firm cents-always convention, not per-problem
+   judgment; and genuine extraction ambiguity (not arithmetic error) is a real fragility
+   source even for a careful extractor. Full spec, sequencing gates (M0-M4), and the pre-
+   registered hypotheses: `docs/math-campaign-spec.md`. **Next** — M3, the actual field
+   campaign (a real corpus, a small model in the loop, cost measured in T-states/tokens
+   against CoT and PAL-Python baselines) — not started; this item is infrastructure + a smoke
+   test, not the campaign itself.
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`
