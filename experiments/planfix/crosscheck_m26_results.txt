@@ -1,0 +1,96 @@
+=== gemma4:e4b ===
+model = gemma4:e4b   cross-check via `cell80 compose` (M2.5+M2.6 in-compiler)
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366     366  unanimous  ACCEPT ok
+row22_raymond        14      14  unanimous  ACCEPT ok
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44    None   escalate  escalate (recoverable)
+row89_marilyn      8000    None   escalate  escalate (recoverable)  [number too large to fit in target type]
+row92_jan            28      28  unanimous  ACCEPT ok
+row93_emily           4    None   escalate  escalate (recoverable)  [[E0501 parse] expected `;`]
+row94_lee            36    None   escalate  escalate (genuine)  [[E0302 inexact_const_division] constant division folds to 40]
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175    None   escalate  escalate (recoverable)
+row104_fog          140     140  unanimous  ACCEPT ok
+row106_cody          20      20  unanimous  ACCEPT ok
+row111_marcell       45      45  unanimous  ACCEPT ok
+row117_katy          42      42  unanimous  ACCEPT ok
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240     240  unanimous  ACCEPT ok
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 15/20   precision 15/15   yield 15/20   escalations: 4 recoverable, 1 genuine
+SAFETY: accepted-but-wrong = 0 (must be 0)
+repairs applied (E-code tally): {'E0505': 19, 'E0301': 1, 'E0203': 1}
+
+registered prediction (gemma4): yield 80% -> >=90% at unchanged 100% precision
+
+=== granite4.1:3b ===
+model = granite4.1:3b   cross-check via `cell80 compose` (M2.5+M2.6 in-compiler)
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (genuine)  [unsupported literal: a float literal — the dialect's values ]
+row22_raymond        14    None   escalate  escalate (genuine)  [method receiver son_birth_year is not a struct]
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44    None   escalate  escalate (recoverable)  [method receiver total_blocks is not a struct]
+row89_marilyn      8000    None   escalate  escalate (genuine)  [number too large to fit in target type]
+row92_jan            28    None   escalate  escalate (recoverable)  [unsupported expression: an assignment (assignments are state]
+row93_emily           4    None   escalate  escalate (genuine)  [method receiver jackson is not a struct]
+row94_lee            36    None   escalate  escalate (recoverable)  [[E0501 parse] expected one of: identifier, `::`, `<`, `_`, l]
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175    None   escalate  escalate (recoverable)
+row104_fog          140    None   escalate  escalate (recoverable)  [[E0501 parse] expected curly braces]
+row106_cody          20    None   escalate  escalate (recoverable)  [[E0501 parse] expected `,`]
+row111_marcell       45    None   escalate  escalate (recoverable)
+row117_katy          42    None   escalate  escalate (recoverable)
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240    None   escalate  escalate (genuine)
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 7/20   precision 7/7   yield 7/20   escalations: 8 recoverable, 5 genuine
+SAFETY: accepted-but-wrong = 0 (must be 0)
+repairs applied (E-code tally): {'E0505': 14, 'E0502': 11, 'E0301': 1, 'E0204': 1}
+
+registered prediction (gemma4): yield 80% -> >=90% at unchanged 100% precision
+
+=== qwen2.5:3b ===
+model = qwen2.5:3b   cross-check via `cell80 compose` (M2.5+M2.6 in-compiler)
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540    None   escalate  escalate (genuine)
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row22_raymond        14    None   escalate  escalate (genuine)  [expected a plain variable name here, got a binary expression]
+row85_football       15    None   escalate  escalate (genuine)
+row86_gene           44    None   escalate  escalate (recoverable)
+row89_marilyn      8000    None   escalate  escalate (genuine)
+row92_jan            28    None   escalate  escalate (recoverable)
+row93_emily           4    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row94_lee            36    None   escalate  escalate (recoverable)
+row97_harry           3    None   escalate  escalate (recoverable)
+row101_jerome       175    None   escalate  escalate (genuine)  [[E0501 parse] unexpected token, expected `;`]
+row104_fog          140    None   escalate  escalate (genuine)
+row106_cody          20    None   escalate  escalate (recoverable)
+row111_marcell       45    None   escalate  escalate (genuine)  [unsupported call target — call a named function (`f(a, b)`) ]
+row117_katy          42    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row119_customs        4    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row121_miguel       240    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row122_morisette     27    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row124_rosie         50    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+------------------------------------------------------------------------------
+accepted 1/20   precision 1/1   yield 1/20   escalations: 12 recoverable, 7 genuine
+SAFETY: accepted-but-wrong = 0 (must be 0)
+repairs applied (E-code tally): {'E0505': 15, 'E0502': 5, 'E0301': 1, 'E0202': 1}
+
+registered prediction (gemma4): yield 80% -> >=90% at unchanged 100% precision
+

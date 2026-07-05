@@ -271,6 +271,32 @@ and the MCP `cell_compose` tool (Python surface) is deferred until the
 campaign harness needs it. Free-fn `_u32` siblings of the state-cell wide
 family are the natural next library slice (legal since two-u32-params).
 
+**M2.8 item 1 result (2026-07-06, `experiments/planfix/crosscheck_m26_results.txt`
+via `crosscheck_m26.py` — Python `autofix()` deleted, all repair in-compiler):**
+
+- **gemma4: the registered yield prediction FAILED — banked as registered.**
+  Yield 75% (15/20), vs predicted ≥90% and the pilot's 80%. **Precision held at
+  100% (15/15, accepted-and-wrong = 0)** — the safety half of the prediction, and
+  the revert trigger, did *not* fire. Reading of the miss: (1) temp-0 outputs
+  drifted between runs, so the failure set is not the pilot's — row93 is now an
+  unparseable source (`E0501`, which no normalizer can fix), and row94 is a new
+  genuine `E0302 inexact_const_division`; (2) row89's width fix recovered only
+  one derivation, and a one-sided recovery still escalates under a 2-way gate —
+  the strongest evidence yet that **M2.7's third derivation is load-bearing**:
+  4 of gemma's 5 escalations are recoverable (one path correct) and would accept
+  under the registered 2-of-3 rule. E-codes: `E0505`×19, `E0301`×1, `E0203`×1.
+- **granite (H-P2 preview): 35% accepted-and-correct (7/20) at 100% precision**
+  vs its plan-IR 30% combined — a gain, but nowhere near the registered ≥2×.
+  Failure mass is dialect (`E0502`×11: method-receiver style, assignments, parse).
+  If the full M2.8 slice confirms this, H-P2's kill clause applies: the headline
+  model changes, stated openly.
+- **qwen2.5: collapsed to 1/20** with a systematic `E0501 expected ;` dialect
+  (9 rows) — a model-specific spelling the pilot's bakeoff path never surfaced.
+  Needs a captured-source diagnosis before any conclusion; possibly one cheap
+  normalizer rule, possibly genuinely unparseable.
+- Cross-model precision: **23 accepts, 0 wrong across all three models.** The
+  gate's safety property survived the pipeline migration everywhere.
+
 ---
 
 ## Out of scope, stated so nobody re-litigates it mid-campaign
