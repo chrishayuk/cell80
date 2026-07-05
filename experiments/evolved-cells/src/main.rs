@@ -59,6 +59,15 @@ fn high_byte_popcount_ref(x: u16) -> u16 {
 fn rotated_low_byte_popcount_ref(x: u16) -> u16 {
     (x.rotate_left(4) & 0xFF).count_ones() as u16
 }
+/// A deliberately harder, Hamming-deceptive target in the same spirit as `cell-synth-evolve`'s
+/// "lossy" benchmarks (OR/rotate/XOR/mask combinations) — but built from real library ops
+/// (`mask_union`, `rotl16`, `mask_xor`, `popcount`) instead of synthetic toy cells. Tests
+/// whether the pre-registration's "smooth targets, plain A* suffices" scope reduction actually
+/// holds, or whether this pool/depth needs GA/MCTS the way the earlier experiment's larger
+/// lossy benchmarks did.
+fn mystery_bits_ref(x: u16) -> u16 {
+    ((x | 0xAAAA).rotate_left(8) ^ 0x5555).count_ones() as u16
+}
 /// True (1) iff n is a product of exactly two primes counted with multiplicity (p*q, both
 /// prime, p possibly == q). A deliberate negative control: no existing cell captures anything
 /// like prime-factorization structure, so this is expected to fail to find a chain — that's
@@ -109,21 +118,36 @@ struct ParsedCell {
     tail: String,
 }
 
-/// Split a function body's inner text into (leading statements, final tail expression) by
-/// finding the last top-level `;` (depth-tracked so a `;` inside a `{ }`/`( )` doesn't count).
+/// Split a function body's inner text into (leading statements, final tail expression).
+/// Depth-tracked so a `;`/`}` inside a nested `{ }`/`( )` doesn't count. A top-level `;` is
+/// always a statement boundary; a top-level `}` is *also* one *unless* it's immediately
+/// followed by `else` (still part of the same if/else chain) — needed because this library's
+/// loop-based cells (`digit_sum`, `popcount`, ...) end in a `while { ... }` with no trailing
+/// semicolon before the bare tail variable, and treating only `;` as a boundary (the first
+/// version of this function) swallowed the whole loop into the "tail expression," producing
+/// `let out = while ... { ... } s;` — not valid syntax, caught by the first real compile
+/// attempt, not by reasoning about it in advance. Known remaining gap: a cell whose *entire*
+/// tail is itself an if/else chain with no leading statements (e.g. `clamp.rs`) would still
+/// split wrong here — none of the ops actually in this pool have that shape, but a genuinely
+/// general version would need real `syn`-based parsing, not text scanning, to handle it.
 fn split_tail(body: &str) -> (String, String) {
     let mut depth = 0i32;
-    let mut last_top_semi = None;
+    let mut last_boundary = None;
     for (i, ch) in body.char_indices() {
         match ch {
             '{' | '(' => depth += 1,
-            '}' | ')' => depth -= 1,
-            ';' if depth == 0 => last_top_semi = Some(i),
+            '}' | ')' => {
+                depth -= 1;
+                if depth == 0 && ch == '}' && !body[i + 1..].trim_start().starts_with("else") {
+                    last_boundary = Some(i + 1);
+                }
+            }
+            ';' if depth == 0 => last_boundary = Some(i + 1),
             _ => {}
         }
     }
-    match last_top_semi {
-        Some(i) => (body[..=i].to_string(), body[i + 1..].trim().to_string()),
+    match last_boundary {
+        Some(pos) => (body[..pos].to_string(), body[pos..].trim().to_string()),
         None => (String::new(), body.trim().to_string()),
     }
 }
@@ -248,6 +272,21 @@ fn main() {
         ops.push(Op::from_cell(label, &rotl_cart, n));
         op_meta.insert(label.to_string(), (rotl_src.clone(), n));
     }
+    // Added to test a genuinely harder, Hamming-deceptive target (mystery_bits, below) —
+    // whether A* alone is still enough, or whether the pre-registration's "smooth targets, A*
+    // suffices" scope reduction actually needs GA/MCTS once a target isn't smooth.
+    let union_src = cell_source(&cells_dir, "mask_union");
+    let union_cart = compile("mask_union", &union_src);
+    for (label, k) in [("or_aaaa", 0xAAAAu16), ("or_5555", 0x5555)] {
+        ops.push(Op::from_cell(label, &union_cart, k));
+        op_meta.insert(label.to_string(), (union_src.clone(), k));
+    }
+    let xor_src = cell_source(&cells_dir, "mask_xor");
+    let xor_cart = compile("mask_xor", &xor_src);
+    for (label, k) in [("xor_5555", 0x5555u16), ("xor_aaaa", 0xAAAA)] {
+        ops.push(Op::from_cell(label, &xor_cart, k));
+        op_meta.insert(label.to_string(), (xor_src.clone(), k));
+    }
     println!("Op pool: {} ops built from real stdlib cells.\n", ops.len());
 
     // Fingerprint every currently-real library cell once, up front, for comparison — this is
@@ -317,6 +356,13 @@ fn main() {
             summary: "Population count of the low byte of x after rotating its bits left by 4.",
             tags: "bits, popcount, rotate, byte, count, ones",
         },
+        Target {
+            name: "mystery_bits",
+            oracle: mystery_bits_ref,
+            max_depth: 6,
+            summary: "Popcount of x, OR'd with 0xAAAA, rotated left 8, XOR'd with 0x5555.",
+            tags: "bits, popcount, mask, rotate, xor, experimental",
+        },
     ];
 
     // 39999 is load-bearing, not decorative: digit_sum(39999)=39, digit_sum(39)=12,
@@ -365,7 +411,7 @@ fn main() {
         }
         println!("  full-domain check: PASS (all 65,536 inputs correct)");
 
-        let body = codegen(&plan.steps);
+        let body = codegen(&plan.steps, &op_meta);
         let src = format!("//! {}\n//! tags: {}\n{body}", t.summary, t.tags);
 
         let out_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("candidates");

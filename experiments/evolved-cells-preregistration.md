@@ -6,11 +6,16 @@ result could be checked against what we said would count as a win, rather than t
 quietly reshaping itself around whatever came out. That discipline is the same one
 `cell80-life-findings.md` and `cell-synth-evolve.md` already used after the fact (the
 crossover-bloat bug, the corrected `rapid_reproducer` decay claim); this is the same thing
-stated up front instead. Result: 4/4 reachable targets passed (beating the 2/5 placeholder bar
-below), the negative control correctly found nothing, and two real mistakes (a wrong
-`digital_root` chain, a dialect-incompatible codegen template) were caught mid-run rather than
-discovered later — see the findings doc for the full account, including what this first pass
-deliberately didn't build (cycle-cost tracking, general codegen, real retrieval rows).
+stated up front instead. Result: 5/5 reachable targets passed (beating the 2/5 placeholder bar
+below), the negative control correctly found nothing, and three real mistakes (a wrong
+`digital_root` chain, two dialect/codegen bugs) were caught mid-run rather than discovered
+later. Two of the three original scope reductions have since been closed as follow-ups: the
+real admission-gate CLI (not just the fingerprint check) now confirms all 5 candidates would be
+admitted, and codegen is now general (parses real cell source, not per-op hand templates). The
+third (cycle-cost tracking / GA-MCTS for harder targets) was tested with one deliberately harder
+target — A* still succeeded, at ~80x the search effort, so the "smooth targets, A* suffices"
+reduction held at this scale but isn't proven in general. Full account in
+`evolved-cells-findings.md`.
 
 ## The claim being tested
 
