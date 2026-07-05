@@ -5,7 +5,10 @@ question during that experiment: could the mutation/selection mechanism built fo
 be useful for *discovering algorithms* out of existing cells, not just for a toy ecology?
 
 Code: `experiments/cell-synth-evolve/` (workspace member `cell-synth-evolve`,
-`cargo run -p cell-synth-evolve`).
+`cargo run -p cell-synth-evolve`). The GA/MCTS/portfolio implementation lives in `src/lib.rs`
+as a real public API (`evolve`, `mcts`, `portfolio`, `summarize`, ...), not just `main.rs` —
+`experiments/evolved-cells` reuses it directly to test the same methods against harder,
+library-derived targets rather than duplicating the search code (see `evolved-cells-findings.md`).
 
 ## What's being compared
 
@@ -187,8 +190,14 @@ comparison, then a second "Hybrids" table (portfolio, seeded GA, plain GA for re
 
 ## What would raise confidence further
 
-- Sweep op-pool size (or `max_depth`) continuously rather than two points, to find where A*'s
-  failure boundary actually sits, and run MCTS at the smaller scale too for a complete picture.
+- ~~Sweep op-pool size (or `max_depth`) continuously~~ — done, in `evolved-cells`
+  (`bin/boundary_sweep.rs`, see `evolved-cells-findings.md` Follow-up 4), not here: pool size
+  alone (holding depth fixed) turned out not to explain A*'s failure on the one target where
+  the sweep was clean; depth did, and non-monotonically — A* succeeded at shallow depths and
+  failed at deeper ones on the *same* target, because a wider Hamming-guided frontier lets
+  deceptive longer candidates out-compete the true chain. Worth a second pass on this repo's
+  own benchmarks (`mystery`/`lossy-*`) to check whether the depth-driven, non-monotonic shape
+  generalizes beyond the two targets tested there.
 - Try `cell80::synthesize_with` with a smarter heuristic before concluding either heuristic-free
   method has an edge — the honest comparison is against A*'s best available heuristic, not just
   the hand one.
