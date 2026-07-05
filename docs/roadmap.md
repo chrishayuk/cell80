@@ -217,24 +217,23 @@ strictly by sequence; the library grows by eval need:
    monotonic run. Net: worth building for the `smag_*` family's internal collisions specifically;
    not a fix for `min`/`min_u32` — that one still wants behavioural routing (above) or a genuine
    arity/structural-shape axis on `TypeLedIndex`, neither of which cardinality/monotonicity supply.
-   **Found in practice, not yet fixed: `Fingerprint::compute`'s stateless branch only digests
-   the primary (`HL`) register** (`cell80/src/fingerprint.rs`: `Some(r.result)` when
-   `state.is_empty()`), never `DE`/`BC` — unlike the state-cell branch two lines below it,
-   which already digests every named output field via `digest_state`. A stateless free
-   function that returns a `(u16, u16, u16)` tuple is therefore fingerprinted as if it only
-   returned its first element: the admission gate refused a scoped `sort3` cell (`(min, mid,
-   max)` in one call) as a duplicate of `min3` at 1.00 agreement, correctly by the fingerprint's
-   own math (`min3`'s single output *is* `sort3`'s first tuple slot, for every input) but
-   missing the point that `sort3`'s real payload — `mid` and `max` — lives entirely in the two
-   registers this branch never looks at (`docs/library-growth.md`'s "sort3" pack note has the
-   full account). The fix is narrow and stays inside this same function: when the entry's
-   declared return type is a tuple, digest `r.regs` (or however many slots the signature
-   declares) instead of just `r.result`, the same "digest the whole output surface" principle
-   the state-cell branch already applies. Nobody has needed a tuple-returning free function
-   enough to justify it yet — `sort3` is the first cell this has ever blocked, and it wasn't
-   shipped, so the current 239-cell library has zero live cells riding on the fix. Whoever next
-   wants to ship a tuple-returning free function alongside an existing same-first-value cell
-   hits this for real; until then it's a known, scoped, low-risk fix waiting for a reason.
+   **Fixed (2026-07-05): `Fingerprint::compute` now digests the full tuple-return surface.**
+   The stateless branch used to digest only the primary (`HL`) register (`Some(r.result)` when
+   `state.is_empty()`), never `DE`/`BC` — unlike the state-cell branch below it, which already
+   digests every named output field via `digest_state`. A free function returning a
+   `(u16, u16, u16)` tuple was therefore fingerprinted as if it only returned its first element:
+   the admission gate refused a scoped `sort3` cell (`(min, mid, max)` in one call) as a duplicate
+   of `min3` at 1.00 agreement, correct by the fingerprint's own math (`min3`'s single output *is*
+   `sort3`'s first tuple slot) but blind to `sort3`'s real payload — `mid`/`max` living in the two
+   registers it never looked at. The fix stays inside the same function: `ret_reg_count` reads the
+   entry's declared return type (a tuple's element count from `signature.ret`, else `1`), and
+   `digest_regs` folds `r.regs[0..n]` position-sensitively. **A scalar declares `n == 1`, so the
+   digest is exactly `regs[0]` — every existing single-value fingerprint is byte-identical** (no
+   admission-gate shift; the 70-test `cell.rs` gate + the 8 prior fingerprint tests stay green),
+   and no tuple-returning free fn is currently in the library so nothing live moved. Unit-tested
+   (`ret_reg_count` cases + scalar-identity) plus the behavioural `sort3`-vs-`min3` separation.
+   **Residual (out of scope):** a `u32` return still digests only its low word (`HL`); noted in
+   `ret_reg_count`'s doc as a separate, no-live-cell gap.
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition — core built; this is the chase.** Wire cells into a
    small static graph (planner→scorer→validator→decision; worker-swarm→reducer).

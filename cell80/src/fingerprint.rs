@@ -88,6 +88,42 @@ fn digest_state(result: u16, fields: &[(String, u64)]) -> u16 {
     d
 }
 
+/// How many convention registers a *tuple* return spreads across (`HL`, `DE`, `BC`): its
+/// element count, capped at the 3-register convention. A scalar return — including `u32`,
+/// whose `HL:DE` pair is one value — is `1`, so its fingerprint stays the primary register
+/// alone (existing single-value fingerprints are unchanged). `u32` returns keeping only
+/// their low word is a separate, out-of-scope gap.
+fn ret_reg_count(ret: &str) -> usize {
+    match ret
+        .trim()
+        .strip_prefix('(')
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        Some(inner) if !inner.trim().is_empty() => inner
+            .split(',')
+            .filter(|s| !s.trim().is_empty())
+            .count()
+            .min(3),
+        _ => 1,
+    }
+}
+
+/// Fold the *secondary* return registers (`DE`, `BC`) into the primary result for a
+/// tuple-returning free function, position-sensitively (a rotate per register index). A
+/// scalar return declares `n_regs == 1`, so the loop never runs and the digest is exactly
+/// `regs[0]` — every existing single-value fingerprint is byte-identical. Without this a
+/// `sort3` returning `(min, mid, max)` fingerprints as `min3` (only `HL` = `min` digested),
+/// a false duplicate — the real payload (`mid`/`max`) lives in the registers this folds in.
+fn digest_regs(regs: &[u16; 3], n_regs: usize) -> u16 {
+    let mut d = regs[0];
+    for (i, v) in regs.iter().take(n_regs).enumerate().skip(1) {
+        let r = (i as u32 * 5 + 3) % 16;
+        d ^= v.rotate_left(r);
+        d = d.rotate_left(1);
+    }
+    d
+}
+
 impl Fingerprint {
     /// Run `cart`'s entry on each probe and record `result`. Value cells take the
     /// probe triple in the convention registers (args beyond the cell's arity land
@@ -98,6 +134,9 @@ impl Fingerprint {
     pub fn compute(cart: &Cartridge, probes: &[[u16; 3]], budget: u64) -> Self {
         let mut runner = Runner::new(&cart.program);
         let entry = cart.manifest.entry.as_str();
+        // A tuple-returning free function spreads its payload across HL/DE/BC — digest all
+        // the declared registers, not just HL (a scalar declares 1, so it is unchanged).
+        let n_ret = ret_reg_count(&cart.manifest.signature.ret);
         let state: Vec<(u16, crate::Ty, usize)> = cart
             .manifest
             .state_addrs
@@ -119,7 +158,7 @@ impl Fingerprint {
                     runner.run_with_inputs(Some(entry), &[crate::STATE_BASE], &inputs, budget)
                 };
                 match run {
-                    Ok(r) if r.returned && state.is_empty() => Some(r.result),
+                    Ok(r) if r.returned && state.is_empty() => Some(digest_regs(&r.regs, n_ret)),
                     Ok(r) if r.returned => {
                         // The behaviour of a state cell lives in its output fields.
                         let reads: Vec<(String, u16, crate::Ty)> = cart
@@ -302,6 +341,41 @@ mod tests {
         // On the ordered probe (3, 7): min → 3, max → 7.
         assert_eq!(fp_min.outputs[0], Some(3));
         assert_eq!(fp_max.outputs[0], Some(7));
+    }
+
+    #[test]
+    fn ret_reg_count_and_scalar_identity() {
+        assert_eq!(ret_reg_count("u16"), 1);
+        assert_eq!(ret_reg_count("u32"), 1); // one value (low word only — documented gap)
+        assert_eq!(ret_reg_count("()"), 1);
+        assert_eq!(ret_reg_count("(u16, u16)"), 2);
+        assert_eq!(ret_reg_count("(u16, u16, u16)"), 3);
+        // n_regs == 1 is the identity: the digest is exactly the primary register, so no
+        // existing single-value fingerprint moves.
+        assert_eq!(digest_regs(&[42, 7, 99], 1), 42);
+        // Folding a secondary register changes the digest (order-sensitively).
+        assert_ne!(digest_regs(&[42, 7, 0], 2), digest_regs(&[42, 0, 0], 2));
+    }
+
+    #[test]
+    fn tuple_return_folds_secondary_registers() {
+        // A tuple-returning free function whose FIRST value equals a scalar cell's, but
+        // whose real payload lives in DE/BC. Before digesting the secondaries this
+        // fingerprinted as the scalar — the false-duplicate `sort3`-vs-`min3` case.
+        let src_min = "fn run(a: u16, b: u16, c: u16) -> u16 \
+                       { let mut m = a; if b < m { m = b; } if c < m { m = c; } m }";
+        let src_triple = "fn run(a: u16, b: u16, c: u16) -> (u16, u16, u16) \
+                          { let mut m = a; if b < m { m = b; } if c < m { m = c; } (m, b, c) }";
+        let min3 = cell("min3", src_min);
+        let triple = cell("min_bc", src_triple);
+        let (fp_min3, fp_triple) = (Fingerprint::of(&min3), Fingerprint::of(&triple));
+        assert!(
+            fp_min3.agreement(&fp_triple) < 1.0,
+            "a tuple return must fingerprint apart from a scalar sharing its first value"
+        );
+        // The digest stays deterministic — an identical tuple cell agrees fully.
+        let triple2 = cell("min_bc2", src_triple);
+        assert_eq!(fp_triple.agreement(&Fingerprint::of(&triple2)), 1.0);
     }
 
     #[test]
