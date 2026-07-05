@@ -16,3 +16,5 @@ license.workspace = true
 cell80 = { path = "../../cell80" }
 cell-synth-evolve = { path = "../cell-synth-evolve" }
 regex = "1"
+syn = { version = "2", features = ["full"] }
+quote = "1"

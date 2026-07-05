@@ -242,16 +242,30 @@ struct Organism {
     species: Species,
 }
 
-/// The other organisms' `(position, energy)` as of the *start* of this tick, snapshotted
-/// before anyone acts — so a predator's sensing and attacking are based on a consistent view
-/// of the world, not on whatever partial state earlier-processed organisms this same tick
-/// happen to have left behind.
-fn prey_at(snapshot: &[(usize, u16)], pos: usize, self_idx: usize) -> Option<(usize, u16)> {
+/// The other organisms' `(position, energy, species)` as of the *start* of this tick,
+/// snapshotted before anyone acts — so a predator's sensing and attacking are based on a
+/// consistent view of the world, not on whatever partial state earlier-processed organisms
+/// this same tick happen to have left behind.
+///
+/// Only `Species::Grazer` counts as prey. An earlier version matched *any* other organism by
+/// position alone, so two co-located predators would sense — and attack — each other: a
+/// generic "who's on my tile" lookup, reused for predation without adding the one check
+/// predation actually needs. That produced exactly the "predators confusedly sense each other
+/// as prey" finding in `../cell80-life.md`: predators killing each other collapsed the
+/// predator population down to a single survivor, which then had no prey left (grazers wiped
+/// out the same way) and starved alone. Filtering to `Species::Grazer` here is the fix — a
+/// predator can still be *attacked* by another predator's stray sensing, but no longer
+/// identified as valid prey, so the attack promoter never fires on it.
+fn prey_at(
+    snapshot: &[(usize, u16, Species)],
+    pos: usize,
+    self_idx: usize,
+) -> Option<(usize, u16)> {
     snapshot
         .iter()
         .enumerate()
-        .find(|&(j, &(p, _))| j != self_idx && p == pos)
-        .map(|(j, &(_, e))| (j, e))
+        .find(|&(j, &(p, _, sp))| j != self_idx && p == pos && sp == Species::Grazer)
+        .map(|(j, &(_, e, _))| (j, e))
 }
 
 /// Compile one stdlib cell source (by filename stem, from `cell80/cells/`) and load it into
@@ -460,7 +474,10 @@ fn main() {
 
     for tick in 0..ticks {
         last_tick = tick;
-        let snapshot: Vec<(usize, u16)> = organisms.iter().map(|o| (o.pos, o.energy)).collect();
+        let snapshot: Vec<(usize, u16, Species)> = organisms
+            .iter()
+            .map(|o| (o.pos, o.energy, o.species))
+            .collect();
         let mut killed: HashSet<usize> = HashSet::new();
         let mut next_gen = Vec::new();
         let mut tagged_survivors: Vec<(usize, Organism)> = Vec::with_capacity(organisms.len());

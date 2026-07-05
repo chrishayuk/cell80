@@ -210,11 +210,18 @@ candidate's own queries also rank the duplicate #1 — the literal query-collisi
 the DoD names, attached to the fingerprint finding rather than gated on independently (an
 independent text-collision gate would refuse most legitimate new confusable-family members,
 since plain lexical paraphrase P@1 is already ≈0.45 on the accepted 98-cell library).
-Fingerprint comparison is restricted to cells of arity ≤ 2 (state cells and 3-argument
-free-fn cells are exempt): `Fingerprint`'s probe bank only ever supplies two scalar
-registers, so a 3-arg cell's unset third register silently defaults, and every arity-3 cell
-in the real library was found to collapse to the same degenerate constant and false-positive
-against unrelated cells until this was added.
+Fingerprint comparison originally excluded state cells and 3-argument free fns (the
+two-register probe bank collapsed every arity-3 cell to the same degenerate constant).
+**Both exemptions were lifted 2026-07-05**: the probe bank supplies all three convention
+registers (plus three rows aimed squarely at `clamp`/`min3`/`between` shapes), state
+cells are driven through their named scalar fields (`field i ← probe[i % 3]`,
+declaration order — identical-layout copy-paste duplicates fingerprint identically),
+and comparison is guarded to the same *shape* (value-vs-value at equal arity,
+state-vs-state at equal field count — cross-shape agreement is coincidence about the
+assignment pattern, not evidence about behaviour). Behavioural routing gained the
+structured sibling the same day: `route_by_field_examples` / MCP
+`{fields:{...}, out}` / CLI `x1:3,y1:4=11` — named-field examples for the
+`Struct::run` cells (and compiled plans) that register probes can't drive.
 *DoD met:* running the gate over the real (then-100-cell) library (`cell80/tests/cell.rs`)
 surfaced four genuine, previously-unknown behavioural duplicates — `is_gt`≡`argmin2`,
 `is_lt`≡`argmax2`, `safe_div`≡`quantize`, `wrap`≡`safe_mod`, each the identical formula under

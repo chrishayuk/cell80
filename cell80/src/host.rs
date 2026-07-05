@@ -208,6 +208,24 @@ impl CellHost {
         })
     }
 
+    /// [`route_by_examples`](Self::route_by_examples) for **state cells**: each
+    /// example is named fields in → expected `result` out — the structured form
+    /// `Struct::run` cells (and the campaign's compiled plans) need, since
+    /// register probes can't drive named state.
+    pub fn route_by_field_examples(
+        &self,
+        examples: &[(Vec<(String, u64)>, u16)],
+        limit: usize,
+    ) -> Vec<&Manifest> {
+        let mut hits = crate::fingerprint::rank_field_examples_iter(
+            self.catalog.values(),
+            examples,
+            crate::DEFAULT_CYCLES,
+        );
+        hits.truncate(limit);
+        hits
+    }
+
     /// Inspect a cell's manifest by id (the typed signature, caps, tags, …).
     pub fn manifest(&self, id: &str) -> Option<&Manifest> {
         self.catalog.get(id).map(|c| &c.manifest)

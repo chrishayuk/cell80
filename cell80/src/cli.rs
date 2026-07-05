@@ -349,6 +349,58 @@ fn cmd_route(args: &[String]) -> Result<String, String> {
             tok => example_toks.push(tok),
         }
     }
+    // Named-field form (`x1:3,y1:4=11`) routes state cells — register probes
+    // can't drive named state. All-or-nothing: mixing forms is an error.
+    let field_form = example_toks.iter().any(|t| t.contains(':'));
+    if field_form {
+        if !example_toks.iter().all(|t| t.contains(':')) {
+            return Err(
+                "mixing positional (`3,7=3`) and field (`x:3=6`) examples — pick one form".into(),
+            );
+        }
+        let examples: Vec<(Vec<(String, u64)>, u16)> = example_toks
+            .iter()
+            .map(|t| {
+                let (lhs, rhs) = t
+                    .split_once('=')
+                    .ok_or_else(|| format!("bad example `{t}` (want name:val,..=out)"))?;
+                let fields = lhs
+                    .split(',')
+                    .filter(|s| !s.is_empty())
+                    .map(|kv| {
+                        let (k, v) = kv
+                            .split_once(':')
+                            .ok_or_else(|| format!("bad field `{kv}` (want name:val)"))?;
+                        let v = v
+                            .parse::<u64>()
+                            .map_err(|_| format!("bad value `{v}` in `{t}`"))?;
+                        Ok((k.trim().to_string(), v))
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                let out = rhs
+                    .parse::<u16>()
+                    .map_err(|_| format!("bad output `{rhs}` in `{t}`"))?;
+                Ok((fields, out))
+            })
+            .collect::<Result<_, String>>()?;
+        let host = host_from_dir(dir)?;
+        let hits = host.route_by_field_examples(&examples, 10);
+        if hits.is_empty() {
+            return Ok("no cell in the library reproduces those field examples".into());
+        }
+        return Ok(hits
+            .iter()
+            .map(|m| {
+                format!(
+                    "{} — {}  ({})",
+                    m.id,
+                    m.summary,
+                    m.signature.to_decl(&m.entry)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n"));
+    }
     let examples = parse_examples(&example_toks)?;
     if examples.is_empty() {
         return Err("route needs at least one example: <in,..>=<out>".into());

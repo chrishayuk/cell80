@@ -198,6 +198,19 @@ strictly by sequence; the library grows by eval need:
    stays as the principled re-ranker and the home for further structural axes.) **Next** — richer
    behavioural fingerprints (output cardinality, monotonicity) and discriminating-probe selection,
    then let the model *learn* to pick probes (where SOMA would schedule, not own).
+   **Scoped before building — narrower payoff than it first looks.** Cardinality is cheap (reuses
+   `is_predicate`'s probe-and-count pattern) but only discriminates *within* a family — it
+   separates `smag_cmp` (cardinality 3) / `smag_eq` (cardinality 2, passes the predicate test) /
+   `smag_add` (full-domain cardinality) from each other, but `min`/`min_u32` are both monotonic
+   *and* both full-cardinality, so neither axis touches the headline same-shape-sibling case two
+   sentences up. Monotonicity isn't a drop-in extension of the flat `PRED_PROBES` scheme: it needs
+   a real per-argument sweep (hold every other arg fixed, vary one), and three things break a naive
+   version of that — state cells' field-cycling doesn't map onto "hold other args fixed," `u32`-
+   widened cells only get a sliver of their domain from `u16`-scale probes, and cells with validity
+   `limits` halt/escalate outside their valid range, turning a sweep into gaps instead of a
+   monotonic run. Net: worth building for the `smag_*` family's internal collisions specifically;
+   not a fix for `min`/`min_u32` — that one still wants behavioural routing (above) or a genuine
+   arity/structural-shape axis on `TypeLedIndex`, neither of which cardinality/monotonicity supply.
 4. **`trace` / `verify` CLI** — every cell inspectable as *behaviour*, not just metadata.
 5. **CellGraph / inter-cell composition — core built; this is the chase.** Wire cells into a
    small static graph (planner→scorer→validator→decision; worker-swarm→reducer).

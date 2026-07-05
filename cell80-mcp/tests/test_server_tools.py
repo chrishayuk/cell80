@@ -180,3 +180,21 @@ def test_cell_solve_plans_exactly():
     rep = h["cell_solve"](bad)
     assert rep["answer"] is None
     assert "unit mismatch" in rep["plans"][0]["kill"]
+
+
+def test_route_by_field_examples_drives_state_cells():
+    # The structured routing form: named fields in, expected result out — the
+    # signal register probes can't produce for Struct::run cells.
+    h = _handlers()
+    routed = h["cell_route_by_example"](
+        [{"fields": {"x1": 3, "y1": 4, "x2": 10, "y2": 8}, "out": 11}]
+    )
+    ids = [r["id"] for r in routed["results"]]
+    assert "manhattan" in ids and "chebyshev" not in ids, ids
+    # Flip the expected output to the chebyshev answer: max(7,4) = 7.
+    routed = h["cell_route_by_example"](
+        [{"fields": {"x1": 3, "y1": 4, "x2": 10, "y2": 8}, "out": 7}]
+    )
+    ids = [r["id"] for r in routed["results"]]
+    assert "chebyshev" in ids and "manhattan" not in ids, ids
+    assert "error" in h["cell_route_by_example"]([{"fields": "bad"}])

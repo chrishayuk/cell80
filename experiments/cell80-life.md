@@ -65,9 +65,25 @@ tile for its whole life and starved, because prey camp at food tiles rather than
 honest finding in its own right, not a bug. Giving the predator a small "explore when idle"
 bias (alternate a tie-breaking nudge left/right every 20 ticks, negligible next to any real
 prey signal) got it moving, and it swept into a grazer cluster, killed 2, reproduced once —
-then two co-located predators appear to confusedly sense *each other* as prey near the same
-tile, and the lineage starved out rather than establishing a stable population. Real, working
-predation; not yet a stable predator-prey equilibrium — that's open, not chased further yet.
+then two co-located predators appeared to confusedly sense *each other* as prey near the same
+tile, and the lineage starved out rather than establishing a stable population.
+
+**That confusion was a real bug, since fixed.** `prey_at` matched *any* other organism by
+position alone — a generic "who's on my tile" lookup, reused for predation without adding the
+one check predation actually needs. Fix: the tick snapshot now carries each organism's species,
+and `prey_at` only counts `Species::Grazer` as valid prey (`main.rs`). Rerunning the exact
+scenario that surfaced the bug (2 grazers + 2 predators, seed 1): before the fix, 6 kills over
+the run (mixing real predation with predator-on-predator) collapsed the population to a single
+predator by tick 20, which then had no prey left and starved alone by tick 279. After the fix,
+kills are grazers only (`eaten` tracks pure predation), and a predator reproduced at least once
+before the same underlying dynamic reasserted itself in a new, honest shape: with only 2–8
+grazers in this tiny 24-tile world, 1–2 predators exhaust the grazer population within a few
+hundred ticks, then starve once their food source is gone — a boom-bust overexploitation
+collapse (extinction by tick ~120–500 depending on the grazer:predator starting ratio, across
+seeds 1–3), not confused mutual predation. Real, working, species-correct predation; still not
+a stable predator-prey equilibrium — that now looks like a resource-balance/world-size problem
+(more grazer carrying capacity, slower predator reproduction, or a satiation mechanic so a fed
+predator stops hunting), not the sensing bug that was masking it. Not chased further yet.
 
 ## Idea
 
@@ -188,8 +204,9 @@ cell80 life inspect-species 0x91fa
 
 ## Open questions / why this stays fenced
 
-- A world runtime, a data-driven genome file format, and parameter/gene-swap mutation on
-  reproduction all exist (1D, single species per run); no multi-species coexistence yet.
+- A world runtime, a data-driven genome file format, parameter/gene-swap mutation on
+  reproduction, and multi-species predator/grazer coexistence (1D) all exist; no stable
+  predator-prey equilibrium yet — current runs boom-bust to extinction (see above).
 - Risks re-litigating the "Z80 for agents" framing the pitch deliberately moved away from —
   needs to stay a showcase, not the headline.
 - Should not preempt the type-led index or stdlib growth work.

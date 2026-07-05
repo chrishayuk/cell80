@@ -677,7 +677,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("209 cells"));
+    assert!(listing.contains("range_check") && listing.contains("221 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -741,7 +741,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("209 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("221 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -752,7 +752,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 209, "got: {out}");
+    assert_eq!(cells.len(), 221, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -787,16 +787,18 @@ fn cli_index_gate_over_the_real_library() {
     // state cells, choose_best3 state cell, is_clear_winner arity-3 free-fn — all exempt
     // from the fingerprint check) added no new collisions either. The fractions pack (M1
     // 5/5, all 10 state cells) closed out M1's first pass — still 0 refusals. The second
-    // slice (checked-arithmetic +18, money-bps +2, verifier-ranker +11, fractions +9 — all
-    // state cells, exempt) plus the units wage-rate extension (free-fn, fingerprint-checked
-    // for real) added 40 more cells and still 0 refusals.
+    // slice (checked-arithmetic +18, money-bps +2, verifier-ranker +11, fractions +9)
+    // plus the units wage-rate extension added 40 more cells and still 0 refusals —
+    // and since the fingerprint exemptions were lifted (state cells digest their
+    // post-run fields; the probe bank drives all three registers; shapes compare by
+    // ordered field types), that 0 covers *every* cell, not just the arity-≤2 slice.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("209 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("221 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
