@@ -1,12 +1,25 @@
-//! **A real M3 smoke test** — 73 genuine problems from GSM8K's public test set (the literal
-//! first 77 rows of `openai/grade-school-math`'s `test.jsonl`, fetched fresh via the actual
+//! **A real M3 smoke test** — 123 genuine problems from GSM8K's public test set (the literal
+//! first 127 rows of `openai/grade-school-math`'s `test.jsonl`, fetched fresh via the actual
 //! file — not summarized through a lossy fetch — minus 4 that don't fit the current plan IR
 //! at all, noted below, not silently dropped), each hand-extracted into the plan IR by
 //! *reading the English and doing the extraction the spec asks a model to do* — not designing
 //! the plan around a schema I already knew would compile. This is still not the real M3 (no
-//! model in the loop, N=73 not 1,319, no distractor plans, no cost measurement), but it's a
-//! meaningfully larger, still-fully-verified slice: **73/73 correct**, a ~94% representability
+//! model in the loop, N=123 not 1,319, no distractor plans, no cost measurement), but it's a
+//! meaningfully larger, still-fully-verified slice: **123/123 correct**, a ~97% representability
 //! rate on an unfiltered run of consecutive rows.
+//!
+//! **Rows 78–127 (the newest 50) hit zero unrepresentable problems** — no fractional-rescale
+//! blockers, no comparison ops, no keyword traps. That's not evidence the plan IR grew more
+//! capable; all 4 gaps below were found and fixed (or documented) in the first 77 rows, and
+//! none has recurred since. It's evidence those gaps are real but not *frequent*: most GSM8K
+//! arithmetic is straight-line add/sub/mul/div once units are tagged correctly, and a single
+//! batch's percentage says less about the ceiling than the recurrence rate of the specific
+//! blockers below does. Two closed-form patterns worth naming, since they look like they'd need
+//! an unknown to solve for but don't: row 85 (the football team, wins − losses = margin and
+//! wins + losses = total collapses to `wins = (total + margin) / 2`) and row 89 (Marilyn and
+//! Harald's records, `m = 10h` and `m + h = total` collapses to `h = total / 11` without ever
+//! naming `m`) — the plan IR can't solve systems of equations, but many "systems" in GSM8K
+//! reduce to one division once you substitute by hand during extraction.
 //!
 //! **4 of the first 77 rows don't fit the current plan IR — real, not hand-waved, gaps:**
 //! - Row 9 (John's drive) and row 40 (Dana's skip/run/walk) need fractional time/speed values
@@ -1114,6 +1127,628 @@ fn main() {
                    ["div","total_cups","bag_size","bags"]],
             "target":"bags"}"#, 5,
         "1 cup/day first 180 days, 2 cups/day after, 110 cups/bag. Bags in the first year?");
+
+
+    println!("\n=== 50 more: rows 78-127, zero skipped (see the module doc) ===\n");
+
+    // 78. Raymond/David laundry (GSM8K #78). Answer: 100 (pounds).
+    check(&mut host, "raymond_laundry",
+        r#"{"quantities":[{"id":"sarah","value":400,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"four","value":4,"unit":"scalar"}],
+            "ops":[["div","sarah","two","raymond"],
+                   ["div","sarah","four","david"],
+                   ["sub","raymond","david","diff"]],
+            "target":"diff"}"#, 100,
+        "Raymond does half of Sarah's laundry, David a quarter. Sarah=400lbs. Difference?");
+
+    // 79. Vincent's flowers (GSM8K #79, cents) — a package price is a flat `money` amount, not
+    // `money_per_count`: dividing a count of flowers by a package size gives a dimensionless
+    // ratio (count of packages), and that ratio times a flat package price still resolves to
+    // `money`. Tagging the price `money_per_count` here would double-count the per-item rate
+    // that's already folded into the package. Answer: 6 (cents: 600).
+    check(&mut host, "vincent",
+        r#"{"quantities":[{"id":"flowers","value":18,"unit":"count"},
+                          {"id":"pack3_size","value":3,"unit":"count"},
+                          {"id":"pack3_price","value":250,"unit":"money"},
+                          {"id":"pack2_size","value":2,"unit":"count"},
+                          {"id":"pack2_price","value":100,"unit":"money"}],
+            "ops":[["div","flowers","pack3_size","pack3_count"],
+                   ["mul","pack3_count","pack3_price","cost3"],
+                   ["div","flowers","pack2_size","pack2_count"],
+                   ["mul","pack2_count","pack2_price","cost2"],
+                   ["sub","cost3","cost2","savings"]],
+            "target":"savings"}"#, 600,
+        "18 flowers: packs of 3 @$2.50 or packs of 2 @$1 (cents). Savings at the better price?");
+
+    // 80. John's dog groomer discount (GSM8K #80, cents). Answer: 7000.
+    check(&mut host, "john_groomer",
+        r#"{"quantities":[{"id":"price","value":10000,"unit":"money"},
+                          {"id":"pct","value":30,"unit":"scalar"},
+                          {"id":"hundred","value":100,"unit":"scalar"}],
+            "ops":[["mul","price","pct","tmp"],
+                   ["div","tmp","hundred","discount"],
+                   ["sub","price","discount","cost"]],
+            "target":"cost"}"#, 7000,
+        "$100 grooming, 30% new-customer discount (cents). Final cost?");
+
+    // 81. Two girls and a boy share water (GSM8K #81). Answer: 10 (liters).
+    check(&mut host, "girls_water",
+        r#"{"quantities":[{"id":"total","value":24,"unit":"count"},
+                          {"id":"six","value":6,"unit":"scalar"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"boy","value":6,"unit":"count"}],
+            "ops":[["div","total","six","girl_each"],
+                   ["mul","girl_each","two","girls_total"],
+                   ["add","girls_total","boy","combined"],
+                   ["sub","total","combined","left"]],
+            "target":"left"}"#, 10,
+        "24L water: two girls each get 1/6, a boy gets 6L. Liters left?");
+
+    // 82. Charlie's stickers (GSM8K #82) — a different Charlie from row 45. Answer: 17.
+    check(&mut host, "charlie_stickers",
+        r#"{"quantities":[{"id":"had","value":10,"unit":"count"},
+                          {"id":"bought","value":21,"unit":"count"},
+                          {"id":"birthday","value":23,"unit":"count"},
+                          {"id":"gave","value":9,"unit":"count"},
+                          {"id":"used","value":28,"unit":"count"}],
+            "ops":[["add","had","bought","tmp1"],
+                   ["add","tmp1","birthday","total"],
+                   ["add","gave","used","given"],
+                   ["sub","total","given","left"]],
+            "target":"left"}"#, 17,
+        "10 stickers, +21 bought, +23 birthday, -9 given away, -28 used. Left?");
+
+    // 83. Grace and Alex's combined weight (GSM8K #83). Answer: 623 (pounds).
+    check(&mut host, "grace_alex",
+        r#"{"quantities":[{"id":"grace","value":125,"unit":"count"},
+                          {"id":"four","value":4,"unit":"scalar"},
+                          {"id":"two_lbs","value":2,"unit":"count"}],
+            "ops":[["mul","grace","four","tmp"],
+                   ["sub","tmp","two_lbs","alex"],
+                   ["add","grace","alex","combined"]],
+            "target":"combined"}"#, 623,
+        "Grace=125lbs. Alex=4x Grace minus 2lbs. Combined weight?");
+
+    // 84. Dan's rose bush thorns (GSM8K #84). Answer: 600.
+    check(&mut host, "dan_roses",
+        r#"{"quantities":[{"id":"bushes","value":3,"unit":"count"},
+                          {"id":"roses_per_bush","value":25,"unit":"count_per_count"},
+                          {"id":"thorns_per_rose","value":8,"unit":"count_per_count"}],
+            "ops":[["mul","bushes","roses_per_bush","roses"],
+                   ["mul","roses","thorns_per_rose","thorns"]],
+            "target":"thorns"}"#, 600,
+        "3 rose bushes, 25 roses/bush, 8 thorns/rose. Total thorns?");
+
+    // 85. The football team's wins (GSM8K #85) — the ground truth solves via a variable (L for
+    // losses); the plan IR has no unknowns to solve for, so it goes straight to the closed form:
+    // wins = (games + win_margin) / 2. Answer: 15.
+    check(&mut host, "football_team",
+        r#"{"quantities":[{"id":"games","value":22,"unit":"count"},
+                          {"id":"eight","value":8,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["add","games","eight","sum"],
+                   ["div","sum","two","wins"]],
+            "target":"wins"}"#, 15,
+        "22 games played, won 8 more than lost. Games won?");
+
+    // 86. Gene's quilt blocks (GSM8K #86). Answer: 44.
+    check(&mut host, "gene_quilt",
+        r#"{"quantities":[{"id":"now","value":34,"unit":"count"},
+                          {"id":"started","value":23,"unit":"count"},
+                          {"id":"four","value":4,"unit":"count_per_count"}],
+            "ops":[["sub","now","started","years"],
+                   ["mul","years","four","blocks"]],
+            "target":"blocks"}"#, 44,
+        "Vacationing since 23, now 34, 4 vacations/year, 1 shirt/vacation. Quilt blocks?");
+
+    // 87. Greg's alarm rings (GSM8K #87). Answer: 22.
+    check(&mut host, "greg_alarm",
+        r#"{"quantities":[{"id":"first","value":4,"unit":"count"},
+                          {"id":"three","value":3,"unit":"scalar"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["mul","first","three","second"],
+                   ["div","second","two","third"],
+                   ["add","first","second","tmp"],
+                   ["add","tmp","third","total"]],
+            "target":"total"}"#, 22,
+        "Alarm rings 4x, then 3x as long, then half that long. Total rings?");
+
+    // 88. Sylvie's salary raise (GSM8K #88, cents). Answer: 936000.
+    check(&mut host, "sylvie_salary",
+        r#"{"quantities":[{"id":"monthly","value":60000,"unit":"money_per_count"},
+                          {"id":"months","value":12,"unit":"count"},
+                          {"id":"ten","value":10,"unit":"scalar"},
+                          {"id":"hundred","value":100,"unit":"scalar"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["mul","monthly","months","annual"],
+                   ["mul","annual","ten","tmp"],
+                   ["div","tmp","hundred","increase"],
+                   ["mul","increase","three","three_year"],
+                   ["add","annual","three_year","final_salary"]],
+            "target":"final_salary"}"#, 936000,
+        "$600/month, +10%/year after 5yrs, 3 more years served (cents). Annual salary?");
+
+    // 89. Marilyn and Harald's records (GSM8K #89) — same closed-form-over-variable pattern as
+    // row 85: m=10h and m+h=total collapses to h=total/11 without ever naming m. Answer: 8000.
+    check(&mut host, "marilyn_harald",
+        r#"{"quantities":[{"id":"total","value":88000,"unit":"count"},
+                          {"id":"eleven","value":11,"unit":"scalar"}],
+            "ops":[["div","total","eleven","harald"]],
+            "target":"harald"}"#, 8000,
+        "Marilyn sold 10x Harald's copies, 88,000 combined. Harald's copies?");
+
+    // 90. Christina's gift bags (GSM8K #90, cents). Answer: 2400.
+    check(&mut host, "christina_giftbags",
+        r#"{"quantities":[{"id":"guests","value":16,"unit":"count"},
+                          {"id":"three","value":3,"unit":"scalar"},
+                          {"id":"four","value":4,"unit":"scalar"},
+                          {"id":"price","value":200,"unit":"money_per_count"}],
+            "ops":[["mul","guests","three","tmp"],
+                   ["div","tmp","four","bags"],
+                   ["mul","bags","price","total"]],
+            "target":"total"}"#, 2400,
+        "16 guests, 0.75 gift bags/guest @$2 each (cents). Total spend?");
+
+    // 91. Ted's potato salad (GSM8K #91). Answer: 225 (pounds).
+    check(&mut host, "ted_dinosaur",
+        r#"{"quantities":[{"id":"adults","value":20,"unit":"count"},
+                          {"id":"adult_rate","value":10,"unit":"count_per_count"},
+                          {"id":"children","value":5,"unit":"count"},
+                          {"id":"child_rate","value":5,"unit":"count_per_count"}],
+            "ops":[["mul","adults","adult_rate","adult_total"],
+                   ["mul","children","child_rate","child_total"],
+                   ["add","adult_total","child_total","total"]],
+            "target":"total"}"#, 225,
+        "20 adults @10lbs, 5 children @5lbs potato salad. Total pounds?");
+
+    // 92. Jan, Marcia, and Cindy's pets (GSM8K #92). Answer: 28.
+    check(&mut host, "jan_marcia_cindy",
+        r#"{"quantities":[{"id":"cindy","value":4,"unit":"count"},
+                          {"id":"two","value":2,"unit":"count"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["add","cindy","two","marcia"],
+                   ["mul","marcia","three","jan"],
+                   ["add","cindy","marcia","tmp"],
+                   ["add","tmp","jan","total"]],
+            "target":"total"}"#, 28,
+        "Cindy=4 pets, Marcia=Cindy+2, Jan=3x Marcia. Total pets?");
+
+    // 93. Emily's kids' ages (GSM8K #93). Answer: 4 (Jackson's age).
+    check(&mut host, "emily_kids",
+        r#"{"quantities":[{"id":"james","value":10,"unit":"count"},
+                          {"id":"one","value":1,"unit":"count"},
+                          {"id":"two","value":2,"unit":"count"},
+                          {"id":"five","value":5,"unit":"count"}],
+            "ops":[["add","james","one","corey"],
+                   ["sub","corey","two","amy"],
+                   ["sub","amy","five","jackson"]],
+            "target":"jackson"}"#, 4,
+        "James=10, 1yr younger than Corey. Amy=Corey-2=Jackson+5. Jackson's age?");
+
+    // 94. Lee and Gerald's hurdles time (GSM8K #94). Answer: 36 (seconds).
+    check(&mut host, "lee_gerald",
+        r#"{"quantities":[{"id":"lee","value":38,"unit":"time"},
+                          {"id":"two","value":2,"unit":"time"},
+                          {"id":"ten","value":10,"unit":"scalar"},
+                          {"id":"hundred","value":100,"unit":"scalar"}],
+            "ops":[["add","lee","two","gerald_initial"],
+                   ["mul","gerald_initial","ten","tmp"],
+                   ["div","tmp","hundred","reduction"],
+                   ["sub","gerald_initial","reduction","gerald_final"]],
+            "target":"gerald_final"}"#, 36,
+        "Lee runs 38s, 2s faster than Gerald used to. Gerald's diet cuts his time 10%. New time?");
+
+    // 95. Rabbits, dogs, and cats (GSM8K #95). Answer: 348.
+    check(&mut host, "rabbits_dogs_cats",
+        r#"{"quantities":[{"id":"dogs","value":60,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"twelve","value":12,"unit":"count"}],
+            "ops":[["mul","dogs","two","cats"],
+                   ["add","dogs","cats","combined"],
+                   ["sub","combined","twelve","rabbits"],
+                   ["add","rabbits","combined","total"]],
+            "target":"total"}"#, 348,
+        "60 dogs, 2 cats/dog, rabbits = combined dogs+cats minus 12. Total pets?");
+
+    // 96. Grade 5 girls not in girl scouts (GSM8K #96). Answer: 40.
+    check(&mut host, "grade5_girls",
+        r#"{"quantities":[{"id":"students","value":200,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"five","value":5,"unit":"scalar"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["mul","students","two","tmp1"],
+                   ["div","tmp1","five","boys"],
+                   ["sub","students","boys","girls"],
+                   ["mul","girls","two","tmp2"],
+                   ["div","tmp2","three","scouts"],
+                   ["sub","girls","scouts","not_scouts"]],
+            "target":"not_scouts"}"#, 40,
+        "200 students, 2/5 boys, 2/3 of girls in girl scouts. Girls not in scouts?");
+
+    // 97. Harry and James's sleep (GSM8K #97). Answer: 3 (hours).
+    check(&mut host, "harry_james",
+        r#"{"quantities":[{"id":"harry","value":9,"unit":"time"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["mul","harry","two","tmp"],
+                   ["div","tmp","three","james"],
+                   ["sub","harry","james","diff"]],
+            "target":"diff"}"#, 3,
+        "Harry slept 9hrs, James slept 2/3 of that. How much more did Harry sleep?");
+
+    // 98. Freda's tomato sauce (GSM8K #98). Answer: 12 (tomatoes).
+    check(&mut host, "freda_tomatoes",
+        r#"{"quantities":[{"id":"sauce","value":32,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"can_size","value":16,"unit":"count_per_count"},
+                          {"id":"tomatoes_per_can","value":3,"unit":"count_per_count"}],
+            "ops":[["mul","sauce","two","tomatoes_vol"],
+                   ["div","tomatoes_vol","can_size","cans"],
+                   ["mul","cans","tomatoes_per_can","tomatoes"]],
+            "target":"tomatoes"}"#, 12,
+        "32oz sauce (half its tomato volume), 16oz cans of 3 tomatoes each. Tomatoes used?");
+
+    // 99. Cars through the motorway jam (GSM8K #99). Answer: 5.
+    check(&mut host, "cars_motorway",
+        r#"{"quantities":[{"id":"orig","value":30,"unit":"count"},
+                          {"id":"exited","value":5,"unit":"count"},
+                          {"id":"last15","value":20,"unit":"count"}],
+            "ops":[["sub","orig","exited","remaining"],
+                   ["sub","remaining","last15","first15"]],
+            "target":"first15"}"#, 5,
+        "30 cars, 5 exited, 20 drove through in the last 15min. Cars in the first 15min?");
+
+    // 100. Mary's potted plants (GSM8K #100). Answer: 58.
+    check(&mut host, "mary_plants",
+        r#"{"quantities":[{"id":"ledges","value":40,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"eighteen","value":18,"unit":"count"}],
+            "ops":[["mul","ledges","two","before"],
+                   ["add","before","eighteen","after"],
+                   ["sub","after","ledges","remain"]],
+            "target":"remain"}"#, 58,
+        "40 ledges x2 plants +18 new, gives away 1/ledge. Plants remaining?");
+
+    // 101. Jerome's doorbell rings (GSM8K #101). Answer: 175.
+    check(&mut host, "jerome_doorbell",
+        r#"{"quantities":[{"id":"first","value":20,"unit":"count"},
+                          {"id":"four","value":4,"unit":"scalar"},
+                          {"id":"fourth","value":60,"unit":"count"},
+                          {"id":"ten","value":10,"unit":"count"}],
+            "ops":[["div","first","four","quarter"],
+                   ["add","first","quarter","second"],
+                   ["add","first","second","firsttwo"],
+                   ["add","fourth","ten","third"],
+                   ["add","third","fourth","lasttwo"],
+                   ["add","firsttwo","lasttwo","total"]],
+            "target":"total"}"#, 175,
+        "4 friends ring doorbell: 20, +1/4 more, third=fourth+10, fourth=60. Total rings?");
+
+    // 102. Solo's reading pages (GSM8K #102). Answer: 6 (pages/day).
+    check(&mut host, "solo_pages",
+        r#"{"quantities":[{"id":"science","value":4,"unit":"count"},
+                          {"id":"social","value":20,"unit":"count"},
+                          {"id":"history","value":7,"unit":"count"},
+                          {"id":"geo","value":8,"unit":"count"},
+                          {"id":"monday","value":15,"unit":"count"},
+                          {"id":"four_days","value":4,"unit":"scalar"}],
+            "ops":[["add","science","social","t1"],
+                   ["add","t1","history","t2"],
+                   ["add","t2","geo","totalpages"],
+                   ["sub","totalpages","monday","remainder"],
+                   ["div","remainder","four_days","perday"]],
+            "target":"perday"}"#, 6,
+        "4+20+7+8 pages across subjects, read 15 Monday, 4 days left. Pages/day needed?");
+
+    // 103. John's glasses of water (GSM8K #103). Answer: 26.
+    check(&mut host, "john_water",
+        r#"{"quantities":[{"id":"weekday_glasses","value":4,"unit":"count"},
+                          {"id":"weekdays","value":5,"unit":"scalar"},
+                          {"id":"weekend_glasses","value":3,"unit":"count"},
+                          {"id":"weekend_days","value":2,"unit":"scalar"}],
+            "ops":[["mul","weekday_glasses","weekdays","wd"],
+                   ["mul","weekend_glasses","weekend_days","we"],
+                   ["add","wd","we","total"]],
+            "target":"total"}"#, 26,
+        "4 glasses/weekday x5, 3 glasses/weekend-day x2. Glasses/week?");
+
+    // 104. The fog bank (GSM8K #104). Answer: 140 (minutes).
+    check(&mut host, "fog_bank",
+        r#"{"quantities":[{"id":"city","value":42,"unit":"distance"},
+                          {"id":"per","value":3,"unit":"distance"},
+                          {"id":"interval_time","value":10,"unit":"time"}],
+            "ops":[["div","city","per","intervals"],
+                   ["mul","intervals","interval_time","total_time"]],
+            "target":"total_time"}"#, 140,
+        "Fog covers 3mi every 10min, city is 42mi across. Minutes to cover the city?");
+
+    // 105. Poppy's jigsaw puzzle (GSM8K #105). Answer: 500 (pieces).
+    check(&mut host, "poppy_puzzle",
+        r#"{"quantities":[{"id":"pieces","value":1000,"unit":"count"},
+                          {"id":"four","value":4,"unit":"scalar"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["div","pieces","four","placed1"],
+                   ["sub","pieces","placed1","remaining1"],
+                   ["div","remaining1","three","placed2"],
+                   ["sub","remaining1","placed2","remaining2"]],
+            "target":"remaining2"}"#, 500,
+        "1000-piece puzzle: Poppy places 1/4, mom places 1/3 of the rest. Pieces left?");
+
+    // 106. Cody and Amir's cookies (GSM8K #106). Answer: 20.
+    check(&mut host, "cody_amir",
+        r#"{"quantities":[{"id":"amir","value":5,"unit":"count"},
+                          {"id":"three","value":3,"unit":"scalar"}],
+            "ops":[["mul","amir","three","cody"],
+                   ["add","cody","amir","total"]],
+            "target":"total"}"#, 20,
+        "Cody eats 3x as many cookies as Amir. Amir eats 5. Total eaten together?");
+
+    // 107. John's boxes' inner volume (GSM8K #107). Answer: 72 (cubic inches).
+    check(&mut host, "john_boxes",
+        r#"{"quantities":[{"id":"w","value":5,"unit":"distance"},
+                          {"id":"h","value":6,"unit":"distance"},
+                          {"id":"d","value":4,"unit":"distance"},
+                          {"id":"wall","value":2,"unit":"distance"},
+                          {"id":"three_boxes","value":3,"unit":"scalar"}],
+            "ops":[["sub","w","wall","w2"],
+                   ["sub","h","wall","h2"],
+                   ["sub","d","wall","d2"],
+                   ["mul","w2","h2","tmp"],
+                   ["mul","tmp","d2","vol"],
+                   ["mul","vol","three_boxes","total"]],
+            "target":"total"}"#, 72,
+        "3 boxes, 5x6x4in, 1in-thick walls. Total inner volume?");
+
+    // 108. Frankie's TV watching (GSM8K #108). Answer: 3 (30-min episodes).
+    check(&mut host, "frankie_tv",
+        r#"{"quantities":[{"id":"total_min","value":420,"unit":"time"},
+                          {"id":"mon","value":60,"unit":"time"},
+                          {"id":"tue","value":60,"unit":"time"},
+                          {"id":"thu_ep","value":60,"unit":"time"},
+                          {"id":"thu_show","value":30,"unit":"time"},
+                          {"id":"fri","value":120,"unit":"time"},
+                          {"id":"thirty","value":30,"unit":"time"}],
+            "ops":[["add","thu_ep","thu_show","thu"],
+                   ["add","mon","tue","t1"],
+                   ["add","t1","thu","t2"],
+                   ["add","t2","fri","used"],
+                   ["sub","total_min","used","remaining"],
+                   ["div","remaining","thirty","episodes"]],
+            "target":"episodes"}"#, 3,
+        "7hrs TV: Mon/Tue 1hr, Thu 1.5hr, Fri 2hr, rest in 30-min shows Wed. How many Wed shows?");
+
+    // 109. Henry's cookie baking (GSM8K #109) — a different Henry from row 29. Answer: 50.
+    check(&mut host, "henry_cookies",
+        r#"{"quantities":[{"id":"total","value":110,"unit":"count"},
+                          {"id":"dropped","value":5,"unit":"count"},
+                          {"id":"fifteen","value":15,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["add","total","dropped","before_drop"],
+                   ["sub","before_drop","fifteen","before_extra"],
+                   ["div","before_extra","two","last_year"]],
+            "target":"last_year"}"#, 50,
+        "Baked 2x last year +15 extra, dropped 5, has 110 now. Cookies last year?");
+
+    // 110. Gas station cashback (GSM8K #110, cents). Answer: 2800.
+    check(&mut host, "gas_station",
+        r#"{"quantities":[{"id":"price","value":300,"unit":"money_per_count"},
+                          {"id":"gallons","value":10,"unit":"count"},
+                          {"id":"cashback_rate","value":20,"unit":"money_per_count"}],
+            "ops":[["mul","price","gallons","spent"],
+                   ["mul","cashback_rate","gallons","cashback"],
+                   ["sub","spent","cashback","net"]],
+            "target":"net"}"#, 2800,
+        "$3.00/gallon, 10 gallons, $0.20/gallon cashback (cents). Net cost?");
+
+    // 111. Marcell and Beatrice's fruit roll-ups (GSM8K #111). Answer: 45 (average).
+    check(&mut host, "marcell_beatrice",
+        r#"{"quantities":[{"id":"beatrice_wide","value":2,"unit":"count"},
+                          {"id":"beatrice_long","value":24,"unit":"count"},
+                          {"id":"marcell_wide","value":3,"unit":"count"},
+                          {"id":"marcell_long","value":14,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["mul","beatrice_long","beatrice_wide","beatrice_total"],
+                   ["mul","marcell_long","marcell_wide","marcell_total"],
+                   ["add","beatrice_total","marcell_total","total"],
+                   ["div","total","two","average"]],
+            "target":"average"}"#, 45,
+        "Beatrice's roll-up 2x24, Marcell's 3x14. Average eaten?");
+
+    // 112. Julia's leaking boat (GSM8K #112). Answer: 16 (liters).
+    check(&mut host, "julia_boat",
+        r#"{"quantities":[{"id":"shore_time","value":64,"unit":"time"},
+                          {"id":"row_time","value":16,"unit":"time"},
+                          {"id":"row_dist","value":20,"unit":"distance"},
+                          {"id":"ten","value":10,"unit":"distance"},
+                          {"id":"two","value":2,"unit":"count"}],
+            "ops":[["div","shore_time","row_time","multiples"],
+                   ["mul","row_dist","multiples","dist"],
+                   ["div","dist","ten","water_units"],
+                   ["mul","water_units","two","water_total"]],
+            "target":"water_total"}"#, 16,
+        "2L taken on per 10ft rowed, 16s per 20ft, shore 64s away. Total water taken on?");
+
+    // 113. The classroom whiteboard (GSM8K #113). Answer: 24 (cleanings/day).
+    check(&mut host, "whiteboard",
+        r#"{"quantities":[{"id":"teachers","value":4,"unit":"count"},
+                          {"id":"lessons","value":2,"unit":"scalar"},
+                          {"id":"cleans","value":3,"unit":"scalar"}],
+            "ops":[["mul","teachers","lessons","total_lessons"],
+                   ["mul","total_lessons","cleans","total"]],
+            "target":"total"}"#, 24,
+        "4 teachers x2 lessons/day, whiteboard cleaned 3x/lesson. Cleanings/day?");
+
+    // 114. Ryan's flowers (GSM8K #114). Answer: 25.
+    check(&mut host, "ryan_flowers",
+        r#"{"quantities":[{"id":"rate","value":2,"unit":"count_per_count"},
+                          {"id":"days","value":15,"unit":"count"},
+                          {"id":"five","value":5,"unit":"count"}],
+            "ops":[["mul","rate","days","planted"],
+                   ["sub","planted","five","total"]],
+            "target":"total"}"#, 25,
+        "Ryan plants 2 flowers/day for 15 days, 5 didn't grow. Flowers he has now?");
+
+    // 115. Jamal's phone photos (GSM8K #115). Answer: 6 (ducks).
+    check(&mut host, "jamal_phone",
+        r#"{"quantities":[{"id":"jamal","value":1800,"unit":"count"},
+                          {"id":"six","value":6,"unit":"scalar"},
+                          {"id":"fifty","value":50,"unit":"scalar"}],
+            "ops":[["div","jamal","six","brittany"],
+                   ["div","brittany","fifty","ducks"]],
+            "target":"ducks"}"#, 6,
+        "Jamal's phone (1800 photos) holds 6x Brittany's, which holds 50x the duck count. Ducks?");
+
+    // 116. Sasha's lumber profit (GSM8K #116, cents). Answer: 9000.
+    check(&mut host, "sasha_lumber",
+        r#"{"quantities":[{"id":"n2x4","value":10,"unit":"count"},
+                          {"id":"price2x4","value":1000,"unit":"money_per_count"},
+                          {"id":"n4x4","value":5,"unit":"count"},
+                          {"id":"price4x4","value":1600,"unit":"money_per_count"},
+                          {"id":"three","value":3,"unit":"scalar"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["mul","n2x4","price2x4","cost1"],
+                   ["mul","n4x4","price4x4","cost2"],
+                   ["add","cost1","cost2","totalcost"],
+                   ["mul","totalcost","three","tmp"],
+                   ["div","tmp","two","newprice"],
+                   ["sub","newprice","totalcost","profit"]],
+            "target":"profit"}"#, 9000,
+        "10 boards@$10 + 5 boards@$16, prices +50% since (cents). Profit selling all?");
+
+    // 117. Katy's sugar-to-water ratio (GSM8K #117). Answer: 42 (teaspoons).
+    check(&mut host, "katy_sugar",
+        r#"{"quantities":[{"id":"total","value":120,"unit":"count"},
+                          {"id":"seven","value":7,"unit":"scalar"},
+                          {"id":"twenty","value":20,"unit":"scalar"}],
+            "ops":[["mul","total","seven","tmp"],
+                   ["div","tmp","twenty","sugar"]],
+            "target":"sugar"}"#, 42,
+        "Sugar:water ratio 7:13, 120 total. Teaspoons of sugar?");
+
+    // 118. John's shoes for his kids (GSM8K #118, cents). Answer: 36000.
+    check(&mut host, "john_shoes",
+        r#"{"quantities":[{"id":"children","value":3,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"},
+                          {"id":"price","value":6000,"unit":"money_per_count"}],
+            "ops":[["mul","children","two","pairs"],
+                   ["mul","pairs","price","total"]],
+            "target":"total"}"#, 36000,
+        "2 pairs of shoes for each of 3 kids, $60/pair (cents). Total paid?");
+
+    // 119. Customs containers (GSM8K #119). Answer: 4 (containers).
+    check(&mut host, "customs_containers",
+        r#"{"quantities":[{"id":"containers1","value":2,"unit":"count"},
+                          {"id":"vehicles_per","value":5,"unit":"count_per_count"},
+                          {"id":"totalv","value":30,"unit":"count"}],
+            "ops":[["mul","containers1","vehicles_per","day1v"],
+                   ["sub","totalv","day1v","day2v"],
+                   ["div","day2v","vehicles_per","containers2"]],
+            "target":"containers2"}"#, 4,
+        "2 containers of 5 vehicles day 1, 30 vehicles total, 5/container day 2. Day-2 containers?");
+
+    // 120. Adrien and Lylah's combined salary (GSM8K #120, cents) — the largest plan in this
+    // batch (10 ops) but every division lands exact, so no rescale judgment was needed.
+    // Answer: 9520000.
+    check(&mut host, "adrien_lylah",
+        r#"{"quantities":[{"id":"adrien4","value":4000000,"unit":"money"},
+                          {"id":"forty","value":40,"unit":"scalar"},
+                          {"id":"hundred","value":100,"unit":"scalar"},
+                          {"id":"thirty","value":30,"unit":"scalar"}],
+            "ops":[["mul","adrien4","forty","r1"],
+                   ["div","r1","hundred","raise_a"],
+                   ["add","adrien4","raise_a","adrien_later"],
+                   ["mul","adrien4","thirty","r2"],
+                   ["div","r2","hundred","discount_l"],
+                   ["sub","adrien4","discount_l","lylah4"],
+                   ["mul","lylah4","forty","r3"],
+                   ["div","r3","hundred","raise_l"],
+                   ["add","lylah4","raise_l","lylah_later"],
+                   ["add","adrien_later","lylah_later","total"]],
+            "target":"total"}"#, 9520000,
+        "Adrien $40k(4yr ago)=Lylah+30%, both +40% since (cents). Combined salary now?");
+
+    // 121. Miguel's paper usage (GSM8K #121). Answer: 240 (sheets/month).
+    check(&mut host, "miguel_paper",
+        r#"{"quantities":[{"id":"sheets_per_pad","value":30,"unit":"count"},
+                          {"id":"pads","value":2,"unit":"scalar"},
+                          {"id":"four","value":4,"unit":"scalar"}],
+            "ops":[["mul","sheets_per_pad","pads","weekly"],
+                   ["mul","weekly","four","monthly"]],
+            "target":"monthly"}"#, 240,
+        "2 pads/week, 30 sheets/pad, 4 weeks/month. Sheets/month?");
+
+    // 122. Morisette and Kael's fruits (GSM8K #122). Answer: 27.
+    check(&mut host, "morisette_kael",
+        r#"{"quantities":[{"id":"m_apples","value":5,"unit":"count"},
+                          {"id":"m_oranges","value":8,"unit":"count"},
+                          {"id":"two","value":2,"unit":"scalar"}],
+            "ops":[["mul","m_apples","two","k_apples"],
+                   ["div","m_oranges","two","k_oranges"],
+                   ["add","m_apples","k_apples","tmp1"],
+                   ["add","m_oranges","k_oranges","tmp2"],
+                   ["add","tmp1","tmp2","total"]],
+            "target":"total"}"#, 27,
+        "Morisette: 5 apples, 8 oranges. Kael: 2x apples, half oranges. Total fruits?");
+
+    // 123. Sadie's sleep for the week (GSM8K #123). Answer: 48 (hours).
+    check(&mut host, "sadie_sleep",
+        r#"{"quantities":[{"id":"monday","value":8,"unit":"time"},
+                          {"id":"two","value":2,"unit":"time"},
+                          {"id":"one","value":1,"unit":"time"},
+                          {"id":"two_days","value":2,"unit":"scalar"},
+                          {"id":"four_days","value":4,"unit":"scalar"}],
+            "ops":[["sub","monday","two","next2each"],
+                   ["mul","next2each","two_days","next2total"],
+                   ["add","next2each","one","resteach"],
+                   ["mul","resteach","four_days","resttotal"],
+                   ["add","monday","next2total","t1"],
+                   ["add","t1","resttotal","total"]],
+            "target":"total"}"#, 48,
+        "Mon 8hrs, next 2 days -2hrs each, rest of week +1hr vs those. Total for the week?");
+
+    // 124. Rosie's run (GSM8K #124). Answer: 50 (miles).
+    check(&mut host, "rosie_running",
+        r#"{"quantities":[{"id":"speed1","value":10,"unit":"distance_per_time"},
+                          {"id":"hours1","value":3,"unit":"time"},
+                          {"id":"speed2","value":5,"unit":"distance_per_time"},
+                          {"id":"total_hours","value":7,"unit":"time"}],
+            "ops":[["mul","speed1","hours1","dist1"],
+                   ["sub","total_hours","hours1","remaining_h"],
+                   ["mul","speed2","remaining_h","dist2"],
+                   ["add","dist1","dist2","total"]],
+            "target":"total"}"#, 50,
+        "10mph for 3hrs, then 5mph. Miles run in 7hrs total?");
+
+    // 125. Jennie's stamped letters (GSM8K #125). Answer: 10.
+    check(&mut host, "jennie_stamps",
+        r#"{"quantities":[{"id":"letters","value":60,"unit":"count"},
+                          {"id":"three","value":3,"unit":"scalar"},
+                          {"id":"thirty","value":30,"unit":"count"}],
+            "ops":[["div","letters","three","stamped"],
+                   ["sub","thirty","stamped","before"]],
+            "target":"before"}"#, 10,
+        "60 letters need stamps, 1/3 stamped, 30 now in the stamped pile. Pile size before?");
+
+    // 126. Julia's spoons (GSM8K #126) — a different Julia from row 112. Answer: 10.
+    check(&mut host, "julia_spoons",
+        r#"{"quantities":[{"id":"total","value":12,"unit":"count"},
+                          {"id":"used","value":3,"unit":"count"},
+                          {"id":"husband","value":5,"unit":"count"}],
+            "ops":[["add","total","used","combined"],
+                   ["sub","combined","husband","juliapack"]],
+            "target":"juliapack"}"#, 10,
+        "Husband gave a 5-spoon pack, 3 used sampling stew, 12 total at the table. Julia's pack size?");
+
+    // 127. Dylan's sausages (GSM8K #127). Answer: 82.
+    check(&mut host, "dylan_sausages",
+        r#"{"quantities":[{"id":"chicken","value":38,"unit":"count"},
+                          {"id":"six","value":6,"unit":"count"}],
+            "ops":[["add","chicken","six","fish"],
+                   ["add","chicken","fish","total"]],
+            "target":"total"}"#, 82,
+        "38 chicken sausages, 6 more fish sausages than chicken. Total bought?");
+
 
     println!(
         "\n=== Mini robustness check: same schema, different numbers (GSM-Symbolic-style) ===\n"

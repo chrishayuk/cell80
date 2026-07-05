@@ -130,9 +130,10 @@ what the cell *does*, phrasing- and language-independent. Now also a top-level C
 (`cell80 route`, see Quick start), and with `--facts` the probes are answered from an imported
 fact file (docs/12) instead of execution — retrieval served from claims, falsifiable by re-running.
 Beyond text search: **`cell80 solve`** compiles a candidate math word-problem plan directly
-to a cell and verifies/perturbs it (`docs/math-campaign-spec.md`'s M2) — 25 real, unfiltered
-GSM-8K test-set problems hand-extracted and run through it solved **25/25 correctly**
-(`cargo run --release --example m3_gsm8k_smoketest -p cell80`), the first real evidence
+to a cell and verifies/perturbs it (`docs/math-campaign-spec.md`'s M2) — 127 real, unfiltered,
+consecutive GSM-8K test-set rows hand-extracted and run through it solved **123/123 correctly**
+(4 skipped as genuinely unrepresentable, ~97% representability;
+`cargo run --release --example m3_gsm8k_smoketest -p cell80`), the first real evidence
 beyond hand-crafted cases that the loop works end to end.
 Adoption/composition (`granite4.1:3b`): **adoption 1.00 / correct 1.00**; composition once read
 **composed 0.50 / correct 0.83 — but `used_graph` 0.00**: the small model *chains* cell calls
