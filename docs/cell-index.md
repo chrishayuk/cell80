@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (225 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (232 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -196,15 +196,17 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
 
-## fixed-point (3)
+## fixed-point (5)
 
 | id | signature | summary |
 |---|---|---|
 | `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
 | `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
 | `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
+| `q_sqrt` | `run(x: u16) -> u16` | Q8.8 fixed-point square root: sqrt(x/256)*256, via a branch-free bitwise integer square root on the widened x*256 (u32 only as a local, never a call param/return — the pattern every Q8.8 free function follows). A naive linear-scan integer sqrt was tried first and cost 3.6M cycles at the domain extreme (past the 2,000,000 default); this bitwise version costs under 20,000. |
+| `q_sigmoid` | `run(x: i16) -> u16` | Q8.8 fixed-point "hard sigmoid": a well-known piecewise-linear stand-in for the true sigmoid, clamp(x/4 + 0.5, 0, 1) — exact at x=0, saturating to 0/1 outside roughly [-4, 4], monotonic and cheap everywhere between. Input is signed (Q8.8, negative values meaningful, e.g. -256 = -1.0); output is unsigned Q8.8 in [0, 256] (0.0 to 1.0). q_tanh is deliberately not a separate cell: the same derivation (tanh(x) = 2*sigmoid(2x)-1) reduces to clamp_i16(x, -256, 256) exactly, already covered by that cell's own tags. |
 
-## agentic-runtime (5)
+## agentic-runtime (6)
 
 | id | signature | summary |
 |---|---|---|
@@ -213,22 +215,27 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `circuit_breaker_step` | `CircuitBreaker::run() -> u16` | Circuit-breaker state machine step: closed(0) counts failures and opens at the threshold; open(1) waits for cooldown then tries half-open(2); half-open resolves to closed on success or back to open on failure. |
 | `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
+| `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |
 
-## running-stats (3)
+## running-stats (4)
 
 | id | signature | summary |
 |---|---|---|
 | `running_min_max_step` | `RunningMinMax::run() -> u16` | Running min/max tracker over a stream of values: updates min/max (self-initializing on the first call via `seen`), returns the current range (max - min). |
 | `streak_step` | `Streak::run() -> u16` | Consecutive-streak counter: increments while input is nonzero, resets to 0 the moment input is 0. |
 | `accumulate_step` | `Accumulate::run() -> u16` | Running sum + count over a stream of values (sum saturates at 65535). Compose with safe_div(sum, count) for a running mean. |
+| `running_variance_step` | `RunningVariance::run() -> u16` | Running (population) variance over a stream of values, one value per call — the checked/exact sibling of accumulate_step (which saturates u16; this escalates on overflow instead, since a corrupted variance is worse than a stopped one). Recomputes the mean fresh from the exact running sum on each side of the update (rather than compounding a previously-truncated running mean, Welford-style) before accumulating the squared-deviation product into m2 — verified to never go negative under integer truncation across thousands of random and adversarial streams. Compose with div_floor_u32(m2, count) for the variance itself. |
 
-## spatial/grid (3)
+## spatial/grid (6)
 
 | id | signature | summary |
 |---|---|---|
 | `grid_index` | `run(x: u16, y: u16, width: u16) -> u16` | Flat array index of a grid cell (x, y) in a grid of the given row width: y * width + x. |
 | `point_in_rect` | `PointInRect::run() -> u16` | Returns 1 if point (px, py) is inside rect (rx, ry, rw, rh) — half-open: [rx, rx+rw) x [ry, ry+rh) — else 0. |
 | `aabb_intersect` | `AabbIntersect::run() -> u16` | Returns 1 if two axis-aligned bounding boxes (x1,y1,w1,h1) and (x2,y2,w2,h2) overlap (edge-touching doesn't count), else 0. |
+| `morton_encode` | `MortonEncode::run() -> u16` | Morton (Z-order curve) encode: interleave the bits of two u16 coordinates into one u32 spatial index (x's bits at even positions, y's at odd), so a single integer sorts nearby 2D points near each other — a common spatial-indexing key. The classic branch-free "magic numbers" bit-spread (constant shift amounts, no dynamic-shift loop): needs a u32 state field since interleaving two full u16s produces 32 bits, more than either input's own width. |
+| `morton_decode` | `MortonDecode::run() -> u16` | Morton (Z-order curve) decode: the inverse of morton_encode — split a u32 spatial index back into its two interleaved u16 coordinates via the same branch-free bit-compaction trick (constant shift amounts, no dynamic-shift loop). |
+| `bresenham_step` | `BresenhamStep::run() -> u16` | Bresenham line-drawing, one step: given the fixed line parameters (dx, dy — the absolute deltas between the endpoints) and the running error term (as a sign-magnitude pair, since state fields can't be i16 — err can go negative), reports whether this step advances x, y, or both (step_x/step_y, 0 or 1) and updates the error term. The caller applies step_x/step_y to its own x/y using its own known step directions (sx, sy) — tracking dx/dy/err here and x/y/sx/sy on the caller's side avoids needing four more sign-magnitude field pairs for quantities the error-term math never actually needs to know the sign of. Verified against a full reference line generator across 2,000 random line segments (coordinates up to +/-500) before shipping. |
 
 ## packing/BCD (4)
 
@@ -336,7 +343,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 |---|---|---|
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
 | `abs_i16` | `run(x: i16) -> u16` | Absolute value of a signed 16-bit value, returned as u16 (correctly handles i16::MIN, whose magnitude 32768 doesn't fit back in i16). |
-| `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). |
+| `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 
 ## fractions (21)

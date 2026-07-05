@@ -508,3 +508,17 @@
 {"id": "mod_inverse-para-1", "query": "what number multiplied by a lands back on 1 when wrapped around every m", "expected": "mod_inverse", "category": "paraphrase"}
 {"id": "crt_solve_pair-direct-1", "query": "chinese remainder theorem for two congruences", "expected": "crt_solve_pair", "category": "direct"}
 {"id": "crt_solve_pair-para-1", "query": "find the smallest number that leaves these two specific remainders when divided by two different numbers", "expected": "crt_solve_pair", "category": "paraphrase"}
+{"id": "q_sqrt-direct-1", "query": "Q8.8 fixed-point square root", "expected": "q_sqrt", "category": "direct"}
+{"id": "q_sqrt-para-1", "query": "find the square root of a fixed-point scaled value", "expected": "q_sqrt", "category": "paraphrase"}
+{"id": "q_sigmoid-direct-1", "query": "fixed-point hard sigmoid activation function", "expected": "q_sigmoid", "category": "direct"}
+{"id": "q_sigmoid-para-1", "query": "squash a signed value into a 0 to 1 range for a neural net gate", "expected": "q_sigmoid", "category": "paraphrase"}
+{"id": "running_variance_step-direct-1", "query": "running variance over a stream of values", "expected": "running_variance_step", "category": "direct"}
+{"id": "running_variance_step-para-1", "query": "how spread out have the readings been so far, updated one at a time", "expected": "running_variance_step", "category": "paraphrase"}
+{"id": "morton_encode-direct-1", "query": "morton z-order encode two coordinates into one spatial index", "expected": "morton_encode", "category": "direct"}
+{"id": "morton_encode-para-1", "query": "interleave the bits of an x and y grid coordinate into a single sortable key", "expected": "morton_encode", "category": "paraphrase"}
+{"id": "morton_decode-direct-1", "query": "morton z-order decode a spatial index back into x and y", "expected": "morton_decode", "category": "direct"}
+{"id": "morton_decode-para-1", "query": "split an interleaved spatial index back into its original grid coordinates", "expected": "morton_decode", "category": "paraphrase"}
+{"id": "bresenham_step-direct-1", "query": "bresenham line drawing algorithm, one step", "expected": "bresenham_step", "category": "direct"}
+{"id": "bresenham_step-para-1", "query": "figure out the next pixel on a straight line between two grid points", "expected": "bresenham_step", "category": "paraphrase"}
+{"id": "rate_window_update-direct-1", "query": "fixed-window rate limiter, N events per time window", "expected": "rate_window_update", "category": "direct"}
+{"id": "rate_window_update-para-1", "query": "only let a caller through a set number of times before a timer resets", "expected": "rate_window_update", "category": "paraphrase"}

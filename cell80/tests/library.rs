@@ -2298,3 +2298,169 @@ fn math_aime_pack_second_slice_cells_match_defined_behaviour() {
     }
     assert!(checked2 > 100, "expected most sweep pairs coprime, got {checked2}");
 }
+
+#[test]
+fn library_growth_backlog_cells_match_defined_behaviour() {
+    // The "straightforward deferred set" from docs/library-growth.md's Next waves /
+    // pack-note backlog: q_sqrt, q_sigmoid, running_variance_step, morton_encode/decode,
+    // bresenham_step, rate_window_update. q_tanh was deliberately not built — it reduces
+    // exactly to clamp_i16(x, -256, 256), now tagged on that cell instead.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // q_sqrt: sqrt(x/256)*256 via a branch-free bitwise integer sqrt.
+    assert_eq!(run_cell("q_sqrt", &[0]), 0);
+    assert_eq!(run_cell("q_sqrt", &[256]), 256); // sqrt(1.0) = 1.0
+    assert_eq!(run_cell("q_sqrt", &[1024]), 512); // sqrt(4.0) = 2.0
+    assert_eq!(run_cell("q_sqrt", &[65535]), 4095); // domain extreme, ~15.9998
+
+    // q_sigmoid: hard sigmoid, clamp(x/4 + 0.5, 0, 1) in Q8.8; saturates outside [-4, 4].
+    assert_eq!(run_cell("q_sigmoid", &[0]), 128); // sigmoid(0) = 0.5
+    assert_eq!(run_cell("q_sigmoid", &[400]), 228); // 400/4 + 128 = 228, unclamped
+    assert_eq!(run_cell("q_sigmoid", &[1024]), 256); // saturates high (x = 4.0)
+    assert_eq!(run_cell("q_sigmoid", &[65536u32.wrapping_sub(1024) as u16]), 0); // -4.0, saturates low
+
+    // running_variance_step: [10, 20, 30] -> population variance 200/3, exact match to a
+    // hand-derived reference (mean recomputed fresh each side of the update, not compounded).
+    fn variance_step(fields: &[(&str, u64)]) -> StateCell {
+        let mut cell = StateCell::bind(
+            &cell_src("running_variance_step"),
+            "RunningVariance",
+            None,
+        )
+        .unwrap();
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+    let (mut count, mut sum, mut m2) = (0u64, 0u64, 0u64);
+    for value in [10u64, 20, 30] {
+        let cell = variance_step(&[("value", value), ("count", count), ("sum", sum), ("m2", m2)]);
+        count = cell.get("count").unwrap();
+        sum = cell.get("sum").unwrap();
+        m2 = cell.get("m2").unwrap();
+    }
+    assert_eq!((count, sum, m2), (3, 60, 200)); // variance = 200/3 ~= 66.67
+
+    // morton_encode / morton_decode: round-trip and known corner values.
+    let (_, _, cell) = step("morton_encode", "MortonEncode", &[("x", 0), ("y", 0)]);
+    assert_eq!(cell.get("code"), Some(0));
+    let (_, _, cell) = step(
+        "morton_encode",
+        "MortonEncode",
+        &[("x", 65535), ("y", 65535)],
+    );
+    assert_eq!(cell.get("code"), Some(4_294_967_295));
+    let (_, _, cell) = step("morton_encode", "MortonEncode", &[("x", 1), ("y", 0)]);
+    assert_eq!(cell.get("code"), Some(1));
+    let (_, _, cell) = step("morton_encode", "MortonEncode", &[("x", 0), ("y", 1)]);
+    assert_eq!(cell.get("code"), Some(2));
+
+    let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 0)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
+    let (_, _, cell) = step(
+        "morton_decode",
+        "MortonDecode",
+        &[("code", 4_294_967_295)],
+    );
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(65535), Some(65535)));
+    let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 1)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(1), Some(0)));
+    let (_, _, cell) = step("morton_decode", "MortonDecode", &[("code", 2)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(1)));
+
+    // bresenham_step: the (0,0)-(4,2) line (dx=4, dy=2), hand-verified against a full
+    // reference line generator — err carried as a (mag, neg) pair since state fields can't
+    // be i16.
+    let (_, _, cell) = step(
+        "bresenham_step",
+        "BresenhamStep",
+        &[("dx", 4), ("dy", 2), ("err_mag", 2), ("err_neg", 0)],
+    );
+    assert_eq!(cell.get("step_x"), Some(1));
+    assert_eq!(cell.get("step_y"), Some(0));
+    assert_eq!((cell.get("err_mag"), cell.get("err_neg")), (Some(0), Some(0)));
+    let (_, _, cell) = step(
+        "bresenham_step",
+        "BresenhamStep",
+        &[("dx", 4), ("dy", 2), ("err_mag", 0), ("err_neg", 0)],
+    );
+    assert_eq!(cell.get("step_x"), Some(1));
+    assert_eq!(cell.get("step_y"), Some(1));
+    assert_eq!((cell.get("err_mag"), cell.get("err_neg")), (Some(2), Some(0)));
+
+    // rate_window_update: limit 2 per 100-tick window; 3rd request in-window denied;
+    // a request past the window rolls over and is allowed again.
+    let (allowed, _, cell) = step(
+        "rate_window_update",
+        "RateWindowUpdate",
+        &[
+            ("now", 10),
+            ("window_start", 0),
+            ("window_size", 100),
+            ("count", 0),
+            ("limit", 2),
+        ],
+    );
+    assert_eq!(allowed, 1);
+    let (allowed, _, cell) = step(
+        "rate_window_update",
+        "RateWindowUpdate",
+        &[
+            ("now", 20),
+            ("window_start", cell.get("window_start").unwrap()),
+            ("window_size", 100),
+            ("count", cell.get("count").unwrap()),
+            ("limit", 2),
+        ],
+    );
+    assert_eq!(allowed, 1);
+    let (allowed, _, cell) = step(
+        "rate_window_update",
+        "RateWindowUpdate",
+        &[
+            ("now", 30),
+            ("window_start", cell.get("window_start").unwrap()),
+            ("window_size", 100),
+            ("count", cell.get("count").unwrap()),
+            ("limit", 2),
+        ],
+    );
+    assert_eq!(allowed, 0); // 3rd request this window, denied
+    let (allowed, _, cell) = step(
+        "rate_window_update",
+        "RateWindowUpdate",
+        &[
+            ("now", 200), // past window_start(0) + window_size(100): rolls over
+            ("window_start", cell.get("window_start").unwrap()),
+            ("window_size", 100),
+            ("count", cell.get("count").unwrap()),
+            ("limit", 2),
+        ],
+    );
+    assert_eq!(allowed, 1);
+    assert_eq!(cell.get("window_start"), Some(200));
+    assert_eq!(cell.get("count"), Some(1));
+    let (_, report, _) = step(
+        "rate_window_update",
+        "RateWindowUpdate",
+        &[
+            ("now", 5),
+            ("window_start", 10),
+            ("window_size", 100),
+            ("count", 0),
+            ("limit", 2),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // time moved backward
+}

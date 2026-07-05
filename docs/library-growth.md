@@ -127,7 +127,7 @@ wave 3q   221 cells   + MATH/AIME pack, first slice — an explicit, one-time
                         see the pack note below and
                         docs/math-campaign-spec.md's "scoped ahead of the
                         gate" section.
-now       225 cells   + MATH/AIME pack, second slice — the four items the
+wave 3r   225 cells   + MATH/AIME pack, second slice — the four items the
                         first slice deferred: is_prime_u32 (wide sibling of
                         is_prime; cost scales with sqrt(n), documented rather
                         than silently slow), shoelace_area_x2 (a new
@@ -141,6 +141,14 @@ now       225 cells   + MATH/AIME pack, second slice — the four items the
                         originally scoped except count_divisors/dist_sq
                         (still exact duplicates of factor_count/euclid_sq —
                         never built, not deferred).
+now       232 cells   + the "straightforward deferred set" backlog: q_sqrt,
+                        q_sigmoid (fixed-point), running_variance_step
+                        (running-stats), morton_encode/morton_decode,
+                        bresenham_step (spatial/grid), rate_window_update
+                        (agentic-runtime) — see the pack note below. q_tanh
+                        was scoped but not built: it reduces exactly to
+                        clamp_i16(x, -256, 256), now tagged on that cell
+                        instead of shipped as a second one.
 next      ~250+        + cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -441,7 +449,9 @@ preprocessing is worth the design cost.
 *local* (`a as u32 * b as u32`, `>> 8u32`) — the pattern any Q8.8 free function should
 follow. `q_lerp` also serves as an EMA step (`q_lerp(prev, sample, alpha)`) — deliberately
 *not* shipped as a second `q_ema` cell, since the formula is identical; the admission gate
-would refuse it anyway. `q_sqrt` and piecewise `q_sigmoid`/`q_tanh` are still open.
+would refuse it anyway. `q_sqrt` and `q_sigmoid` landed later (see the "straightforward
+deferred set" pack note above) — `q_tanh` didn't: it reduces exactly to `clamp_i16(x, -256,
+256)`, tagged on that cell instead of shipped as a second one.
 
 **Agentic runtime primitives, first slice (wave 3): `token_bucket_step`, `backoff_next`,
 `circuit_breaker_step`, `debounce_step`, `hysteresis`.** All genuinely need state (each
@@ -451,15 +461,22 @@ depends on outcomes from prior calls, not just this call's arguments), unlike th
 and were never built, exactly the kind of check `docs/cell-index.md` is for. `backoff_next`
 guards against a real overflow: doubling `current` directly can wrap past `u16::MAX` before
 the cap check runs, so it compares against `cap / 2` first and only multiplies when doubling
-is provably safe. `rate_window_update` is still open.
+is provably safe. `rate_window_update` landed later (see the "straightforward deferred set"
+pack note above) — the simpler "N events per fixed window" shape, distinct from
+`token_bucket_step`'s smooth refill-and-spend model.
 
 **Running statistics, first slice (wave 3): `running_min_max_step`, `streak_step`,
 `accumulate_step`.** Deliberately doesn't reach for Welford's algorithm (which needs care in
 fixed point) or a histogram (which needs array state fields, not yet exercised by any landed
 cell) — instead `accumulate_step` keeps a running sum + count and composes with the
 already-landed `safe_div` for the mean, rather than shipping a monolithic "running mean"
-cell that would just re-implement `safe_div` internally. A fixed-point running variance and
-percentile-from-histogram are still open, gated on that array-state-field question.
+cell that would just re-implement `safe_div` internally. A fixed-point running variance
+landed later as `running_variance_step` (see the "straightforward deferred set" pack note
+above) — it turned out not to need the compounding-truncation care Welford's algorithm is
+usually reached for: recomputing the mean fresh from the exact running sum on each side of
+the update, rather than carrying a previously-truncated running mean forward, sidesteps the
+concern this note originally deferred on. Percentile-from-histogram is still open, gated on
+the array-state-field question this variance cell didn't need to answer.
 
 **Spatial / grid, first slice (wave 3): `grid_index`, `point_in_rect`, `aabb_intersect`.**
 `grid_index` is a plain arity-3 free function; the other two are state cells purely for arg
@@ -468,8 +485,13 @@ half-open — edge-touching does not count as inside/overlapping, verified by ha
 Morton encode/decode were deliberately not attempted this slice: encoding a full `u16` x/y
 pair needs a 32-bit interleaved result, so — like the calendrical/checksum pack's
 discovery — it would need a `u32` state field, and the bit-interleaving loop itself
-(computed shift amounts on a wide accumulator) hasn't been risked yet. A Bresenham line
-stepper is also still open.
+(computed shift amounts on a wide accumulator) hasn't been risked yet. Both landed later
+(see the "straightforward deferred set" pack note above) using the classic branch-free
+"magic numbers" bit-spread — constant shift amounts throughout, so the dynamic-shift
+question this note raised never actually came up. A Bresenham line stepper also landed
+later, redesigned around a real constraint found along the way: state fields can't be
+`i16` at all, so the stepper tracks only `dx`/`dy`/the error term (the last as a
+sign-magnitude pair) and reports 0/1 step flags rather than signed coordinates directly.
 
 **Packing/BCD + vector, the Phase 2.3 pilot batch: `pack_u8`, `pack_nibbles`, `bcd_encode`,
 `bcd_decode`, `dot2`, `norm2_sq`.** The first real run of the author→verify→admit loop
@@ -824,6 +846,49 @@ With this slice, every MATH/AIME candidate `docs/math-campaign-spec.md` original
 resolved one way or another: landed, or a confirmed exact duplicate of an existing cell
 (`count_divisors`/`dist_sq` — never built, not merely deferred). The gate itself is
 unchanged by any of this — M3 still hasn't run.
+
+**The "straightforward deferred set" (2026-07-05) — the backlog items that were unattended,
+not blocked on an unsolved design question.** Six of these named cells landed
+(`q_tanh` didn't — see below), closing `q_sqrt`/piecewise-activations from the Q8.8 pack
+note, the fixed-point variance from the running-stats pack note, and Morton/Bresenham from
+the spatial/grid pack note, all previously "still open." Two real constraints surfaced,
+worth knowing before the next batch touches any of these families:
+
+1. **State fields can't be `i16` at all** — the `.cell` manifest's `Ty` byte only names
+   `u16`/`u32`/`u8`/`bytes[N]`/`str[N]` (`docs/09-cell80-abi.md`); `i16` has only ever
+   appeared in this library as a free-fn parameter/return/local (the whole signed-deltas
+   pack). `bresenham_step` needed genuinely signed state (`x`, `y`, and the error term all
+   go negative across a call boundary) and was first drafted with `i16` fields — a compile
+   error (`unknown type i16`) caught it immediately. Redesigned to track only `dx`, `dy`,
+   and the error term as a `(mag, neg)` sign-magnitude pair, reporting `step_x`/`step_y` as
+   plain 0/1 flags and leaving the caller to apply them to its own (already-known-sign) `x`,
+   `y` — which turned out to need *fewer* fields than tracking signed coordinates directly
+   would have, not more. Verified against a full reference line generator across 2,000
+   random segments before and after the redesign.
+2. **A linear-scan integer sqrt is a real cycle trap, not just an aesthetic wart.**
+   `q_sqrt`'s first draft mirrored `CELL_PRELUDE`'s own `isqrt` (increment a candidate,
+   check `(r+1)² <= n`) widened to `u32` — correct, and 3.6M cycles at the domain extreme
+   (`x = 65535`), comfortably past the 2,000,000 default. The standard branch-free bitwise
+   integer square root (four bit-shift-and-compare rounds instead of up to 4,096 linear
+   steps) costs under 20,000 cycles for the same input — measured, not assumed, the same
+   discipline `is_prime_u32`'s cycle-cost finding used. `CELL_PRELUDE`'s `isqrt` itself is
+   fine as-is (bounded to `u16`'s domain, at most 255 iterations) — the trap is specifically
+   in *widening* a linear-scan sqrt to `u32`.
+
+**`q_tanh` was scoped, then not built — the admission gate's reasoning applied by hand
+before the gate ever ran.** `tanh(x) = 2*sigmoid(2x) - 1`; substituting `q_sigmoid`'s own
+formula (`clamp(x/4 + 0.5, 0, 1)`) and simplifying algebraically lands exactly on
+`clamp(x, -1, 1)` — in Q8.8, `clamp_i16(x, -256, 256)`. Same formula, different name: the
+project's own rule ("don't ship a second cell with the same behaviour — add the alias as a
+tag/summary on the existing one," `docs/library-growth.md`'s "Two rules" section) applied
+here before authoring, not after a gate refusal. `clamp_i16` picked up `tanh`/`hardtanh`/
+`activation`/`q8.8` tags and a doc-comment note instead.
+
+Gate: 232 admitted, 0 refused. Full test suite green, cold clippy clean, codegen golden
+regenerated (purely additive). One more same-shape-sibling retrieval cost, expected and not
+chased (per the class's standing precedent): `morton_encode`'s own direct query ranks #2
+behind `morton_decode` — an encode/decode pair sharing nearly all vocabulary except the one
+word that matters.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,
