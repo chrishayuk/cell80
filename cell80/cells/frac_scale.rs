@@ -1,0 +1,27 @@
+//! Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via an inline GCD — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction.
+//! tags: fraction, frac, scale, multiply, integer, reduce, wide, u32, checked, escalate
+//! entry: FracScale::run
+//! limits: escalates (halt 0xFF06, out_of_domain) if d == 0; escalates (halt 0xFF05, needs_wider_math) if n * k overflows u32
+struct FracScale { n: u32, d: u32, k: u32, num: u32, den: u32 }
+impl FracScale {
+    fn run(&mut self) -> u16 {
+        if self.d == 0u32 { halt(0xFF06u16); }
+        let p = self.n.wrapping_mul(self.k);
+        if self.n != 0u32 && p / self.n != self.k { halt(0xFF05u16); }
+        if p == 0u32 {
+            self.num = 0u32;
+            self.den = 1u32;
+            return 1u16;
+        }
+        let mut x = p;
+        let mut y = self.d;
+        while y != 0u32 {
+            let t = y;
+            y = x % y;
+            x = t;
+        }
+        self.num = p / x;
+        self.den = self.d / x;
+        1u16
+    }
+}

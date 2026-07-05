@@ -677,7 +677,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("163 cells"));
+    assert!(listing.contains("range_check") && listing.contains("203 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -741,7 +741,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("163 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("203 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -752,7 +752,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 163, "got: {out}");
+    assert_eq!(cells.len(), 203, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -764,7 +764,7 @@ fn cli_index_json_lists_every_manifest() {
 
 #[test]
 fn cli_index_gate_over_the_real_library() {
-    // The admission gate against the real 163-cell library + its own retrieval dataset — the
+    // The admission gate against the real 203-cell library + its own retrieval dataset — the
     // true end-to-end proof, not a synthetic fixture. Wave 3's calendrical/checksum pack
     // found (and fixed at the root) a `luhn_check`/`is_zero` false positive by widening
     // `DEFAULT_PROBES` (fingerprint.rs) rather than touching luhn_check; every pack since
@@ -773,27 +773,30 @@ fn cli_index_gate_over_the_real_library() {
     // fingerprint check entirely) added no new collisions. The units pack (same_unit_check,
     // unit_mul, unit_div, unit_cancel_check) is the campaign's first *free-fn* pack — its
     // arity-2 u16 cells go through the fingerprint check for real, and still collided with
-    // nothing. The verifier/ranker pack's sum_equals/diff_equals are arity-3 (exempt by
-    // design — admission.rs only fingerprints arity-≤2 free-fns) and its
-    // product_equals_u32/quotient_equals_exact_u32 are state cells (exempt too), and so is
-    // the stateful/RNG pack (lcg_next, xorshift16, counter_step — all state cells). The
-    // signed-deltas pack (sign_i16, abs_i16, clamp_i16, apply_delta_clamped) found a second
-    // real fingerprint gap: every DEFAULT_PROBES value was non-negative as `i16`, so
-    // `sign_i16` degenerated to `nonzero` on this bank — fixed the same way as luhn_check,
-    // by widening the bank with `[65531, 3]` (`-5` as an `i16` bit pattern). That widening
-    // had a welcome side effect: it also separated the long-standing `snap_down`/
-    // `round_to_multiple` false positive (they now diverge on the new probe too), so the
-    // gate is fully clean. The scoring/choice pack (weighted_sum2/3 state cells,
-    // choose_best3 state cell, is_clear_winner arity-3 free-fn — all exempt from the
-    // fingerprint check) added no new collisions either. The fractions pack (M1 5/5, all 10
-    // state cells) closes out the GSM8K campaign — still 0 refusals.
+    // nothing (including its later wage-rate dimension-code extension). The verifier/ranker
+    // pack's sum_equals/diff_equals are arity-3 (exempt by design — admission.rs only
+    // fingerprints arity-≤2 free-fns) and its product_equals_u32/quotient_equals_exact_u32
+    // are state cells (exempt too), and so is the stateful/RNG pack (lcg_next, xorshift16,
+    // counter_step — all state cells). The signed-deltas pack (sign_i16, abs_i16, clamp_i16,
+    // apply_delta_clamped) found a second real fingerprint gap: every DEFAULT_PROBES value
+    // was non-negative as `i16`, so `sign_i16` degenerated to `nonzero` on this bank — fixed
+    // the same way as luhn_check, by widening the bank with `[65531, 3]` (`-5` as an `i16`
+    // bit pattern). That widening had a welcome side effect: it also separated the
+    // long-standing `snap_down`/`round_to_multiple` false positive (they now diverge on the
+    // new probe too), so the gate is fully clean. The scoring/choice pack (weighted_sum2/3
+    // state cells, choose_best3 state cell, is_clear_winner arity-3 free-fn — all exempt
+    // from the fingerprint check) added no new collisions either. The fractions pack (M1
+    // 5/5, all 10 state cells) closed out M1's first pass — still 0 refusals. The second
+    // slice (checked-arithmetic +18, money-bps +2, verifier-ranker +11, fractions +9 — all
+    // state cells, exempt) plus the units wage-rate extension (free-fn, fingerprint-checked
+    // for real) added 40 more cells and still 0 refusals.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("163 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("203 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

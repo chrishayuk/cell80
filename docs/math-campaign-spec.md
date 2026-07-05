@@ -1,11 +1,20 @@
 # The math campaign — GSM-Symbolic as the first `cell_solve` field campaign
 
-*Status: **M1 complete** — all five authored packs landed (checked/exact arithmetic,
-money/basis-points, units, verifier/ranker, fractions — `docs/library-growth.md` "GSM8K
-math campaign"). M0 (u32-across-a-call-boundary) landed from a parallel session as Tier
-2 (one u32 param per call, not the two a shared `gcd_u32` reducer needs); the fractions
-pack shipped anyway by inlining its own GCD-reduction loop per cell instead, a workaround
-available even before M0 landed. M2-M4 (the plan IR, renderer, and campaign
+*Status: **M1 complete, second slice landed** — all five authored packs landed a first
+slice (checked/exact arithmetic, money/basis-points, units, verifier/ranker, fractions —
+`docs/library-growth.md` "GSM8K math campaign"), then a second slice (checked-arithmetic
++18, fractions +9, money-bps +2, verifier-ranker +11, plus a units dimension-table fix)
+closed most of the gap against this spec's original ~95-cell estimate (32 → 73 authored
+cells across the five packs) — see `docs/library-growth.md`'s "second slice" note for what
+was built, what was deliberately not (money-bps/units candidates already covered), and the
+retrieval-curve cost it paid. M0 (u32-across-a-call-boundary) landed from a parallel
+session as Tier 2 (one u32 param per call, not the two a shared two-u32-param `gcd_u32(a,
+b)` *free-fn reducer* needs); the fractions pack shipped anyway by inlining its own
+GCD-reduction loop per cell instead, a workaround available even before M0 landed. The
+second slice's own `gcd_u32` **cell** (a wide sibling of `gcd`) is this same
+inline-loop workaround packaged as a standalone library entry, not the blocked
+two-u32-param shared reducer — the two aren't in tension. M2-M4 (the plan IR, renderer, and
+campaign
 itself) remain gated behind `cell_solve` (`docs/escalation-ladder.md` item 2 — the u32/Ins
 compiler branch it was held on has since landed, so the compiler prerequisite for
 `cell_solve` is clear, but `cell_solve` itself is not built) and the admission gate (Phase

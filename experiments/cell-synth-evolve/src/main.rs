@@ -133,7 +133,7 @@ fn evolve_from(
             .map(|c| (matched(ops, &c, examples), c))
             .collect();
         tested += scored.len();
-        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        scored.sort_by_key(|s| std::cmp::Reverse(s.0));
         if scored[0].0 == need {
             let chain = &scored[0].1;
             return Some(Plan {
@@ -220,11 +220,11 @@ fn harvest_seeds(
         }
         tested += 1;
         let state: Vec<u16> = inputs.iter().map(|&x| run_chain(ops, &chain, x)).collect();
-        for i in 0..ops.len() {
+        for (i, op) in ops.iter().enumerate() {
             let mut c2 = chain.clone();
             c2.push(i);
             if seen.insert(c2.clone()) {
-                let ns: Vec<u16> = state.iter().map(|&v| ops[i].apply(v)).collect();
+                let ns: Vec<u16> = state.iter().map(|&v| op.apply(v)).collect();
                 seq += 1;
                 heap.push(Reverse((hamming(&ns, &targets), seq, c2)));
             }

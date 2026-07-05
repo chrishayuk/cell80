@@ -828,8 +828,9 @@ fn money_bps_state_cells_match_defined_behaviour() {
 fn units_free_fn_cells_match_defined_behaviour() {
     // The GSM8K math-campaign units pack (Phase 2.3, M1 pack 3/5) — dimension codes
     // 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,
-    // 7=rate_distance_per_time (docs/library-growth.md). Free-fn cells (no u32 state
-    // needed), escalating via 0xFF06 (out_of_domain) rather than 0xFF05
+    // 7=rate_distance_per_time,8=rate_money_per_time (docs/library-growth.md; code 8 added
+    // later to cover wage-rate word problems — "$ per hour" — previously unmodeled). Free-fn
+    // cells (no u32 state needed), escalating via 0xFF06 (out_of_domain) rather than 0xFF05
     // (needs_wider_math) — a mismatched/unmodeled unit pair isn't a wide-math problem.
     fn report(id: &str, args: &[u16]) -> cell80::Report {
         let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
@@ -870,6 +871,18 @@ fn units_free_fn_cells_match_defined_behaviour() {
     assert_eq!(report("unit_cancel_check", &[1, 0]).result, 1);
     assert_eq!(report("unit_cancel_check", &[2, 1]).result, 0);
     assert_eq!(report("unit_cancel_check", &[100, 4]).result, 0); // out-of-domain codes too
+
+    // Wage-rate pair (code 8, rate_money_per_time): money/time=rate, rate*time=money.
+    assert_eq!(report("unit_div", &[1, 2]).result, 8);
+    assert_eq!(report("unit_mul", &[8, 2]).result, 1);
+    assert_eq!(report("unit_mul", &[2, 8]).result, 1);
+    assert_eq!(report("unit_cancel_check", &[1, 2]).result, 1);
+    // The bound check now rejects codes > 8, not > 7.
+    assert_eq!(report("same_unit_check", &[8, 8]).result, 8);
+    assert_eq!(
+        report("same_unit_check", &[9, 9]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
 }
 
 #[test]
@@ -1261,4 +1274,589 @@ fn fractions_cells_match_defined_behaviour() {
     );
     // truncated split, but the two parts always sum exactly to total.
     assert_eq!((c.get("part_a"), c.get("part_b")), (Some(2), Some(8)));
+}
+
+#[test]
+fn checked_arithmetic_wave2_cells_match_defined_behaviour() {
+    // GSM8K math-campaign checked-arithmetic pack, second slice: closing the gap against
+    // docs/math-campaign-spec.md's ~30-cell estimate — a checked multiply (the obvious
+    // missing sibling of add_checked_u32/sub_checked_u32), fused multiply-add/subtract and
+    // three-way variants, an exact checked power, wide siblings of several u16 cells that
+    // can't represent values past 65535 (money/counts genuinely exceed that in this
+    // campaign), and the sign-magnitude kernels docs/math-campaign-spec.md names as an M0
+    // prerequisite (the dialect has no i32, so a signed difference is a (magnitude, sign)
+    // pair instead).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // mul_checked_u32: exact case returns; overflow escalates.
+    let (_, report, cell) = step("mul_checked_u32", "MulChecked", &[("a", 1000), ("b", 2000)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("product"), Some(2_000_000));
+    let (_, report, _) = step(
+        "mul_checked_u32",
+        "MulChecked",
+        &[("a", 100_000), ("b", 100_000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // mul_add_checked_u32: a*b+c: exact case; multiply overflow; add overflow.
+    let (_, _, cell) = step(
+        "mul_add_checked_u32",
+        "MulAddChecked",
+        &[("a", 7), ("b", 6), ("c", 3)],
+    );
+    assert_eq!(cell.get("result"), Some(45));
+    let (_, report, _) = step(
+        "mul_add_checked_u32",
+        "MulAddChecked",
+        &[("a", 100_000), ("b", 100_000), ("c", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+    let (_, report, _) = step(
+        "mul_add_checked_u32",
+        "MulAddChecked",
+        &[("a", 4_000_000_000), ("b", 1), ("c", 4_000_000_000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // mul_sub_checked_u32: a*b-c: exact case; c > product escalates.
+    let (_, _, cell) = step(
+        "mul_sub_checked_u32",
+        "MulSubChecked",
+        &[("a", 10), ("b", 5), ("c", 20)],
+    );
+    assert_eq!(cell.get("result"), Some(30));
+    let (_, report, _) = step(
+        "mul_sub_checked_u32",
+        "MulSubChecked",
+        &[("a", 3), ("b", 4), ("c", 100)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // mul3_checked_u32: a*b*c: exact case; overflow at either step escalates.
+    let (_, _, cell) = step(
+        "mul3_checked_u32",
+        "Mul3Checked",
+        &[("a", 2), ("b", 3), ("c", 4)],
+    );
+    assert_eq!(cell.get("product"), Some(24));
+    let (_, report, _) = step(
+        "mul3_checked_u32",
+        "Mul3Checked",
+        &[("a", 100_000), ("b", 100_000), ("c", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // add3_checked_u32: a+b+c: exact case; overflow at either step escalates.
+    let (_, _, cell) = step(
+        "add3_checked_u32",
+        "Add3Checked",
+        &[("a", 1), ("b", 2), ("c", 3)],
+    );
+    assert_eq!(cell.get("sum"), Some(6));
+    let (_, report, _) = step(
+        "add3_checked_u32",
+        "Add3Checked",
+        &[("a", u32::MAX as u64), ("b", 1), ("c", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // pow_checked_u32: 0^0 = 1 by convention; exact case; the last doubling to overflow.
+    let (_, _, cell) = step("pow_checked_u32", "PowChecked", &[("base", 0), ("exp", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step("pow_checked_u32", "PowChecked", &[("base", 2), ("exp", 10)]);
+    assert_eq!(cell.get("result"), Some(1024));
+    let (_, report, _) = step("pow_checked_u32", "PowChecked", &[("base", 2), ("exp", 32)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // abs_diff_u32 / min_u32 / max_u32: wide siblings, exercised past the u16 ceiling.
+    let (_, _, cell) = step(
+        "abs_diff_u32",
+        "AbsDiffWide",
+        &[("a", 100_000), ("b", 30_000)],
+    );
+    assert_eq!(cell.get("diff"), Some(70_000));
+    let (_, _, cell) = step("min_u32", "MinWide", &[("a", 100_000), ("b", 30_000)]);
+    assert_eq!(cell.get("result"), Some(30_000));
+    let (_, _, cell) = step("max_u32", "MaxWide", &[("a", 100_000), ("b", 30_000)]);
+    assert_eq!(cell.get("result"), Some(100_000));
+
+    // clamp_u32 / range_check_u32 / avg2_u32 / divides_u32: wide siblings.
+    let (_, _, cell) = step(
+        "clamp_u32",
+        "ClampWide",
+        &[("x", 5), ("lo", 10), ("hi", 100_000)],
+    );
+    assert_eq!(cell.get("result"), Some(10));
+    let (_, _, cell) = step(
+        "clamp_u32",
+        "ClampWide",
+        &[("x", 200_000), ("lo", 10), ("hi", 100_000)],
+    );
+    assert_eq!(cell.get("result"), Some(100_000));
+    assert_eq!(
+        step(
+            "range_check_u32",
+            "RangeCheckWide",
+            &[("x", 100_000), ("lo", 10), ("hi", 200_000)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "range_check_u32",
+            "RangeCheckWide",
+            &[("x", 5), ("lo", 10), ("hi", 200_000)]
+        )
+        .0,
+        0
+    );
+    let (_, _, cell) = step("avg2_u32", "Avg2Wide", &[("a", 100_000), ("b", 100_002)]);
+    assert_eq!(cell.get("result"), Some(100_001));
+    assert_eq!(
+        step("divides_u32", "DividesWide", &[("a", 7), ("b", 21)]).0,
+        1
+    );
+    assert_eq!(
+        step("divides_u32", "DividesWide", &[("a", 7), ("b", 22)]).0,
+        0
+    );
+
+    // gcd_u32 / lcm_u32: wide siblings; lcm escalates on overflow, 0 if either input is 0.
+    let (_, _, cell) = step("gcd_u32", "GcdWide", &[("a", 48), ("b", 18)]);
+    assert_eq!(cell.get("result"), Some(6));
+    let (_, _, cell) = step("lcm_u32", "LcmChecked", &[("a", 4), ("b", 6)]);
+    assert_eq!(cell.get("result"), Some(12));
+    let (_, _, cell) = step("lcm_u32", "LcmChecked", &[("a", 0), ("b", 6)]);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // smag_add / smag_sub / smag_cmp: sign-magnitude (mag, neg) pairs, neg 0=nonneg/1=neg.
+    let (_, _, cell) = step(
+        "smag_add",
+        "SmagAdd",
+        &[("mag_a", 5), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(8), Some(0))); // 5 + 3 = 8
+    let (_, _, cell) = step(
+        "smag_add",
+        "SmagAdd",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(2), Some(1))); // -5 + 3 = -2
+    let (_, _, cell) = step(
+        "smag_add",
+        "SmagAdd",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 5), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(0), Some(0))); // -5 + 5 = 0 (canonical)
+
+    let (_, _, cell) = step(
+        "smag_sub",
+        "SmagSub",
+        &[("mag_a", 5), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(2), Some(0))); // 5 - 3 = 2
+    let (_, _, cell) = step(
+        "smag_sub",
+        "SmagSub",
+        &[("mag_a", 3), ("neg_a", 0), ("mag_b", 5), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(2), Some(1))); // 3 - 5 = -2
+
+    assert_eq!(
+        step(
+            "smag_cmp",
+            "SmagCmp",
+            &[("mag_a", 5), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)]
+        )
+        .0,
+        2
+    ); // 5 > 3
+    assert_eq!(
+        step(
+            "smag_cmp",
+            "SmagCmp",
+            &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)]
+        )
+        .0,
+        0
+    ); // -5 < 3
+    assert_eq!(
+        step(
+            "smag_cmp",
+            "SmagCmp",
+            &[("mag_a", 5), ("neg_a", 1), ("mag_b", 5), ("neg_b", 1)]
+        )
+        .0,
+        1
+    ); // -5 == -5
+}
+
+#[test]
+fn money_bps_wave2_cells_match_defined_behaviour() {
+    // GSM8K math-campaign money/bps pack, second slice: the missing inverse — recovering
+    // the *rate* from a before/after pair, complementing increase_by_bps/decrease_by_bps
+    // (rate -> final value) and original_before_bps_increase/decrease (rate + final ->
+    // original). Checked docs/cell-index.md first: cents_div_qty/change_due-style
+    // candidates were already considered and rejected as duplicates of
+    // div_floor_u32/sub_checked_u32 (docs/library-growth.md, M1 pack 2/5) — not repeated.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    let (_, _, cell) = step(
+        "bps_increase_between",
+        "BpsIncreaseBetween",
+        &[("before", 200), ("after", 250)],
+    );
+    assert_eq!(cell.get("bps"), Some(2500)); // 25% increase
+    let (_, report, _) = step(
+        "bps_increase_between",
+        "BpsIncreaseBetween",
+        &[("before", 250), ("after", 200)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // after < before
+
+    let (_, _, cell) = step(
+        "bps_decrease_between",
+        "BpsDecreaseBetween",
+        &[("before", 200), ("after", 150)],
+    );
+    assert_eq!(cell.get("bps"), Some(2500)); // 25% decrease
+    let (_, report, _) = step(
+        "bps_decrease_between",
+        "BpsDecreaseBetween",
+        &[("before", 150), ("after", 200)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // after > before
+}
+
+#[test]
+fn fractions_wave2_cells_match_defined_behaviour() {
+    // GSM8K math-campaign fractions pack, second slice — closing the gap against
+    // docs/math-campaign-spec.md's ~20-cell estimate: a reciprocal, applying a fraction to
+    // a whole (exact) vs scaling a fraction by an integer (stays a fraction), picking the
+    // smaller/larger of two fractions (distinct from frac_cmp's ordering code), a 3-way
+    // ratio split, a proper-fraction predicate, and the mixed-number pair
+    // (frac_add_whole / mixed_to_frac, the latter the exact inverse of frac_to_mixed).
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    let (_, c) = verify("frac_reciprocal", "FracReciprocal", &[("n", 3), ("d", 4)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(4), Some(3)));
+    let (report, _) = verify("frac_reciprocal", "FracReciprocal", &[("n", 0), ("d", 4)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, c) = verify(
+        "frac_of_whole",
+        "FracOfWhole",
+        &[("n", 3), ("d", 4), ("whole", 20)],
+    );
+    assert_eq!(c.get("result"), Some(15)); // 3/4 of 20 = 15
+    let (report, _) = verify(
+        "frac_of_whole",
+        "FracOfWhole",
+        &[("n", 3), ("d", 4), ("whole", 10)],
+    ); // 30/4 isn't a whole number: wrong-plan signal
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, c) = verify("frac_scale", "FracScale", &[("n", 2), ("d", 3), ("k", 4)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(8), Some(3))); // (2/3)*4 = 8/3
+
+    let (_, c) = verify(
+        "frac_min",
+        "FracMin",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(3))); // 1/3 < 1/2
+    let (_, c) = verify(
+        "frac_max",
+        "FracMax",
+        &[("na", 1), ("da", 2), ("nb", 1), ("db", 3)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2))); // 1/2 > 1/3
+
+    let (_, c) = verify(
+        "ratio_split3",
+        "RatioSplit3",
+        &[
+            ("total", 100),
+            ("ratio_a", 1),
+            ("ratio_b", 1),
+            ("ratio_c", 2),
+        ],
+    );
+    assert_eq!(
+        (c.get("part_a"), c.get("part_b"), c.get("part_c")),
+        (Some(25), Some(25), Some(50))
+    );
+
+    let (report, _) = verify("frac_is_proper", "FracIsProper", &[("n", 3), ("d", 4)]);
+    assert_eq!(report.result, 1);
+    let (report, _) = verify("frac_is_proper", "FracIsProper", &[("n", 4), ("d", 4)]);
+    assert_eq!(report.result, 0);
+
+    let (_, c) = verify(
+        "frac_add_whole",
+        "FracAddWhole",
+        &[("n", 1), ("d", 3), ("whole", 2)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(7), Some(3))); // 1/3 + 2 = 7/3
+
+    let (_, c) = verify(
+        "mixed_to_frac",
+        "MixedToFrac",
+        &[("whole", 2), ("num", 1), ("den", 2)],
+    );
+    assert_eq!((c.get("n"), c.get("d")), (Some(5), Some(2))); // 2 1/2 = 5/2
+}
+
+#[test]
+fn verifier_ranker_wave2_cells_match_defined_behaviour() {
+    // GSM8K math-campaign verifier/ranker pack, second slice — wide (u32) siblings of the
+    // first slice's u16-scoped verifiers (money/count totals in this campaign routinely
+    // exceed 65535), reverse-equation counterparts for every checked-arithmetic wave-2
+    // shape (mul/mul3/mul_add/mul_sub/pow), and a constraint check for the sign-magnitude
+    // kernels. answer_in_options / a general options-membership verifier remains
+    // deliberately not built (docs/library-growth.md already weighed and deferred it: GSM8K
+    // is free-response, thin motivation).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, cell)
+    }
+
+    assert_eq!(
+        step(
+            "answer_eq_u32",
+            "AnswerEqWide",
+            &[("a", 100_000), ("b", 100_000)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step("answer_eq_u32", "AnswerEqWide", &[("a", 100_000), ("b", 1)]).0,
+        0
+    );
+
+    assert_eq!(
+        step(
+            "sum_equals_u32",
+            "SumEqualsWide",
+            &[("a", 100_000), ("b", 50_000), ("total", 150_000)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "sum_equals_u32",
+            "SumEqualsWide",
+            &[("a", 100_000), ("b", 50_000), ("total", 1)]
+        )
+        .0,
+        0
+    );
+
+    assert_eq!(
+        step(
+            "diff_equals_u32",
+            "DiffEqualsWide",
+            &[("a", 100_000), ("b", 30_000), ("remainder", 70_000)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "diff_equals_u32",
+            "DiffEqualsWide",
+            &[("a", 30_000), ("b", 100_000), ("remainder", 0)]
+        )
+        .0,
+        0
+    ); // a < b: never a match, unsigned
+
+    assert_eq!(
+        step(
+            "sum3_equals_u32",
+            "Sum3EqualsWide",
+            &[("a", 1), ("b", 2), ("c", 3), ("total", 6)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "sum3_equals_u32",
+            "Sum3EqualsWide",
+            &[("a", u32::MAX as u64), ("b", 1), ("c", 0), ("total", 0)]
+        )
+        .0,
+        0
+    ); // overflow: never a false-positive match
+
+    assert_eq!(
+        step(
+            "product3_equals_u32",
+            "Product3EqualsWide",
+            &[("a", 2), ("b", 3), ("c", 4), ("total", 24)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "product3_equals_u32",
+            "Product3EqualsWide",
+            &[("a", 100_000), ("b", 100_000), ("c", 1), ("total", 0)]
+        )
+        .0,
+        0
+    );
+
+    assert_eq!(
+        step(
+            "mul_add_equals_u32",
+            "MulAddEqualsWide",
+            &[("a", 7), ("b", 6), ("c", 3), ("total", 45)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "mul_add_equals_u32",
+            "MulAddEqualsWide",
+            &[("a", 7), ("b", 6), ("c", 3), ("total", 46)]
+        )
+        .0,
+        0
+    );
+
+    assert_eq!(
+        step(
+            "mul_sub_equals_u32",
+            "MulSubEqualsWide",
+            &[("a", 10), ("b", 5), ("c", 20), ("total", 30)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "mul_sub_equals_u32",
+            "MulSubEqualsWide",
+            &[("a", 3), ("b", 4), ("c", 100), ("total", 0)]
+        )
+        .0,
+        0
+    ); // c > product: never a false-positive match
+
+    assert_eq!(
+        step(
+            "pow_equals_u32",
+            "PowEqualsWide",
+            &[("base", 2), ("exp", 10), ("total", 1024)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "pow_equals_u32",
+            "PowEqualsWide",
+            &[("base", 2), ("exp", 32), ("total", 0)]
+        )
+        .0,
+        0
+    ); // overflow: never a false-positive match
+
+    assert_eq!(
+        step("smag_is_nonneg", "SmagIsNonneg", &[("mag", 5), ("neg", 0)]).0,
+        1
+    );
+    assert_eq!(
+        step("smag_is_nonneg", "SmagIsNonneg", &[("mag", 5), ("neg", 1)]).0,
+        0
+    );
+    assert_eq!(
+        step("smag_is_nonneg", "SmagIsNonneg", &[("mag", 0), ("neg", 1)]).0,
+        1
+    ); // negative zero is nonnegative
+
+    assert_eq!(
+        step(
+            "agree3_u32",
+            "Agree3Wide",
+            &[("a", 100_000), ("b", 100_000), ("c", 1)]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "agree3_u32",
+            "Agree3Wide",
+            &[("a", 100_000), ("b", 1), ("c", 2)]
+        )
+        .0,
+        0
+    );
+
+    assert_eq!(
+        step(
+            "answer_within_tolerance_u32",
+            "AnswerWithinToleranceWide",
+            &[
+                ("candidate", 100_005),
+                ("actual", 100_000),
+                ("tolerance", 10)
+            ]
+        )
+        .0,
+        1
+    );
+    assert_eq!(
+        step(
+            "answer_within_tolerance_u32",
+            "AnswerWithinToleranceWide",
+            &[
+                ("candidate", 100_050),
+                ("actual", 100_000),
+                ("tolerance", 10)
+            ]
+        )
+        .0,
+        0
+    );
 }

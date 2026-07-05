@@ -135,10 +135,14 @@ fn mutate(rng: &mut Rng, g: &OrgGenome, pools: &Pools) -> OrgGenome {
         child.decay_amount = clamp_u16(child.decay_amount as i32 + rng.step(1), DECAY_BOUNDS);
     }
     if rng.chance(NUMERIC_MUTATE_PCT) {
-        child.repro_threshold = clamp_u16(child.repro_threshold as i32 + rng.step(10), THRESHOLD_BOUNDS);
+        child.repro_threshold = clamp_u16(
+            child.repro_threshold as i32 + rng.step(10),
+            THRESHOLD_BOUNDS,
+        );
     }
     if rng.chance(NUMERIC_MUTATE_PCT) {
-        child.repro_give_pct = clamp_u16(child.repro_give_pct as i32 + rng.step(5), GIVE_PCT_BOUNDS);
+        child.repro_give_pct =
+            clamp_u16(child.repro_give_pct as i32 + rng.step(5), GIVE_PCT_BOUNDS);
     }
     if rng.chance(SWAP_MUTATE_PCT) {
         child.hungry_promoter = pick_other(rng, &pools.promoters, &child.hungry_promoter);
@@ -167,7 +171,11 @@ impl World {
             i += 3;
         }
         let food_capacity = food.clone();
-        World { food, regrow_at: vec![0; WORLD_LEN], food_capacity }
+        World {
+            food,
+            regrow_at: vec![0; WORLD_LEN],
+            food_capacity,
+        }
     }
 
     fn eat_at(&mut self, pos: usize) {
@@ -197,19 +205,25 @@ struct Organism {
 /// the host under that same id, so it can be reused each tick as a gene/promoter.
 fn load_gene(host: &mut CellHost, cells_dir: &Path, name: &str) -> usize {
     let path = cells_dir.join(format!("{name}.rs"));
-    let src = fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
+    let src =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
     let cart = Cartridge::compile(
         &src,
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some(name.to_string()), ..Default::default() },
+        CartridgeOpts {
+            id: Some(name.to_string()),
+            ..Default::default()
+        },
     )
     .unwrap_or_else(|e| panic!("compiling {name}: {e}"));
     host.add(cart);
-    host.load(name).unwrap_or_else(|e| panic!("loading {name}: {e}"))
+    host.load(name)
+        .unwrap_or_else(|e| panic!("loading {name}: {e}"))
 }
 
 fn load_starting_genome(path: &Path) -> StartingGenome {
-    let src = fs::read_to_string(path).unwrap_or_else(|e| panic!("reading genome {}: {e}", path.display()));
+    let src = fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("reading genome {}: {e}", path.display()));
     serde_json::from_str(&src).unwrap_or_else(|e| panic!("parsing genome {}: {e}", path.display()))
 }
 
@@ -225,7 +239,11 @@ fn discover_pools(cells_dir: &Path) -> Pools {
         .unwrap_or_else(|e| panic!("reading {}: {e}", cells_dir.display()))
         .filter_map(|e| e.ok())
         .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
-        .filter_map(|e| e.path().file_stem().map(|s| s.to_string_lossy().into_owned()))
+        .filter_map(|e| {
+            e.path()
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+        })
         .collect();
     names.sort();
 
@@ -233,16 +251,24 @@ fn discover_pools(cells_dir: &Path) -> Pools {
     let mut movement = Vec::new();
     for name in names {
         let path = cells_dir.join(format!("{name}.rs"));
-        let Ok(src) = fs::read_to_string(&path) else { continue };
+        let Ok(src) = fs::read_to_string(&path) else {
+            continue;
+        };
         let Ok(cart) = Cartridge::compile(
             &src,
             CellConfig::sandboxed(),
-            CartridgeOpts { id: Some(name.clone()), ..Default::default() },
+            CartridgeOpts {
+                id: Some(name.clone()),
+                ..Default::default()
+            },
         ) else {
             continue;
         };
         let sig = &cart.manifest.signature;
-        if !sig.state.is_empty() || sig.ret != "u16" || !sig.params.iter().all(|(_, ty)| ty == "u16") {
+        if !sig.state.is_empty()
+            || sig.ret != "u16"
+            || !sig.params.iter().all(|(_, ty)| ty == "u16")
+        {
             continue;
         }
         match sig.params.len() {
@@ -251,7 +277,10 @@ fn discover_pools(cells_dir: &Path) -> Pools {
             _ => {}
         }
     }
-    Pools { promoters, movement }
+    Pools {
+        promoters,
+        movement,
+    }
 }
 
 fn main() {
@@ -261,7 +290,10 @@ fn main() {
         Some(p) => PathBuf::from(p),
         None => Path::new(env!("CARGO_MANIFEST_DIR")).join("genomes/grazer.json"),
     };
-    let seed: u64 = args.next().and_then(|s| s.parse().ok()).unwrap_or(0x5eed_1234_c311_80ff);
+    let seed: u64 = args
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0x5eed_1234_c311_80ff);
 
     let starting = load_starting_genome(&genome_path);
     let cells_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../cell80/cells");
@@ -312,8 +344,16 @@ fn main() {
 
     let mut world = World::new();
     let mut organisms = vec![
-        Organism { pos: 0, energy: starting.initial_energy, genome: starting_genome.clone() },
-        Organism { pos: WORLD_LEN / 2, energy: starting.initial_energy, genome: starting_genome },
+        Organism {
+            pos: 0,
+            energy: starting.initial_energy,
+            genome: starting_genome.clone(),
+        },
+        Organism {
+            pos: WORLD_LEN / 2,
+            energy: starting.initial_energy,
+            genome: starting_genome,
+        },
     ];
     let mut rng = Rng::new(seed);
 
@@ -328,25 +368,44 @@ fn main() {
 
         for mut org in organisms.drain(..) {
             let food_here = world.food[org.pos];
-            let food_left = if org.pos > 0 { world.food[org.pos - 1] } else { 0 };
-            let food_right = if org.pos + 1 < WORLD_LEN { world.food[org.pos + 1] } else { 0 };
+            let food_left = if org.pos > 0 {
+                world.food[org.pos - 1]
+            } else {
+                0
+            };
+            let food_right = if org.pos + 1 < WORLD_LEN {
+                world.food[org.pos + 1]
+            } else {
+                0
+            };
 
             // gene: energy_decay
-            org.energy = host.run_fast(decay, &[org.energy, org.genome.decay_amount], BUDGET).unwrap().result;
+            org.energy = host
+                .run_fast(decay, &[org.energy, org.genome.decay_amount], BUDGET)
+                .unwrap()
+                .result;
 
             // gene: sense + choose direction (0 = stay, 1 = left, 2 = right)
             let sense_move = cells[&org.genome.sense_move];
-            let action =
-                host.run_fast(sense_move, &[food_here, food_left, food_right], BUDGET).unwrap().result;
+            let action = host
+                .run_fast(sense_move, &[food_here, food_left, food_right], BUDGET)
+                .unwrap()
+                .result;
 
             match action {
                 0 => {
                     // promoter: if_food_here
                     let hungry = cells[&org.genome.hungry_promoter];
-                    let is_hungry_here = host.run_fast(hungry, &[food_here, 0], BUDGET).unwrap().result;
+                    let is_hungry_here = host
+                        .run_fast(hungry, &[food_here, 0], BUDGET)
+                        .unwrap()
+                        .result;
                     if is_hungry_here == 1 {
                         // gene: eat
-                        org.energy = host.run_fast(eat, &[org.energy, food_here], BUDGET).unwrap().result;
+                        org.energy = host
+                            .run_fast(eat, &[org.energy, food_here], BUDGET)
+                            .unwrap()
+                            .result;
                         world.eat_at(org.pos);
                     }
                 }
@@ -363,19 +422,33 @@ fn main() {
             // promoter: if_energy_high
             let repro_promoter = cells[&org.genome.repro_promoter];
             let ready = host
-                .run_fast(repro_promoter, &[org.energy, org.genome.repro_threshold], BUDGET)
+                .run_fast(
+                    repro_promoter,
+                    &[org.energy, org.genome.repro_threshold],
+                    BUDGET,
+                )
                 .unwrap()
                 .result;
             if ready == 1 {
                 // gene: split_energy — parent keeps (100 - repro_give_pct)%, child gets the
                 // rest (host applies conservation, the cell only decides the discount)
-                let parent_keep =
-                    host.run_fast(split, &[org.energy, org.genome.repro_give_pct], BUDGET).unwrap().result;
+                let parent_keep = host
+                    .run_fast(split, &[org.energy, org.genome.repro_give_pct], BUDGET)
+                    .unwrap()
+                    .result;
                 let child_energy = org.energy - parent_keep;
                 org.energy = parent_keep;
-                let child_pos = if org.pos + 1 < WORLD_LEN { org.pos + 1 } else { org.pos - 1 };
+                let child_pos = if org.pos + 1 < WORLD_LEN {
+                    org.pos + 1
+                } else {
+                    org.pos - 1
+                };
                 let child_genome = mutate(&mut rng, &org.genome, &pools);
-                next_gen.push(Organism { pos: child_pos, energy: child_energy, genome: child_genome });
+                next_gen.push(Organism {
+                    pos: child_pos,
+                    energy: child_energy,
+                    genome: child_genome,
+                });
                 births += 1;
             }
 
@@ -404,7 +477,11 @@ fn main() {
 }
 
 fn render(tick: u32, world: &World, organisms: &[Organism]) -> String {
-    let mut line: Vec<char> = world.food.iter().map(|&f| if f > 0 { '*' } else { '.' }).collect();
+    let mut line: Vec<char> = world
+        .food
+        .iter()
+        .map(|&f| if f > 0 { '*' } else { '.' })
+        .collect();
     for org in organisms {
         line[org.pos] = if org.energy >= 100 { '@' } else { 'o' };
     }
@@ -415,7 +492,10 @@ fn render(tick: u32, world: &World, organisms: &[Organism]) -> String {
         organisms.iter().map(|o| o.energy as u32).sum::<u32>() / n as u32
     };
     let strip: String = line.into_iter().collect();
-    format!("t={tick:>4}  [{strip}]  n={n:<3} avg_energy={avg_energy}  {}", genome_stats(organisms))
+    format!(
+        "t={tick:>4}  [{strip}]  n={n:<3} avg_energy={avg_energy}  {}",
+        genome_stats(organisms)
+    )
 }
 
 /// For a role with a large discovered pool, "X/N use is_ge" doesn't generalize — report
@@ -427,7 +507,10 @@ fn mode_and_diversity<'a>(names: impl Iterator<Item = &'a String>) -> (usize, &'
         *counts.entry(name.as_str()).or_insert(0) += 1;
     }
     let distinct = counts.len();
-    let (top_name, top_count) = counts.into_iter().max_by_key(|(_, c)| *c).unwrap_or(("none", 0));
+    let (top_name, top_count) = counts
+        .into_iter()
+        .max_by_key(|(_, c)| *c)
+        .unwrap_or(("none", 0));
     (distinct, top_name, top_count)
 }
 
@@ -437,9 +520,21 @@ fn genome_stats(organisms: &[Organism]) -> String {
         return "(no organisms)".to_string();
     }
     let n32 = n as u32;
-    let avg_decay = organisms.iter().map(|o| o.genome.decay_amount as u32).sum::<u32>() / n32;
-    let avg_thresh = organisms.iter().map(|o| o.genome.repro_threshold as u32).sum::<u32>() / n32;
-    let avg_give = organisms.iter().map(|o| o.genome.repro_give_pct as u32).sum::<u32>() / n32;
+    let avg_decay = organisms
+        .iter()
+        .map(|o| o.genome.decay_amount as u32)
+        .sum::<u32>()
+        / n32;
+    let avg_thresh = organisms
+        .iter()
+        .map(|o| o.genome.repro_threshold as u32)
+        .sum::<u32>()
+        / n32;
+    let avg_give = organisms
+        .iter()
+        .map(|o| o.genome.repro_give_pct as u32)
+        .sum::<u32>()
+        / n32;
     let (hungry_distinct, hungry_top, hungry_top_n) =
         mode_and_diversity(organisms.iter().map(|o| &o.genome.hungry_promoter));
     let (repro_distinct, repro_top, repro_top_n) =

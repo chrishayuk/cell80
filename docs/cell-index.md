@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (163 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (203 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -233,7 +233,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
 
-## checked-arithmetic (8)
+## checked-arithmetic (26)
 
 | id | signature | summary |
 |---|---|---|
@@ -245,8 +245,26 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `div_ceil_u32` | `DivCeil::run() -> u16` | Ceiling division of two u32 values: the smallest integer >= a / b. Escalates (needs_wider_math) if b is zero. |
 | `mod_u32` | `ModU32::run() -> u16` | Remainder of two u32 values: a % b. Escalates (needs_wider_math) if b is zero. |
 | `fits_u16` | `FitsU16::run() -> u16` | Returns 1 if a wide u32 value fits in u16 (<= 65535) without narrowing loss, else 0. |
+| `mul_checked_u32` | `MulChecked::run() -> u16` | Checked u32 multiply: escalates (needs_wider_math) instead of wrapping if a * b overflows u32. |
+| `mul_add_checked_u32` | `MulAddChecked::run() -> u16` | Checked fused multiply-add at u32: a*b+c, escalating on either the multiply or the add overflowing (e.g. a per-unit price times a quantity, plus a flat fee). |
+| `mul_sub_checked_u32` | `MulSubChecked::run() -> u16` | Checked fused multiply-subtract at u32: a*b-c, escalating if the multiply overflows or c exceeds the product (e.g. a per-unit price times a quantity, minus a flat discount). |
+| `mul3_checked_u32` | `Mul3Checked::run() -> u16` | Checked three-way multiply at u32: a*b*c, escalating if either multiply step overflows (e.g. a box volume: length*width*height). |
+| `add3_checked_u32` | `Add3Checked::run() -> u16` | Checked three-way add at u32: a+b+c, escalating if either add step overflows — the exact, wide sibling of sum3 (which saturates at u16). |
+| `pow_checked_u32` | `PowChecked::run() -> u16` | Checked exact exponentiation at u32: base^exp, escalating the moment a multiply step would overflow (distinct from pow_small, which saturates at u16 — this stays exact or hands off). 0^0 = 1. |
+| `abs_diff_u32` | `AbsDiffWide::run() -> u16` | Absolute difference \|a - b\| between two wide u32 values — the exact wide sibling of abs_diff (which works over u16 and can't represent differences beyond 65535). |
+| `min_u32` | `MinWide::run() -> u16` | Minimum of two wide u32 values — the exact wide sibling of min (which works over u16). |
+| `max_u32` | `MaxWide::run() -> u16` | Maximum of two wide u32 values — the exact wide sibling of max (which works over u16). |
+| `clamp_u32` | `ClampWide::run() -> u16` | Clamp a wide u32 value to the inclusive range [lo, hi] — the wide sibling of clamp (which works over u16). |
+| `range_check_u32` | `RangeCheckWide::run() -> u16` | Returns 1 if lo <= x <= hi at wide u32 width, else 0 — the wide sibling of range_check (which works over u16). |
+| `avg2_u32` | `Avg2Wide::run() -> u16` | Average of two wide u32 values, (a + b) / 2, computed without overflow — the wide sibling of avg2 (which works over u16). |
+| `divides_u32` | `DividesWide::run() -> u16` | Returns 1 if a divides b evenly at wide u32 width (b % a == 0, a != 0), else 0 — the wide sibling of divides (which works over u16). |
+| `gcd_u32` | `GcdWide::run() -> u16` | Greatest common divisor of two wide u32 values via an inline Euclidean loop — the wide sibling of gcd (which works over u16 and can't represent divisors beyond 65535). |
+| `lcm_u32` | `LcmChecked::run() -> u16` | Least common multiple of two wide u32 values via an inline GCD (0 if either is 0), escalating on overflow — unlike lcm (u16, silently wraps on overflow), this is the exact, checked wide sibling. |
+| `smag_add` | `SmagAdd::run() -> u16` | Sign-magnitude add: combine two signed quantities represented as (magnitude, sign) pairs — neg_a/neg_b are 0 (nonnegative) or 1 (negative), since the dialect has no i32 and this is how the math-campaign renderer tracks signed differences at u32 width (docs/math-campaign-spec.md). Escalates on magnitude overflow. |
+| `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
+| `smag_cmp` | `SmagCmp::run() -> u16` | Compare two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add): 0 if a < b, 1 if equal, 2 if a > b — the sign-magnitude counterpart of frac_cmp's ordering-code convention. |
 
-## money-bps (6)
+## money-bps (8)
 
 | id | signature | summary |
 |---|---|---|
@@ -256,17 +274,19 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
 | `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
 | `cents_mul_qty` | `CentsMulQty::run() -> u16` | Total price in cents (the minor unit of any decimal currency — cents, pence, kopecks, not USD specifically): unit_cents * qty. Escalates (needs_wider_math) on multiply overflow — distinct from mul_u16_u16_to_u32 (that one always fits u32 exactly; this one's unit_cents is already wide and can genuinely overflow). |
+| `bps_increase_between` | `BpsIncreaseBetween::run() -> u16` | Infer the basis-points increase between two wide values: given before and after (after >= before), the rate = (after - before) * 10000 / before — the inverse of increase_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
+| `bps_decrease_between` | `BpsDecreaseBetween::run() -> u16` | Infer the basis-points decrease between two wide values: given before and after (after <= before), the rate = (before - after) * 10000 / before — the inverse of decrease_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 
 ## units (4)
 
 | id | signature | summary |
 |---|---|---|
-| `same_unit_check` | `run(a: u16, b: u16) -> u16` | Unit-compatibility check for adding/subtracting two typed quantities: returns their shared dimension code if a == b, else escalates — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time (docs/library-growth.md). |
-| `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
-| `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `same_unit_check` | `run(a: u16, b: u16) -> u16` | Unit-compatibility check for adding/subtracting two typed quantities: returns their shared dimension code if the units match, else escalates on a units mismatch (dimension codes documented in docs/library-growth.md, now including 8=rate_money_per_time). |
+| `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time,8=rate_money_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
 | `unit_cancel_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if dividing a numerator-unit quantity by a denominator-unit quantity is dimensionally defined (same rule table as unit_div), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 
-## verifier-ranker (4)
+## verifier-ranker (15)
 
 | id | signature | summary |
 |---|---|---|
@@ -274,6 +294,17 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `diff_equals` | `run(a: u16, b: u16, remainder: u16) -> u16` | Verifies a claimed difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative). |
 | `product_equals_u32` | `ProductEquals::run() -> u16` | Verifies a claimed wide product: 1 if a * b == total, else 0 — including when a * b overflows u32 (a real overflow just means the claim doesn't hold, not an escalation; a verifier always returns a verdict). |
 | `quotient_equals_exact_u32` | `QuotientEqualsExact::run() -> u16` | Verifies a claimed exact wide quotient: 1 if b != 0, a divides evenly by b (a % b == 0), and a / b == quotient, else 0 — the verifier counterpart of div_exact_u32 (that one computes and escalates on a remainder; this one checks a candidate answer and always returns a verdict). |
+| `answer_eq_u32` | `AnswerEqWide::run() -> u16` | Verifies a claimed wide answer: returns 1 if a == b, else 0 — the wide sibling of eq (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
+| `sum_equals_u32` | `SumEqualsWide::run() -> u16` | Verifies a claimed wide sum: returns 1 if a + b == total, else 0, without escalating on overflow (a real overflow just means the claim doesn't hold) — the wide sibling of sum_equals (which works over u16). |
+| `diff_equals_u32` | `DiffEqualsWide::run() -> u16` | Verifies a claimed wide difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative) — the wide sibling of diff_equals (which works over u16). |
+| `sum3_equals_u32` | `Sum3EqualsWide::run() -> u16` | Verifies a claimed wide three-way sum: returns 1 if a + b + c == total, else 0, without escalating on overflow — the reverse-equation counterpart of add3_checked_u32. |
+| `product3_equals_u32` | `Product3EqualsWide::run() -> u16` | Verifies a claimed wide three-way product: returns 1 if a * b * c == total, else 0, including when the product overflows u32 (a real overflow just means the claim doesn't hold) — the reverse-equation counterpart of mul3_checked_u32. |
+| `mul_add_equals_u32` | `MulAddEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-add: returns 1 if a * b + c == total, else 0, including when either step overflows u32 — the reverse-equation counterpart of mul_add_checked_u32. |
+| `mul_sub_equals_u32` | `MulSubEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-subtract: returns 1 if a * b - c == total, else 0, including when the multiply overflows u32 or c exceeds the product — the reverse-equation counterpart of mul_sub_checked_u32. |
+| `pow_equals_u32` | `PowEqualsWide::run() -> u16` | Verifies a claimed wide power: returns 1 if base^exp == total, else 0, including when an intermediate multiply overflows u32 — the reverse-equation counterpart of pow_checked_u32. |
+| `smag_is_nonneg` | `SmagIsNonneg::run() -> u16` | Constraint check for a signed-magnitude quantity (magnitude, sign pair — neg 0=nonnegative, 1=negative, per smag_add): returns 1 if the value is nonnegative (neg == 0, or magnitude == 0 regardless of the sign flag), else 0. |
+| `agree3_u32` | `Agree3Wide::run() -> u16` | Multi-plan agreement check at wide u32 width: returns 1 if at least two of three candidate answers are equal, else 0 — the wide sibling of majority3 (which works over u16 and can't represent answers beyond 65535, e.g. money totals in cents). |
+| `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 
 ## stateful/RNG (3)
 
@@ -292,7 +323,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 
-## fractions (10)
+## fractions (19)
 
 | id | signature | summary |
 |---|---|---|
@@ -306,6 +337,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via an inline GCD (num=0, den=1 if n divides evenly by d). |
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
+| `frac_reciprocal` | `FracReciprocal::run() -> u16` | Reciprocal of a fraction n/d: swaps to d/n. Escalates (halt 0xFF06, out_of_domain) if n == 0 (a zero fraction has no reciprocal) or d == 0 (not a valid fraction to begin with). |
+| `frac_of_whole` | `FracOfWhole::run() -> u16` | A fraction of a whole number, computed exactly: n/d * whole, escalating if it doesn't divide evenly (a wrong-plan signal — e.g. "3/4 of 20" should be exact for a grade-school word problem) or if the multiply overflows. |
+| `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via an inline GCD — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
+| `frac_min` | `FracMin::run() -> u16` | The smaller of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
+| `frac_max` | `FracMax::run() -> u16` | The larger of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
+| `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
+| `frac_is_proper` | `FracIsProper::run() -> u16` | Returns 1 if a fraction n/d is proper (n < d, i.e. less than one whole), else 0. Escalates (halt 0xFF06, out_of_domain) if d == 0. |
+| `frac_add_whole` | `FracAddWhole::run() -> u16` | Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via an inline GCD. |
+| `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
 
 ## aliases (4)
 

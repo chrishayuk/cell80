@@ -64,13 +64,33 @@ wave 3l   153 cells   + scoring/choice, second slice (weighted_sum2, weighted_su
                         fixed weights to caller-supplied ones (a genuine u32
                         overflow is now reachable and escalates); choose_best3
                         picks by score where value != score, unlike argmax3
-now       163 cells   + the GSM8K math campaign, M1 pack 5/5 (final): fractions
+wave 3m   163 cells   + the GSM8K math campaign, M1 pack 5/5 (final): fractions
                         (frac_reduce/add/sub/mul/div/cmp/eq, is_integer,
                         frac_to_mixed, ratio_split2) — M0 (u32-across-a-call-
                         boundary) landed as Tier 2 (one u32 param per call), so
                         each cell inlines its own GCD-reduction loop rather than
                         sharing a two-u32-param gcd_u32 helper; M1 complete
-next      ~200+        + cosine_score_approx
+now       203 cells   + the GSM8K math campaign, M1 second slice: closing the gap
+                        against the spec's original ~95-cell estimate —
+                        checked-arithmetic +18 (mul/mul3/mul_add/mul_sub/pow
+                        checked, wide siblings of min/max/clamp/range_check/
+                        avg2/abs_diff/divides/gcd/lcm, and the sign-magnitude
+                        kernels docs/math-campaign-spec.md names as an M0
+                        prerequisite), fractions +9 (reciprocal, of_whole vs
+                        scale, min/max, ratio_split3, is_proper, the mixed-number
+                        pair), money-bps +2 (bps_increase/decrease_between, the
+                        missing rate-from-before/after inverse), verifier-ranker
+                        +11 (wide siblings plus reverse-equation counterparts for
+                        every new checked-arithmetic shape), and a genuine gap
+                        found in units (a wage-rate dimension, money/time, was
+                        unmodeled — extended same_unit_check/unit_mul/unit_div/
+                        unit_cancel_check's dispatch tables rather than adding
+                        near-duplicate cells). See the pack note below for what
+                        was deliberately *not* built (money-bps and units'
+                        raw-count gaps against the spec turned out to already be
+                        covered, mirroring the score_2factor/bounded_rand
+                        precedent) and the retrieval-curve cost this batch paid.
+next      ~250+        + cosine_score_approx
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -549,6 +569,66 @@ six specific fixes.
 - Keep synthesis (`cell80/src/synth.rs`) gated and narrow, per
   `docs/escalation-ladder.md`'s own "do-not-build" list — it's for outcome-specified tasks
   over a known op family, not a general cell-generation path.
+
+**The math campaign, second slice — 163 → 203 cells, and the kill-gate trips again.**
+Closed most of the gap between M1's first-slice landing (32 cells across the five packs)
+and `docs/math-campaign-spec.md`'s original ~95-cell estimate: checked-arithmetic +18
+(`mul_checked_u32` — add/sub-checked existed, multiply didn't — `mul_add`/`mul_sub`/`mul3`
+fused-arithmetic siblings paralleling `weighted_sum`'s bundled-multiply-add precedent,
+`pow_checked_u32`, wide siblings of `min`/`max`/`clamp`/`range_check`/`avg2`/`abs_diff`/
+`divides`/`gcd`/`lcm`, and the sign-magnitude kernels — `smag_add/sub/cmp` — the spec names
+as an M0 prerequisite the dialect's lack of `i32` still needs), fractions +9
+(`frac_reciprocal`, `frac_of_whole` vs `frac_scale` — exact-whole-number vs stays-a-fraction
+— `frac_min`/`frac_max`, `ratio_split3`, `frac_is_proper`, the mixed-number pair
+`frac_add_whole`/`mixed_to_frac`), money-bps +2 (`bps_increase_between`/
+`bps_decrease_between` — the missing inverse: recovering the *rate* from a before/after
+pair, where the first-slice pack only recovered the *original value*), and
+verifier-ranker +11 (wide siblings plus reverse-equation counterparts for every new
+checked-arithmetic shape). Checking `docs/cell-index.md` first found money-bps and units'
+raw-count gaps against the spec were mostly already covered — `cents_div_qty`/
+`change_due`-style candidates and `answer_in_options` had already been considered and
+rejected/deferred in the first slice (see the M1 pack 2/5 and 4/5 notes above) — so nothing
+was padded just to chase a number; units instead got a genuine capability fix: a wage-rate
+dimension (`money/time`, code 8) was entirely unmodeled, so `same_unit_check`/`unit_mul`/
+`unit_div`/`unit_cancel_check`'s dispatch tables were extended rather than adding
+near-duplicate cells. All 40 new cells passed the admission gate clean (0 refused) and the
+full host-oracle suite.
+
+**The retrieval cost was real and immediate.** `cell-eval retrieval` right after landing
+showed the batch had erased most of checkpoint 12's hard-won recovery: direct P@1 fell
+0.9181 → 0.8152, paraphrase 0.4590 → 0.3642, adversarial 0.5000 → 0.4706 — a much larger
+drop than any single first-slice pack checkpoint, and a clean trip of the kill-gate on
+paraphrase (the headline metric) again. Root cause, diagnosed the same way as checkpoint
+12: many of the new cells are legitimate but lexically-near-identical "wide sibling" pairs
+(`min`/`min_u32`, `gcd`/`gcd_u32`, `clamp`/`clamp_u32`, ...) — TF-IDF cosine similarity
+tends to favor the shorter, terser document on a shared core term, so the new cell's own
+direct query often lost to its own u16 ancestor. Raised explicitly to the user rather than
+logged and continued past silently (the same call as checkpoint 10); the user's decision:
+land the cells (the library value is real and independently verified non-duplicate), fix
+retrieval as a following step, and record the tradeoff honestly rather than trim the batch
+or hold it back.
+
+**Partial recovery, the same honest shape as checkpoint 11.** Tag-enriched the nine worst
+wide-sibling collisions (`min_u32`, `max_u32`, `gcd_u32`, `lcm_u32`, `avg2_u32`,
+`divides_u32`, `abs_diff_u32`, `clamp_u32`, `range_check_u32`) with their u16 sibling's
+richer synonym set plus scale words (`large`), and enriched `clamp` itself (another
+sparse-tagged legacy cell, the same class checkpoint 12 fixed for `gcd`/`min`/`max`) with
+`limit`/`restrict`/`constrain`/`floor`/`ceiling`/`minimum`/`maximum`. Result: direct 0.8152
+→ 0.8294, paraphrase 0.3642 → 0.3765, adversarial 0.4706 → 0.5294 (now *above* checkpoint
+12's 0.5000). A second lever — shortening the new cells' verbose "— the wide sibling of X
+(which works over u16...)" summary clauses, on the theory that the comparison prose dilutes
+cosine similarity without adding query-relevant vocabulary — was tried and measured
+separately: it pushed direct to 0.8578 but paraphrase *down* to 0.3580 and adversarial down
+to 0.5000, a net loss on the two metrics the project's own tooling names as the ones that
+matter (`examples/retrieval_compare`'s own read: "the paraphrase column is the headline").
+Reverted, keeping only the tag enrichment. Still short of checkpoint 12's paraphrase/direct
+peak — an honest, partial recovery, the same shape as checkpoint 11, not chased to full
+parity in one pass. `TypeLedIndex` (`cell80/examples/retrieval_compare.rs`) was measured too,
+on the same library: a ~1-3 point lift over live TF-IDF on paraphrase/adversarial, not a
+fix for the same-shape sibling class this batch created (`min`/`min_u32` differ in
+*structural* shape — free-fn vs state cell — yet type-led's current predicate-intent signal
+doesn't discriminate on it) — wiring it into the live path remains real future work, not
+done here.
 
 ## Mine the ecosystem first
 

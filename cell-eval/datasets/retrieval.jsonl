@@ -384,3 +384,83 @@
 {"id": "frac_to_mixed-para-1", "query": "express this fraction as a whole number plus a remaining part", "expected": "frac_to_mixed", "category": "paraphrase"}
 {"id": "ratio_split2-direct-1", "query": "split a total into two parts by a given ratio", "expected": "ratio_split2", "category": "direct"}
 {"id": "ratio_split2-para-1", "query": "divide this quantity between two people according to a ratio, so the parts still add up exactly", "expected": "ratio_split2", "category": "paraphrase"}
+{"id": "mul_checked_u32-direct-1", "query": "multiply two large numbers, catching it if the answer would overflow", "expected": "mul_checked_u32", "category": "direct"}
+{"id": "mul_checked_u32-para-1", "query": "what do you get multiplying these two big quantities together, unless it's too big to fit", "expected": "mul_checked_u32", "category": "paraphrase"}
+{"id": "mul_add_checked_u32-direct-1", "query": "multiply two numbers together and add a third, catching overflow", "expected": "mul_add_checked_u32", "category": "direct"}
+{"id": "mul_add_checked_u32-para-1", "query": "an item's price times how many you bought, plus a flat delivery fee", "expected": "mul_add_checked_u32", "category": "paraphrase"}
+{"id": "mul_sub_checked_u32-direct-1", "query": "multiply two numbers together and subtract a third, catching overflow", "expected": "mul_sub_checked_u32", "category": "direct"}
+{"id": "mul_sub_checked_u32-para-1", "query": "an item's price times how many you bought, minus a coupon amount", "expected": "mul_sub_checked_u32", "category": "paraphrase"}
+{"id": "mul3_checked_u32-direct-1", "query": "multiply three large numbers together, catching overflow", "expected": "mul3_checked_u32", "category": "direct"}
+{"id": "mul3_checked_u32-para-1", "query": "the volume of a box given its length, width, and height", "expected": "mul3_checked_u32", "category": "paraphrase"}
+{"id": "add3_checked_u32-direct-1", "query": "add three large numbers exactly, catching overflow instead of wrapping", "expected": "add3_checked_u32", "category": "direct"}
+{"id": "add3_checked_u32-para-1", "query": "the exact total of three big quantities combined, flagged if it's too large to fit", "expected": "add3_checked_u32", "category": "paraphrase"}
+{"id": "pow_checked_u32-direct-1", "query": "raise a number to a power exactly, catching overflow", "expected": "pow_checked_u32", "category": "direct"}
+{"id": "pow_checked_u32-para-1", "query": "a quantity that doubles a certain number of times, before it gets too big to represent", "expected": "pow_checked_u32", "category": "paraphrase"}
+{"id": "abs_diff_u32-direct-1", "query": "the absolute difference between two large numbers", "expected": "abs_diff_u32", "category": "direct"}
+{"id": "abs_diff_u32-para-1", "query": "how far apart are these two big quantities, regardless of which is bigger", "expected": "abs_diff_u32", "category": "paraphrase"}
+{"id": "min_u32-direct-1", "query": "the smaller of two large numbers", "expected": "min_u32", "category": "direct"}
+{"id": "min_u32-para-1", "query": "which of these two big totals is the lower one", "expected": "min_u32", "category": "paraphrase"}
+{"id": "max_u32-direct-1", "query": "the larger of two large numbers", "expected": "max_u32", "category": "direct"}
+{"id": "max_u32-para-1", "query": "which of these two big totals is the higher one", "expected": "max_u32", "category": "paraphrase"}
+{"id": "clamp_u32-direct-1", "query": "clamp a large value to a minimum and maximum", "expected": "clamp_u32", "category": "direct"}
+{"id": "clamp_u32-para-1", "query": "keep this big quantity from going below a floor or above a ceiling", "expected": "clamp_u32", "category": "paraphrase"}
+{"id": "range_check_u32-direct-1", "query": "check whether a large value falls within a range", "expected": "range_check_u32", "category": "direct"}
+{"id": "range_check_u32-para-1", "query": "is this big quantity between a lower and upper limit", "expected": "range_check_u32", "category": "paraphrase"}
+{"id": "avg2_u32-direct-1", "query": "the average of two large numbers", "expected": "avg2_u32", "category": "direct"}
+{"id": "avg2_u32-para-1", "query": "the midpoint between these two big totals", "expected": "avg2_u32", "category": "paraphrase"}
+{"id": "divides_u32-direct-1", "query": "check whether one large number divides another evenly", "expected": "divides_u32", "category": "direct"}
+{"id": "divides_u32-para-1", "query": "can this big quantity be split into equal groups of that other size with nothing left over", "expected": "divides_u32", "category": "paraphrase"}
+{"id": "gcd_u32-direct-1", "query": "the greatest common divisor of two large numbers", "expected": "gcd_u32", "category": "direct"}
+{"id": "gcd_u32-para-1", "query": "the biggest number that evenly divides both of these big quantities", "expected": "gcd_u32", "category": "paraphrase"}
+{"id": "lcm_u32-direct-1", "query": "the least common multiple of two large numbers", "expected": "lcm_u32", "category": "direct"}
+{"id": "lcm_u32-para-1", "query": "the smallest number both of these big quantities divide into evenly", "expected": "lcm_u32", "category": "paraphrase"}
+{"id": "smag_add-direct-1", "query": "combine two signed quantities represented as magnitude and sign", "expected": "smag_add", "category": "direct"}
+{"id": "smag_add-para-1", "query": "add a gain and a loss together, keeping track of which direction the result lands on", "expected": "smag_add", "category": "paraphrase"}
+{"id": "smag_sub-direct-1", "query": "subtract one signed quantity from another, represented as magnitude and sign", "expected": "smag_sub", "category": "direct"}
+{"id": "smag_sub-para-1", "query": "the net change when a loss follows a gain, keeping track of the direction", "expected": "smag_sub", "category": "paraphrase"}
+{"id": "smag_cmp-direct-1", "query": "compare two signed quantities represented as magnitude and sign", "expected": "smag_cmp", "category": "direct"}
+{"id": "smag_cmp-para-1", "query": "which of these two gains-or-losses is actually the larger one", "expected": "smag_cmp", "category": "paraphrase"}
+{"id": "frac_reciprocal-direct-1", "query": "the reciprocal of a fraction", "expected": "frac_reciprocal", "category": "direct"}
+{"id": "frac_reciprocal-para-1", "query": "flip a fraction upside down", "expected": "frac_reciprocal", "category": "paraphrase"}
+{"id": "frac_of_whole-direct-1", "query": "a fraction of a whole number, exactly", "expected": "frac_of_whole", "category": "direct"}
+{"id": "frac_of_whole-para-1", "query": "three quarters of a set of items, when it comes out even", "expected": "frac_of_whole", "category": "paraphrase"}
+{"id": "frac_scale-direct-1", "query": "scale a fraction by a whole number", "expected": "frac_scale", "category": "direct"}
+{"id": "frac_scale-para-1", "query": "triple a recipe that calls for a fractional amount of an ingredient", "expected": "frac_scale", "category": "paraphrase"}
+{"id": "frac_min-direct-1", "query": "the smaller of two fractions, returned as a fraction", "expected": "frac_min", "category": "direct"}
+{"id": "frac_min-para-1", "query": "which of these two fractional amounts is actually the lesser one", "expected": "frac_min", "category": "paraphrase"}
+{"id": "frac_max-direct-1", "query": "the larger of two fractions, returned as a fraction", "expected": "frac_max", "category": "direct"}
+{"id": "frac_max-para-1", "query": "which of these two fractional amounts is actually the greater one", "expected": "frac_max", "category": "paraphrase"}
+{"id": "ratio_split3-direct-1", "query": "split a total three ways by a given ratio", "expected": "ratio_split3", "category": "direct"}
+{"id": "ratio_split3-para-1", "query": "divide this amount between three people according to a ratio, so the parts still add up exactly", "expected": "ratio_split3", "category": "paraphrase"}
+{"id": "frac_is_proper-direct-1", "query": "check whether a fraction is proper, less than one whole", "expected": "frac_is_proper", "category": "direct"}
+{"id": "frac_is_proper-para-1", "query": "is this fractional amount less than a full one", "expected": "frac_is_proper", "category": "paraphrase"}
+{"id": "frac_add_whole-direct-1", "query": "add a whole number to a fraction", "expected": "frac_add_whole", "category": "direct"}
+{"id": "frac_add_whole-para-1", "query": "two whole pizzas plus a quarter of another", "expected": "frac_add_whole", "category": "paraphrase"}
+{"id": "mixed_to_frac-direct-1", "query": "convert a mixed number to a single improper fraction", "expected": "mixed_to_frac", "category": "direct"}
+{"id": "mixed_to_frac-para-1", "query": "express a whole number plus a fractional part as one fraction", "expected": "mixed_to_frac", "category": "paraphrase"}
+{"id": "bps_increase_between-direct-1", "query": "infer the percent increase between two values, in basis points", "expected": "bps_increase_between", "category": "direct"}
+{"id": "bps_increase_between-para-1", "query": "the price went up from one amount to another, what rate did it increase by", "expected": "bps_increase_between", "category": "paraphrase"}
+{"id": "bps_decrease_between-direct-1", "query": "infer the percent decrease between two values, in basis points", "expected": "bps_decrease_between", "category": "direct"}
+{"id": "bps_decrease_between-para-1", "query": "the price dropped from one amount to another, what rate did it decrease by", "expected": "bps_decrease_between", "category": "paraphrase"}
+{"id": "answer_eq_u32-direct-1", "query": "verify whether two large candidate answers match", "expected": "answer_eq_u32", "category": "direct"}
+{"id": "answer_eq_u32-para-1", "query": "does this big total equal the other one", "expected": "answer_eq_u32", "category": "paraphrase"}
+{"id": "sum_equals_u32-direct-1", "query": "verify a claimed sum of two large numbers", "expected": "sum_equals_u32", "category": "direct"}
+{"id": "sum_equals_u32-para-1", "query": "check whether these two big amounts really add up to the stated total", "expected": "sum_equals_u32", "category": "paraphrase"}
+{"id": "diff_equals_u32-direct-1", "query": "verify a claimed difference between two large numbers", "expected": "diff_equals_u32", "category": "direct"}
+{"id": "diff_equals_u32-para-1", "query": "check whether subtracting one big amount from another really leaves the stated remainder", "expected": "diff_equals_u32", "category": "paraphrase"}
+{"id": "sum3_equals_u32-direct-1", "query": "verify a claimed sum of three large numbers", "expected": "sum3_equals_u32", "category": "direct"}
+{"id": "sum3_equals_u32-para-1", "query": "check whether three big amounts really add up to the stated total", "expected": "sum3_equals_u32", "category": "paraphrase"}
+{"id": "product3_equals_u32-direct-1", "query": "verify a claimed product of three large numbers", "expected": "product3_equals_u32", "category": "direct"}
+{"id": "product3_equals_u32-para-1", "query": "check whether three big quantities multiplied together really give the stated total", "expected": "product3_equals_u32", "category": "paraphrase"}
+{"id": "mul_add_equals_u32-direct-1", "query": "verify a claimed answer for a multiply then add", "expected": "mul_add_equals_u32", "category": "direct"}
+{"id": "mul_add_equals_u32-para-1", "query": "check whether a price times a quantity, plus a fee, really matches the stated total", "expected": "mul_add_equals_u32", "category": "paraphrase"}
+{"id": "mul_sub_equals_u32-direct-1", "query": "verify a claimed answer for a multiply then subtract", "expected": "mul_sub_equals_u32", "category": "direct"}
+{"id": "mul_sub_equals_u32-para-1", "query": "check whether a price times a quantity, minus a discount, really matches the stated total", "expected": "mul_sub_equals_u32", "category": "paraphrase"}
+{"id": "pow_equals_u32-direct-1", "query": "verify a claimed answer for a power calculation", "expected": "pow_equals_u32", "category": "direct"}
+{"id": "pow_equals_u32-para-1", "query": "check whether a base raised to an exponent really matches the stated total", "expected": "pow_equals_u32", "category": "paraphrase"}
+{"id": "smag_is_nonneg-direct-1", "query": "check whether a signed magnitude quantity is nonnegative", "expected": "smag_is_nonneg", "category": "direct"}
+{"id": "smag_is_nonneg-para-1", "query": "did this gain-or-loss actually come out ahead, not behind", "expected": "smag_is_nonneg", "category": "paraphrase"}
+{"id": "agree3_u32-direct-1", "query": "check whether at least two of three large candidate answers agree", "expected": "agree3_u32", "category": "direct"}
+{"id": "agree3_u32-para-1", "query": "do at least two of these three big totals from different attempts match each other", "expected": "agree3_u32", "category": "paraphrase"}
+{"id": "answer_within_tolerance_u32-direct-1", "query": "check whether a large candidate answer is within a tolerance of the true value", "expected": "answer_within_tolerance_u32", "category": "direct"}
+{"id": "answer_within_tolerance_u32-para-1", "query": "is this big total close enough to the actual amount, within some margin", "expected": "answer_within_tolerance_u32", "category": "paraphrase"}
