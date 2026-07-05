@@ -26,3 +26,6 @@ z80-tests/zex/*.cim
 
 # generated dialect tapes (rustz80 speccy-compile output)
 /*.tap
+
+# video/production scripts (not part of the shipped project)
+/docs/scripts/

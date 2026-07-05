@@ -353,7 +353,7 @@ Four things worth carrying into a real M3 design:
   (`docs/library-growth.md`'s "cents" naming note) but that a plan-extraction prompt has to
   independently commit to.
 
-## MATH/AIME — scoped ahead of the gate (2026-07-05), not authored
+## MATH/AIME — scoped ahead of the gate (2026-07-05)
 
 Chris asked to look at the MATH and AIME benchmarks and sketch what math functions a future
 pack would need. The gate above still holds — nothing here is authored or admitted; this is
@@ -378,7 +378,7 @@ AIME-shaped pack is the tractable slice; full seven-category MATH mostly isn't**
 much bigger dialect change (rationals-with-irrational-tags, at minimum) than anything this
 project has scoped.
 
-**Category-by-category, against the existing 213-cell library** (`docs/cell-index.md`):
+**Category-by-category, against the existing 209-cell library** (`docs/cell-index.md`):
 
 - **Number theory — the biggest real gap.** `gcd`/`gcd3`/`lcm`/`lcm3`/`is_coprime`/
   `is_prime`/`isqrt`/`digit_sum`/`num_digits`/`pow_mod` already exist, but `pow_mod`'s
@@ -421,11 +421,29 @@ combinatorics: `factorial_checked_u32`, `choose_u32`, `permute_u32`; geometry: `
 smaller and more tractable than the original ~95-cell GSM8K estimate. It should start from
 an AIME-only corpus, not full MATH's seven categories.
 
-**This changes nothing about the gate.** `docs/library-growth.md`'s "math-cell growth
-pauses here on purpose" still holds — the campaign's own mechanism for further growth is
-precipitation (M3), not more hand-guessed candidates, and this list is exactly that:
-guessed, not demonstrated. It's written down so the research doesn't have to be redone, not
-as permission to start authoring.
+**This changed nothing about the gate — until Chris explicitly said to proceed anyway.**
+`docs/library-growth.md`'s "math-cell growth pauses here on purpose" and this section's own
+gating both still describe the *default* plan: M3 (a real corpus through `cell_solve`)
+hasn't run, so precipitation hasn't had its say, and the list above was guessed, not
+demonstrated. Asked directly to build the list rather than just scope it, 12 of the ~16
+number-theory/combinatorics/geometry candidates named above landed as real cells
+(`docs/library-growth.md`'s "MATH/AIME pack, first slice" note has the full account,
+including two things that broke on first pass — `choose_u32`'s formula transiently
+overflowing before the true answer would, and a struct field rejecting direct `if`/`else`
+assignment): `pow_mod_u32`, `mod_add_u32`/`mod_sub_u32`/`mod_mul_u32`, `sum_divisors`,
+`euler_totient`, `smallest_prime_factor`, `digit_reverse`, `digit_product`,
+`factorial_checked_u32`, `choose_u32`, `permute_u32`. Four of the originally-scoped names
+didn't ship: `count_divisors` and `dist_sq` turned out to be exact duplicates of
+already-landed `factor_count`/`euclid_sq` (caught by checking `docs/cell-index.md` before
+authoring, same discipline every prior pack has used); `is_prime_u32` and
+`shoelace_area_x2` were deprioritized out of this slice — `is_prime` already covers the full
+u16 domain (0..65535), which is most of what AIME primality checks need, and
+`shoelace_area_x2` needs genuinely signed intermediate arithmetic (a chained sign-magnitude
+computation, not a single checked op) that wasn't worth the design cost for this pass.
+Landing these 12 did not run M3 and does not retroactively justify skipping it — the gate's
+*reasoning* (precipitation over guessing) stands; this was a one-time, explicitly-authorized
+exception to it, not a reversal of the
+policy.
 
 ## The one-sentence version
 

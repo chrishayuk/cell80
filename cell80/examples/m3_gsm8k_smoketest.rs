@@ -62,20 +62,20 @@ fn main() {
 
     println!("=== 8 real GSM8K test-set problems (openai/grade-school-math, rows 1-8) ===\n");
 
-    // 1. Janet's ducks (GSM8K #1). "16 eggs, eats 3, bakes 4, sells rest at $2." Answer: 18.
+    // 1. Janet's ducks (GSM8K #1, cents). "16 eggs, eats 3, bakes 4, sells rest at $2." Ans: 1800.
     check(
         &mut host,
         "janet",
         r#"{"quantities":[{"id":"total_eggs","value":16,"unit":"count"},
                           {"id":"breakfast","value":3,"unit":"count"},
                           {"id":"muffins","value":4,"unit":"count"},
-                          {"id":"price","value":2,"unit":"money_per_count"}],
+                          {"id":"price","value":200,"unit":"money_per_count"}],
             "ops":[["sub","total_eggs","breakfast","after_breakfast"],
                    ["sub","after_breakfast","muffins","sold"],
-                   ["mul","sold","price","dollars"]],
-            "target":"dollars"}"#,
-        18,
-        "Janet's ducks lay 16 eggs/day; eats 3, bakes 4 into muffins, sells rest at $2/egg.",
+                   ["mul","sold","price","cents"]],
+            "target":"cents"}"#,
+        1800,
+        "Janet's ducks lay 16 eggs/day; eats 3, bakes 4 into muffins, sells rest at $2/egg (cents).",
     );
 
     // 2. Robe fiber (GSM8K #2). "2 bolts blue, half that white." Answer: 3.

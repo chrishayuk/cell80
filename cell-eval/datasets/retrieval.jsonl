@@ -476,3 +476,27 @@
 {"id": "lcm3-para-1", "query": "the smallest number that all three of these values divide into evenly", "expected": "lcm3", "category": "paraphrase"}
 {"id": "smag_eq-direct-1", "query": "verify whether two signed magnitude-and-sign values are equal", "expected": "smag_eq", "category": "direct"}
 {"id": "smag_eq-para-1", "query": "did these two gains or losses land on the exact same amount and direction", "expected": "smag_eq", "category": "paraphrase"}
+{"id": "pow_mod_u32-direct-1", "query": "modular exponentiation at wide 32-bit width, base to the exponent mod m", "expected": "pow_mod_u32", "category": "direct"}
+{"id": "pow_mod_u32-para-1", "query": "what are the last three digits of this number raised to a huge power", "expected": "pow_mod_u32", "category": "paraphrase"}
+{"id": "mod_add_u32-direct-1", "query": "add two wide values modulo m", "expected": "mod_add_u32", "category": "direct"}
+{"id": "mod_add_u32-para-1", "query": "what hour does the clock land on after adding this many hours and wrapping around", "expected": "mod_add_u32", "category": "paraphrase"}
+{"id": "mod_sub_u32-direct-1", "query": "subtract two wide values modulo m", "expected": "mod_sub_u32", "category": "direct"}
+{"id": "mod_sub_u32-para-1", "query": "what hour was it this many hours earlier, wrapping back around the clock", "expected": "mod_sub_u32", "category": "paraphrase"}
+{"id": "mod_mul_u32-direct-1", "query": "multiply two wide values modulo m", "expected": "mod_mul_u32", "category": "direct"}
+{"id": "mod_mul_u32-para-1", "query": "the product of two amounts, cycled back around every m units", "expected": "mod_mul_u32", "category": "paraphrase"}
+{"id": "sum_divisors-direct-1", "query": "sum of all the positive divisors of n", "expected": "sum_divisors", "category": "direct"}
+{"id": "sum_divisors-para-1", "query": "add up every whole number that evenly divides this value, including itself", "expected": "sum_divisors", "category": "paraphrase"}
+{"id": "euler_totient-direct-1", "query": "euler's totient function phi of n", "expected": "euler_totient", "category": "direct"}
+{"id": "euler_totient-para-1", "query": "how many numbers up to n share no common factor with n", "expected": "euler_totient", "category": "paraphrase"}
+{"id": "smallest_prime_factor-direct-1", "query": "the smallest prime factor of n", "expected": "smallest_prime_factor", "category": "direct"}
+{"id": "smallest_prime_factor-para-1", "query": "the least prime number that evenly divides this value", "expected": "smallest_prime_factor", "category": "paraphrase"}
+{"id": "digit_reverse-direct-1", "query": "reverse the decimal digits of a number", "expected": "digit_reverse", "category": "direct"}
+{"id": "digit_reverse-para-1", "query": "flip this number's digits back to front", "expected": "digit_reverse", "category": "paraphrase"}
+{"id": "digit_product-direct-1", "query": "the product of the decimal digits of n", "expected": "digit_product", "category": "direct"}
+{"id": "digit_product-para-1", "query": "multiply all of this number's digits together", "expected": "digit_product", "category": "paraphrase"}
+{"id": "factorial_checked_u32-direct-1", "query": "the factorial of n, checked for overflow", "expected": "factorial_checked_u32", "category": "direct"}
+{"id": "factorial_checked_u32-para-1", "query": "how many ways can you line up all of these items in a row", "expected": "factorial_checked_u32", "category": "paraphrase"}
+{"id": "choose_u32-direct-1", "query": "the binomial coefficient, n choose k", "expected": "choose_u32", "category": "direct"}
+{"id": "choose_u32-para-1", "query": "how many different groups of k people can you pick from a team of n, order doesn't matter", "expected": "choose_u32", "category": "paraphrase"}
+{"id": "permute_u32-direct-1", "query": "permutations of n pick k", "expected": "permute_u32", "category": "direct"}
+{"id": "permute_u32-para-1", "query": "how many ways can k runners from a field of n finish in first, second, and third", "expected": "permute_u32", "category": "paraphrase"}

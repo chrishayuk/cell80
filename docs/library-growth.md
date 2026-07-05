@@ -102,7 +102,7 @@ wave 3o   208 cells   + third slice, small and deliberately so: completes the
                         shares near-identical vocabulary and structural shape, a
                         same-shape sibling confusion no wording fix resolves
                         (confirmed empirically — see the pack note below).
-now       209 cells   + fourth slice, two cells closing the last small gaps
+wave 3p   209 cells   + fourth slice, two cells closing the last small gaps
                         identified in the five campaign packs: smag_eq (the
                         sign-magnitude family's missing verifier — completes
                         the pattern every other checked op got an `_equals`
@@ -116,10 +116,21 @@ now       209 cells   + fourth slice, two cells closing the last small gaps
                         via `cell_solve` (in progress, `feat/cell-solve`) — real
                         problems surface which schemas actually recur, rather
                         than more speculative hand-authoring.
+now       221 cells   + MATH/AIME pack, first slice — an explicit, one-time
+                        override of the pause above (requested ahead of M3's
+                        read-out, not a reversal of it): wide modular
+                        arithmetic (pow_mod_u32, mod_add_u32, mod_sub_u32,
+                        mod_mul_u32), number-theory scalars (sum_divisors,
+                        euler_totient, smallest_prime_factor, digit_reverse,
+                        digit_product), and a new combinatorics pack
+                        (factorial_checked_u32, choose_u32, permute_u32) —
+                        see the pack note below and
+                        docs/math-campaign-spec.md's "scoped ahead of the
+                        gate" section.
 next      ~250+        + cosine_score_approx (deferred until cell_solve reads
-                        out; combinatorics/geometry/number-theory extensions
-                        remain explicitly out of scope per
-                        docs/math-campaign-spec.md)
+                        out; further combinatorics/geometry/number-theory
+                        extensions remain out of scope per
+                        docs/math-campaign-spec.md pending M3's read-out)
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -703,6 +714,48 @@ intended mechanism for further growth is **precipitation**: M2/M3 (the plan IR, 
 hand-guessed candidates. That work is in progress (`feat/cell-solve`). Every hand-authored
 batch so far has cost real, only partially-recovered retrieval precision; cells with
 demonstrated use are worth that cost, more speculative ones may not be.
+
+**MATH/AIME pack, first slice (2026-07-05) — the pause above deliberately overridden on
+request.** The pause and `docs/math-campaign-spec.md`'s own gating ("MATH/AIME packs...
+gated behind this [GSM8K] campaign reading out") both still hold as the *default* plan — M3
+(a real corpus through `cell_solve`) hasn't run, so precipitation hasn't had its say. Chris
+asked to author these anyway, ahead of that read-out, once the MATH/AIME scoping pass
+(`docs/math-campaign-spec.md`'s "scoped ahead of the gate" section) had turned into a
+concrete candidate list. Landed: `pow_mod_u32` (fixes `pow_mod`'s `m <= 256` ceiling — the
+constraint is `m*m <= u16::MAX`; the wide sibling's `m*m <= u32::MAX` lifts the ceiling to
+`m <= 65536`, wide enough for AIME's "remainder mod 1000" finishing move),
+`mod_add_u32`/`mod_sub_u32`/`mod_mul_u32` (modular arithmetic at the same width),
+`sum_divisors`/`euler_totient`/`smallest_prime_factor`/`digit_reverse`/`digit_product`
+(number-theory scalars, extending the existing pack), and `factorial_checked_u32`/
+`choose_u32`/`permute_u32` (checked combinatorics — a new pack, cell-index.md's first
+entries outside number-theory's existing footprint). `count_divisors` and `dist_sq` were
+scoped but not authored: checking `docs/cell-index.md` first found they're exact duplicates
+of `factor_count` and `euclid_sq`.
+
+Two real findings surfaced authoring this pack, not just twelve clean cells:
+
+1. **`choose_u32`'s multiplicative formula can escalate before the true binomial
+   coefficient overflows u32.** The standard `r = r*(n-k+i)/i` running-division algorithm
+   guarantees each *step's* division is exact, but the pre-division product can transiently
+   exceed the final answer — `C(34,17) = 2,333,606,220`, comfortably inside u32, still
+   overflows mid-computation at `i=15` (intermediate product ≈8.5 billion). A known
+   limitation of single-pass 32-bit intermediates, not a bug — documented in the cell's own
+   `//! limits:` line rather than left to surprise a caller with a lower escalation
+   threshold than advertised. (`permute_u32`'s pure descending-product formula has no such
+   gap: every intermediate is itself a prefix of the final product, so it never exceeds it.)
+2. **A struct field can't be assigned directly from an `if`/`else` value expression** —
+   `self.result = if cond { a } else { b };` is rejected ("unsupported expression: an
+   `if`"); only `let`-binding the `if`-expression first and then assigning the local works,
+   matching `smag_add`'s existing `let n = if ...; self.neg = n;` idiom. Two of the twelve
+   cells (`mod_add_u32`, `mod_sub_u32`) hit this on first pass, fixed the same way.
+
+Retrieval cost was small (gate: 221 admitted, 0 refused) except one same-shape-sibling case
+already familiar from the `smag_*`/`min`/`min_u32` family: `digit_reverse` ranks #3 behind
+`num_digits`/`digit_sum` for its own direct query ("reverse the decimal digits of a
+number") — the digit-family cells share near-identical vocabulary, and reordering its tags
+to lead with `reverse`/`flip`/`mirror` didn't move it. Consistent with
+`examples/retrieval_compare`'s standing conclusion that no lexical signal separates a
+same-shape-sibling class reliably; not chased further.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

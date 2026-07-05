@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (209 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (221 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -101,7 +101,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 
-## number-theory (18)
+## number-theory (27)
 
 | id | signature | summary |
 |---|---|---|
@@ -123,6 +123,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `pow_small` | `run(base: u16, exp: u16) -> u16` | base raised to exp (saturating at 65535). 0^0 = 1. |
 | `cube_sat` | `run(n: u16) -> u16` | Saturating cube: n*n*n, capped at 65535 (n >= 41 saturates). |
 | `pow_mod` | `run(base: u16, exp: u16, m: u16) -> u16` | Modular exponentiation: (base^exp) mod m (0 if m == 0). u16 domain m <= 256. |
+| `pow_mod_u32` | `PowModWide::run() -> u16` | Modular exponentiation at wide u32 width: (base^exp) mod m — the wide sibling of pow_mod (u16 domain, m <= 256); lifts the modulus ceiling to 65536, wide enough for AIME's "find the remainder mod 1000" finishing move. Returns 0 if m == 0, matching pow_mod's convention. |
+| `mod_add_u32` | `ModAddWide::run() -> u16` | Modular addition at wide u32 width: (a + b) mod m — reduces both operands mod m first, so a and b need not already be canonical residues. |
+| `mod_sub_u32` | `ModSubWide::run() -> u16` | Modular subtraction at wide u32 width: (a - b) mod m, always returned in [0, m) — e.g. 3 - 5 mod 7 = 5, not a negative remainder. |
+| `mod_mul_u32` | `ModMulWide::run() -> u16` | Modular multiplication at wide u32 width: (a * b) mod m — reduces both operands mod m first, then multiplies; the non-exponentiating sibling of pow_mod_u32, sharing its overflow bound. |
+| `sum_divisors` | `SumDivisors::run() -> u16` | Sum of the positive divisors of n (n >= 1), including 1 and n itself (sigma(n)) — the sum-valued sibling of factor_count (which counts divisors; this sums them, so it needs a wide result field since sigma(n) routinely exceeds 65535 within the u16 domain). |
+| `euler_totient` | `run(n: u16) -> u16` | Euler's totient (phi): count of integers in [1, n] coprime to n (n >= 1; phi(1) = 1 by convention). |
+| `smallest_prime_factor` | `run(n: u16) -> u16` | Smallest prime factor of n (n >= 2) — the least prime p dividing n; returns n itself if n is prime. |
+| `digit_reverse` | `run(n: u16) -> u16` | Reverse the decimal digits of n (e.g. 123 -> 321; trailing zeros drop, so 120 -> 21). |
+| `digit_product` | `run(n: u16) -> u16` | Product of the decimal digits of n (0 has product 0, its only digit). |
 
 ## distance (4)
 
@@ -352,6 +361,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
 | `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via an inline GCD. |
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via an inline GCD. |
+
+## combinatorics (3)
+
+| id | signature | summary |
+|---|---|---|
+| `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
+| `choose_u32` | `ChooseWide::run() -> u16` | Binomial coefficient "n choose k" (nCr), checked: the count of k-element subsets of an n-element set, via the multiplicative running-division formula (each step's quotient is always exact, but the pre-division product can transiently exceed the final answer, so this escalates somewhat before n choose k itself would overflow u32 — a known limitation of single-pass 32-bit intermediates, not a false claim). Escalates rather than silently wrapping. |
+| `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
 
 ## aliases (4)
 

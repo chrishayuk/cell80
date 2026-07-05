@@ -83,7 +83,7 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 203 cells; query `distance between grid points` → 10 match(es):
+indexed 221 cells; query `distance between grid points` → 10 match(es):
   manhattan — Manhattan distance between two grid points (typed state).  [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt).  [grid, distance, euclidean, squared, spatial]  (Pts::run() -> u16)
   chebyshev — Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
@@ -114,7 +114,7 @@ changes and prompt changes never get conflated:
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
 Retrieval **on the 163-cell snapshot** (`cargo run --example retrieval_compare -p cell80` —
-the library has since grown to 203; these numbers are the last published checkpoint of the
+the library has since grown to 221; these numbers are the last published checkpoint of the
 scale curve, not the current-size measurement): the
 default index is now **TF-IDF** (word + char-3-gram cosine), with a small complexity-based
 tie-break (`search` only — the ranking order, never the raw cosine `scored` exposes, since

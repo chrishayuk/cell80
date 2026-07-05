@@ -1999,3 +1999,161 @@ fn math_wave3_cells_match_defined_behaviour() {
         1
     ); // negative zero == positive zero
 }
+
+#[test]
+fn math_aime_pack_cells_match_defined_behaviour() {
+    // MATH/AIME candidate pack (docs/math-campaign-spec.md "MATH/AIME — scoped ahead of
+    // the gate"), authored on explicit request ahead of M3's precipitation read-out: wide
+    // modular arithmetic (pow_mod_u32 lifts pow_mod's m <= 256 ceiling to 65536, the
+    // finishing move AIME's "remainder mod 1000" problems need), number-theory scalars
+    // (sum_divisors, euler_totient, smallest_prime_factor, digit_reverse, digit_product),
+    // and checked combinatorics (factorial_checked_u32, choose_u32, permute_u32).
+    // count_divisors and dist_sq were scoped but not authored — checking docs/cell-index.md
+    // first found they're exact duplicates of factor_count and euclid_sq.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // pow_mod_u32: matches pow_mod at m <= 256 (3^4 mod 5 = 1), then goes past pow_mod's
+    // ceiling to the mod-1000 shape AIME finishing moves need; 0 if m == 0; escalates past
+    // m = 65536.
+    let (_, _, cell) = step(
+        "pow_mod_u32",
+        "PowModWide",
+        &[("base", 3), ("exp", 4), ("m", 5)],
+    );
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step(
+        "pow_mod_u32",
+        "PowModWide",
+        &[("base", 7), ("exp", 222), ("m", 1000)],
+    );
+    assert_eq!(cell.get("result"), Some(49)); // 7^222 mod 1000
+    let (_, _, cell) = step(
+        "pow_mod_u32",
+        "PowModWide",
+        &[("base", 5), ("exp", 3), ("m", 0)],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, report, _) = step(
+        "pow_mod_u32",
+        "PowModWide",
+        &[("base", 2), ("exp", 10), ("m", 65537)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // mod_add_u32 / mod_sub_u32 / mod_mul_u32: reduce operands mod m first, so a and b
+    // needn't already be canonical residues; m == 0 escalates (out_of_domain).
+    let (_, _, cell) = step(
+        "mod_add_u32",
+        "ModAddWide",
+        &[("a", 7), ("b", 8), ("m", 10)],
+    );
+    assert_eq!(cell.get("result"), Some(5)); // (7+8) mod 10
+    let (_, _, cell) = step(
+        "mod_add_u32",
+        "ModAddWide",
+        &[("a", 23), ("b", 5), ("m", 10)],
+    );
+    assert_eq!(cell.get("result"), Some(8)); // operands already exceed m
+    let (_, report, _) = step("mod_add_u32", "ModAddWide", &[("a", 1), ("b", 1), ("m", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, _, cell) = step("mod_sub_u32", "ModSubWide", &[("a", 3), ("b", 5), ("m", 7)]);
+    assert_eq!(cell.get("result"), Some(5)); // (3-5) mod 7 = -2 mod 7 = 5
+    let (_, _, cell) = step(
+        "mod_sub_u32",
+        "ModSubWide",
+        &[("a", 10), ("b", 3), ("m", 7)],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, report, _) = step("mod_sub_u32", "ModSubWide", &[("a", 1), ("b", 1), ("m", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    let (_, _, cell) = step(
+        "mod_mul_u32",
+        "ModMulWide",
+        &[("a", 6), ("b", 7), ("m", 10)],
+    );
+    assert_eq!(cell.get("result"), Some(2)); // 42 mod 10
+    let (_, report, _) = step("mod_mul_u32", "ModMulWide", &[("a", 1), ("b", 1), ("m", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (_, report, _) = step(
+        "mod_mul_u32",
+        "ModMulWide",
+        &[("a", 1), ("b", 1), ("m", 65537)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // sum_divisors: sigma(n) — 6 and 28 are perfect numbers (sigma == 2n); n == 0 escalates.
+    let (_, _, cell) = step("sum_divisors", "SumDivisors", &[("n", 6)]);
+    assert_eq!(cell.get("result"), Some(12));
+    let (_, _, cell) = step("sum_divisors", "SumDivisors", &[("n", 28)]);
+    assert_eq!(cell.get("result"), Some(56));
+    let (_, _, cell) = step("sum_divisors", "SumDivisors", &[("n", 1)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, report, _) = step("sum_divisors", "SumDivisors", &[("n", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // euler_totient: phi(1) = 1 by convention; phi(prime) = prime - 1; n == 0 escalates.
+    assert_eq!(run_cell("euler_totient", &[1]), 1);
+    assert_eq!(run_cell("euler_totient", &[9]), 6);
+    assert_eq!(run_cell("euler_totient", &[12]), 4);
+    assert_eq!(run_cell("euler_totient", &[17]), 16);
+
+    // smallest_prime_factor: the least prime dividing n; n itself if prime; n < 2 escalates.
+    assert_eq!(run_cell("smallest_prime_factor", &[15]), 3);
+    assert_eq!(run_cell("smallest_prime_factor", &[17]), 17);
+
+    // digit_reverse: trailing zeros drop; escalates past the u16 ceiling.
+    assert_eq!(run_cell("digit_reverse", &[123]), 321);
+    assert_eq!(run_cell("digit_reverse", &[120]), 21);
+    assert_eq!(run_cell("digit_reverse", &[0]), 0);
+
+    // digit_product: a zero digit anywhere makes the whole product 0.
+    assert_eq!(run_cell("digit_product", &[234]), 24);
+    assert_eq!(run_cell("digit_product", &[105]), 0);
+    assert_eq!(run_cell("digit_product", &[0]), 0);
+
+    // factorial_checked_u32: 0! = 1! = 1 by convention; escalates at 13! (overflows u32).
+    let (_, _, cell) = step("factorial_checked_u32", "FactorialChecked", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step("factorial_checked_u32", "FactorialChecked", &[("n", 5)]);
+    assert_eq!(cell.get("result"), Some(120));
+    let (_, _, cell) = step("factorial_checked_u32", "FactorialChecked", &[("n", 12)]);
+    assert_eq!(cell.get("result"), Some(479_001_600));
+    let (_, report, _) = step("factorial_checked_u32", "FactorialChecked", &[("n", 13)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // choose_u32 (nCr): k > n returns 0 (not an escalation); escalates once the true
+    // binomial coefficient itself overflows u32.
+    let (_, _, cell) = step("choose_u32", "ChooseWide", &[("n", 5), ("k", 2)]);
+    assert_eq!(cell.get("result"), Some(10));
+    let (_, _, cell) = step("choose_u32", "ChooseWide", &[("n", 10), ("k", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, _, cell) = step("choose_u32", "ChooseWide", &[("n", 3), ("k", 5)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, _, cell) = step("choose_u32", "ChooseWide", &[("n", 30), ("k", 15)]);
+    assert_eq!(cell.get("result"), Some(155_117_520));
+    // C(67,33) genuinely doesn't fit u32 (~1.4e19); the pre-division intermediate overflows
+    // before the division that would (in exact math) bring it back down.
+    let (_, report, _) = step("choose_u32", "ChooseWide", &[("n", 67), ("k", 33)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // permute_u32 (nPr): k > n returns 0; escalates once n!/(n-k)! overflows u32.
+    let (_, _, cell) = step("permute_u32", "PermuteWide", &[("n", 10), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(720));
+    let (_, _, cell) = step("permute_u32", "PermuteWide", &[("n", 3), ("k", 5)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, _, cell) = step("permute_u32", "PermuteWide", &[("n", 13), ("k", 10)]);
+    assert_eq!(cell.get("result"), Some(1_037_836_800));
+    let (_, report, _) = step("permute_u32", "PermuteWide", &[("n", 20), ("k", 10)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

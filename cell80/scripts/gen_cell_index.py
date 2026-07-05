@@ -19,7 +19,7 @@ PACKS = {
     "percent": ["percent", "permille", "ratio_255", "scale_percent", "increase_percent", "discount_percent", "within_percent"],
     "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3"],
     "bit/mask": ["popcount", "parity", "bit_is_set", "set_bit", "clear_bit", "toggle_bit", "mask_has_all", "mask_has_any", "mask_union", "mask_intersection", "mask_xor"],
-    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod"],
+    "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product"],
     "distance": ["abs_diff", "manhattan", "chebyshev", "euclid_sq"],
     "bit-encoding": ["low_byte", "high_byte", "swap_bytes", "rotl16", "rotr16", "reverse_bits", "leading_zeros", "trailing_zeros", "bit_length"],
     "hashing": ["hash_pair", "fnv1a_step", "crc8_step", "mix16"],
@@ -39,6 +39,7 @@ PACKS = {
     "stateful/RNG": ["lcg_next", "xorshift16", "counter_step"],
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
     "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
+    "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32"],
 }
 
 # Aliases removed by the Phase 2.2 admission gate (behaviourally identical to a landed cell;
