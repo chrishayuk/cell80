@@ -1,0 +1,629 @@
+[
+  {
+    "name": "row7_sheep",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "seattle",
+          "value": 20,
+          "unit": "count"
+        },
+        {
+          "id": "charleston",
+          "value": 80,
+          "unit": "count"
+        },
+        {
+          "id": "toulouse",
+          "value": 160,
+          "unit": "count"
+        }
+      ],
+      "ops": [],
+      "target": "total"
+    },
+    "answer": null,
+    "expected": 260,
+    "correct": false
+  },
+  {
+    "name": "row11_downloads",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "month1",
+          "value": 60,
+          "unit": "count"
+        },
+        {
+          "id": "month2",
+          "value": 180,
+          "unit": "count"
+        },
+        {
+          "id": "month3",
+          "value": 126,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "month1",
+          "3",
+          "month2"
+        ],
+        [
+          "mul",
+          "month3",
+          "30",
+          "reduction"
+        ],
+        [
+          "sub",
+          "month3",
+          "reduction",
+          "final_month3"
+        ]
+      ],
+      "target": "final_month3"
+    },
+    "answer": null,
+    "expected": 366,
+    "correct": false
+  },
+  {
+    "name": "row22_raymond",
+    "stage": "solve_error",
+    "plan": {
+      "quantities": [
+        {
+          "id": "samantha_age",
+          "value": 31,
+          "unit": "count"
+        },
+        {
+          "id": "raymond_age_gap",
+          "value": 6,
+          "unit": "count"
+        },
+        {
+          "id": "raymond_current_age",
+          "value": 37,
+          "unit": "count"
+        },
+        {
+          "id": "son_birth_year",
+          "value": -23,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "add",
+          "raymond_age_gap",
+          "samantha_age",
+          "raymond_sam_age_before"
+        ],
+        [
+          "sub",
+          "raymond_current_age",
+          "raymond_sam_age_before",
+          "raymond_age_at_23"
+        ],
+        [
+          "sub",
+          "raymond_age_at_23",
+          "23",
+          "son_birth_age"
+        ]
+      ],
+      "target": "son_birth_age"
+    },
+    "detail": "cell80: quantity `son_birth_year` needs a u32 `value`"
+  },
+  {
+    "name": "row85_football",
+    "stage": "solve_error",
+    "plan": {
+      "quantities": [
+        {
+          "id": "games_played",
+          "value": 22,
+          "unit": "count"
+        },
+        {
+          "id": "wins",
+          "value": 0,
+          "unit": "count"
+        },
+        {
+          "id": "losses",
+          "value": 0,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "add",
+          "wins",
+          "losses",
+          "total_games"
+        ],
+        [
+          "sub",
+          "games_played",
+          "total_games",
+          "remaining_games"
+        ],
+        [
+          "add",
+          "remaining_games",
+          8,
+          "wins"
+        ]
+      ],
+      "target": "wins"
+    },
+    "detail": "cell80: op fields must be strings"
+  },
+  {
+    "name": "row86_gene",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "years_vacation",
+          "value": 12,
+          "unit": "count"
+        },
+        {
+          "id": "blocks_per_year",
+          "value": 1,
+          "unit": "count"
+        },
+        {
+          "id": "total_blocks",
+          "value": 0,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "years_vacation",
+          "blocks_per_year",
+          "total_blocks"
+        ]
+      ],
+      "target": "total_blocks"
+    },
+    "answer": null,
+    "expected": 44,
+    "correct": false
+  },
+  {
+    "name": "row89_marilyn",
+    "stage": "bad_json",
+    "raw": "{\"quantities\":[{\"id\":\"total\",\"value\":88000,\"unit\":\"count\"},{\"id\":\"marilyn\",\"value\":?,\"unit\":\"count\"},{\"id\":\"harald\",\"value\":?,\"unit\":\"count\"}],\"ops\":[[\"mul\",\"harald\",10,\"marilyn\"],[\"add\",\"marilyn\",\"harald\",\"total\"]],\"target\":\"harald\"}",
+    "error": "Expecting value: line 1 column 84 (char 83)"
+  },
+  {
+    "name": "row92_jan",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "cindy",
+          "value": 4,
+          "unit": "count"
+        },
+        {
+          "id": "marcia",
+          "value": 6,
+          "unit": "count"
+        },
+        {
+          "id": "jan",
+          "value": 18,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "marcia",
+          "3",
+          "jan"
+        ]
+      ],
+      "target": "jan"
+    },
+    "answer": null,
+    "expected": 28,
+    "correct": false
+  },
+  {
+    "name": "row93_emily",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "james",
+          "value": 10,
+          "unit": "count"
+        },
+        {
+          "id": "corey",
+          "value": 11,
+          "unit": "count"
+        },
+        {
+          "id": "amy",
+          "value": 6,
+          "unit": "count"
+        },
+        {
+          "id": "jackson",
+          "value": 4,
+          "unit": "count"
+        }
+      ],
+      "ops": [],
+      "target": "jackson"
+    },
+    "answer": 4,
+    "expected": 4,
+    "correct": true
+  },
+  {
+    "name": "row94_lee",
+    "stage": "solve_error",
+    "plan": {
+      "quantities": [
+        {
+          "id": "lee",
+          "value": 38,
+          "unit": "time"
+        },
+        {
+          "id": "gerald_original",
+          "value": null,
+          "unit": "time"
+        },
+        {
+          "id": "speed_difference",
+          "value": 2,
+          "unit": "time"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "speed_difference",
+          1.1,
+          "improved_diff"
+        ],
+        [
+          "add",
+          "lee",
+          "improved_diff",
+          "gerald_improved"
+        ]
+      ],
+      "target": "gerald_improved"
+    },
+    "detail": "cell80: quantity `gerald_original` needs a u32 `value`"
+  },
+  {
+    "name": "row97_harry",
+    "stage": "solve_error",
+    "plan": {
+      "quantities": [
+        {
+          "id": "harry_hours",
+          "value": 9,
+          "unit": "count"
+        },
+        {
+          "id": "james_fraction",
+          "value": 2,
+          "unit": "scalar"
+        },
+        {
+          "id": "temp_mul_result",
+          "value": 0,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "harry_hours",
+          "james_fraction",
+          "temp_mul_result"
+        ],
+        [
+          "div",
+          "temp_mul_result",
+          3,
+          "james_hours"
+        ]
+      ],
+      "target": "difference"
+    },
+    "detail": "cell80: op fields must be strings"
+  },
+  {
+    "name": "row104_fog",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "minutes_per_3_miles",
+          "value": 10,
+          "unit": "time"
+        },
+        {
+          "id": "miles_covered",
+          "value": 42,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "minutes_per_3_miles",
+          "scalar",
+          "total_minutes"
+        ],
+        [
+          "div",
+          "total_minutes",
+          "3",
+          "rate"
+        ]
+      ],
+      "target": "rate"
+    },
+    "answer": null,
+    "expected": 140,
+    "correct": false
+  },
+  {
+    "name": "row106_cody",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "amir",
+          "value": 5,
+          "unit": "count"
+        },
+        {
+          "id": "cody_rate",
+          "value": 3,
+          "unit": "scalar"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "cody_rate",
+          "amir",
+          "cody"
+        ],
+        [
+          "add",
+          "cody",
+          "amir",
+          "total"
+        ]
+      ],
+      "target": "total"
+    },
+    "answer": 20,
+    "expected": 20,
+    "correct": true
+  },
+  {
+    "name": "row111_marcell",
+    "stage": "solve_error",
+    "plan": {
+      "quantities": [
+        {
+          "id": "beatrice",
+          "value": 48,
+          "unit": "count"
+        },
+        {
+          "id": "marcell",
+          "value": 42,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "add",
+          "beatrice",
+          "marcell",
+          "total"
+        ],
+        [
+          "div",
+          "total",
+          2,
+          "average"
+        ]
+      ],
+      "target": "average"
+    },
+    "detail": "cell80: op fields must be strings"
+  },
+  {
+    "name": "row117_katy",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "sugar",
+          "value": 120,
+          "unit": "count"
+        },
+        {
+          "id": "water",
+          "value": 0,
+          "unit": "count"
+        },
+        {
+          "id": "ratio_sum",
+          "value": 20,
+          "unit": "count_per_count"
+        }
+      ],
+      "ops": [
+        [
+          "div",
+          "sugar",
+          "ratio_sum",
+          "total_parts"
+        ],
+        [
+          "mul",
+          "total_parts",
+          "ratio_sugar",
+          "actual_sugar"
+        ]
+      ],
+      "target": "actual_sugar"
+    },
+    "answer": null,
+    "expected": 42,
+    "correct": false
+  },
+  {
+    "name": "row119_customs",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "initial_containers",
+          "value": 2,
+          "unit": "count"
+        },
+        {
+          "id": "vehicles_per_container",
+          "value": 5,
+          "unit": "count"
+        },
+        {
+          "id": "total_vehicles",
+          "value": 30,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "initial_containers",
+          "vehicles_per_container",
+          "initial_vehicles"
+        ],
+        [
+          "sub",
+          "total_vehicles",
+          "initial_vehicles",
+          "second_day_containers"
+        ]
+      ],
+      "target": "second_day_containers"
+    },
+    "answer": null,
+    "expected": 4,
+    "correct": false
+  },
+  {
+    "name": "row121_miguel",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "pads_per_week",
+          "value": 2,
+          "unit": "count"
+        },
+        {
+          "id": "sheets_per_pad",
+          "value": 30,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "mul",
+          "pads_per_week",
+          "sheets_per_pad",
+          "weekly_sheets"
+        ]
+      ],
+      "target": "weekly_sheets"
+    },
+    "answer": 60,
+    "expected": 240,
+    "correct": false
+  },
+  {
+    "name": "row122_morisette",
+    "stage": "solved",
+    "plan": {
+      "quantities": [
+        {
+          "id": "morisette_apples",
+          "value": 5,
+          "unit": "count"
+        },
+        {
+          "id": "morisette_oranges",
+          "value": 8,
+          "unit": "count"
+        },
+        {
+          "id": "kael_apples",
+          "value": 10,
+          "unit": "count"
+        },
+        {
+          "id": "kael_oranges",
+          "value": 4,
+          "unit": "count"
+        }
+      ],
+      "ops": [
+        [
+          "add",
+          "morisette_apples",
+          "morisette_oranges",
+          "morisette_total"
+        ],
+        [
+          "add",
+          "kael_apples",
+          "kael_oranges",
+          "kael_total"
+        ],
+        [
+          "add",
+          "morisette_total",
+          "kael_total",
+          "total"
+        ]
+      ],
+      "target": "total"
+    },
+    "answer": 27,
+    "expected": 27,
+    "correct": true
+  }
+]

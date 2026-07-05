@@ -1,0 +1,1193 @@
+[
+  {
+    "name": "row4_james",
+    "expected": 540,
+    "stated_answer": 540,
+    "correct": true,
+    "turns": 6,
+    "n_solve_calls": 1,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sprints_per_week",
+                "unit": "times",
+                "value": 3
+              },
+              {
+                "id": "sprints_total",
+                "unit": "times",
+                "value": 9
+              }
+            ],
+            "target": "meters_run_per_week"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `times`",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row7_sheep",
+    "expected": 260,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row11_downloads",
+    "expected": 366,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 4,
+    "n_solve_calls": 1,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [
+              [
+                "mul",
+                "3",
+                "first_month",
+                "second_month"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "first_month",
+                "unit": "downloads",
+                "value": 60
+              }
+            ],
+            "target": "total_downloads"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `downloads`",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row22_raymond",
+    "expected": 14,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row85_football",
+    "expected": 15,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 1,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "total_games",
+                "unit": "games",
+                "value": 22
+              }
+            ],
+            "target": "wins"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `games`",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row86_gene",
+    "expected": 44,
+    "stated_answer": 12,
+    "correct": false,
+    "turns": 2,
+    "n_solve_calls": 1,
+    "final_tool_answer": 12,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "ops": [
+              [
+                "mul",
+                "years_vacations",
+                "blocks_per_year",
+                "total_blocks"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "years_vacations",
+                "unit": "",
+                "value": 12
+              },
+              {
+                "id": "blocks_per_year",
+                "unit": "",
+                "value": 1
+              }
+            ],
+            "target": "total_blocks"
+          }
+        ],
+        "report": {
+          "answer": 12,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": "6b87e16276d2009e5ce2804d622b428e837769f935a32de0a3cca465640addaf",
+              "answer": 12,
+              "kill": null,
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row89_marilyn",
+    "expected": 8000,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row92_jan",
+    "expected": 28,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row93_emily",
+    "expected": 4,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row94_lee",
+    "expected": 36,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row97_harry",
+    "expected": 3,
+    "stated_answer": 3,
+    "correct": true,
+    "turns": 6,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row101_jerome",
+    "expected": 175,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 6,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "total_rings"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `total_rings` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "sum"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `sum` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "total"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `total` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "total_rings"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `total_rings` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "sum"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `sum` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "first_friend",
+                "value": 20
+              },
+              {
+                "id": "second_friend",
+                "value": 5
+              },
+              {
+                "id": "third_friend",
+                "value": 70
+              },
+              {
+                "id": "fourth_friend",
+                "value": 60
+              }
+            ],
+            "target": "total_rings"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `total_rings` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row104_fog",
+    "expected": 140,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 2,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row106_cody",
+    "expected": 20,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 4,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [
+              [
+                "mul",
+                "3",
+                "amir_cookies",
+                "cody_cookies"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "amir_cookies",
+                "unit": "cookies",
+                "value": 5
+              },
+              {
+                "id": "cody_cookies",
+                "unit": "cookies",
+                "value": 15
+              }
+            ],
+            "target": "total_cookies"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cookies`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [
+              [
+                "add",
+                "cody_cookies",
+                "amir_cookies",
+                "total"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "amir_cookies",
+                "unit": "cookie",
+                "value": 5
+              },
+              {
+                "id": "cody_cookies",
+                "unit": "cookie",
+                "value": 15
+              }
+            ],
+            "target": "total"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cookie`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [
+              [
+                "add",
+                "15",
+                "5",
+                "total"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "cody_cookies",
+                "unit": "cookies",
+                "value": 15
+              },
+              {
+                "id": "amir_cookies",
+                "unit": "cookies",
+                "value": 5
+              }
+            ],
+            "target": "total"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cookies`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [
+              [
+                "add",
+                "15",
+                "5",
+                "total"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "cody_cookies",
+                "value": 15
+              },
+              {
+                "id": "amir_cookies",
+                "value": 5
+              }
+            ],
+            "target": "total"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: op 0: `15` is not defined yet",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row111_marcell",
+    "expected": 45,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 2,
+    "n_solve_calls": 1,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "beatrice_width",
+                "value": 2
+              },
+              {
+                "id": "beatrice_length",
+                "value": 24
+              },
+              {
+                "id": "marcell_width",
+                "value": 3
+              },
+              {
+                "id": "marcell_length",
+                "value": 14
+              }
+            ],
+            "target": "average total roll-ups eaten by both"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: target `average total roll-ups eaten by both` is never defined",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row117_katy",
+    "expected": 42,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 6,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar_teaspoons",
+                "unit": "teaspoons",
+                "value": 120
+              },
+              {
+                "id": "water_cups",
+                "unit": "cups",
+                "value": 120
+              }
+            ],
+            "target": "sugar_teaspoons"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `teaspoons`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar",
+                "unit": "cups",
+                "value": 7
+              },
+              {
+                "id": "water",
+                "unit": "cups",
+                "value": 13
+              },
+              {
+                "id": "total_cups",
+                "unit": "cups",
+                "value": 120
+              }
+            ],
+            "target": "sugar"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cups`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar",
+                "unit": "teaspoons",
+                "value": 84
+              },
+              {
+                "id": "water",
+                "unit": "teaspoons",
+                "value": 36
+              }
+            ],
+            "target": "sugar"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `teaspoons`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar",
+                "unit": "cups",
+                "value": 7
+              },
+              {
+                "id": "water",
+                "unit": "cups",
+                "value": 13
+              },
+              {
+                "id": "total_cups",
+                "unit": "cups",
+                "value": 120
+              }
+            ],
+            "target": "sugar"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cups`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar",
+                "unit": "teaspoons",
+                "value": 84
+              },
+              {
+                "id": "water",
+                "unit": "teaspoons",
+                "value": 36
+              }
+            ],
+            "target": "sugar"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `teaspoons`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "constraints": [],
+            "ops": [],
+            "quantities": [
+              {
+                "id": "sugar",
+                "unit": "cups",
+                "value": 7
+              },
+              {
+                "id": "water",
+                "unit": "cups",
+                "value": 13
+              },
+              {
+                "id": "total_cups",
+                "unit": "cups",
+                "value": 120
+              }
+            ],
+            "target": "sugar"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `cups`",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row119_customs",
+    "expected": 4,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row121_miguel",
+    "expected": 240,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 6,
+    "n_solve_calls": 3,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": [
+      {
+        "plans": [
+          {
+            "ops": [
+              [
+                "mul",
+                "2",
+                "30",
+                "total_sheets_per_week"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "pads_per_week",
+                "unit": "pads",
+                "value": 2
+              },
+              {
+                "id": "sheets_per_pad",
+                "unit": "sheets",
+                "value": 30
+              }
+            ],
+            "target": "total_sheets_per_week"
+          },
+          {
+            "ops": [
+              [
+                "mul",
+                "total_sheets_per_week",
+                "4",
+                "total_sheets_per_month"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "weeks_per_month",
+                "unit": "weeks",
+                "value": 4
+              }
+            ],
+            "target": "total_sheets_per_month"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `pads`",
+              "retrieved": false
+            },
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: unknown unit `weeks`",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "ops": [
+              [
+                "mul",
+                "2",
+                "30",
+                "total_sheets_per_week"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "pads_per_week",
+                "value": 2
+              },
+              {
+                "id": "sheets_per_pad",
+                "value": 30
+              }
+            ],
+            "target": "total_sheets_per_week"
+          },
+          {
+            "ops": [
+              [
+                "mul",
+                "total_sheets_per_week",
+                "4",
+                "total_sheets_per_month"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "weeks_per_month",
+                "value": 4
+              }
+            ],
+            "target": "total_sheets_per_month"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: op 0: `2` is not defined yet",
+              "retrieved": false
+            },
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: op 0: `total_sheets_per_week` is not defined yet",
+              "retrieved": false
+            }
+          ]
+        }
+      },
+      {
+        "plans": [
+          {
+            "ops": [
+              [
+                "mul",
+                "2",
+                "30",
+                "total_sheets_per_week"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "pads_per_week",
+                "value": 2
+              },
+              {
+                "id": "sheets_per_pad",
+                "value": 30
+              }
+            ],
+            "target": "total_sheets_per_week"
+          },
+          {
+            "ops": [
+              [
+                "mul",
+                "total_sheets_per_week",
+                "4",
+                "total_sheets_per_month"
+              ]
+            ],
+            "quantities": [
+              {
+                "id": "weeks_per_month",
+                "value": 4
+              }
+            ],
+            "target": "total_sheets_per_month"
+          }
+        ],
+        "report": {
+          "answer": null,
+          "battery_ran": false,
+          "plans": [
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: op 0: `2` is not defined yet",
+              "retrieved": false
+            },
+            {
+              "artifact": null,
+              "answer": null,
+              "kill": "render: op 0: `total_sheets_per_week` is not defined yet",
+              "retrieved": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "row122_morisette",
+    "expected": 27,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  },
+  {
+    "name": "row124_rosie",
+    "expected": 50,
+    "stated_answer": null,
+    "correct": false,
+    "turns": 1,
+    "n_solve_calls": 0,
+    "final_tool_answer": null,
+    "error": null,
+    "solve_calls": []
+  }
+]
