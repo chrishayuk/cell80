@@ -570,3 +570,11 @@
 {"id": "triangular_inverse_exact-para-1", "query": "how many rows of a triangle add up to this total number of items", "expected": "triangular_inverse_exact", "category": "paraphrase"}
 {"id": "consecutive_sum_start-direct-1", "query": "find the first of n consecutive integers that sum to a given total", "expected": "consecutive_sum_start", "category": "direct"}
 {"id": "consecutive_sum_start-para-1", "query": "five consecutive odd numbers add up to this total, what's the smallest one", "expected": "consecutive_sum_start", "category": "paraphrase"}
+
+# ── wave 4, slice 4: verifier-ranker gap-fill ─────────────────────────────────
+{"id": "percent_equals_bps-direct-1", "query": "verify a claimed basis-points percent increase between two values", "expected": "percent_equals_bps", "category": "direct"}
+{"id": "percent_equals_bps-para-1", "query": "check whether this price after tax actually matches a 5 percent markup on the original", "expected": "percent_equals_bps", "category": "paraphrase"}
+{"id": "parts_sum_to_total4_u32-direct-1", "query": "verify a claimed four-way sum equals the total", "expected": "parts_sum_to_total4_u32", "category": "direct"}
+{"id": "parts_sum_to_total4_u32-para-1", "query": "do these four cost categories actually add up to the stated grand total", "expected": "parts_sum_to_total4_u32", "category": "paraphrase"}
+{"id": "nonnegative_after_delta-direct-1", "query": "would applying a signed delta to a value keep it nonnegative", "expected": "nonnegative_after_delta", "category": "direct"}
+{"id": "nonnegative_after_delta-para-1", "query": "can we subtract this much from the remaining budget without going below zero", "expected": "nonnegative_after_delta", "category": "paraphrase"}

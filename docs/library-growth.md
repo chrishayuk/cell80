@@ -187,9 +187,16 @@ wave 4c   253 cells   + wave 4, slice 3/5 — sequences nth-term gap-fill:
                         step-parameterized cell replacing the original
                         proposal's separate odd/even "consecutive sum"
                         variants) — see the pack note below.
-next      ~260+        + wave 4 slices 4-5 (verifier-ranker gap-fill,
-                        agentic-runtime
-                        reflexes — see the pack note below);
+wave 4d   256 cells   + wave 4, slice 4/5 — verifier-ranker gap-fill:
+                        percent_equals_bps (money-bps's first verifier
+                        sibling — every other checked-arithmetic shape
+                        already had one), parts_sum_to_total4_u32 (the
+                        missing four-way sibling of sum3_equals_u32), and
+                        nonnegative_after_delta (a boolean-verdict form of
+                        apply_delta_clamped's sign-handling idiom) — see
+                        the pack note below.
+next      ~260+        + wave 4 slice 5 (agentic-runtime reflexes — see
+                        the pack note below);
                         cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -1079,6 +1086,30 @@ suite green (cell-count pins 249→253), cold clippy clean, codegen golden regen
 (purely additive). Retrieval: 249-cell baseline direct 79% / paraphrase 33% / adversarial
 56% / overall 59% → 253 cells direct 79% / paraphrase 34% / adversarial 56% / overall 58%
 — stable, no meaningful movement on any split.
+
+**Wave 4, slice 4/5 — verifier-ranker gap-fill (256 cells).** `percent_equals_bps` —
+`{before, after, bps: u32}` → `1` if `after == before + before*bps/10000`, else `0`; the
+money-bps pack's first verifier-ranker sibling (every other checked-arithmetic shape
+already had an `_equals` counterpart — this one didn't). Never escalates, matching the
+pack's own rule that a verifier always returns a verdict: a multiply overflow (inlined
+`wrapping_mul` + a manual remainder check, not the halting `mul_checked_u32` prelude
+kernel) or an add-overflow just means the claim doesn't hold. `parts_sum_to_total4_u32` —
+`{a, b, c, d, total: u32}` → `1` if `a+b+c+d == total`, else `0`; the missing four-way
+sibling of `sum3_equals_u32` (a real gap — every prior verifier-ranker sum shape topped
+out at three parts), same wrapping-add-with-carry-check style. `nonnegative_after_delta` —
+`(value: u16, delta: i16) -> u16`, the boolean-verdict form of `apply_delta_clamped`'s own
+sign-handling idiom (same magnitude computation via `0u16.wrapping_sub(delta as u16)`),
+for a caller that wants to kill a wrong "subtract too much" plan cheaply without needing
+the clamped value itself. Of the original proposal's 10 category-G cells, 7 were exact
+duplicates of already-shipped verifier-ranker cells (`ratio_equals_u32`/
+`proportion_equals_u32` both duplicate `frac_eq`; `rate_equals_u32`≡`product_equals_u32`;
+`average_equals_u32`≡`quotient_equals_exact_u32`; `remaining_equals_u32`≡`diff_equals_u32`;
+`parts_sum_to_total3_u32`≡`sum3_equals_u32`; `integer_solution_check`≡`is_integer`) —
+these three are the genuine survivors. Gate: 256 admitted, 0 refused. Full test suite green
+(cell-count pins 253→256), cold clippy clean, codegen golden regenerated (purely
+additive). Retrieval: 253-cell baseline direct 79% / paraphrase 34% / adversarial 56% /
+overall 58% → 256 cells direct 79% / paraphrase 33% / adversarial 56% / overall 58% —
+stable.
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

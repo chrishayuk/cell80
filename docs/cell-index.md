@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (253 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (256 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -318,7 +318,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, count/time=rate_count_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
 | `unit_cancel_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if dividing a numerator-unit quantity by a denominator-unit quantity is dimensionally defined (same rule table as unit_div), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 
-## verifier-ranker (16)
+## verifier-ranker (19)
 
 | id | signature | summary |
 |---|---|---|
@@ -338,6 +338,9 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `agree3_u32` | `Agree3Wide::run() -> u16` | Multi-plan agreement check at wide u32 width: returns 1 if at least two of three candidate answers are equal, else 0 — the wide sibling of majority3 (which works over u16 and can't represent answers beyond 65535, e.g. money totals in cents). |
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 | `smag_eq` | `SmagEq::run() -> u16` | Verifies whether two signed values (magnitude, sign pairs, per smag_add) are equal, canonicalizing negative-zero to nonnegative first — the sign-magnitude counterpart of frac_eq / answer_eq_u32. |
+| `percent_equals_bps` | `PercentEqualsBps::run() -> u16` | Verifies a claimed bps increase: returns 1 if after == before + before*bps/10000, else 0 — the verifier counterpart of increase_by_bps (money-bps's checked-arithmetic sibling had no reverse-equation check yet, unlike every other checked-arithmetic shape). Never escalates: a verifier always returns a verdict, computed in a wider internal width so a genuine overflow can't false-positive as a match. |
+| `parts_sum_to_total4_u32` | `PartsSumToTotal4Wide::run() -> u16` | Verifies a claimed wide four-way sum: returns 1 if a + b + c + d == total, else 0, without escalating on overflow — the missing four-way sibling of sum3_equals_u32 (a real gap: every prior verifier-ranker sum shape topped out at three parts). |
+| `nonnegative_after_delta` | `run(value: u16, delta: i16) -> u16` | Returns 1 if applying a signed delta to an unsigned value would stay nonnegative, else 0 — the boolean-verdict form of the sign-handling idiom apply_delta_clamped already uses, for a caller (e.g. a plan verifier) that wants to kill a wrong "subtract too much" plan cheaply without needing the clamped value itself. |
 
 ## stateful/RNG (3)
 

@@ -2962,3 +2962,91 @@ fn wave4_sequences_nth_term_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // n == 0
 }
+
+#[test]
+fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
+    // Wave 4, slice 4: verifier-ranker gap-fill — the three genuinely-motivated survivors
+    // of the original ~100-cell proposal's category G (7 of the other 10 proposed cells
+    // were exact duplicates of already-shipped verifier-ranker cells, per the wave-4 pack
+    // note in docs/library-growth.md).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // percent_equals_bps: 5% of 1000 is 50, so 1000 -> 1050 is a true 500-bps increase.
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[("before", 1000), ("after", 1050), ("bps", 500)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[("before", 1000), ("after", 1051), ("bps", 500)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "percent_equals_bps",
+            "PercentEqualsBps",
+            &[
+                ("before", 4_294_967_295),
+                ("after", 0),
+                ("bps", 2)
+            ]
+        ),
+        0 // multiply overflow -> claim doesn't hold, never escalates
+    );
+
+    // parts_sum_to_total4_u32: exact match, mismatch, and a wrapping add (claim doesn't
+    // hold, never escalates).
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[("a", 10), ("b", 20), ("c", 30), ("d", 40), ("total", 100)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[("a", 10), ("b", 20), ("c", 30), ("d", 40), ("total", 99)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "parts_sum_to_total4_u32",
+            "PartsSumToTotal4Wide",
+            &[
+                ("a", 4_294_967_295),
+                ("b", 1),
+                ("c", 0),
+                ("d", 0),
+                ("total", 0)
+            ]
+        ),
+        0
+    );
+
+    // nonnegative_after_delta: mirrors apply_delta_clamped's own sign-handling idiom.
+    assert_eq!(run_cell("nonnegative_after_delta", &[10, 65531]), 1); // delta -5
+    assert_eq!(run_cell("nonnegative_after_delta", &[3, 65531]), 0); // delta -5
+    assert_eq!(run_cell("nonnegative_after_delta", &[0, 0]), 1);
+    assert_eq!(
+        run_cell("nonnegative_after_delta", &[100, 65436]),
+        1 // delta -100, exactly zero still counts as nonnegative
+    );
+}
