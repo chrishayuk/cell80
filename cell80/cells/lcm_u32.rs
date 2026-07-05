@@ -18,8 +18,7 @@ impl LcmChecked {
         }
         let g = x;
         let q = self.a / g;
-        let p = q.wrapping_mul(self.b);
-        if q != 0u32 && p / q != self.b { halt(0xFF05u16); }
+        let p = mul_checked_u32(q, self.b);
         self.result = p;
         1u16
     }

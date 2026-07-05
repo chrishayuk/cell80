@@ -7,8 +7,7 @@ impl RatioSplit2 {
     fn run(&mut self) -> u16 {
         let sum = self.ratio_a.wrapping_add(self.ratio_b);
         if sum == 0u32 { halt(0xFF06u16); }
-        let product = self.total.wrapping_mul(self.ratio_a);
-        if self.total != 0u32 && product / self.total != self.ratio_a { halt(0xFF05u16); }
+        let product = mul_checked_u32(self.total, self.ratio_a);
         self.part_a = product / sum;
         self.part_b = self.total - self.part_a;
         1u16

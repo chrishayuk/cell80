@@ -6,8 +6,7 @@ struct SmagMul { mag_a: u32, neg_a: u16, mag_b: u32, neg_b: u16, mag: u32, neg: 
 impl SmagMul {
     fn run(&mut self) -> u16 {
         if self.neg_a > 1u16 || self.neg_b > 1u16 { halt(0xFF06u16); }
-        let p = self.mag_a.wrapping_mul(self.mag_b);
-        if self.mag_a != 0u32 && p / self.mag_a != self.mag_b { halt(0xFF05u16); }
+        let p = mul_checked_u32(self.mag_a, self.mag_b);
         self.mag = p;
         let n = if p == 0u32 { 0u16 } else if self.neg_a == self.neg_b { 0u16 } else { 1u16 };
         self.neg = n;

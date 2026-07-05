@@ -13,8 +13,7 @@ impl PermuteWide {
         let mut i = 0u32;
         while i < self.k {
             let term = self.n - i;
-            let p = r.wrapping_mul(term);
-            if r != 0u32 && p / r != term { halt(0xFF05u16); }
+            let p = mul_checked_u32(r, term);
             r = p;
             i = i + 1u32;
         }

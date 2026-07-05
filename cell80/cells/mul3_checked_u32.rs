@@ -5,10 +5,8 @@
 struct Mul3Checked { a: u32, b: u32, c: u32, product: u32 }
 impl Mul3Checked {
     fn run(&mut self) -> u16 {
-        let p1 = self.a.wrapping_mul(self.b);
-        if self.a != 0u32 && p1 / self.a != self.b { halt(0xFF05u16); }
-        let p2 = p1.wrapping_mul(self.c);
-        if p1 != 0u32 && p2 / p1 != self.c { halt(0xFF05u16); }
+        let p1 = mul_checked_u32(self.a, self.b);
+        let p2 = mul_checked_u32(p1, self.c);
         self.product = p2;
         1u16
     }

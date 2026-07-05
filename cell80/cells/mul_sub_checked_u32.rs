@@ -5,8 +5,7 @@
 struct MulSubChecked { a: u32, b: u32, c: u32, result: u32 }
 impl MulSubChecked {
     fn run(&mut self) -> u16 {
-        let p = self.a.wrapping_mul(self.b);
-        if self.a != 0u32 && p / self.a != self.b { halt(0xFF05u16); }
+        let p = mul_checked_u32(self.a, self.b);
         if self.c > p { halt(0xFF05u16); }
         self.result = p - self.c;
         1u16

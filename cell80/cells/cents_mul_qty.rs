@@ -6,8 +6,7 @@ struct CentsMulQty { unit_cents: u32, qty: u16, total: u32 }
 impl CentsMulQty {
     fn run(&mut self) -> u16 {
         let q = self.qty as u32;
-        let product = self.unit_cents.wrapping_mul(q);
-        if self.unit_cents != 0u32 && product / self.unit_cents != q { halt(0xFF05u16); }
+        let product = mul_checked_u32(self.unit_cents, q);
         self.total = product;
         1u16
     }

@@ -217,8 +217,13 @@ slot (no trailing copy — the reduced `x` becomes the `let g`), and an *effect-
 arg* (a `self.field` read) substitutes without a bind/copy whenever the kernel writes
 no memory. A kernel called from *many* sites stays a real call (the convention above)
 and is shared — a net byte win exactly when the same kernel is used more than once in
-a cell. Measured: the ten fraction cells fold byte-for-byte; four unrelated cells that
-call a prelude helper once got *smaller* (−21 bytes) from result-aliasing alone.
+a cell. Measured: the ten fraction cells fold `gcd_u32` byte-for-byte; four unrelated
+cells that call a prelude helper once got *smaller* (−21 bytes) from result-aliasing
+alone. The bigger lever is `mul_checked_u32` (the wrapping-multiply + overflow-escalate
+idiom, `docs/12`): factoring the 41 hand-inlined copies across 30 cells into one shared
+kernel cut **−1683 bytes** — cells that check one product fold to neutral, cells that
+check two or three (fraction add/sub/average) drop 116–261 bytes each — with behaviour
+byte-identical on the differential battery.
 
 The *math* residual stands: a Q16.16 `q_mul` needs a 64-bit intermediate the
 substrate doesn't have, so that kernel remains word-split partials

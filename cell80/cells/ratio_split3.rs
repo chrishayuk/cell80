@@ -7,10 +7,8 @@ impl RatioSplit3 {
     fn run(&mut self) -> u16 {
         let denom = self.ratio_a.wrapping_add(self.ratio_b).wrapping_add(self.ratio_c);
         if denom == 0u32 { halt(0xFF06u16); }
-        let pa_num = self.total.wrapping_mul(self.ratio_a);
-        if self.total != 0u32 && pa_num / self.total != self.ratio_a { halt(0xFF05u16); }
-        let pb_num = self.total.wrapping_mul(self.ratio_b);
-        if self.total != 0u32 && pb_num / self.total != self.ratio_b { halt(0xFF05u16); }
+        let pa_num = mul_checked_u32(self.total, self.ratio_a);
+        let pb_num = mul_checked_u32(self.total, self.ratio_b);
         self.part_a = pa_num / denom;
         self.part_b = pb_num / denom;
         self.part_c = self.total - self.part_a - self.part_b;

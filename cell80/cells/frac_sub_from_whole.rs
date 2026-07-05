@@ -6,8 +6,7 @@ struct FracSubFromWhole { whole: u32, n: u32, d: u32, num: u32, den: u32 }
 impl FracSubFromWhole {
     fn run(&mut self) -> u16 {
         if self.d == 0u32 { halt(0xFF06u16); }
-        let wd = self.whole.wrapping_mul(self.d);
-        if self.whole != 0u32 && wd / self.whole != self.d { halt(0xFF05u16); }
+        let wd = mul_checked_u32(self.whole, self.d);
         if self.n > wd { halt(0xFF05u16); }
         let num_raw = wd - self.n;
         if num_raw == 0u32 {

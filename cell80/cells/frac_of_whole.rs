@@ -6,8 +6,7 @@ struct FracOfWhole { n: u32, d: u32, whole: u32, result: u32 }
 impl FracOfWhole {
     fn run(&mut self) -> u16 {
         if self.d == 0u32 { halt(0xFF06u16); }
-        let p = self.n.wrapping_mul(self.whole);
-        if self.n != 0u32 && p / self.n != self.whole { halt(0xFF05u16); }
+        let p = mul_checked_u32(self.n, self.whole);
         if p % self.d != 0u32 { halt(0xFF06u16); }
         self.result = p / self.d;
         1u16

@@ -15,8 +15,7 @@ impl ChooseWide {
         let mut i = 1u32;
         while i <= kk {
             let term = self.n - kk + i;
-            let num = r.wrapping_mul(term);
-            if r != 0u32 && num / r != term { halt(0xFF05u16); }
+            let num = mul_checked_u32(r, term);
             r = num / i;
             i = i + 1u32;
         }

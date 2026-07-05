@@ -8,8 +8,7 @@ impl FactorialChecked {
         let mut r = 1u32;
         let mut i = 2u32;
         while i <= self.n {
-            let p = r.wrapping_mul(i);
-            if r != 0u32 && p / r != i { halt(0xFF05u16); }
+            let p = mul_checked_u32(r, i);
             r = p;
             i = i + 1u32;
         }

@@ -7,8 +7,7 @@ impl BpsDecreaseBetween {
     fn run(&mut self) -> u16 {
         if self.before == 0u32 || self.after > self.before { halt(0xFF06u16); }
         let diff = self.before - self.after;
-        let scaled = diff.wrapping_mul(10000u32);
-        if diff != 0u32 && scaled / diff != 10000u32 { halt(0xFF05u16); }
+        let scaled = mul_checked_u32(diff, 10000u32);
         self.bps = scaled / self.before;
         1u16
     }

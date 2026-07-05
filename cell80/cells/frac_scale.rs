@@ -6,8 +6,7 @@ struct FracScale { n: u32, d: u32, k: u32, num: u32, den: u32 }
 impl FracScale {
     fn run(&mut self) -> u16 {
         if self.d == 0u32 { halt(0xFF06u16); }
-        let p = self.n.wrapping_mul(self.k);
-        if self.n != 0u32 && p / self.n != self.k { halt(0xFF05u16); }
+        let p = mul_checked_u32(self.n, self.k);
         if p == 0u32 {
             self.num = 0u32;
             self.den = 1u32;

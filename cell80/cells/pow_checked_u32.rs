@@ -8,8 +8,7 @@ impl PowChecked {
         let mut r = 1u32;
         let mut i = 0u32;
         while i < self.exp {
-            let p = r.wrapping_mul(self.base);
-            if r != 0u32 && p / r != self.base { halt(0xFF05u16); }
+            let p = mul_checked_u32(r, self.base);
             r = p;
             i = i + 1u32;
         }

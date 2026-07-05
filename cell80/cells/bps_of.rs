@@ -5,8 +5,7 @@
 struct BpsOf { value: u32, bps: u32, result: u32 }
 impl BpsOf {
     fn run(&mut self) -> u16 {
-        let product = self.value.wrapping_mul(self.bps);
-        if self.value != 0u32 && product / self.value != self.bps { halt(0xFF05u16); }
+        let product = mul_checked_u32(self.value, self.bps);
         self.result = product / 10000u32;
         1u16
     }

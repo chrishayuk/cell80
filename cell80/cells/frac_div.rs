@@ -6,10 +6,8 @@ struct FracDiv { na: u32, da: u32, nb: u32, db: u32, num: u32, den: u32 }
 impl FracDiv {
     fn run(&mut self) -> u16 {
         if self.da == 0u32 || self.db == 0u32 || self.nb == 0u32 { halt(0xFF06u16); }
-        let num_raw = self.na.wrapping_mul(self.db);
-        if self.na != 0u32 && num_raw / self.na != self.db { halt(0xFF05u16); }
-        let den_raw = self.da.wrapping_mul(self.nb);
-        if self.da != 0u32 && den_raw / self.da != self.nb { halt(0xFF05u16); }
+        let num_raw = mul_checked_u32(self.na, self.db);
+        let den_raw = mul_checked_u32(self.da, self.nb);
         if num_raw == 0u32 {
             self.num = 0u32;
             self.den = 1u32;
