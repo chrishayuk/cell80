@@ -195,9 +195,20 @@ wave 4d   256 cells   + wave 4, slice 4/5 — verifier-ranker gap-fill:
                         nonnegative_after_delta (a boolean-verdict form of
                         apply_delta_clamped's sign-handling idiom) — see
                         the pack note below.
-next      ~260+        + wave 4 slice 5 (agentic-runtime reflexes — see
-                        the pack note below);
-                        cosine_score_approx (deferred until cell_solve reads
+wave 4e   259 cells   + wave 4, slice 5/5 (final) — agentic-runtime
+                        reflexes: cooldown_step (plain decrement-to-zero,
+                        distinct from counter_step/backoff_next),
+                        epsilon_greedy_pick3 (explore/exploit selection),
+                        zscore_q8 (Q8.8 z-score given an already-computed
+                        stddev). retry_budget_step/budget_spend_step
+                        confirmed behaviourally identical to
+                        token_bucket_step(refill=0) and folded into its
+                        tags; ucb1_score_q8 not attempted (needs a
+                        fixed-point ln with no dialect primitive, same
+                        class as cosine_score_approx) — see the pack note
+                        below. Wave 4 complete: 239 -> 259 cells (~20 net
+                        new, down from the ~100 originally proposed).
+next      ~270+        + cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
                         docs/math-campaign-spec.md pending M3's read-out)
@@ -1110,6 +1121,45 @@ these three are the genuine survivors. Gate: 256 admitted, 0 refused. Full test 
 additive). Retrieval: 253-cell baseline direct 79% / paraphrase 34% / adversarial 56% /
 overall 58% → 256 cells direct 79% / paraphrase 33% / adversarial 56% / overall 58% —
 stable.
+
+**Wave 4, slice 5/5 (final) — agentic-runtime reflexes (259 cells).** `cooldown_step` —
+`{cooldown, ready: u16}`, decrements (floored at 0) and reports ready once it hits 0 — a
+plain decrement-to-zero timer, distinct from `counter_step` (modular increment for
+round-robin) and `backoff_next` (exponential growth); no existing agentic-runtime cell did
+this. `epsilon_greedy_pick3` — `{rand_bps, epsilon_bps, best_idx, alt_idx}` → `alt_idx` if
+`rand_bps < epsilon_bps` else `best_idx`; composes with the already-shipped
+`lcg_next`/`xorshift16` (+ `safe_mod` for the caller's bps derivation). Structurally close
+to `choose_best2`/`choose_worst2` (same 4-field shape) but a genuinely different field-to-
+output mapping — confirmed non-duplicate by the admission gate itself rather than assumed
+safe by inspection. `zscore_q8` — `(value_q8, mean_q8, stddev_q8: i16) -> i16`, Q8.8
+z-score given an already-computed standard deviation (sidesteps the sqrt-of-variance
+problem `cosine_score_approx` is still blocked on); returns `0` if `stddev_q8 <= 0`, and
+documents a real domain limit (`//! limits:`) rather than silently risking it: the
+`diff << 8` pre-shift needs `|value_q8 - mean_q8| < 128` to stay in `i16` range, since the
+dialect has no `i32` to widen through (the same class of assumption `q_mul`'s own
+`//! limits:` already documents for its product). `retry_budget_step` and
+`budget_spend_step` from the original proposal were **not** shipped: verified directly
+(not assumed) that `token_bucket_step` called with `refill=0` and `capacity >= tokens` is
+exactly a "spend from a plain budget, report allowed" cell (test in
+`cell80/tests/library.rs`), so both names were folded into `token_bucket_step`'s own tags
+instead of shipping duplicate formulas under new names. `ucb1_score_q8` was not attempted
+at all: UCB1's score needs a fixed-point `ln`, a primitive the dialect doesn't have —
+deferred to the same open question `cosine_score_approx` has been parked behind since
+Wave 3. Gate: 259 admitted, 0 refused. Full test suite green (cell-count pins 256→259),
+cold clippy clean, codegen golden regenerated (purely additive — the `token_bucket_step`
+tag edit changed no compiled bytes, confirmed by re-running the golden test after it).
+Retrieval: 256-cell baseline direct 79% / paraphrase 33% / adversarial 56% / overall 58%
+→ 259 cells direct 79% / paraphrase 33% / adversarial 56% / overall 58% — unchanged on
+every split, the cleanest-landing slice of the wave.
+
+**Wave 4 complete: 239 → 259 cells, ~20 net new against the ~100 originally proposed.**
+The full dedup rationale (per-category survivor counts, the killed PlanFix-validator
+category, the deferred average/mixture category) is in this file's own wave-4 summary
+note above (right after the wave-3t/`sort3` pack note) and in the per-slice notes here.
+Landed in an isolated worktree (`../cell80-wave4`, branch `feat/cell-library-wave4`),
+merged back to `main` slice by slice rather than as one batch, so each slice's retrieval
+cost was measured and could have been paused on independently (none needed pausing on —
+every split stayed within a point or two of its pre-wave baseline throughout).
 
 **`TypeLedIndex` wired into the live search path.** Roadmap #3's standing item:
 `CellHost::search` (and everything downstream of it — the CLI's `search`/`route` verbs,

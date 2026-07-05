@@ -578,3 +578,11 @@
 {"id": "parts_sum_to_total4_u32-para-1", "query": "do these four cost categories actually add up to the stated grand total", "expected": "parts_sum_to_total4_u32", "category": "paraphrase"}
 {"id": "nonnegative_after_delta-direct-1", "query": "would applying a signed delta to a value keep it nonnegative", "expected": "nonnegative_after_delta", "category": "direct"}
 {"id": "nonnegative_after_delta-para-1", "query": "can we subtract this much from the remaining budget without going below zero", "expected": "nonnegative_after_delta", "category": "paraphrase"}
+
+# ── wave 4, slice 5: agentic-runtime reflexes ─────────────────────────────────
+{"id": "cooldown_step-direct-1", "query": "countdown timer that reports ready once it reaches zero", "expected": "cooldown_step", "category": "direct"}
+{"id": "cooldown_step-para-1", "query": "make an agent wait a fixed number of steps before it's allowed to act again", "expected": "cooldown_step", "category": "paraphrase"}
+{"id": "epsilon_greedy_pick3-direct-1", "query": "epsilon-greedy exploration versus exploitation selection", "expected": "epsilon_greedy_pick3", "category": "direct"}
+{"id": "epsilon_greedy_pick3-para-1", "query": "mostly pick the best known option but occasionally try something else at random", "expected": "epsilon_greedy_pick3", "category": "paraphrase"}
+{"id": "zscore_q8-direct-1", "query": "fixed-point z-score given a value, mean, and standard deviation", "expected": "zscore_q8", "category": "direct"}
+{"id": "zscore_q8-para-1", "query": "how many standard deviations away from average is this reading, in fixed-point", "expected": "zscore_q8", "category": "paraphrase"}

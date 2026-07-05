@@ -3050,3 +3050,96 @@ fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
         1 // delta -100, exactly zero still counts as nonnegative
     );
 }
+
+#[test]
+fn wave4_agentic_runtime_reflexes_cells_match_defined_behaviour() {
+    // Wave 4, slice 5: agentic-runtime reflexes — cell80's standing "agent reflexes, not
+    // just math" priority, independent of the GSM8K campaign. retry_budget_step and
+    // budget_spend_step from the original ~100-cell proposal were verified (not
+    // assumed) to be behaviourally identical to the already-shipped token_bucket_step
+    // called with refill=0 and a capacity >= tokens — see the equivalence check below —
+    // so neither was shipped as a separate cell. ucb1_score_q8 was not attempted: UCB1
+    // needs a fixed-point ln the dialect has no primitive for (the same class of gap
+    // cosine_score_approx is still blocked on).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+    fn step_cell(id: &str, strct: &str, fields: &[(&str, u64)]) -> StateCell {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+
+    // cooldown_step: still counting down; reaches ready exactly at 0; already-ready stays 0.
+    let cell = step_cell("cooldown_step", "CooldownStep", &[("cooldown", 3)]);
+    assert_eq!(cell.get("cooldown"), Some(2));
+    assert_eq!(cell.get("ready"), Some(0));
+    let cell = step_cell("cooldown_step", "CooldownStep", &[("cooldown", 1)]);
+    assert_eq!(cell.get("cooldown"), Some(0));
+    assert_eq!(cell.get("ready"), Some(1));
+    let cell = step_cell("cooldown_step", "CooldownStep", &[("cooldown", 0)]);
+    assert_eq!(cell.get("cooldown"), Some(0));
+    assert_eq!(cell.get("ready"), Some(1));
+
+    // epsilon_greedy_pick3: below the exploration threshold -> alt_idx; at/above -> best_idx.
+    assert_eq!(
+        step(
+            "epsilon_greedy_pick3",
+            "EpsilonGreedyPick3",
+            &[
+                ("rand_bps", 500),
+                ("epsilon_bps", 1000),
+                ("best_idx", 7),
+                ("alt_idx", 2)
+            ]
+        ),
+        2
+    );
+    assert_eq!(
+        step(
+            "epsilon_greedy_pick3",
+            "EpsilonGreedyPick3",
+            &[
+                ("rand_bps", 1500),
+                ("epsilon_bps", 1000),
+                ("best_idx", 7),
+                ("alt_idx", 2)
+            ]
+        ),
+        7
+    );
+
+    // zscore_q8: 0.25 above the mean with stddev 1.0 -> z = 0.25 (64 in Q8.8); symmetric
+    // below the mean; stddev <= 0 -> 0 (the safe_div convention).
+    assert_eq!(run_cell("zscore_q8", &[64, 0, 256]), 64);
+    assert_eq!(run_cell("zscore_q8", &[65472, 0, 256]), 65472); // -64 as i16 bits -> -64
+    assert_eq!(run_cell("zscore_q8", &[64, 0, 0]), 0);
+
+    // Equivalence check backing the decision not to ship retry_budget_step/
+    // budget_spend_step: token_bucket_step with refill=0 and capacity >= tokens IS a
+    // plain "spend from a budget, report allowed" cell — confirmed directly rather than
+    // assumed, the same discipline the admission gate automates.
+    let cell = step_cell(
+        "token_bucket_step",
+        "TokenBucket",
+        &[("tokens", 100), ("capacity", 100), ("refill", 0), ("cost", 30)],
+    );
+    assert_eq!(cell.get("tokens"), Some(70)); // spent
+    assert_eq!(cell.get("allowed"), Some(1));
+    let cell = step_cell(
+        "token_bucket_step",
+        "TokenBucket",
+        &[("tokens", 20), ("capacity", 100), ("refill", 0), ("cost", 30)],
+    );
+    assert_eq!(cell.get("tokens"), Some(20)); // unchanged, denied
+    assert_eq!(cell.get("allowed"), Some(0));
+}
