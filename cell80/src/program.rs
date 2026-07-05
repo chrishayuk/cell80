@@ -17,7 +17,8 @@ fn imin(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }\n\
 fn imax(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }\n\
 fn iabs_diff(a: u16, b: u16) -> u16 { let mut d = 0u16; if a > b { d = a - b; } else { d = b - a; } d }\n\
 fn isqrt(n: u16) -> u16 { let mut r = 0u16; while r < 255u16 && (r + 1u16) * (r + 1u16) <= n { r = r + 1u16; } r }\n\
-fn clamp_to(x: u16, lo: u16, hi: u16) -> u16 { let mut r = x; if x < lo { r = lo; } if x > hi { r = hi; } r }\n";
+fn clamp_to(x: u16, lo: u16, hi: u16) -> u16 { let mut r = x; if x < lo { r = lo; } if x > hi { r = hi; } r }\n\
+fn gcd_u32(a: u32, b: u32) -> u32 { let mut x = a; let mut y = b; while y != 0u32 { let t = y; y = x % y; x = t; } x }\n";
 
 /// The DCE roots for a cell: its entry functions — every free `fn run`/`fn main` and every
 /// `impl` method named `run`/`main` (`Type::run`), matching the cartridge's entry convention.

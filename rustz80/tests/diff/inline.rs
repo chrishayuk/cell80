@@ -335,8 +335,10 @@ fn inline_remaps_every_ir_shape() {
 }
 
 #[test]
-fn inline_leaves_wide_boundary_and_multisite_fns_alone() {
-    // Wide-boundary fns and 2+-site helpers stay real calls.
+fn inline_leaves_expression_nested_and_multisite_calls_alone() {
+    // The inliner only folds *statement-position* calls: a call nested in an expression
+    // (`wide(..) & 0xFF`) stays real even though the callee is single-call-site, and a
+    // 2+-site helper (`twice`) stays real regardless of position.
     let src = "
         fn wide(acc: u32) -> u32 { acc + 1u32 }
         fn twice(x: u16) -> u16 { x * 2u16 }
@@ -349,4 +351,146 @@ fn inline_leaves_wide_boundary_and_multisite_fns_alone() {
     assert!(prog.symbols.contains_key("wide"));
     assert!(prog.symbols.contains_key("twice"));
     assert_eq!(run_program(src, "run"), (70_001u32 & 0xFF) as u16 + 6 + 8);
+}
+
+#[test]
+fn inline_scalar_result_aliases_onto_let() {
+    // A single-call helper that returns one of its own locals, bound to a `let`:
+    // result-aliasing lands that local straight on the caller's slot — no trailing copy.
+    // Correct vs the oracle, and folded away entirely.
+    fn accumulate(n: u16) -> u16 {
+        let mut s = 0u16;
+        let mut i = 1u16;
+        while i <= n {
+            s += i;
+            i += 1;
+        }
+        s
+    }
+    fn host() -> u16 {
+        accumulate(10) * 2
+    }
+    let src = "
+        fn accumulate(n: u16) -> u16 {
+            let mut s = 0u16;
+            let mut i = 1u16;
+            while i <= n { s = s + i; i = i + 1u16; }
+            s
+        }
+        fn run() -> u16 { let g = accumulate(10u16); g * 2u16 }
+    ";
+    assert_eq!(run_program(src, "run"), host()); // 110
+    let file: syn::File = syn::parse_str(src).unwrap();
+    let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &["run"]).unwrap();
+    assert!(!prog.symbols.contains_key("accumulate"));
+}
+
+#[test]
+fn inline_wide_kernel_folds_on_struct_fields() {
+    // The fraction-cell shape distilled: a `&mut self` method calls a shared wide kernel
+    // on two `self` fields, binds the result, divides by it twice. The kernel folds fully
+    // (field-arg substitution + result-aliasing), so it's byte-neutral; behaviour vs the
+    // oracle, and no `gcd_u32` symbol survives.
+    fn gcd_u32(a: u32, b: u32) -> u32 {
+        let mut x = a;
+        let mut y = b;
+        while y != 0 {
+            let t = y;
+            y = x % y;
+            x = t;
+        }
+        x
+    }
+    fn host() -> u16 {
+        let g = gcd_u32(84_000, 36_000);
+        (84_000 / g + 36_000 / g) as u16
+    }
+    let src = "
+        fn gcd_u32(a: u32, b: u32) -> u32 {
+            let mut x = a; let mut y = b;
+            while y != 0u32 { let t = y; y = x % y; x = t; }
+            x
+        }
+        struct F { n: u32, d: u32 }
+        impl F {
+            fn reduce(&mut self) -> u16 {
+                let g = gcd_u32(self.n, self.d);
+                (self.n / g + self.d / g) as u16
+            }
+        }
+        fn run() -> u16 {
+            let mut f = F { n: 84_000u32, d: 36_000u32 };
+            f.reduce()
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+    let file: syn::File = syn::parse_str(src).unwrap();
+    let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &["run"]).unwrap();
+    assert!(
+        !prog.symbols.contains_key("gcd_u32"),
+        "a once-called wide kernel on struct fields must fold into the method"
+    );
+}
+
+#[test]
+fn inline_wide_arg_relocated_and_multisite_wide_ret_kept() {
+    // Exercises the wide *relocation* paths: a single-call wide kernel (`combine`) folds,
+    // but its first arg is an effectful call result (`twice(500)`) that can't substitute,
+    // so it binds via `Assign32` (the wide param-relocate + bind path). `combine` returns
+    // an expression (not a local), so the wide result copies rather than aliases. And
+    // `twice`, used at three sites, stays a real wide-return call. Oracle-checked.
+    fn twice(w: u32) -> u32 {
+        w + w
+    }
+    fn combine(a: u32, b: u32) -> u32 {
+        a + b
+    }
+    fn host() -> u16 {
+        let x = twice(1000);
+        let y = twice(x);
+        let g = combine(twice(500), y);
+        (g / 100) as u16
+    }
+    let src = "
+        fn twice(w: u32) -> u32 { w + w }
+        fn combine(a: u32, b: u32) -> u32 { a + b }
+        fn run() -> u16 {
+            let x = twice(1000u32);
+            let y = twice(x);
+            let g = combine(twice(500u32), y);
+            (g / 100u32) as u16
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host()); // 50
+    let file: syn::File = syn::parse_str(src).unwrap();
+    let prog = rustz80::compile_file_pruned(&file, rustz80::Target::Cell, &["run"]).unwrap();
+    assert!(
+        prog.symbols.contains_key("twice"),
+        "3-site wide kernel stays a call"
+    );
+    assert!(
+        !prog.symbols.contains_key("combine"),
+        "single-call wide kernel folds"
+    );
+}
+
+#[test]
+fn inline_field_arg_bound_when_callee_writes_memory() {
+    // The soundness guard for field-arg substitution: when the callee writes memory, an
+    // effect-free `self.field` arg must be *captured* (bound to a slot) before the write,
+    // not substituted — substitution would re-read the now-clobbered field. `helper` sets
+    // `self.f = 99` then returns `x + self.f`; called as `helper(self.f)`, the correct
+    // answer binds the *old* f (7): 7 + 99 = 106. Substituting would wrongly give 198.
+    fn host() -> u16 {
+        106
+    }
+    let src = "
+        struct S { f: u16 }
+        impl S {
+            fn outer(&mut self) -> u16 { let r = self.helper(self.f); r }
+            fn helper(&mut self, x: u16) -> u16 { self.f = 99u16; x + self.f }
+        }
+        fn run() -> u16 { let mut s = S { f: 7u16 }; s.outer() }
+    ";
+    assert_eq!(run_program(src, "run"), host());
 }

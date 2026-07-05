@@ -193,14 +193,38 @@ the register contract stays intact):
 
 This is what makes shared kernels modular: `fn scale(acc: u32, k: u16) -> u32` is
 callable from many sites without the inliner's help, so an accumulate/step family
-stops hand-inlining its widen-multiply-shift. The honest residual: a *two*-wide-param
-kernel (`q_mul(a: u32, b: u32)`) still doesn't fit three registers — and for the
-Q16.16 multiply the registers aren't even the binding constraint, the **math** is: a
-32×32 product needs a 64-bit intermediate the substrate doesn't have, so the kernel
-is word-split partials (`ah·bh<<16 + ah·bl + al·bh + (al·bl)>>16`, each 16×16→32)
-regardless of how the operands arrive. That shape is a **state cell** (named `u32`
-fields in, `u32` out — the field surface has no register budget), which is the
-recommended pattern for any ≥2-wide-input kernel. Host note: a u32-param **entry** is drivable from the host by
+stops hand-inlining its widen-multiply-shift.
+
+**Two u32 params** are also in — the composition debt that forced every fraction
+cell to inline its own Euclidean GCD loop is paid: `fn gcd_u32(a: u32, b: u32) ->
+u32` is callable. The convention mirrors the house `__mul32` precedent (its left
+operand has always travelled on the stack): the **first** u32 rides `HL:DE`, the
+**second** rides the **stack** (caller pushes `hi` then `lo`, then `CALL`s), and
+the **callee pops it** in its prologue (`POP ret / POP lo / POP hi / PUSH ret`) —
+no caller cleanup, no SP-relative addressing, ~6 prologue instructions. An optional
+third **u16** may follow in `BC` (it was idle). Allowed signatures grow to:
+`(u32)`, `(u32, u16)`, `(u32, u32)`, `(u32, u32, u16)` — the u32s must be the
+leading params. Still no recursion, so params land in static slots as ever.
+
+**Composition costs zero bytes.** A wide kernel called from *one* site folds into
+its caller (the inliner treats a `u32` param as its two slots, binds it with an
+`Assign32`, and substitutes a pure wide arg like any scalar), so a shared kernel
+called once is byte-identical to the loop it replaced — the standalone-cartridge
+model bundles the prelude per cell, so this is what keeps `gcd_u32(self.n, self.d)`
+from costing more than the hand-inlined loop. Two refinements make it *exact*:
+*result-aliasing* lands the kernel's returned local straight on the caller's result
+slot (no trailing copy — the reduced `x` becomes the `let g`), and an *effect-free
+arg* (a `self.field` read) substitutes without a bind/copy whenever the kernel writes
+no memory. A kernel called from *many* sites stays a real call (the convention above)
+and is shared — a net byte win exactly when the same kernel is used more than once in
+a cell. Measured: the ten fraction cells fold byte-for-byte; four unrelated cells that
+call a prelude helper once got *smaller* (−21 bytes) from result-aliasing alone.
+
+The *math* residual stands: a Q16.16 `q_mul` needs a 64-bit intermediate the
+substrate doesn't have, so that kernel remains word-split partials
+(`ah·bh<<16 + ah·bl + al·bh + (al·bl)>>16`, each 16×16→32) however its operands
+arrive — a **state cell** (named `u32` fields in, `u32` out) stays the recommended
+pattern for kernels that are wide in *math*, not just in arity. Host note: a u32-param **entry** is drivable from the host by
 passing the two words as `args = [low, high]` — the register convention makes the
 split exact.
 

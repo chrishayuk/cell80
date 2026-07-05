@@ -237,6 +237,11 @@ pub struct Func {
     /// The first parameter is a `u32` riding `HL:DE` (the one-wide-param call
     /// convention). Excluded from inlining (slot plans assume 1 slot/param).
     pub wide_param: bool,
+    /// The *second* parameter is also a `u32` — it rides the **stack** (the
+    /// `__mul32` shape: caller pushes high then low; the callee's prologue pops
+    /// it under the return address). Implies `wide_param`; at most one more
+    /// 16-bit parameter may follow in `BC`.
+    pub wide_second: bool,
     /// The single return value is a `u32` in `HL:DE` (evaluated by `gen_expr32`).
     pub wide_ret: bool,
 }

@@ -42,10 +42,11 @@ pub(super) struct Asm {
     /// The current function returns a `u32` (a `return e` evaluates via
     /// `gen_expr32` into `HL:DE`).
     pub(super) func_ret_wide: bool,
-    /// Call-boundary signatures: name → `(wide first param, wide return)` — how a
-    /// call site lays `HL:DE` (+`BC`) instead of `HL`/`DE`/`BC`. Built by the
-    /// program-level entries from the lowered `Func` flags.
-    pub(super) wide_sigs: HashMap<String, (bool, bool)>,
+    /// Call-boundary signatures: name → `(wide first param, wide second param,
+    /// wide return)` — how a call site lays `HL:DE` (+ stack, +`BC`) instead of
+    /// `HL`/`DE`/`BC`. Built by the program-level entries from the lowered
+    /// `Func` flags.
+    pub(super) wide_sigs: HashMap<String, (bool, bool, bool)>,
     /// Whether the used runtime routines have been appended ([`Asm::seal`] ran).
     sealed: bool,
     /// Per-rule peephole fire counts from [`Asm::seal`] (measurement, not behaviour).

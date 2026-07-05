@@ -119,6 +119,13 @@ pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String>
     Ok(Program { code, symbols })
 }
 
+/// [`compile_file_pruned`] from source text — the cell layer's path (inline, then prune the
+/// shared-kernel prelude to what the entry reaches), exposed for callers holding a `&str`.
+pub fn compile_program_pruned(src: &str, roots: &[&str]) -> Result<Program, String> {
+    let file: syn::File = syn::parse_str(src).map_err(|e| format!("parse error: {e}"))?;
+    compile_file_pruned(&file, Target::Spectrum48, roots)
+}
+
 /// Like [`compile_file`], but **dead-code-eliminates** down to the functions reachable from
 /// the entry `roots`. Whole-program compilers (games) don't know the entry until runtime, so
 /// they call [`compile_file`] (keep everything); the cell layer knows a cell's entry

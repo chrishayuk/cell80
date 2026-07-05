@@ -1,4 +1,4 @@
-//! Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via an inline GCD — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction.
+//! Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction.
 //! tags: fraction, frac, scale, multiply, integer, reduce, wide, u32, checked, escalate
 //! entry: FracScale::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if d == 0; escalates (halt 0xFF05, needs_wider_math) if n * k overflows u32
@@ -13,15 +13,9 @@ impl FracScale {
             self.den = 1u32;
             return 1u16;
         }
-        let mut x = p;
-        let mut y = self.d;
-        while y != 0u32 {
-            let t = y;
-            y = x % y;
-            x = t;
-        }
-        self.num = p / x;
-        self.den = self.d / x;
+        let g = gcd_u32(p, self.d);
+        self.num = p / g;
+        self.den = self.d / g;
         1u16
     }
 }

@@ -307,11 +307,30 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
 /// Emit a call: arguments evaluated left-to-right onto the stack, popped into the
 /// convention registers, then `CALL`. A **wide first argument** (the one-u32
 /// convention, docs 10 §Calls) occupies `HL:DE` — two pushes, two pops — leaving
-/// `BC` for at most one more 16-bit argument. The result lands wherever the callee
-/// leaves it (`HL`, or `HL:DE` for a wide return — the caller knows which).
+/// `BC` for at most one more 16-bit argument. A **wide second argument** stays on
+/// the stack for the callee to pop (the `__mul32` shape) — it is evaluated *first*
+/// (lowering guarantees the args are effect-free), then any 16-bit third, then the
+/// first wide last so it sits in `HL:DE` at `CALL`. The result lands wherever the
+/// callee leaves it (`HL`, or `HL:DE` for a wide return — the caller knows which).
 pub(super) fn gen_call(a: &mut Asm, name: &str, args: &[Expr]) {
-    let wide_first = a.wide_sigs.get(name).map(|(wp, _)| *wp).unwrap_or(false);
-    if wide_first {
+    let (wide_first, wide_second) = a
+        .wide_sigs
+        .get(name)
+        .map(|(wp, ws, _)| (*wp, *ws))
+        .unwrap_or((false, false));
+    if wide_second {
+        gen_expr32(a, &args[1]);
+        a.push(R16::De); // PUSH DE   (arg1.high — popped last by the callee)
+        a.push(R16::Hl); // PUSH HL   (arg1.low — on top, popped first)
+        if args.len() > 2 {
+            gen_expr(a, &args[2]);
+            a.push(R16::Hl);
+        }
+        gen_expr32(a, &args[0]); // HL:DE = arg0 (nested calls balance the stack)
+        if args.len() > 2 {
+            a.pop(R16::Bc); // the one extra 16-bit argument
+        }
+    } else if wide_first {
         gen_expr32(a, &args[0]);
         a.push(R16::De); // PUSH DE   (arg0.high)
         a.push(R16::Hl); // PUSH HL   (arg0.low)

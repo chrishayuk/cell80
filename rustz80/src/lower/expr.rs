@@ -320,6 +320,21 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         lowered.len()
                     ));
                 }
+                // A two-wide call reorders evaluation: the first u32 goes *last*
+                // (the stack shape, docs 10 §Calls) while the rest keep their order.
+                // The only observable reordering is the first arg against the others,
+                // so it is sound unless the first arg *and* some later arg both carry
+                // effects — then at most one may, and the caller hoists the rest.
+                if sig.arg_wides.iter().filter(|w| **w).count() >= 2
+                    && has_effects(&lowered[0].0)
+                    && lowered[1..].iter().any(|(e, _)| has_effects(e))
+                {
+                    return Err(format!(
+                        "arguments to `{name}` (two u32 parameters) reorder evaluation — \
+                         the first argument is computed last, so it and another argument \
+                         cannot both have side effects; hoist a call to a `let` binding"
+                    ));
+                }
                 let mut args = Vec::with_capacity(lowered.len());
                 for (i, ((e, w), wide)) in lowered.into_iter().zip(&sig.arg_wides).enumerate() {
                     if *wide {
@@ -328,7 +343,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         if w == Width::DWord {
                             return Err(format!(
                                 "argument {} of `{name}` is 16-bit — narrow with `as u16` \
-                                 (only a u32 *first* parameter rides wide)",
+                                 (only *leading* u32 parameters ride wide)",
                                 i + 1
                             ));
                         }

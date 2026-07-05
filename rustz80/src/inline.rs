@@ -1,7 +1,10 @@
 //! A conservative function **inliner** (IR → IR), run before codegen.
 //!
-//! It folds each **single-call-site**, early-return-free, scalar/void function into its
-//! one caller. Single-call-site is the key: inlining there never *duplicates* code, so
+//! It folds each **single-call-site**, early-return-free function into its one caller —
+//! scalar, void, or wide (a `u32`-param/`u32`-return kernel; its two-slot params bind via
+//! `Assign32` and pure wide args substitute just like scalars, so a once-called shared
+//! kernel is as compact inlined as the loop it replaced). Single-call-site is the key:
+//! inlining there never *duplicates* code, so
 //! it's a pure size win — it removes the call's prologue/epilogue, the param copies into
 //! scratch slots, and the `CALL`/`RET`. The now-uncalled callee is then dropped by
 //! [`crate::dce::prune`]. The point (for the `chuk-speccy` authoring plane): an author can
@@ -46,10 +49,6 @@ pub(crate) fn inline(mut funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(Str
                 && !roots.contains(&n.as_str())
                 && f.ret.len() <= 1
                 && !has_return(&f.body)
-                // Wide-boundary fns stay real calls: the slot plan assumes one
-                // slot per param, and a wide return isn't a single-`HL` value.
-                && !f.wide_param
-                && !f.wide_ret
         })
         .map(|(n, f)| (n.clone(), f.clone()))
         .collect();
@@ -93,6 +92,15 @@ fn inline_stmts(
                     expand(&g, &gf, args, Some(slot), cand, stack, water, max, &mut out);
                 } else {
                     out.push(Stmt::Assign(slot, Expr::Call(g, args)));
+                }
+            }
+            // A wide-return call (`let w: u32 = kernel(..)`) lands in `Assign32`.
+            Stmt::Assign32(slot, Expr::Call(g, args)) => {
+                if go(&g, stack) {
+                    let gf = cand[&g].clone();
+                    expand(&g, &gf, args, Some(slot), cand, stack, water, max, &mut out);
+                } else {
+                    out.push(Stmt::Assign32(slot, Expr::Call(g, args)));
                 }
             }
             Stmt::If(c, t, e) => out.push(Stmt::If(
@@ -145,18 +153,83 @@ fn expand(
     collect_written(&g.body, &mut written);
     collect_addr(&g.body, &mut addrd);
 
+    // When the callee writes no memory, an *effect-free* arg (e.g. a `self.field` read)
+    // is stable throughout the body — the body only ever writes its own relocated scratch
+    // slots (and the aliased result, which no arg reads), never the caller memory the arg
+    // reads. So such an arg substitutes just like a pure one, no bind/copy. This is what
+    // lets a kernel called on struct fields (`gcd_u32(self.n, self.d)`) fold for free.
+    let body_pure = no_mem_writes(&g.body);
+
+    // A `u32` param spans *two* consecutive slots (low, high) but is one call arg;
+    // the first arg rides wide when `wide_param`, the second when `wide_second`
+    // (the cross-call convention — irrelevant here, but it fixes the slot layout).
+    let arg_wide = |i: usize| (i == 0 && g.wide_param) || (i == 1 && g.wide_second);
+
+    // Result-aliasing: when the call binds a slot (`let g = kernel(..)`) and the kernel
+    // returns one of its own *locals* (e.g. `gcd`'s reduced `x`), relocate that local
+    // straight onto the result slot instead of computing-then-copying. This is what
+    // makes a folded kernel byte-identical to the hand-inlined loop — no trailing copy.
+    // Sound only if no argument reads the result slot (else the body could clobber a
+    // still-live input); a wide result also reserves its high word.
+    let alias: Option<(usize, usize, bool)> = match (result, g.ret.first()) {
+        (Some(r), Some(Expr::Var32(s)))
+            if *s >= g.params
+                && !args
+                    .iter()
+                    .any(|a| reads_slot(a, r) || reads_slot(a, r + 1)) =>
+        {
+            Some((*s, r, true))
+        }
+        (Some(r), Some(Expr::Var(s)))
+            if *s >= g.params && !args.iter().any(|a| reads_slot(a, r)) =>
+        {
+            Some((*s, r, false))
+        }
+        _ => None,
+    };
+
+    // Build the slot plan arg-by-arg (params), then 1:1 for locals. Track the
+    // relocated params to bind after — a wide bind is one `Assign32`.
     let mut plan: Vec<Slot> = Vec::with_capacity(g.n_locals);
     let mut next = base;
-    // Slots `0..params` are parameters (have an `args[s]`); `params..n_locals` are locals.
-    #[allow(clippy::needless_range_loop)]
-    for s in 0..g.n_locals {
-        let subst = s < g.params && pure(&args[s]) && !written.contains(&s) && !addrd.contains(&s);
-        if subst {
-            plan.push(Slot::Subst(args[s].clone()));
+    let mut binds: Vec<(usize, Expr, bool)> = Vec::new();
+    for (i, a) in args.iter().enumerate() {
+        let s = plan.len(); // this arg's (low) slot
+        let wide = arg_wide(i);
+        // A wide value lives across `s`/`s+1` but is only ever named by its low slot
+        // (`Var32(s)`/`Assign32(s)`), so the read-only test on `s` covers both words.
+        let readonly = !written.contains(&s) && !addrd.contains(&s);
+        if readonly && (pure(a) || (body_pure && effect_free(a))) {
+            plan.push(Slot::Subst(a.clone()));
+            if wide {
+                plan.push(Slot::Subst(a.clone())); // high word — never named alone
+            }
         } else {
+            binds.push((next, a.clone(), wide));
             plan.push(Slot::Reloc(next));
             next += 1;
+            if wide {
+                plan.push(Slot::Reloc(next));
+                next += 1;
+            }
         }
+    }
+    // Locals (`params..n_locals`) relocate one caller slot each — a wide local's two
+    // callee slots stay adjacent in the caller, preserving low/high addressing. The
+    // aliased return-local (if any) lands on the result slot instead of fresh scratch.
+    for s in g.params..g.n_locals {
+        if let Some((as_slot, rslot, wide)) = alias {
+            if s == as_slot {
+                plan.push(Slot::Reloc(rslot));
+                continue;
+            }
+            if wide && s == as_slot + 1 {
+                plan.push(Slot::Reloc(rslot + 1));
+                continue;
+            }
+        }
+        plan.push(Slot::Reloc(next));
+        next += 1;
     }
     *water = next;
     if *water > *max {
@@ -164,11 +237,11 @@ fn expand(
     }
 
     // Bind the slot-backed params (substituted ones need no copy).
-    for (i, a) in args.iter().enumerate() {
-        if i < g.params {
-            if let Slot::Reloc(n) = plan[i] {
-                out.push(Stmt::Assign(n, a.clone()));
-            }
+    for (n, a, wide) in binds {
+        if wide {
+            out.push(Stmt::Assign32(n, a));
+        } else {
+            out.push(Stmt::Assign(n, a));
         }
     }
 
@@ -180,8 +253,17 @@ fn expand(
     stack.pop();
     out.extend(inlined);
 
-    if let (Some(slot), Some(r)) = (result, g.ret.first()) {
-        out.push(Stmt::Assign(slot, remap_expr(r, &plan)));
+    // The tail return copies into the result slot — unless it was aliased onto it, in
+    // which case the body already left the value there.
+    if alias.is_none() {
+        if let (Some(slot), Some(r)) = (result, g.ret.first()) {
+            // A wide return feeds the caller's `Assign32` slot; a scalar its `Assign`.
+            if g.wide_ret {
+                out.push(Stmt::Assign32(slot, remap_expr(r, &plan)));
+            } else {
+                out.push(Stmt::Assign(slot, remap_expr(r, &plan)));
+            }
+        }
     }
     *water = base; // pop
 }
@@ -198,6 +280,76 @@ fn pure(e: &Expr) -> bool {
             | Expr::Var32(_)
             | Expr::Lit32(_)
     )
+}
+
+/// Does expression `e` read caller slot `slot` (as a value, address, or index base)? Used
+/// to keep result-aliasing sound — an argument that reads the result slot forbids the alias.
+fn reads_slot(e: &Expr, slot: usize) -> bool {
+    let r = |x: &Expr| reads_slot(x, slot);
+    match e {
+        Expr::Var(s) | Expr::Var32(s) | Expr::AddrOf(s) => *s == slot,
+        Expr::Index(s, i, _) => *s == slot || r(i),
+        Expr::Lit(_) | Expr::Lit32(_) | Expr::ConstAddr(_) => false,
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => r(a) || r(b),
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. } => r(lhs) || r(rhs),
+        Expr::Call(_, args) => args.iter().any(r),
+        Expr::Trunc(a)
+        | Expr::Trunc32(a)
+        | Expr::Widen(a)
+        | Expr::Peek(a)
+        | Expr::InPort(a)
+        | Expr::Halt(a)
+        | Expr::MulConst(a, _)
+        | Expr::LoadAt(a, _)
+        | Expr::Deref(a, _)
+        | Expr::Deref32(a, _)
+        | Expr::Shift32 { e: a, .. } => r(a),
+        Expr::PtrIndex { ptr, index, .. } => r(ptr) || r(index),
+        Expr::ShiftVar { e, amount, .. } => r(e) || r(amount),
+    }
+}
+
+/// Does the body write memory anywhere (a raw poke, a pointer/array store, a fill)? If not,
+/// any memory an *effect-free* arg reads stays stable across the inlined body — the premise
+/// that lets a `self.field` arg substitute rather than copy.
+fn no_mem_writes(body: &[Stmt]) -> bool {
+    body.iter().all(|s| match s {
+        Stmt::Poke(..)
+        | Stmt::Store(..)
+        | Stmt::Store32(..)
+        | Stmt::StoreAt(..)
+        | Stmt::StoreIndex(..)
+        | Stmt::PtrStoreIndex { .. }
+        | Stmt::Fill { .. } => false,
+        Stmt::If(_, t, e) => no_mem_writes(t) && no_mem_writes(e),
+        Stmt::While(_, b) | Stmt::Loop(b) => no_mem_writes(b),
+        Stmt::ForRange { body, .. } => no_mem_writes(body),
+        _ => true,
+    })
+}
+
+/// An expression with no observable side effect (no call, port read, or halt). Memory
+/// *reads* (`Deref`, `Peek`, `Index`) qualify — their value is stable only when the context
+/// writes no memory, which the caller checks separately via [`no_mem_writes`].
+fn effect_free(e: &Expr) -> bool {
+    match e {
+        Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => false,
+        Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => true,
+        Expr::Lit32(_) | Expr::Var32(_) => true,
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => effect_free(a) && effect_free(b),
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. } => effect_free(lhs) && effect_free(rhs),
+        Expr::Index(_, i, _) => effect_free(i),
+        Expr::Trunc(x) | Expr::Trunc32(x) | Expr::Widen(x) | Expr::Peek(x) => effect_free(x),
+        Expr::Deref(p, _) | Expr::Deref32(p, _) => effect_free(p),
+        Expr::PtrIndex { ptr, index, .. } => effect_free(ptr) && effect_free(index),
+        Expr::MulConst(x, _) | Expr::LoadAt(x, _) => effect_free(x),
+        Expr::ShiftVar { e, amount, .. } => effect_free(e) && effect_free(amount),
+        Expr::Shift32 { e, .. } => effect_free(e),
+    }
 }
 
 /// Any early `return` anywhere in the body (incl. nested blocks)? Such a function isn't a
@@ -513,8 +665,12 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
             Slot::Subst(a) => a.clone(),
             Slot::Reloc(n) => Expr::Var(*n),
         },
-        // u32 locals and `&local` never name a substituted (scalar, read-only) param.
-        Expr::Var32(s) => Expr::Var32(reloc(plan, *s)),
+        // A wide read: substitute the (pure, read-only) wide arg, or read the
+        // relocated slot pair. `&local` still only names relocated slots.
+        Expr::Var32(s) => match &plan[*s] {
+            Slot::Subst(a) => a.clone(),
+            Slot::Reloc(n) => Expr::Var32(*n),
+        },
         Expr::AddrOf(s) => Expr::AddrOf(reloc(plan, *s)),
         Expr::Index(s, i, w) => Expr::Index(reloc(plan, *s), e(i), *w),
         Expr::Lit(n) => Expr::Lit(*n),

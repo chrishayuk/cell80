@@ -1,4 +1,4 @@
-//! Average of two fractions na/da and nb/db, reduced to lowest terms via an inline GCD.
+//! Average of two fractions na/da and nb/db, reduced to lowest terms via the shared gcd_u32 kernel.
 //! tags: fraction, frac, average, mean, midpoint, wide, u32, checked, escalate
 //! entry: FracAvg2::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if da == 0 or db == 0; escalates (halt 0xFF05, needs_wider_math) if any cross-product, the combined numerator, or the combined denominator overflows u32
@@ -21,15 +21,9 @@ impl FracAvg2 {
             self.den = 1u32;
             return 1u16;
         }
-        let mut x = num_raw;
-        let mut y = den_raw;
-        while y != 0u32 {
-            let t = y;
-            y = x % y;
-            x = t;
-        }
-        self.num = num_raw / x;
-        self.den = den_raw / x;
+        let g = gcd_u32(num_raw, den_raw);
+        self.num = num_raw / g;
+        self.den = den_raw / g;
         1u16
     }
 }

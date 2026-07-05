@@ -1,4 +1,4 @@
-//! Add two fractions na/da + nb/db, reduced to lowest terms via an inline GCD.
+//! Add two fractions na/da + nb/db, reduced to lowest terms via the shared gcd_u32 kernel.
 //! tags: fraction, frac, add, sum, arithmetic, wide, u32, checked
 //! entry: FracAdd::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if da == 0 or db == 0; escalates (halt 0xFF05, needs_wider_math) if any cross-product or the combined denominator overflows u32
@@ -19,15 +19,9 @@ impl FracAdd {
             self.den = 1u32;
             return 1u16;
         }
-        let mut x = num_raw;
-        let mut y = den_raw;
-        while y != 0u32 {
-            let t = y;
-            y = x % y;
-            x = t;
-        }
-        self.num = num_raw / x;
-        self.den = den_raw / x;
+        let g = gcd_u32(num_raw, den_raw);
+        self.num = num_raw / g;
+        self.den = den_raw / g;
         1u16
     }
 }

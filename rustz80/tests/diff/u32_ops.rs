@@ -494,22 +494,182 @@ fn u32_wide_returns_and_early_return() {
 }
 
 #[test]
+fn two_u32s_cross_a_call_boundary() {
+    // The two-wide convention (docs 10 §Calls): the first u32 rides HL:DE, the
+    // *second* rides the stack (the `__mul32` shape — caller pushes, callee pops).
+    // The demand case: a shared Euclidean GCD kernel, which every fraction cell
+    // previously had to inline by hand. Multi-call-site + a loop, so neither the
+    // inliner nor constant folding can rescue it. Checked against rustc.
+    let src = "
+        fn gcd_u32(a: u32, b: u32) -> u32 {
+            let mut x = a;
+            let mut y = b;
+            while y != 0u32 { let t = x % y; x = y; y = t; }
+            x
+        }
+        fn run() -> u16 {
+            let g = gcd_u32(600_000u32, 84_000u32);
+            let h = gcd_u32(g, 9_000u32);
+            (g / 1000u32) as u16 + h as u16
+        }
+    ";
+    fn gcd_u32(a: u32, b: u32) -> u32 {
+        let mut x = a;
+        let mut y = b;
+        while y != 0 {
+            let t = x % y;
+            x = y;
+            y = t;
+        }
+        x
+    }
+    fn host() -> u16 {
+        let g = gcd_u32(600_000, 84_000);
+        let h = gcd_u32(g, 9_000);
+        (g / 1000) as u16 + h as u16
+    }
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn two_u32s_plus_a_u16_third() {
+    // The full register file: HL:DE + stack + BC — and a *nested* two-wide call
+    // as the first argument (its pushes balance before the outer CALL).
+    let src = "
+        fn mix(a: u32, b: u32, k: u16) -> u32 { (a - b) / k as u32 }
+        fn run() -> u16 {
+            let outer = mix(mix(500_000u32, 100_000u32, 4u16), 30_000u32, 7u16);
+            (outer / 100u32) as u16
+        }
+    ";
+    fn mix(a: u32, b: u32, k: u16) -> u32 {
+        (a - b) / k as u32
+    }
+    fn host() -> u16 {
+        let outer = mix(mix(500_000, 100_000, 4), 30_000, 7);
+        (outer / 100) as u16
+    }
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
+fn two_wide_kernel_inlines_when_called_once() {
+    // A single-call-site wide kernel folds into its caller (no CALL, no wide
+    // convention) — the shared-kernel *source* costs nothing in *bytes*. Proven
+    // two ways: (1) it runs identically to rustc, and (2) it compiles to the exact
+    // same image as the hand-inlined loop it replaces.
+    let shared = "
+        fn gcd_u32(a: u32, b: u32) -> u32 {
+            let mut x = a;
+            let mut y = b;
+            while y != 0u32 { let t = y; y = x % y; x = t; }
+            x
+        }
+        fn run() -> u16 {
+            let g = gcd_u32(360_000u32, 84_000u32);
+            (g / 100u32) as u16
+        }
+    ";
+    fn gcd_u32(a: u32, b: u32) -> u32 {
+        let mut x = a;
+        let mut y = b;
+        while y != 0 {
+            let t = y;
+            y = x % y;
+            x = t;
+        }
+        x
+    }
+    fn host() -> u16 {
+        (gcd_u32(360_000, 84_000) / 100) as u16
+    }
+    assert_eq!(run_program(shared, "run"), host());
+
+    // Through the cell path (inline + prune), the kernel folds fully into `run` — the
+    // image is a *single function*: no `CALL`, no wide-convention shuffling, no separate
+    // kernel body. So the shared-kernel source costs nothing a real call would.
+    let shared_prog = rustz80::compile_program_pruned(shared, &["run"]).unwrap();
+    assert!(
+        shared_prog
+            .size_report()
+            .iter()
+            .all(|f| f.name != "gcd_u32"),
+        "a once-called wide kernel must be inlined away and pruned (no `gcd_u32` symbol): {:?}",
+        shared_prog
+            .size_report()
+            .iter()
+            .map(|f| f.name.clone())
+            .collect::<Vec<_>>()
+    );
+
+    // Apples-to-apples against the natural hand-inlined form (uses the reduced value `x`
+    // directly, twice). Result-aliasing lands the kernel's returned `x` straight on the
+    // caller's `g` slot, so the folded kernel is size-neutral — no trailing copy.
+    let hand = "
+        fn run() -> u16 {
+            let mut x = 360_000u32;
+            let mut y = 84_000u32;
+            while y != 0u32 { let t = y; y = x % y; x = t; }
+            (360_000u32 / x + 84_000u32 / x) as u16
+        }
+    ";
+    let kernel2 = "
+        fn gcd_u32(a: u32, b: u32) -> u32 {
+            let mut x = a;
+            let mut y = b;
+            while y != 0u32 { let t = y; y = x % y; x = t; }
+            x
+        }
+        fn run() -> u16 {
+            let g = gcd_u32(360_000u32, 84_000u32);
+            (360_000u32 / g + 84_000u32 / g) as u16
+        }
+    ";
+    let hand_bytes = rustz80::compile_program_pruned(hand, &["run"])
+        .unwrap()
+        .code;
+    let kernel_bytes = rustz80::compile_program_pruned(kernel2, &["run"])
+        .unwrap()
+        .code;
+    assert_eq!(
+        kernel_bytes.len(),
+        hand_bytes.len(),
+        "a once-called wide kernel folds to the same size as the hand-inlined loop \
+         ({} vs {})",
+        kernel_bytes.len(),
+        hand_bytes.len()
+    );
+}
+
+#[test]
 fn u32_call_boundary_rejections() {
     // The convention is deliberately minimal — everything outside it steers.
-    // A second u32 param (4 register slots):
-    let err = rustz80::compile_program(
-        "fn f(a: u32, b: u32) -> u32 { a + b } fn run() -> u16 { f(1u32, 2u32) as u16 }",
-    )
-    .err()
-    .unwrap();
-    assert!(err.contains("must be the *first*"), "unexpected: {err}");
-    // A u32 in a non-first position:
+    // A u32 in a non-leading position:
     let err = rustz80::compile_program(
         "fn f(k: u16, w: u32) -> u16 { (w as u16) + k } fn run() -> u16 { f(1u16, 2u32) }",
     )
     .err()
     .unwrap();
-    assert!(err.contains("must be the *first*"), "unexpected: {err}");
+    assert!(err.contains("must be a *leading*"), "unexpected: {err}");
+    // A third u32 (registers + stack are spent):
+    let err = rustz80::compile_program(
+        "fn f(a: u32, b: u32, c: u32) -> u32 { a + b + c }
+         fn run() -> u16 { f(1u32, 2u32, 3u32) as u16 }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("must be a *leading*"), "unexpected: {err}");
+    // Two effectful arguments to a two-wide call — the first goes last, so their
+    // relative order can't be preserved (one call arg is fine; two is not):
+    let err = rustz80::compile_program(
+        "fn g() -> u32 { 5u32 }
+         fn h() -> u32 { 6u32 }
+         fn f(a: u32, b: u32) -> u32 { a + b }
+         fn run() -> u16 { f(g(), h()) as u16 }",
+    )
+    .err()
+    .unwrap();
+    assert!(err.contains("reorder evaluation"), "unexpected: {err}");
     // A wide argument into a 16-bit slot:
     let err = rustz80::compile_program(
         "fn f(k: u16) -> u16 { k } fn run() -> u16 { let w = 1u32; f(w) }",
