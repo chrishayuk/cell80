@@ -32,8 +32,16 @@
 //!   state. `DE` ends holding its prior value instead of the literal — scratch either
 //!   way. Only fires on the `imm ∈ {1,2}` add (the literal `LD DE,base_addr` used for
 //!   address arithmetic and the `*2` `ADD HL,HL` are untouched).
+//! - **R8** `PUSH HL; <DE-free span ≥2>; POP DE` → `EX DE,HL; <span>`. The window-spanning
+//!   generalisation of R1: the span reads/writes only `HL`/`BC`/memory (never `DE`, the
+//!   stack, flags, or control flow — [`de_free_span`]), so `EX DE,HL` up front leaves the
+//!   same final state (`DE` = the pushed `HL`, `HL` = the span's result) with the stack
+//!   balanced. R7 *creates* this shape: a `self.arr[i]` element address is
+//!   `PUSH HL; LD HL,(self); INC HL…; POP DE` once R7 reduces the field-offset add. The
+//!   span must be ≥2 so R1 keeps the single-leaf case.
 //!
-//! Rules run to a fixpoint: a rewrite can expose another match (R1 feeds R2 feeds R7).
+//! Rules run to a fixpoint: a rewrite can expose another match (R1 feeds R2 feeds R7,
+//! and R7's `INC HL` spans feed R8).
 
 use super::ins::{FxBytes, Imm, Ins, R16};
 
@@ -55,11 +63,35 @@ pub struct PeepholeCounts {
     pub cleanup: u64,
     /// R7: `+1`/`+2` value add strength-reduced to `INC HL`(`; INC HL`).
     pub inc_dec: u64,
+    /// R8: window-spanning `PUSH HL … POP DE` collapsed to `EX DE,HL`.
+    pub window_span: u64,
 }
 
 /// `INC HL` (0x23) as a one-byte fixed instruction — the target of R7.
 fn inc_hl() -> Ins {
     Ins::Fx(FxBytes::new(&[0x23]))
+}
+
+/// A span instruction safe to carry across a `PUSH HL … POP DE` → `EX DE,HL` rewrite
+/// (R8): reads/writes only `HL`/`BC`/memory — never `DE`, the stack, flags, or control
+/// flow. `INC HL`/`DEC HL` (the `0x23`/`0x2B` fixed bytes R7 leaves) are the shape that
+/// makes R8 fire on element-address code.
+fn de_free_span(i: &Ins) -> bool {
+    matches!(
+        i,
+        Ins::LdHlMem(_)
+            | Ins::StHlMem(_)
+            | Ins::LdImm(R16::Hl | R16::Bc, _)
+            | Ins::LdImmSym(R16::Hl | R16::Bc, _)
+            | Ins::AddHl(R16::Hl | R16::Bc)
+    ) || matches!(i, Ins::Fx(fx) if fx.bytes() == [0x23] || fx.bytes() == [0x2B])
+}
+
+/// R8 match: if the instructions after a `PUSH HL` form a **non-trivial** DE-free span
+/// (`≥2`, so R1 keeps the single-leaf case) terminated by `POP DE`, the span length.
+fn r8_span_len(rest: &[Ins]) -> Option<usize> {
+    let n = rest.iter().take_while(|i| de_free_span(i)).count();
+    (n >= 2 && matches!(rest.get(n), Some(Ins::Pop(R16::De)))).then_some(n)
 }
 
 /// Is `i` a leaf load into `HL` — reads neither `DE`, flags, nor the stack?
@@ -106,6 +138,15 @@ pub(super) fn optimize(ins: &mut Vec<Ins>) -> PeepholeCounts {
                     out.push(Ins::ExDeHl);
                     out.push(l.clone());
                     i += 3;
+                }
+                // R8 — window-spanning leaf pair (the ≥2 span R1 can't take).
+                [Ins::Push(R16::Hl), ..] if r8_span_len(&ins[i + 1..]).is_some() => {
+                    let span = r8_span_len(&ins[i + 1..]).unwrap();
+                    counts.window_span += 1;
+                    changed = true;
+                    out.push(Ins::ExDeHl);
+                    out.extend(ins[i + 1..i + 1 + span].iter().cloned());
+                    i += span + 2; // PUSH + span + POP DE
                 }
                 // R2 — literal add straight into DE (runs on R1's output next pass).
                 [Ins::ExDeHl, Ins::LdImm(R16::Hl, m), Ins::AddHl(R16::De), ..] => {
@@ -244,6 +285,25 @@ mod tests {
         assert_eq!(c, PeepholeCounts::default());
     }
 
+    #[test]
+    fn r8_fires_on_element_address() {
+        // `self.arr[i]` with a non-zero field offset produces `PUSH HL; LD HL,(self);
+        // INC HL…; POP DE` (R7 supplies the `INC HL`s), the DE-free span R8 collapses to
+        // `EX DE,HL`. Fired-proof: the counter is non-zero on both targets.
+        let src = "
+            struct S { first: u16, arr: [u16; 4] }
+            impl S { fn at(&self, i: u16) -> u16 { self.arr[i] } }
+            fn run() -> u16 { let s = S { first: 1u16, arr: [2u16, 3u16, 4u16, 5u16] }; s.at(2u16) }
+        ";
+        for target in [Target::Spectrum48, Target::Cell] {
+            let c = counts_for(src, target);
+            assert!(
+                c.window_span >= 1,
+                "R8 should fire on the element-address shape ({target:?}), got {c:?}"
+            );
+        }
+    }
+
     /// The measured rule ranking on a representative body (the DoD asks for counted
     /// sites, not an assumed ranking): the leaf-operand pair rule dominates.
     #[test]
@@ -308,6 +368,7 @@ mod tests {
             total.call_tail += c.call_tail;
             total.cleanup += c.cleanup;
             total.inc_dec += c.inc_dec;
+            total.window_span += c.window_span;
             files += 1;
         }
         println!("peephole sites across {files} cells: {total:?}");
@@ -326,19 +387,6 @@ mod tests {
             return;
         };
         let (mut span_safe, mut reload, mut files) = (0u64, 0u64, 0u32);
-        // Conservative safe-span whitelist for a window-spanning leaf-pair rewrite
-        // (`PUSH HL; span; POP DE` → `EX DE,HL; span`): the span must neither touch DE
-        // nor the stack nor branch. These Ins read/write only HL/BC/memory.
-        let de_free = |i: &Ins| {
-            matches!(
-                i,
-                Ins::LdHlMem(_)
-                    | Ins::StHlMem(_)
-                    | Ins::LdImm(R16::Hl | R16::Bc, _)
-                    | Ins::LdImmSym(R16::Hl | R16::Bc, _)
-                    | Ins::AddHl(R16::Hl | R16::Bc)
-            ) || matches!(i, Ins::Fx(fx) if fx.bytes() == [0x23] || fx.bytes() == [0x2B])
-        };
         for e in entries {
             let p = e.unwrap().path();
             if p.extension().is_none_or(|x| x != "rs") {
@@ -348,18 +396,10 @@ mod tests {
             let Some(ins) = sealed_ins(&src, Target::Cell) else {
                 continue;
             };
-            // R8 candidate: PUSH HL, then a **non-empty** span of only DE-free/stack-free
-            // instructions, then POP DE. (An empty span is the R1 case; a leaf then POP DE
-            // is also R1 — so require length ≥ 2 to count only genuinely window-spanning.)
+            // R8 candidate: PUSH HL, then a DE-free span ≥2, then POP DE (post-seal this is
+            // 0 — R8 already consumed them; the count lives in `corpus_rule_ranking`).
             for (k, i) in ins.iter().enumerate() {
-                if !matches!(i, Ins::Push(R16::Hl)) {
-                    continue;
-                }
-                let mut j = k + 1;
-                while ins.get(j).is_some_and(de_free) {
-                    j += 1;
-                }
-                if j - (k + 1) >= 2 && matches!(ins.get(j), Some(Ins::Pop(R16::De))) {
+                if matches!(i, Ins::Push(R16::Hl)) && r8_span_len(&ins[k + 1..]).is_some() {
                     span_safe += 1;
                 }
             }

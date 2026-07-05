@@ -31,7 +31,7 @@ micro-runtime.
 > string literals interned, length-prefixed). Everything is differential-tested against
 > `rustc` on the emulator (`rustz80/tests/`); coverage is ≥90% line/region per file.
 > Stage 2 codegen shipped: emission goes through the symbolic **`Ins` layer** (one final
-> encode pass assigns PCs/operands) with a **measured seven-rule peephole** run to fixpoint
+> encode pass assigns PCs/operands) with a **measured eight-rule peephole** run to fixpoint
 > (the first six −4.3 % across the cell corpus; R7's `+1`/`+2` → `INC HL` strength-reduction
 > a further −497 B / 76 programs), plus a width-aware **byte-op high-half elision** (a `u8`
 > `&`/`|`/`^` skips its dead high byte), on top of the earlier const-fold, `× constant` via

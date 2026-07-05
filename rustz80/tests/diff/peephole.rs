@@ -127,6 +127,38 @@ fn r7_inc_strength_reduction() {
 }
 
 #[test]
+fn r8_window_spanning_leaf_pair() {
+    // `self.arr[i]` with `arr` at a non-zero field offset: R7 turns the offset-add into
+    // `INC HL`, leaving a DE-free span between `PUSH HL` and `POP DE` that R8 collapses to
+    // `EX DE,HL`. rustc is the oracle that the window-spanning rewrite preserves behaviour.
+    struct S {
+        first: u16,
+        arr: [u16; 4],
+    }
+    impl S {
+        fn at(&self, i: u16) -> u16 {
+            self.arr[i as usize]
+        }
+    }
+    fn host() -> u16 {
+        let s = S {
+            first: 9,
+            arr: [10, 20, 30, 40],
+        };
+        s.at(0) + s.at(1) * 10 + s.at(3) + s.first // 10 + 200 + 40 + 9 = 259
+    }
+    let src = "
+        struct S { first: u16, arr: [u16; 4] }
+        impl S { fn at(&self, i: u16) -> u16 { self.arr[i] } }
+        fn run() -> u16 {
+            let s = S { first: 9u16, arr: [10u16, 20u16, 30u16, 40u16] };
+            s.at(0u16) + s.at(1u16) * 10u16 + s.at(3u16) + s.first
+        }
+    ";
+    assert_eq!(run_program(src, "run"), host());
+}
+
+#[test]
 fn peephole_kitchen_sink() {
     // All rules interacting in one body, against rustc.
     fn helper(x: u16, y: u16) -> u16 {

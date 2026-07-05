@@ -386,17 +386,18 @@ was no seam for a quality pass. **The seam and the first peephole shipped** (roa
   `tests/peephole_shape.rs`). The `DEC` counterpart is *not* built: `x - N` lowers to
   `LD HL,N; EX DE,HL; …; OR A; SBC HL,DE` (a different, larger window), and sub-by-constant is
   rarer than the loop-increment `+1`.
-- **Next rules — measured, and deferred on the numbers (not hand-waved).** `measure_next_rules`
-  (ignored, in `peephole.rs`) sizes these precisely on the post-peephole stream:
-  - **Window-spanning leaf pairs (R8, `PUSH HL; DE-free span; POP DE` → `EX DE,HL; span`).** The
-    `ptr_elem_addr` case is *created* by R7 (a field-offset add becomes `INC HL`, leaving a DE-free
-    span) — genuinely safe, not subsumed. But it's **15 candidates across 190 cells = 15 bytes**
-    (1 B each), vs R7's 497. A correctness-critical DE-free span-walker for 15 bytes is a poor
-    trade — built only if the count grows materially.
-  - **`what's-in-HL/DE` tracker for cross-statement reload elision.** Ceiling **486** same-slot
-    store→reload pairs, but that's an *upper bound*: most spans clobber `HL`, so the realisable
-    subset is a fraction, and capturing it needs a real dataflow pass (not a window matcher) — the
-    biggest, riskiest of the three. Deferred until a larger demonstrated win justifies the pass.
+- **Window-spanning leaf pairs (R8) — ✓ shipped.** `PUSH HL; <DE-free span ≥2>; POP DE` →
+  `EX DE,HL; <span>` (the span reads/writes only `HL`/`BC`/memory — `de_free_span`, so the up-front
+  `EX` leaves the same final state with the stack balanced). R7 *creates* this shape: a
+  `self.arr[i]` element address is `PUSH HL; LD HL,(self); INC HL…; POP DE` once R7 reduces the
+  field-offset add. Sized first (**15 fires across 190 cells**), then measured **−66 bytes across 28
+  golden programs, none grew** — bigger than the 15 direct because each `EX DE,HL` cascades into
+  R6's `EX;EX` cancellation. rustc-diff (`self.arr[i]` method) + fired-proof counter test; the R6
+  cleanup count rose 19 → 22 accordingly.
+- **`what's-in-HL/DE` tracker for cross-statement reload elision — still deferred.** Ceiling
+  **486** same-slot store→reload pairs, but an *upper bound*: most spans clobber `HL`, so the
+  realisable subset is a fraction, and capturing it needs a real dataflow pass (not a window
+  matcher) — the biggest, riskiest of the remaining ideas. Deferred until a larger win justifies it.
 
 **Wider state — `u32` in state, then fixed-point (kill the overflow footgun).** `u32` already
 exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the gap is persisting

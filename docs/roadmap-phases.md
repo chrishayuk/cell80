@@ -300,7 +300,8 @@ Redundant load elimination (`LD (addr),HL; LD HL,(addr)`), push/pop pairs around
 RHS, dead `mask_to_width`. Measure on the size report — the win is bytes and T-states,
 both metered exactly, so the pass proves itself.
 *DoD:* corpus-wide size/T-state deltas published; diff suite green on both targets.
-**Done:** seven adjacent-window rules over the `Ins` stream, label-fenced by construction,
+**Done:** eight rules over the `Ins` stream (seven adjacent-window + R8's window-spanning
+leaf pair), label-fenced by construction,
 run to fixpoint in `seal()`. Measured sites across the 100 stdlib cells (counted, not
 assumed): leaf-operand pair 150, store-then-reload 30, 2-arg call tail 26, literal-add 15,
 cleanups 4, dead push/pop 2 — the predicted "add is everywhere" ranking holds. Prize:
