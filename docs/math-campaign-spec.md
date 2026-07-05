@@ -284,6 +284,46 @@ things worth knowing *before* M3 spends real compute on them:
    surviving plan), trading a bit of throughput for the battery actually doing what
    §"The architecture" claims it does.
 
+## A real smoke test (2026-07-05) — 8 genuine GSM8K problems, still not M3
+
+`cell80/examples/m3_gsm8k_smoketest.rs`, kept as a runnable check: the first 8 rows of
+`openai/grade-school-math`'s public `test.jsonl`, fetched fresh (not written to match a
+known schema, not cherry-picked), hand-extracted into the plan IR by reading each English
+problem and doing the extraction the spec asks a model to do. **Read the caveats before the
+result** — this is emphatically not M3: one extractor (me, not a 3B model), N=8 not 1,319,
+no distractor/wrong-plan candidates, no cost measurement, no CoT/PAL-Python baseline. What
+it *is*: the first time this project's rendered-plan loop has been checked against problems
+it didn't design, against known ground truth.
+
+**Result: 8/8 correct**, spanning 2-6 op chains, subtraction, exact percentage math (via
+the `scalar`-unit `mul`-then-`div` pattern — `value * pct / 100`, always exact at these
+problems' numbers), and a rate/time flow (`count_per_time` correctly inverting to `time` on
+division, the Carla download problem). Two hand-perturbed variants (same ids, new numbers —
+James's sprints, the Toulouse/Charleston/Seattle sheep problem) both correctly precipitated
+(`retrieved: true`) and answered correctly — the field-naming finding above applied
+correctly this time, on purpose. None of the 8 distinct problems precipitated against each
+other, as expected (they're genuinely different schemas, not variations of one).
+
+Two things worth carrying into a real M3 design:
+
+- **Genuine ambiguity exists even for a careful extractor.** Josh's house-flip problem
+  ("increased the value of the house by 150%") admits two readings — *the increase equals
+  150% of the original* (the ground truth's own reading: `+120,000` on top of `80,000`) vs
+  *the new value is 150% of the original* (`120,000` total, a very different answer). I
+  matched the ground truth's worked solution, but a smaller model resolving this from the
+  English alone, with no worked solution to check against, is exactly the kind of case
+  H-M1 (perturbation robustness) should expect to find fragile — extraction ambiguity, not
+  arithmetic, same honest limit the spec's own "Honest limits" paragraph already names.
+- **The dialect's 4 base dimensions (`count`, `money`, `time`, `distance`) need a fallback
+  convention for everything else** — GB, cups, sprints, glasses, sheep all got mapped to
+  plain `count` here, and rate-shaped quantities (`meters_per_sprint`, `cups_per_chicken`)
+  needed the less-obvious `X_per_count` / `count_per_count` unit spelling to keep add/sub's
+  dimension check happy downstream. That mapping instinct ("no dedicated dimension → treat
+  as `count`, unless the problem divides by it") is something a real extraction prompt
+  needs stated explicitly, not left implicit — I had it because I could reason about the
+  renderer's dimension-checker directly; a model extracting blind from problem text alone
+  won't reconstruct that convention on its own.
+
 ## The one-sentence version
 
 Don't build a math runtime to pass a benchmark — run the benchmark through the runtime you
