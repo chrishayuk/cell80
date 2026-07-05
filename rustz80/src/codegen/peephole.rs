@@ -24,10 +24,18 @@
 //!   both forms, SP delta identical (net one pop), no flags.
 //! - **R6** `EX DE,HL; EX DE,HL` → (nothing); `LD H,0; LD H,0` → one. Cleanups for
 //!   shapes earlier rules (or width masking) can leave behind.
+//! - **R7** `LD DE,1; ADD HL,DE` → `INC HL`; `LD DE,2; ADD HL,DE` → `INC HL; INC HL`.
+//!   Strength-reduction of a `+1`/`+2` value add (3+1 bytes → 1/2). Safe because the
+//!   `ADD`'s flags are dead — arithmetic results travel in `HL` as *values*, and every
+//!   flag consumer (a comparison / condition) recomputes via its own `SBC` (the R2
+//!   invariant); `INC HL` (which sets no flags) therefore observes the same downstream
+//!   state. `DE` ends holding its prior value instead of the literal — scratch either
+//!   way. Only fires on the `imm ∈ {1,2}` add (the literal `LD DE,base_addr` used for
+//!   address arithmetic and the `*2` `ADD HL,HL` are untouched).
 //!
-//! Rules run to a fixpoint: a rewrite can expose another match (R1 feeds R2).
+//! Rules run to a fixpoint: a rewrite can expose another match (R1 feeds R2 feeds R7).
 
-use super::ins::{Ins, R16};
+use super::ins::{FxBytes, Imm, Ins, R16};
 
 /// How many times each rule fired — the measured ranking the roadmap asks for
 /// (`size_report` deltas carry the byte prize; this carries the site counts).
@@ -45,6 +53,13 @@ pub struct PeepholeCounts {
     pub call_tail: u64,
     /// R6: `EX;EX` / doubled `LD H,0` cleanups.
     pub cleanup: u64,
+    /// R7: `+1`/`+2` value add strength-reduced to `INC HL`(`; INC HL`).
+    pub inc_dec: u64,
+}
+
+/// `INC HL` (0x23) as a one-byte fixed instruction — the target of R7.
+fn inc_hl() -> Ins {
+    Ins::Fx(FxBytes::new(&[0x23]))
 }
 
 /// Is `i` a leaf load into `HL` — reads neither `DE`, flags, nor the stack?
@@ -107,6 +122,15 @@ pub(super) fn optimize(ins: &mut Vec<Ins>) -> PeepholeCounts {
                     out.push(Ins::StHlMem(*m));
                     i += 2;
                 }
+                // R7 — INC strength reduction (runs on R2's `LD DE,imm; ADD HL,DE`).
+                [Ins::LdImm(R16::De, Imm::Abs(n @ (1 | 2))), Ins::AddHl(R16::De), ..] => {
+                    counts.inc_dec += 1;
+                    changed = true;
+                    for _ in 0..*n {
+                        out.push(inc_hl());
+                    }
+                    i += 2;
+                }
                 // R6 — cleanups.
                 [Ins::ExDeHl, Ins::ExDeHl, ..] => {
                     counts.cleanup += 1;
@@ -141,9 +165,15 @@ mod tests {
 
     /// Emit `src` (whole pipeline: lower → emit → seal) and return the fire counts.
     fn counts_for(src: &str, target: Target) -> PeepholeCounts {
-        let file: syn::File = syn::parse_str(src).unwrap();
-        let funcs = crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default())
-            .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
+        try_counts_for(src, target).expect("hand-written test source must lower")
+    }
+
+    /// Like [`counts_for`] but `None` if `src` doesn't lower standalone (some cells
+    /// reference cross-cell wide signatures resolved only by the cell layer).
+    fn try_counts_for(src: &str, target: Target) -> Option<PeepholeCounts> {
+        let file: syn::File = syn::parse_str(src).ok()?;
+        let funcs =
+            crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default()).ok()?;
         let mut a = Asm::new(0x8000, target);
         let mut base = 0u16;
         for (name, f) in &funcs {
@@ -153,7 +183,26 @@ mod tests {
             base += f.n_locals as u16;
         }
         a.seal();
-        a.peep
+        Some(a.peep)
+    }
+
+    /// The sealed (post-peephole) `Ins` stream for `src` — for measuring *candidate*
+    /// sites of not-yet-built rules. `None` if the source doesn't lower standalone (some
+    /// cells reference cross-cell wide signatures resolved only by the cell layer).
+    fn sealed_ins(src: &str, target: Target) -> Option<Vec<Ins>> {
+        let file: syn::File = syn::parse_str(src).ok()?;
+        let funcs =
+            crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default()).ok()?;
+        let mut a = Asm::new(0x8000, target);
+        let mut base = 0u16;
+        for (name, f) in &funcs {
+            a.define(name);
+            a.base = base;
+            emit_func(&mut a, f);
+            base += f.n_locals as u16;
+        }
+        a.seal();
+        Some(a.ins.clone())
     }
 
     #[test]
@@ -249,16 +298,73 @@ mod tests {
                 continue;
             }
             let src = std::fs::read_to_string(&p).unwrap();
-            let c = counts_for(&src, Target::Cell);
+            let Some(c) = try_counts_for(&src, Target::Cell) else {
+                continue; // cross-cell cell that doesn't lower standalone
+            };
             total.leaf_pair += c.leaf_pair;
             total.lit_add += c.lit_add;
             total.store_reload += c.store_reload;
             total.dead_push_pop += c.dead_push_pop;
             total.call_tail += c.call_tail;
             total.cleanup += c.cleanup;
+            total.inc_dec += c.inc_dec;
             files += 1;
         }
         println!("peephole sites across {files} cells: {total:?}");
         assert!(total.leaf_pair > 0);
+    }
+
+    /// Size the prize for the *next* rules before building them: count candidate sites
+    /// across the cell80 corpus on the post-peephole stream.
+    /// `cargo test -p rustz80 --lib measure_next_rules -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn measure_next_rules() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cell80/cells");
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            eprintln!("no cells corpus — skipping");
+            return;
+        };
+        let (mut inc1, mut inc2, mut span_pairs, mut files) = (0u64, 0u64, 0u64, 0u32);
+        let is_de1 = |i: &Ins| matches!(i, Ins::LdImm(R16::De, Imm::Abs(1)));
+        let is_de2 = |i: &Ins| matches!(i, Ins::LdImm(R16::De, Imm::Abs(2)));
+        let is_addde = |i: &Ins| matches!(i, Ins::AddHl(R16::De));
+        for e in entries {
+            let p = e.unwrap().path();
+            if p.extension().is_none_or(|x| x != "rs") {
+                continue;
+            }
+            let src = std::fs::read_to_string(&p).unwrap();
+            let Some(ins) = sealed_ins(&src, Target::Cell) else {
+                continue;
+            };
+            for w in ins.windows(2) {
+                if is_de1(&w[0]) && is_addde(&w[1]) {
+                    inc1 += 1;
+                }
+                if is_de2(&w[0]) && is_addde(&w[1]) {
+                    inc2 += 1;
+                }
+            }
+            // Window-spanning PUSH HL … POP DE: a PUSH HL whose matching POP DE is not
+            // the R1 adjacent shape (something effect-bearing sits between). Count PUSH
+            // HL not immediately followed by a leaf-load+POP DE that R1 already took.
+            for (k, i) in ins.iter().enumerate() {
+                if matches!(i, Ins::Push(R16::Hl)) {
+                    let adjacent_taken = ins
+                        .get(k + 1)
+                        .zip(ins.get(k + 2))
+                        .is_some_and(|(a, b)| leaf_load_hl(a) && matches!(b, Ins::Pop(R16::De)));
+                    if !adjacent_taken {
+                        span_pairs += 1;
+                    }
+                }
+            }
+            files += 1;
+        }
+        println!(
+            "next-rule candidates across {files} cells: INC(+1)={inc1} INC(+2)={inc2} \
+             residual_PUSH_HL={span_pairs}  (INC saves 3B/+1, 2B/+2; residual push = window-span or call)"
+        );
     }
 }

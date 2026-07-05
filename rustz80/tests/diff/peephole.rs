@@ -95,6 +95,38 @@ fn r6_ex_ex_cancellation() {
 }
 
 #[test]
+fn r7_inc_strength_reduction() {
+    // `+1`/`+2` reduce to INC HL — rustc is the oracle that the flag-dropping rewrite
+    // (INC HL sets no flags; ADD HL,DE does) changes nothing. The third case puts a
+    // `+1` result straight into a comparison, whose own SBC recomputes its flags — the
+    // load-bearing check that the dropped ADD flags were genuinely dead.
+    check!({
+        let a = 30000u16;
+        (a + 1u16) + (a + 2u16) // two reductions in one body
+    });
+    check!({
+        let a = 41u16;
+        let b = a + 1u16;
+        ((b > 41u16) as u16) * 1000u16 + b // +1 result then a comparison
+    });
+    // u8 `+1`/`+2`: INC HL then the byte mask.
+    check!({
+        let a = 100u8;
+        ((a + 1u8) as u16) * 100u16 + (a + 2u8) as u16
+    });
+    // A counted loop: the induction step `i = i + 1` is R7's most common site.
+    check!({
+        let mut acc = 0u16;
+        let mut i = 0u16;
+        while i < 20u16 {
+            acc = acc + i;
+            i = i + 1u16;
+        }
+        acc
+    });
+}
+
+#[test]
 fn peephole_kitchen_sink() {
     // All rules interacting in one body, against rustc.
     fn helper(x: u16, y: u16) -> u16 {

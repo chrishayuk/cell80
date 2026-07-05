@@ -300,11 +300,14 @@ Redundant load elimination (`LD (addr),HL; LD HL,(addr)`), push/pop pairs around
 RHS, dead `mask_to_width`. Measure on the size report — the win is bytes and T-states,
 both metered exactly, so the pass proves itself.
 *DoD:* corpus-wide size/T-state deltas published; diff suite green on both targets.
-**Done:** six adjacent-window rules over the `Ins` stream, label-fenced by construction,
+**Done:** seven adjacent-window rules over the `Ins` stream, label-fenced by construction,
 run to fixpoint in `seal()`. Measured sites across the 100 stdlib cells (counted, not
 assumed): leaf-operand pair 150, store-then-reload 30, 2-arg call tail 26, literal-add 15,
 cleanups 4, dead push/pop 2 — the predicted "add is everywhere" ranking holds. Prize:
-**−994 bytes (−4.3 %)** across 111 of 117 golden images. Each rule ships a behavioural
+**−994 bytes (−4.3 %)** across 111 of 117 golden images. **R7 (`INC HL` strength-reduction)
+added later:** `LD DE,1/2; ADD HL,DE` → `INC HL`(`; INC HL`), sized at 67 corpus sites then
+measured **−497 bytes across 76 golden programs, none grew** (the flag-drop is safe — arithmetic
+flags are dead; conditions recompute via `SBC`). Each rule ships a behavioural
 diff case (`tests/diff/peephole.rs`) *and* a fired-proof shape assertion
 (`tests/peephole_shape.rs`); the regenerated golden carries the reviewed byte deltas.
 (Also fixed en route: the `is_prime` cell diverged for `n > 65025` — `d*d` wraps in u16;

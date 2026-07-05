@@ -32,19 +32,52 @@ fn r1_leaf_pair_exact_bytes() {
 
 #[test]
 fn r2_literal_add_exact_bytes() {
-    // `a + 1`: the literal goes straight into DE — no EX, no push/pop. R3 also
+    // `a + 3`: the literal goes straight into DE — no EX, no push/pop. R3 also
     // composes with the prologue here: `LD (a),HL; LD HL,(a)` drops the reload
-    // (HL still holds the argument on entry), so the body is just the add.
-    let code = compile_fn("fn inc(a: u16) -> u16 { a + 1u16 }").unwrap();
+    // (HL still holds the argument on entry), so the body is just the add. (Uses
+    // `+ 3` so R7's `+1`/`+2` INC reduction doesn't further rewrite it.)
+    let code = compile_fn("fn addc(a: u16) -> u16 { a + 3u16 }").unwrap();
     assert_eq!(
         code,
         [
             0x22, 0x00, 0x90, // LD (0x9000),HL   a   (reload elided by R3)
-            0x11, 0x01, 0x00, // LD DE,1              (was PUSH; LD HL,1; POP DE)
+            0x11, 0x03, 0x00, // LD DE,3              (was PUSH; LD HL,3; POP DE)
             0x19, // ADD HL,DE
             0xC9, // RET
         ],
         "R2 did not load the literal straight into DE"
+    );
+}
+
+#[test]
+fn r7_inc_strength_reduction_exact_bytes() {
+    // `a + 1` → INC HL (1 byte), `a + 2` → INC HL; INC HL — the `LD DE,imm; ADD HL,DE`
+    // R2 leaves is strength-reduced away. (R3 elides the prologue reload as above.)
+    let inc1 = compile_fn("fn inc(a: u16) -> u16 { a + 1u16 }").unwrap();
+    assert_eq!(
+        inc1,
+        [
+            0x22, 0x00, 0x90, // LD (0x9000),HL   a
+            0x23, // INC HL           (was LD DE,1; ADD HL,DE)
+            0xC9, // RET
+        ],
+        "R7 did not reduce `+1` to INC HL"
+    );
+    let inc2 = compile_fn("fn inc2(a: u16) -> u16 { a + 2u16 }").unwrap();
+    assert_eq!(
+        inc2,
+        [
+            0x22, 0x00, 0x90, // LD (0x9000),HL   a
+            0x23, 0x23, // INC HL; INC HL   (was LD DE,2; ADD HL,DE)
+            0xC9, // RET
+        ],
+        "R7 did not reduce `+2` to INC HL; INC HL"
+    );
+    // `+ 4` is left as an ADD (only ±1/±2 reduce).
+    let add4 = compile_fn("fn add4(a: u16) -> u16 { a + 4u16 }").unwrap();
+    assert!(
+        contains(&add4, &[0x11, 0x04, 0x00, 0x19]),
+        "R7 must not touch `+4` (LD DE,4; ADD HL,DE)"
     );
 }
 

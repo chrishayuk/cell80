@@ -375,10 +375,24 @@ was no seam for a quality pass. **The seam and the first peephole shipped** (roa
   A-accumulator evaluator for chained byte arithmetic (avoids the per-op `PUSH HL`/`POP DE` spill) —
   a larger, riskier rewrite of the HL-accumulator core, deferred until it can be measured end-to-end
   in a byte-heavy chuk-speccy build. Byte add/sub already compute the low byte optimally in `HL`.
-- **Next rules worth ranking:** window-spanning leaf pairs (the `ptr_elem_addr` shape — the
-  pop is separated from the push by an effect-free span), `INC HL`/`DEC HL` strength-reduction
-  for `± 1`/`± 2` literals (flags differ from `ADD` — needs the no-flag-consumer argument made
-  explicit), and a *what's-in-`HL`/`DE`* tracker for cross-statement reload elision.
+- **`INC HL` strength-reduction (R7) — ✓ shipped, measured.** `LD DE,1; ADD HL,DE` → `INC HL`;
+  `LD DE,2; ADD HL,DE` → `INC HL; INC HL` (the `+1`/`+2` value add R2 leaves; 3+1 bytes → 1/2).
+  The no-flag-consumer argument is made explicit: the `ADD`'s flags are dead — arithmetic results
+  travel in `HL` as values and every comparison recomputes via its own `SBC`, so `INC HL` (no
+  flags) leaves the same downstream state; `DE` is scratch. Sized first (67 sites across 190
+  cells: 19×`+1`, 48×`+2`) then measured: **−497 bytes across 76 of the golden programs, no
+  program grew** (`corpus_rule_ranking` reports `inc_dec: 67`). Ships the two DoD tests — a
+  rustc-diff case incl. a `+1`-into-comparison (proving the dropped flags were dead) and a
+  loop induction step, plus exact-byte shape assertions (`tests/diff/peephole.rs`,
+  `tests/peephole_shape.rs`). The `DEC` counterpart is *not* built: `x - N` lowers to
+  `LD HL,N; EX DE,HL; …; OR A; SBC HL,DE` (a different, larger window), and sub-by-constant is
+  rarer than the loop-increment `+1`.
+- **Next rules worth ranking (deferred — sized, lower-confidence):** window-spanning leaf pairs
+  (the `ptr_elem_addr` shape — the pop is separated from the push by an effect-free span; the
+  crude corpus count is ~675 residual `PUSH HL`, but that's dominated by the call convention, not
+  cleanly window-spanning-leaf), and a *what's-in-`HL`/`DE`* tracker for cross-statement reload
+  elision (a real dataflow pass, not a window matcher — the biggest of the three).
+  `measure_next_rules` (ignored) sizes these before building.
 
 **Wider state — `u32` in state, then fixed-point (kill the overflow footgun).** `u32` already
 exists as a *local* (`Width::DWord`, `gen_expr32` carry-chain in `HL:DE`); the gap is persisting
