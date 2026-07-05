@@ -15,6 +15,7 @@
 //! using a hand-written template per op — but it's regex/text-based, not a full `syn` AST
 //! transform; see `ParsedCell`'s doc comment for why that's a stated limit, not an oversight.
 use cell80::{synthesize, Cartridge, CartridgeOpts, CellConfig, Fingerprint, Op};
+use cell_synth_evolve::{evolve, mcts, portfolio, summarize};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -67,6 +68,18 @@ fn rotated_low_byte_popcount_ref(x: u16) -> u16 {
 /// lossy benchmarks did.
 fn mystery_bits_ref(x: u16) -> u16 {
     ((x | 0xAAAA).rotate_left(8) ^ 0x5555).count_ones() as u16
+}
+/// A second, deeper (6-step) escalation of `mystery_bits_ref` — mirrors
+/// `cell-synth-evolve`'s own step from a 4-step to a 6-step lossy benchmark, over the same
+/// broadened real-cell op pool, to test whether depth *and* pool size together (not just one)
+/// is what it takes to actually break A* rather than just strain it.
+fn mystery_bits_2_ref(x: u16) -> u16 {
+    let a = x | 0x0F0F;
+    let b = a.rotate_left(10);
+    let c = b & 0xAAAA;
+    let d = c.rotate_left(6);
+    let e = d ^ 0x5A5A;
+    e.count_ones() as u16
 }
 /// True (1) iff n is a product of exactly two primes counted with multiplicity (p*q, both
 /// prime, p possibly == q). A deliberate negative control: no existing cell captures anything
@@ -154,7 +167,9 @@ fn split_tail(body: &str) -> (String, String) {
 
 fn parse_cell(src: &str) -> ParsedCell {
     let sig_re = Regex::new(r"fn run\(([^)]*)\)").unwrap();
-    let m = sig_re.captures(src).unwrap_or_else(|| panic!("no `fn run(...)` found in:\n{src}"));
+    let m = sig_re
+        .captures(src)
+        .unwrap_or_else(|| panic!("no `fn run(...)` found in:\n{src}"));
     let params: Vec<String> = m[1]
         .split(',')
         .filter(|s| !s.trim().is_empty())
@@ -162,13 +177,21 @@ fn parse_cell(src: &str) -> ParsedCell {
         .collect();
 
     let sig_end = sig_re.find(src).unwrap().end();
-    let brace_rel = src[sig_end..].find('{').unwrap_or_else(|| panic!("no fn body found in:\n{src}"));
+    let brace_rel = src[sig_end..]
+        .find('{')
+        .unwrap_or_else(|| panic!("no fn body found in:\n{src}"));
     let body_start = sig_end + brace_rel;
-    let last_brace = src.rfind('}').unwrap_or_else(|| panic!("no closing brace in:\n{src}"));
+    let last_brace = src
+        .rfind('}')
+        .unwrap_or_else(|| panic!("no closing brace in:\n{src}"));
     let inner = src[body_start + 1..last_brace].trim();
 
     let (stmts, tail) = split_tail(inner);
-    ParsedCell { params, stmts, tail }
+    ParsedCell {
+        params,
+        stmts,
+        tail,
+    }
 }
 
 /// Rename every whole-word occurrence of each `name` in `locals` to `{name}_{uid}` — so
@@ -198,13 +221,18 @@ fn substitute_param(text: &str, param: &str, replacement: &str) -> String {
 fn codegen(steps: &[String], op_meta: &std::collections::HashMap<String, (String, u16)>) -> String {
     let mut body = String::new();
     let mut cur = "x".to_string();
+    // Compiled once — clippy's regex-in-loop lint is right, this is per-call hot.
+    let let_re = Regex::new(r"let\s+(?:mut\s+)?(\w+)").unwrap();
     for (i, step) in steps.iter().enumerate() {
         let (src, fixed_arg) = &op_meta[step];
         let parsed = parse_cell(src);
-        let let_re = Regex::new(r"let\s+(?:mut\s+)?(\w+)").unwrap();
         let locals: Vec<String> = {
             let mut seen = std::collections::HashSet::new();
-            let_re.captures_iter(&parsed.stmts).map(|c| c[1].to_string()).filter(|n| seen.insert(n.clone())).collect()
+            let_re
+                .captures_iter(&parsed.stmts)
+                .map(|c| c[1].to_string())
+                .filter(|n| seen.insert(n.clone()))
+                .collect()
         };
 
         let mut stmts = rename_locals(&parsed.stmts, &locals, i);
@@ -262,28 +290,36 @@ fn main() {
     }
     let mask_src = cell_source(&cells_dir, "mask_intersection");
     let mask_cart = compile("mask_intersection", &mask_src);
-    for (label, k) in [("and_00ff", 0x00FFu16), ("and_ff00", 0xFF00), ("and_0f0f", 0x0F0F)] {
+    for (label, k) in [
+        ("and_00ff", 0x00FFu16),
+        ("and_ff00", 0xFF00),
+        ("and_0f0f", 0x0F0F),
+        ("and_aaaa", 0xAAAA),
+        ("and_5555", 0x5555),
+    ] {
         ops.push(Op::from_cell(label, &mask_cart, k));
         op_meta.insert(label.to_string(), (mask_src.clone(), k));
     }
     let rotl_src = cell_source(&cells_dir, "rotl16");
     let rotl_cart = compile("rotl16", &rotl_src);
-    for (label, n) in [("rotl4", 4u16), ("rotl8", 8), ("rotl12", 12)] {
+    for (label, n) in [("rotl2", 2u16), ("rotl4", 4), ("rotl6", 6), ("rotl8", 8), ("rotl10", 10), ("rotl12", 12), ("rotl14", 14)] {
         ops.push(Op::from_cell(label, &rotl_cart, n));
         op_meta.insert(label.to_string(), (rotl_src.clone(), n));
     }
-    // Added to test a genuinely harder, Hamming-deceptive target (mystery_bits, below) —
-    // whether A* alone is still enough, or whether the pre-registration's "smooth targets, A*
-    // suffices" scope reduction actually needs GA/MCTS once a target isn't smooth.
+    // Broadened deliberately (more constants per family, more rotate amounts) to mirror
+    // cell-synth-evolve's own escalation (11->18 ops) that's what actually found A*'s failure
+    // point there — testing a genuinely harder, Hamming-deceptive target (mystery_bits/
+    // mystery_bits_2, below) needs a comparably richer branching factor, not just a deeper
+    // target over a narrow pool.
     let union_src = cell_source(&cells_dir, "mask_union");
     let union_cart = compile("mask_union", &union_src);
-    for (label, k) in [("or_aaaa", 0xAAAAu16), ("or_5555", 0x5555)] {
+    for (label, k) in [("or_aaaa", 0xAAAAu16), ("or_5555", 0x5555), ("or_0f0f", 0x0F0F), ("or_00ff", 0x00FF), ("or_ff00", 0xFF00)] {
         ops.push(Op::from_cell(label, &union_cart, k));
         op_meta.insert(label.to_string(), (union_src.clone(), k));
     }
     let xor_src = cell_source(&cells_dir, "mask_xor");
     let xor_cart = compile("mask_xor", &xor_src);
-    for (label, k) in [("xor_5555", 0x5555u16), ("xor_aaaa", 0xAAAA)] {
+    for (label, k) in [("xor_5555", 0x5555u16), ("xor_aaaa", 0xAAAA), ("xor_5a5a", 0x5A5A), ("xor_00ff", 0x00FF), ("xor_ff00", 0xFF00)] {
         ops.push(Op::from_cell(label, &xor_cart, k));
         op_meta.insert(label.to_string(), (xor_src.clone(), k));
     }
@@ -361,6 +397,13 @@ fn main() {
             oracle: mystery_bits_ref,
             max_depth: 6,
             summary: "Popcount of x, OR'd with 0xAAAA, rotated left 8, XOR'd with 0x5555.",
+            tags: "bits, popcount, mask, rotate, xor, experimental",
+        },
+        Target {
+            name: "mystery_bits_2",
+            oracle: mystery_bits_2_ref,
+            max_depth: 8,
+            summary: "Popcount of a 6-step OR/rotate/AND/rotate/XOR mask chain over x.",
             tags: "bits, popcount, mask, rotate, xor, experimental",
         },
     ];
