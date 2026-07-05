@@ -1007,7 +1007,7 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        assert_eq!(h.len(), 163); // 120 (Phase 2.3 pilot batch) + 8 checked-arithmetic + 6 money/bps + 4 units + 4 verifier/ranker + 3 stateful/RNG + 4 signed-deltas + 4 scoring/choice + 10 fractions
+        assert_eq!(h.len(), 203); // 163 (M1 complete) + 18 checked-arithmetic + 2 money/bps + 11 verifier/ranker + 9 fractions, second slice (docs/library-growth.md)
 
         // The library now holds a *distance family* (manhattan/chebyshev/euclid_sq), so a
         // bare "grid distance" is ambiguous; the cell-specific name still resolves.
@@ -1126,11 +1126,9 @@ mod tests {
         )
         .unwrap();
 
-        // keygen → compile → sign → exec (signature verified on load).
-        let key = dir.join("signer.key");
-        let pk = run_cli(&["keygen".into(), key.to_str().unwrap().into()]).unwrap();
-        assert!(pk.contains("public"), "{pk}");
-        assert!(run_cli(&["keygen".into()]).is_err());
+        // compile → (on unix: keygen → sign) → exec. `keygen` draws from
+        // /dev/urandom, so the signing beats are unix-only — the same boundary
+        // the verb itself has.
         let cell = dir.join("mul.cell");
         run_cli(&[
             "compile".into(),
@@ -1139,15 +1137,21 @@ mod tests {
             cell.to_str().unwrap().into(),
         ])
         .unwrap();
-        let signed = run_cli(&[
-            "sign".into(),
-            cell.to_str().unwrap().into(),
-            "--key".into(),
-            key.to_str().unwrap().into(),
-        ])
-        .unwrap();
-        assert!(signed.contains("signed"), "{signed}");
-        assert!(run_cli(&["sign".into(), cell.to_str().unwrap().into()]).is_err());
+        if cfg!(unix) {
+            let key = dir.join("signer.key");
+            let pk = run_cli(&["keygen".into(), key.to_str().unwrap().into()]).unwrap();
+            assert!(pk.contains("public"), "{pk}");
+            assert!(run_cli(&["keygen".into()]).is_err());
+            let signed = run_cli(&[
+                "sign".into(),
+                cell.to_str().unwrap().into(),
+                "--key".into(),
+                key.to_str().unwrap().into(),
+            ])
+            .unwrap();
+            assert!(signed.contains("signed"), "{signed}");
+            assert!(run_cli(&["sign".into(), cell.to_str().unwrap().into()]).is_err());
+        }
         let out = run_cli(&[
             "exec".into(),
             cell.to_str().unwrap().into(),
