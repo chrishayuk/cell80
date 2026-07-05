@@ -72,6 +72,7 @@ fn load_carts() -> Vec<Cartridge> {
                 summary,
                 tags,
                 limits,
+                scale: None,
             },
         ) {
             Ok(c) => out.push(c),

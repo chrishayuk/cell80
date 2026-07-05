@@ -123,10 +123,18 @@ pub fn run_cli(args: &[String]) -> Result<String, String> {
     }
 }
 
-/// Parse a cell source's leading `//!` header → `(summary, tags, entry, limits)`.
-fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
-    let (mut summary, mut tags, mut entry, mut limits) =
-        (String::new(), Vec::new(), None, Vec::new());
+/// A `//! scale:` value → fractional bits: a plain count (`8`) or a Q-format
+/// (`q8.8` / `Q16.16`, taking the part after the point). Unparseable → `None` (the
+/// annotation is optional).
+fn parse_scale(s: &str) -> Option<u8> {
+    let s = s.trim().trim_start_matches(['q', 'Q']);
+    s.rsplit('.').next().unwrap_or(s).trim().parse::<u8>().ok()
+}
+
+/// Parse a cell source's leading `//!` header → `(summary, tags, entry, limits, scale)`.
+fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>, Option<u8>) {
+    let (mut summary, mut tags, mut entry, mut limits, mut scale) =
+        (String::new(), Vec::new(), None, Vec::new(), None);
     let csv = |s: &str| -> Vec<String> {
         s.split(',')
             .map(|s| s.trim().to_string())
@@ -145,6 +153,9 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
                 // The escalation contract, authorable from the source header — what this
                 // cell can't do (`//! limits: floats, inputs > 65535`).
                 limits = csv(m);
+            } else if let Some(sv) = rest.strip_prefix("scale:") {
+                // Fixed-point scale (fractional bits) — `//! scale: 8` for a Q8.8 cell.
+                scale = parse_scale(sv);
             } else if summary.is_empty() {
                 summary = rest.to_string();
             }
@@ -152,7 +163,7 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
             break; // first code line — header done
         }
     }
-    (summary, tags, entry, limits)
+    (summary, tags, entry, limits, scale)
 }
 
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
@@ -163,7 +174,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
         Some("rs") => Some((|| {
             let src =
                 std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let (summary, tags, entry, limits) = parse_meta(&src);
+            let (summary, tags, entry, limits, scale) = parse_meta(&src);
             let id = path
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -178,6 +189,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
                     summary,
                     tags,
                     limits,
+                    scale,
                 },
             )
         })()),
@@ -1068,11 +1080,35 @@ mod tests {
                     tags: vec!["math".into(), "product".into()],
                     entry: None,
                     limits: Vec::new(),
+                    scale: None,
                 },
             )
             .unwrap(),
         );
         h
+    }
+
+    #[test]
+    fn scale_header_parses() {
+        // `//! scale: N` — a plain count or a Q-format (part after the point).
+        assert_eq!(parse_scale("8"), Some(8));
+        assert_eq!(parse_scale("q8.8"), Some(8));
+        assert_eq!(parse_scale("Q16.16"), Some(16));
+        assert_eq!(parse_scale("  12 "), Some(12));
+        assert_eq!(parse_scale("nonsense"), None);
+        let (summary, _, _, _, scale) =
+            parse_meta("//! Q8.8 multiply\n//! tags: math\n//! scale: 8\nfn run() -> u16 { 0u16 }");
+        assert_eq!(scale, Some(8));
+        // The scale line never leaks into the summary; absent → None.
+        assert_eq!(summary, "Q8.8 multiply");
+        let (_, _, _, _, none) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
+        assert_eq!(none, None);
+        // End-to-end: the library path picks up `q_mul`'s `//! scale: 8` (skip if the
+        // sibling cells corpus isn't present, e.g. a packaged crates.io build).
+        let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("cells/q_mul.rs");
+        if let Some(Ok(cart)) = library_cartridge(&p) {
+            assert_eq!(cart.manifest.scale, Some(8), "q_mul should declare scale 8");
+        }
     }
 
     #[test]

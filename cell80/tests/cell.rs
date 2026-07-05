@@ -397,6 +397,7 @@ fn cartridge_roundtrip_and_inspect() {
             tags: vec!["math".into(), "demo".into()],
             entry: None, // resolves to `run`
             limits: Vec::new(),
+            scale: None,
         },
     )
     .unwrap();
@@ -485,6 +486,7 @@ fn cell_host_warm_session() {
                 summary: "sum two fields".into(),
                 tags: vec!["state".into()],
                 limits: Vec::new(),
+                scale: None,
             },
         )
         .unwrap(),
@@ -661,6 +663,7 @@ fn cell_index_search_ranks_by_relevance() {
                 tags: tags.iter().map(|s| s.to_string()).collect(),
                 entry: None,
                 limits: Vec::new(),
+                scale: None,
             },
         )
         .unwrap();
@@ -1586,6 +1589,7 @@ fn wide_u32_state_field_end_to_end() {
             summary: "wide accumulator".into(),
             tags: vec!["state".into()],
             limits: Vec::new(),
+            scale: None,
         },
     )
     .unwrap();
@@ -1897,6 +1901,51 @@ fn artifact_hash_round_trips_and_pins_content() {
 }
 
 #[test]
+fn scale_annotation_round_trips() {
+    // The optional fixed-point scale (v7) survives serialization and shows up in the
+    // inspect output; a scale-less cell reads back as `None`.
+    use cell80::{Cartridge, CartridgeOpts, CellConfig};
+    let cart = Cartridge::compile(
+        "fn run(a: u16, b: u16) -> u16 { ((a as u32 * b as u32) >> 8u32) as u16 }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("q".into()),
+            scale: Some(8),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(cart.manifest.scale, Some(8));
+    let back = Cartridge::from_bytes(&cart.to_bytes()).unwrap();
+    assert_eq!(back.manifest.scale, Some(8));
+    assert_eq!(back.artifact_hash(), cart.artifact_hash());
+    assert!(back.to_json().contains("\"scale\":8"));
+    assert!(back.to_human().contains("scale: Q·8"));
+
+    // A scale-less cell → None everywhere (the common case).
+    let plain = Cartridge::compile(
+        "fn run(a: u16) -> u16 { a }",
+        CellConfig::sandboxed(),
+        CartridgeOpts {
+            id: Some("id".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(plain.manifest.scale, None);
+    assert_eq!(
+        Cartridge::from_bytes(&plain.to_bytes())
+            .unwrap()
+            .manifest
+            .scale,
+        None
+    );
+    assert!(plain.to_json().contains("\"scale\":null"));
+    // A different scale is a different artifact (the hash covers it).
+    assert_ne!(back.artifact_hash(), plain.artifact_hash());
+}
+
+#[test]
 fn tampered_bytes_are_refused_by_default_and_loadable_unverified() {
     use cell80::Cartridge;
     let bytes = adder_cart().to_bytes();
@@ -1964,7 +2013,9 @@ fn pre_v5_cartridges_still_load() {
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();
-    v4.extend_from_slice(&v5[..manifest_end - 2]); // manifest minus the empty limits u16
+    // Drop the trailing v5/v7 manifest fields a v4 stream never had: the empty limits
+    // u16 (2 bytes) and the v7 scale presence byte (1 byte).
+    v4.extend_from_slice(&v5[..manifest_end - 3]);
     v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
     v4[4] = 4; // version byte
     let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path

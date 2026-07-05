@@ -20,7 +20,10 @@ explicitly (`x as u16 as u32`). Negative literals need the suffix (`-5i16`), and
 weight is a `u32` (or `u16` for small ranges) with an implied point — multiply then
 shift (`(a * w) >> 8`). This keeps every cell bit-exact and cross-target deterministic;
 there are no floats and there will be none (see the non-goals). Float and `char`
-literals are rejected with instructive errors.
+literals are rejected with instructive errors. The implied point can be declared
+structurally with a **`//! scale: N`** header (the fractional-bit count — `q_mul`/`q_div`
+declare `8`), which rides in the manifest (`.cell` v7) so a host reads the cell's values
+as `raw / 2^N` without inferring the convention from the summary.
 
 ## Const items and const data
 

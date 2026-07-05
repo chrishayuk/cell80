@@ -450,10 +450,13 @@ running-stat cells toward "ask the agent to write Python."
   computed wide through `u32` so the 16.16 intermediate doesn't overflow; `q_div` is
   divide-by-zero-safe) — host-oracle rows (`tests/library.rs`), golden entries, and direct +
   paraphrase retrieval rows. A Q16.16 kernel needs a 64-bit intermediate the substrate lacks, so
-  that stays the word-split `state`-cell pattern (documented). **Deferred (no consumer yet):** the
-  *optional* structured manifest **scale** field — it would need a `.cell` format bump +
-  serialization + ABI-doc round-trip, and nothing reads a structured scale today (the point
-  convention rides in the summary + `q8.8` tag). Gate it on a real consumer, per cost-is-a-gate.
+  that stays the word-split `state`-cell pattern (documented). **✓ Optional structured manifest
+  `scale` field — now shipped (`.cell` v7).** `//! scale: N` (a plain fractional-bit count, or a
+  Q-format like `q8.8`) parses into `Manifest.scale: Option<u8>`, serializes as a presence byte +
+  value (back-compat: pre-v7 reads as `None`), and surfaces in `inspect`'s human + JSON output so a
+  host/agent reads a cell's values as `raw / 2^N` instead of guessing from the summary. `q_mul`/
+  `q_div` declare `scale: 8`. A scalar cell stays `None` — the hash covers the field, so a scale
+  change is a distinct artifact. Round-trip + parse tests; ABI doc updated.
 - **Determinism split (write it down before the first wide op).** Integer / fixed-point /
   **softfloat** are all deterministic (softfloat is pure-integer IEEE-754, bit-identical
   cross-arch) → **in scope, gated on size/cost** (`max_code`, `trapped_ops`); the determinism

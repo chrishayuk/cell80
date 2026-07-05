@@ -18,7 +18,10 @@ const MAGIC: &[u8; 4] = b"CELL";
 // v6 (ABI v3, Phase S): buffer state-field types — a `bytes[N]`/`str[N]` entry's
 // type code (3/4) is followed by a u16 LE capacity. Scalar entries are unchanged,
 // and pre-v6 cartridges never contain codes 3/4, so back-compat reads hold.
-const VERSION: u8 = 6;
+// v7 adds an optional **fixed-point scale** (`//! scale: N` → the number of fractional
+// bits, so a Q8.8 cell declares 8): one presence byte after `limits`, then the value if
+// present. Pre-v7 cartridges have no scale byte and read back as `None`.
+const VERSION: u8 = 7;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -102,6 +105,13 @@ pub struct Manifest {
     /// this field is for the cell's *own* boundary, and pairs with the structured
     /// [`Halt::Escalate`](crate::Halt::Escalate) hand-off at run time.
     pub limits: Vec<String>,
+    /// Optional **fixed-point scale** (`//! scale: N`): the number of fractional bits in
+    /// the cell's `u16`/`u32` values, so a consumer reads them as `raw / 2^N` (a Q8.8
+    /// cell declares `8`). `None` = plain integers. The dialect has no float type — this
+    /// is the structured hint that a value carries an implied binary point (see
+    /// `q_mul`/`q_div` and `docs/10-dialect-semantics.md`), so a host/agent can present or
+    /// combine it correctly without guessing from the summary.
+    pub scale: Option<u8>,
 }
 
 /// Options for [`Cartridge::compile`] (all optional).
@@ -113,6 +123,8 @@ pub struct CartridgeOpts {
     pub tags: Vec<String>,
     /// The cell's declared boundary — see [`Manifest::limits`].
     pub limits: Vec<String>,
+    /// Optional fixed-point scale (fractional bits) — see [`Manifest::scale`].
+    pub scale: Option<u8>,
 }
 
 /// A compiled cell **plus** its manifest — the `.cell` artifact.
@@ -156,6 +168,7 @@ impl Cartridge {
                 signature,
                 state_addrs,
                 limits: opts.limits,
+                scale: opts.scale,
             },
             program,
             signature: None,
@@ -186,6 +199,14 @@ impl Cartridge {
         b.extend_from_slice(&(m.limits.len() as u16).to_le_bytes());
         for l in &m.limits {
             put_string(&mut b, l);
+        }
+        // v7: optional fixed-point scale — one presence byte, then the value if present.
+        match m.scale {
+            Some(n) => {
+                b.push(1);
+                b.push(n);
+            }
+            None => b.push(0),
         }
         b
     }
@@ -289,6 +310,17 @@ impl Cartridge {
         } else {
             Vec::new()
         };
+        // v7+ carries the optional fixed-point scale (presence byte, then value); older
+        // cartridges have none.
+        let scale = if ver >= 7 {
+            match r.u8()? {
+                0 => None,
+                1 => Some(r.u8()?),
+                other => return Err(format!("bad scale marker {other}")),
+            }
+        } else {
+            None
+        };
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
         let (stored_hash, cart_sig) = if ver >= 5 {
@@ -351,6 +383,7 @@ impl Cartridge {
                 signature,
                 state_addrs,
                 limits,
+                scale,
             },
             program,
             signature: cart_sig,
@@ -390,6 +423,10 @@ impl Cartridge {
         } else {
             format!("\n  limits: {} (escalates past these)", m.limits.join(", "))
         };
+        let scale = match m.scale {
+            Some(n) => format!("\n  scale: Q·{n} (values are raw / 2^{n})"),
+            None => String::new(),
+        };
         let hash = self.artifact_hash();
         let artifact = match &self.signature {
             Some((vk, _)) => format!(
@@ -400,7 +437,7 @@ impl Cartridge {
             None => format!("sha256:{}  (unsigned)", hex(&hash)),
         };
         format!(
-            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}\n  \
+            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}{scale}\n  \
              entry: {} @ 0x{:04X}\n  code: {} bytes, {} functions\n  capabilities: {}\n  \
              symbols: {}\n  source_hash: 0x{:016x}\n  artifact: {artifact}",
             m.id,
@@ -447,7 +484,7 @@ impl Cartridge {
         };
         format!(
             "{{\"id\":\"{}\",\"abi\":{},\"compiler\":\"{}\",\"summary\":\"{}\",\"tags\":[{}],\
-             \"limits\":[{}],\
+             \"limits\":[{}],\"scale\":{},\
              \"entry\":\"{}\",\"signature\":{{\"params\":[{}],\"ret\":\"{}\",\"state\":[{}]}},\
              \"code_bytes\":{},\"functions\":{},\"source_hash\":\"0x{:016x}\",\
              \"artifact_hash\":\"sha256:{}\",\"signed\":{},\
@@ -459,6 +496,7 @@ impl Cartridge {
             m.summary,
             tags.join(","),
             limits.join(","),
+            m.scale.map_or("null".into(), |n| n.to_string()),
             m.entry,
             pairs_json(&m.signature.params),
             m.signature.ret,

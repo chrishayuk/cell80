@@ -279,6 +279,7 @@ mod tests {
             signature: Default::default(),
             state_addrs: vec![],
             limits: Vec::new(),
+            scale: None,
         };
         let idx = TfidfIndex::build(vec![
             mk(
@@ -324,6 +325,7 @@ mod tests {
             signature,
             state_addrs: vec![],
             limits: Vec::new(),
+            scale: None,
         };
         let idx = TfidfIndex::build(vec![mk("a", sig(2, 0)), mk("b", sig(0, 6))]);
 

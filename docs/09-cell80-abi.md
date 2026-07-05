@@ -173,19 +173,21 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v6**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v7**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
 `state_addrs`: each addressable state field's byte address **and kind** (`Ty`, one byte:
 0 = u16, 1 = u32, 2 = u8, 3 = bytes[N], 4 = str[N] — buffer codes followed by a u16
 capacity) at `STATE_BASE` (so a host or a peer cell in a graph drives the
 cell **by field name without the source** — a `u32` field at its full width, a buffer
-field with a known envelope), and the
-`limits` list (the escalation contract's static half, above). `from_bytes`
-still reads v5 (no buffer types), v4 (no `limits`, no content addressing), v3
-(addresses without widths → fields read as `u16`), and v2 (no `state_addrs`)
-cartridges. This named, versioned,
+field with a known envelope), the
+`limits` list (the escalation contract's static half, above), and an optional
+**fixed-point `scale`** (v7: a presence byte, then the fractional-bit count if present —
+`//! scale: N`, so a Q8.8 cell declares 8; a consumer reads its values as `raw / 2^N`).
+`from_bytes` still reads v6 (no scale), v5 (no buffer types), v4 (no `limits`, no content
+addressing), v3 (addresses without widths → fields read as `u16`), and v2 (no
+`state_addrs`) cartridges. This named, versioned,
 manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
-`CellGraph` pass around. (Note: the `.cell` *file* format version — v6 — is distinct
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v7 — is distinct
 from the runtime `ABI_VERSION` above, now 3.)
 
 ### Content addressing & signing (v5)
