@@ -343,7 +343,10 @@ strictly by sequence; the library grows by eval need:
    4 of gemma's 5 escalations are one-path-correct and would accept under the 2-of-3
    rule → **next: M2.7** (third derivation, decorrelated reader), then the error
    chase (qwen's `expected ';'` dialect, granite's `E0502` mass) from captured
-   sources, then M2.8 proper and M3.
+   sources, then M2.8 proper and M3. Findings write-up for the whole arc:
+   `experiments/planfix-m2-findings.md` (gemma4 19/20 @ 100% precision under the
+   2-of-3 gate; granite 70% @ 100% with the second-model reader; 49 accepts / 1
+   flagged wrong campaign-wide, class diagnosed, zero-cost fix proposed).
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`

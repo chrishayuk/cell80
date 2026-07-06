@@ -297,6 +297,15 @@ via `crosscheck_m26.py` — Python `autofix()` deleted, all repair in-compiler):
 - Cross-model precision: **23 accepts, 0 wrong across all three models.** The
   gate's safety property survived the pipeline migration everywhere.
 
+**Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
+the error analysis, and the proposed rule amendments awaiting registration:**
+`experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision
+(both bands)** under the registered 2-of-3 gate; granite 35% → **70% at 100%
+precision, zero genuine escalations** with the registered second-model reader;
+49 accepts / 1 wrong campaign-wide, the 1 in the flagged band, diagnosed
+(degenerate-zero agreement), with a zero-cost counterfactual fix (zero-guard)
+proposed for registration.
+
 ---
 
 ## Out of scope, stated so nobody re-litigates it mid-campaign
