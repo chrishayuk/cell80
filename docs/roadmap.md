@@ -316,10 +316,34 @@ strictly by sequence; the library grows by eval need:
    regression-tested); and genuine extraction ambiguity (not arithmetic error) is a real
    fragility source even for a careful extractor (not fixable — a property of the English,
    not the renderer). Full spec, sequencing gates (M0-M4), and the pre-registered hypotheses:
-   `docs/math-campaign-spec.md`. **Next** — M3, the actual field campaign (a real corpus, a
-   small model in the loop, cost measured in T-states/tokens against CoT and PAL-Python
-   baselines) — not started; this item is infrastructure + a smoke test, not the campaign
-   itself.
+   `docs/math-campaign-spec.md`. The extraction leg of that spec is now **superseded by
+   the amended registration** (`docs/math-campaign-amendment.md`) — see item 10.
+10. **M2.5 canonicalization + M2.6 fold/width/typed-diagnostics + M2.9 `cell80 compose`,
+   ✓ shipped (2026-07-06).** PlanFix's findings (`experiments/planfix/`) demoted plan-IR
+   JSON to an internal wire format and moved every deterministic repair into the
+   compiler: `rustz80::canon` (text→text before hashing — the artifact hash covers a
+   raw-text source hash, so AST-only canonicalization would leave precipitation
+   unmeasurable) alpha-renames to `q*/v*` slots in dataflow order, topo-sorts ops,
+   folds constants exactly (decimals become exact fractions; inexact constant division
+   is a typed compile error), defers division, and auto-widens the lane when constants
+   exceed `u16::MAX`. `rustz80::diag` gives every pass stable `E*` codes with
+   `suggested_fix`; the dialect normalizer is a code→rewrite table, not string
+   matching. The plan renderer emits slots natively (the `final`-keyword class is
+   impossible by construction; nouns survive only as rename metadata), all **seven
+   registered M2.5 acceptance tests are green** (`cell80/tests/canon_acceptance.rs`),
+   and Light mode is byte-stable across the whole library (codegen golden unchanged).
+   `cell80 compose <dir> <src.rs>…` productionizes the planfix link loop: Full canon →
+   `E0504`-cued resolution (search + arity behind a measured 0.6 confidence floor —
+   a nonsense call name is a typed refusal, never a silent guess) → the registered
+   N-derivation agreement gate (unanimous / majority-flagged / escalate) → `--facts`
+   provenance. **First model-run through the pipeline (M2.8 item 1,
+   `experiments/planfix/crosscheck-m26-findings.md`): the registered gemma4 yield
+   prediction FAILED (75% vs ≥90% predicted) and is banked as a miss; precision — the
+   revert trigger — held at 100% across all three models (23 accepts, 0 wrong).**
+   4 of gemma's 5 escalations are one-path-correct and would accept under the 2-of-3
+   rule → **next: M2.7** (third derivation, decorrelated reader), then the error
+   chase (qwen's `expected ';'` dialect, granite's `E0502` mass) from captured
+   sources, then M2.8 proper and M3.
 
 ✓ **Published to crates.io** (`cell80-z80`, `rustz80`, `cell80`, via the tag-triggered publish
 job in CI); `chuk-speccy` depends on the released versions. (rustz80 0.5.0 dropped the `cell`
