@@ -1,0 +1,58 @@
+want abs_diff                     got@1 abs_i16                      q: compute the absolute value of a minus b
+want gcd                          got@1 gcd3                         q: greatest common divisor of two numbers
+want range_check                  got@1 is_le                        q: return 1 if lo is at most x and x is at most hi
+want neq                          got@1 eq                           q: return 1 if two numbers are not equal
+want is_lt                        got@1 argmax3                      q: index of the larger of two
+want is_gt                        got@1 argmin3                      q: index of the smaller of two
+want argmin3                      got@1 min3                         q: index of the smallest of three
+want lcm                          got@1 lcm3                         q: least common multiple
+want num_digits                   got@1 digit_sum                    q: how many decimal digits
+want safe_div                     got@1 bucket3                      q: quantize to a bucket index by step
+want mul_u16_u16_to_u32           got@1 digit_product                q: exact wide product of two 16-bit values
+want fits_u16                     got@1 abs_i16                      q: does this wide value fit in a 16-bit result
+want increase_by_bps              got@1 increase_percent             q: increase a value by a basis-point percentage
+want unit_div                     got@1 unit_cancel_check            q: resulting unit when dividing one typed quantity by another
+want sum_equals                   got@1 sum_equals_u32               q: verify that two numbers sum to a claimed total
+want diff_equals                  got@1 frac_sub_from_whole          q: verify that subtracting one number from another gives a cl
+want product_equals_u32           got@1 mul_sub_equals_u32           q: verify that two wide numbers multiply to a claimed total
+want weighted_sum2                got@1 weighted_sum                 q: weighted sum of two inputs with custom weights
+want weighted_sum3                got@1 weighted_sum                 q: weighted sum of three inputs with custom weights
+want frac_sub                     got@1 frac_sub_from_whole          q: subtract one fraction from another
+want frac_div                     got@1 is_integer                   q: divide one fraction by another
+want frac_eq                      got@1 eq                           q: check whether two fractions are equal even if not in the s
+want is_integer                   got@1 frac_add_whole               q: check whether a fraction is actually a whole number
+want frac_to_mixed                got@1 mixed_to_frac                q: convert an improper fraction to a mixed number
+want mul_checked_u32              got@1 answer_eq_u32                q: multiply two large numbers, catching it if the answer woul
+want add3_checked_u32             got@1 add_sat                      q: add three large numbers exactly, catching overflow instead
+want pow_checked_u32              got@1 pow_small                    q: raise a number to a power exactly, catching overflow
+want abs_diff_u32                 got@1 abs_diff                     q: the absolute difference between two large numbers
+want min_u32                      got@1 min                          q: the smaller of two large numbers
+want clamp_u32                    got@1 clamp                        q: clamp a large value to a minimum and maximum
+want avg2_u32                     got@1 avg2                         q: the average of two large numbers
+want divides_u32                  got@1 divides                      q: check whether one large number divides another evenly
+want gcd_u32                      got@1 gcd3                         q: the greatest common divisor of two large numbers
+want lcm_u32                      got@1 lcm3                         q: the least common multiple of two large numbers
+want smag_add                     got@1 smag_sub                     q: combine two signed quantities represented as magnitude and
+want smag_cmp                     got@1 smag_sub                     q: compare two signed quantities represented as magnitude and
+want frac_scale                   got@1 frac_add_whole               q: scale a fraction by a whole number
+want answer_eq_u32                got@1 agree3_u32                   q: verify whether two large candidate answers match
+want diff_equals_u32              got@1 diff_equals                  q: verify a claimed difference between two large numbers
+want mul_add_equals_u32           got@1 answer_eq_u32                q: verify a claimed answer for a multiply then add
+want pow_equals_u32               got@1 answer_eq_u32                q: verify a claimed answer for a power calculation
+want agree3_u32                   got@1 majority3                    q: check whether at least two of three large candidate answer
+want smag_mul                     got@1 smag_sub                     q: multiply two signed quantities represented as magnitude an
+want smag_div                     got@1 smag_sub                     q: divide one signed quantity by another, represented as magn
+want pow_mod_u32                  got@1 pow_mod                      q: modular exponentiation at wide 32-bit width, base to the e
+want digit_reverse                got@1 num_digits                   q: reverse the decimal digits of a number
+want mod_inverse                  got@1 mod_mul_u32                  q: modular multiplicative inverse of a mod m
+want morton_encode                got@1 morton_decode                q: morton z-order encode two coordinates into one spatial ind
+want arithmetic_series_sum        got@1 arithmetic_nth_u32           q: sum of the first n terms of an arithmetic sequence
+want geometric_series_sum         got@1 geometric_nth_checked_u32    q: sum of the first n terms of a geometric sequence with rati
+want is_le_u32                    got@1 is_lt_u32                    q: is a less than or equal to b at wide 32-bit width
+want is_ge_u32                    got@1 is_gt_u32                    q: is a greater than or equal to b at wide 32-bit width
+want clear_winner_u32             got@1 is_clear_winner              q: is the top score a decisive win over the second-best at wi
+want choose_worst2                got@1 choose_best2                 q: pick the value of whichever of two candidates has the lowe
+want percent_equals_bps           got@1 bps_increase_between         q: verify a claimed basis-points percent increase between two
+want scale_percent_u32            got@1 scale_percent                q: take a percent of a wide 32-bit value
+
+direct p@1 = 215/271 = 0.7934
