@@ -131,7 +131,21 @@ Per-arm scoreboard (right/wrong/dead of 20):
   degenerate-zero surface unless the zero-guard lands first. Dialect entry stays
   priced by escalation tallies, per the existing discipline.
 
-## 4. Proposed amendments (registered rule changes — not applied unilaterally)
+## 4. Amendments — proposed, then registered and verified by replay (2026-07-06)
+
+*Items 1–2 below were **registered** (user sign-off) and implemented: the zero-guard
+in `compose::agreement` (`degenerate_zero` gate outcome) and the method-call rewrite
+as `E0205 method_to_kernel` in canon. Verified by **replaying the captured sources**
+through the amended gate (`replay_m27.py` — no model calls, no drift):*
+
+| config | before | after replay |
+|---|---|---|
+| granite, self-para | 8 ok / **1 wrong** | **9 ok / 0 wrong** (row22 → `degenerate_zero`; row86 → accept via `E0205`) |
+| granite × gemma reader | 14 ok / 0 wrong | 14 ok / 0 wrong; row86 upgrades majority → **unanimous** |
+| gemma4 / qwen | 19/20 · 3/20 | unchanged — the amendments cost nothing anywhere |
+
+*Accepted-and-wrong is now 0 in every configuration, measured on the exact sources
+that produced the original failure.*
 
 1. **Zero-guard**: majority agreement on the degenerate value `0` does not accept.
    Counterfactual over every captured report, all models: the single wrong-accept

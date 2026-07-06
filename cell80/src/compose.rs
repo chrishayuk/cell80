@@ -319,9 +319,18 @@ pub fn run_composed(
 /// a strict majority → accept **and flag** (reported separately so precision can be
 /// audited at both strictness levels); anything else → `escalate`. A lone derivation
 /// is `single` — compose without a gate, not a gated accept.
+///
+/// **Zero-guard (registered amendment 2026-07-06):** an agreed answer of `0` never
+/// accepts — it escalates as `degenerate_zero`. Zero is the collapse value of broken
+/// derivations (a verify-not-compute else-arm); unrelated broken programs agreeing
+/// on it is coincidence, not consensus. Counterfactually verified over every captured
+/// campaign run: removes the only accepted-and-wrong at zero yield cost.
 pub fn agreement(answers: &[Option<u64>]) -> (Option<u64>, &'static str, bool) {
     let valid: Vec<u64> = answers.iter().flatten().copied().collect();
     if answers.len() == 1 {
+        if valid.first() == Some(&0) {
+            return (None, "degenerate_zero", false);
+        }
         return (valid.first().copied(), "single", false);
     }
     let Some(&first) = valid.first() else {
@@ -335,6 +344,9 @@ pub fn agreement(answers: &[Option<u64>]) -> (Option<u64>, &'static str, bool) {
         }
     }
     let (top, n) = best;
+    if top == 0 && n * 2 > answers.len() {
+        return (None, "degenerate_zero", false);
+    }
     if n == answers.len() {
         (Some(top), "unanimous", false)
     } else if n * 2 > answers.len() {

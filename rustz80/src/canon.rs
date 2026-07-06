@@ -510,6 +510,36 @@ impl<'a> FnCanon<'a> {
                 let key = format!("f{name}({})", self.key_list(&args));
                 Ok(self.intern(Node::Call { name, args }, key))
             }
+            // Registered amendment 2026-07-06 (`E0205 method_to_kernel`): the numeric
+            // method spellings models reach for rewrite to the prelude kernels that
+            // already exist — deterministic, semantics-preserving at u16, recorded.
+            // Anything not in the table stays a soft fallback, never a guess.
+            syn::Expr::MethodCall(mc) => {
+                let kernel = match mc.method.to_string().as_str() {
+                    "max" => "imax",
+                    "min" => "imin",
+                    "abs_diff" => "iabs_diff",
+                    other => return soft(format!("method call `.{other}`")),
+                };
+                if mc.args.len() != 1 {
+                    return soft("method-call arity");
+                }
+                let recv = self.build(&mc.receiver)?;
+                let arg = self.build(&mc.args[0])?;
+                self.repairs.push(Repair::new(
+                    DiagCode::MethodToKernel,
+                    format!(".{}() -> {kernel}()", mc.method),
+                ));
+                let args = vec![recv, arg];
+                let key = format!("f{kernel}({})", self.key_list(&args));
+                Ok(self.intern(
+                    Node::Call {
+                        name: kernel.to_string(),
+                        args,
+                    },
+                    key,
+                ))
+            }
             other => soft(format!(
                 "expression outside the straight-line subset ({})",
                 expr_kind(other)

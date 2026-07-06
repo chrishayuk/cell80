@@ -332,3 +332,21 @@ fn legacy_error_strings_classify() {
         Some(DiagCode::RequiresFractionalScale)
     );
 }
+
+#[test]
+fn method_calls_rewrite_to_kernels() {
+    // Registered amendment 2026-07-06 (E0205): granite's `.max(0)` habit becomes the
+    // prelude kernel call — same canonical text as writing the kernel directly.
+    let method = "fn run(a: u16, b: u16) -> u16 { let bigger = a.max(b); bigger * 2 }";
+    let kernel = "fn run(a: u16, b: u16) -> u16 { let bigger = imax(a, b); bigger * 2 }";
+    let m = full_canon(method);
+    assert_eq!(m.source, full_canon(kernel).source);
+    assert!(m.source.contains("imax(q0, q1)"), "got:\n{}", m.source);
+    assert!(m.repairs.iter().any(|r| r.code == DiagCode::MethodToKernel));
+    // Unknown methods stay a soft fallback, never a guess.
+    let out = full_canon("fn run(a: u16) -> u16 { a.checked_mul(2).unwrap_or(0) }");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+}

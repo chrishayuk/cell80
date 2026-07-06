@@ -335,6 +335,19 @@ via `crosscheck_m26.py` — Python `autofix()` deleted, all repair in-compiler):
 - Cross-model precision: **23 accepts, 0 wrong across all three models.** The
   gate's safety property survived the pipeline migration everywhere.
 
+**Registered amendments (2026-07-06, user sign-off):**
+1. **Zero-guard** — an agreed answer of `0` never accepts; it escalates as
+   `degenerate_zero`. Rationale: `0` is the collapse value of broken derivations
+   (granite's verify-not-compute else-arms); two unrelated broken programs agreeing
+   on `0` is coincidence, not consensus. Counterfactually verified over every
+   captured run (all models, both gates): removes the campaign's only
+   accepted-and-wrong at **zero yield cost**. A legitimate zero answer (rare to
+   nonexistent in GSM8K) escalates, which is the honest failure mode.
+2. **Numeric method-call → kernel rewrite** (`E0205 method_to_kernel`):
+   `a.max(b)` → `imax(a, b)`, `.min` → `imin`, `.abs_diff` → `iabs_diff` — the
+   prelude kernels that already exist. Deterministic, semantics-preserving at u16,
+   typed, recorded. Prices at +1–2 granite rows on the 20-slice.
+
 **Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
 the error analysis, and the proposed rule amendments awaiting registration:**
 `experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision

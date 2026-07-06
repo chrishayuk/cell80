@@ -77,6 +77,26 @@ fn agreement_gate_unanimous_majority_escalate() {
 }
 
 #[test]
+fn zero_guard_registered_amendment() {
+    // The row22 class: two broken derivations collapse to 0 and "agree" — the
+    // registered zero-guard (2026-07-06) escalates instead of accepting.
+    assert_eq!(
+        agreement(&[Some(0), Some(0), None]),
+        (None, "degenerate_zero", false)
+    );
+    assert_eq!(
+        agreement(&[Some(0), Some(0), Some(0)]),
+        (None, "degenerate_zero", false)
+    );
+    assert_eq!(agreement(&[Some(0)]), (None, "degenerate_zero", false));
+    // A nonzero majority over a zero minority is untouched.
+    assert_eq!(
+        agreement(&[Some(0), Some(14), Some(14)]),
+        (Some(14), "majority", true)
+    );
+}
+
+#[test]
 fn cross_check_two_derivations_end_to_end() {
     // An inline derivation (if-value: light fallback, still compiles) and a
     // composed derivation (library `max`) — method diversity, one answer.
