@@ -268,8 +268,46 @@ deltas from the original M2.9 text: composed cells widen **when constants
 demand it** (the fold detection) rather than unconditionally — the library's
 inlinable free-fns are u16, so a blanket-wide lane would unlink every call;
 and the MCP `cell_compose` tool (Python surface) is deferred until the
-campaign harness needs it. Free-fn `_u32` siblings of the state-cell wide
-family are the natural next library slice (legal since two-u32-params).
+campaign harness needs it. ~~Free-fn `_u32` siblings of the state-cell wide
+family are the natural next library slice (legal since two-u32-params).~~
+**Correction (2026-07-06):** checked directly — `mod_add_u32`/`mod_sub_u32`/
+`mod_mul_u32` need *three* u32 params (`a`, `b`, `m`), and the Z80 calling
+convention caps a function at two (the first rides `HL:DE`, a second the
+stack; a third has nowhere to go — confirmed by an actual failed compile,
+not inferred). "Two-u32-params legal" only clears the way for genuinely
+2-param wide free-fns; the state-cell mod family can't cross to free-fn form
+this way. See the mod-space rewrite note below for how the modulus threads
+through without ever needing a 3-arg function.
+
+**Status (2026-07-06, mod-space rewrite):** the first of the four structural
+AIME/MATH gaps from the post-M2.9 gap analysis is landed — `canon.rs` Full
+mode now recognizes a `<chain> % m` tail (`Node::Rem` at the root) where `m`
+is a leaf (param or constant, so its value is available before any chain op —
+no ordering hazard) and the chain feeding it is pure `Sum`/division-free
+`MulDiv` (no `Call`, no nested `Rem`, no fractional constant), and rewrites
+each step to reduce-combine-reduce mod `m` instead of computing the whole
+chain wide and reducing once at the end. This is the AIME "finishing move"
+(`... % 1000`) done from the start. Two things this buys, both proven
+end-to-end against an independently-computed expected value
+(`cell80/tests/mod_space_rewrite.rs`): the wide lane's `+`/`-`/`*` are
+**unchecked**, wrapping ops (the canonicalizer never auto-inserts
+`mul_checked_u32` et al. into ordinary arithmetic), so the naive
+wide-then-mod path doesn't escalate on a real overflow — it silently wraps
+mod 2^32 and reduces *that*, a different (wrong) residue whenever `m` isn't a
+power of two, with no signal at all. The rewrite is exact in both directions:
+a product chain whose true value vastly exceeds u32 (verified: three u16
+params near 65535, true product ~2×10^14, naive wraps to a plausible-looking
+wrong answer), and a chain that goes negative mid-computation (verified:
+`(a - b + c) % 7` with `a < b`) where the naive wrap-then-mod also misses.
+No new library cells or prelude kernels: each step reduces via `%` then
+combines via the *existing* 2-arg `add_checked_u32`/`mul_checked_u32`
+kernels (the correction above is why — a 3-arg shared kernel isn't
+compilable), so the rewrite is pure canon-level codegen, typed as `E0206
+mod_space_rewrite` when it fires. Falls back to the unchanged existing
+emission (byte-identical) for division-containing chains, non-leaf moduli,
+and anything with a nested call or remainder — all covered by tests.
+Remaining three structural gaps (answer-format contract, inverse-solve,
+sign convention) are unchanged by this slice.
 
 **M2.8 item 1 result (2026-07-06, `experiments/planfix/crosscheck_m26_results.txt`
 via `crosscheck_m26.py` — Python `autofix()` deleted, all repair in-compiler):**

@@ -3143,3 +3143,72 @@ fn wave4_agentic_runtime_reflexes_cells_match_defined_behaviour() {
     assert_eq!(cell.get("tokens"), Some(20)); // unchanged, denied
     assert_eq!(cell.get("allowed"), Some(0));
 }
+
+#[test]
+fn aime_geometry_cos_and_heron_cells_match_defined_behaviour() {
+    // cos_frac_from_sides + heron_16a2: the AIME geometry pair that trades a real
+    // square root for exact fraction/integer arithmetic (law of cosines and Heron's
+    // formula rearranged to avoid one). Both escalate (0xFF06) on an invalid triangle.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // cos_frac_from_sides: 3-4-5 right triangle, angle opposite the hypotenuse (5) is
+    // 90 degrees -> cos = 0/1.
+    let (_, cell) = step(
+        "cos_frac_from_sides",
+        "CosFracFromSides",
+        &[("a", 3), ("b", 4), ("c", 5)],
+    );
+    assert_eq!(cell.get("mag_num"), Some(0));
+    assert_eq!(cell.get("neg_num"), Some(0));
+    assert_eq!(cell.get("den"), Some(1));
+    // Equilateral: every angle is 60 degrees, cos 60 = 1/2.
+    let (_, cell) = step(
+        "cos_frac_from_sides",
+        "CosFracFromSides",
+        &[("a", 2), ("b", 2), ("c", 2)],
+    );
+    assert_eq!(cell.get("mag_num"), Some(1));
+    assert_eq!(cell.get("neg_num"), Some(0));
+    assert_eq!(cell.get("den"), Some(2));
+    // Obtuse: a=2,b=2,c=3 -> cos C = (4+4-9)/8 = -1/8, sign-magnitude negative.
+    let (_, cell) = step(
+        "cos_frac_from_sides",
+        "CosFracFromSides",
+        &[("a", 2), ("b", 2), ("c", 3)],
+    );
+    assert_eq!(cell.get("mag_num"), Some(1));
+    assert_eq!(cell.get("neg_num"), Some(1));
+    assert_eq!(cell.get("den"), Some(8));
+    // Not a triangle (1 + 1 <= 5): out_of_domain.
+    let (report, _) = step(
+        "cos_frac_from_sides",
+        "CosFracFromSides",
+        &[("a", 1), ("b", 1), ("c", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // heron_16a2: 3-4-5 -> area 6, 16*6^2 = 576.
+    let (_, cell) = step("heron_16a2", "Heron16A2", &[("a", 3), ("b", 4), ("c", 5)]);
+    assert_eq!(cell.get("result"), Some(576));
+    // Equilateral side 2: area = sqrt(3), 16*3 = 48.
+    let (_, cell) = step("heron_16a2", "Heron16A2", &[("a", 2), ("b", 2), ("c", 2)]);
+    assert_eq!(cell.get("result"), Some(48));
+    // Not a triangle: out_of_domain.
+    let (report, _) = step("heron_16a2", "Heron16A2", &[("a", 1), ("b", 1), ("c", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    // Large equilateral triangle: the final factor-pair product overflows u32.
+    let (report, _) = step(
+        "heron_16a2",
+        "Heron16A2",
+        &[("a", 30000), ("b", 30000), ("c", 30000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

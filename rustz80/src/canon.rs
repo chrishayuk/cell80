@@ -831,6 +831,67 @@ impl<'a> FnCanon<'a> {
             }
         }
 
+        // ---- mod-space rewrite: a `<chain> % m` tail with a leaf modulus and a
+        // straight-line (+/-/*) chain rewrites to a step-wise mod-reduced chain
+        // threaded through m — reduce, combine via the existing checked kernel,
+        // reduce again — so no intermediate ever grows past m, instead of summing
+        // the whole wide chain and reducing once at the end. This is the AIME
+        // "reduce mod 1000" finishing move, done from the start. Each step is
+        // inlined (no new shared kernel): the Z80 calling convention caps a
+        // function at two u32 parameters (`a`/`b` ride HL:DE and the stack; a
+        // third has nowhere to go), so a 3-arg `mod_add_u32(a, b, m)` free
+        // function can't exist — the two existing 2-arg kernels
+        // (`add_checked_u32`, `mul_checked_u32`) plus a couple of inline `%`/`if`
+        // lines do the same job. Only fires in the wide lane (u16 arithmetic
+        // doesn't need it), only when the modulus is a leaf (param/const — so its
+        // value is available before any chain op, with no ordering hazard), and
+        // only when every op reachable from the chain root is a pure Sum or a
+        // division-free MulDiv (no Call, no nested Rem, no fractional constant) —
+        // anything else falls back to the existing wide-then-mod emission,
+        // unchanged.
+        let mod_rewrite: Option<(usize, usize, HashSet<usize>)> = widened
+            .then(|| match c.nodes[root] {
+                Node::Rem(a_id, m_id) if matches!(c.nodes[m_id], Node::Param(_) | Node::Const(_)) => {
+                    let mut ops: HashSet<usize> = HashSet::new();
+                    let mut seen: HashSet<usize> = HashSet::new();
+                    let mut stack = vec![a_id];
+                    let mut clean = true;
+                    while let Some(id) = stack.pop() {
+                        if !seen.insert(id) {
+                            continue;
+                        }
+                        match &c.nodes[id] {
+                            Node::Sum { pos, neg, .. } => {
+                                ops.insert(id);
+                                stack.extend(pos.iter().chain(neg));
+                            }
+                            Node::MulDiv { num, den, k } => {
+                                if !den.is_empty() || !k.is_int() {
+                                    clean = false;
+                                    break;
+                                }
+                                ops.insert(id);
+                                stack.extend(num.iter());
+                            }
+                            Node::Param(_) | Node::Const(_) => {}
+                            Node::Rem(..) | Node::Call { .. } => {
+                                clean = false;
+                                break;
+                            }
+                        }
+                    }
+                    (clean && !ops.is_empty()).then_some((a_id, m_id, ops))
+                }
+                _ => None,
+            })
+            .flatten();
+        if mod_rewrite.is_some() {
+            c.repairs.push(Repair::new(
+                DiagCode::ModSpaceRewrite,
+                "chain % m rewritten to mod_add_u32/mod_mul_u32 steps threaded through m",
+            ));
+        }
+
         // ---- slots: q* on first use in emission order, v* per emitted op ----
         let mut slot_of_param: HashMap<usize, usize> = HashMap::new(); // param pos → q index
         let assign_param = |pos: usize, slot_of_param: &mut HashMap<usize, usize>| {
@@ -899,6 +960,11 @@ impl<'a> FnCanon<'a> {
             }
         }
         let mut lines: Vec<String> = Vec::new();
+        if let Some((_, m_id, _)) = &mod_rewrite {
+            // Matches mod_add_u32/mod_sub_u32/mod_mul_u32's own out_of_domain halt —
+            // checked once, since m is a leaf and invariant across the whole chain.
+            lines.push(format!("    if {} == 0u32 {{ halt(0xFF06u16); }}", atom_of[m_id]));
+        }
         let mut vslots = 0usize;
         let mut fresh = |lines: &mut Vec<String>, rhs: String| -> String {
             let v = format!("v{vslots}");
@@ -922,6 +988,9 @@ impl<'a> FnCanon<'a> {
             let node = c.nodes[id].clone();
             let atom = match node {
                 Node::Sum { pos, neg, k } => {
+                    let mod_m = mod_rewrite.as_ref().and_then(|(_, m_id, ops)| {
+                        ops.contains(&id).then(|| atom_of[m_id].clone())
+                    });
                     let mut adds: Vec<String> =
                         pos.iter().map(|d| atom_of[d].clone()).collect();
                     let mut subs: Vec<String> =
@@ -943,17 +1012,45 @@ impl<'a> FnCanon<'a> {
                     if adds.is_empty() {
                         adds.insert(0, format!("0{suffix}"));
                     }
-                    let mut acc = chain(&mut lines, &adds, "+", &mut fresh);
-                    for s in &subs {
-                        acc = fresh(&mut lines, format!("{acc} - {s}"));
+                    if let Some(m) = mod_m {
+                        // Mod-space: thread `m` through every step (reduce, combine via
+                        // the existing checked kernel, reduce again) so no intermediate
+                        // exceeds it, instead of summing wide and reducing once at the end.
+                        let mut acc = adds[0].clone();
+                        for a in &adds[1..] {
+                            let ra = fresh(&mut lines, format!("{acc} % {m}"));
+                            let rb = fresh(&mut lines, format!("{a} % {m}"));
+                            let s = fresh(&mut lines, format!("add_checked_u32({ra}, {rb})"));
+                            acc = fresh(&mut lines, format!("if {s} >= {m} {{ {s} - {m} }} else {{ {s} }}"));
+                        }
+                        for s in &subs {
+                            let ra = fresh(&mut lines, format!("{acc} % {m}"));
+                            let rb = fresh(&mut lines, format!("{s} % {m}"));
+                            acc = fresh(
+                                &mut lines,
+                                format!("if {ra} >= {rb} {{ {ra} - {rb} }} else {{ {m} - ({rb} - {ra}) }}"),
+                            );
+                        }
+                        if adds.len() == 1 && subs.is_empty() {
+                            acc = fresh(&mut lines, format!("{acc} % {m}"));
+                        }
+                        acc
+                    } else {
+                        let mut acc = chain(&mut lines, &adds, "+", &mut fresh);
+                        for s in &subs {
+                            acc = fresh(&mut lines, format!("{acc} - {s}"));
+                        }
+                        // A pure chain of length 1 with no subs emitted nothing: bind it.
+                        if adds.len() == 1 && subs.is_empty() {
+                            acc = fresh(&mut lines, acc);
+                        }
+                        acc
                     }
-                    // A pure chain of length 1 with no subs emitted nothing: bind it.
-                    if adds.len() == 1 && subs.is_empty() {
-                        acc = fresh(&mut lines, acc);
-                    }
-                    acc
                 }
                 Node::MulDiv { num, den, k } => {
+                    let mod_m = mod_rewrite.as_ref().and_then(|(_, m_id, ops)| {
+                        ops.contains(&id).then(|| atom_of[m_id].clone())
+                    });
                     let mut nums: Vec<String> =
                         num.iter().map(|d| atom_of[d].clone()).collect();
                     let mut dens: Vec<String> =
@@ -967,22 +1064,43 @@ impl<'a> FnCanon<'a> {
                     if !dens.is_empty() {
                         defer_div_applied = true;
                     }
-                    let na = chain(&mut lines, &nums, "*", &mut fresh);
-                    if dens.is_empty() {
-                        if nums.len() == 1 {
-                            fresh(&mut lines, na)
-                        } else {
-                            na
+                    if let Some(m) = mod_m {
+                        // The mod-rewrite scan only admits division-free MulDiv nodes
+                        // (an integral k, no `den`), so `nums` alone carries the chain.
+                        // `mul_checked_u32` (existing 2-arg kernel) escalates honestly if
+                        // a step's product itself overflows u32 — no hardcoded modulus cap.
+                        let mut acc = nums[0].clone();
+                        for a in &nums[1..] {
+                            let ra = fresh(&mut lines, format!("{acc} % {m}"));
+                            let rb = fresh(&mut lines, format!("{a} % {m}"));
+                            let p = fresh(&mut lines, format!("mul_checked_u32({ra}, {rb})"));
+                            acc = fresh(&mut lines, format!("{p} % {m}"));
                         }
+                        if nums.len() == 1 {
+                            acc = fresh(&mut lines, format!("{acc} % {m}"));
+                        }
+                        acc
                     } else {
-                        let da = chain(&mut lines, &dens, "*", &mut fresh);
-                        fresh(&mut lines, format!("{na} / {da}"))
+                        let na = chain(&mut lines, &nums, "*", &mut fresh);
+                        if dens.is_empty() {
+                            if nums.len() == 1 {
+                                fresh(&mut lines, na)
+                            } else {
+                                na
+                            }
+                        } else {
+                            let da = chain(&mut lines, &dens, "*", &mut fresh);
+                            fresh(&mut lines, format!("{na} / {da}"))
+                        }
                     }
                 }
-                Node::Rem(a, b) => {
-                    let rhs = format!("{} % {}", atom_of[&a], atom_of[&b]);
-                    fresh(&mut lines, rhs)
-                }
+                Node::Rem(a, b) => match &mod_rewrite {
+                    Some((a_id, m_id, _)) if *a_id == a && *m_id == b => atom_of[&a].clone(),
+                    _ => {
+                        let rhs = format!("{} % {}", atom_of[&a], atom_of[&b]);
+                        fresh(&mut lines, rhs)
+                    }
+                },
                 Node::Call { name, args } => {
                     // Call arguments keep their *natural* width, not the lane width:
                     // a u16 parameter stays `q0` (no `as u32`) and a small constant
