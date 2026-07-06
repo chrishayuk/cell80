@@ -1,0 +1,37 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": 2000,
+   "artifact": "34a4e30a42ec4120f0cc2f35fb0f11bd6eca5565cf721a16c55a3c7a05ef862d",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvtahduls/d0.rs"
+  },
+  {
+   "answer": 79200,
+   "artifact": "d02a7082c86125dd36396c04dae06bfce24ef1a3c405f60df00219ced7a79025",
+   "kill": null,
+   "repairs": [
+    "E0301:width_exceeds_u16 a constant exceeds u16::MAX \u2014 lane widened to u32",
+    "E0505:dead_let dropped unused bindings: marlins_sales,total_sales"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvtahduls/d1.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvtahduls/d2.rs"
+  }
+ ],
+ "flagged": false
+}

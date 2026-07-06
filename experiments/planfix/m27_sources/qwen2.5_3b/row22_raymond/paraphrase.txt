@@ -1,0 +1,1 @@
+Given that Raymond and Samantha are related as cousins, with Raymond being six years younger than Samantha. When Raymond fathered his child at the age of twenty-three, if Samantha currently stands at thirty-one years old, determine how many years back Raymond’s child was conceived?

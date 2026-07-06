@@ -1,0 +1,1 @@
+The total count of imported vehicles at the port reached 30 units by the end of the second day. If, on the first day, a shipment arrived consisting of 2 containers, each holding 5 vehicles, and assuming all subsequent deliveries maintain a capacity of 5 vehicles per container, what was the number of containers that were added during the second day's arrival?

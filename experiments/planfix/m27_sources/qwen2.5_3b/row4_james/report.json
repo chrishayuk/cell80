@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": 1620,
+   "artifact": "914a60442333cd4a576996d0e669ae710bc0f083522b921035dc2fed28a11263",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpnrxwkdz8/d0.rs"
+  },
+  {
+   "answer": 450,
+   "artifact": "65fbaa7858a9a0f31d37d7782c0152685ea5a5899e3a8d4a3abd7e92ae1fe0a1",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: meters_per_sprint,sessions_per_week,sprints_per_session,total_meters_per_session"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpnrxwkdz8/d1.rs"
+  },
+  {
+   "answer": 180,
+   "artifact": "f563175362017165e003a6bea2e0dcd167bc4669de8aaa97f2cd950ede95af07",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpnrxwkdz8/d2.rs"
+  }
+ ],
+ "flagged": false
+}

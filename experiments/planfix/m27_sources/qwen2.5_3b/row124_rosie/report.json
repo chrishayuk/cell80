@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmdcbjml7/d0.rs"
+  },
+  {
+   "answer": 50,
+   "artifact": "d4faa1bc42129b25bc3e66d354d72eca5676819e8296827841d67e6e997920e4",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (cast) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmdcbjml7/d1.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmdcbjml7/d2.rs"
+  }
+ ],
+ "flagged": false
+}

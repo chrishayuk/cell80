@@ -1,0 +1,38 @@
+{
+ "agreement": "unanimous",
+ "answer": 50,
+ "derivations": [
+  {
+   "answer": 50,
+   "artifact": "906a25ef2af786d68226f2de59d8d1c51239edc05f42e1f9310fd1abbb608311",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: d1,d2,t2"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmoes9j8b/d0.rs"
+  },
+  {
+   "answer": 50,
+   "artifact": "906a25ef2af786d68226f2de59d8d1c51239edc05f42e1f9310fd1abbb608311",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: d1,d2,t2"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmoes9j8b/d1.rs"
+  },
+  {
+   "answer": 50,
+   "artifact": "906a25ef2af786d68226f2de59d8d1c51239edc05f42e1f9310fd1abbb608311",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmoes9j8b/d2.rs"
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,40 @@
+{
+ "agreement": "unanimous",
+ "answer": 28,
+ "derivations": [
+  {
+   "answer": 28,
+   "artifact": "b5e13e539e9af7c341692eaeb130c4f1637754c5867507480cdb2b537d980314",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: cindy_pets,jan_pets,marcia_pets"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8ou_zb13/d0.rs"
+  },
+  {
+   "answer": 28,
+   "artifact": "b5e13e539e9af7c341692eaeb130c4f1637754c5867507480cdb2b537d980314",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: c,j,m"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8ou_zb13/d1.rs"
+  },
+  {
+   "answer": 28,
+   "artifact": "b5e13e539e9af7c341692eaeb130c4f1637754c5867507480cdb2b537d980314",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: jan_pets,marcia_pets"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8ou_zb13/d2.rs"
+  }
+ ],
+ "flagged": false
+}

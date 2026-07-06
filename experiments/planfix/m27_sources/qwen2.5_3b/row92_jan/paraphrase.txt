@@ -1,0 +1,1 @@
+Marcia owns two more animals than Cindy does. Cindy has exactly four animal companions. Given that Jan possesses three times as many pets as Marcia, determine the total number of pets all three individuals own together.

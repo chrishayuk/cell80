@@ -1,0 +1,1 @@
+"How much distance can Rosie cover if she maintains a speed of 10 miles per hour for the initial span of 3 hours and then switches to running at a pace of 5 miles per hour, over an overall duration of 7 hours?"

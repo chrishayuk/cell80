@@ -1,0 +1,40 @@
+{
+ "agreement": "unanimous",
+ "answer": 4,
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "c30d7078adae14c39b17d356ad405d3745542c5ff10a801fddf18b4bbe628c16",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmposvwa574/d0.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: initial_containers,remaining_vehicles,total_vehicles,vehicles_initially,vehicles_per_container"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmposvwa574/d1.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "8057b203fce43b2783c95c4736747bed2a4cd3d2d040ba2f3dc3fdfb6fa90444",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmposvwa574/d2.rs"
+  }
+ ],
+ "flagged": false
+}

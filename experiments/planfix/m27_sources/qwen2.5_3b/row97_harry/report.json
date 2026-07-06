@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": 10,
+   "artifact": "ba03e1a9d3ee9cc971b98500ce020a105625a65a26e55f04a473eda274d0fc93",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp0s0p0h_m/d0.rs"
+  },
+  {
+   "answer": 3,
+   "artifact": "e57690e0283b80c9d7d85536a101d6304d06e77cb47f34280c85b9dd76c27b7f",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: harry_sleep,james_sleep"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp0s0p0h_m/d1.rs"
+  },
+  {
+   "answer": 12,
+   "artifact": "49a8737735fc7fa7166e364898867a223960cec336b69807a216f1808ff7411a",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp0s0p0h_m/d2.rs"
+  }
+ ],
+ "flagged": false
+}

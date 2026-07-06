@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpn1tor9yr/d0.rs"
+  },
+  {
+   "answer": 366,
+   "artifact": "afecb29af4f4ebd3dec4870f18363dcb722eb52d5a4fb8acc1ce5a749e3a2d7f",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: first_month_downloads,second_month_downloads,third_month_downloads"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpn1tor9yr/d1.rs"
+  },
+  {
+   "answer": 258,
+   "artifact": "b53d0caf04a72844339582f2cc4aab8bd38cbbeb98c75892c2c5340df41213f3",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpn1tor9yr/d2.rs"
+  }
+ ],
+ "flagged": false
+}

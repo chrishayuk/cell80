@@ -1,0 +1,96 @@
+=== gemma4:e4b ===
+model = gemma4:e4b   third reader = paraphrase-then-extract (same model)   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366     366  unanimous  ACCEPT ok
+row22_raymond        14      14  unanimous  ACCEPT ok
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44      44   majority  ACCEPT ok [flagged 2-of-3]
+row89_marilyn      8000    8000   majority  ACCEPT ok [flagged 2-of-3]
+row92_jan            28      28  unanimous  ACCEPT ok
+row93_emily           4       4   majority  ACCEPT ok [flagged 2-of-3]
+row94_lee            36    None   escalate  escalate (genuine)  [[E0302 inexact_const_division] constant division folds to 40]
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175     175   majority  ACCEPT ok [flagged 2-of-3]
+row104_fog          140     140  unanimous  ACCEPT ok
+row106_cody          20      20  unanimous  ACCEPT ok
+row111_marcell       45      45  unanimous  ACCEPT ok
+row117_katy          42      42  unanimous  ACCEPT ok
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240     240  unanimous  ACCEPT ok
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 19/20   yield 19/20   escalations: 0 recoverable, 1 genuine
+precision strict (unanimous only): 15/15   with majority: 19/19
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0505': 27, 'E0301': 2, 'E0203': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/gemma4_e4b
+
+=== granite4.1:3b ===
+model = granite4.1:3b   third reader = paraphrase-then-extract (same model)   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540   majority  ACCEPT ok [flagged 2-of-3]
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (genuine)  [unsupported literal: a float literal — the dialect's values ]
+row22_raymond        14       0   majority  ACCEPT WRONG(!) [flagged 2-of-3]
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44    None   escalate  escalate (recoverable)  [method receiver total_blocks is not a struct]
+row89_marilyn      8000    None   escalate  escalate (genuine)  [number too large to fit in target type; number too large to ]
+row92_jan            28    None   escalate  escalate (recoverable)  [unsupported expression: an assignment (assignments are state]
+row93_emily           4    None   escalate  escalate (genuine)  [method receiver jackson is not a struct; [E0501 parse] compa]
+row94_lee            36    None   escalate  escalate (recoverable)  [[E0501 parse] expected one of: identifier, `::`, `<`, `_`, l]
+row97_harry           3       3   majority  ACCEPT ok [flagged 2-of-3]
+row101_jerome       175    None   escalate  escalate (recoverable)  [unsupported statement: a macro call (no macros in the dialec]
+row104_fog          140    None   escalate  escalate (recoverable)  [[E0501 parse] expected curly braces; div_by_zero]
+row106_cody          20      20   majority  ACCEPT ok [flagged 2-of-3]
+row111_marcell       45    None   escalate  escalate (recoverable)  [[E0501 parse] expected curly braces]
+row117_katy          42    None   escalate  escalate (recoverable)  [[E0501 parse] expected curly braces]
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240    None   escalate  escalate (genuine)
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50   majority  ACCEPT ok [flagged 2-of-3]
+------------------------------------------------------------------------------
+accepted 9/20   yield 8/20   escalations: 7 recoverable, 4 genuine
+precision strict (unanimous only): 4/4   with majority: 8/9
+SAFETY: accepted-but-wrong = 1 (unanimous 0, majority 1)
+repairs applied (E-code tally): {'E0505': 18, 'E0502': 20, 'E0301': 1, 'E0204': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/granite4.1_3b
+
+=== qwen2.5:3b ===
+model = qwen2.5:3b   third reader = paraphrase-then-extract (same model)   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540    None   escalate  escalate (genuine)
+row7_sheep          260     260   majority  ACCEPT ok [flagged 2-of-3]
+row11_downloads     366    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row22_raymond        14    None   escalate  escalate (genuine)  [expected a plain variable name here, got a binary expression]
+row85_football       15    None   escalate  escalate (genuine)
+row86_gene           44    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row89_marilyn      8000    None   escalate  escalate (genuine)  [[E0501 parse] unexpected token, expected `;`]
+row92_jan            28      28   majority  ACCEPT ok [flagged 2-of-3]
+row93_emily           4       4   majority  ACCEPT ok [flagged 2-of-3]
+row94_lee            36    None   escalate  escalate (recoverable)
+row97_harry           3    None   escalate  escalate (recoverable)
+row101_jerome       175    None   escalate  escalate (genuine)  [[E0501 parse] unexpected token, expected `;`; [E0501 parse] ]
+row104_fog          140    None   escalate  escalate (recoverable)
+row106_cody          20    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row111_marcell       45    None   escalate  escalate (recoverable)  [unsupported call target — call a named function (`f(a, b)`) ]
+row117_katy          42    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`; [E0501 parse] ]
+row119_customs        4    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`; [E0501 parse] ]
+row121_miguel       240    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row122_morisette     27    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row124_rosie         50    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`; [E0501 parse] ]
+------------------------------------------------------------------------------
+accepted 3/20   yield 3/20   escalations: 12 recoverable, 5 genuine
+precision strict (unanimous only): 0/0   with majority: 3/3
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0505': 18, 'E0502': 5, 'E0301': 1, 'E0202': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/qwen2.5_3b
+

@@ -1,0 +1,34 @@
+{
+ "agreement": "unanimous",
+ "answer": 240,
+ "derivations": [
+  {
+   "answer": 240,
+   "artifact": "20f2333ca11aef2b20a2be1e90a28b2d3fa39e958a919b23769d556e2a5abcae",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplt89zf0o/d0.rs"
+  },
+  {
+   "answer": 240,
+   "artifact": "20f2333ca11aef2b20a2be1e90a28b2d3fa39e958a919b23769d556e2a5abcae",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplt89zf0o/d1.rs"
+  },
+  {
+   "answer": 240,
+   "artifact": "20f2333ca11aef2b20a2be1e90a28b2d3fa39e958a919b23769d556e2a5abcae",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplt89zf0o/d2.rs"
+  }
+ ],
+ "flagged": false
+}

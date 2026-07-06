@@ -1,0 +1,1 @@
+Gene uses t-shirts from his various vacations to create quilts, with each shirt forming one quilt block. Each row of the quilt consists of blocks representing different years of vacation stays. Gene embarks on four vacations annually and has been traveling since age 23; currently, he is 34 years old. How many total quilt blocks does Gene have?

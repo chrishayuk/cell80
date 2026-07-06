@@ -1,0 +1,1 @@
+The program experienced a download pattern over three months: it started with 60 downloads in the first month, saw its second-month downloads triple that amount, and then witnessed a 30% decrease in downloads during the third month. What is the cumulative number of downloads across these three months?
