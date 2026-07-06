@@ -96,12 +96,32 @@ impl CellHost {
     /// — a same-shape confusable pair like `range_check`/`clamp` shares every bounds word,
     /// so behaviour breaks the tie where text alone can't (`TypeLedIndex`'s module doc has
     /// the measured lift — modest, not a fix for the paraphrase ceiling).
+    ///
+    /// **Width routing** (2026-07-07): when the query expresses *width intent*
+    /// ("wide", "u32", "32-bit", "65535", or the exact words "large"/"big"/"huge" —
+    /// not superlatives like "largest", which are about values), wide cells
+    /// (`u32`/`wide`-tagged or `*_u32`) stably move ahead of their u16 siblings.
+    /// Every `_u32` slice dilutes the IDF of the width words, so text alone stops
+    /// separating `min_u32` from `min` on "the smaller of two large numbers" — the
+    /// measured retrieval-curve cost (`cell-eval/baselines/
+    /// retrieval-direct-misses-263cells-2026-07-06.txt`). Routing is order-only:
+    /// no score is rescaled, and width-neutral queries are untouched.
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Manifest> {
         let stale = self.type_led.borrow().is_none();
         if stale {
             let carts: Vec<Cartridge> = self.catalog.values().cloned().collect();
             *self.type_led.borrow_mut() = Some(TypeLedIndex::build(carts));
         }
+        let wide_intent = query
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+            .any(|t| {
+                matches!(
+                    t.to_ascii_lowercase().as_str(),
+                    "wide" | "u32" | "32-bit" | "65535" | "large" | "big" | "huge"
+                )
+            });
+        // Over-fetch when routing so a wide sibling just below the cut can surface.
+        let fetch = if wide_intent { limit * 2 } else { limit };
         // Pull the ranked ids out (dropping the borrow), then resolve them to manifests that
         // borrow from `catalog` — so the returned references live as long as `&self`.
         let ids: Vec<String> = self
@@ -109,13 +129,25 @@ impl CellHost {
             .borrow()
             .as_ref()
             .expect("index built above")
-            .search(query, limit)
+            .search(query, fetch)
             .into_iter()
             .map(|m| m.id.clone())
             .collect();
-        ids.into_iter()
+        let mut hits: Vec<&Manifest> = ids
+            .into_iter()
             .filter_map(|id| self.catalog.get(&id).map(|c| &c.manifest))
-            .collect()
+            .collect();
+        if wide_intent {
+            let is_wide = |m: &Manifest| {
+                m.id.ends_with("_u32") || m.tags.iter().any(|t| t == "u32" || t == "wide")
+            };
+            // Stable partition: wide cells first, relative order preserved on both sides.
+            let (wide, narrow): (Vec<&Manifest>, Vec<&Manifest>) =
+                hits.into_iter().partition(|m| is_wide(m));
+            hits = wide.into_iter().chain(narrow).collect();
+        }
+        hits.truncate(limit);
+        hits
     }
 
     /// Like [`search`](Self::search) but keeping each hit's tf-idf cosine — the margin
