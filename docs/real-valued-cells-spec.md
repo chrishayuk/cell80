@@ -17,6 +17,12 @@ catalogue rather than authoring from a taxonomy.
 
 ### 1.1 Floats: rejected permanently, and why (banked decision)
 
+> **Amended 2026-07-07** by `docs/real-valued-cells-amendment.md` (the F-waves): the ban
+> narrows from "no floats" to "no floats we don't own." Owned IEEE binary32 softfloat
+> kernels enter the dialect; platform libm stays banned permanently — the rationale below
+> is answered, not overruled. The amendment also opens Wave 3's representation choice
+> (its §F2) while keeping the demand gate unchanged.
+
 The current dialect doc lists floats under "out of the dialect (by design, not omission)"
 without recording the design reason. The reason is the oracle, and it is worth banking so
 nobody relitigates it with "but WASM has f32":
@@ -210,6 +216,10 @@ Subject to the coverage map confirming `candidate` status (several will come bac
   (q_lerp exists at Q8.8; widen).
 
 ### Wave 3 — CORDIC trig (demand-gated, explicitly not authored yet)
+
+> **Amended 2026-07-07:** the gate below survives unchanged, but the representation is
+> no longer fixed at Q16 — when the counter fires, the customer that fired it picks the
+> tier (Q16 or owned f32). See `docs/real-valued-cells-amendment.md` §F2.
 
 `sin_q16`/`cos_q16`/`atan2_q16` via CORDIC (shifts and adds — native to this
 substrate's era), `exp_q16`/`log_q16` if ever justified. **Gate:** the `0xFF02` /
