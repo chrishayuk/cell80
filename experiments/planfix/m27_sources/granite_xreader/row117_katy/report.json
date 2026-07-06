@@ -1,0 +1,43 @@
+{
+ "agreement": "majority",
+ "answer": 42,
+ "derivations": [
+  {
+   "answer": 42,
+   "artifact": "75f07e9c5e4734d6574bee6a9d1b343e3bb45a08ca7f42ba0ce398501c631370",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp69ghcya8/d0.rs"
+  },
+  {
+   "answer": 78,
+   "artifact": "bd97edb5d100718f8edcf9f328ca8fbe589de50e1697c5b9e3b30ba955ede8a2",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [
+    {
+     "call": "max",
+     "cell": "max"
+    }
+   ],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp69ghcya8/d1.rs"
+  },
+  {
+   "answer": 42,
+   "artifact": "7e2fdabf554870c76396e397cf9bcbe54bf1155db7106b307b0986f43a7d4bce",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total_parts,value_per_part"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp69ghcya8/d2.rs"
+  }
+ ],
+ "flagged": true
+}

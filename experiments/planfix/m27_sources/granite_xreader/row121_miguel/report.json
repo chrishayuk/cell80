@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": 34,
+   "artifact": "f903f0a09b406f3e132a63211a0630406f5a5e13f9da6c06ab6a1db0517aa133",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpld8cykvl/d0.rs"
+  },
+  {
+   "answer": 20,
+   "artifact": "3bbd7e3eeb4df8b95e5b64a87b2a5c276f9f3047e1b212b821f64964271b1b0d",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpld8cykvl/d1.rs"
+  },
+  {
+   "answer": 240,
+   "artifact": "20f2333ca11aef2b20a2be1e90a28b2d3fa39e958a919b23769d556e2a5abcae",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpld8cykvl/d2.rs"
+  }
+ ],
+ "flagged": false
+}

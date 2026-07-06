@@ -1,0 +1,41 @@
+{
+ "agreement": "unanimous",
+ "answer": 3,
+ "derivations": [
+  {
+   "answer": 3,
+   "artifact": "e57690e0283b80c9d7d85536a101d6304d06e77cb47f34280c85b9dd76c27b7f",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: harry_hours,james_hours"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpixcoblfd/d0.rs"
+  },
+  {
+   "answer": 3,
+   "artifact": "e57690e0283b80c9d7d85536a101d6304d06e77cb47f34280c85b9dd76c27b7f",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: harry_hours,james_hours"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpixcoblfd/d1.rs"
+  },
+  {
+   "answer": 3,
+   "artifact": "e57690e0283b80c9d7d85536a101d6304d06e77cb47f34280c85b9dd76c27b7f",
+   "kill": null,
+   "repairs": [
+    "E0203:trailing_let rewrote trailing `return` to a tail expression",
+    "E0505:dead_let dropped unused bindings: james_sleep"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpixcoblfd/d2.rs"
+  }
+ ],
+ "flagged": false
+}

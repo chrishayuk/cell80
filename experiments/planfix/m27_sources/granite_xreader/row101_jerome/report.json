@@ -1,0 +1,40 @@
+{
+ "agreement": "majority",
+ "answer": 175,
+ "derivations": [
+  {
+   "answer": 115,
+   "artifact": "2cb1b59993f10b6ea6d1cd75d72c877b7597f02c9d6d82a82ebd35b4d33249b6",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1lt7t_v3/d0.rs"
+  },
+  {
+   "answer": 175,
+   "artifact": "d7e9f00c64a57e2148de4d66bc62d46774e98b312494d21d44fd6a24e08d127a",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: first_friend,fourth_friend,second_friend,third_friend"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1lt7t_v3/d1.rs"
+  },
+  {
+   "answer": 175,
+   "artifact": "d7e9f00c64a57e2148de4d66bc62d46774e98b312494d21d44fd6a24e08d127a",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: f1,f2,f3,f4"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1lt7t_v3/d2.rs"
+  }
+ ],
+ "flagged": true
+}
