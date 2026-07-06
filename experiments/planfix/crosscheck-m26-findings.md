@@ -140,3 +140,73 @@ derivations, the gate accepted them (3/3 correct, all majority).
 
 **Cross-model:** 30 accepts, 1 wrong (flagged band only, diagnosed, class named).
 Strict-unanimous precision is 19/19 across all models and both runs to date.
+
+---
+
+# Error analysis — granite and qwen, from the captured sources
+
+*Method: tabulate every derivation's fate from `m27_sources/*/row*/report.json`
+(3 arms × 20 rows × 3 models), cluster kills by class, read representative sources
+per class, then compute counterfactual yields for the candidate fixes.*
+
+## Per-arm scoreboard (right / wrong / dead, of 20)
+
+| model | inline | composed | paraphrase |
+|---|---|---|---|
+| gemma4 | 19 / 0 / 1 | 15 / 2 / 3 | 19 / 0 / 1 |
+| granite | 10 / 5 / 5 | **12 / 4 / 4** | 5 / **8** / 7 |
+| qwen | 1 / 9 / 10 | **13 / 7 / 0** | 4 / 8 / 8 |
+
+## granite: the signature dialect is **verify-not-compute**
+
+Representative sources show granite's dominant failure shape is
+`if <arithmetic> == <guessed answer> { guess } else { 0 }` — it verifies a mentally
+computed answer instead of deriving it. This one habit explains three classes at once:
+- **the degenerate-zero wrong-accept** (row22): two verify-not-compute programs whose
+  checks failed both returned the else-arm `0` and "agreed";
+- **the `then` parse class** (`if … then 140 else 0` — not Rust at all);
+- **row89's "width" failure, reclassified**: the arithmetic was wrapped in a
+  verify-`if`, so Full canon soft-fell to Light and the width pass never saw it. It
+  was never a width-pass miss this run — it's this dialect.
+
+Second finding: **granite's paraphrase arm is actively harmful** (5 right / 8 wrong —
+worse than its other arms), i.e. granite corrupts its own paraphrases. The registered
+alternative — a *second-model* reader — is the right variant for weak models; a
+granite×(gemma-reads) run is in `crosscheck_m27_granite_xreader.txt`.
+
+One honest normalizer rule falls out: **numeric method-call → kernel call**
+(`a.max(b)` → `imax(a, b)`, `.min` → `imin`, `.abs_diff` → `iabs_diff` — prelude
+kernels that already exist; deterministic, semantics-preserving at u16, typed code).
+All three granite `method_receiver` kills are in the composed arm; converting them is
+worth ~1–2 rows (row86's composed derivation computes 44 correctly once its
+`.max(0)` tail is rewritten). Everything else granite-side is capability/prompt, not
+compiler: `panic!()` in else-arms, `then`-syntax, self-paraphrase corruption.
+
+## qwen: two dead arms around one healthy one — and the healthy one matches its bakeoff
+
+qwen's **composed arm produced a valid answer on 20/20 rows and is 13/20 = 65% right
+standalone — exactly its direct-Rust bakeoff number.** The stated-answer-then-work
+disease (16 of its 18 kills) afflicts only the *inline* and *paraphrase-inline* arms:
+the "ONLY inline arithmetic, no named functions" instruction is what elicits the
+bare-answer-then-broken-work pattern from this model. So qwen's 15% gated yield is not
+inability to emit code — it is gate arithmetic over two instruction-shapes it can't
+hold, around one it can. The registered discipline (no bespoke per-model schemas) means
+this stays its honest uniform-config number; re-shaping arms per model would need an
+explicit registration amendment, stated as such.
+
+## Counterfactuals (computed over the captured reports, all three models)
+
+- **Zero-guard** (majority agreement on `0` does not accept): granite 8 accepted /
+  8 correct / **0 wrong**; qwen and gemma unchanged. Campaign-wide accepted-wrong
+  drops to 0 at **zero yield cost** — no correct answer in either run was ever a
+  zero-majority. This is now the evidence-backed candidate amendment to the
+  registered acceptance rule (the principled literal-lifting battery remains the
+  structural fix; the two compose).
+- **Method-call rule**: +1–2 granite rows, no effect elsewhere, no precision risk.
+
+## gemma, for contrast
+
+Arms are 19/15/19 right; its only two disagreement rows are the two comprehension
+misreads, and the 2-of-3 gate resolved both correctly. For a model of this strength
+the gate is a confirmation layer; for granite/qwen it is doing selection under heavy
+noise — which is exactly the campaign's weak-model thesis being visible in one table.
