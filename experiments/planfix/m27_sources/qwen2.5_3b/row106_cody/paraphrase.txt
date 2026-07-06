@@ -1,0 +1,1 @@
+"How many cookies does Cody consume if he eats three times as many as Amir? Given that Amir eats 5 cookies, you need to find the total number of cookies eaten by both Cody and Amir."

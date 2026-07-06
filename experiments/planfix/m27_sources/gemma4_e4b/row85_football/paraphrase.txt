@@ -1,0 +1,1 @@
+During a season consisting of 22 matches, the team's number of wins exceeded their losses by exactly 8 games. What was the total count of victories?

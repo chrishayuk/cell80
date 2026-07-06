@@ -1,0 +1,38 @@
+{
+ "agreement": "majority",
+ "answer": 540,
+ "derivations": [
+  {
+   "answer": 540,
+   "artifact": "8c0696a613ff20e69904d6980c50b114d5d08c32c75f15f89e6681113c8f86e7",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: meters_per_sprint,sessions_per_week,sprints_per_session"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdzn8q5xf/d0.rs"
+  },
+  {
+   "answer": 540,
+   "artifact": "8c0696a613ff20e69904d6980c50b114d5d08c32c75f15f89e6681113c8f86e7",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdzn8q5xf/d1.rs"
+  },
+  {
+   "answer": 0,
+   "artifact": "64b9685ab50e3f43dc22d16cd0bcffece72cf2561d75824e53f181c8af70ea0b",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (cast) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdzn8q5xf/d2.rs"
+  }
+ ],
+ "flagged": true
+}

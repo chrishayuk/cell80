@@ -1,0 +1,1 @@
+In its initial phase, a software application received 60 installations during the inaugural month. In the subsequent month, the number of installations tripled compared to the first month's figure but then decreased by 30% in the third month. Calculate the cumulative number of installations across these three months.

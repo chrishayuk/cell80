@@ -1,0 +1,38 @@
+{
+ "agreement": "majority",
+ "answer": 4,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpolvisylt/d0.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: amy_age,corey_age,james_age"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpolvisylt/d1.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: amyage,coreyage,jamestown"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpolvisylt/d2.rs"
+  }
+ ],
+ "flagged": true
+}

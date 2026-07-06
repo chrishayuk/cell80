@@ -1,0 +1,38 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] expected one of: identifier, `::`, `<`, `_`, literal, `const`, `ref`, `mut`, `&`, parentheses, square brackets, `..`, `const`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpu2ajxp28/d0.rs"
+  },
+  {
+   "answer": 36,
+   "artifact": "5660b452e16116bf9cf7e817c4b0004dba183887adee355ec2a7b77355ce97e3",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: gerard_original_time,lees_time"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpu2ajxp28/d1.rs"
+  },
+  {
+   "answer": 34,
+   "artifact": "ef5d9b0c7c5345ef8f9c2436eb8ffdcb2241c338bd64bb5e809ed9eaca3fc224",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpu2ajxp28/d2.rs"
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,1 @@
+If a program recorded 60 downloads during its initial month, and subsequent months followed specific patterns, what was the total number of downloads over the three-month period? The second month's download count was exactly triple that of the first month. Furthermore, the third month saw a reduction of 30% from the previous month's figure.

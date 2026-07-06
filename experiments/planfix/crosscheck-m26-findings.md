@@ -87,3 +87,56 @@ Why the yield half missed, from the per-row evidence:
 2. Capture per-row sources in all future runs (replay + diagnosis).
 3. Chase the qwen `expected ';'` dialect and granite's `E0502` mass from captured
    sources after M2.7 lands.
+
+---
+
+# M2.7 result — the third derivation, same day (`crosscheck_m27.py`)
+
+*Third reader: deterministic paraphrase-then-extract on the same model (temp 0);
+gate: the registered 2-of-3 rule (unanimous / majority-**flagged** / escalate);
+every source + paraphrase + compose report dumped under `m27_sources/`.*
+
+| model | yield | strict precision (unanimous) | with majority | accepted-wrong |
+|---|---|---|---|---|
+| gemma4:e4b | **19/20 = 95%** | 15/15 | 19/19 | 0 |
+| granite4.1:3b | 8/20 = 40% | 4/4 | **8/9** | **1 (majority band)** |
+| qwen2.5:3b | 3/20 = 15% | 0/0 | 3/3 | 0 |
+
+**gemma4: all four recoverable escalations converted, all correct** — including both
+*comprehension* misreads (row86 inclusive/exclusive, row101 "10 more" vs "×11"): the
+paraphrase reading broke every tie the right way, which is the decorrelation M2.7 was
+registered to buy. The one residual miss (row94) stayed a genuine typed escalation
+(`E0302`). On this slice gemma now **exceeds its published GSM8K number (~85%,
+stated-answer CoT) at a measured 0% silent-error rate** — N=20, slice runs hot for
+gemma (bakeoff 95%), so this is directional de-risking for H-M2/H-P1 at N=1,319,
+not the claim itself. M2.7 was worth exactly the predicted +20 points here (75%→95%).
+
+**granite: the H-P1 failure class materialized, in the audit band, and is diagnosed.**
+row22 accepted 0 (want 14) as a flagged 2-of-3 majority. The dumped sources show it is
+**not a correlated misread**: the two "agreeing" derivations are structurally unrelated
+broken programs of the shape `if <expr> == 0 { X } else { 0 }` that both collapse to the
+else-arm — *coincidental agreement on failure's default value*, while the one genuine
+derivation died on an out-of-dialect method call. Strict-unanimous precision stayed
+100%; the flag mechanism did exactly what the two-strictness-level registration exists
+for. Two candidate fixes, **both amendments to the registered acceptance rule, so
+neither is applied unilaterally**:
+- *cheap guard:* majority agreement on the degenerate value 0 does not accept
+  (GSM8K answers are essentially never 0; a legit-0 row escalates, which is honest);
+- *principled fix:* **literal lifting** — canon already knows every baked literal and
+  its slot; promote them to parameters so the counterfactual battery (perturb, keep
+  consistent movers) runs on composed cells too. Two broken programs that agree at one
+  point will not agree under perturbation. This closes the class structurally and
+  reuses machinery `solve` already has.
+
+**qwen: the `expected ';'` mass is diagnosed and is NOT a normalizer gap — it's a
+trap.** qwen's dominant dialect is *stated-answer-then-work*: a bare answer literal as
+the first body line, followed by (usually broken, often out-of-dialect) derivation
+code. The parse error is the stated answer itself. Any "repair" that extracts that
+leading literal is stated-answer acceptance through the back door — forbidden by the
+`correct_via_solve` discipline on purpose. The 15% yield with 0 wrong is the honest
+number for this model under this prompt shape; the recoverable path is prompt-side
+(the bakeoff shape it scored 65% under), not compiler-side. Where qwen did emit clean
+derivations, the gate accepted them (3/3 correct, all majority).
+
+**Cross-model:** 30 accepts, 1 wrong (flagged band only, diagnosed, class named).
+Strict-unanimous precision is 19/19 across all models and both runs to date.

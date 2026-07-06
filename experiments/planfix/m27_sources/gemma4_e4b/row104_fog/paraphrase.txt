@@ -1,0 +1,1 @@
+The width of a city, measured from its oceanfront edge to its inland boundary, is 42 miles. If the rate of fog progression dictates that covering any span of 3 miles requires exactly 10 minutes, how many total minutes will pass until the entire area has been covered?

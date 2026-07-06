@@ -1,0 +1,34 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0302 inexact_const_division] constant division folds to 400/11 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf03ztfpq/d0.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0302 inexact_const_division] constant division folds to 400/11 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf03ztfpq/d1.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0302 inexact_const_division] constant division folds to 400/11 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf03ztfpq/d2.rs"
+  }
+ ],
+ "flagged": false
+}

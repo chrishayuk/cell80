@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": 13,
+   "artifact": "36cc3e708ea62d99583916c9dec1d6dfa977e5bdad0f05ba6e6e0d3d7958c7cd",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryrwwnni/d0.rs"
+  },
+  {
+   "answer": 18,
+   "artifact": "31ce6ab352aa4981665d5f0ff4f7780f40f6b9bc32504a555b475f2658617827",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total_games"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryrwwnni/d1.rs"
+  },
+  {
+   "answer": 10,
+   "artifact": "ba03e1a9d3ee9cc971b98500ce020a105625a65a26e55f04a473eda274d0fc93",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryrwwnni/d2.rs"
+  }
+ ],
+ "flagged": false
+}

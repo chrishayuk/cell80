@@ -1,0 +1,1 @@
+In a series of 22 matches, the number of victories exceeded losses by exactly 8. What is the count of wins?

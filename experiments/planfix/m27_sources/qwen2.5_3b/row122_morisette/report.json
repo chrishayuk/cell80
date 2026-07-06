@@ -1,0 +1,36 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplaplbder/d0.rs"
+  },
+  {
+   "answer": 27,
+   "artifact": "a467169e07cfd8aab2f7b0f11acc6016091295e2ea3ae447c316d34e8496dd26",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: kael_apples,kael_oranges,morisette_apples,morisette_oranges"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplaplbder/d1.rs"
+  },
+  {
+   "answer": 193,
+   "artifact": "6b762131c3f09726772df99bbf312c6ad81ccd4449899afb2019fdbcfa9a00f3",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplaplbder/d2.rs"
+  }
+ ],
+ "flagged": false
+}

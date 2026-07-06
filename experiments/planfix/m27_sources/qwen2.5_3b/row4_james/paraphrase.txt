@@ -1,0 +1,1 @@
+"How often does James engage in running activities? He participates in three sprint sessions every week, where each session consists of running sixty meters per sprint. What is the aggregate distance covered by James in one full week?"

@@ -1,0 +1,38 @@
+{
+ "agreement": "majority",
+ "answer": 0,
+ "derivations": [
+  {
+   "answer": 0,
+   "artifact": "5e4aee8d32f814f832026ebd27d00d3be30772a94d4dd9f654e3a81783242929",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpab9qzjhq/d0.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "method receiver son_birth_year is not a struct",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpab9qzjhq/d1.rs"
+  },
+  {
+   "answer": 0,
+   "artifact": "79dfda23c886d1a54a718517715e7545a24ee30e8076d80f67e3e3dd811be2fa",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (if) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpab9qzjhq/d2.rs"
+  }
+ ],
+ "flagged": true
+}

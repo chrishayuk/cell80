@@ -1,0 +1,38 @@
+{
+ "agreement": "unanimous",
+ "answer": 4,
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp61qshy0_/d0.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: day1_vehicles,day2_vehicles"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp61qshy0_/d1.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: day_one_vehicles,remaining_vehicles"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp61qshy0_/d2.rs"
+  }
+ ],
+ "flagged": false
+}
