@@ -1,0 +1,36 @@
+{
+ "agreement": "majority",
+ "answer": 44,
+ "derivations": [
+  {
+   "answer": 44,
+   "artifact": "54bd65b2f20290d41f48417f9dd1a5b2641667d027541e27cd108825207bcaa5",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (cast) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpkzzctetw/d0.rs"
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "method receiver total_blocks is not a struct",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpkzzctetw/d1.rs"
+  },
+  {
+   "answer": 44,
+   "artifact": "8bca69595be42aacea540c622299db94f5aab73ae9a45958ef56d845e41413a0",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpkzzctetw/d2.rs"
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,31 @@
+=== granite4.1:3b with THIRD=model:gemma4:e4b (registered second-model reader) ===
+model = granite4.1:3b   third reader = model:gemma4:e4b   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (recoverable)  [unsupported literal: a float literal — the dialect's values ]
+row22_raymond        14    None   escalate  escalate (recoverable)  [method receiver son_birth_year is not a struct]
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44      44   majority  ACCEPT ok [flagged 2-of-3]
+row89_marilyn      8000    None   escalate  escalate (recoverable)  [number too large to fit in target type]
+row92_jan            28      28   majority  ACCEPT ok [flagged 2-of-3]
+row93_emily           4    None   escalate  escalate (recoverable)  [method receiver jackson is not a struct]
+row94_lee            36    None   escalate  escalate (recoverable)  [[E0501 parse] expected one of: identifier, `::`, `<`, `_`, l]
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175     175   majority  ACCEPT ok [flagged 2-of-3]
+row104_fog          140     140   majority  ACCEPT ok [flagged 2-of-3]
+row106_cody          20      20   majority  ACCEPT ok [flagged 2-of-3]
+row111_marcell       45      45   majority  ACCEPT ok [flagged 2-of-3]
+row117_katy          42      42   majority  ACCEPT ok [flagged 2-of-3]
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240    None   escalate  escalate (recoverable)
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 14/20   yield 14/20   escalations: 6 recoverable, 0 genuine
+precision strict (unanimous only): 7/7   with majority: 14/14
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0505': 21, 'E0502': 11, 'E0301': 2, 'E0203': 1, 'E0204': 1}
+sources dumped under experiments/planfix/m27_sources/granite_xreader

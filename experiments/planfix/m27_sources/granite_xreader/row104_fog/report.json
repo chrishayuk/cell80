@@ -1,0 +1,41 @@
+{
+ "agreement": "majority",
+ "answer": 140,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] expected curly braces",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpavqw2uez/d0.rs"
+  },
+  {
+   "answer": 140,
+   "artifact": "fc9029e7b465c044952f0c9b65034db512d8754982ed3ba82fd4c9eb6b4a01d0",
+   "kill": null,
+   "repairs": [
+    "E0204:compound_call_arg `max`: compound argument bound to a slot"
+   ],
+   "resolutions": [
+    {
+     "call": "max",
+     "cell": "max"
+    }
+   ],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpavqw2uez/d1.rs"
+  },
+  {
+   "answer": 140,
+   "artifact": "78f7571ad37212c549133fc62ec29e39982715c5981bb9f58ddb9cbcdf3ca739",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpavqw2uez/d2.rs"
+  }
+ ],
+ "flagged": true
+}

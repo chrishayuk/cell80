@@ -210,3 +210,28 @@ Arms are 19/15/19 right; its only two disagreement rows are the two comprehensio
 misreads, and the 2-of-3 gate resolved both correctly. For a model of this strength
 the gate is a confirmation layer; for granite/qwen it is doing selection under heavy
 noise — which is exactly the campaign's weak-model thesis being visible in one table.
+
+## The cross-model reader (granite × gemma-reads) — the self-paraphrase damage confirmed
+
+`crosscheck_m27_granite_xreader.txt`: replacing granite's self-paraphrase arm with the
+registered second-model reader (gemma solves inline from the original text):
+
+| granite config | yield | strict / with-majority precision | wrong | genuine escalations |
+|---|---|---|---|---|
+| 2-way (m26) | 35% | 100% / — | 0 | 5 |
+| 3-way, self-paraphrase | 40% | 4/4 / 8/9 | **1** | 4 |
+| 3-way, gemma reader | **70%** | 7/7 / **14/14** | **0** | **0** |
+
+Three things at once: yield doubled; the wrong-accept *vanished* (gemma's correct
+reading breaks the degenerate-zero pairings, so row22 now escalates as recoverable);
+and genuine escalations hit **zero** — for every row in the slice, some path computed
+the right answer under this configuration. The remaining 6 escalations are all
+one-path-correct, i.e. reachable by a fourth derivation or by the method-call rule.
+
+Honest framing: this is a **two-model ensemble configuration**, registered-legal for
+M2.7 (the "second model" reader option) but no longer "granite's number" — 8 of the
+14 accepts are majority accepts, some of them granite+gemma pairs. H-P2 (granite's
+own format advantage) still gets measured on granite-only configs in M2.8; this
+result instead says the *campaign's* weak-model configuration should pair a weak
+composer with a decorrelated strong reader — the reader's job is cheap (one inline
+read), and it converts the gate from noise-filter to answer-finder.

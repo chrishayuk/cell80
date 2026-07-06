@@ -1,0 +1,38 @@
+{
+ "agreement": "majority",
+ "answer": 28,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "unsupported expression: an assignment (assignments are statements \u2014 end with `;`) \u2014 the dialect accepts integer/bool arithmetic, comparisons, calls, indexing, field access, casts, and `if`/`match` values; restructure around those",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_2urlb3e/d0.rs"
+  },
+  {
+   "answer": 28,
+   "artifact": "4f82bc906400e7c0a8d019da7cd6acc2504daef9e63664e9a5c4c5b32f3cd745",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: expression outside the straight-line subset (cast) (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_2urlb3e/d1.rs"
+  },
+  {
+   "answer": 28,
+   "artifact": "b5e13e539e9af7c341692eaeb130c4f1637754c5867507480cdb2b537d980314",
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: cindy_pets,jan_pets,marcia_pets"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_2urlb3e/d2.rs"
+  }
+ ],
+ "flagged": true
+}
