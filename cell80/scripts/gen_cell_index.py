@@ -16,8 +16,8 @@ PACKS = {
     "safe-arith": ["add_sat", "sub_sat", "mul_sat", "safe_div", "safe_mod", "ceil_div", "avg2", "square", "square_wide"],
     "bounds": ["between_exclusive", "normalize_0_100", "snap_down", "snap_up", "round_to_multiple", "clamp"],
     "validation": ["range_check"],
-    "percent": ["percent", "permille", "ratio_255", "scale_percent", "increase_percent", "discount_percent", "within_percent"],
-    "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "mean3", "range3", "mode3", "majority3", "midrange3", "argmax3_u32", "argmin3_u32"],
+    "percent": ["percent", "permille", "ratio_255", "scale_percent", "scale_percent_u32", "increase_percent", "discount_percent", "within_percent"],
+    "ranking-stats": ["min", "max", "min3", "max3", "median3", "argmax3", "argmin3", "sum3", "sum4", "mean3", "range3", "mode3", "majority3", "midrange3", "argmax3_u32", "argmin3_u32"],
     "bit/mask": ["popcount", "parity", "bit_is_set", "set_bit", "clear_bit", "toggle_bit", "mask_has_all", "mask_has_any", "mask_union", "mask_intersection", "mask_xor"],
     "number-theory": ["lcm", "gcd", "gcd3", "lcm3", "divides", "is_coprime", "is_prime", "is_square", "isqrt", "digit_sum", "num_digits", "factor_count", "triangular", "triangular_inverse_exact", "next_pow2", "is_pow2", "pow_small", "cube_sat", "pow_mod", "pow_mod_u32", "mod_add_u32", "mod_sub_u32", "mod_mul_u32", "sum_divisors", "euler_totient", "smallest_prime_factor", "digit_reverse", "digit_product", "is_prime_u32", "mod_inverse", "crt_solve_pair"],
     "distance": ["abs_diff", "manhattan", "chebyshev", "euclid_sq"],
@@ -40,7 +40,7 @@ PACKS = {
     "signed-deltas": ["sign_i16", "abs_i16", "clamp_i16", "apply_delta_clamped"],
     "fractions": ["frac_reduce", "frac_add", "frac_sub", "frac_mul", "frac_div", "frac_cmp", "frac_eq", "is_integer", "frac_to_mixed", "ratio_split2", "frac_reciprocal", "frac_of_whole", "frac_of_whole_floor", "frac_scale", "frac_min", "frac_max", "ratio_split3", "frac_is_proper", "frac_add_whole", "mixed_to_frac", "frac_avg2", "frac_sub_from_whole"],
     "combinatorics": ["factorial_checked_u32", "choose_u32", "permute_u32", "fibonacci_checked_u32", "catalan_number", "derangement_count"],
-    "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid"],
+    "geometry": ["shoelace_area_x2", "shoelace_area_x2_quad", "triangle_is_valid", "cos_frac_from_sides", "heron_16a2"],
     "sequences": ["arithmetic_series_sum", "geometric_series_sum", "arithmetic_nth_u32", "geometric_nth_checked_u32", "consecutive_sum_start"],
 }
 

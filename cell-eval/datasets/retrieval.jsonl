@@ -590,3 +590,7 @@
 {"id": "sum4-para-1", "query": "add four numbers together into one total", "expected": "sum4", "category": "paraphrase"}
 {"id": "scale_percent_u32-direct-1", "query": "take a percent of a wide 32-bit value", "expected": "scale_percent_u32", "category": "direct"}
 {"id": "scale_percent_u32-para-1", "query": "compute a percentage of a large total beyond 65535 without overflow", "expected": "scale_percent_u32", "category": "paraphrase"}
+{"id": "cos_frac_from_sides-direct-1", "query": "cosine of a triangle's angle from its three integer side lengths, as an exact fraction", "expected": "cos_frac_from_sides", "category": "direct"}
+{"id": "cos_frac_from_sides-para-1", "query": "law of cosines rearranged to give cos C as a fraction with no square root", "expected": "cos_frac_from_sides", "category": "paraphrase"}
+{"id": "heron_16a2-direct-1", "query": "16 times the squared area of a triangle from its integer side lengths", "expected": "heron_16a2", "category": "direct"}
+{"id": "heron_16a2-para-1", "query": "Heron's formula rearranged so a triangle's area never needs a square root", "expected": "heron_16a2", "category": "paraphrase"}

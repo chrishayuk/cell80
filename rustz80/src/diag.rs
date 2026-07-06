@@ -49,6 +49,10 @@ pub enum DiagCode {
     UnknownCallTarget,
     /// E0505 — a `let` binding unreachable from the result (dropped).
     DeadLet,
+    /// E0206 — a `<chain> % m` tail rewrote its whole additive/multiplicative chain
+    /// into `mod_add_u32`/`mod_mul_u32` steps threaded through `m`, so intermediates
+    /// never grow past it (the mod-space rewrite).
+    ModSpaceRewrite,
 }
 
 impl DiagCode {
@@ -70,6 +74,7 @@ impl DiagCode {
             DiagCode::WideCall => "E0503",
             DiagCode::UnknownCallTarget => "E0504",
             DiagCode::DeadLet => "E0505",
+            DiagCode::ModSpaceRewrite => "E0206",
         }
     }
 
@@ -91,6 +96,7 @@ impl DiagCode {
             DiagCode::WideCall => "wide_call",
             DiagCode::UnknownCallTarget => "unknown_call_target",
             DiagCode::DeadLet => "dead_let",
+            DiagCode::ModSpaceRewrite => "mod_space_rewrite",
         }
     }
 }

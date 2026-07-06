@@ -208,6 +208,23 @@ wave 4e   259 cells   + wave 4, slice 5/5 (final) — agentic-runtime
                         class as cosine_score_approx) — see the pack note
                         below. Wave 4 complete: 239 -> 259 cells (~20 net
                         new, down from the ~100 originally proposed).
+wave 5a   261 cells   + M2.6 slice gap-fill: sum4 (the four-operand sibling
+                        of sum3) and scale_percent_u32 (the percent-of core
+                        the widened arithmetic lane resolves to) — landed
+                        alongside the M2.5/M2.6 canonicalization pass, not a
+                        standalone wave at the time (see
+                        docs/math-campaign-amendment.md).
+wave 5b   263 cells   + AIME geometry pair, from the post-M2.9 gap analysis's
+                        "cheap, high-yield" recommendation: cos_frac_from_sides
+                        (law of cosines rearranged to an exact sign-magnitude
+                        fraction — no square root, no trig) and heron_16a2
+                        (16*Area^2 via the four-factor form, always integer
+                        for a valid triangle). Both convert a slice of AIME
+                        geometry from "needs a real number" to "fraction/integer
+                        arithmetic the dialect already has." Paired with the
+                        mod-space rewrite (a canon.rs compiler feature, not a
+                        cell — see docs/math-campaign-amendment.md's
+                        "mod-space rewrite" status note).
 next      ~270+        + cosine_score_approx (deferred until cell_solve reads
                         out; further combinatorics/geometry/number-theory
                         extensions remain out of scope per
@@ -988,6 +1005,22 @@ registers the fingerprint doesn't currently compare for duplicate-detection purp
 genuine gap in tuple-return handling, not a bug in this cell, and not something to patch
 around from the cell-authoring side. Worth fixing in `fingerprint.rs` itself if a future
 tuple-returning cell needs to ship past it; out of scope here.
+
+**Geometry, AIME pair (2026-07-06) — `cos_frac_from_sides`, `heron_16a2`.** A post-M2.9
+gap analysis flagged AIME geometry as tractable without any real number: two more exact
+rearrangements, on top of `shoelace_area_x2`/`triangle_is_valid` already in the pack.
+`cos_frac_from_sides` computes cos C = (a²+b²−c²)/(2ab) from integer triangle sides via
+the law of cosines — returned as a sign-magnitude fraction (`mag_num`, `neg_num`, `den`,
+reduced via `gcd_u32`) since the numerator is negative whenever C is obtuse, the same
+convention `smag_*` uses. `heron_16a2` computes 16·Area² = (a+b+c)(−a+b+c)(a−b+c)(a+b−c)
+— the four-factor rearrangement of Heron's formula, chosen over expanding to the
+`a⁴+b⁴+c⁴` form because the four-factor version only ever multiplies sums/differences of
+the sides (each ≤ 2×the largest side), not their fourth powers, so it stays in range for
+larger triangles before it needs to escalate. Both guard triangle validity
+(`out_of_domain`, matching `triangle_is_valid`'s inequality) before doing any arithmetic,
+and both escalate (`needs_wider_math`) rather than wrap on a genuine u32 overflow —
+verified: an equilateral triangle with side 30,000 overflows `heron_16a2`'s final
+factor-pair product and escalates cleanly rather than returning a wrapped wrong area.
 
 Gate: 239 admitted, 0 refused (`sort3` correctly excluded, never counted). Full test suite
 green, cold clippy clean, codegen golden regenerated (purely additive). Retrieval: all seven
