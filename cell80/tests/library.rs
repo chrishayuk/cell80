@@ -2800,7 +2800,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_best2",
             "ChooseBest2",
-            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+            &[
+                ("val_a", 100),
+                ("score_a", 5),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
         ),
         200
     );
@@ -2808,7 +2813,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_best2",
             "ChooseBest2",
-            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 5)
+            ]
         ),
         100
     );
@@ -2816,7 +2826,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_best2",
             "ChooseBest2",
-            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
         ),
         100 // tie -> a
     );
@@ -2824,7 +2839,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_worst2",
             "ChooseWorst2",
-            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 5)]
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 5)
+            ]
         ),
         200
     );
@@ -2832,7 +2852,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_worst2",
             "ChooseWorst2",
-            &[("val_a", 100), ("score_a", 5), ("val_b", 200), ("score_b", 9)]
+            &[
+                ("val_a", 100),
+                ("score_a", 5),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
         ),
         100
     );
@@ -2840,7 +2865,12 @@ fn wave4_scoring_choice_generalization_cells_match_defined_behaviour() {
         step(
             "choose_worst2",
             "ChooseWorst2",
-            &[("val_a", 100), ("score_a", 9), ("val_b", 200), ("score_b", 9)]
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
         ),
         100 // tie -> a
     );
@@ -2999,11 +3029,7 @@ fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
         step(
             "percent_equals_bps",
             "PercentEqualsBps",
-            &[
-                ("before", 4_294_967_295),
-                ("after", 0),
-                ("bps", 2)
-            ]
+            &[("before", 4_294_967_295), ("after", 0), ("bps", 2)]
         ),
         0 // multiply overflow -> claim doesn't hold, never escalates
     );
@@ -3131,14 +3157,24 @@ fn wave4_agentic_runtime_reflexes_cells_match_defined_behaviour() {
     let cell = step_cell(
         "token_bucket_step",
         "TokenBucket",
-        &[("tokens", 100), ("capacity", 100), ("refill", 0), ("cost", 30)],
+        &[
+            ("tokens", 100),
+            ("capacity", 100),
+            ("refill", 0),
+            ("cost", 30),
+        ],
     );
     assert_eq!(cell.get("tokens"), Some(70)); // spent
     assert_eq!(cell.get("allowed"), Some(1));
     let cell = step_cell(
         "token_bucket_step",
         "TokenBucket",
-        &[("tokens", 20), ("capacity", 100), ("refill", 0), ("cost", 30)],
+        &[
+            ("tokens", 20),
+            ("capacity", 100),
+            ("refill", 0),
+            ("cost", 30),
+        ],
     );
     assert_eq!(cell.get("tokens"), Some(20)); // unchanged, denied
     assert_eq!(cell.get("allowed"), Some(0));
