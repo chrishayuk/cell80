@@ -95,7 +95,10 @@ fn mod_rewrite_is_exact_where_the_wide_fallback_wraps() {
     let fast = run("modsub", cart, &[5, 10, 3]);
     assert_eq!(fast.halt, cell80::Halt::Returned);
     let got = fast.regs[0] as u64 | ((fast.regs[1] as u64) << 16);
-    assert_eq!(got, 5, "(5 - 10 + 3) mod 7 == 5, the true nonnegative residue");
+    assert_eq!(
+        got, 5,
+        "(5 - 10 + 3) mod 7 == 5, the true nonnegative residue"
+    );
 }
 
 #[test]
