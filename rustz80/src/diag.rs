@@ -15,6 +15,10 @@ use std::fmt;
 pub enum DiagCode {
     /// E0101 — a bare numeric literal where an operand id was required.
     BareLiteralOperand,
+    /// E0102 — a let-bound literal quantity lifted to a parameter (literal lifting;
+    /// registered amendment path 2026-07-07): the schema generalizes over the value,
+    /// and the counterfactual battery can perturb it.
+    QuantityLifted,
     /// E0201 — a statement macro in the body (stripped; the dialect has no macros).
     StatementMacro,
     /// E0202 — redundant parentheses (collapsed).
@@ -62,6 +66,7 @@ impl DiagCode {
     pub fn code(self) -> &'static str {
         match self {
             DiagCode::BareLiteralOperand => "E0101",
+            DiagCode::QuantityLifted => "E0102",
             DiagCode::StatementMacro => "E0201",
             DiagCode::RedundantParens => "E0202",
             DiagCode::TrailingLet => "E0203",
@@ -85,6 +90,7 @@ impl DiagCode {
     pub fn slug(self) -> &'static str {
         match self {
             DiagCode::BareLiteralOperand => "bare_literal_operand",
+            DiagCode::QuantityLifted => "quantity_lifted",
             DiagCode::StatementMacro => "statement_macro",
             DiagCode::RedundantParens => "redundant_parens",
             DiagCode::TrailingLet => "trailing_let",

@@ -39,6 +39,9 @@ pub struct Composition {
     /// Canonicalization repairs, stringified with their `E*` codes.
     pub repairs: Vec<String>,
     pub widened: bool,
+    /// Lifted quantities `(slot, original value)` in slot order — the arguments
+    /// that run this composition at the source's original numbers.
+    pub lifted: Vec<(String, u64)>,
 }
 
 /// One derivation's fate. `answer` is `Some` **only** for a clean `Returned` run.
@@ -51,6 +54,12 @@ pub struct DerivationOutcome {
     pub repairs: Vec<String>,
     /// The composed schema was already catalogued (H-M3 precipitation counter).
     pub retrieved: bool,
+    /// Runtime-only: the warm handle, base arguments, and return width — what the
+    /// counterfactual battery needs to re-run this derivation under perturbation.
+    pub handle: Option<usize>,
+    pub base_args: Vec<u16>,
+    pub lifted: Vec<(String, u64)>,
+    pub wide_ret: bool,
 }
 
 const LINK_BUDGET: usize = 12;
@@ -206,6 +215,10 @@ pub fn compose(host: &CellHost, cells_dir: &Path, src: &str) -> Result<Compositi
             mode: rustz80::CanonMode::Full,
             hints: Vec::new(),
             wide_default: false,
+            // Literal lifting: let-bound quantities become parameters, so the
+            // schema precipitates across problem instances and the battery can
+            // perturb them. The values ride in `Composition::lifted`.
+            lift_literals: true,
         },
     )
     .map_err(|d| d.to_string())?;
@@ -231,6 +244,7 @@ pub fn compose(host: &CellHost, cells_dir: &Path, src: &str) -> Result<Compositi
                     resolutions,
                     repairs,
                     widened: canon.widened,
+                    lifted: canon.lifted.clone(),
                 })
             }
             Err(e) => {
@@ -268,6 +282,14 @@ pub fn run_composed(
     args: &[u16],
     budget: u64,
 ) -> Result<DerivationOutcome, String> {
+    // A composition with lifted quantities carries its own arguments; explicit
+    // caller args serve sources with real (unlifted) parameters.
+    let args: Vec<u16> = if comp.lifted.is_empty() {
+        args.to_vec()
+    } else {
+        comp.lifted.iter().map(|(_, v)| *v as u16).collect()
+    };
+    let args = args.as_slice();
     let hash = crate::facts::hex(&comp.cart.artifact_hash());
     let id = format!("composed.{}", &hash[..16]);
     let retrieved = host.manifest(&id).is_some();
@@ -312,6 +334,10 @@ pub fn run_composed(
         resolutions,
         repairs: comp.repairs,
         retrieved,
+        handle: Some(h),
+        base_args: args.to_vec(),
+        lifted: comp.lifted,
+        wide_ret,
     })
 }
 
@@ -354,4 +380,83 @@ pub fn agreement(answers: &[Option<u64>]) -> (Option<u64>, &'static str, bool) {
     } else {
         (None, "escalate", false)
     }
+}
+
+/// What the counterfactual battery found (M2.8 item 3, on the composed path).
+#[derive(Debug, Clone)]
+pub struct BatteryReport {
+    /// Distinct lifted values perturbed (each +1, every occurrence, all derivations).
+    pub perturbed: Vec<u64>,
+    /// Lifted values not common to every accepted derivation — perturbing them would
+    /// move some derivations and not others, so they're skipped and reported.
+    pub skipped: Vec<u64>,
+    /// The perturbation that broke the agreement, if any — a coincidental agreement.
+    pub failed_on: Option<u64>,
+}
+
+/// The counterfactual battery over an *accepted* multi-derivation set: perturb each
+/// lifted quantity value (+1, keyed by **value** so the same quantity matches across
+/// derivations whatever it was named) and re-run every derivation; a real agreement
+/// moves consistently, a coincidental one (the `a+b == a*b` at 2,2 class) shatters.
+/// Only values lifted by *every* derivation are perturbed — a value one derivation
+/// baked inline cannot be moved there, and a one-sided perturbation would kill
+/// legitimate agreements; skipped values are reported, never silently dropped.
+pub fn battery(
+    host: &mut CellHost,
+    accepted: &[&DerivationOutcome],
+    budget: u64,
+) -> Result<BatteryReport, String> {
+    let value_sets: Vec<std::collections::HashSet<u64>> = accepted
+        .iter()
+        .map(|o| o.lifted.iter().map(|(_, v)| *v).collect())
+        .collect();
+    let mut all_values: Vec<u64> = value_sets.iter().flat_map(|s| s.iter().copied()).collect();
+    all_values.sort_unstable();
+    all_values.dedup();
+    let (common, skipped): (Vec<u64>, Vec<u64>) = all_values
+        .into_iter()
+        .partition(|v| value_sets.iter().all(|s| s.contains(v)));
+    let mut perturbed = Vec::new();
+    for &v in &common {
+        let mut answers: Vec<Option<u64>> = Vec::new();
+        for o in accepted {
+            let Some(h) = o.handle else {
+                return Err("battery needs warm handles".into());
+            };
+            let args: Vec<u16> = o
+                .base_args
+                .iter()
+                .map(|&a| {
+                    if a as u64 == v {
+                        a.saturating_add(1)
+                    } else {
+                        a
+                    }
+                })
+                .collect();
+            let fast = host.run_fast(h, &args, budget)?;
+            answers.push(match fast.halt {
+                Halt::Returned => Some(if o.wide_ret {
+                    fast.regs[0] as u64 | ((fast.regs[1] as u64) << 16)
+                } else {
+                    fast.result as u64
+                }),
+                _ => None,
+            });
+        }
+        let first = answers[0];
+        if first.is_none() || answers.iter().any(|a| *a != first) {
+            return Ok(BatteryReport {
+                perturbed,
+                skipped,
+                failed_on: Some(v),
+            });
+        }
+        perturbed.push(v);
+    }
+    Ok(BatteryReport {
+        perturbed,
+        skipped,
+        failed_on: None,
+    })
 }

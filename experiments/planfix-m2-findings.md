@@ -147,6 +147,29 @@ through the amended gate (`replay_m27.py` — no model calls, no drift):*
 *Accepted-and-wrong is now 0 in every configuration, measured on the exact sources
 that produced the original failure.*
 
+**Literal lifting + the composed-path battery (registered path, 2026-07-07):** canon
+`Full` now lifts let-bound literal quantities to parameters (`E0102`; inline
+constants stay baked as structure), compose runs cells at their lifted values, and
+an accepted multi-derivation agreement must survive the **counterfactual battery**
+(each common lifted value perturbed +1, value-keyed across derivations) or it
+downgrades to `battery_escalate` — the plan-solve coincidence discipline, now on
+composed cells. Replay over the captured sources:
+
+| config | before lifting | after |
+|---|---|---|
+| gemma4 | 19/20 | **20/20 — 100% yield, 100% precision, zero escalations** |
+| granite × gemma reader | 14/20 | **15/20** |
+| granite / qwen | 9/20 · 3/20 | unchanged (their failures are pre-runtime) |
+
+row94 — the one gemma miss — was a *false kill*: folding **baked** quantities let
+defer-division create an inexact constant intermediate (`E0302`); lifted, the same
+structure divides at runtime with the actual values and lands exactly, in all three
+derivations. Lifting also makes schemas precipitate across problem *instances*
+(same structure, different numbers ⇒ one artifact), not just across nouns — the
+strongest H-M3 mechanism yet. The battery killed no legitimate agreement anywhere,
+and the ported `a+b == a*b` at `(2,2)` coincidence test dies exactly as it does in
+plan-solve.
+
 1. **Zero-guard**: majority agreement on the degenerate value `0` does not accept.
    Counterfactual over every captured report, all models: the single wrong-accept
    disappears at **zero yield cost** (no correct answer was ever a zero-majority).

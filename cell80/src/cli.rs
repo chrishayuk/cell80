@@ -676,12 +676,52 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                 resolutions: Vec::new(),
                 repairs: Vec::new(),
                 retrieved: false,
+                handle: None,
+                base_args: Vec::new(),
+                lifted: Vec::new(),
+                wide_ret: false,
             },
         };
         outcomes.push(outcome);
     }
     let answers: Vec<Option<u64>> = outcomes.iter().map(|o| o.answer).collect();
-    let (answer, agreement, flagged) = crate::compose::agreement(&answers);
+    let (mut answer, mut agreement, flagged) = crate::compose::agreement(&answers);
+    // The counterfactual battery (M2.8): an accepted multi-derivation agreement must
+    // survive perturbation of the lifted quantities, or it was coincidental (the
+    // `a+b == a*b` at 2,2 class) and escalates instead.
+    let mut battery_note: Option<String> = None;
+    if let Some(top) = answer {
+        let accepted: Vec<&crate::compose::DerivationOutcome> = outcomes
+            .iter()
+            .filter(|o| o.answer == Some(top) && o.handle.is_some())
+            .collect();
+        if accepted.len() >= 2 && accepted.iter().any(|o| !o.lifted.is_empty()) {
+            let rep = crate::compose::battery(&mut host, &accepted, cycles)?;
+            match rep.failed_on {
+                Some(v) => {
+                    answer = None;
+                    agreement = "battery_escalate";
+                    battery_note = Some(format!(
+                        "agreement did not survive perturbing {v} (coincidental)"
+                    ));
+                }
+                None => {
+                    battery_note = Some(format!(
+                        "survived {} perturbation(s){}",
+                        rep.perturbed.len(),
+                        if rep.skipped.is_empty() {
+                            String::new()
+                        } else {
+                            format!(
+                                " ({} value(s) not liftable in every derivation, skipped)",
+                                rep.skipped.len()
+                            )
+                        }
+                    ));
+                }
+            }
+        }
+    }
     if let (Some(path), Some(_)) = (facts_out, answer) {
         let mut buf = Vec::new();
         host.export_facts(&mut buf, "compose@cell80")
@@ -694,6 +734,7 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
             "answer": answer,
             "agreement": agreement,
             "flagged": flagged,
+            "battery": battery_note,
             "derivations": outcomes.iter().zip(&sources).map(|(o, s)| json!({
                 "source": s,
                 "answer": o.answer,
@@ -714,6 +755,9 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                     "answer: {a} ({agreement}{})",
                     if flagged { ", flagged for audit" } else { "" }
                 );
+                if let Some(b) = &battery_note {
+                    out += &format!("\n  battery: {b}");
+                }
                 for (o, s) in outcomes.iter().zip(&sources) {
                     for (n, id) in &o.resolutions {
                         out += &format!("\n  {s}: `{n}` -> {id}");
@@ -727,7 +771,13 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                     .zip(&sources)
                     .filter_map(|(o, s)| o.kill.as_ref().map(|k| format!("{s}: {k}")))
                     .collect();
-                format!("escalate — no agreement\n{}", kills.join("\n"))
+                {
+                    let mut out = format!("escalate — no agreement\n{}", kills.join("\n"));
+                    if let Some(b) = &battery_note {
+                        out += &format!("\nbattery: {b}");
+                    }
+                    out
+                }
             }
         }
     })

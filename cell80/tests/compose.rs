@@ -236,3 +236,78 @@ fn compose_api_surface_is_usable_directly() {
     assert_eq!(out.answer, Some(23));
     assert!(out.kill.is_none());
 }
+
+#[test]
+fn battery_kills_coincidental_agreement_on_composed_cells() {
+    // The plan-solve battery, ported to the composed path via literal lifting:
+    // a+b and a*b agree at (2,2) — 4 == 4 — but shatter under perturbation.
+    let adder = tmp(
+        "bat_add.rs",
+        "fn run() -> u16 { let a = 2; let b = 2; a + b }",
+    );
+    let muler = tmp(
+        "bat_mul.rs",
+        "fn run() -> u16 { let a = 2; let b = 2; a * b }",
+    );
+    let out = run_cli(&["compose".into(), cells_dir(), adder, muler, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["agreement"], "battery_escalate", "{out}");
+    assert!(v["answer"].is_null(), "no confident 4: {out}");
+}
+
+#[test]
+fn battery_passes_real_agreement_and_lifted_args_auto_run() {
+    // Two genuinely different structures computing the same function: max+min == a+b.
+    // Lifted quantities supply the arguments (no --args), and the agreement must
+    // survive perturbation of both values.
+    let direct = tmp(
+        "bat_sum.rs",
+        "fn run() -> u16 { let a = 4; let b = 9; a + b }",
+    );
+    let split = tmp(
+        "bat_maxmin.rs",
+        "fn run() -> u16 { let a = 4; let b = 9; let hi = imax(a, b); let lo = imin(a, b); hi + lo }",
+    );
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        direct,
+        split,
+        "--json".into(),
+    ])
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["answer"], 13, "{out}");
+    assert_eq!(v["agreement"], "unanimous");
+    let battery = v["battery"].as_str().unwrap();
+    assert!(battery.contains("survived 2 perturbation"), "{out}");
+    // Distinct artifacts — this is two schemas agreeing, not one schema twice.
+    let d = v["derivations"].as_array().unwrap();
+    assert_ne!(d[0]["artifact"], d[1]["artifact"]);
+}
+
+#[test]
+fn lifting_precipitates_across_problem_instances() {
+    // Same structure, different numbers ⇒ the SAME composed artifact, retrieved on
+    // the second sighting — precipitation across problem instances, not just nouns.
+    let one = tmp(
+        "lift_a.rs",
+        "fn run() -> u16 { let x = 30; let y = 5; x * y }",
+    );
+    let two = tmp(
+        "lift_b.rs",
+        "fn run() -> u16 { let p = 12; let q = 7; p * q }",
+    );
+    let out = run_cli(&["compose".into(), cells_dir(), one, two, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let d = v["derivations"].as_array().unwrap();
+    assert_eq!(
+        d[0]["artifact"], d[1]["artifact"],
+        "one schema, two instances"
+    );
+    assert_eq!(d[1]["retrieved"], true, "{out}");
+    // Different numbers ⇒ different answers ⇒ the gate correctly escalates; the
+    // point here is the schema economy, not agreement.
+    assert_eq!(d[0]["answer"], 150);
+    assert_eq!(d[1]["answer"], 84);
+}

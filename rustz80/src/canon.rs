@@ -75,6 +75,16 @@ pub struct CanonOptions {
     /// Widen the arithmetic lane to `u32` regardless of what the constants require —
     /// the compose harness sets this (composed cells default to a `u32` return).
     pub wide_default: bool,
+    /// **Literal lifting** (`Full` mode, entry fns only): a let-bound bare literal —
+    /// a quantity the model *named* — becomes a `q*` parameter instead of folding
+    /// into the constants; its value is returned in [`CanonOutput::lifted`]. The
+    /// schema then generalizes over the numbers (same structure, different values ⇒
+    /// same artifact — the H-M3 shape), and the counterfactual battery can perturb
+    /// composed cells. Inline expression constants (`* 30 / 100`) stay baked —
+    /// they're structure, not quantities; values over `u16::MAX` stay baked too
+    /// (parameter ABI). Unit scaling applies before lifting (`16.50` dollars lifts
+    /// as `1650`).
+    pub lift_literals: bool,
 }
 
 /// One alpha-rename: the source name survives only here, never in the rendered Rust.
@@ -98,6 +108,9 @@ pub struct CanonOutput {
     pub repairs: Vec<Repair>,
     /// The arithmetic lane was widened to u32 (by constants or `wide_default`).
     pub widened: bool,
+    /// Lifted quantities, `(slot, original value)` in slot order — the arguments a
+    /// caller passes to run the canonical cell at the source's original numbers.
+    pub lifted: Vec<(String, u64)>,
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +370,8 @@ struct FnOut {
     renames: Vec<Rename>,
     repairs: Vec<Repair>,
     widened: bool,
+    /// `(slot, original value)` for lifted quantities, in slot order.
+    lifted: Vec<(String, u64)>,
 }
 
 impl<'a> FnCanon<'a> {
@@ -714,6 +729,7 @@ impl<'a> FnCanon<'a> {
         f: &syn::ItemFn,
         hints: &'a HashMap<String, String>,
         wide_default: bool,
+        lift: bool,
     ) -> Result<FnOut, Fail> {
         if f.sig.generics.params.iter().next().is_some()
             || f.sig.unsafety.is_some()
@@ -763,6 +779,7 @@ impl<'a> FnCanon<'a> {
         let Some((tail_stmt, bindings)) = stmts.split_last() else {
             return soft("empty body");
         };
+        let mut lifted_pos: Vec<(usize, u64)> = Vec::new();
         for s in bindings {
             let syn::Stmt::Local(l) = s else {
                 return soft("non-let statement");
@@ -783,6 +800,27 @@ impl<'a> FnCanon<'a> {
             }
             let mut id = c.build(&init.expr)?;
             id = c.scale_const(id, &name);
+            // Literal lifting: a let-bound bare literal is a *named quantity* —
+            // promote it to a parameter so the schema generalizes over the value
+            // and the battery can perturb it. Post-scaling, u16-range, ints only.
+            if lift {
+                if let Some(r) = c.as_const(id) {
+                    if r.is_int() && (0..=65535).contains(&r.n) {
+                        let pos = c.params.len();
+                        let pid = c.intern(Node::Param(pos), format!("p{pos}"));
+                        c.params.push((name.clone(), false));
+                        c.param_nodes.push(pid);
+                        lifted_pos.push((pos, r.n as u64));
+                        c.repairs.push(Repair::new(
+                            DiagCode::QuantityLifted,
+                            format!("`{name}` = {} lifted to a parameter", r.n),
+                        ));
+                        c.env.insert(name.clone(), pid);
+                        c.let_names.push((name, pid));
+                        continue;
+                    }
+                }
+            }
             c.env.insert(name.clone(), id);
             c.let_names.push((name, id));
         }
@@ -1250,11 +1288,20 @@ impl<'a> FnCanon<'a> {
             text.push('\n');
         }
         text.push_str(&format!("    {tail}\n}}\n"));
+        let mut lifted: Vec<(usize, u64)> = lifted_pos
+            .iter()
+            .map(|(pos, v)| (slot_of_param[pos], *v))
+            .collect();
+        lifted.sort();
         Ok(FnOut {
             text,
             renames,
             repairs: c.repairs,
             widened,
+            lifted: lifted
+                .into_iter()
+                .map(|(slot, v)| (format!("q{slot}"), v))
+                .collect(),
         })
     }
 }
@@ -1340,6 +1387,7 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
             renames: Vec::new(),
             repairs: Vec::new(),
             widened: false,
+            lifted: Vec::new(),
         });
     }
     let mut file: syn::File =
@@ -1364,6 +1412,7 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
     }
     let mut renames = Vec::new();
     let mut widened = false;
+    let mut lifted: Vec<(String, u64)> = Vec::new();
     let mut full_texts: HashMap<usize, String> = HashMap::new();
     if matches!(opts.mode, CanonMode::Full) {
         let hints: HashMap<String, String> = opts
@@ -1373,12 +1422,14 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
             .collect();
         for (i, item) in file.items.iter().enumerate() {
             if let syn::Item::Fn(f) = item {
-                match FnCanon::run(f, &hints, opts.wide_default) {
+                let lift = opts.lift_literals && (f.sig.ident == "run" || f.sig.ident == "main");
+                match FnCanon::run(f, &hints, opts.wide_default, lift) {
                     Ok(out) => {
                         full_texts.insert(i, out.text);
                         repairs.extend(out.repairs);
                         renames.extend(out.renames);
                         widened |= out.widened;
+                        lifted.extend(out.lifted);
                     }
                     Err(Fail::Soft(reason)) => {
                         repairs.push(Repair::new(
@@ -1398,6 +1449,7 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
             renames,
             repairs,
             widened,
+            lifted,
         });
     }
     let mut out = String::new();
@@ -1423,5 +1475,6 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
         renames,
         repairs,
         widened,
+        lifted,
     })
 }

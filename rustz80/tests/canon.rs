@@ -350,3 +350,54 @@ fn method_calls_rewrite_to_kernels() {
         .iter()
         .any(|r| r.code == DiagCode::NonStraightLine));
 }
+
+#[test]
+fn literal_lifting_generalizes_the_schema() {
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        lift_literals: true,
+        ..Default::default()
+    };
+    // Same structure, different numbers ⇒ ONE canonical schema; the values move
+    // to arguments (the H-M3 shape: precipitation across problem instances).
+    let a = canonicalize_source(
+        "fn run() -> u16 { let amy = 30; let jake = 5; amy * jake }",
+        &opts,
+    )
+    .unwrap();
+    let b = canonicalize_source(
+        "fn run() -> u16 { let pens = 12; let cost = 7; pens * cost }",
+        &opts,
+    )
+    .unwrap();
+    assert_eq!(a.source, b.source);
+    assert!(
+        a.source.contains("fn run(q0: u16, q1: u16)"),
+        "{}",
+        a.source
+    );
+    assert_eq!(a.lifted, vec![("q0".into(), 30), ("q1".into(), 5)]);
+    assert_eq!(b.lifted, vec![("q0".into(), 12), ("q1".into(), 7)]);
+    assert_eq!(
+        a.repairs
+            .iter()
+            .filter(|r| r.code == DiagCode::QuantityLifted)
+            .count(),
+        2
+    );
+    assert_compiles(&a.source);
+}
+
+#[test]
+fn lifting_keeps_structural_constants_baked() {
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        lift_literals: true,
+        ..Default::default()
+    };
+    // The let-bound 250 is a quantity (lifted); the inline 30/100 is structure (baked).
+    let out = canonicalize_source("fn run() -> u16 { let x = 250; x * 30 / 100 }", &opts).unwrap();
+    assert_eq!(out.lifted, vec![("q0".into(), 250)]);
+    assert!(out.source.contains("* 3u16"), "{}", out.source);
+    assert!(out.source.contains("/ 10u16"));
+}
