@@ -143,9 +143,9 @@ fn acceptance_4_reserved_identifiers_render_via_slots() {
                 "ops":[["mul","{id}","n","out"]], "target":"out"}}"#
         );
         let p = plan(&json);
-        let rendered = p.render_canonical().unwrap_or_else(|e| {
-            panic!("`{id}` must render cleanly via slots: {e}")
-        });
+        let rendered = p
+            .render_canonical()
+            .unwrap_or_else(|e| panic!("`{id}` must render cleanly via slots: {e}"));
         assert!(
             !rendered.src.contains(id),
             "`{id}` must never reach the Rust:\n{}",

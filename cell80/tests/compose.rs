@@ -153,10 +153,7 @@ fn composed_schema_precipitates_on_reuse() {
 fn typed_failures_escalate_not_guess() {
     // Constant division by a cancelled-to-zero denominator dies at canon with a
     // typed code, and the gate reports escalate — never a made-up number.
-    let bad = tmp(
-        "div0.rs",
-        "fn run(a: u16, b: u16) -> u16 { a / (b - b) }",
-    );
+    let bad = tmp("div0.rs", "fn run(a: u16, b: u16) -> u16 { a / (b - b) }");
     let out = run_cli(&[
         "compose".into(),
         cells_dir(),
@@ -168,10 +165,7 @@ fn typed_failures_escalate_not_guess() {
     assert!(out.contains("escalate"), "{out}");
     assert!(out.contains("E0302"), "typed code surfaces: {out}");
     // An unresolvable call target names itself.
-    let ghost = tmp(
-        "ghost.rs",
-        "fn run(a: u16) -> u16 { zorbulate_qq(a) }",
-    );
+    let ghost = tmp("ghost.rs", "fn run(a: u16) -> u16 { zorbulate_qq(a) }");
     let out = run_cli(&["compose".into(), cells_dir(), ghost]).unwrap();
     assert!(out.contains("escalate"), "{out}");
 }

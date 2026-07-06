@@ -41,7 +41,10 @@ fn light_strips_statement_macros() {
     let out = canonicalize_source(src, &CanonOptions::default()).unwrap();
     assert!(out.changed);
     assert!(!out.source.contains("println"));
-    assert!(out.repairs.iter().any(|r| r.code == DiagCode::StatementMacro));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::StatementMacro));
 }
 
 #[test]
@@ -65,7 +68,10 @@ fn light_rewrites_trailing_return() {
 fn light_collapses_redundant_parens() {
     let src = "fn run(a: u16) -> u16 { ((a)) + ((1u16)) }";
     let out = canonicalize_source(src, &CanonOptions::default()).unwrap();
-    assert!(out.repairs.iter().any(|r| r.code == DiagCode::RedundantParens));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::RedundantParens));
     assert_compiles(&out.source);
 }
 
@@ -77,11 +83,17 @@ fn full_same_structure_different_nouns_identical_text() {
     let notebooks = "fn run(notebooks: u16, crates: u16) -> u16 { let stacked = notebooks * 3; let sum = stacked + crates; sum }";
     let a = full_canon(pencils);
     let b = full_canon(notebooks);
-    assert_eq!(a.source, b.source, "nouns must not reach the canonical text");
+    assert_eq!(
+        a.source, b.source,
+        "nouns must not reach the canonical text"
+    );
     assert!(a.source.contains("q0") && a.source.contains("v0"));
     assert!(!a.source.contains("pencils"));
     // Source names survive as metadata only.
-    assert!(a.renames.iter().any(|r| r.source_name == "pencils" && r.slot == "q0"));
+    assert!(a
+        .renames
+        .iter()
+        .any(|r| r.source_name == "pencils" && r.slot == "q0"));
     assert_compiles(&a.source);
 }
 
@@ -150,7 +162,10 @@ fn constant_division_folds_exactly_and_widens() {
     assert!(out.widened);
     assert!(out.source.contains("-> u32"));
     assert!(out.source.contains("8000u32"), "got:\n{}", out.source);
-    assert!(out.repairs.iter().any(|r| r.code == DiagCode::WidthExceedsU16));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::WidthExceedsU16));
     assert_compiles(&out.source);
 }
 
@@ -158,7 +173,11 @@ fn constant_division_folds_exactly_and_widens() {
 fn wide_lane_widens_params_at_use() {
     let out = full_canon("fn run(a: u16) -> u16 { a * 88000 / 11 }");
     assert!(out.widened);
-    assert!(out.source.contains("(q0 as u32) * 8000u32"), "got:\n{}", out.source);
+    assert!(
+        out.source.contains("(q0 as u32) * 8000u32"),
+        "got:\n{}",
+        out.source
+    );
     assert_compiles(&out.source);
 }
 
@@ -223,8 +242,7 @@ fn money_hint_scales_decimal_to_cents() {
 
 #[test]
 fn unscaled_decimal_in_additive_position_is_typed() {
-    let err =
-        canonicalize_source("fn run(a: u16) -> u16 { a + 16.50 }", &full()).unwrap_err();
+    let err = canonicalize_source("fn run(a: u16) -> u16 { a + 16.50 }", &full()).unwrap_err();
     assert_eq!(err.code, DiagCode::RequiresFractionalScale);
 }
 
@@ -234,7 +252,10 @@ fn unit_table_normalizes_rates_and_unknown_nouns() {
         canonical_unit("dollars_per_egg"),
         ("cents_per_count".into(), 100, 1)
     );
-    assert_eq!(canonical_unit("miles_per_hour"), ("meters_per_seconds".into(), 1609, 3600));
+    assert_eq!(
+        canonical_unit("miles_per_hour"),
+        ("meters_per_seconds".into(), 1609, 3600)
+    );
     // Unknown nouns are counts by convention.
     assert_eq!(canonical_unit("sheep"), ("count".into(), 1, 1));
     assert_eq!(canonical_unit("cups"), ("count".into(), 1, 1));
@@ -261,7 +282,10 @@ fn param_units_are_metadata_not_rewrites() {
         .find(|r| r.source_name == "price")
         .expect("param rename recorded");
     assert_eq!(r.unit.as_deref(), Some("cents"));
-    assert_eq!(r.factor, 100, "caller-side factor recorded, value untouched");
+    assert_eq!(
+        r.factor, 100,
+        "caller-side factor recorded, value untouched"
+    );
 }
 
 // ------------------------------------------------------------ calls + fallback
@@ -278,7 +302,10 @@ fn non_straight_line_falls_back_to_light() {
     let src = "fn run(a: u16) -> u16 { if a > 2u16 { a } else { 0u16 } }";
     let out = full_canon(src);
     assert!(!out.changed, "control flow: light fallback, byte-stable");
-    assert!(out.repairs.iter().any(|r| r.code == DiagCode::NonStraightLine));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
 }
 
 #[test]
@@ -299,7 +326,9 @@ fn legacy_error_strings_classify() {
         Some(DiagCode::UnknownCallTarget)
     );
     assert_eq!(
-        compile_program("fn run() -> u16 { 1.5 }").err().and_then(|e| classify_error(&e)),
+        compile_program("fn run() -> u16 { 1.5 }")
+            .err()
+            .and_then(|e| classify_error(&e)),
         Some(DiagCode::RequiresFractionalScale)
     );
 }

@@ -95,6 +95,7 @@ impl CellHost {
                 tags,
                 entry,
                 limits,
+                ..Default::default()
             },
         )
         .map_err(PyValueError::new_err)?;

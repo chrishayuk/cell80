@@ -122,7 +122,13 @@ impl Diag {
 
 impl fmt::Display for Diag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{} {}] {}", self.code.code(), self.code.slug(), self.message)?;
+        write!(
+            f,
+            "[{} {}] {}",
+            self.code.code(),
+            self.code.slug(),
+            self.message
+        )?;
         if let Some(fix) = &self.suggested_fix {
             write!(f, " (fix: {fix})")?;
         }
@@ -149,7 +155,13 @@ impl Repair {
 
 impl fmt::Display for Repair {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{} {}", self.code.code(), self.code.slug(), self.detail)
+        write!(
+            f,
+            "{}:{} {}",
+            self.code.code(),
+            self.code.slug(),
+            self.detail
+        )
     }
 }
 

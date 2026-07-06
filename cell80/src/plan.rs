@@ -324,8 +324,7 @@ impl Plan {
             let i = ready[0];
             let o = &self.ops[i];
             for operand in [&o.a, &o.b] {
-                if !slot.contains_key(operand.as_str()) && quantity.contains_key(operand.as_str())
-                {
+                if !slot.contains_key(operand.as_str()) && quantity.contains_key(operand.as_str()) {
                     slot.insert(operand.as_str(), format!("q{q_next}"));
                     q_next += 1;
                 }
@@ -368,7 +367,11 @@ impl Plan {
                 _ => [da[0] - db[0], da[1] - db[1], da[2] - db[2], da[3] - db[3]],
             };
             dims.insert(&op.out, dout);
-            let (a, b, out) = (&slot[op.a.as_str()], &slot[op.b.as_str()], &slot[op.out.as_str()]);
+            let (a, b, out) = (
+                &slot[op.a.as_str()],
+                &slot[op.b.as_str()],
+                &slot[op.out.as_str()],
+            );
             match op.op.as_str() {
                 "add" => {
                     // Wrap detect: a checked add, escalating rather than wrapping.
@@ -589,11 +592,7 @@ impl CellHost {
                     continue;
                 }
             };
-            repairs.extend(
-                cart.canon_repairs
-                    .iter()
-                    .map(|r| r.to_string()),
-            );
+            repairs.extend(cart.canon_repairs.iter().map(|r| r.to_string()));
             let hash = crate::facts::hex(&cart.artifact_hash());
             let id = format!("plan.{}", &hash[..16]);
             // Precipitation: same schema ⇒ same hash ⇒ already catalogued.
@@ -653,8 +652,10 @@ impl CellHost {
             }
         }
         // Consensus / battery.
-        let answers: Vec<Option<u64>> =
-            live.iter().map(|(i, _, _, _, _)| outcomes[*i].answer).collect();
+        let answers: Vec<Option<u64>> = live
+            .iter()
+            .map(|(i, _, _, _, _)| outcomes[*i].answer)
+            .collect();
         let mut battery_ran = false;
         let answer = match live.len() {
             0 => None,

@@ -109,8 +109,9 @@ pub struct CanonOutput {
 fn base_scale(word: &str) -> (&'static str, u32) {
     match word {
         "cents" | "cent" | "money" => ("cents", 1),
-        "dollars" | "dollar" | "usd" | "bucks" | "pounds" | "gbp" | "euros" | "euro"
-        | "eur" => ("cents", 100),
+        "dollars" | "dollar" | "usd" | "bucks" | "pounds" | "gbp" | "euros" | "euro" | "eur" => {
+            ("cents", 100)
+        }
         "seconds" | "second" | "secs" | "sec" | "time" => ("seconds", 1),
         "minutes" | "minute" | "mins" | "min" => ("seconds", 60),
         "hours" | "hour" | "hrs" | "hr" => ("seconds", 3600),
@@ -208,7 +209,11 @@ fn parse_decimal(digits: &str) -> Option<Rat> {
         Some((int, frac)) => {
             let scale = 10i128.checked_pow(frac.len() as u32)?;
             let int: i128 = if int.is_empty() { 0 } else { int.parse().ok()? };
-            let frac: i128 = if frac.is_empty() { 0 } else { frac.parse().ok()? };
+            let frac: i128 = if frac.is_empty() {
+                0
+            } else {
+                frac.parse().ok()?
+            };
             Some(Rat::new(int * scale + frac, scale))
         }
         None => clean.parse().ok().map(Rat::int),
@@ -393,7 +398,9 @@ impl<'a> FnCanon<'a> {
         let Some((unit, nf, df)) = self.hint_scale(ident) else {
             return id;
         };
-        let Some(r) = self.as_const(id) else { return id };
+        let Some(r) = self.as_const(id) else {
+            return id;
+        };
         if nf == 1 && df == 1 {
             return id;
         }
@@ -826,7 +833,10 @@ impl<'a> FnCanon<'a> {
             if !calls.is_empty() {
                 c.repairs.push(Repair::new(
                     DiagCode::WideCall,
-                    format!("wide lane calls: {} (prefer _u32 overloads)", calls.join(",")),
+                    format!(
+                        "wide lane calls: {} (prefer _u32 overloads)",
+                        calls.join(",")
+                    ),
                 ));
             }
         }
@@ -858,11 +868,13 @@ impl<'a> FnCanon<'a> {
             if !r.is_int() {
                 // Division-context fractions already died in `build_muldiv`; a
                 // fractional constant here is an unscaled decimal literal.
-                return Err(Fail::Hard(Diag::new(
-                    DiagCode::RequiresFractionalScale,
-                    format!("constant {}/{} is not an integer", r.n, r.d),
-                )
-                .with_fix("scale to the base unit (e.g. cents)")));
+                return Err(Fail::Hard(
+                    Diag::new(
+                        DiagCode::RequiresFractionalScale,
+                        format!("constant {}/{} is not an integer", r.n, r.d),
+                    )
+                    .with_fix("scale to the base unit (e.g. cents)"),
+                ));
             }
             if r.n < 0 {
                 return Err(Fail::Hard(Diag::new(
@@ -907,9 +919,9 @@ impl<'a> FnCanon<'a> {
             v
         };
         let chain = |lines: &mut Vec<String>,
-                         atoms: &[String],
-                         op: &str,
-                         fresh: &mut dyn FnMut(&mut Vec<String>, String) -> String|
+                     atoms: &[String],
+                     op: &str,
+                     fresh: &mut dyn FnMut(&mut Vec<String>, String) -> String|
          -> String {
             let mut acc = atoms[0].clone();
             for a in &atoms[1..] {
@@ -922,10 +934,8 @@ impl<'a> FnCanon<'a> {
             let node = c.nodes[id].clone();
             let atom = match node {
                 Node::Sum { pos, neg, k } => {
-                    let mut adds: Vec<String> =
-                        pos.iter().map(|d| atom_of[d].clone()).collect();
-                    let mut subs: Vec<String> =
-                        neg.iter().map(|d| atom_of[d].clone()).collect();
+                    let mut adds: Vec<String> = pos.iter().map(|d| atom_of[d].clone()).collect();
+                    let mut subs: Vec<String> = neg.iter().map(|d| atom_of[d].clone()).collect();
                     if !k.is_int() {
                         return Err(Fail::Hard(
                             Diag::new(
@@ -954,10 +964,8 @@ impl<'a> FnCanon<'a> {
                     acc
                 }
                 Node::MulDiv { num, den, k } => {
-                    let mut nums: Vec<String> =
-                        num.iter().map(|d| atom_of[d].clone()).collect();
-                    let mut dens: Vec<String> =
-                        den.iter().map(|d| atom_of[d].clone()).collect();
+                    let mut nums: Vec<String> = num.iter().map(|d| atom_of[d].clone()).collect();
+                    let mut dens: Vec<String> = den.iter().map(|d| atom_of[d].clone()).collect();
                     if k.n != 1 || nums.is_empty() {
                         nums.push(const_atom(Rat::int(k.n), &c)?);
                     }
@@ -1070,9 +1078,7 @@ impl<'a> FnCanon<'a> {
         sig_params.sort();
         let params_txt = sig_params
             .iter()
-            .map(|(slot, pos)| {
-                format!("q{slot}: {}", if c.params[*pos].1 { "u32" } else { "u16" })
-            })
+            .map(|(slot, pos)| format!("q{slot}: {}", if c.params[*pos].1 { "u32" } else { "u16" }))
             .collect::<Vec<_>>()
             .join(", ");
         let tail = atom_of[&root].clone();

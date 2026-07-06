@@ -297,10 +297,13 @@ fn plan_parse_rejections() {
         let json = format!(
             r#"{{"quantities":[{{"id":"{id}","value":1,"unit":"count"}}],"ops":[],"target":"{id}"}}"#
         );
-        let src = plan(&json).render().unwrap_or_else(|e| {
-            panic!("`{id}` must render cleanly via slots: {e}")
-        });
-        assert!(!src.contains(id), "`{id}` must not reach the source:\n{src}");
+        let src = plan(&json)
+            .render()
+            .unwrap_or_else(|e| panic!("`{id}` must render cleanly via slots: {e}"));
+        assert!(
+            !src.contains(id),
+            "`{id}` must not reach the source:\n{src}"
+        );
         assert!(src.contains("q0"), "{src}");
     }
 }

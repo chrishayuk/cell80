@@ -148,9 +148,10 @@ fn resolve(
     {
         return Ok(m.id.clone());
     }
-    if hits.iter().any(|(s, m)| {
-        credible(name, &m.id, *s) && free_fn_arity(m).is_none()
-    }) {
+    if hits
+        .iter()
+        .any(|(s, m)| credible(name, &m.id, *s) && free_fn_arity(m).is_none())
+    {
         return Err(format!(
             "[E0503 wide_call] `{name}`: only state-cell matches ({}) — not inlinable; \
              needs a free-fn sibling in the library",
