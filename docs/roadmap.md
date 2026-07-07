@@ -344,7 +344,8 @@ strictly by sequence; the library grows by eval need:
    rule → **next: M2.7** (third derivation, decorrelated reader), then the error
    chase (qwen's `expected ';'` dialect, granite's `E0502` mass) from captured
    sources, then M2.8 proper and M3.
-   **Error-chase backlog, priced from captured sources (2026-07-07):**
+   **Error-chase backlog, priced from captured sources (2026-07-07; (a)(b)(c)
+   ✓ landed same day — see `experiments/planfix-m2-findings.md` §4c):**
    (a) **casts in the straight-line subset** — `as u16`/`as u32` currently soft-fail
    canon Full, which blocked the `E0205` method rule and lifting on granite row22's
    otherwise-clean derivation; small build, unblocks two landed passes on real

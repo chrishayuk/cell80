@@ -311,3 +311,37 @@ fn lifting_precipitates_across_problem_instances() {
     assert_eq!(d[0]["answer"], 150);
     assert_eq!(d[1]["answer"], 84);
 }
+
+#[test]
+fn guarded_division_survives_canonicalization_end_to_end() {
+    // The safe-div idiom with the divisor at zero: the canonical select must keep
+    // the division lazy in its arm — answer 0, never a div_by_zero kill.
+    let src = tmp(
+        "guard.rs",
+        "fn run(a: u16, b: u16) -> u16 { if b != 0 { a / b } else { 0 } }",
+    );
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src.clone(),
+        "--args".into(),
+        "5,0".into(),
+        "--json".into(),
+    ])
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert!(v["derivations"][0]["kill"].is_null(), "{out}");
+    // answer 0 → the zero-guard reports degenerate_zero rather than accepting a
+    // lone zero — correct: a legit zero answer escalates by registered rule.
+    assert_eq!(v["agreement"], "degenerate_zero", "{out}");
+    // And with a nonzero divisor the value flows.
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src,
+        "--args".into(),
+        "12,3".into(),
+    ])
+    .unwrap();
+    assert!(out.contains("answer: 4"), "{out}");
+}

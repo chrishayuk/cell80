@@ -338,6 +338,55 @@ enum Node {
         name: String,
         args: Vec<usize>,
     },
+    /// `a as u16` — meaningful only in the wide lane (narrow values already wrap at
+    /// 16 bits, so it aliases away); `as u32` never builds a node (zero-extension is
+    /// the identity — it just forces the wide lane).
+    Trunc(usize),
+    /// A comparison — only ever a `Select` condition. Normalized: `>`/`>=` flip to
+    /// `<`/`<=` with swapped operands; `==`/`!=` sort operands by structural key.
+    Cmp {
+        op: CmpKind,
+        a: usize,
+        b: usize,
+    },
+    /// `if c { t } else { f }` as a value. Emission is **lazy where it must be**:
+    /// nodes used only inside one arm render inline in that arm (so a guarded
+    /// division — `if b != 0 { a / b } else { 0 } — never evaluates eagerly and
+    /// keeps its kill-avoidance semantics); nodes the condition needs, or that both
+    /// arms share, hoist as ordinary ops (the taken branch would compute them
+    /// anyway, so hoisting cannot introduce a kill the original lacked).
+    Select {
+        c: usize,
+        t: usize,
+        f: usize,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CmpKind {
+    Lt,
+    Le,
+    Eq,
+    Ne,
+}
+
+impl CmpKind {
+    fn sym(self) -> &'static str {
+        match self {
+            CmpKind::Lt => "<",
+            CmpKind::Le => "<=",
+            CmpKind::Eq => "==",
+            CmpKind::Ne => "!=",
+        }
+    }
+    fn tag(self) -> &'static str {
+        match self {
+            CmpKind::Lt => "lt",
+            CmpKind::Le => "le",
+            CmpKind::Eq => "eq",
+            CmpKind::Ne => "ne",
+        }
+    }
 }
 
 enum Fail {
@@ -363,6 +412,8 @@ struct FnCanon<'a> {
     hints: &'a HashMap<String, String>,
     repairs: Vec<Repair>,
     max_lit: i128,
+    /// An explicit `as u32` in the source forces the wide lane.
+    force_wide: bool,
 }
 
 struct FnOut {
@@ -525,6 +576,27 @@ impl<'a> FnCanon<'a> {
                 let key = format!("f{name}({})", self.key_list(&args));
                 Ok(self.intern(Node::Call { name, args }, key))
             }
+            syn::Expr::Cast(cast) => {
+                let wide = match type_width(&cast.ty) {
+                    Some(w) => w,
+                    None => return soft("cast to a non-u16/u32 type"),
+                };
+                let inner = self.build(&cast.expr)?;
+                if wide {
+                    // `as u32` is zero-extension — the identity, but it commits the
+                    // fn to the wide lane (matching the source author's intent).
+                    self.force_wide = true;
+                    return Ok(inner);
+                }
+                if let Some(r) = self.as_const(inner) {
+                    if r.is_int() && r.n >= 0 {
+                        return Ok(self.intern_const(Rat::int(r.n & 0xFFFF)));
+                    }
+                }
+                let key = format!("t({})", self.keys[inner]);
+                Ok(self.intern(Node::Trunc(inner), key))
+            }
+            syn::Expr::If(iff) => self.build_select(iff),
             // Registered amendment 2026-07-06 (`E0205 method_to_kernel`): the numeric
             // method spellings models reach for rewrite to the prelude kernels that
             // already exist — deterministic, semantics-preserving at u16, recorded.
@@ -559,6 +631,103 @@ impl<'a> FnCanon<'a> {
                 "expression outside the straight-line subset ({})",
                 expr_kind(other)
             )),
+        }
+    }
+
+    /// `if <comparison> { <value> } else { <value> }` as a canonical Select node.
+    /// Conditions are single comparisons (the dialect's boolean surface); arms are
+    /// single value expressions (an `else if` chain nests as a Select in `f`).
+    fn build_select(&mut self, iff: &syn::ExprIf) -> Result<usize, Fail> {
+        let c = self.build_cmp(&iff.cond)?;
+        let t = match block_value(&iff.then_branch) {
+            Some(e) => self.build(e)?,
+            None => return soft("if-arm is not a single value expression"),
+        };
+        let Some((_, else_expr)) = &iff.else_branch else {
+            return soft("if-value without an else arm");
+        };
+        let f = match &**else_expr {
+            syn::Expr::Block(b) => match block_value(&b.block) {
+                Some(e) => self.build(e)?,
+                None => return soft("else-arm is not a single value expression"),
+            },
+            syn::Expr::If(nested) => self.build_select(nested)?,
+            other => self.build(other)?,
+        };
+        // Constant condition folds the select away entirely.
+        if let Node::Cmp { op, a, b } = self.nodes[c] {
+            if let (Some(x), Some(y)) = (self.as_const(a), self.as_const(b)) {
+                if x.is_int() && y.is_int() {
+                    let taken = match op {
+                        CmpKind::Lt => x.n < y.n,
+                        CmpKind::Le => x.n <= y.n,
+                        CmpKind::Eq => x.n == y.n,
+                        CmpKind::Ne => x.n != y.n,
+                    };
+                    return Ok(if taken { t } else { f });
+                }
+            }
+        }
+        if t == f {
+            return Ok(t); // both arms identical — the condition is decoration
+        }
+        // Registered amendment 2026-07-07 (`E0207 verify_rewrite`): the
+        // verify-not-compute shape `if E == lit { lit } else { 0 }` returns the
+        // computed side `E` — the comparison contains a real derivation; the
+        // stated literal and the degenerate zero arm are both noise.
+        if let Node::Cmp {
+            op: CmpKind::Eq,
+            a,
+            b,
+        } = self.nodes[c]
+        {
+            let zero_else = self.as_const(f).is_some_and(|r| r.is_zero());
+            if zero_else {
+                let (expr_side, lit_side) = if self.as_const(a).is_some() {
+                    (b, a)
+                } else {
+                    (a, b)
+                };
+                if self.as_const(lit_side).is_some()
+                    && self.as_const(expr_side).is_none()
+                    && t == lit_side
+                {
+                    self.repairs.push(Repair::new(
+                        DiagCode::VerifyRewrite,
+                        "if E == lit { lit } else { 0 } -> E (computed side wins)",
+                    ));
+                    return Ok(expr_side);
+                }
+            }
+        }
+        let key = format!("s?({}|{}|{})", self.keys[c], self.keys[t], self.keys[f]);
+        Ok(self.intern(Node::Select { c, t, f }, key))
+    }
+
+    fn build_cmp(&mut self, cond: &syn::Expr) -> Result<usize, Fail> {
+        match cond {
+            syn::Expr::Paren(p) => self.build_cmp(&p.expr),
+            syn::Expr::Binary(bin) => {
+                let (op, flip) = match bin.op {
+                    syn::BinOp::Lt(_) => (CmpKind::Lt, false),
+                    syn::BinOp::Le(_) => (CmpKind::Le, false),
+                    syn::BinOp::Gt(_) => (CmpKind::Lt, true),
+                    syn::BinOp::Ge(_) => (CmpKind::Le, true),
+                    syn::BinOp::Eq(_) => (CmpKind::Eq, false),
+                    syn::BinOp::Ne(_) => (CmpKind::Ne, false),
+                    _ => return soft("condition is not a comparison"),
+                };
+                let (mut a, mut b) = (self.build(&bin.left)?, self.build(&bin.right)?);
+                if flip {
+                    std::mem::swap(&mut a, &mut b);
+                }
+                if matches!(op, CmpKind::Eq | CmpKind::Ne) && self.keys[a] > self.keys[b] {
+                    std::mem::swap(&mut a, &mut b); // symmetric ops sort operands
+                }
+                let key = format!("b{}({}|{})", op.tag(), self.keys[a], self.keys[b]);
+                Ok(self.intern(Node::Cmp { op, a, b }, key))
+            }
+            _ => soft("condition is not a comparison"),
         }
     }
 
@@ -755,6 +924,7 @@ impl<'a> FnCanon<'a> {
             hints,
             repairs: Vec::new(),
             max_lit: 0,
+            force_wide: false,
         };
         for p in &f.sig.inputs {
             let syn::FnArg::Typed(pt) = p else {
@@ -774,6 +944,12 @@ impl<'a> FnCanon<'a> {
             c.params.push((name, wide));
             c.param_nodes.push(id);
         }
+        // Real (declared) parameters keep their POSITIONAL slots — the caller's
+        // ABI is positional, so reordering the signature by dataflow would silently
+        // remap arguments (found by the guarded-division test: `b` became `q0` and
+        // `--args a,b` divided the wrong way). Only lifted quantities — which have
+        // no external caller — get dataflow-ordered slots, appended after.
+        let real_params = c.params.len();
         // Statements: `let <ident> = <arith>;` … ending in a value tail.
         let stmts = &f.block.stmts;
         let Some((tail_stmt, bindings)) = stmts.split_last() else {
@@ -803,7 +979,7 @@ impl<'a> FnCanon<'a> {
             // Literal lifting: a let-bound bare literal is a *named quantity* —
             // promote it to a parameter so the schema generalizes over the value
             // and the battery can perturb it. Post-scaling, u16-range, ints only.
-            if lift {
+            if lift && real_params == 0 {
                 if let Some(r) = c.as_const(id) {
                     if r.is_int() && (0..=65535).contains(&r.n) {
                         let pos = c.params.len();
@@ -840,29 +1016,99 @@ impl<'a> FnCanon<'a> {
                 stack.push(d);
             }
         }
+        // Eager vs branch-lazy: nodes reachable without crossing a Select arm are
+        // eager (hoisted ops); a Select's condition is always eager; nodes BOTH arms
+        // share are eager too (the taken branch would compute them regardless, so
+        // hoisting cannot introduce a kill the original lacked). Everything else is
+        // arm-exclusive and renders inline inside its arm — the guarded-division
+        // idiom keeps its lazy kill-avoidance.
+        let mut eager: HashSet<usize> = HashSet::new();
+        let mut stack = vec![root];
+        while let Some(id) = stack.pop() {
+            if !eager.insert(id) {
+                continue;
+            }
+            match &c.nodes[id] {
+                Node::Select { c: cond, .. } => stack.push(*cond),
+                n => stack.extend(node_deps(n)),
+            }
+        }
+        loop {
+            let mut grew = false;
+            let selects: Vec<(usize, usize)> = eager
+                .iter()
+                .filter_map(|&i| match c.nodes[i] {
+                    Node::Select { t, f, .. } => Some((t, f)),
+                    _ => None,
+                })
+                .collect();
+            for (t, f) in selects {
+                let closure = |from: usize| -> HashSet<usize> {
+                    let mut seen = HashSet::new();
+                    let mut st = vec![from];
+                    while let Some(id) = st.pop() {
+                        if !seen.insert(id) {
+                            continue;
+                        }
+                        match &c.nodes[id] {
+                            Node::Select { c: cond, .. } => st.push(*cond),
+                            n => st.extend(node_deps(n)),
+                        }
+                    }
+                    seen
+                };
+                let (rt, rf) = (closure(t), closure(f));
+                for &shared in rt.intersection(&rf) {
+                    if eager.insert(shared) {
+                        grew = true;
+                    }
+                }
+            }
+            if !grew {
+                break;
+            }
+        }
         let is_op = |n: &Node| {
             matches!(
                 n,
-                Node::Sum { .. } | Node::MulDiv { .. } | Node::Rem(..) | Node::Call { .. }
+                Node::Sum { .. }
+                    | Node::MulDiv { .. }
+                    | Node::Rem(..)
+                    | Node::Call { .. }
+                    | Node::Select { .. }
+                    | Node::Trunc(_)
             )
         };
-        let mut pending: Vec<usize> = reachable
+        // Readiness looks through non-op eager deps (a Cmp condition) to the ops
+        // beneath them, and ignores arm-exclusive nodes (they render inline).
+        let eager_op_deps = |id: usize, eager: &HashSet<usize>| -> Vec<usize> {
+            let mut out = Vec::new();
+            let mut st = node_deps(&c.nodes[id]);
+            while let Some(d) = st.pop() {
+                if !eager.contains(&d) {
+                    continue;
+                }
+                if is_op(&c.nodes[d]) {
+                    out.push(d);
+                } else {
+                    st.extend(node_deps(&c.nodes[d]));
+                }
+            }
+            out
+        };
+        let mut pending: Vec<usize> = eager
             .iter()
             .copied()
             .filter(|&i| is_op(&c.nodes[i]))
             .collect();
         pending.sort();
-        let mut emitted: HashSet<usize> = reachable
-            .iter()
-            .copied()
-            .filter(|&i| !is_op(&c.nodes[i]))
-            .collect();
+        let mut emitted: HashSet<usize> = HashSet::new();
         let mut order: Vec<usize> = Vec::new();
         while !pending.is_empty() {
             let mut ready: Vec<usize> = pending
                 .iter()
                 .copied()
-                .filter(|&i| node_deps(&c.nodes[i]).iter().all(|d| emitted.contains(d)))
+                .filter(|&i| eager_op_deps(i, &eager).iter().all(|d| emitted.contains(d)))
                 .collect();
             debug_assert!(!ready.is_empty(), "op DAG is acyclic by construction");
             ready.sort_by_key(|&i| (op_rank(&c.nodes[i]), c.keys[i].clone()));
@@ -873,7 +1119,8 @@ impl<'a> FnCanon<'a> {
         }
 
         // ---- width: literals / folded constants decide; wide_default forces ----
-        let mut widened = wide_default || ret_wide || c.params.iter().any(|(_, w)| *w);
+        let mut widened =
+            wide_default || ret_wide || c.force_wide || c.params.iter().any(|(_, w)| *w);
         let mut const_over = c.max_lit > 65535;
         for &id in &reachable {
             let over = |r: Rat| r.n.abs() > 65535 || r.d > 65535;
@@ -954,7 +1201,11 @@ impl<'a> FnCanon<'a> {
                                 stack.extend(num.iter());
                             }
                             Node::Param(_) | Node::Const(_) => {}
-                            Node::Rem(..) | Node::Call { .. } => {
+                            Node::Rem(..)
+                            | Node::Call { .. }
+                            | Node::Trunc(_)
+                            | Node::Cmp { .. }
+                            | Node::Select { .. } => {
                                 clean = false;
                                 break;
                             }
@@ -974,16 +1225,33 @@ impl<'a> FnCanon<'a> {
 
         // ---- slots: q* on first use in emission order, v* per emitted op ----
         let mut slot_of_param: HashMap<usize, usize> = HashMap::new(); // param pos → q index
+        for pos in 0..real_params {
+            slot_of_param.insert(pos, pos); // positional ABI: q-slot == position
+        }
         let assign_param = |pos: usize, slot_of_param: &mut HashMap<usize, usize>| {
             let next = slot_of_param.len();
             slot_of_param.entry(pos).or_insert(next);
         };
-        for &id in &order {
-            for d in node_deps(&c.nodes[id]) {
-                if let Node::Param(pos) = c.nodes[d] {
-                    assign_param(pos, &mut slot_of_param);
+        // Walk each ordered op's FULL subtree (deterministic child order) so params
+        // that only appear inside a Select arm still get dataflow-ordered slots.
+        let mut assign_subtree = |from: usize, slot_of_param: &mut HashMap<usize, usize>| {
+            let mut st = vec![from];
+            let mut seen: HashSet<usize> = HashSet::new();
+            while let Some(id) = st.pop() {
+                if !seen.insert(id) {
+                    continue;
                 }
+                if let Node::Param(pos) = c.nodes[id] {
+                    assign_param(pos, slot_of_param);
+                }
+                // Depth-first, children in declaration order (reverse for the stack).
+                let mut ds = node_deps(&c.nodes[id]);
+                ds.reverse();
+                st.extend(ds);
             }
+        };
+        for &id in &order {
+            assign_subtree(id, &mut slot_of_param);
         }
         if let Node::Param(pos) = c.nodes[root] {
             assign_param(pos, &mut slot_of_param);
@@ -1210,6 +1478,24 @@ impl<'a> FnCanon<'a> {
                     let rhs = format!("{name}({})", arg_atoms.join(", "));
                     fresh(&mut lines, rhs)
                 }
+                Node::Trunc(a) => {
+                    if !widened {
+                        // Narrow-lane values already wrap at 16 bits: the cast is
+                        // the identity — alias, no line.
+                        atom_of[&a].clone()
+                    } else if let Node::Param(pos) = c.nodes[a] {
+                        format!("q{}", slot_of_param[&pos]) // a parameter IS u16
+                    } else {
+                        fresh(&mut lines, format!("{} as u16", atom_of[&a]))
+                    }
+                }
+                Node::Select { c: cond, t, f } => {
+                    let cs = render_inline(&c, cond, &atom_of, widened, suffix, &slot_of_param)?;
+                    let ts = render_inline(&c, t, &atom_of, widened, suffix, &slot_of_param)?;
+                    let fs = render_inline(&c, f, &atom_of, widened, suffix, &slot_of_param)?;
+                    fresh(&mut lines, format!("if {cs} {{ {ts} }} else {{ {fs} }}"))
+                }
+                Node::Cmp { .. } => unreachable!("conditions render inside their Select"),
                 Node::Param(_) | Node::Const(_) => unreachable!("leaves are pre-seeded"),
             };
             atom_of.insert(id, atom);
@@ -1306,6 +1592,201 @@ impl<'a> FnCanon<'a> {
     }
 }
 
+/// Render a node as an inline expression string — used for a `Select`'s condition
+/// and for arm-exclusive subtrees, which must stay lazy inside their `if` arm.
+/// Eager nodes resolve to their already-emitted atoms; everything else renders
+/// recursively (operands parenthesized whenever compound).
+fn render_inline(
+    c: &FnCanon,
+    id: usize,
+    atom_of: &HashMap<usize, String>,
+    widened: bool,
+    suffix: &str,
+    slot_of_param: &HashMap<usize, usize>,
+) -> Result<String, Fail> {
+    if let Some(a) = atom_of.get(&id) {
+        return Ok(a.clone());
+    }
+    let wrap = |s: String| -> String {
+        if s.contains(' ') {
+            format!("({s})")
+        } else {
+            s
+        }
+    };
+    let rat_atom = |r: Rat| -> Result<String, Fail> {
+        if !r.is_int() || r.n < 0 {
+            return Err(Fail::Hard(Diag::new(
+                DiagCode::RequiresFractionalScale,
+                format!("constant {}/{} in a branch is not a whole number", r.n, r.d),
+            )));
+        }
+        Ok(format!("{}{}", r.n, suffix))
+    };
+    Ok(match &c.nodes[id] {
+        Node::Param(pos) => {
+            let q = format!("q{}", slot_of_param[pos]);
+            if widened && !c.params[*pos].1 {
+                format!("({q} as u32)")
+            } else {
+                q
+            }
+        }
+        Node::Const(r) => rat_atom(*r)?,
+        Node::Sum { pos, neg, k } => {
+            let mut adds: Vec<String> = Vec::new();
+            for d in pos {
+                adds.push(wrap(render_inline(
+                    c,
+                    *d,
+                    atom_of,
+                    widened,
+                    suffix,
+                    slot_of_param,
+                )?));
+            }
+            if k.n > 0 {
+                adds.push(rat_atom(*k)?);
+            }
+            if adds.is_empty() {
+                adds.push(format!("0{suffix}"));
+            }
+            let mut out = adds.join(" + ");
+            for d in neg {
+                out = format!(
+                    "{out} - {}",
+                    wrap(render_inline(
+                        c,
+                        *d,
+                        atom_of,
+                        widened,
+                        suffix,
+                        slot_of_param
+                    )?)
+                );
+            }
+            if k.n < 0 {
+                out = format!("{out} - {}", rat_atom(Rat::int(-k.n))?);
+            }
+            out
+        }
+        Node::MulDiv { num, den, k } => {
+            let mut nums: Vec<String> = Vec::new();
+            for d in num {
+                nums.push(wrap(render_inline(
+                    c,
+                    *d,
+                    atom_of,
+                    widened,
+                    suffix,
+                    slot_of_param,
+                )?));
+            }
+            if k.n != 1 || nums.is_empty() {
+                nums.push(rat_atom(Rat::int(k.n))?);
+            }
+            let mut dens: Vec<String> = Vec::new();
+            for d in den {
+                dens.push(wrap(render_inline(
+                    c,
+                    *d,
+                    atom_of,
+                    widened,
+                    suffix,
+                    slot_of_param,
+                )?));
+            }
+            if k.d != 1 {
+                dens.push(rat_atom(Rat::int(k.d))?);
+            }
+            let na = nums.join(" * ");
+            if dens.is_empty() {
+                na
+            } else if dens.len() == 1 {
+                format!("{na} / {}", dens[0])
+            } else {
+                format!("{na} / ({})", dens.join(" * "))
+            }
+        }
+        Node::Rem(a, b) => format!(
+            "{} % {}",
+            wrap(render_inline(
+                c,
+                *a,
+                atom_of,
+                widened,
+                suffix,
+                slot_of_param
+            )?),
+            wrap(render_inline(
+                c,
+                *b,
+                atom_of,
+                widened,
+                suffix,
+                slot_of_param
+            )?)
+        ),
+        Node::Call { name, args } => {
+            let mut rendered = Vec::with_capacity(args.len());
+            for d in args {
+                rendered.push(render_inline(
+                    c,
+                    *d,
+                    atom_of,
+                    widened,
+                    suffix,
+                    slot_of_param,
+                )?);
+            }
+            format!("{name}({})", rendered.join(", "))
+        }
+        Node::Trunc(a) => {
+            if !widened {
+                render_inline(c, *a, atom_of, widened, suffix, slot_of_param)?
+            } else {
+                format!(
+                    "{} as u16",
+                    wrap(render_inline(
+                        c,
+                        *a,
+                        atom_of,
+                        widened,
+                        suffix,
+                        slot_of_param
+                    )?)
+                )
+            }
+        }
+        Node::Cmp { op, a, b } => format!(
+            "{} {} {}",
+            wrap(render_inline(
+                c,
+                *a,
+                atom_of,
+                widened,
+                suffix,
+                slot_of_param
+            )?),
+            op.sym(),
+            wrap(render_inline(
+                c,
+                *b,
+                atom_of,
+                widened,
+                suffix,
+                slot_of_param
+            )?)
+        ),
+        Node::Select { c: cond, t, f } => format!(
+            "if {} {{ {} }} else {{ {} }}",
+            render_inline(c, *cond, atom_of, widened, suffix, slot_of_param)?,
+            render_inline(c, *t, atom_of, widened, suffix, slot_of_param)?,
+            render_inline(c, *f, atom_of, widened, suffix, slot_of_param)?
+        ),
+    })
+}
+
 fn node_deps(n: &Node) -> Vec<usize> {
     match n {
         Node::Param(_) | Node::Const(_) => Vec::new(),
@@ -1313,6 +1794,17 @@ fn node_deps(n: &Node) -> Vec<usize> {
         Node::MulDiv { num, den, .. } => num.iter().chain(den).copied().collect(),
         Node::Rem(a, b) => vec![*a, *b],
         Node::Call { args, .. } => args.clone(),
+        Node::Trunc(a) => vec![*a],
+        Node::Cmp { a, b, .. } => vec![*a, *b],
+        Node::Select { c, t, f } => vec![*c, *t, *f],
+    }
+}
+
+/// The single value expression of a block, if that is all the block holds.
+fn block_value(b: &syn::Block) -> Option<&syn::Expr> {
+    match b.stmts.as_slice() {
+        [syn::Stmt::Expr(e, None)] => Some(e),
+        _ => None,
     }
 }
 
@@ -1323,6 +1815,9 @@ fn op_rank(n: &Node) -> u8 {
         Node::Rem(..) => 2,
         Node::Call { .. } => 3,
         Node::Param(_) | Node::Const(_) => 4,
+        Node::Select { .. } => 5,
+        Node::Trunc(_) => 6,
+        Node::Cmp { .. } => 7,
     }
 }
 

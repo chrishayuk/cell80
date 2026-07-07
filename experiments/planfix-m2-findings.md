@@ -183,6 +183,39 @@ plan-solve.
    **verify-`if` → computed-side rewrite**: `if E == lit { lit } else { 0 }` returns
    `E` — converts granite's signature disease into honest computation.
 
+## 4c. The error-chase backlog lands (2026-07-07): casts, if-value canon, E0207
+
+Three roadmap items from the captured-source analysis, built and replay-verified:
+
+- **Casts** (`as u16`/`as u32`) join the straight-line subset — `as u16` is the
+  identity in the narrow lane and a real truncation in the wide one; `as u32`
+  commits the wide lane. The granite row22 cast-tail no longer blocks `E0205`.
+- **If-value (select) canonicalization** — `if c { a } else { b }` is now a
+  canonical node with comparison normalization (`>` flips to `<`; `==`/`!=` sort
+  operands) and **lazy-arm emission**: arm-exclusive work renders inline in its arm
+  (the guarded-division idiom `if b != 0 { a / b } else { 0 }` keeps its
+  kill-avoidance — verified end-to-end at b=0), while condition-reachable and
+  both-arm-shared nodes hoist. This brought the *inline* derivation arm — the
+  strongest arm — under canonicalization, lifting, and the battery. A positional-ABI
+  bug fell out of the guard test before it could ship: dataflow slot assignment was
+  reordering real parameter signatures (callers' positional args silently remapped);
+  real params now keep positional slots, only lifted quantities get dataflow order.
+- **`E0207 verify_rewrite`** (registered amendment 3): `if E == lit { lit } else
+  { 0 }` returns the computed side. Replay precision check across every
+  configuration: accepted-wrong stayed 0 — the rewrite stands. On this slice it
+  converts nothing (granite's real verify-ifs are `then`-syntax or panic-arm
+  variants that die earlier); it is armed for M3-scale sources.
+
+Replay after all three: gemma **20/20 with two rows upgraded to unanimous** (18/20
+strict); granite/qwen unchanged; and one genuinely important downgrade —
+**granite-xreader row117 went accepted-correct → `battery_escalate`, and the battery
+is right**: its two agreeing derivations share the reading (7:13 of 120) but one
+truncates early (`120/20` then `*7`), agreeing with the deferred form *only because
+120/20 divides exactly*. Under perturbation they diverge (45 vs 40). The agreement
+was exact-division coincidence — precisely the fragility GSM-Symbolic perturbs and
+H-M1 measures, caught in the wild on real model output. One yield point spent on
+the guarantee that accepted agreements generalize off-instance.
+
 ## 4b. The PAL baseline (H-M2) and width routing — 2026-07-07
 
 **PAL-Python** (`pal_baseline.py`, one derivation, subprocess exec, no gate — every

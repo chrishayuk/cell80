@@ -299,7 +299,8 @@ fn calls_survive_with_slot_args() {
 
 #[test]
 fn non_straight_line_falls_back_to_light() {
-    let src = "fn run(a: u16) -> u16 { if a > 2u16 { a } else { 0u16 } }";
+    // if-value is canonical since the select node landed — a loop is the probe now.
+    let src = "fn run(a: u16) -> u16 { let mut s = 0u16; while s < a { s = s + 2u16; } s }";
     let out = full_canon(src);
     assert!(!out.changed, "control flow: light fallback, byte-stable");
     assert!(out
@@ -400,4 +401,125 @@ fn lifting_keeps_structural_constants_baked() {
     assert_eq!(out.lifted, vec![("q0".into(), 250)]);
     assert!(out.source.contains("* 3u16"), "{}", out.source);
     assert!(out.source.contains("/ 10u16"));
+}
+
+// ------------------------------------------------- casts + if-value (select)
+
+#[test]
+fn casts_are_transparent_and_unblock_rewrites() {
+    // The granite row22 shape: a cast tail used to soft-fail the whole fn, blocking
+    // both E0205 and lifting. Now `as u16` is the identity in the narrow lane and
+    // `as u32` just commits the wide lane.
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let src = "fn run() -> u16 { let sams = 31; let ray = sams - 6; let son = ray - 23; (son.max(0)) as u16 }";
+    let out = canonicalize_source(src, &opts).unwrap();
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::MethodToKernel));
+    assert!(!out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    assert!(out.source.contains("imax("), "{}", out.source);
+    // `imax` is a cell-prelude kernel; append a stub so the bare compiler links it.
+    let with_kernel = format!(
+        "{}\nfn imax(a: u16, b: u16) -> u16 {{ let mut m = a; if b > a {{ m = b; }} m }}\n",
+        out.source
+    );
+    assert_compiles(&with_kernel);
+    // `as u32` forces the wide lane.
+    let wide = full_canon("fn run(a: u16, b: u16) -> u16 { (a as u32) * (b as u32) }");
+    assert!(wide.widened);
+    assert!(wide.source.contains("-> u32"));
+    assert_compiles(&wide.source);
+}
+
+#[test]
+fn if_value_canonicalizes_and_normalizes_comparisons() {
+    // `a > b` and `b < a` are one comparison; both spellings reach one schema.
+    let gt = full_canon("fn run(a: u16, b: u16) -> u16 { if a > b { a } else { b } }");
+    let lt = full_canon("fn run(a: u16, b: u16) -> u16 { if b < a { a } else { b } }");
+    assert_eq!(gt.source, lt.source);
+    assert!(gt.source.contains("if "), "{}", gt.source);
+    assert!(!gt
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    assert_compiles(&gt.source);
+    // Symmetric comparisons sort operands.
+    let a = full_canon("fn run(x: u16) -> u16 { if x == 5 { 1 } else { 2 } }");
+    let b = full_canon("fn run(x: u16) -> u16 { if 5 == x { 1 } else { 2 } }");
+    assert_eq!(a.source, b.source);
+}
+
+#[test]
+fn guarded_division_stays_lazy() {
+    // THE correctness constraint: the guard idiom must not evaluate its division
+    // eagerly — `a / b` renders inside the arm, not hoisted above the `if`.
+    let out = full_canon("fn run(a: u16, b: u16) -> u16 { if b != 0 { a / b } else { 0 } }");
+    let src = &out.source;
+    let if_pos = src.find("if ").expect("select emitted");
+    let div_pos = src.find(" / ").expect("division emitted");
+    assert!(
+        div_pos > if_pos,
+        "division must be inside the if-arm, not hoisted:\n{src}"
+    );
+    assert_compiles(src);
+}
+
+#[test]
+fn shared_subexpressions_hoist_above_the_select() {
+    // `s` feeds the condition and both arms — it hoists as a normal op; only the
+    // arm-exclusive work stays inline.
+    let out = full_canon(
+        "fn run(a: u16, b: u16) -> u16 { let s = a + b; if s > 10 { s * 2 } else { s / 2 } }",
+    );
+    let src = &out.source;
+    let sum_pos = src.find(" + ").expect("shared sum emitted");
+    let if_pos = src.find("if ").expect("select emitted");
+    assert!(sum_pos < if_pos, "shared node hoists above the if:\n{src}");
+    assert_compiles(src);
+}
+
+#[test]
+fn else_if_chains_nest_as_selects() {
+    let out =
+        full_canon("fn run(x: u16) -> u16 { if x > 100 { 3 } else if x > 10 { 2 } else { 1 } }");
+    assert!(out.source.matches("if ").count() >= 2, "{}", out.source);
+    assert!(!out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    assert_compiles(&out.source);
+}
+
+#[test]
+fn verify_if_rewrites_to_computed_side() {
+    // Registered amendment 2026-07-07 (E0207): granite's verify-not-compute shape
+    // returns the computed side; the stated literal and zero arm are noise.
+    let out = full_canon("fn run(a: u16) -> u16 { if a * 3 == 12 { 12 } else { 0 } }");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::VerifyRewrite));
+    assert!(out.source.contains("q0 * 3u16"), "{}", out.source);
+    assert!(!out.source.contains("if "), "select gone:\n{}", out.source);
+    assert_compiles(&out.source);
+    // Same schema as writing the arithmetic directly.
+    assert_eq!(
+        out.source,
+        full_canon("fn run(a: u16) -> u16 { a * 3 }").source
+    );
+    // A non-zero else arm is a real choice — no rewrite.
+    let keep = full_canon("fn run(a: u16) -> u16 { if a * 3 == 12 { 12 } else { 5 } }");
+    assert!(!keep
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::VerifyRewrite));
+    assert!(keep.source.contains("if "), "{}", keep.source);
 }

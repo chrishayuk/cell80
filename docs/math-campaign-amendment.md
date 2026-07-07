@@ -348,6 +348,17 @@ via `crosscheck_m26.py` — Python `autofix()` deleted, all repair in-compiler):
    prelude kernels that already exist. Deterministic, semantics-preserving at u16,
    typed, recorded. Prices at +1–2 granite rows on the 20-slice.
 
+**Registered amendment 3 (2026-07-07): the verify-`if` → computed-side rewrite
+(`E0207 verify_rewrite`).** The shape `if <expr> == <literal> { <literal> } else
+{ 0 }` — granite's signature verify-not-compute dialect — rewrites to `<expr>`:
+the model *stated* the literal, but the comparison contains a real derivation, and
+the rewrite returns what the arithmetic computes instead of the guess-or-zero.
+Output-changing by design (a failed self-check now yields the computed value, not
+the degenerate 0), which is why it carries its own registration and a
+captured-source replay precision check: **if any configuration's accepted-wrong
+moves off zero under replay, the rewrite reverts.** The zero-else arm is required
+— it is what makes the else side contentless.
+
 **Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
 the error analysis, and the proposed rule amendments awaiting registration:**
 `experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision
