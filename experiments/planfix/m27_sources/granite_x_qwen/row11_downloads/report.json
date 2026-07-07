@@ -1,0 +1,44 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 402,
+   "artifact": "7fc08dbce2aa9bb3c35a73bcf7df366a70ffc1e96aaedd2f89714bc2704e4437",
+   "cycles": 4135,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `first_month` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpywpofb1x/d0.rs",
+   "trapped_ops": 5
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "unsupported literal: a float literal \u2014 the dialect's values are integers, bools, and byte literals (`b'a'`), plus (as data) string and byte-string literals; floats/chars are out \u2014 for fractional values use fixed-point on integers, e.g. Q8.8: `(a * w) >> 8`; for a character use `b'a'`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpywpofb1x/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpywpofb1x/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

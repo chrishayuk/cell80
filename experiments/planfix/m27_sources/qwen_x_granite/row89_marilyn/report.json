@@ -1,0 +1,44 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 2000,
+   "artifact": "3e3373ba81cca20eec7f73f29f2202fb3170cdec589060ec2728b1a80169a7a3",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpctiutl75/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 79200,
+   "artifact": "ecc8a613caf2f941da9e310940b5197e58cc88dd170073070bff3958a367230b",
+   "cycles": 470,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `marlins_sales` = 8800 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: total_sales"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpctiutl75/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpctiutl75/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

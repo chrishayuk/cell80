@@ -1,0 +1,46 @@
+{
+ "agreement": "majority",
+ "answer": 15,
+ "battery": "survived 0 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 15,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `wins` = 15 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpya4dkj40/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 15,
+   "artifact": "0e4bfecbcb233f46762f585b3077b5d9ef9489d025df41eed798027319ad55e3",
+   "cycles": 615,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpya4dkj40/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 13,
+   "artifact": "0b32e8a1c6a0f10c6c8bae2458f5d3bf1eedd01fb7babcb7a27d703e08ace9d3",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpya4dkj40/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

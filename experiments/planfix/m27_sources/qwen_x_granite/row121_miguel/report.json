@@ -1,0 +1,47 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxk3epf0t/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 240,
+   "artifact": "d44adbeaa44773062346499e7b9e8336b4705241a6f441b233226490f85ec595",
+   "cycles": 751,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `weeks_in_month` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxk3epf0t/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 34,
+   "artifact": "6a33c7e47e2e4b8e7025264653cf217c767694c1b637bd32baa3c1d76a0a97ed",
+   "cycles": 1207,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `weekly_usage` = 60 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxk3epf0t/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

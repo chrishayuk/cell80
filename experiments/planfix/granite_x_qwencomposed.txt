@@ -1,0 +1,30 @@
+model = granite4.1:3b   third reader = model:qwen2.5:3b (reads via composed)   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540   majority  ACCEPT ok [flagged 2-of-3]
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (recoverable)  [unsupported literal: a float literal — the dialect's values ]
+row22_raymond        14    None   escalate  escalate (genuine)
+row85_football       15      15   majority  ACCEPT ok [flagged 2-of-3]
+row86_gene           44      44  unanimous  ACCEPT ok
+row89_marilyn      8000   79200   majority  ACCEPT WRONG(!) [flagged 2-of-3]
+row92_jan            28      28   majority  ACCEPT ok [flagged 2-of-3]
+row93_emily           4    None   escalate  escalate (recoverable)  [method receiver jackson is not a struct]
+row94_lee            36      36   majority  ACCEPT ok [flagged 2-of-3]
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175    None   escalate  escalate (recoverable)
+row104_fog          140     140   majority  ACCEPT ok [flagged 2-of-3]
+row106_cody          20      20   majority  ACCEPT ok [flagged 2-of-3]
+row111_marcell       45    None   escalate  escalate (recoverable)
+row117_katy          42      42   majority  ACCEPT ok [flagged 2-of-3]
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240    None   escalate  escalate (recoverable)
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 14/20   yield 13/20   escalations: 5 recoverable, 1 genuine
+precision strict (unanimous only): 6/6   with majority: 13/14
+SAFETY: accepted-but-wrong = 1 (unanimous 0, majority 1)
+repairs applied (E-code tally): {'E0102': 62, 'E0209': 8, 'E0202': 20, 'E0205': 2, 'E0503': 5, 'E0502': 5, 'E0505': 2, 'E0210': 1, 'E0204': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/granite_x_qwencomposed

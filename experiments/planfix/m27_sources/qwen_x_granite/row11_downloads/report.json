@@ -1,0 +1,47 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp25otexfi/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 366,
+   "artifact": "129866dde3da1cd4d8fae1ac24ad22f323c4791e23b3945d5ecf832cb8a2503e",
+   "cycles": 4145,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `first_month_downloads` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp25otexfi/d1.rs",
+   "trapped_ops": 5
+  },
+  {
+   "answer": 402,
+   "artifact": "7fc08dbce2aa9bb3c35a73bcf7df366a70ffc1e96aaedd2f89714bc2704e4437",
+   "cycles": 4135,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `first_month` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp25otexfi/d2.rs",
+   "trapped_ops": 5
+  }
+ ],
+ "flagged": false
+}

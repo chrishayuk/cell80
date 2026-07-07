@@ -1,0 +1,49 @@
+{
+ "agreement": "majority",
+ "answer": 44,
+ "battery": "survived 0 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 44,
+   "artifact": "d3e073b8b49958d00580a09acb232401611471ea586fd3c2cc851279c04bc6f8",
+   "cycles": 809,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `years` = 11 lifted to a parameter",
+    "E0102:quantity_lifted `blocks_per_year` = 4 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdrof3shi/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 44,
+   "artifact": "816141aff33c9107900aed2ea7401958305d13d047e2b54b0e5ec075d6225bad",
+   "cycles": 350,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `years_vacationed` = 44 lifted to a parameter",
+    "E0205:method_to_kernel .max() -> imax()",
+    "E0503:wide_call wide lane calls: imax (prefer _u32 overloads)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdrof3shi/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 105,
+   "artifact": "797e2d364267233a65fecbfe072e2af673ffce63c652b5fc2cdde7a3611493ba",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdrof3shi/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

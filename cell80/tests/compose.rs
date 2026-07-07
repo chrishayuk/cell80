@@ -256,6 +256,42 @@ fn battery_kills_coincidental_agreement_on_composed_cells() {
 }
 
 #[test]
+fn battery_unverified_guard_registered_amendment() {
+    // Registered amendment 2026-07-08: a *majority* accept the battery could not
+    // verify at all (zero perturbations — wide values are unliftable, so the battery
+    // is structurally blind exactly there), with wide values in play, escalates as
+    // `battery_unverified`. The row89 class: `x*9/10` and `x - x/10` are the same
+    // function for x divisible by 10 (a correlated misreading, not a coincidence) —
+    // both fold to constants at 88000, nothing is liftable, and without the guard
+    // the 79200 agreement is accepted unverified.
+    let a = tmp("wide_a.rs", "fn run() -> u16 { 88000 * 9 / 10 }");
+    let b = tmp("wide_b.rs", "fn run() -> u16 { 88000 - 88000 / 10 }");
+    let c = tmp("wide_c.rs", "fn run() -> u16 { 88000 / 11 }"); // the correct read
+    let out = run_cli(&["compose".into(), cells_dir(), a, b, c, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["agreement"], "battery_unverified", "{out}");
+    assert!(v["answer"].is_null(), "no unverified 79200: {out}");
+
+    // Unanimous is exempt — three identical correct reads accept as before.
+    let u1 = tmp("wide_u1.rs", "fn run() -> u16 { 88000 / 11 }");
+    let u2 = tmp("wide_u2.rs", "fn run() -> u16 { (88000 / 11) }");
+    let u3 = tmp("wide_u3.rs", "fn run() -> u16 { 88_000 / 11 }");
+    let out = run_cli(&["compose".into(), cells_dir(), u1, u2, u3, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["answer"], 8000, "{out}");
+    assert_eq!(v["agreement"], "unanimous");
+
+    // A narrow zero-coverage majority is untouched — the guard is wide-gated.
+    let n1 = tmp("narrow_a.rs", "fn run() -> u16 { 2 + 3 }");
+    let n2 = tmp("narrow_b.rs", "fn run() -> u16 { 10 - 5 }");
+    let n3 = tmp("narrow_c.rs", "fn run() -> u16 { 2 * 2 }");
+    let out = run_cli(&["compose".into(), cells_dir(), n1, n2, n3, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["answer"], 5, "{out}");
+    assert_eq!(v["agreement"], "majority");
+}
+
+#[test]
 fn battery_passes_real_agreement_and_lifted_args_auto_run() {
     // Two genuinely different structures computing the same function: max+min == a+b.
     // Lifted quantities supply the arguments (no --args), and the agreement must

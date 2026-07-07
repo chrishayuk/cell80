@@ -40,6 +40,10 @@ import gsm8k_small_model_pilot as pilot  # noqa: E402
 OLLAMA = "http://localhost:11434/v1/chat/completions"
 MODEL = os.environ.get("BAKEOFF_MODEL", "gemma4:e4b")
 THIRD = os.environ.get("THIRD", "paraphrase")
+# Method a second-model reader (THIRD=model:<name>) solves with. Default `inline`
+# (unchanged); `composed` lets a model whose inline arm is weak but composed arm is
+# strong (qwen) read in its reliable mode.
+READER_METHOD = os.environ.get("READER_METHOD", "inline")
 BIN = os.environ.get("CELL80_BIN", str(REPO / "target" / "release" / "cell80"))
 CELLS = os.environ.get("CELL_LIBRARY", str(REPO / "cell80" / "cells"))
 DUMP = pathlib.Path(os.environ.get(
@@ -83,7 +87,7 @@ def to_fn(text):
 def third_derivation(problem, row_dir):
     if THIRD.startswith("model:"):
         reader = THIRD.split(":", 1)[1]
-        return to_fn(ask(BASE + METHODS["inline"], f'Problem: "{problem}"', model=reader))
+        return to_fn(ask(BASE + METHODS[READER_METHOD], f'Problem: "{problem}"', model=reader))
     rewrite = ask(PARAPHRASE, f'Problem: "{problem}"').strip()
     (row_dir / "paraphrase.txt").write_text(rewrite)
     return to_fn(ask(BASE + METHODS["inline"], f'Problem: "{rewrite}"'))
@@ -106,6 +110,8 @@ def compose(sources):
 
 def run():
     third_desc = THIRD if THIRD != "paraphrase" else "paraphrase-then-extract (same model)"
+    if THIRD.startswith("model:"):
+        third_desc += f" (reads via {READER_METHOD})"
     print(f"model = {MODEL}   third reader = {third_desc}   gate = 2-of-3 registered rule\n")
     print(f"{'row':16s} {'want':>6s} {'got':>7s} {'gate':>10s}  verdict")
     print("-" * 78)

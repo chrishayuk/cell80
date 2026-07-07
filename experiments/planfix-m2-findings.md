@@ -345,6 +345,71 @@ path instead.) Precision held at **0 accepted-wrong in every configuration** —
 pass only ever turns a parse-dead arm into a valued one, and any false agreement is
 caught by the zero-guard and the counterfactual battery.
 
+## 4e. The two-weak-model ensemble, the correlated misreading, and the
+battery-unverified guard (2026-07-08)
+
+**The question:** can two weak models cross-check each other — no strong-model
+reader anywhere — and approach the granite×gemma ensemble number (14/20, 0 wrong)?
+Three live runs (`crosscheck_m27.py`, `READER_METHOD` knob added for the third):
+
+| composer | reader | accepted | correct | wrong |
+|---|---|---|---|---|
+| granite | gemma (strong, baseline) | 14 | 14 | 0 |
+| granite | qwen via *inline* | 9 | 9 | 0 |
+| qwen | granite via *inline* | 7 | 7 | 0 |
+| granite | qwen via **composed** (its 65% arm) | 14 | 13 | **1** |
+
+Reading qwen in its diseased inline mode *lowered* granite below solo (10→9): a
+reader whose reading is unreliable breaks majorities instead of forming them.
+Reading qwen in its reliable composed mode **matched gemma's yield** — and leaked
+the campaign's second-ever accepted-wrong: row89, want 8000, accepted **79200**.
+
+**The diagnosis reframed the failure class.** row89 ("Marilyn sold 10× Harald;
+88,000 combined") wants `88000/11`. granite wrote `total*9/10`; qwen wrote
+`total - total/10` — *the same function* for any total divisible by 10. Both
+models sampled the **canonical ratio misreading** ("10 times as many" → divide by
+10). That is a **correlated misreading, not a structural coincidence** — and the
+battery could not intervene because `88000 > u16::MAX` is unliftable, so it
+verified zero values and the vacuous pass read as survival.
+
+**A recompile-perturbation battery was built and refuted the same day.** The
+obvious fix — re-emit each source with the shared wide literal `V→V+1`, recompile,
+compare — closed row89 in isolation but the full replay caught it **falsely
+shattering gemma's correct row89** (three identical `88000/11` derivations:
+`88001/11` is inexact, `E0302` kills all three, uniform death misread as
+disagreement). Structural, not a bug: the perturbed values that would discriminate
+`9x/10` from `x−x/10` are exactly the ones exact-division rejects. Reverted
+without trace. The general lesson stands: **no perturbation battery — u16, u32, or
+recompile — catches a correlated misreading; only a decorrelated reading does.**
+That is *why* the strong reader is load-bearing, not a removable crutch.
+
+**The registered fix (amendment 7): the battery-unverified guard.** A *majority*
+accept the battery verified nothing about (`perturbed = 0`, or it never ran), with
+wide values in play (source literal or agreed answer > `u16::MAX`), escalates as
+`battery_unverified`. The flagged band's contract is "accepted agreements survived
+perturbation" — the guard refuses to pretend an unverifiable one did. Unanimous
+exempt. Counterfactual over every captured configuration (8 configs, 160 rows):
+**kills the 1 wrong accept, costs 0 correct accepts.** Gate test:
+`battery_unverified_guard_registered_amendment` (wide coincidence escalates;
+unanimous-wide and narrow-majority untouched).
+
+**Replay after the guard (all 8 configs): 0 accepted-wrong anywhere.**
+
+| config | accepted / correct / wrong |
+|---|---|
+| gemma4 | 20 / 20 / 0 |
+| granite solo | 10 / 10 / 0 |
+| granite × gemma | 14 / 14 / 0 |
+| granite × qwen-composed | **13 / 13 / 0** |
+| granite × qwen-inline · qwen × granite | 9/9/0 · 7/7/0 |
+| qwen solo · qwen × gemma | 3/3/0 · 13/13/0 |
+
+**The two-weak verdict, honestly framed:** 13/20 at 0 wrong without any strong
+model — one row short of the strong-reader config. The guard closes the
+unverified-wide subclass only; a correlated misreading landing on narrow, liftable
+values would still pass majority, so the decorrelated reader remains the general
+defense and granite×gemma remains the registered weak-composer configuration.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

@@ -478,3 +478,25 @@ pub fn battery(
         failed_on: None,
     })
 }
+
+/// Any integer literal above `u16::MAX` in `src` — the quantities literal lifting
+/// (u16-only, parameter ABI) can never make perturbable, i.e. exactly where the
+/// [`battery`] is structurally blind. Input for the battery-unverified guard
+/// (registered amendment 2026-07-08); syn-level so digit separators (`88_000`)
+/// count. An unparseable source has no literals to report.
+pub fn has_wide_literal(src: &str) -> bool {
+    struct Wide(bool);
+    impl<'ast> Visit<'ast> for Wide {
+        fn visit_lit_int(&mut self, lit: &'ast syn::LitInt) {
+            if lit.base10_parse::<u64>().is_ok_and(|v| v > u16::MAX as u64) {
+                self.0 = true;
+            }
+        }
+    }
+    let Ok(file) = syn::parse_str::<syn::File>(src) else {
+        return false;
+    };
+    let mut w = Wide(false);
+    w.visit_file(&file);
+    w.0
+}

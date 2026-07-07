@@ -1,0 +1,45 @@
+{
+ "agreement": "majority",
+ "answer": 20,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected `,`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwj14rmz5/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 20,
+   "artifact": "25e4af22ba5ba823bd53eee7cd47e9399d2d2021f104dcf1bd6c11efc6132d2c",
+   "cycles": 1162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir_cookies` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwj14rmz5/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 20,
+   "artifact": "25e4af22ba5ba823bd53eee7cd47e9399d2d2021f104dcf1bd6c11efc6132d2c",
+   "cycles": 1162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir_cookies` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwj14rmz5/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": true
+}

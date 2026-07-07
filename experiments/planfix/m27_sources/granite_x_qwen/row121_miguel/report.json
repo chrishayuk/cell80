@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 34,
+   "artifact": "6a33c7e47e2e4b8e7025264653cf217c767694c1b637bd32baa3c1d76a0a97ed",
+   "cycles": 1207,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `weekly_usage` = 60 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyee9j1ad/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 20,
+   "artifact": "cc30d1660478d77e8d314d63bd72a5b434748fd96110a73f31fe0402d24fc1f6",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyee9j1ad/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyee9j1ad/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}
