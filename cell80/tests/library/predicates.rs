@@ -64,7 +64,6 @@ fn wave4_width_precision_predicates_slice() {
     // u16; answer_eq_u32 was the only wide predicate) and a floor sibling for
     // frac_of_whole (which only has the exact-or-escalate variant; models routinely
     // write "90% of 23"-style reasoning that doesn't divide evenly).
-
 }
 
 #[test]

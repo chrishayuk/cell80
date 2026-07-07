@@ -56,7 +56,6 @@ fn wave4_scoring_choice_generalization_ranking_stats_slice() {
     // for the common two-option case. choose_lowest_cost2/choose_highest_profit2 from the
     // original ~100-cell proposal were folded into choose_worst2/choose_best2's own tags
     // rather than shipped as four near-identical cells.
-
 }
 
 #[test]

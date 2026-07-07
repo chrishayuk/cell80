@@ -48,7 +48,6 @@ fn library_growth_backlog_fixed_point_slice() {
         m2 = cell.get("m2").unwrap();
     }
     assert_eq!((count, sum, m2), (3, 60, 200)); // variance = 200/3 ~= 66.67
-
 }
 
 #[test]

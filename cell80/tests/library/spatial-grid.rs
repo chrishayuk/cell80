@@ -179,7 +179,6 @@ fn library_growth_backlog_spatial_grid_slice() {
         (cell.get("err_mag"), cell.get("err_neg")),
         (Some(2), Some(0))
     );
-
 }
 
 #[test]

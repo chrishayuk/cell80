@@ -74,28 +74,37 @@ pub(crate) fn codegen_program_c(
         base += func.n_locals as u16;
     }
     emit_const_data(&mut a, funcs, consts);
-    let (code, symbols) = a.finish()?;
-    // Locals live at the fixed `SCRATCH` base (slot `i` at `SCRATCH + i*2`), *above* the code.
-    // If the emitted code (incl. the appended runtime) grows up into that region, the per-call
-    // slot writes silently corrupt machine code — the same class of bug `codegen_loop` guards.
-    // Fail loudly instead of emitting a wrong image. (The frame loop uses code-relative scratch
-    // and its own `state_base` ceiling; this is the fixed-`SCRATCH` whole-program path.)
-    let code_end = org as u32 + code.len() as u32;
-    if code_end > asm::SCRATCH as u32 {
-        return Err(format!(
-            "rustz80: program too large — code ends at {code_end:#06x}, overrunning the locals \
-             scratch region at {:#06x}",
-            asm::SCRATCH
-        ));
-    }
+    a.seal();
+    // Locals live *above* the code. The classic base is [`asm::SCRATCH`] (`0x9000`) —
+    // kept whenever the code fits below it, so every historical image stays
+    // byte-identical — but a larger program (a multi-kernel f32 cell) places scratch
+    // just past its own code instead of failing at the historical window. Slot
+    // operands stay symbolic in the stream and encode as 2-byte immediates regardless
+    // of value, so one emission suffices: measure, place scratch, encode (the same
+    // move `codegen_loop_c` has always made against its `state_base`).
+    let code_end = org as u32 + a.encoded_len() as u32;
+    let scratch = if code_end <= asm::SCRATCH as u32 {
+        asm::SCRATCH as u32
+    } else {
+        (code_end + 1) & !1 // round up to a u16 slot boundary
+    };
+    // The ceiling above the locals: the Cell VM lays state structs and I/O buffers at
+    // `0xB000` (`cell80`'s `STATE_BASE`), so code + locals must stay below it; the
+    // Spectrum whole-program path just needs stack headroom.
+    let ceiling: u32 = match target {
+        Target::Cell => 0xB000,
+        _ => 0xF000,
+    };
     let total_slots: u32 = funcs.iter().map(|(_, f)| f.n_locals as u32).sum();
-    if asm::SCRATCH as u32 + total_slots * 2 > 0x1_0000 {
+    let scratch_top = scratch + total_slots * 2;
+    if scratch_top > ceiling {
         return Err(format!(
-            "rustz80: too many locals — {total_slots} slots from {:#06x} overrun the 64 KiB \
-             address space",
-            asm::SCRATCH
+            "rustz80: program too large — code ends at {code_end:#06x} and {total_slots} local \
+             slots (scratch {scratch:#06x}..{scratch_top:#06x}) overrun the {ceiling:#06x} ceiling"
         ));
     }
+    a.scratch = scratch as u16;
+    let (code, symbols) = a.finish()?;
     Ok((code, symbols))
 }
 

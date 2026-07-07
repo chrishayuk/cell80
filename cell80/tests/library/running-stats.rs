@@ -67,7 +67,6 @@ fn running_stats_state_cells_match_defined_behaviour() {
     assert_eq!(saturated, 65535);
     // Running-statistics state cells (wave 3), each driven over a short stream: set fields
     // by name, run, feed the updated state back as the next call's input.
-
 }
 
 #[test]
@@ -77,5 +76,4 @@ fn wave4_agentic_runtime_reflexes_running_stats_slice() {
     assert_eq!(run_cell("zscore_q8", &[64, 0, 256]), 64);
     assert_eq!(run_cell("zscore_q8", &[65472, 0, 256]), 65472); // -64 as i16 bits -> -64
     assert_eq!(run_cell("zscore_q8", &[64, 0, 0]), 0);
-
 }

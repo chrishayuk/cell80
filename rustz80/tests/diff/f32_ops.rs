@@ -109,6 +109,37 @@ fn f32_edge_bank() {
     run_bank(&cases);
 }
 
+/// Multi-kernel composition: `lerp(a, b, t) = a + t*(b - a)` chains three kernels
+/// (fsub → fmul → fadd, ~8KB with helpers) in one program — the shape the classic
+/// fixed-`0x9000` scratch window rejected. Scratch now places above the code, so the
+/// chain must compile, run on both targets, and stay bit-identical to rustc.
+#[test]
+fn f32_multi_kernel_chain() {
+    let cases: [(f32, f32, f32); 6] = [
+        (0.0, 1.0, 0.5),
+        (1.0, 2.0, 0.25),
+        (-3.5, 7.25, 0.75),
+        (1.0e-38, 1.0, 0.125),  // subnormal-adjacent low end
+        (3.0e38, -3.0e38, 0.5), // overflow-adjacent high end
+        (2.5, 2.5, 1.0),
+    ];
+    for (a, b, t) in cases {
+        let want = canon((a + t * (b - a)).to_bits());
+        let (ab, bb, tb) = (a.to_bits(), b.to_bits(), t.to_bits());
+        let src = format!(
+            "fn f() -> u16 {{ let mut bad = 0u16; \
+             if fadd({ab}u32, fmul({tb}u32, fsub({bb}u32, {ab}u32))) != {want}u32 \
+             {{ bad = 1u16; }} bad }}\n{}",
+            rustz80::F32_KERNELS
+        );
+        assert_eq!(
+            run_program_pruned(&src, "f"),
+            0,
+            "lerp({a}, {b}, {t}) diverged from rustc (expected bits 0x{want:08X})"
+        );
+    }
+}
+
 /// Seeded random bank: full-random pairs, nearby-exponent pairs (cancellation
 /// stress), and subnormal pairs. Deterministic LCG — same bank every run.
 #[test]

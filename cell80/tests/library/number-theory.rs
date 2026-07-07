@@ -11,7 +11,6 @@ fn math_wave3_number_theory_slice() {
     // lcm3: lcm(lcm(4,6),10) = lcm(12,10) = 60.
     assert_eq!(run_cell("lcm3", &[4, 6, 10]), 60);
     assert_eq!(run_cell("lcm3", &[2, 3, 5]), 30);
-
 }
 
 #[test]
@@ -136,7 +135,6 @@ fn math_aime_pack_number_theory_slice() {
     // and checked combinatorics (factorial_checked_u32, choose_u32, permute_u32).
     // count_divisors and dist_sq were scoped but not authored — checking docs/cell-index.md
     // first found they're exact duplicates of factor_count and euclid_sq.
-
 }
 
 #[test]
@@ -273,7 +271,6 @@ fn math_aime_pack_second_slice_number_theory_slice() {
     // hand-pick expected constants for, so alongside fixed cases they get a deterministic
     // pseudo-random property sweep (checking the defining equation itself — a*inverse == 1
     // mod m, or the CRT result satisfies both congruences — rather than a golden value).
-
 }
 
 #[test]
@@ -288,7 +285,6 @@ fn wave4_sequences_nth_term_number_theory_slice() {
         let report = r.run(None, &[14], DEFAULT_CYCLES).unwrap();
         assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
     }
-
 }
 
 #[test]
@@ -414,7 +410,6 @@ fn math_server_number_theory_family_cells_match_defined_behaviour() {
     // here, the same discipline mod_inverse/crt_solve_pair/shoelace_area_x2 used.
     // Free-fn variant (little_omega/big_omega/mobius_function take no state), matching
     // units_free_fn_cells_match_defined_behaviour's own local helper.
-
 }
 
 #[test]

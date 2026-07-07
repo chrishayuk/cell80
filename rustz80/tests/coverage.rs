@@ -537,19 +537,40 @@ fn unknown_call_target_is_a_clean_error() {
 }
 
 #[test]
-fn whole_program_over_scratch_is_a_clean_error() {
-    // The fixed-SCRATCH path (`codegen_program`): code growing up past 0x9000 must be
-    // a loud error, not slot writes silently corrupting the emitted code — the same
-    // class of bug the frame loop's dynamic placement guards. ~800 add-assigns is
-    // ~5.6 KB, over the 4 KB ORG→SCRATCH window.
+fn whole_program_over_scratch_relocates_then_errors_at_ceiling() {
+    // The whole-program path places scratch *above the code* when the code outgrows
+    // the classic 0x9000 window (the multi-kernel f32 shape), so ~5.6 KB of code now
+    // compiles — and still runs correctly, locals clear of the code. The loud error
+    // moved to the real ceiling (0xB000 on the Cell target, where the VM lays state):
+    // code past it must be a clean too-large diagnostic, never slot writes silently
+    // corrupting the emitted image.
     let mut body = String::from("let mut x = 0u16;\n");
     for i in 0..800u32 {
         body.push_str(&format!("x = x + {}u16;\n", 1000 + i));
     }
-    let e = compile_fn(&format!("fn f() -> u16 {{ {body} x }}")).unwrap_err();
+    let src = format!("fn f() -> u16 {{ {body} x }}");
+    for target in [rustz80::Target::Spectrum48, rustz80::Target::Cell] {
+        let bytes = rustz80::compile_fn_for(&src, target).expect("relocated scratch compiles");
+        assert!(
+            bytes.len() > 0x1000,
+            "the workload should outgrow the window"
+        );
+    }
+    // (running with relocated locals is proven by `diff::f32_ops::f32_multi_kernel_chain`)
+    let mut over = String::from("let mut x = 0u16;\n");
+    for i in 0..1800u32 {
+        over.push_str(&format!("x = x + {}u16;\n", 1000 + i));
+    }
+    // ~12.6 KB: past the Cell target's 0xB000 ceiling (the VM's state region), while
+    // the Spectrum whole-program path still has headroom to its 0xF000 stack ceiling.
+    let e = rustz80::compile_fn_for(
+        &format!("fn f() -> u16 {{ {over} x }}"),
+        rustz80::Target::Cell,
+    )
+    .unwrap_err();
     assert!(
         e.contains("too large"),
-        "expected the too-large diagnostic: {e}"
+        "expected the too-large diagnostic at the ceiling: {e}"
     );
 }
 

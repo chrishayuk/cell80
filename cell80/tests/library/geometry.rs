@@ -60,7 +60,6 @@ fn math_aime_pack_second_slice_geometry_slice() {
         ],
     );
     assert_eq!(cell.get("result"), Some(0));
-
 }
 
 #[test]
@@ -206,5 +205,4 @@ fn aime_geometry_cos_and_heron_cells_match_defined_behaviour() {
     // cos_frac_from_sides + heron_16a2: the AIME geometry pair that trades a real
     // square root for exact fraction/integer arithmetic (law of cosines and Heron's
     // formula rearranged to avoid one). Both escalate (0xFF06) on an invalid triangle.
-
 }

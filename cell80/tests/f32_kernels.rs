@@ -56,6 +56,21 @@ fn f32_kernels_reachable_from_cells() {
     }
 }
 
+/// Multi-kernel f32 cells fit since scratch relocation (the locals region places
+/// above the code when it outgrows the classic `0x9000` window; the Cell ceiling is
+/// `STATE_BASE` = `0xB000`): a lerp chains fsub → fmul → fadd in one cell and stays
+/// bit-identical to rustc.
+#[test]
+fn f32_multi_kernel_cell() {
+    let (a, b, t) = ((-3.5f32).to_bits(), 7.25f32.to_bits(), 0.75f32.to_bits());
+    let want = (-3.5f32 + 0.75f32 * (7.25f32 - (-3.5f32))).to_bits();
+    let src = format!(
+        "fn run() -> u16 {{ let mut ok = 0u16; \
+         if fadd({a}u32, fmul({t}u32, fsub({b}u32, {a}u32))) == {want}u32 {{ ok = 1u16; }} ok }}"
+    );
+    assert_eq!(run_result(&src), 1, "lerp cell diverged from rustc bits");
+}
+
 /// A cell that calls no f32 kernel stays byte-identical — the appended family is
 /// fully pruned (the "composition costs zero bytes" property extends to F0).
 #[test]

@@ -75,5 +75,4 @@ fn units_free_fn_cells_match_defined_behaviour() {
     // Free-fn cells (no u32 state needed), escalating via 0xFF06 (out_of_domain) rather
     // than 0xFF05 (needs_wider_math) — a mismatched/unmodeled unit pair isn't a wide-math
     // problem.
-
 }

@@ -271,14 +271,22 @@ four u32 multiplies ride `ED FE` traps charged ~4 T each, so its honest cost pai
 | `fsqrt` | 53,219 | 0 | 2,254 |
 
 H-F2's pre-registered prediction ("fadd/fmul low thousands") missed by ~3× — recorded,
-not hidden. Pinned as regression ceilings in `cell80/tests/f32_kernels.rs`. Two honest
-limits, both F1 work: **a cell can afford roughly one f32 kernel today** (the code
-window ends at the `0x9000` locals scratch; `fadd`+`fmul` together overrun it, so
-multi-op f32 cells need kernel-size work or a scratch-region move first), and the
-variable-distance shifts inside `f32_shr_jam`/alignment are shift-by-1 loops because
-u32 shifts take literal amounts only. The enabling codegen win is already in: constant
-u32 shifts now decompose word/byte-first (`<< 31` is ~15 bytes, not 248), which also
-shrank every Q-format cell that shifts.
+not hidden. Pinned as regression ceilings in `cell80/tests/f32_kernels.rs`.
+
+**Multi-kernel cells fit** (2026-07-07, same day the limit was found): the locals
+scratch region relocates *above the code* whenever the code outgrows the classic
+`0x9000` window — the same measured placement the frame loop has always used —
+byte-identical for every program that fits the old window (goldens unchanged), and
+a hard ceiling where the memory map actually is: `0xB000` (`STATE_BASE`) on the Cell
+target, `0xF000` on Spectrum. That gives a cell ~12KB for code + locals — a
+three-kernel `lerp` chain (fsub → fmul → fadd, ~8KB) compiles, runs both targets,
+and stays bit-identical to rustc (`diff::f32_ops::f32_multi_kernel_chain`).
+
+One honest limit remains, F1 work: the variable-distance shifts inside
+`f32_shr_jam`/alignment are shift-by-1 loops because u32 shifts take literal amounts
+only — the main T-state lever. The enabling codegen win is already in: *constant* u32
+shifts decompose word/byte-first (`<< 31` is ~15 bytes, not 248), which also shrank
+every Q-format cell that shifts.
 
 ## What `check!` actually guarantees
 

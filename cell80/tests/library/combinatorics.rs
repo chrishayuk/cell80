@@ -93,5 +93,4 @@ fn geometry_combinatorics_sequences_combinatorics_slice() {
     assert_eq!(cell.get("result"), Some(0));
     let (_, _, cell) = step("derangement_count", "DerangementCount", &[("n", 8)]);
     assert_eq!(cell.get("result"), Some(14_833));
-
 }

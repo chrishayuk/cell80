@@ -216,8 +216,10 @@ any approximation enters).
   already improved to land these numbers). Single-op cells hold the µs envelope at
   emulated speed; fdiv/fsqrt are priced, not killed. One F0 finding the spec did not
   predict: **the 4KB code window (locals scratch at `0x9000`) fits roughly one kernel
-  per cell** — multi-kernel f32 cells (most of F3) are blocked on kernel-size work or
-  a scratch move, now the first F1 line item.
+  per cell** — found and fixed same day: scratch now relocates above the code when it
+  outgrows the classic window (byte-stable for everything that fits it; Cell ceiling
+  `0xB000` = the VM's state region, ~12KB for code+locals), and a three-kernel lerp
+  chain is a CI member (`f32_multi_kernel_chain`, bit-identical to rustc).
 - **H-F3 (kernels fold):** single-site kernel inlining is byte-neutral, ≥2 sites net
   positive, like the checked family. *Kill:* the wide-slot fold gap from H-Q2's clause
   applies here identically — fix the inliner before growing F1.

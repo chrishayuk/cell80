@@ -67,7 +67,6 @@ fn checked_arithmetic_state_cells_match_defined_behaviour() {
     // escalates (Halt::Escalate(0xFF05), needs_wider_math) instead of silently wrapping —
     // distinct from safe_div/safe_mod's guard-and-sentinel convention, which hides a real
     // error behind an ordinary-looking 0.
-
 }
 
 #[test]
@@ -286,15 +285,14 @@ fn checked_arithmetic_wave2_cells_match_defined_behaviour() {
         .0,
         1
     ); // -5 == -5
-    // GSM8K math-campaign checked-arithmetic pack, second slice: closing the gap against
-    // docs/math-campaign-spec.md's ~30-cell estimate — a checked multiply (the obvious
-    // missing sibling of add_checked_u32/sub_checked_u32), fused multiply-add/subtract and
-    // three-way variants, an exact checked power, wide siblings of several u16 cells that
-    // can't represent values past 65535 (money/counts genuinely exceed that in this
-    // campaign), and the sign-magnitude kernels docs/math-campaign-spec.md names as an M0
-    // prerequisite (the dialect has no i32, so a signed difference is a (magnitude, sign)
-    // pair instead).
-
+       // GSM8K math-campaign checked-arithmetic pack, second slice: closing the gap against
+       // docs/math-campaign-spec.md's ~30-cell estimate — a checked multiply (the obvious
+       // missing sibling of add_checked_u32/sub_checked_u32), fused multiply-add/subtract and
+       // three-way variants, an exact checked power, wide siblings of several u16 cells that
+       // can't represent values past 65535 (money/counts genuinely exceed that in this
+       // campaign), and the sign-magnitude kernels docs/math-campaign-spec.md names as an M0
+       // prerequisite (the dialect has no i32, so a signed difference is a (magnitude, sign)
+       // pair instead).
 }
 
 #[test]
@@ -363,5 +361,4 @@ fn math_wave3_checked_arithmetic_slice() {
     // subtract-direction sibling of frac_add_whole), and lcm3 (the number-theory pack's
     // gcd/gcd3 pairing extended to lcm, inlining gcd's shared-kernel prelude call twice
     // since `lcm` itself isn't in `CELL_PRELUDE`).
-
 }

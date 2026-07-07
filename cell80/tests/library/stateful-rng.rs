@@ -58,9 +58,8 @@ fn stateful_rng_cells_match_defined_behaviour() {
         &[("count", 65534), ("limit", 0)],
     );
     assert_eq!(cell.get("count"), Some(65535)); // no wrap when limit == 0
-    // The stateful/RNG pack (library-growth.md "Next waves") — deterministic pseudo-random
-    // steps. `StateCell::run` zeros memory the previous run touched (Runner::run's own
-    // doc), so the carried field must be re-`set` from the prior `get` before every call —
-    // there's no implicit persistence across separate `.run()` invocations.
-
+                                                // The stateful/RNG pack (library-growth.md "Next waves") — deterministic pseudo-random
+                                                // steps. `StateCell::run` zeros memory the previous run touched (Runner::run's own
+                                                // doc), so the carried field must be re-`set` from the prior `get` before every call —
+                                                // there's no implicit persistence across separate `.run()` invocations.
 }
