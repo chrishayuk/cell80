@@ -46,7 +46,7 @@ mod light;
 mod rat;
 mod units;
 
-use full::{doc_line, print_item, Fail, FnCanon};
+use full::{doc_line, print_item, touches_f32, Fail, FnCanon};
 use light::{normalize_block, returns_value};
 pub use units::canonical_unit;
 
@@ -192,6 +192,20 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
             impossible: Vec<String>,
         }
         impl VisitMut for SuffixStrip {
+            fn visit_item_fn_mut(&mut self, f: &mut syn::ItemFn) {
+                // F0.6 (the amendment's hard constraint): an f32-touching fn must
+                // canonicalize byte-identically or not at all under Full mode — the
+                // width-suffix-advisory rewrite below is itself an algebraic-adjacent
+                // text mutation (it feeds the same `light_fired`-triggered re-stitch
+                // that would otherwise print this fn's *mutated* AST instead of its
+                // original source once `FnCanon::run` soft-fails it out of full_texts).
+                // Skip descending into this fn entirely so its suffixes — and its
+                // fallback-printed text — stay untouched.
+                if touches_f32(f) {
+                    return;
+                }
+                syn::visit_mut::visit_item_fn_mut(self, f);
+            }
             fn visit_lit_int_mut(&mut self, lit: &mut syn::LitInt) {
                 let suffix = lit.suffix().to_string();
                 if suffix.is_empty() {

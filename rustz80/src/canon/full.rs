@@ -99,7 +99,7 @@ pub(crate) enum Fail {
 /// **Unsuffixed** decimals (`12.5`) are deliberately excluded: they are the canon
 /// pass's exact-decimal lane (money/GSM lifting into `Rat`s) — the fraction tier —
 /// not floats. Only the explicit `f32` suffix opts a value into binary32.
-fn touches_f32(f: &syn::ItemFn) -> bool {
+pub(super) fn touches_f32(f: &syn::ItemFn) -> bool {
     use syn::visit::Visit;
     struct Scan(bool);
     impl<'ast> Visit<'ast> for Scan {

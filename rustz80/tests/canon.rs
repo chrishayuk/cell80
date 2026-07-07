@@ -431,10 +431,10 @@ fn f32_chains_never_reassociate() {
     // cancellation, no reassociation.
     let squash = |s: &str| s.replace([' ', '\n'], "");
     for (src, chain) in cases.iter().zip([
-        "a*3.0f32/3.0f32",       // defer-division must NOT cancel *3.0/3.0
-        "a+0.1f32+b+0.2f32",     // sum must NOT reorder or combine constants
-        "0.1f32+a+0.2f32",       // constants must NOT fold across the variable
-        "0.1f32+0.2f32",         // even const+const must NOT fold (RNE at runtime)
+        "a*3.0f32/3.0f32",   // defer-division must NOT cancel *3.0/3.0
+        "a+0.1f32+b+0.2f32", // sum must NOT reorder or combine constants
+        "0.1f32+a+0.2f32",   // constants must NOT fold across the variable
+        "0.1f32+0.2f32",     // even const+const must NOT fold (RNE at runtime)
     ]) {
         let out = canonicalize_source(src, &full()).expect("canonicalizes");
         assert!(
@@ -1007,7 +1007,9 @@ fn diag_code_table_round_trips() {
     for c in &all {
         assert!(c.code().starts_with('E'), "{}", c.code());
         assert!(
-            c.slug().chars().all(|ch| ch.is_ascii_lowercase() || ch == '_' || ch.is_ascii_digit()),
+            c.slug()
+                .chars()
+                .all(|ch| ch.is_ascii_lowercase() || ch == '_' || ch.is_ascii_digit()),
             "{}",
             c.slug()
         );
@@ -1030,12 +1032,27 @@ fn classify_error_covers_every_family() {
     use rustz80::{classify_error, DiagCode};
     let rows: [(&str, Option<DiagCode>); 8] = [
         ("parse error: expected `;`", Some(DiagCode::Parse)),
-        ("render/compile: unknown call target `nope`", Some(DiagCode::UnknownCallTarget)),
-        ("unsupported literal: a float literal — ...", Some(DiagCode::RequiresFractionalScale)),
-        ("`1.5` — an unsuffixed decimal is not a dialect value", Some(DiagCode::RequiresFractionalScale)),
+        (
+            "render/compile: unknown call target `nope`",
+            Some(DiagCode::UnknownCallTarget),
+        ),
+        (
+            "unsupported literal: a float literal — ...",
+            Some(DiagCode::RequiresFractionalScale),
+        ),
+        (
+            "`1.5` — an unsuffixed decimal is not a dialect value",
+            Some(DiagCode::RequiresFractionalScale),
+        ),
         ("no macros in the dialect", Some(DiagCode::StatementMacro)),
-        ("this function returns a 16-bit value — narrow with `as u16`, or declare `-> u32`", Some(DiagCode::WidthExceedsU16)),
-        ("cannot assign a u32 value to 16-bit `x` — narrow with `as u16`", Some(DiagCode::WidthExceedsU16)),
+        (
+            "this function returns a 16-bit value — narrow with `as u16`, or declare `-> u32`",
+            Some(DiagCode::WidthExceedsU16),
+        ),
+        (
+            "cannot assign a u32 value to 16-bit `x` — narrow with `as u16`",
+            Some(DiagCode::WidthExceedsU16),
+        ),
         ("some completely novel failure", None),
     ];
     for (msg, want) in rows {
