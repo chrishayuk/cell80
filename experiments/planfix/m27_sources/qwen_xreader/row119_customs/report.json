@@ -1,0 +1,40 @@
+{
+ "agreement": "majority",
+ "answer": 4,
+ "battery": "survived 0 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdh5ysuk5/d0.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bce8b59abc5a593d59fc592e4b1fac4c54caebc1c50f71f2478eaff28b4c87f8",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container_initial` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles_after_second_day` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdh5ysuk5/d1.rs"
+  },
+  {
+   "answer": 4,
+   "artifact": "bd3497dc9ce5adc89d0b0c10bb4081ce15defc90f90bd97d6e74be7280e0ccef",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdh5ysuk5/d2.rs"
+  }
+ ],
+ "flagged": true
+}

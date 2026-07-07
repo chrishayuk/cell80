@@ -1,0 +1,41 @@
+{
+ "agreement": "majority",
+ "answer": 50,
+ "battery": "survived 0 perturbation(s) (4 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpt5sj6dd0/d0.rs"
+  },
+  {
+   "answer": 50,
+   "artifact": "ea4d0c57f0210674117b25eb682c74d6ca9f0aea302acd799237846ffc867033",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_hours` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `first_part_hours` = 3 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpt5sj6dd0/d1.rs"
+  },
+  {
+   "answer": 50,
+   "artifact": "1b3db2da2bed5b23aa8c4868543ea2f2ea9fd034b276d4c2438219f3a0ff350c",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `d1` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `t2` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpt5sj6dd0/d2.rs"
+  }
+ ],
+ "flagged": true
+}

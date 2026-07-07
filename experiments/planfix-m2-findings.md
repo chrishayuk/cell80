@@ -183,6 +183,39 @@ plan-solve.
    **verify-`if` → computed-side rewrite**: `if E == lit { lit } else { 0 }` returns
    `E` — converts granite's signature disease into honest computation.
 
+## 4c. The error-chase backlog lands (2026-07-07): casts, if-value canon, E0207
+
+Three roadmap items from the captured-source analysis, built and replay-verified:
+
+- **Casts** (`as u16`/`as u32`) join the straight-line subset — `as u16` is the
+  identity in the narrow lane and a real truncation in the wide one; `as u32`
+  commits the wide lane. The granite row22 cast-tail no longer blocks `E0205`.
+- **If-value (select) canonicalization** — `if c { a } else { b }` is now a
+  canonical node with comparison normalization (`>` flips to `<`; `==`/`!=` sort
+  operands) and **lazy-arm emission**: arm-exclusive work renders inline in its arm
+  (the guarded-division idiom `if b != 0 { a / b } else { 0 }` keeps its
+  kill-avoidance — verified end-to-end at b=0), while condition-reachable and
+  both-arm-shared nodes hoist. This brought the *inline* derivation arm — the
+  strongest arm — under canonicalization, lifting, and the battery. A positional-ABI
+  bug fell out of the guard test before it could ship: dataflow slot assignment was
+  reordering real parameter signatures (callers' positional args silently remapped);
+  real params now keep positional slots, only lifted quantities get dataflow order.
+- **`E0207 verify_rewrite`** (registered amendment 3): `if E == lit { lit } else
+  { 0 }` returns the computed side. Replay precision check across every
+  configuration: accepted-wrong stayed 0 — the rewrite stands. On this slice it
+  converts nothing (granite's real verify-ifs are `then`-syntax or panic-arm
+  variants that die earlier); it is armed for M3-scale sources.
+
+Replay after all three: gemma **20/20 with two rows upgraded to unanimous** (18/20
+strict); granite/qwen unchanged; and one genuinely important downgrade —
+**granite-xreader row117 went accepted-correct → `battery_escalate`, and the battery
+is right**: its two agreeing derivations share the reading (7:13 of 120) but one
+truncates early (`120/20` then `*7`), agreeing with the deferred form *only because
+120/20 divides exactly*. Under perturbation they diverge (45 vs 40). The agreement
+was exact-division coincidence — precisely the fragility GSM-Symbolic perturbs and
+H-M1 measures, caught in the wild on real model output. One yield point spent on
+the guarantee that accepted agreements generalize off-instance.
+
 ## 4b. The PAL baseline (H-M2) and width routing — 2026-07-07
 
 **PAL-Python** (`pal_baseline.py`, one derivation, subprocess exec, no gate — every
@@ -208,6 +241,109 @@ precision and auditability, not raw accuracy, is now measured, not asserted.
 cells ahead of u16 siblings, order-only, no score rescaling. Direct p@1: 0.7934 →
 **0.8413** at 263 cells; paraphrase also up (0.33 → 0.37). The retrieval floor is
 restored to 0.80.
+
+## 4d. M2.8 closes (2026-07-07): parity, a silent-wrap hole found and fixed, and the second ensemble datapoint
+
+- **Cross-language defer-division parity: 7/7 PASS** (`parity_check.py` →
+  `parity_check_results.txt`). The registered byte-parity wording predates the fold
+  (canon reduces `30/100`→`3/10`; the Python arm deliberately doesn't) and the shape
+  split, so the meaningful invariants are what's checked: numeric equivalence on the
+  cell VM vs the simulated Python plan, and one-trailing-div structure on both arms.
+  Canon strictly subsumes `equations_to_plan` normalization.
+- **The parity check caught a real precision hole before M3 could ship it.**
+  Lifting made quantities non-constant, so the fold could no longer see that
+  `q0 * 1000` overflows at the source's own values: `88*1000/11` silently wrapped
+  to 2042 in the narrow lane — and identical schemas wrap *identically*, so a gate
+  could have agreed on the wrapped value across derivations. Fix (**checked
+  emission**, `CanonOptions::checked`, on for the whole compose path): lifted cells
+  emit adds/subs/muls through the checked prelude kernels — overflow and negative
+  intermediates escalate, never wrap — matching the plan renderer's semantics.
+  Full replay after: every configuration unchanged at 0 accepted-wrong; parity 7/7.
+- **qwen × gemma-reader: 15% → 65% at 100% precision, 0 wrong, 0 genuine
+  escalations** — the ensemble treatment reproduces on the second weak model,
+  landing exactly on qwen's composed-arm ceiling, as it did for granite (35%→75%).
+  The weak-composer + strong-reader configuration is now evidenced twice.
+
+## 4e. Width belongs to the compiler + the last pre-M3 nits (2026-07-07)
+
+Registered amendments 4–5, from the observation that suffix errors are bookkeeping
+noise, not arithmetic intent:
+- **`E0208 suffix_normalized`** — integer suffixes are advisory in Full mode
+  (stripped on parse, canonical ones re-emitted by the lane); an impossible
+  `88000u16` is named in the repair row and the *value* decides the lane.
+  All three spellings of a constant now reach one schema.
+- **`E0209 narrowing_dropped`** — a model's mid-chain `as u16` drops in the
+  checked lane (it fights the type checker; the kernels own overflow). Plain
+  Full/Light keep real truncation — the dialect and its rustc oracle untouched.
+  Replay precision check: every configuration still 0 accepted-wrong.
+
+Plus two pre-M3 fixes from the residual-error analysis: **exact-id linking**
+(`eq(a, b)` links by manifest lookup before any fuzzy score — 2-char names were
+unlinkable below every threshold) and **cost fields in the compose report**
+(`cycles`, `trapped_ops` per derivation — H-M4's cost-per-verified-answer needs
+them from day one). Remaining pre-registered-for-M3-runner: per-generation
+provenance (model digest, seed, options) lives in the campaign runner when it's
+built — drift already killed one prediction, so results must be replayable.
+
+## 4f. Second residual-error pass (2026-07-07, post-amendments)
+
+Regenerating per-row outcomes across all five configurations after amendments 1–5:
+
+- **E0205 was width-blind — found and fixed.** The method rewrite targeted `imax`,
+  a u16 kernel, which can't take checked-lane values (granite row22 d1:
+  "argument 1 of `imax` is 16-bit"). The prelude gains `imax_u32`/`imin_u32`/
+  `iabs_diff_u32` (free fns, DCE-pruned) and the wide lane emits the `_u32` forms
+  with wide arguments.
+- **SSA reassignment landed** (the row92 class): `total = total + n` accumulator
+  style rebinds like a `let` shadow — semantics-preserving in a straight-line
+  body; `let mut x = a; x = x + b; x * 2` and `(a + b) * 2` are now one schema.
+- **Revived arms fail safely.** The suffix/checked work resurrected previously-dead
+  *wrong* derivations (granite row89 d1 now computes 79200) — every one lands as a
+  disagreeing answer and escalates. Zero wrong accepts held through two rounds of
+  coverage expansion; the gate is robust to arms coming back to life wrong.
+- **What remains, honestly:** qwen's stated-answer parse mass (20 of 34 kill rows —
+  instruction-shape, ensemble-solved); granite comprehension disagreements
+  (row121: three valid answers, all different — the gate's job); two tally-gated
+  Model-Rust one-offs (chained comparison `a < b < c`, exotic call targets); the
+  verify-if-with-panic-arm shape (row89 d0 — its answer exists only as a stated
+  literal, unrecoverable by design); and stranded single-correct-answers in
+  ensemble configs, which is the registered 4th-derivation question for M3 data.
+
+## 4d. `then`-sugar desugaring (E0210) — the verify-rewrite's missing feeder (2026-07-07)
+
+E0207 (§4c) rewrites the verify-not-compute shape `if E == lit { lit } else { 0 }` to
+its computed side, but replay showed it *converted nothing* on granite's captured
+slice: granite writes that shape in **non-Rust `then`/`else` sugar**
+(`if (42 * 10) / 3 == 140 then 140 else 0`), which dies at `E0501 parse` before any
+AST pass runs. E0210 is the feeder — a comment-safe textual pre-pass (in
+`canon::canonicalize_source`, before `syn::parse_str`) that desugars
+`if C then a else b` → `if C { a } else { b }`, coercing a `!`/`panic!()` else-arm to
+`0`. `then` never appears in valid Rust, so the pass is byte-identical on any
+well-formed source; only the code portion of a line is considered, so a `then` in a
+`//` comment (gemma row94 d1) is left alone — verified by the codegen golden staying
+green.
+
+**Replay across all five configs (captured sources, no model calls):**
+
+| config | before | after | accepted-wrong |
+|---|---|---|---|
+| gemma4 | 20/20 | 20/20 | 0 |
+| granite solo | 9/20 | **10/20** | 0 |
+| granite × gemma-reader | 14/20 | 14/20 | 0 |
+| qwen solo | 3/20 | 3/20 | 0 |
+| qwen × reader | 13/20 | 13/20 | 0 |
+
+granite's **row104** recovers (`escalate → 140/majority`): its `then`-sugared arm now
+parses, and because its guess (`140`) *matched* the arithmetic `(42*10)/3`, the
+constant-condition fold evaluates it correctly and pairs with the already-correct
+`max(0, …)` arm (granite_xreader tightens the same row majority → unanimous).
+**row111 does NOT recover, and that is the honest outcome**: its guess (`43`) differs
+from the true `(2*24+3*14)/2 = 45`, so the const-fold returns the coerced else `0` →
+`degenerate_zero`, which the zero-guard refuses. (E0207 itself only fires when the
+computed side is non-constant; granite's all-literal verify-ifs take the const-fold
+path instead.) Precision held at **0 accepted-wrong in every configuration** — the
+pass only ever turns a parse-dead arm into a valued one, and any false agreement is
+caught by the zero-guard and the counterfactual battery.
 
 ## 5. Honest limits
 

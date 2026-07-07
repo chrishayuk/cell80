@@ -311,3 +311,171 @@ fn lifting_precipitates_across_problem_instances() {
     assert_eq!(d[0]["answer"], 150);
     assert_eq!(d[1]["answer"], 84);
 }
+
+#[test]
+fn guarded_division_survives_canonicalization_end_to_end() {
+    // The safe-div idiom with the divisor at zero: the canonical select must keep
+    // the division lazy in its arm — answer 0, never a div_by_zero kill.
+    let src = tmp(
+        "guard.rs",
+        "fn run(a: u16, b: u16) -> u16 { if b != 0 { a / b } else { 0 } }",
+    );
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src.clone(),
+        "--args".into(),
+        "5,0".into(),
+        "--json".into(),
+    ])
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert!(v["derivations"][0]["kill"].is_null(), "{out}");
+    // answer 0 → the zero-guard reports degenerate_zero rather than accepting a
+    // lone zero — correct: a legit zero answer escalates by registered rule.
+    assert_eq!(v["agreement"], "degenerate_zero", "{out}");
+    // And with a nonzero divisor the value flows.
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src,
+        "--args".into(),
+        "12,3".into(),
+    ])
+    .unwrap();
+    assert!(out.contains("answer: 4"), "{out}");
+}
+
+// ---------------------------------------------------------- coverage: edges
+
+#[test]
+fn battery_reports_skipped_values_for_partial_lifts() {
+    // d0 lifts {6, 2}; d1 bakes the 2 inline (expression constant) — only the
+    // common value 6 is perturbable; 2 is skipped and reported, never guessed at.
+    let a = tmp(
+        "skip_a.rs",
+        "fn run() -> u16 { let x = 6; let y = 2; x * y }",
+    );
+    let b = tmp("skip_b.rs", "fn run() -> u16 { let x = 6; x + x }");
+    let out = run_cli(&["compose".into(), cells_dir(), a, b, "--json".into()]).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["answer"], 12);
+    let battery = v["battery"].as_str().unwrap();
+    assert!(battery.contains("skipped"), "{out}");
+}
+
+#[test]
+fn linker_refuses_state_cell_only_matches_with_a_typed_error() {
+    // `agree3_u32` exists only as a state cell — naming it as a call must produce
+    // the typed E0503 refusal, not an inline of something un-callable.
+    let src = tmp(
+        "statecall.rs",
+        "fn run(a: u16, b: u16) -> u16 { agree3_u32(a, b) }",
+    );
+    let out = run_cli(&["compose".into(), cells_dir(), src]).unwrap();
+    assert!(out.contains("escalate"), "{out}");
+    assert!(out.contains("E0503") || out.contains("E0504"), "{out}");
+}
+
+#[test]
+fn compose_cli_flag_errors_are_named() {
+    assert!(run_cli(&["compose".into(), cells_dir()]).is_err());
+    assert!(run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        "x.rs".into(),
+        "--bogus".into()
+    ])
+    .is_err());
+    assert!(run_cli(&["compose".into(), cells_dir(), "/nonexistent-file.rs".into()]).is_err());
+}
+
+#[test]
+fn link_budget_exhausts_with_a_named_error_and_battery_needs_handles() {
+    // Thirteen distinct library calls exceed the 12-iteration link budget.
+    let calls: Vec<String> = [
+        "is_gt", "is_lt", "is_le", "is_ge", "min", "max", "lcm", "safe_div", "safe_mod", "percent",
+        "gcd3", "min3", "divides",
+    ]
+    .iter()
+    .map(|n| format!("{n}(a, b)"))
+    .collect();
+    let src = tmp(
+        "budget.rs",
+        &format!("fn run(a: u16, b: u16) -> u16 {{ {} }}", calls.join(" + ")),
+    );
+    let out = run_cli(&["compose".into(), cells_dir(), src]).unwrap();
+    assert!(out.contains("link budget exhausted"), "{out}");
+    // battery() on outcomes without warm handles is a named error.
+    let mut host = CellHost::new();
+    let orphan = cell80::compose::DerivationOutcome {
+        answer: Some(1),
+        kill: None,
+        artifact: None,
+        resolutions: vec![],
+        repairs: vec![],
+        retrieved: false,
+        cycles: 0,
+        trapped_ops: 0,
+        handle: None,
+        base_args: vec![],
+        lifted: vec![("q0".into(), 1)],
+        wide_ret: false,
+    };
+    let err = cell80::compose::battery(&mut host, &[&orphan], DEFAULT_CYCLES).unwrap_err();
+    assert!(err.contains("warm handles"), "{err}");
+}
+
+#[test]
+fn runtime_halts_are_named_kills() {
+    // Unguarded division by a zero argument: div_by_zero, never a number.
+    let src = tmp("rawdiv.rs", "fn run(a: u16, b: u16) -> u16 { a / b }");
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src.clone(),
+        "--args".into(),
+        "5,0".into(),
+    ])
+    .unwrap();
+    assert!(out.contains("div_by_zero"), "{out}");
+    // A one-cycle budget starves the run: cycle_budget, never a number.
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src,
+        "--args".into(),
+        "6,3".into(),
+        "--cycles".into(),
+        "1".into(),
+    ])
+    .unwrap();
+    assert!(out.contains("cycle_budget"), "{out}");
+    // A lone dead derivation is `single` with no answer.
+    assert_eq!(agreement(&[None]), (None, "single", false));
+}
+
+#[test]
+fn exact_id_links_regardless_of_name_length_and_costs_are_reported() {
+    // `eq` exists as a cell under exactly that id — a 2-char name that every fuzzy
+    // threshold refuses must still link by exact match (maximal confidence).
+    let src = tmp(
+        "eqcall.rs",
+        "fn run(a: u16, b: u16) -> u16 { eq(a, b) * 7 }",
+    );
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src,
+        "--args".into(),
+        "4,4".into(),
+        "--json".into(),
+    ])
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["derivations"][0]["answer"], 7, "{out}");
+    assert_eq!(v["derivations"][0]["resolutions"][0]["cell"], "eq");
+    // H-M4 accounting rides in the report.
+    assert!(v["derivations"][0]["cycles"].as_u64().unwrap() > 0, "{out}");
+    assert!(v["derivations"][0]["trapped_ops"].is_u64());
+}

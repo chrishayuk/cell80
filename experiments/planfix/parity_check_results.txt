@@ -1,0 +1,11 @@
+percent, deferred                    python=75     cell=75     divs py/canon=1/1 OK
+percent, early-truncating spelling   python=75     cell=75     divs py/canon=1/1 OK
+row89 shape                          python=8000   cell=8000   divs py/canon=1/1 OK
+ratio split (row117 shape)           python=42     cell=42     divs py/canon=1/1 OK
+fraction plus offset                 python=12     cell=12     divs py/canon=1/1 OK
+chained division                     python=10     cell=10     divs py/canon=1/1 OK
+sub of product                       python=21     cell=21     divs py/canon=0/0 OK
+
+numeric parity: PASS
+note: canon folds/reduces constants (30/100 -> 3/10) where the Python arm
+does not — canon strictly subsumes eq2p normalization (M2.6 rescope).

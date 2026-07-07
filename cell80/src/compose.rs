@@ -54,6 +54,11 @@ pub struct DerivationOutcome {
     pub repairs: Vec<String>,
     /// The composed schema was already catalogued (H-M3 precipitation counter).
     pub retrieved: bool,
+    /// Deterministic cost of the base run (H-M4 accounting): T-states and the
+    /// count of cost-bearing host traps (mul/div — near-free in cycles, so both
+    /// are reported; see `Report::cycles`' caveat).
+    pub cycles: u64,
+    pub trapped_ops: u64,
     /// Runtime-only: the warm handle, base arguments, and return width — what the
     /// counterfactual battery needs to re-run this derivation under perturbation.
     pub handle: Option<usize>,
@@ -138,6 +143,13 @@ fn resolve(
             }
         }
     }
+    // An exact id is maximal confidence — it must not depend on trigram scores or
+    // name length (2-char names like `eq` score below every fuzzy threshold).
+    if let Some(m) = host.manifest(name) {
+        if free_fn_arity(m).is_some_and(|a| arity.is_none_or(|want| a == want)) {
+            return Ok(name.to_string());
+        }
+    }
     let hits = host.search_scored(name, 6);
     if hits.is_empty() {
         return Err(format!(
@@ -219,6 +231,10 @@ pub fn compose(host: &CellHost, cells_dir: &Path, src: &str) -> Result<Compositi
             // schema precipitates across problem instances and the battery can
             // perturb them. The values ride in `Composition::lifted`.
             lift_literals: true,
+            // Checked emission: lifted quantities aren't constants, so the fold
+            // can't catch runtime overflow — the checked kernels escalate instead
+            // of wrapping (parity-check find: 88*1000/11 wrapped to 2042 silently).
+            checked: true,
         },
     )
     .map_err(|d| d.to_string())?;
@@ -334,6 +350,8 @@ pub fn run_composed(
         resolutions,
         repairs: comp.repairs,
         retrieved,
+        cycles: fast.cycles,
+        trapped_ops: fast.trapped_ops,
         handle: Some(h),
         base_args: args.to_vec(),
         lifted: comp.lifted,

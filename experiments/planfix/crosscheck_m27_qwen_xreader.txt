@@ -1,0 +1,31 @@
+=== qwen2.5:3b with THIRD=model:gemma4:e4b (ensemble-column probe) ===
+model = qwen2.5:3b   third reader = model:gemma4:e4b   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540    None   escalate  escalate (recoverable)
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366     366   majority  ACCEPT ok [flagged 2-of-3]
+row22_raymond        14    None   escalate  escalate (recoverable)  [expected a plain variable name here, got a binary expression]
+row85_football       15    None   escalate  escalate (recoverable)
+row86_gene           44      44   majority  ACCEPT ok [flagged 2-of-3]
+row89_marilyn      8000    None   escalate  escalate (recoverable)
+row92_jan            28      28   majority  ACCEPT ok [flagged 2-of-3]
+row93_emily           4       4   majority  ACCEPT ok [flagged 2-of-3]
+row94_lee            36      36   majority  ACCEPT ok [flagged 2-of-3]
+row97_harry           3       3   majority  ACCEPT ok [flagged 2-of-3]
+row101_jerome       175    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row104_fog          140    None   escalate  escalate (recoverable)
+row106_cody          20      20   majority  ACCEPT ok [flagged 2-of-3]
+row111_marcell       45    None   escalate  escalate (recoverable)  [unsupported call target — call a named function (`f(a, b)`) ]
+row117_katy          42      42   majority  ACCEPT ok [flagged 2-of-3]
+row119_customs        4       4   majority  ACCEPT ok [flagged 2-of-3]
+row121_miguel       240     240   majority  ACCEPT ok [flagged 2-of-3]
+row122_morisette     27      27   majority  ACCEPT ok [flagged 2-of-3]
+row124_rosie         50      50   majority  ACCEPT ok [flagged 2-of-3]
+------------------------------------------------------------------------------
+accepted 13/20   yield 13/20   escalations: 7 recoverable, 0 genuine
+precision strict (unanimous only): 1/1   with majority: 13/13
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0102': 38, 'E0202': 12, 'E0502': 3, 'E0301': 2, 'E0505': 1, 'E0203': 1}
+sources dumped under experiments/planfix/m27_sources/qwen_xreader

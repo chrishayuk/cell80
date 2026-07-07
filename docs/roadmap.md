@@ -344,7 +344,33 @@ strictly by sequence; the library grows by eval need:
    rule → **next: M2.7** (third derivation, decorrelated reader), then the error
    chase (qwen's `expected ';'` dialect, granite's `E0502` mass) from captured
    sources, then M2.8 proper and M3.
-   **Error-chase backlog, priced from captured sources (2026-07-07):**
+   **M2 phase CLOSED (2026-07-07).** Everything between the amended registration and
+   M3 is done, measured, and merged. The gate stack in its final pre-campaign form:
+   Full canonicalization (slots · topo order · exact folding · defer-division ·
+   if-value with lazy arms · casts · SSA reassignment · literal lifting · **checked
+   emission** — overflow/negatives escalate, never wrap) → the link loop (exact-id
+   first, then confidence-floored search+arity; wide `_u32` kernels in the prelude)
+   → the registered N-derivation gate (`unanimous`/`majority`-flagged/`escalate`/
+   `degenerate_zero`/`battery_escalate`) → counterfactual battery certificates →
+   facts + cost (`cycles`/`trapped_ops`) per derivation. **Five registered
+   amendments** (zero-guard · `E0205` method→kernel · `E0207` verify-rewrite ·
+   `E0208` advisory suffixes · `E0209` checked-lane narrowing-drop), each
+   replay-verified at 0 accepted-wrong. **M2.8 complete**: granite/gemma/qwen
+   pipeline runs, PAL baseline (H-M2 passes for gemma: cells 100% vs PAL 90%+2
+   silent), battery-on-composed (caught a real exact-division-coincidence agreement
+   in the wild), cross-language parity 7/7 (which found and fixed lifting's
+   silent-wrap hole). Slice scoreboard: **gemma 20/20 · granite 45% solo / 75%
+   ensemble · qwen 15% solo / 65% ensemble — all at 100% precision; zero wrong
+   accepts across every configuration and two rounds of coverage expansion.** The
+   residual failure set contains nothing the compiler can honestly fix (stated
+   answers, genuine comprehension splits, tally-gated dialect one-offs). **Next:
+   user sign-off on the M3 registration update (drafted in
+   `docs/math-campaign-amendment.md` — ensemble column, H-P2 kill applied,
+   battery certificates mandatory, frozen E-codes), then the campaign runner
+   (checkpoint/resume · per-generation provenance: model digest/seed/options ·
+   facts + cost capture), then N=1,319.**
+      **Error-chase backlog, priced from captured sources (2026-07-07; (a)(b)(c)
+   ✓ landed same day — see `experiments/planfix-m2-findings.md` §4c):**
    (a) **casts in the straight-line subset** — `as u16`/`as u32` currently soft-fail
    canon Full, which blocked the `E0205` method rule and lifting on granite row22's
    otherwise-clean derivation; small build, unblocks two landed passes on real

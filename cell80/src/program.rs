@@ -21,7 +21,10 @@ fn clamp_to(x: u16, lo: u16, hi: u16) -> u16 { let mut r = x; if x < lo { r = lo
 fn gcd_u32(a: u32, b: u32) -> u32 { let mut x = a; let mut y = b; while y != 0u32 { let t = y; y = x % y; x = t; } x }\n\
 fn mul_checked_u32(a: u32, b: u32) -> u32 { let p = a.wrapping_mul(b); if a != 0u32 && p / a != b { halt(0xFF05u16); } p }\n\
 fn add_checked_u32(a: u32, b: u32) -> u32 { let s = a.wrapping_add(b); if s < a { halt(0xFF05u16); } s }\n\
-fn sub_checked_u32(a: u32, b: u32) -> u32 { if a < b { halt(0xFF05u16); } a - b }\n";
+fn sub_checked_u32(a: u32, b: u32) -> u32 { if a < b { halt(0xFF05u16); } a - b }\n\
+fn imax_u32(a: u32, b: u32) -> u32 { let mut m = a; if b > a { m = b; } m }\n\
+fn imin_u32(a: u32, b: u32) -> u32 { let mut m = a; if b < a { m = b; } m }\n\
+fn iabs_diff_u32(a: u32, b: u32) -> u32 { let mut d = 0u32; if a > b { d = a - b; } if b > a { d = b - a; } d }\n";
 
 /// The DCE roots for a cell: its entry functions — every free `fn run`/`fn main` and every
 /// `impl` method named `run`/`main` (`Type::run`), matching the cartridge's entry convention.

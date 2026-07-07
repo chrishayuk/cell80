@@ -1,0 +1,37 @@
+{
+ "agreement": "majority",
+ "answer": 20,
+ "battery": "survived 0 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 16,
+   "artifact": "c0a1ad3bd10d28ca31f729871cd9041972dc13b19e36726e7788424b9ae37d37",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp246exrra/d0.rs"
+  },
+  {
+   "answer": 20,
+   "artifact": "72c721a1ccfd0df59cb3b8f61d52d7df0584b5d353142a0278a344f12661f84b",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir_cookies` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp246exrra/d1.rs"
+  },
+  {
+   "answer": 20,
+   "artifact": "3bbd7e3eeb4df8b95e5b64a87b2a5c276f9f3047e1b212b821f64964271b1b0d",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp246exrra/d2.rs"
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,41 @@
+{
+ "agreement": "majority",
+ "answer": 3,
+ "battery": "survived 0 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 10,
+   "artifact": "ba03e1a9d3ee9cc971b98500ce020a105625a65a26e55f04a473eda274d0fc93",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp7t4fmwnq/d0.rs"
+  },
+  {
+   "answer": 3,
+   "artifact": "023a1a600471844ab923e6090e7a5dcc50ed0a2d34c5c58a2080f665a79ab234",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp7t4fmwnq/d1.rs"
+  },
+  {
+   "answer": 3,
+   "artifact": "584146ed2a44ddd03b32dd17b48274dbfff31ff45136f85e594c0ac47b803671",
+   "kill": null,
+   "repairs": [
+    "E0203:trailing_let rewrote trailing `return` to a tail expression",
+    "E0102:quantity_lifted `james_sleep` = 6 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp7t4fmwnq/d2.rs"
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,41 @@
+{
+ "agreement": "majority",
+ "answer": 36,
+ "battery": "survived 0 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 52,
+   "artifact": "d709dbabe75a90c4a418cbc1627bb0eccca46891ba22933cbc1a5a097ffbbeb9",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp4w8vc0ej/d0.rs"
+  },
+  {
+   "answer": 36,
+   "artifact": "92d1b358db0f4ffbe4def6c6fa3870c861f8a9e420589bde04ed5991ce1c52c8",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `lees_time` = 38 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp4w8vc0ej/d1.rs"
+  },
+  {
+   "answer": 36,
+   "artifact": "ebbbb122d86a0f4dcb2d2de780cc8d176bd9188d5803b90d3c22c06f636aba64",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `t_g_original` = 40 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp4w8vc0ej/d2.rs"
+  }
+ ],
+ "flagged": true
+}

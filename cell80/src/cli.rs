@@ -22,7 +22,7 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell facts import <file.facts> <dir> [--verify-fraction F] [--quarantine] [--json]\n  \
      rustz80-cell facts verify <file.facts> <dir> [--json]  (re-execute every line; CI-able)\n  \
      rustz80-cell solve <plans.json> [--cycles N] [--json]  (render/compile/verify candidate plans)\n  \
-     rustz80-cell compose <dir> <src.rs> [<src2.rs> ...] [--args a,b,..] [--cycles N] [--facts <file>] [--json]\n  \
+     rustz80-cell compose <dir> <src.rs> [<src2.rs> ...] [--args a,b,..] [--cycles N] [--facts <file>] [--dump-canon] [--json]\n  \
      \x20                                        (canonicalize + link against the library + run; N sources = the agreement gate)\n  \
      safety (sandboxed by default): [--allow-raw-memory] [--allow-ports] \
      [--max-code-bytes N] [--max-touched N]";
@@ -661,6 +661,7 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
     let mut run_args: Vec<u16> = Vec::new();
     let mut cycles = DEFAULT_CYCLES;
     let mut facts_out: Option<&String> = None;
+    let mut dump_canon = false;
     let mut json = false;
     let mut it = args[1..].iter();
     while let Some(a) = it.next() {
@@ -675,6 +676,7 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                     .ok_or("--cycles needs a number")?
             }
             "--facts" => facts_out = Some(it.next().ok_or("--facts needs a path")?),
+            "--dump-canon" => dump_canon = true,
             "--json" => json = true,
             other if other.starts_with("--") => return Err(format!("unknown flag `{other}`")),
             _ => sources.push(a),
@@ -686,6 +688,18 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
     let mut host = host_from_dir(dir)?;
     host.set_cache(true);
     let cells_dir = std::path::Path::new(dir);
+    if dump_canon {
+        // Debug surface: print each source's canonical linked form and stop —
+        // no run, no gate. What the artifact hash actually covers.
+        let mut out = String::new();
+        for path in &sources {
+            let src = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+            let comp = crate::compose::compose(&host, cells_dir, &src)?;
+            out.push_str(&comp.source);
+            out.push('\n');
+        }
+        return Ok(out);
+    }
     let mut outcomes: Vec<crate::compose::DerivationOutcome> = Vec::new();
     for path in &sources {
         let src = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
@@ -698,6 +712,8 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                 resolutions: Vec::new(),
                 repairs: Vec::new(),
                 retrieved: false,
+                cycles: 0,
+                trapped_ops: 0,
                 handle: None,
                 base_args: Vec::new(),
                 lifted: Vec::new(),
@@ -763,6 +779,8 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                 "kill": o.kill,
                 "artifact": o.artifact,
                 "retrieved": o.retrieved,
+                "cycles": o.cycles,
+                "trapped_ops": o.trapped_ops,
                 "resolutions": o.resolutions.iter()
                     .map(|(n, id)| json!({"call": n, "cell": id}))
                     .collect::<Vec<_>>(),
