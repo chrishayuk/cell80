@@ -525,6 +525,48 @@ fn verify_if_rewrites_to_computed_side() {
     assert!(keep.source.contains("if "), "{}", keep.source);
 }
 
+#[test]
+fn then_sugar_desugars_and_feeds_verify_rewrite() {
+    // Registered amendment 2026-07-07 (E0210): `if C then a else b` (a non-Rust
+    // conditional some models emit) is desugared before parsing, so the verify shape
+    // reaches E0207 instead of dying at E0501. Parameterized so the computed side is
+    // non-constant (E0207's guard); an all-constant verify-if const-folds instead.
+    let out = full_canon("fn run(a: u16) -> u16 {\nif a * 3 == 12 then 12 else 0\n}");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::ThenDesugared));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::VerifyRewrite));
+    assert_eq!(
+        out.source,
+        full_canon("fn run(a: u16) -> u16 { a * 3 }").source
+    );
+    assert_compiles(&out.source);
+
+    // A `!` / `panic!()` else-arm — the model's "computation failed" marker — coerces
+    // to `0`, so the verify shape still reaches E0207.
+    let bang = full_canon("fn run(a: u16) -> u16 {\nif a * 3 == 12 then 12 else !\n}");
+    assert!(bang
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::VerifyRewrite));
+
+    // `then` inside a comment is prose, not sugar — byte-identical, no desugar.
+    let commented = canonicalize_source(
+        "//! add then double\nfn run(a: u16) -> u16 { a + 1u16 }\n",
+        &CanonOptions::default(),
+    )
+    .unwrap();
+    assert!(!commented.changed, "comment `then`:\n{}", commented.source);
+    assert!(!commented
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::ThenDesugared));
+}
+
 // ---------------------------------------------------------- coverage: edges
 
 #[test]

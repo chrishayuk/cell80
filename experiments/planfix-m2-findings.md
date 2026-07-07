@@ -309,6 +309,42 @@ Regenerating per-row outcomes across all five configurations after amendments 1�
   literal, unrecoverable by design); and stranded single-correct-answers in
   ensemble configs, which is the registered 4th-derivation question for M3 data.
 
+## 4d. `then`-sugar desugaring (E0210) — the verify-rewrite's missing feeder (2026-07-07)
+
+E0207 (§4c) rewrites the verify-not-compute shape `if E == lit { lit } else { 0 }` to
+its computed side, but replay showed it *converted nothing* on granite's captured
+slice: granite writes that shape in **non-Rust `then`/`else` sugar**
+(`if (42 * 10) / 3 == 140 then 140 else 0`), which dies at `E0501 parse` before any
+AST pass runs. E0210 is the feeder — a comment-safe textual pre-pass (in
+`canon::canonicalize_source`, before `syn::parse_str`) that desugars
+`if C then a else b` → `if C { a } else { b }`, coercing a `!`/`panic!()` else-arm to
+`0`. `then` never appears in valid Rust, so the pass is byte-identical on any
+well-formed source; only the code portion of a line is considered, so a `then` in a
+`//` comment (gemma row94 d1) is left alone — verified by the codegen golden staying
+green.
+
+**Replay across all five configs (captured sources, no model calls):**
+
+| config | before | after | accepted-wrong |
+|---|---|---|---|
+| gemma4 | 20/20 | 20/20 | 0 |
+| granite solo | 9/20 | **10/20** | 0 |
+| granite × gemma-reader | 14/20 | 14/20 | 0 |
+| qwen solo | 3/20 | 3/20 | 0 |
+| qwen × reader | 13/20 | 13/20 | 0 |
+
+granite's **row104** recovers (`escalate → 140/majority`): its `then`-sugared arm now
+parses, and because its guess (`140`) *matched* the arithmetic `(42*10)/3`, the
+constant-condition fold evaluates it correctly and pairs with the already-correct
+`max(0, …)` arm (granite_xreader tightens the same row majority → unanimous).
+**row111 does NOT recover, and that is the honest outcome**: its guess (`43`) differs
+from the true `(2*24+3*14)/2 = 45`, so the const-fold returns the coerced else `0` →
+`degenerate_zero`, which the zero-guard refuses. (E0207 itself only fires when the
+computed side is non-constant; granite's all-literal verify-ifs take the const-fold
+path instead.) Precision held at **0 accepted-wrong in every configuration** — the
+pass only ever turns a parse-dead arm into a valued one, and any false agreement is
+caught by the zero-guard and the counterfactual battery.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

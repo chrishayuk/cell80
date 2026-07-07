@@ -41,6 +41,11 @@ pub enum DiagCode {
     /// arithmetic was dropped: the compiler owns width. Registered amendment
     /// 2026-07-07 (output-changing; replay precision-checked).
     NarrowingDropped,
+    /// E0210 — `if <cond> then <a> else <b>` (a non-Rust conditional some models
+    /// emit) desugared to `if <cond> { <a> } else { <b> }` before parsing, so the
+    /// verify shape reaches `E0207` instead of dying at `E0501`. A `!`/`panic!()`
+    /// else-arm coerces to `0`. Registered amendment 2026-07-07.
+    ThenDesugared,
     /// E0301 — a constant exceeds `u16::MAX`; the arithmetic lane auto-widens to u32.
     WidthExceedsU16,
     /// E0302 — a constant division that cannot be exact (division by constant zero,
@@ -86,6 +91,7 @@ impl DiagCode {
             DiagCode::VerifyRewrite => "E0207",
             DiagCode::SuffixNormalized => "E0208",
             DiagCode::NarrowingDropped => "E0209",
+            DiagCode::ThenDesugared => "E0210",
             DiagCode::WidthExceedsU16 => "E0301",
             DiagCode::InexactConstDivision => "E0302",
             DiagCode::NegativeConst => "E0303",
@@ -113,6 +119,7 @@ impl DiagCode {
             DiagCode::VerifyRewrite => "verify_rewrite",
             DiagCode::SuffixNormalized => "suffix_normalized",
             DiagCode::NarrowingDropped => "narrowing_dropped",
+            DiagCode::ThenDesugared => "then_desugared",
             DiagCode::WidthExceedsU16 => "width_exceeds_u16",
             DiagCode::InexactConstDivision => "inexact_const_division",
             DiagCode::NegativeConst => "negative_const",

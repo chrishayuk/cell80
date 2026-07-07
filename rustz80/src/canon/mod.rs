@@ -147,10 +147,21 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
             lifted: Vec::new(),
         });
     }
+    // Textual pre-pass: desugar `if <cond> then <a> else <b>` (a non-Rust conditional
+    // some models emit) before parsing, so the verify shape reaches the Full-mode
+    // passes (`E0207`) instead of dying at `E0501`. Byte-identical when no `then`-sugar
+    // is present in code, so it can never alter a well-formed source.
+    let (work, then_fired) = desugar_then(src);
     let mut file: syn::File =
-        syn::parse_str(src).map_err(|e| Diag::new(DiagCode::Parse, format!("{e}")))?;
+        syn::parse_str(&work).map_err(|e| Diag::new(DiagCode::Parse, format!("{e}")))?;
     let mut repairs = Vec::new();
-    let mut light_fired = false;
+    if then_fired {
+        repairs.push(Repair::new(
+            DiagCode::ThenDesugared,
+            "`if C then a else b` -> `if C { a } else { b }`",
+        ));
+    }
+    let mut light_fired = then_fired;
     for item in &mut file.items {
         match item {
             syn::Item::Fn(f) => {
@@ -285,4 +296,69 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
         widened,
         lifted,
     })
+}
+
+/// Split a line into `(code, comment)` at the first `//` that is not inside a string
+/// literal — so a `then` sitting in a `//` comment is never mistaken for the sugar
+/// keyword.
+fn split_line_comment(line: &str) -> (&str, &str) {
+    let mut in_str = false;
+    let mut prev = '\0';
+    for (i, ch) in line.char_indices() {
+        match ch {
+            '"' if prev != '\\' => in_str = !in_str,
+            '/' if !in_str && line[i..].starts_with("//") => return (&line[..i], &line[i..]),
+            _ => {}
+        }
+        prev = ch;
+    }
+    (line, "")
+}
+
+/// Desugar `if <cond> then <a> else <b>` — a non-Rust conditional some models emit —
+/// into `if <cond> { <a> } else { <b> }`, so it parses and reaches the Full-mode
+/// passes (notably `E0207` verify-rewrite) instead of dying at `E0501`. `then` never
+/// appears in valid Rust, so this cannot rewrite a well-formed source; only the code
+/// portion of each line is considered (a `then` in a `//` comment is left alone). A
+/// `!` / `panic!()` else-arm — the model's "computation failed" marker — coerces to
+/// `0`, the verify shape's degenerate arm. Returns the source and whether it changed.
+fn desugar_then(src: &str) -> (String, bool) {
+    if !src.contains(" then ") {
+        return (src.to_string(), false);
+    }
+    let mut fired = false;
+    let mut out: Vec<String> = Vec::new();
+    for line in src.lines() {
+        let (code, comment) = split_line_comment(line);
+        let indent_len = code.len() - code.trim_start().len();
+        let body = code[indent_len..].trim_end();
+        let rewritten = body.strip_prefix("if ").and_then(|rest| {
+            let (cond, arms) = rest.split_once(" then ")?;
+            let (then_arm, else_arm) = arms.split_once(" else ")?;
+            Some((cond, then_arm, else_arm))
+        });
+        match rewritten {
+            Some((cond, then_arm, else_arm)) => {
+                let else_fixed = match else_arm.trim() {
+                    "!" | "panic!()" | "panic!" | "" => "0",
+                    other => other,
+                };
+                out.push(format!(
+                    "{}if {} {{ {} }} else {{ {} }}{}",
+                    &code[..indent_len],
+                    cond.trim(),
+                    then_arm.trim(),
+                    else_fixed,
+                    comment
+                ));
+                fired = true;
+            }
+            None => out.push(line.to_string()),
+        }
+    }
+    if fired {
+        (out.join("\n"), true)
+    } else {
+        (src.to_string(), false)
+    }
 }
