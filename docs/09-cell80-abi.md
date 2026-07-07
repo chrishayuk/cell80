@@ -125,6 +125,17 @@ today, no new compiler surface. Named reasons:
 | `0xFF04` | `needs_network` |
 | `0xFF05` | `needs_wider_math` |
 | `0xFF06` | `out_of_domain` |
+| `0xFF07` | `float_overflow` |
+| `0xFF08` | `float_domain` |
+
+The two float codes are the **`finite_result` boundary contract** (the F-wave
+amendment, `docs/real-valued-cells-amendment.md` §F0.4): a cell that declares it
+halts typed at return when its result is non-finite — `float_overflow` for ±Inf,
+`float_domain` for NaN. Inside the cell IEEE semantics propagate exactly (the
+softfloat kernels are bit-identical to rustc f32; an in-kernel trap would diverge
+from the golden reference); escalate-not-lie applies at the boundary. `0xFF02`
+(`needs_floats`) narrows to "float capability not yet in dialect" — transcendentals
+before F2 lands, f64, anything libm-shaped.
 
 Unnamed codes in the band decode as `custom`; the raw code always rides along as
 `escalate_code`. The static half of the contract is the manifest's `limits` field

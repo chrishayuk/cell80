@@ -223,6 +223,24 @@ pub(crate) fn run_program_regs(src: &str, entry: &str) -> [u16; 3] {
     })
 }
 
+/// Like [`run_program`] but DCE-prunes to `entry`'s reachable set first (the same
+/// `compile_file_pruned` path the cell VM ships) — for sources that append a large
+/// kernel prelude (the f32 bank) where the unpruned image would overrun the locals
+/// scratch region.
+pub(crate) fn run_program_pruned(src: &str, entry: &str) -> u16 {
+    let file: syn::File =
+        syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
+    let mut results = crate::harness::TARGETS.iter().map(|&target| {
+        let prog = rustz80::compile_file_pruned(&file, target, &[entry])
+            .unwrap_or_else(|e| panic!("compile failed ({target:?}): {e}"));
+        exec(&prog.code, prog.symbols[entry]).0.regs.hl()
+    });
+    let spectrum = results.next().unwrap();
+    let cell = results.next().unwrap();
+    assert_eq!(spectrum, cell, "Spectrum48 vs Cell targets diverged");
+    spectrum
+}
+
 /// Run a program for its memory effects and return the bus. Both targets run and the
 /// buses must agree everywhere **except the code region** (`ORG..SCRATCH`), which
 /// differs by construction (traps vs software routines) and is masked out.

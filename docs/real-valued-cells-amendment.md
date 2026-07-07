@@ -1,6 +1,10 @@
 # The F-waves — owned IEEE binary32, an amendment to the real-valued-cells policy
 
-*Status: **draft for registration, 2026-07-07.** Amends `docs/real-valued-cells-spec.md`
+*Status: **registered 2026-07-07; F0 kernels landed same day** — the kernel five +
+oracle banks + escalation codes + measured cost table are in (see H-F2's recorded
+measurement and `docs/10-dialect-semantics.md` §owned-softfloat); the f32 dialect
+surface, `finite_result` enforcement, repr tags, and the F0.6 canon guard are the
+remaining F0 line items. Amends `docs/real-valued-cells-spec.md`
 Part 1 (the float policy) and supersedes its Wave 3 in one respect (§F2 below). Companion
 to `docs/10-dialect-semantics.md` (gains an f32 tier), `docs/escalation-ladder.md`
 (one code re-scoped, two added), and the canonicalization pass (one hard interaction,
@@ -205,6 +209,15 @@ any approximation enters).
   thousands of T-states, fdiv/fsqrt higher. *Kill:* fdiv/fsqrt blow the envelope →
   they become escalation-priced ops with their cost stated in the manifest, and
   division-heavy cells route to fractions or host; the pack narrows, stated openly.
+  **Measured 2026-07-07** (table in `docs/10-dialect-semantics.md`, pinned in
+  `cell80/tests/f32_kernels.rs`): fadd 10,854 / fsub 12,586 / fmul 11,227 (+4 traps) /
+  fdiv 36,644 / fsqrt 53,219 T-states — the low-thousands prediction missed ~3×
+  (scratch-slot traffic and shift-by-1 loops dominate; constant-shift codegen was
+  already improved to land these numbers). Single-op cells hold the µs envelope at
+  emulated speed; fdiv/fsqrt are priced, not killed. One F0 finding the spec did not
+  predict: **the 4KB code window (locals scratch at `0x9000`) fits roughly one kernel
+  per cell** — multi-kernel f32 cells (most of F3) are blocked on kernel-size work or
+  a scratch move, now the first F1 line item.
 - **H-F3 (kernels fold):** single-site kernel inlining is byte-neutral, ≥2 sites net
   positive, like the checked family. *Kill:* the wide-slot fold gap from H-Q2's clause
   applies here identically — fix the inliner before growing F1.
