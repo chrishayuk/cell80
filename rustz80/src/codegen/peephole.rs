@@ -338,6 +338,25 @@ mod tests {
         }
     }
 
+    /// Every `.rs` file under `dir`, discovered recursively (`rustz80` stays
+    /// dependency-free, so this doesn't reuse `cell80::discover_cell_files` — the cells
+    /// corpus now lives in pack subdirectories, not flat).
+    fn rs_files_recursive(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut out = Vec::new();
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return out;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                out.extend(rs_files_recursive(&p));
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                out.push(p);
+            }
+        }
+        out
+    }
+
     /// Corpus-wide site counts over the cell80 stdlib — run explicitly:
     /// `cargo test -p rustz80 --lib corpus_rule_ranking -- --ignored --nocapture`.
     /// (Ignored: the cells live in the sibling `cell80` crate, absent in a packaged
@@ -346,17 +365,13 @@ mod tests {
     #[ignore]
     fn corpus_rule_ranking() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cell80/cells");
-        let Ok(entries) = std::fs::read_dir(&dir) else {
+        if !dir.is_dir() {
             eprintln!("no cells corpus at {} — skipping", dir.display());
             return;
-        };
+        }
         let mut total = PeepholeCounts::default();
         let mut files = 0u32;
-        for e in entries {
-            let p = e.unwrap().path();
-            if p.extension().is_none_or(|x| x != "rs") {
-                continue;
-            }
+        for p in rs_files_recursive(&dir) {
             let src = std::fs::read_to_string(&p).unwrap();
             let Some(c) = try_counts_for(&src, Target::Cell) else {
                 continue; // cross-cell cell that doesn't lower standalone
@@ -382,16 +397,12 @@ mod tests {
     #[ignore]
     fn measure_next_rules() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cell80/cells");
-        let Ok(entries) = std::fs::read_dir(&dir) else {
+        if !dir.is_dir() {
             eprintln!("no cells corpus — skipping");
             return;
-        };
+        }
         let (mut span_safe, mut reload, mut files) = (0u64, 0u64, 0u32);
-        for e in entries {
-            let p = e.unwrap().path();
-            if p.extension().is_none_or(|x| x != "rs") {
-                continue;
-            }
+        for p in rs_files_recursive(&dir) {
             let src = std::fs::read_to_string(&p).unwrap();
             let Some(ins) = sealed_ins(&src, Target::Cell) else {
                 continue;

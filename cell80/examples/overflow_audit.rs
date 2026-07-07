@@ -14,9 +14,8 @@ use cell80::{Runner, StateCell, DEFAULT_CYCLES};
 use std::path::PathBuf;
 
 fn cell_src(id: &str) -> String {
-    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("cells")
-        .join(format!("{id}.rs"));
+    let cells_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells");
+    let p = cell80::find_cell_file(&cells_dir, id).unwrap_or_else(|e| panic!("{e}"));
     std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {id}: {e}"))
 }
 

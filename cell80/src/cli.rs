@@ -246,31 +246,37 @@ fn cmd_index(args: &[String]) -> Result<String, String> {
         });
     }
 
-    let mut paths: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{dir}: {e}"))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    paths.sort();
+    let paths = crate::discover::discover_cell_files(dir)?;
     let mut manifests = Vec::new();
     for path in paths {
         if let Some(c) = library_cartridge(&path) {
-            manifests.push(c?.manifest);
+            let manifest = c?.manifest;
+            // The pack a cell belongs to is its immediate parent directory name
+            // (`cell80/cells/<pack>/<id>.rs`) — the directory *is* the pack now, so
+            // nothing downstream needs a separately hand-maintained pack list.
+            let pack = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+            manifests.push((pack, manifest));
         }
     }
     if json {
         use serde_json::json;
         let cells: Vec<_> = manifests
             .iter()
-            .map(|m| {
+            .map(|(pack, m)| {
                 json!({
                     "id": m.id, "summary": m.summary, "tags": m.tags,
-                    "signature": m.signature.to_decl(&m.entry),
+                    "signature": m.signature.to_decl(&m.entry), "pack": pack,
                 })
             })
             .collect();
         return Ok(json!({ "dir": dir, "cells": cells }).to_string());
     }
-    let rows: Vec<String> = manifests.iter().map(render).collect();
+    let rows: Vec<String> = manifests.iter().map(|(_, m)| render(m)).collect();
     Ok(format!(
         "cell library `{dir}` ({} cells):\n{}",
         rows.len(),
@@ -469,15 +475,11 @@ fn cmd_route(args: &[String]) -> Result<String, String> {
     Ok(out)
 }
 
-/// Build a warm [`CellHost`] over every cell (`.rs` / `.cell`) in `dir`.
+/// Build a warm [`CellHost`] over every cell (`.rs` / `.cell`) under `dir`, discovered
+/// recursively (cells live in pack subdirectories).
 fn host_from_dir(dir: &str) -> Result<CellHost, String> {
     let mut host = CellHost::new();
-    let mut paths: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{dir}: {e}"))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    paths.sort();
-    for path in paths {
+    for path in crate::discover::discover_cell_files(dir)? {
         if let Some(c) = library_cartridge(&path) {
             host.add(c?);
         }
@@ -1266,9 +1268,11 @@ mod tests {
         assert_eq!(none, None);
         // End-to-end: the library path picks up `q_mul`'s `//! scale: 8` (skip if the
         // sibling cells corpus isn't present, e.g. a packaged crates.io build).
-        let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("cells/q_mul.rs");
-        if let Some(Ok(cart)) = library_cartridge(&p) {
-            assert_eq!(cart.manifest.scale, Some(8), "q_mul should declare scale 8");
+        let cells_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("cells");
+        if let Ok(p) = crate::discover::find_cell_file(&cells_dir, "q_mul") {
+            if let Some(Ok(cart)) = library_cartridge(&p) {
+                assert_eq!(cart.manifest.scale, Some(8), "q_mul should declare scale 8");
+            }
         }
     }
 
@@ -1318,17 +1322,13 @@ mod tests {
     fn host_from_dir_loads_the_seed_library() {
         let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
         let h = host_from_dir(&dir).unwrap();
-        // The real invariant: every .rs cell in the directory loads. (An exact
-        // count pin goes stale mid-wave — the library grows while suites run.)
-        let n_sources = std::fs::read_dir(&dir)
+        // The real invariant: every .rs cell under the directory (cells live in pack
+        // subdirectories, discovered recursively) loads. (An exact count pin goes stale
+        // mid-wave — the library grows while suites run.)
+        let n_sources = crate::discover::discover_cell_files(&dir)
             .unwrap()
-            .filter(|e| {
-                e.as_ref()
-                    .unwrap()
-                    .path()
-                    .extension()
-                    .is_some_and(|x| x == "rs")
-            })
+            .iter()
+            .filter(|p| p.extension().is_some_and(|x| x == "rs"))
             .count();
         assert_eq!(h.len(), n_sources);
 

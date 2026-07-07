@@ -271,7 +271,8 @@ fn prey_at(
 /// Compile one stdlib cell source (by filename stem, from `cell80/cells/`) and load it into
 /// the host under that same id, so it can be reused each tick as a gene/promoter.
 fn load_gene(host: &mut CellHost, cells_dir: &Path, name: &str) -> usize {
-    let path = cells_dir.join(format!("{name}.rs"));
+    let path =
+        cell80::find_cell_file(cells_dir, name).unwrap_or_else(|e| panic!("finding {name}: {e}"));
     let src =
         fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
     let cart = Cartridge::compile(
@@ -294,30 +295,30 @@ fn load_starting_genome(path: &Path) -> StartingGenome {
     serde_json::from_str(&src).unwrap_or_else(|e| panic!("parsing genome {}: {e}", path.display()))
 }
 
-/// Scan every `.rs` cell source under `cells_dir`, compile each, and bucket it by arity into
-/// the promoter pool (2 `u16` params, `u16` return) or the movement pool (3 params) — skipping
-/// anything that fails to compile, has `&mut self` state (a plain fn call can't read its
-/// fields back), or returns/takes anything other than `u16`. Names are sorted before
-/// filtering: directory iteration order isn't guaranteed, and pool order feeds the
-/// deterministic PRNG's index choices, so an unsorted pool would silently break run-to-run
-/// reproducibility across platforms/filesystems.
+/// Scan every `.rs` cell source under `cells_dir` (cells live in pack subdirectories,
+/// discovered recursively), compile each, and bucket it by arity into the promoter pool
+/// (2 `u16` params, `u16` return) or the movement pool (3 params) — skipping anything
+/// that fails to compile, has `&mut self` state (a plain fn call can't read its fields
+/// back), or returns/takes anything other than `u16`. Bucketed **by cell id**, not by
+/// directory order: pool order feeds the deterministic PRNG's index choices, so sorting
+/// by id (not by the path, which would group by pack first) keeps run-to-run
+/// reproducibility identical to the flat-directory layout this replaces.
 fn discover_pools(cells_dir: &Path) -> Pools {
-    let mut names: Vec<String> = fs::read_dir(cells_dir)
-        .unwrap_or_else(|e| panic!("reading {}: {e}", cells_dir.display()))
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
-        .filter_map(|e| {
-            e.path()
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-        })
-        .collect();
-    names.sort();
+    let mut named_paths: Vec<(String, std::path::PathBuf)> =
+        cell80::discover_cell_files(cells_dir.to_str().unwrap())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|ext| ext == "rs"))
+            .filter_map(|p| {
+                let name = p.file_stem()?.to_string_lossy().into_owned();
+                Some((name, p))
+            })
+            .collect();
+    named_paths.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut promoters = Vec::new();
     let mut movement = Vec::new();
-    for name in names {
-        let path = cells_dir.join(format!("{name}.rs"));
+    for (name, path) in named_paths {
         let Ok(src) = fs::read_to_string(&path) else {
             continue;
         };

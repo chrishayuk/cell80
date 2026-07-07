@@ -62,17 +62,17 @@ fn cells() -> Vec<Cartridge> {
         };
     }
     vec![
-        c!("min", "../cells/min.rs"),
-        c!("max", "../cells/max.rs"),
-        c!("gcd", "../cells/gcd.rs"),
-        c!("lcm", "../cells/lcm.rs"),
-        c!("divides", "../cells/divides.rs"),
-        c!("abs_diff", "../cells/abs_diff.rs"),
-        c!("eq", "../cells/eq.rs"),
-        c!("is_lt", "../cells/is_lt.rs"),
-        c!("is_gt", "../cells/is_gt.rs"),
-        c!("avg2", "../cells/avg2.rs"),
-        c!("safe_mod", "../cells/safe_mod.rs"),
+        c!("min", "../cells/ranking-stats/min.rs"),
+        c!("max", "../cells/ranking-stats/max.rs"),
+        c!("gcd", "../cells/number-theory/gcd.rs"),
+        c!("lcm", "../cells/number-theory/lcm.rs"),
+        c!("divides", "../cells/number-theory/divides.rs"),
+        c!("abs_diff", "../cells/distance/abs_diff.rs"),
+        c!("eq", "../cells/predicates/eq.rs"),
+        c!("is_lt", "../cells/predicates/is_lt.rs"),
+        c!("is_gt", "../cells/predicates/is_gt.rs"),
+        c!("avg2", "../cells/safe-arith/avg2.rs"),
+        c!("safe_mod", "../cells/safe-arith/safe_mod.rs"),
     ]
 }
 

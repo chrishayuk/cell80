@@ -1,0 +1,222 @@
+//! Host-oracle tests for the scoring-choice pack (`cell80/cells/scoring-choice/*.rs`). Split from the
+//! former monolithic `cell80/tests/library.rs` (2026-07-07) to mirror the cells' own
+//! pack-directory structure; see `cell80/tests/library/common.rs` for the shared
+//! `cell_src`/`run_cell` helpers every pack file uses.
+
+use crate::common::{cell_src, run_cell};
+use cell80::{StateCell, DEFAULT_CYCLES};
+
+#[test]
+fn scoring_choice_cells_match_defined_behaviour() {
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // The scoring/choice pack (library-growth.md "Next waves") — weighted_sum2/3
+    // generalize the fixed-weight weighted_sum/weighted_sum_wide to caller-supplied
+    // weights, so (unlike their fixed-small-weight siblings) a genuine u32 overflow is
+    // reachable and escalates rather than silently wrapping.
+
+    let (result, _, cell) = verify(
+        "weighted_sum2",
+        "WeightedSum2",
+        &[("a", 10), ("wa", 3), ("b", 5), ("wb", 2)],
+    );
+    assert_eq!((result, cell.get("sum")), (40, Some(40)));
+    let (_, report, _) = verify(
+        "weighted_sum2",
+        "WeightedSum2",
+        &[("a", 65535), ("wa", 65535), ("b", 65535), ("wb", 65535)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05)); // both products near u32::MAX
+    let (result, _, cell) = verify(
+        "weighted_sum2",
+        "WeightedSum2",
+        &[("a", 1000), ("wa", 1000), ("b", 1), ("wb", 1)],
+    );
+    assert_eq!((result, cell.get("sum")), (65535, Some(1_000_001))); // saturates the u16 return, sum is exact
+
+    let (result, _, cell) = verify(
+        "weighted_sum3",
+        "WeightedSum3",
+        &[
+            ("a", 10),
+            ("wa", 1),
+            ("b", 5),
+            ("wb", 2),
+            ("c", 3),
+            ("wc", 4),
+        ],
+    );
+    assert_eq!((result, cell.get("sum")), (32, Some(32)));
+    let (_, report, _) = verify(
+        "weighted_sum3",
+        "WeightedSum3",
+        &[
+            ("a", 65535),
+            ("wa", 65535),
+            ("b", 65535),
+            ("wb", 65535),
+            ("c", 1),
+            ("wc", 1),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // choose_best3: highest score wins; distinct from argmax3 since value != score here.
+    let (result, _, _) = verify(
+        "choose_best3",
+        "ChooseBest3",
+        &[
+            ("val_a", 100),
+            ("score_a", 5),
+            ("val_b", 200),
+            ("score_b", 9),
+            ("val_c", 300),
+            ("score_c", 7),
+        ],
+    );
+    assert_eq!(result, 200);
+    let (result, _, _) = verify(
+        "choose_best3",
+        "ChooseBest3",
+        &[
+            ("val_a", 100),
+            ("score_a", 9),
+            ("val_b", 200),
+            ("score_b", 9),
+            ("val_c", 300),
+            ("score_c", 9),
+        ],
+    );
+    assert_eq!(result, 100); // tie -> lowest index (a) wins
+
+    assert_eq!(run_cell("is_clear_winner", &[90, 60, 20]), 1); // margin 30 >= 20
+    assert_eq!(run_cell("is_clear_winner", &[70, 60, 20]), 0); // margin 10 < 20
+    assert_eq!(run_cell("is_clear_winner", &[60, 90, 20]), 0); // malformed: top < second
+}
+
+#[test]
+fn wave4_scoring_choice_generalization_scoring_choice_slice() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // clear_winner_u32: margin decisive; margin not met; malformed (top < second).
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 200_000), ("second", 100_000), ("margin", 50_000)]
+        ),
+        1
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 150_000), ("second", 100_000), ("margin", 100_000)]
+        ),
+        0
+    );
+    assert_eq!(
+        step(
+            "clear_winner_u32",
+            "ClearWinnerWide",
+            &[("top", 100_000), ("second", 150_000), ("margin", 10)]
+        ),
+        0
+    );
+
+    // choose_best2 / choose_worst2: b wins, a wins, and the tie -> a convention.
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[
+                ("val_a", 100),
+                ("score_a", 5),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 5)
+            ]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_best2",
+            "ChooseBest2",
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
+        ),
+        100 // tie -> a
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 5)
+            ]
+        ),
+        200
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[
+                ("val_a", 100),
+                ("score_a", 5),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
+        ),
+        100
+    );
+    assert_eq!(
+        step(
+            "choose_worst2",
+            "ChooseWorst2",
+            &[
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 9)
+            ]
+        ),
+        100 // tie -> a
+    );
+}

@@ -13,9 +13,10 @@ from cell80_mcp.library import CellLibrary  # noqa: E402
 
 def test_library_search_inspect_run_warm():
     lib = CellLibrary(str(CELLS))
-    # The real invariant: every .rs cell in the directory loads (an exact pin goes
-    # stale mid-wave — the library grows while suites run).
-    n_sources = len(list(CELLS.glob("*.rs")))
+    # The real invariant: every .rs cell under the directory loads (cells live in pack
+    # subdirectories, discovered recursively; an exact pin goes stale mid-wave — the
+    # library grows while suites run).
+    n_sources = len(list(CELLS.rglob("*.rs")))
     assert len(lib) == n_sources
 
     # search ranks by relevance. ("grid distance" now hits the whole distance family —

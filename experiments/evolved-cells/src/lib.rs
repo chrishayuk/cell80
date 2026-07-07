@@ -12,8 +12,9 @@ use std::fs;
 use std::path::Path;
 
 pub fn cell_source(cells_dir: &Path, name: &str) -> String {
-    fs::read_to_string(cells_dir.join(format!("{name}.rs")))
-        .unwrap_or_else(|e| panic!("reading {name}: {e}"))
+    let path =
+        cell80::find_cell_file(cells_dir, name).unwrap_or_else(|e| panic!("finding {name}: {e}"));
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {name}: {e}"))
 }
 
 pub fn compile(id: &str, src: &str) -> Cartridge {

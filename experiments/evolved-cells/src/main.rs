@@ -50,29 +50,26 @@ fn main() {
     // Fingerprint every currently-real library cell once, up front, for comparison — this is
     // the actual mechanism `cell80::admission::admit` uses, applied here to a candidate
     // outside the gate (this never calls or touches admission.rs itself).
-    let library_fps: Vec<(String, Fingerprint)> = fs::read_dir(&cells_dir)
-        .unwrap_or_else(|e| panic!("reading {}: {e}", cells_dir.display()))
-        .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|x| x == "rs"))
-        .filter_map(|e| {
-            e.path()
-                .file_stem()
-                .map(|s| s.to_string_lossy().into_owned())
-        })
-        .filter_map(|name| {
-            let src = fs::read_to_string(cells_dir.join(format!("{name}.rs"))).ok()?;
-            let cart = Cartridge::compile(
-                &src,
-                CellConfig::sandboxed(),
-                CartridgeOpts {
-                    id: Some(name.clone()),
-                    ..Default::default()
-                },
-            )
-            .ok()?;
-            Some((name, Fingerprint::of(&cart)))
-        })
-        .collect();
+    let library_fps: Vec<(String, Fingerprint)> =
+        cell80::discover_cell_files(cells_dir.to_str().unwrap())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+            .filter_map(|path| {
+                let name = path.file_stem()?.to_string_lossy().into_owned();
+                let src = fs::read_to_string(&path).ok()?;
+                let cart = Cartridge::compile(
+                    &src,
+                    CellConfig::sandboxed(),
+                    CartridgeOpts {
+                        id: Some(name.clone()),
+                        ..Default::default()
+                    },
+                )
+                .ok()?;
+                Some((name, Fingerprint::of(&cart)))
+            })
+            .collect();
     println!(
         "Fingerprinted {} existing library cells for comparison.\n",
         library_fps.len()

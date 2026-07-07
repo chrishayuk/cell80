@@ -225,10 +225,30 @@ wave 5b   263 cells   + AIME geometry pair, from the post-M2.9 gap analysis's
                         mod-space rewrite (a canon.rs compiler feature, not a
                         cell — see docs/math-campaign-amendment.md's
                         "mod-space rewrite" status note).
-next      ~270+        + cosine_score_approx (deferred until cell_solve reads
-                        out; further combinatorics/geometry/number-theory
-                        extensions remain out of scope per
-                        docs/math-campaign-spec.md pending M3's read-out)
+wave 6    269 cells   + math-server number-theory family, six cells drawn
+                        directly from docs/math-server-map.md's 77-candidate
+                        coverage map (docs/real-valued-cells-spec.md Wave 1,
+                        the "ready-now, no Q16.16 prerequisite" slice):
+                        little_omega/big_omega (distinct vs.
+                        multiplicity-counted prime factors), mobius_function
+                        (the classic sign/squarefree function, the library's
+                        first i16-returning free fn since the signed-deltas
+                        pack), divisor_power_sum (sigma_k, generalizing
+                        factor_count/sum_divisors with an exponent —
+                        weighted_sum2's "missing general-parameter sibling"
+                        shape again), jordan_totient (generalizing
+                        euler_totient with an exponent k), and
+                        carmichael_lambda (the reduced totient, lcm-combined
+                        over prime-power components). See the pack note below.
+next      ~318         + the remaining ~44 ready-now math-server candidates
+                        (figurate numbers, recursive sequences, digit
+                        operations, modular/classic number theory,
+                        combinatorics, geometry integer subset, vectors,
+                        matrix, statistics — docs/math-server-map.md) plus
+                        Wave Q0 (Q16.16 plumbing) as a prerequisite for the 4
+                        Q-format candidates; cosine_score_approx (deferred
+                        until cell_solve reads out); CORDIC trig remains
+                        demand-gated per docs/real-valued-cells-spec.md Wave 3
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -480,11 +500,11 @@ confusable cells = a bigger shelf *and* a harder, more honest retrieval benchmar
 ## The contribution rule (every new-cell PR)
 
 ```
-1. cell80/cells/<name>.rs                       — header (//! summary, //! tags:) + fn/struct
+1. cell80/cells/<pack>/<name>.rs                — header (//! summary, //! tags:) + fn/struct
 2. cell-eval/datasets/retrieval.jsonl           — a direct row that ranks the cell #1
                                                    (verify with `cell80 search`), + paraphrase
 3. composition or adoption task (if user-facing) — composition_tasks.jsonl / tasks.jsonl
-4. cell80/tests/library.rs                       — edge-case rows (the host oracle)
+4. cell80/tests/library/<pack>.rs                — edge-case rows (the host oracle)
 5. docs/cell-index.md                            — regenerate (command at the top of the file)
 ```
 
@@ -495,8 +515,14 @@ metadata instead) or that carries no retrieval rows to survive. Run it before op
 
 ## Packs (organise discovery by family via tags)
 
-The loader reads a flat `cell80/cells/`, so a "pack" is a **tag**, not a directory. Build them
-out broadly:
+**Update (2026-07-07):** a pack is now a real directory, not just a tag — cells live in
+`cell80/cells/<pack>/<id>.rs` (`cell80/scripts/gen_cell_index.py` infers each cell's pack
+from its parent directory via `cell80 index --json`'s `"pack"` field, so there's no
+hand-maintained pack list to keep in sync anymore), and the test suite mirrors the same
+layout (`cell80/tests/library/<pack>.rs`, `docs/library-growth.md`'s own contribution rule
+above). This reverses the original design below on direct request, once the library's
+growth made a flat 269-file directory and a single 3,300-line test file hard to navigate.
+Build packs out broadly:
 
 ```
 math-core      bounds        percent       ranking-stats   number-theory   distance
@@ -1235,6 +1261,62 @@ infrastructure for whatever *other* confusable pairs it does help (the `range_ch
 and was never claimed to be, the fix for the same-shape-sibling ceiling — that lever is
 still **behavioural routing** (`route_by_examples`, already shipped) or `cell_solve`
 answering the question directly instead of retrieving a cell to answer it.
+
+**Wave 6 — math-server number-theory family (2026-07-07), the first cells drawn from the
+mined coverage map rather than hand-guessed or campaign-scoped.** `docs/math-server-map.md`
+(landed 2026-07-06, alongside `docs/real-valued-cells-spec.md`) statically classified all
+642 functions in `chuk-mcp-math-server`'s dependency against the then-259-cell library and
+found 77 genuine `candidate` cells — evidence gathered, not speculation, and explicitly
+**not** GSM8K-campaign cells (that track stays paused pending M3, per the "math-cell growth
+pauses here on purpose" note above; this is a separate, orthogonal source of demand). The
+map sat unactioned through wave 5a/5b; this batch draws the first slice from it: the
+**number-theory family** it names as "coherent and well-motivated" — `mobius_function`,
+`little_omega`/`big_omega`, `divisor_power_sum`, `jordan_totient`, `carmichael_lambda` — the
+same shape/risk profile as the MATH/AIME pack's own first slice (extend an existing,
+well-tagged number-theory pack rather than open a new one).
+
+Two real design findings surfaced authoring this batch, not just six clean cells:
+
+1. **The naive exponent-times-exponent product overflows u16 before any real work
+   starts.** Jordan's totient needs `p^((e-1)*k)`; computing `(e-1)*k` as a plain `u16`
+   scalar first overflows for ordinary inputs (`e-1` up to 15 in the u16 domain, `k` up to
+   65535 — `15 * 65535` is nowhere near `u16::MAX`). Fixed by never forming that product:
+   `p^((e-1)*k)` is instead built by repeatedly squaring the already-computed `p^k` value
+   `e-1` times (`e-1` itself is small and bounded), so the only values that ever need to
+   fit anywhere are the final `u32` products, checked via the shared `mul_checked_u32`
+   prelude kernel throughout. Caught by hand-tracing before writing the dialect version, the
+   same discipline `mod_inverse`/`crt_solve_pair` used for their own signed-intermediate
+   arithmetic.
+2. **A trivial per-divisor exponent loop can burn a full `k` iterations computing a
+   known constant.** `divisor_power_sum`'s `d = 1` divisor (always present, for every `n`)
+   satisfies `1^k = 1` for any `k`, so a naive per-divisor exponentiation loop would spin
+   `k` times (up to 65535) computing a value known in advance — the same class of "measure
+   the real cost, don't assume" finding `is_prime_u32`/`q_sqrt` made, but resolved here
+   before shipping rather than after: `d == 1` is special-cased to skip its own loop
+   entirely. Every other divisor `d >= 2` is naturally cheap regardless of how large `k` is,
+   since `mul_checked_u32` halts the instant `d^i` would overflow `u32` (at most ~32
+   iterations even at `d = 2`, the slowest case) — the checked-overflow convention doubling
+   as a free cycle bound, not just a correctness guard.
+
+All six expected values (including two deliberately-chosen overflow/escalation cases —
+`divisor_power_sum(65535, 2)`, whose 16-term sum provably exceeds `u32::MAX`, and
+`jordan_totient(6, 13)`, just past the `k = 12` ceiling that still fits) were cross-checked
+against an independent Python reference implementation before being hand-transcribed into
+`cell80/tests/library.rs`, the same discipline `mod_inverse`/`crt_solve_pair`/
+`shoelace_area_x2` used. `carmichael_lambda` is proven, not just observed, to never overflow
+within the u16 input domain: every intermediate `lcm` combination step is itself a divisor
+of the final `lambda(n)`, which is always `<= n <= 65535` — so its `u32` working width is a
+safety margin with real headroom, not a hedge against a reachable failure. Gate: 269
+admitted, 0 refused. Full test suite green (the four hardcoded cell-count pins in
+`cell80/tests/cell.rs`, the same recurring maintenance every prior wave has needed, updated
+263→269), cold clippy clean, codegen golden regenerated (purely additive — 23 lines added,
+zero existing cell's bytes changed). Retrieval (`examples/retrieval_compare`, both tf-idf
+live and type-led paths): 263-cell baseline tf-idf direct 79% / paraphrase 34% / adversarial
+56% / overall 58%, type-led direct 79% / paraphrase 36% / adversarial 56% / overall 60% →
+269 cells tf-idf direct 79% / paraphrase 33% / adversarial 59% / overall 58%, type-led
+direct 80% / paraphrase 33% / adversarial 56% / overall 59% — a one-to-three-point wobble
+in both directions across splits, well inside the noise band this file's own checkpoints
+have repeatedly measured (no kill-gate trip; no recovery pass needed).
 
 ## Mine the ecosystem first
 

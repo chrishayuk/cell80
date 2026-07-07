@@ -52,12 +52,11 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>) {
 /// manifests, because the type-led index runs each cell to learn its behavioural shape.
 fn load_carts() -> Vec<Cartridge> {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells");
-    let mut paths: Vec<_> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
-        .filter_map(|e| e.ok().map(|e| e.path()))
+    let paths: Vec<_> = cell80::discover_cell_files(dir.to_str().unwrap())
+        .unwrap_or_else(|e| panic!("{e}"))
+        .into_iter()
         .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("rs"))
         .collect();
-    paths.sort();
     let mut out = Vec::new();
     for p in &paths {
         let src = std::fs::read_to_string(p).unwrap();
