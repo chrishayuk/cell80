@@ -7,7 +7,9 @@ the compiler can't make true it must reject, never approximate.
 
 ## Types
 
-`u8`, `u16`, `i16`, `u32`, `bool`. `i16` is two's complement in a single slot:
+`u8`, `u16`, `i16`, `u32`, `bool`, and — since the F-wave amendment — `f32`
+(owned softfloat, its own section below; explicit `f32` suffix required, no
+implicit conversions). `i16` is two's complement in a single slot:
 add/sub/mul and the bitwise ops share the unsigned bit patterns (wrapping), while
 **comparisons order by sign**, **divide truncates toward zero** (the remainder takes the
 dividend's sign — rustc semantics; `i16::MIN / -1` wraps to `i16::MIN`), and **`>>` is an
@@ -16,11 +18,13 @@ bit-preserving; `i16 as u32` (a sign extension in Rust) is rejected — take the
 explicitly (`x as u16 as u32`). Negative literals need the suffix (`-5i16`), and unary
 `-` needs a signed operand.
 
-**Fractional values are a fixed-point convention on integers, not a type**: a Q8.8
-weight is a `u32` (or `u16` for small ranges) with an implied point — multiply then
-shift (`(a * w) >> 8`). This keeps every cell bit-exact and cross-target deterministic;
-there are no floats and there will be none (see the non-goals). Float and `char`
-literals are rejected with instructive errors. The implied point can be declared
+**Fractional values default to integer conventions, not floats**: exact rationals
+(the fraction cells) and Q-format fixed point (a Q8.8 weight is a `u32`/`u16` with an
+implied point — multiply then shift, `(a * w) >> 8`) stay the first choice; `f32` is
+the explicit opt-in tier for genuinely real-valued, dynamic-range work (owned
+softfloat — bit-exact and cross-target deterministic like everything else; see its
+section). Unsuffixed decimal and `char` literals are rejected with instructive
+errors. The implied point can be declared
 structurally with a **`//! scale: N`** header (the fractional-bit count — `q_mul`/`q_div`
 declare `8`), which rides in the manifest (`.cell` v7) so a host reads the cell's values
 as `raw / 2^N` without inferring the convention from the summary.
