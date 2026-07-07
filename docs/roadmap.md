@@ -535,8 +535,11 @@ running-stat cells toward "ask the agent to write Python."
   re-priced 4096→8192 = half the physical budget); measured cost table + banked negatives
   (barrel-jam slower than the loop; fadd 10,854 T) in `docs/10-dialect-semantics.md`; first
   hand-authored cells (`softfloat` pack: `norm2_f32`, `lerp_f32`) through admission with
-  retrieval rows. **Owned transcendentals stay F2, demand-gated; repr tags in the plan unit
-  system are the open model-facing gate — float cells stay hand-authored until they land.**
+  retrieval rows. **Owned transcendentals stay F2, demand-gated. Repr tags landed** (`plan::Repr` —
+  the renderer type-flows representation like dimension; mixed-repr/q-mul/f32-exactness
+  are named kills, f32 targets gate on finiteness, the battery perturbs f32 by +1.0):
+  model-composed float *plans* are legal through the renderer; model-authored f32
+  *source* stays hand-reviewed.**
 - **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
   halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
   DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the

@@ -2,7 +2,7 @@
 //! renderer's determinism (the precipitation story's load-bearing detail), the
 //! render-time unit algebra, the kill classes, and the counterfactual battery.
 
-use cell80::plan::{Plan, Quantity};
+use cell80::plan::{Plan, Quantity, Repr};
 use cell80::{CellHost, DEFAULT_CYCLES};
 
 fn plan(json: &str) -> Plan {
@@ -153,11 +153,13 @@ fn counterfactual_battery_separates_coincidental_agreement() {
     let q = |a: u32, b: u32| {
         vec![
             Quantity {
+                repr: Repr::Int,
                 id: "a".into(),
                 value: a,
                 unit: "count".into(),
             },
             Quantity {
+                repr: Repr::Int,
                 id: "b".into(),
                 value: b,
                 unit: "count".into(),
@@ -216,11 +218,13 @@ fn counterfactual_battery_also_fires_on_a_coincidental_pre_perturbation_agreemen
     let mk = |op: &str| cell80::plan::Plan {
         quantities: vec![
             Quantity {
+                repr: Repr::Int,
                 id: "a".into(),
                 value: 2,
                 unit: "count".into(),
             },
             Quantity {
+                repr: Repr::Int,
                 id: "b".into(),
                 value: 2,
                 unit: "count".into(),
@@ -342,4 +346,139 @@ fn cli_solve_verb() {
     .is_err());
     assert!(run_cli(&["solve".into(), "/nope.json".into()]).is_err());
     std::fs::remove_dir_all(&dir).ok();
+}
+
+// ───────────────────────── repr tags (the F-wave's model-facing gate) ─────────
+
+/// An all-f32 plan renders typed fields, routes ops through the softfloat
+/// kernels, and answers in bits — bit-identical to host rustc f32.
+#[test]
+fn f32_plan_solves_bit_identically() {
+    let mut host = CellHost::new();
+    // drag ≈ half_k * v * v (a physics-shaped extraction)
+    let p = plan(
+        r#"{ "quantities": [ {"id":"half_k","value":0.5,"unit":"scalar","repr":"f32"},
+                             {"id":"v","value":12.5,"unit":"scalar","repr":"f32"} ],
+             "ops": [ ["mul","v","v","v_sq"], ["mul","half_k","v_sq","drag"] ],
+             "target": "drag" }"#,
+    );
+    let src = p.render().unwrap();
+    assert!(src.contains(": f32"), "typed fields: {src}");
+    assert!(src.contains("is_nan"), "finite gate: {src}");
+    let report = host.solve(&[p], DEFAULT_CYCLES).unwrap();
+    let want = (0.5f32 * (12.5f32 * 12.5f32)).to_bits() as u64;
+    assert_eq!(report.outcomes[0].kill, None);
+    assert_eq!(report.outcomes[0].answer_repr, "f32");
+    assert_eq!(report.answer, Some(want), "bits must match host f32");
+}
+
+/// The gate itself: mixed reprs, q-mul, f32 exact_div, and f32 unit scaling are
+/// each a named render/normalize kill — never a silent bit-pattern operation.
+#[test]
+fn repr_gate_kill_classes() {
+    let mut host = CellHost::new();
+    let cases: [(&str, &str); 4] = [
+        (
+            r#"{ "quantities": [ {"id":"a","value":3,"unit":"count"},
+                                 {"id":"b","value":1.5,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["mul","a","b","out"] ], "target": "out" }"#,
+            "mixes int and f32",
+        ),
+        (
+            r#"{ "quantities": [ {"id":"a","value":512,"unit":"scalar","repr":"q8"},
+                                 {"id":"b","value":256,"unit":"scalar","repr":"q8"} ],
+                 "ops": [ ["mul","a","b","out"] ], "target": "out" }"#,
+            "q_mul",
+        ),
+        (
+            r#"{ "quantities": [ {"id":"a","value":6.0,"unit":"scalar","repr":"f32"},
+                                 {"id":"b","value":3.0,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["div","a","b","out"] ], "target": "out",
+                 "constraints": [ ["exact_div","a","b"] ] }"#,
+            "never exact",
+        ),
+        (
+            r#"{ "quantities": [ {"id":"price","value":12.5,"unit":"dollars","repr":"f32"},
+                                 {"id":"n","value":2.0,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["mul","price","n","total"] ], "target": "total" }"#,
+            "extract it in the canonical unit",
+        ),
+    ];
+    for (json, needle) in cases {
+        let report = host.solve(&[plan(json)], DEFAULT_CYCLES).unwrap();
+        let kill = report.outcomes[0].kill.as_deref().unwrap_or("");
+        assert!(
+            kill.starts_with("render:") && kill.contains(needle),
+            "expected render kill containing `{needle}`, got: {kill}"
+        );
+        assert_eq!(report.answer, None);
+    }
+}
+
+/// The finite gate at the target boundary: ±Inf is `float_overflow`, NaN is
+/// `float_domain` — IEEE propagates inside, escalate-not-lie at return. And the
+/// f32 `nonneg` constraint is a *real* check (unlike u32, where it's free).
+#[test]
+fn f32_boundary_kill_classes() {
+    let mut host = CellHost::new();
+    let cases: [(&str, &str); 3] = [
+        (
+            // 3e38 * 3e38 overflows to +Inf
+            r#"{ "quantities": [ {"id":"big","value":3e38,"unit":"scalar","repr":"f32"},
+                                 {"id":"big2","value":3e38,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["mul","big","big2","out"] ], "target": "out" }"#,
+            "escalate:float_overflow",
+        ),
+        (
+            // 0/0 is NaN
+            r#"{ "quantities": [ {"id":"z","value":0.0,"unit":"scalar","repr":"f32"},
+                                 {"id":"z2","value":0.0,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["div","z","z2","out"] ], "target": "out" }"#,
+            "escalate:float_domain",
+        ),
+        (
+            // 1.5 - 4.0 is negative; the declared nonneg kills it as out_of_domain
+            r#"{ "quantities": [ {"id":"a","value":1.5,"unit":"scalar","repr":"f32"},
+                                 {"id":"b","value":4.0,"unit":"scalar","repr":"f32"} ],
+                 "ops": [ ["sub","a","b","out"] ], "target": "out",
+                 "constraints": [ ["nonneg","out"] ] }"#,
+            "escalate:out_of_domain",
+        ),
+    ];
+    for (json, want) in cases {
+        let report = host.solve(&[plan(json)], DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.outcomes[0].kill.as_deref(), Some(want));
+    }
+}
+
+/// The counterfactual battery works in f32: two adders and one multiplier agree
+/// at no point after perturbation (+1.0 on an f32 quantity), so the adders win —
+/// the same coincidence-killer as the integer battery, one tier up.
+#[test]
+fn f32_counterfactual_battery() {
+    let mut host = CellHost::new();
+    let add = r#"{ "quantities": [ {"id":"a","value":2.0,"unit":"scalar","repr":"f32"},
+                                   {"id":"b","value":3.0,"unit":"scalar","repr":"f32"} ],
+                   "ops": [ ["add","a","b","out"] ], "target": "out" }"#;
+    let mul = r#"{ "quantities": [ {"id":"a","value":2.0,"unit":"scalar","repr":"f32"},
+                                   {"id":"b","value":3.0,"unit":"scalar","repr":"f32"} ],
+                   "ops": [ ["mul","a","b","out"] ], "target": "out" }"#;
+    let plans = vec![plan(add), plan(add), plan(mul)];
+    let report = host.solve(&plans, DEFAULT_CYCLES).unwrap();
+    assert!(report.battery_ran);
+    assert_eq!(report.answer, Some(5.0f32.to_bits() as u64));
+}
+
+/// Slot canonicalization is repr-blind: the same f32 schema with permuted
+/// quantities renders byte-identically — precipitation extends to the f32 tier.
+#[test]
+fn f32_renderer_is_canonical() {
+    let a = plan(
+        r#"{ "quantities": [ {"id":"x","value":1.5,"unit":"scalar","repr":"f32"},
+                             {"id":"y","value":2.5,"unit":"scalar","repr":"f32"} ],
+             "ops": [ ["mul","x","y","out"] ], "target": "out" }"#,
+    );
+    let mut b = a.clone();
+    b.quantities.reverse();
+    assert_eq!(a.render().unwrap(), b.render().unwrap());
 }

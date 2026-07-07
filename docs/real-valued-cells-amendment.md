@@ -8,13 +8,17 @@ one documented rustc divergence), the rounding family, `fmin`/`fmax` (two
 deterministic pins where rustc is unspecified: `-0 < +0`, sNaN ignored),
 `copysign`/classification as pure-bits sugar, `finite_result` enforcement (`.cell`
 v8, host-side on wide returns), `Ty::F32` state fields (wire code 5), and the first
-hand-authored cells (`softfloat` pack) through admission. Deferred from F1: `fma`
-(the registered stretch — still demand-gated, no customer yet) and **repr tags in
-the plan unit system**, which remain the open model-facing gate. Interim rule until
-they land: **float-touching cells are hand-authored only** — the typed surface
-rejects f32/int crosses at compile time, but bits-in-u32 kernel-layer composition
-has no such guard, and a model-composed cell doing integer `+` on f32 bit patterns
-is a silent-wrong generator the gate cannot catch. Amends `docs/real-valued-cells-spec.md`
+hand-authored cells (`softfloat` pack) through admission. **Repr tags landed
+same day** (`plan::Repr`, wire `"repr": "int|q8|q16|f32"` per quantity): the plan
+renderer type-flows representation orthogonally to dimension — mixed-repr ops, q-mul
+without the scale-aware kernels, f32 `exact_div`, and f32 unit-scaling are each
+named render kills; f32 plans render typed fields, route operators through the
+kernels, gate the target on finiteness (`0xFF07`/`0xFF08`), and the counterfactual
+battery perturbs f32 by `+1.0`. **Model-composed float *plans* are therefore legal —
+the renderer is the gate.** The narrowed interim rule: model-authored f32 *source*
+(non-plan composition) stays hand-reviewed, since bits-in-u32 kernel-layer code has
+no repr guard. Still deferred: `fma` (the registered stretch — demand-gated, no
+customer yet). Amends `docs/real-valued-cells-spec.md`
 Part 1 (the float policy) and supersedes its Wave 3 in one respect (§F2 below). Companion
 to `docs/10-dialect-semantics.md` (gains an f32 tier), `docs/escalation-ladder.md`
 (one code re-scoped, two added), and the canonicalization pass (one hard interaction,

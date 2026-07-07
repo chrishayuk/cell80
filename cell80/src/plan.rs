@@ -32,8 +32,73 @@ pub struct Plan {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Quantity {
     pub id: String,
+    /// The raw 32-bit payload: the integer itself for `int`/`q8`/`q16`, the IEEE
+    /// binary32 **bits** for `f32` (the repr tag interprets, bits never lie about
+    /// which they are — the renderer refuses every mixed-repr op).
     pub value: u32,
     pub unit: String,
+    /// The representation tag (F-wave amendment §F0): orthogonal to dimension the
+    /// way `scale` is orthogonal to `unit` — `dollars` says what it measures,
+    /// `repr` says how the bits encode it.
+    pub repr: Repr,
+}
+
+/// A quantity's representation — the type-flow discipline that keeps model-composed
+/// plans from doing integer arithmetic on float bits (the silent-wrong class the
+/// gate can't otherwise catch, because both derivations would err fluently).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Repr {
+    /// Plain integers (the GSM default — exact, checked, escalating).
+    #[default]
+    Int,
+    /// Q8.8 fixed point (raw scaled integer; `scale` semantics ride the tag).
+    Q8,
+    /// Q16.16 fixed point.
+    Q16,
+    /// IEEE binary32 through the owned softfloat kernels (`correctly_rounded`,
+    /// never spelled "exact").
+    F32,
+}
+
+impl Repr {
+    fn parse(s: &str) -> Result<Repr, String> {
+        Ok(match s {
+            "" | "int" => Repr::Int,
+            "q8" => Repr::Q8,
+            "q16" => Repr::Q16,
+            "f32" => Repr::F32,
+            other => return Err(format!("unknown repr `{other}` (int/q8/q16/f32)")),
+        })
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Repr::Int => "int",
+            Repr::Q8 => "q8",
+            Repr::Q16 => "q16",
+            Repr::F32 => "f32",
+        }
+    }
+    /// The rendered state-field type: f32 fields are `Ty::F32` (typed bits at the
+    /// state boundary); every integer repr stays `u32`.
+    fn field_ty(self) -> &'static str {
+        match self {
+            Repr::F32 => "f32",
+            _ => "u32",
+        }
+    }
+}
+
+impl Quantity {
+    /// The counterfactual battery's "+1": one raw unit for the integer reprs, a
+    /// genuine `+1.0` for f32 (recomputed through host f32 — the battery only
+    /// compares answer vectors for equality, so any deterministic nudge works,
+    /// but a 1-*bit* nudge would vanish under rounding and stress nothing).
+    fn perturbed(&self) -> u64 {
+        match self.repr {
+            Repr::F32 => (f32::from_bits(self.value) + 1.0).to_bits() as u64,
+            _ => self.value.saturating_add(1) as u64,
+        }
+    }
 }
 
 /// One arithmetic step: `out = a <op> b`. Op order is semantic and preserved;
@@ -87,6 +152,8 @@ fn unit_dim(u: &str) -> Result<Dim, String> {
 /// Escalation-band halt codes the rendered checks use (see `ESCALATE_REASONS`).
 const NEEDS_WIDER_MATH: u16 = 0xFF05; // overflow / negative intermediate
 const OUT_OF_DOMAIN: u16 = 0xFF06; // a declared constraint failed — wrong plan
+const FLOAT_OVERFLOW: u16 = 0xFF07; // an f32 target reached ±Inf
+const FLOAT_DOMAIN: u16 = 0xFF08; // an f32 target is NaN
 
 impl Plan {
     /// Parse the wire format:
@@ -112,18 +179,36 @@ impl Plan {
                     .and_then(|x| x.as_str())
                     .ok_or("quantity needs an `id`")?
                     .to_string();
-                let value = q
-                    .get("value")
-                    .and_then(|x| x.as_u64())
-                    .filter(|v| *v <= u32::MAX as u64)
-                    .ok_or_else(|| format!("quantity `{id}` needs a u32 `value`"))?
-                    as u32;
+                let repr = Repr::parse(q.get("repr").and_then(|x| x.as_str()).unwrap_or(""))
+                    .map_err(|e| format!("quantity `{id}`: {e}"))?;
+                // f32 quantities take a JSON number and convert f64→f32 (a plan's
+                // extracted decimals are well under the ~17-digit zone where that
+                // double conversion could differ from a direct decimal→f32 parse);
+                // integer reprs take the raw u32 payload exactly as before.
+                let value = if repr == Repr::F32 {
+                    let f = q
+                        .get("value")
+                        .and_then(|x| x.as_f64())
+                        .ok_or_else(|| format!("quantity `{id}` needs a number `value`"))?;
+                    (f as f32).to_bits()
+                } else {
+                    q.get("value")
+                        .and_then(|x| x.as_u64())
+                        .filter(|v| *v <= u32::MAX as u64)
+                        .ok_or_else(|| format!("quantity `{id}` needs a u32 `value`"))?
+                        as u32
+                };
                 let unit = q
                     .get("unit")
                     .and_then(|x| x.as_str())
                     .unwrap_or("")
                     .to_string();
-                Ok(Quantity { id, value, unit })
+                Ok(Quantity {
+                    id,
+                    value,
+                    unit,
+                    repr,
+                })
             })
             .collect::<Result<Vec<_>, String>>()?;
         let ops = obj
@@ -202,6 +287,19 @@ impl Plan {
         let mut repairs = Vec::new();
         for q in &mut self.quantities {
             let (canon, nf, df) = rustz80::canonical_unit(&q.unit);
+            // A non-integer repr never scales silently: multiplying f32 *bits* by a
+            // unit factor is nonsense, and multiplying the float itself would round
+            // — escalate-don't-misscale. Canonical-spelling renames (factor 1) are
+            // fine for every repr.
+            if q.repr != Repr::Int && (nf != 1 || df != 1) {
+                return Err(format!(
+                    "`{}`: unit `{}` needs a ×{nf}/{df} scale but the quantity is {} — \
+                     extract it in the canonical unit ({canon}) instead",
+                    q.id,
+                    q.unit,
+                    q.repr.name()
+                ));
+            }
             if canon == q.unit && nf == 1 && df == 1 {
                 continue;
             }
@@ -248,10 +346,12 @@ impl Plan {
             }
         }
         let mut dims: HashMap<&str, Dim> = HashMap::new();
+        let mut reprs: HashMap<&str, Repr> = HashMap::new();
         for q in &self.quantities {
             if dims.insert(&q.id, unit_dim(&q.unit)?).is_some() {
                 return Err(format!("duplicate quantity `{}`", q.id));
             }
+            reprs.insert(&q.id, q.repr);
         }
         let mut outs = std::collections::HashSet::new();
         for (i, o) in self.ops.iter().enumerate() {
@@ -351,6 +451,30 @@ impl Plan {
         let mut op_lines = String::new();
         for (n, &i) in order.iter().enumerate() {
             let op = &self.ops[i];
+            // Repr type-flow first (orthogonal to dimension): both operands must
+            // share a representation — a mixed op is a *wrong plan*, not a value
+            // to coerce (the conversions exist, but the model must plan them).
+            let ra = reprs[op.a.as_str()];
+            let rb = reprs[op.b.as_str()];
+            if ra != rb {
+                return Err(format!(
+                    "op {i}: `{}` mixes {} and {} — representations never convert \
+                     implicitly (plan an explicit conversion, or extract both \
+                     quantities in one repr)",
+                    op.out,
+                    ra.name(),
+                    rb.name()
+                ));
+            }
+            if matches!(ra, Repr::Q8 | Repr::Q16) && matches!(op.op.as_str(), "mul" | "div") {
+                return Err(format!(
+                    "op {i}: `{}` — q-repr {} needs the scale-aware fixed-point \
+                     kernels (`q_mul`/`q_div` cells), which the renderer doesn't \
+                     compose yet; use int repr with explicit scaling, or f32",
+                    op.out, op.op
+                ));
+            }
+            reprs.insert(&op.out, ra);
             let da = dims[op.a.as_str()];
             let db = dims[op.b.as_str()];
             let dout = match op.op.as_str() {
@@ -372,6 +496,22 @@ impl Plan {
                 &slot[op.b.as_str()],
                 &slot[op.out.as_str()],
             );
+            // f32 ops render as plain typed arithmetic — the dialect's operator
+            // routing compiles them to the softfloat kernels, and rustc-exact IEEE
+            // semantics hold *inside* the cell (overflow → Inf, 0/0 → NaN); the
+            // escalation happens at the target boundary (the rendered finite gate),
+            // per the amendment's escalate-at-the-boundary contract. No wrap/
+            // negative/overflow guards: those are integer diseases.
+            if ra == Repr::F32 {
+                let line = match op.op.as_str() {
+                    "add" => "+",
+                    "sub" => "-",
+                    "mul" => "*",
+                    _ => "/",
+                };
+                op_lines.push_str(&format!("        self.{out} = self.{a} {line} self.{b};\n"));
+                continue;
+            }
             match op.op.as_str() {
                 "add" => {
                     // Wrap detect: a checked add, escalating rather than wrapping.
@@ -405,11 +545,26 @@ impl Plan {
                     if !dims.contains_key(id.as_str()) {
                         return Err(format!("nonneg: `{id}` is not defined"));
                     }
-                    // u32 by construction; sub already escalates. Renders as nothing.
+                    // Integer reprs: u32 by construction, sub already escalates —
+                    // renders as nothing. f32 has a sign bit, so the constraint is
+                    // a real check (NaN compares false and passes here; a NaN
+                    // *target* still dies at the finite gate).
+                    if reprs[id.as_str()] == Repr::F32 {
+                        checks.push(format!(
+                            "        if self.{} < 0.0f32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
+                            slot[id.as_str()]
+                        ));
+                    }
                 }
                 Constraint::ExactDiv(a, b) => {
                     if !dims.contains_key(a.as_str()) || !dims.contains_key(b.as_str()) {
                         return Err(format!("exact_div: `{a}`/`{b}` must be defined"));
+                    }
+                    if reprs[a.as_str()] == Repr::F32 || reprs[b.as_str()] == Repr::F32 {
+                        return Err(format!(
+                            "exact_div: `{a}`/`{b}` — exactness is the integer/fraction \
+                             tiers' claim; f32 is correctly_rounded, never exact"
+                        ));
                     }
                     checks.push(format!(
                         "        if self.{} % self.{} != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
@@ -424,13 +579,40 @@ impl Plan {
             .get(self.target.as_str())
             .cloned()
             .ok_or_else(|| format!("target `{}` is never defined", self.target))?;
-        // The struct: q slots then v slots, in slot order.
-        let fields: Vec<String> = (0..q_next)
-            .map(|i| format!("q{i}: u32"))
-            .chain((0..v_next).map(|i| format!("v{i}: u32")))
+        let target_repr = reprs[self.target.as_str()];
+        // The struct: q slots then v slots, in slot order — each at its repr's
+        // field type (`f32` state fields are `Ty::F32`: typed bits at the boundary).
+        let slot_repr: HashMap<&str, Repr> = slot
+            .iter()
+            .map(|(name, s)| (s.as_str(), reprs[name]))
             .collect();
+        let field = |s: String| -> String {
+            let ty = slot_repr
+                .get(s.as_str())
+                .copied()
+                .unwrap_or_default()
+                .field_ty();
+            format!("{s}: {ty}")
+        };
+        let fields: Vec<String> = (0..q_next)
+            .map(|i| field(format!("q{i}")))
+            .chain((0..v_next).map(|i| field(format!("v{i}"))))
+            .collect();
+        // The tail: an integer target answers in the low word; an f32 target
+        // answers through its state field (read by name), with the **finite gate**
+        // at the boundary — NaN is `float_domain`, ±Inf `float_overflow`; the
+        // status result is 1. IEEE propagated inside, escalate-not-lie at return.
+        let tail = if target_repr == Repr::F32 {
+            format!(
+                "        if self.{target_slot}.is_nan() {{ halt({FLOAT_DOMAIN}u16); }}\n        \
+                 let fin = self.{target_slot}.is_finite();\n        \
+                 if !fin {{ halt({FLOAT_OVERFLOW}u16); }}\n        1u16"
+            )
+        } else {
+            format!("        (self.{target_slot} & 65535u32) as u16")
+        };
         let src = format!(
-            "//! rendered plan\nstruct P {{ {} }}\nimpl P {{\n    fn run(&mut self) -> u16 {{\n{op_lines}{}        (self.{target_slot} & 65535u32) as u16\n    }}\n}}\n",
+            "//! rendered plan\nstruct P {{ {} }}\nimpl P {{\n    fn run(&mut self) -> u16 {{\n{op_lines}{}{tail}\n    }}\n}}\n",
             fields.join(", "),
             checks.concat(),
         );
@@ -443,6 +625,7 @@ impl Plan {
             src,
             renames,
             target_slot,
+            target_repr,
         })
     }
 
@@ -461,6 +644,9 @@ pub struct Rendered {
     pub renames: Vec<(String, String)>,
     /// The slot the plan's target landed in.
     pub target_slot: String,
+    /// The target's representation — an `f32` target's `answer` is its raw
+    /// binary32 bits (`f32::from_bits` to read); integer targets are the value.
+    pub target_repr: Repr,
 }
 
 /// Parse one plan object **or** an array of candidate plans — the shape every
@@ -480,7 +666,11 @@ pub struct PlanOutcome {
     /// Hex artifact hash of the rendered cell (`None` if it never compiled).
     pub artifact: Option<String>,
     /// The full-width answer (the target field, post-run) for a surviving plan.
+    /// For an `f32` target (`answer_repr == "f32"`) these are the raw binary32
+    /// bits — `f32::from_bits(answer as u32)` to read.
     pub answer: Option<u64>,
+    /// The target's representation name (`int`/`q8`/`q16`/`f32`).
+    pub answer_repr: &'static str,
     /// Why it died: a render error, a compile error, or the halt that killed it.
     pub kill: Option<String>,
     /// The rendered artifact was already in the catalog — retrieved, not compiled
@@ -513,6 +703,7 @@ impl SolveReport {
             "plans": self.outcomes.iter().map(|o| json!({
                 "artifact": o.artifact,
                 "answer": o.answer,
+                "answer_repr": o.answer_repr,
                 "kill": o.kill,
                 "retrieved": o.retrieved,
                 "repairs": o.repairs,
@@ -547,6 +738,7 @@ impl CellHost {
                     outcomes.push(PlanOutcome {
                         artifact: None,
                         answer: None,
+                        answer_repr: "int",
                         kill: Some(format!("render: {e}")),
                         retrieved: false,
                         repairs: Vec::new(),
@@ -561,6 +753,7 @@ impl CellHost {
                     outcomes.push(PlanOutcome {
                         artifact: None,
                         answer: None,
+                        answer_repr: "int",
                         kill: Some(format!("render: {e}")),
                         retrieved: false,
                         repairs,
@@ -584,6 +777,7 @@ impl CellHost {
                     outcomes.push(PlanOutcome {
                         artifact: None,
                         answer: None,
+                        answer_repr: rendered.target_repr.name(),
                         kill: Some(format!("compile: {e}")),
                         retrieved: false,
                         repairs,
@@ -619,6 +813,7 @@ impl CellHost {
                     outcomes.push(PlanOutcome {
                         artifact: Some(hash),
                         answer,
+                        answer_repr: rendered.target_repr.name(),
                         kill: None,
                         retrieved,
                         repairs,
@@ -643,6 +838,7 @@ impl CellHost {
                     outcomes.push(PlanOutcome {
                         artifact: Some(hash),
                         answer: None,
+                        answer_repr: rendered.target_repr.name(),
                         kill: Some(why),
                         retrieved,
                         repairs,
@@ -686,7 +882,7 @@ impl CellHost {
                             .iter()
                             .map(|q| {
                                 let v = if q.id == *name {
-                                    q.value.saturating_add(1) as u64
+                                    q.perturbed()
                                 } else {
                                     q.value as u64
                                 };
