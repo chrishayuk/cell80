@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (286 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (288 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -379,6 +379,13 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
+
+## softfloat (2)
+
+| id | signature | summary |
+|---|---|---|
+| `lerp_f32` | `LerpF32::run() -> u16` | Linear interpolation a + t*(b - a) in IEEE binary32 — the owned softfloat kernels, correctly rounded per op and bit-identical to rustc f32; t is a plain f32 (not clamped), so t=0 gives a and t=1 gives a + (b - a). |
+| `norm2_f32` | `Norm2F32::run() -> u16` | Euclidean length of a 2-vector in IEEE binary32 — sqrt(x*x + y*y) through the owned softfloat kernels: correctly rounded per op, bit-identical to rustc f32, deterministic on every host (no libm). |
 
 ## spatial-grid (6)
 

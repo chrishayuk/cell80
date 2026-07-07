@@ -741,7 +741,7 @@ impl Runner {
             let bytes = match ty {
                 Ty::U8 => 1,
                 Ty::U16 => 2,
-                Ty::U32 => 4,
+                Ty::U32 | Ty::F32 => 4, // f32 rides as its raw binary32 bits
                 // Validated out by `run_with_inputs` (buffers don't ride the
                 // scalar input triple until the S3 byte-I/O surface).
                 Ty::Bytes(_) | Ty::Str(_) => unreachable!("buffer input reached exec"),
@@ -833,7 +833,9 @@ impl Runner {
                 let v = match ty {
                     Ty::U8 => self.peek_u8(*addr) as u64,
                     Ty::U16 => self.peek_u16(*addr) as u64,
-                    Ty::U32 => self.peek_u32(*addr) as u64,
+                    // f32 reads back as its raw bits — the host converts with
+                    // `f32::from_bits`; the type keeps the repr from blurring.
+                    Ty::U32 | Ty::F32 => self.peek_u32(*addr) as u64,
                     // A buffer field has no scalar reading — skipped rather than
                     // misreported; the byte read-back surface is Phase S3.
                     Ty::Bytes(_) | Ty::Str(_) => return None,

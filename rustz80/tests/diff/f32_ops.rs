@@ -32,6 +32,10 @@ const EDGES: [u32; 40] = [
 
 const OPS: [&str; 7] = ["fadd", "fsub", "fmul", "fdiv", "feq", "flt", "fle"];
 
+/// The unary families: fsqrt (F0) and the F1 rounding four. All bit-specified,
+/// all rustc-checkable (`fround` is Rust's round-half-away-from-zero).
+const UNARY: [&str; 5] = ["fsqrt", "ftrunc", "ffloor", "fceil", "fround"];
+
 /// The rustc oracle: the same operation on host f32, canonicalized. This is the
 /// whole point of owning binary32 — the reference is bit-specified and portable.
 fn expect(op: &str, a: u32, b: u32) -> u32 {
@@ -50,16 +54,30 @@ fn expect(op: &str, a: u32, b: u32) -> u32 {
         "fmul" => (fa * fb).to_bits(),
         "fdiv" => (fa / fb).to_bits(),
         "fsqrt" => fa.sqrt().to_bits(),
+        "ftrunc" => fa.trunc().to_bits(),
+        "ffloor" => fa.floor().to_bits(),
+        "fceil" => fa.ceil().to_bits(),
+        "fround" => fa.round().to_bits(),
+        "fmin" => fa.min(fb).to_bits(),
+        "fmax" => fa.max(fb).to_bits(),
         _ => unreachable!("unknown op {op}"),
     })
 }
 
 fn case_expr(op: &str, a: u32, b: u32) -> String {
-    if op == "fsqrt" {
-        format!("fsqrt({a}u32)")
+    if UNARY.contains(&op) {
+        format!("{op}({a}u32)")
     } else {
         format!("{op}({a}u32, {b}u32)")
     }
+}
+
+/// fmin/fmax pairs skip the two zones where rustc itself is unspecified — the
+/// (±0, ∓0) pair and signaling-NaN operands (see `softfloat.rs`; our behaviour is
+/// pinned deterministically in `f32_minmax_pins`).
+fn minmax_oracle_ok(a: u32, b: u32) -> bool {
+    let snan = |x: u32| x & 0x7FFF_FFFF > 0x7F80_0000 && x & 0x0040_0000 == 0;
+    !(a & 0x7FFF_FFFF == 0 && b & 0x7FFF_FFFF == 0) && !snan(a) && !snan(b)
 }
 
 /// Run `(op, a, b)` cases chunked — each chunk one compiled program counting
@@ -102,7 +120,8 @@ fn run_bank(cases: &[(&str, u32, u32)]) {
     }
 }
 
-/// Edge × edge, exhaustive, all five ops.
+/// Edge × edge, exhaustive: the binary ops + comparisons + fmin/fmax (minus the
+/// rustc-unspecified zones); every unary over the edge list.
 #[test]
 fn f32_edge_bank() {
     let mut cases = Vec::new();
@@ -111,8 +130,14 @@ fn f32_edge_bank() {
             for op in OPS {
                 cases.push((op, a, b));
             }
+            if minmax_oracle_ok(a, b) {
+                cases.push(("fmin", a, b));
+                cases.push(("fmax", a, b));
+            }
         }
-        cases.push(("fsqrt", a, 0));
+        for op in UNARY {
+            cases.push((op, a, 0));
+        }
     }
     run_bank(&cases);
 }
@@ -166,7 +191,13 @@ fn f32_random_bank() {
         for op in OPS {
             cases.push((op, a, b));
         }
-        cases.push(("fsqrt", a, 0));
+        for op in UNARY {
+            cases.push((op, a, 0));
+        }
+        if minmax_oracle_ok(a, b) {
+            cases.push(("fmin", a, b));
+            cases.push(("fmax", a, b));
+        }
         // nearby exponents — the subtract path's cancellation + normalize stress
         let a = next();
         let ea = ((a >> 23) & 0xFF) as i32;
@@ -180,9 +211,116 @@ fn f32_random_bank() {
         for op in OPS {
             cases.push((op, a, b));
         }
-        cases.push(("fsqrt", a, 0));
+        for op in UNARY {
+            cases.push((op, a, 0));
+        }
     }
     run_bank(&cases);
+}
+
+/// The deterministic fmin/fmax pins, source-level, where rustc is unspecified:
+/// -0 < +0, and any NaN — quiet or signaling — is "missing data".
+#[test]
+fn f32_minmax_pins() {
+    let pins = [
+        ("fmin(2147483648u32, 0u32)", 0x8000_0000u32), // min(-0, +0) = -0
+        ("fmax(2147483648u32, 0u32)", 0u32),           // max(-0, +0) = +0
+        ("fmin(2139095041u32, 1065353216u32)", 0x3F80_0000u32), // sNaN ignored
+        ("fmin(2139095041u32, 2143289344u32)", 0x7FC0_0000u32), // both NaN -> canonical
+    ];
+    for (expr, want) in pins {
+        let src = format!(
+            "fn f() -> u16 {{ let mut bad = 0u16; if {expr} != {want}u32 {{ bad = 1u16; }} bad }}\n{}",
+            rustz80::F32_KERNELS
+        );
+        assert_eq!(run_program_pruned(&src, "f"), 0, "pin failed: {expr}");
+    }
+}
+
+/// The typed conversions (the only sanctioned int↔f32 crossings — intercepted as
+/// typed builtins, so they work with or without the prelude text): u32→f32 and
+/// Q16.16→f32 are correctly rounded (rustc's `as f32` is the oracle); the f32→int
+/// directions truncate, in-domain (the domain halt is a cell-level test).
+#[test]
+fn f32_typed_conversions() {
+    let checks = [
+        // (source expression over typed values, host-computed expected u16)
+        (
+            "let x = int_to_f32(16777217u32); let mut r = 0u16; if x == 16777216.0f32 { r = 1u16; } r",
+            ((16777217u32 as f32) == 16777216.0f32) as u16, // rounds to even
+        ),
+        (
+            "let q = q16_to_f32(98304u32); let mut r = 0u16; if q == 1.5f32 { r = 1u16; } r",
+            1u16, // 98304/65536 = 1.5 exactly
+        ),
+        (
+            "let i = f32_to_int_trunc(3.99f32); let mut r = 0u16; if i == 3u32 { r = 1u16; } r",
+            1u16,
+        ),
+        (
+            "let i = f32_to_int_trunc(-0.5f32); let mut r = 0u16; if i == 0u32 { r = 1u16; } r",
+            1u16, // trunc toward zero: in-domain
+        ),
+        (
+            "let q = f32_to_q16(1.5f32); let mut r = 0u16; if q == 98304u32 { r = 1u16; } r",
+            1u16,
+        ),
+        (
+            "let rt = int_to_f32(f32_to_int_trunc(7.0f32)); let mut r = 0u16; if rt == 7.0f32 { r = 1u16; } r",
+            1u16, // round-trips exactly on integers
+        ),
+    ];
+    for (body, want) in checks {
+        let src = format!("fn f() -> u16 {{ {body} }}");
+        assert_eq!(
+            run_program_pruned(&src, "f"),
+            want,
+            "typed conversion: {body}"
+        );
+    }
+}
+
+/// The F1 method surface, single-source against a host oracle: rounding family,
+/// min/max, copysign, classification.
+#[test]
+#[allow(clippy::excessive_precision)] // the min-normal literal is spelled in full deliberately
+fn f32_typed_methods() {
+    let host = {
+        let x = -2.5f32;
+        let y = 0.75f32;
+        let a = x.floor() + x.ceil() + x.trunc() + x.round(); // -3 + -2 + -2 + -3 = -10
+        let m = x.min(y).max(-10.0f32);
+        let c = y.copysign(x);
+        (a == -10.0f32 && m == -2.5f32 && c == -0.75f32 && !x.is_nan() && x.is_finite()) as u16
+    };
+    let src = "fn f() -> u16 {
+        let x = -2.5f32;
+        let y = 0.75f32;
+        let a = x.floor() + x.ceil() + x.trunc() + x.round();
+        let m = x.min(y).max(-10.0f32);
+        let c = y.copysign(x);
+        let mut r = 0u16;
+        if a == -10.0f32 && m == -2.5f32 && c == -0.75f32 && !x.is_nan() && x.is_finite() { r = 1u16; }
+        r
+    }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+    assert_eq!(host, 1, "host oracle sanity");
+
+    // is_subnormal, through bits injected via q16 (2^-24 is subnormal? no — use
+    // a computed subnormal: min-normal / 4)
+    let host = {
+        let tiny = 1.17549435e-38f32 / 4.0f32;
+        (tiny.is_subnormal() && !1.0f32.is_subnormal()) as u16
+    };
+    let src = "fn f() -> u16 {
+        let tiny = 0.000000000000000000000000000000000000011754944f32 / 4.0f32;
+        let one = 1.0f32;
+        let mut r = 0u16;
+        if tiny.is_subnormal() && !one.is_subnormal() { r = 1u16; }
+        r
+    }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+    assert_eq!(host, 1);
 }
 
 /// The typed surface, single-source: real f32 programs — literals (compile-time
@@ -261,14 +399,94 @@ fn f32_never_mixes_with_integers() {
         "fn f(a: f32) -> u16 { let mut r = 0u16; if a == 1u32 { r = 1u16; } r }", // cmp cross
         "fn f() -> f32 { 1.5f64 }",                  // f64 literal
         "fn g(x: u32) -> u32 { x } fn f(a: f32) -> u32 { g(a) }", // f32 into u32 param
+        "fn g(x: f32) -> f32 { x } fn f(a: u32) -> f32 { g(a) }", // u32 into f32 param
+        "fn f(a: f32) -> u16 { let x = [a; 2]; 0u16 }", // f32 array element
+        "fn f(a: f32) -> u16 { for _i in 0u16..a { } 0u16 }", // f32 for bound
+        "fn f(a: f32) -> (u16, u16) { (a, 1u16) }",  // f32 tuple member
+        "fn f(a: f32) -> f32 { let x: f32 = if a > 0.0f32 { 1u16 } else { 2u16 }; x }", // int branches, f32 ann
+        "fn f(a: f32) -> f32 { a.min(1u32) }", // int arg to .min
+        "fn f(a: f32) -> f32 { a.copysign(1u16) }", // int arg to .copysign
+        "fn f(a: u16) -> u16 { a.sqrt() as u16 }", // .sqrt on an integer
+        "fn f(a: f32) -> f32 { a.sqrt(1u16) }", // args to .sqrt
+        "fn f(a: f32) -> u16 { a.is_nan(1u16) as u16 }", // args to .is_nan
+        "fn f(a: f32) -> f32 { int_to_f32(a) }", // conversion arg already f32
+        "fn f(a: u32) -> u32 { f32_to_int_trunc(a) }", // conversion arg not f32
+        "fn f(a: f32) -> f32 { int_to_f32(1u32, 2u32) }", // conversion arity
+        "fn f(a: f32) -> f32 { let mut x = 1u32; x = a; 0.0f32 }", // f32 into u32 var
+        "fn f(a: f32) -> f32 { let mut x = 0.0f32; x = 1u32; x }", // u32 into f32 var
+        "fn f(a: f32) -> u16 { return a; }",   // f32 returned from u16 fn (return stmt)
+        "struct S { v: u32 } fn run() -> u16 { let s = S { v: 1.5f32 }; 0u16 }", // f32 init on u32 field
+        "struct S { v: f32 } fn run() -> u16 { let s = S { v: 1u32 }; 0u16 }", // int init on f32 field
+        "struct S { v: f32 } impl S { fn run(&mut self) -> u16 { self.v = 1u32; 1u16 } }", // int into f32 field
+        "struct S { v: u32 } impl S { fn run(&mut self) -> u16 { self.v = 1.5f32; 1u16 } }", // f32 into u32 field
     ];
     for src in rejects {
         for target in crate::harness::TARGETS {
             let file: syn::File = syn::parse_str(src).expect("parses");
+            let roots: &[&str] = if src.contains("fn run") {
+                &["run", "S::run"]
+            } else {
+                &["f"]
+            };
             assert!(
-                rustz80::compile_file_pruned(&file, target, &["f"]).is_err(),
+                rustz80::compile_file_pruned(&file, target, roots).is_err(),
                 "expected a clean rejection ({target:?}): {src}"
             );
         }
     }
+}
+
+/// Value-position `if`/`match`, `return`, struct init, and field round-trips carry
+/// f32 through every statement shape — single-source against host oracles.
+#[test]
+fn f32_statement_shapes() {
+    // let-if with f32 branches; assign-if into an f32 var; return-if
+    let host = {
+        let a = 2.5f32;
+        let mut x = if a > 1.0f32 { a } else { 0.5f32 };
+        x = if x < 10.0f32 { x + 1.0f32 } else { x };
+        if x > 3.0f32 {
+            1u16
+        } else {
+            0u16
+        }
+    };
+    let src = "fn f() -> u16 {
+        let a = 2.5f32;
+        let mut x = if a > 1.0f32 { a } else { 0.5f32 };
+        x = if x < 10.0f32 { x + 1.0f32 } else { x };
+        let mut y = 0u16;
+        if x > 3.0f32 { y = 1u16; }
+        y
+    }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+
+    // return <f32-if> from an f32 fn, consumed by the caller
+    let src = "fn pick(a: f32, b: f32) -> f32 { return if a < b { a } else { b }; }
+               fn f() -> u16 { let mut r = 0u16; if pick(2.0f32, 3.0f32) == 2.0f32 { r = 1u16; } r }";
+    assert_eq!(run_program_pruned(src, "f"), 1);
+
+    // struct init with f32 fields + field arithmetic round-trip
+    let host = {
+        struct P {
+            x: f32,
+            y: f32,
+        }
+        let mut p = P {
+            x: 1.5f32,
+            y: 0.0f32,
+        };
+        p.y = p.x * 2.0f32;
+        (p.y == 3.0f32) as u16
+    };
+    let src = "struct P { x: f32, y: f32 }
+               fn run() -> u16 {
+                   let mut p = P { x: 1.5f32, y: 0.0f32 };
+                   p.y = p.x * 2.0f32;
+                   let mut r = 0u16;
+                   if p.y == 3.0f32 { r = 1u16; }
+                   r
+               }";
+    assert_eq!(run_program_pruned(src, "run"), host);
+    assert_eq!(host, 1);
 }

@@ -410,6 +410,41 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             if !turbofish.is_empty() {
                 return Err(format!("`{name}` is not a generic function"));
             }
+            // The four conversion kernels are *typed builtins* — intercepted before
+            // the signature lookup so they are f32-typed even when the cell prelude's
+            // text (whose signatures are bits-level u32) is present. int↔f32 crossings
+            // exist ONLY through these; `as` casts stay rejected.
+            if let "int_to_f32" | "q16_to_f32" | "f32_to_int_trunc" | "f32_to_q16" = name.as_str() {
+                if lowered.len() != 1 {
+                    return Err(format!("`{name}` takes exactly one argument"));
+                }
+                let (e, w) = lowered.into_iter().next().unwrap();
+                let to_f32 = name.starts_with("int_") || name.starts_with("q16_");
+                if to_f32 {
+                    if w == Width::F32 {
+                        return Err(format!(
+                            "`{name}` takes an integer (u32/u16) — this value is \
+                             already f32"
+                        ));
+                    }
+                    ctx.mark_f32(match name.as_str() {
+                        "int_to_f32" => "int_to_f32",
+                        _ => "q16_to_f32",
+                    });
+                    return Ok((Expr::Call(name, vec![coerce32(e, w)]), Width::F32));
+                }
+                if w != Width::F32 {
+                    return Err(format!(
+                        "`{name}` takes an f32 — this value is an integer; it is \
+                         already in integer representation"
+                    ));
+                }
+                ctx.mark_f32(match name.as_str() {
+                    "f32_to_int_trunc" => "f32_to_int_trunc",
+                    _ => "f32_to_q16",
+                });
+                return Ok((Expr::Call(name, vec![e]), Width::DWord));
+            }
             // A known plain fn: the call boundary is typed (docs 10 §Calls) — a wide
             // first slot takes (or widens to) a u32; a wide value in a 16-bit slot
             // stays an error; the return width comes from the signature.
@@ -670,7 +705,7 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         };
         // Two wide args reorder evaluation (the first is computed last — the stack
         // shape); pure operands are unaffected, effectful pairs must hoist.
-        if has_effects(&le) && has_effects(&re) {
+        if f32_operand_effects(&le) && f32_operand_effects(&re) {
             return Err(format!(
                 "both operands of this f32 `{}` have side effects and the wide call \
                  convention reorders them — hoist one to a `let` binding",
@@ -694,6 +729,20 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         ));
     }
     Ok((Expr::Bin(op, Box::new(le), Box::new(re), lw), lw))
+}
+
+/// Effect check for f32 operand ordering: the softfloat kernels are pure (no memory
+/// writes; the conversion pair's typed halt is a domain error either way round), so
+/// a kernel call is effect-free iff its arguments are — otherwise defer to the
+/// conservative `has_effects`. Without this, `a.floor() + a.ceil()` would be
+/// rejected as "two effectful operands".
+pub(crate) fn f32_operand_effects(e: &Expr) -> bool {
+    match e {
+        Expr::Call(name, args) if crate::softfloat::KERNEL_DEPS.iter().any(|(n, _)| n == name) => {
+            args.iter().any(f32_operand_effects)
+        }
+        _ => has_effects(e),
+    }
 }
 
 /// Both sides of an f32 op must be f32 — no implicit int↔float conversion, ever
@@ -728,7 +777,7 @@ pub(crate) fn f32_cmp_call(
         Cmp::Le => ("fle", false),
         Cmp::Ge => ("fle", true),
     };
-    if has_effects(&le) && has_effects(&re) {
+    if f32_operand_effects(&le) && f32_operand_effects(&re) {
         return Err(
             "both operands of this f32 comparison have side effects and the wide call \
              convention reorders them — hoist one to a `let` binding"
@@ -1207,14 +1256,16 @@ fn lower_field_read(f: &syn::ExprField, ctx: &mut Ctx) -> Result<(Expr, Width), 
     if r.wide_len.is_some() {
         return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i]`)".into());
     }
-    if r.width == Width::DWord {
+    if r.width.is_wide() {
+        // A wide field reads at its declared representation — an `f32` field's
+        // value is f32-typed, never bare bits.
         return Ok(if r.is_ptr {
             (
                 Expr::Deref32(Box::new(Expr::Var(r.base)), r.off * 2),
-                Width::DWord,
+                r.width,
             )
         } else {
-            (Expr::Var32(r.base + r.off), Width::DWord)
+            (Expr::Var32(r.base + r.off), r.width)
         });
     }
     if r.slots != 1 {
@@ -1261,7 +1312,21 @@ pub(crate) fn lower_field_store(
     if r.wide_len.is_some() {
         return Err("a `[u32; N]` field is not a scalar — index it (`s.field[i] = v`)".into());
     }
-    if r.width == Width::DWord {
+    if r.width.is_wide() {
+        // The representation must agree: an f32 field takes f32 values, a u32 field
+        // takes integers (16-bit widens); bits never cross silently.
+        if (r.width == Width::F32) != (vw == Width::F32) {
+            return Err(format!(
+                "cannot assign this value — the field is {} and the value is {}; \
+                 conversions are explicit (`int_to_f32`/`f32_to_int_trunc`)",
+                if r.width == Width::F32 { "f32" } else { "u32" },
+                if vw == Width::F32 {
+                    "f32"
+                } else {
+                    "an integer"
+                }
+            ));
+        }
         let val = coerce32(val, vw);
         return Ok(if r.is_ptr {
             Stmt::Store32(Expr::Var(r.base), r.off * 2, val)
@@ -1269,8 +1334,10 @@ pub(crate) fn lower_field_store(
             Stmt::Assign32(r.base + r.off, val)
         });
     }
-    if vw == Width::DWord {
-        return Err("cannot assign a u32 value to a 16-bit field — narrow with `as u16`".into());
+    if vw.is_wide() {
+        return Err(
+            "cannot assign a u32/f32 value to a 16-bit field — narrow with `as u16`".into(),
+        );
     }
     if r.slots != 1 {
         return Err("this field is not a scalar (assign a tuple field by element: `.0`)".into());
@@ -1289,31 +1356,121 @@ pub(crate) fn lower_method_call(
     ctx: &mut Ctx,
 ) -> Result<(Expr, Width), String> {
     let method = m.method.to_string();
-    // f32's method surface: `.sqrt()` (the fifth kernel) and `.abs()` (a sign-bit
-    // mask — pure bits, rustc-identical). Everything else on f32 is an error.
-    if method == "sqrt" || method == "abs" {
+    // f32's method surface. Kernel-backed: `.sqrt()`, the rounding family
+    // (`.floor()`/`.ceil()`/`.trunc()`/`.round()` — `round` is Rust's
+    // half-away-from-zero), and `.min()`/`.max()` (Rust "NaN is missing data",
+    // with -0 < +0 and sNaN-ignored pinned deterministic). Pure-bits sugar:
+    // `.abs()`, `.copysign(b)`, and the classification trio
+    // `.is_nan()`/`.is_finite()`/`.is_subnormal()` (inline compares, no kernel).
+    if let "sqrt" | "abs" | "floor" | "ceil" | "trunc" | "round" | "min" | "max" | "copysign"
+    | "is_nan" | "is_finite" | "is_subnormal" = method.as_str()
+    {
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
         if rw != Width::F32 {
             return Err(format!(
-                "`.{method}()` is defined on f32 — for integers use the `isqrt` kernel \
-                 or `iabs_diff`"
+                "`.{method}()` is defined on f32 — for integers use the kernel \
+                 helpers (`isqrt`, `imin`/`imax`, `iabs_diff`)"
             ));
         }
+        let unary_kernel = match method.as_str() {
+            "sqrt" => Some("fsqrt"),
+            "floor" => Some("ffloor"),
+            "ceil" => Some("fceil"),
+            "trunc" => Some("ftrunc"),
+            "round" => Some("fround"),
+            _ => None,
+        };
+        if let Some(kernel) = unary_kernel {
+            if !m.args.is_empty() {
+                return Err(format!("`.{method}()` takes no arguments"));
+            }
+            ctx.mark_f32(kernel);
+            return Ok((Expr::Call(kernel.to_string(), vec![recv]), Width::F32));
+        }
+        if method == "min" || method == "max" {
+            let arg = m
+                .args
+                .first()
+                .ok_or("`.min()`/`.max()` take one argument")?;
+            let (ae, aw) = lower_expr(arg, ctx)?;
+            require_f32_pair(rw, aw)?;
+            if f32_operand_effects(&recv) && f32_operand_effects(&ae) {
+                return Err(format!(
+                    "both operands of `.{method}()` have side effects and the wide \
+                     call convention reorders them — hoist one to a `let` binding"
+                ));
+            }
+            let kernel = if method == "min" { "fmin" } else { "fmax" };
+            ctx.mark_f32(kernel);
+            return Ok((Expr::Call(kernel.to_string(), vec![recv, ae]), Width::F32));
+        }
+        if method == "abs" {
+            if !m.args.is_empty() {
+                return Err("`.abs()` takes no arguments".into());
+            }
+            return Ok((
+                Expr::Bin32(
+                    BinOp::And,
+                    Box::new(recv),
+                    Box::new(Expr::Lit32(0x7FFF_FFFF)),
+                ),
+                Width::F32,
+            ));
+        }
+        if method == "copysign" {
+            let arg = m.args.first().ok_or("`.copysign()` takes one argument")?;
+            let (ae, aw) = lower_expr(arg, ctx)?;
+            require_f32_pair(rw, aw)?;
+            // magnitude of recv | sign of arg — pure bits, rustc-identical
+            return Ok((
+                Expr::Bin32(
+                    BinOp::Or,
+                    Box::new(Expr::Bin32(
+                        BinOp::And,
+                        Box::new(recv),
+                        Box::new(Expr::Lit32(0x7FFF_FFFF)),
+                    )),
+                    Box::new(Expr::Bin32(
+                        BinOp::And,
+                        Box::new(ae),
+                        Box::new(Expr::Lit32(0x8000_0000)),
+                    )),
+                ),
+                Width::F32,
+            ));
+        }
+        // classification trio — the receiver evaluates once per compare, so it
+        // must be pure (a var or literal); effectful receivers bind first
         if !m.args.is_empty() {
             return Err(format!("`.{method}()` takes no arguments"));
         }
-        if method == "sqrt" {
-            ctx.mark_f32("fsqrt");
-            return Ok((Expr::Call("fsqrt".to_string(), vec![recv]), Width::F32));
+        if has_effects(&recv) {
+            return Err(format!(
+                "`.{method}()` re-reads its receiver — bind the value first: `let v = …;`"
+            ));
         }
-        return Ok((
+        let mag = |e: &Expr| {
             Expr::Bin32(
                 BinOp::And,
-                Box::new(recv),
+                Box::new(e.clone()),
                 Box::new(Expr::Lit32(0x7FFF_FFFF)),
-            ),
-            Width::F32,
-        ));
+            )
+        };
+        let cmp32 = |cmp, lhs, rhs: u32| Expr::Cmp32 {
+            cmp,
+            lhs: Box::new(lhs),
+            rhs: Box::new(Expr::Lit32(rhs)),
+        };
+        let e = match method.as_str() {
+            "is_nan" => cmp32(Cmp::Gt, mag(&recv), 0x7F80_0000),
+            "is_finite" => cmp32(Cmp::Lt, mag(&recv), 0x7F80_0000),
+            _ => Expr::Logic {
+                and: true,
+                lhs: Box::new(cmp32(Cmp::Lt, mag(&recv), 0x0080_0000)),
+                rhs: Box::new(cmp32(Cmp::Ne, mag(&recv), 0)),
+            },
+        };
+        return Ok((e, Width::Byte));
     }
     if let "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "wrapping_div" | "wrapping_rem" =
         method.as_str()

@@ -524,6 +524,19 @@ running-stat cells toward "ask the agent to write Python."
   cross-arch) → **in scope, gated on size/cost** (`max_code`, `trapped_ops`); the determinism
   clause is **never waived**. **Hardware float + transcendentals** are non-deterministic or heavy
   → **out**, the Wasm lane the non-goals reserve. `u64` on demonstrated eval need.
+  **✓ The softfloat half shipped (2026-07-07, the F-waves — `docs/real-valued-cells-amendment.md`):**
+  F0+F1 landed same-day — the kernel five + comparisons + conversions + rounding family +
+  fmin/fmax as owned dialect-source kernels bit-identical to rustc f32 (H-F1 banks, both
+  targets); the typed `f32` surface (suffix-required literals, operators/methods routing to
+  kernels, no implicit int↔f32 anywhere) with the F0.6 canon guard landed as the sugar's
+  precondition (H-F4 in CI); `finite_result` (`.cell` v8) turns non-finite f32 returns into
+  typed escalations `0xFF07`/`0xFF08`; `Ty::F32` state fields (wire code 5); relocatable
+  locals scratch (multi-kernel cells fit, byte-stable below the classic window; sandbox cap
+  re-priced 4096→8192 = half the physical budget); measured cost table + banked negatives
+  (barrel-jam slower than the loop; fadd 10,854 T) in `docs/10-dialect-semantics.md`; first
+  hand-authored cells (`softfloat` pack: `norm2_f32`, `lerp_f32`) through admission with
+  retrieval rows. **Owned transcendentals stay F2, demand-gated; repr tags in the plan unit
+  system are the open model-facing gate — float cells stay hand-authored until they land.**
 - **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
   halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
   DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the

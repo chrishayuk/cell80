@@ -290,6 +290,37 @@ four u32 multiplies ride `ED FE` traps charged ~4 T each, so its honest cost pai
 | `fmul` | 11,227 | 4 | 3,429 |
 | `fdiv` | 36,644 | 0 | 3,332 |
 | `fsqrt` | 53,219 | 0 | 2,254 |
+| `ftrunc` | 2,775 | 0 | 540 |
+| `ffloor` | 3,113 | 0 | 815 |
+| `fround` | 3,380 | 0 | 687 |
+| `fmin` | 6,409 | 0 | 1,235 |
+| `int_to_f32` | 6,392¹ | 0 | 1,044 |
+| `q16_to_f32` | 11,526¹ | 0 | 1,044 |
+| `f32_to_int_trunc` | 14,895¹ | 0 | 903 |
+
+¹ value-dependent: the conversion normalize/strip loops shift by 1 up to 31/23 steps.
+
+**Banked negative** (2026-07-07): a barrel-decomposed `f32_shr_jam` (test-and-shift by
+16/8/4/2/1) measured *worse* than the per-bit loop on the typical profile — fadd 12,406
+vs 10,854 T-states and +636 B — because real alignments are small (same-magnitude adds
+shift 0–2) and the `n > 31` early-out already caps the tail. The loop stays; the
+prediction that the barrel was "the obvious cost lever" is recorded as measured-false.
+
+**The F1 surface** (all oracle-banked like F0): conversions
+`int_to_f32`/`q16_to_f32`/`f32_to_int_trunc`/`f32_to_q16` — *typed builtins*, the only
+sanctioned int↔f32 crossings (`as` stays rejected); the `f32_to_*` pair halts typed
+`0xFF08 float_domain` on NaN/out-of-range, deliberate boundary behaviour rather than
+rustc's saturating cast (the family's one documented rustc divergence). The rounding
+family `.floor()`/`.ceil()`/`.trunc()`/`.round()` (`round` = Rust's half-away-from-zero,
+not RNE). `.min()`/`.max()` with Rust's "NaN is missing data" semantics plus two
+deterministic pins where rustc itself is unspecified: `-0 < +0`, and a *signaling* NaN
+is ignored like a quiet one (LLVM's minnum quiets sNaN on ARM but not via libm —
+host-dependent inside rustc, so the oracle excludes those zones and the pins are CI
+members). Pure-bits sugar with no kernel: `.abs()`, `.copysign(b)`, and the
+classification trio `.is_nan()`/`.is_finite()`/`.is_subnormal()` (inline compares).
+State cells carry `f32` fields (`Ty::F32`, docs 09). The sandboxed code cap moved
+4096 → 8192 with the memory map (half the physical `0xB000` budget — a multi-kernel
+f32 cell is ~6 KB of honest bytes until kernels go bank-resident).
 
 H-F2's pre-registered prediction ("fadd/fmul low thousands") missed by ~3× — recorded,
 not hidden. Pinned as regression ceilings in `cell80/tests/f32_kernels.rs`.

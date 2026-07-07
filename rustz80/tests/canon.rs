@@ -428,3 +428,24 @@ fn f32_chains_never_reassociate() {
         assert!(!out.changed, "canon reported a change on an f32 fn");
     }
 }
+
+/// Arithmetic shapes at the canonicalizer's edges — `%` chains, non-constant
+/// negation, calls in the chain, bitwise, shifts: each must canonicalize without
+/// panicking and be **idempotent** (canon of canon = canon), whether the shape
+/// rewrote (slot-renamed `%`) or soft-fell-back (negation, calls).
+#[test]
+fn full_canon_edges_are_idempotent() {
+    let cases = [
+        "fn f(a: u16, b: u16) -> u16 { a % b }",
+        "fn f(a: u16, b: u16) -> u16 { (a + b) % 7u16 }",
+        "fn f(a: i16) -> i16 { -a }",
+        "fn g(x: u16) -> u16 { x }\nfn f(a: u16) -> u16 { g(a) + 1u16 }",
+        "fn f(a: u16) -> u16 { a & 7u16 }",
+        "fn f(a: u16) -> u16 { a << 2u16 }",
+    ];
+    for src in cases {
+        let out = canonicalize_source(src, &full()).expect("canonicalizes");
+        let again = canonicalize_source(&out.source, &full()).expect("re-canonicalizes");
+        assert_eq!(again.source, out.source, "canon must be idempotent: {src}");
+    }
+}

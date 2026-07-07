@@ -34,11 +34,18 @@ pub enum DivByZero {
 
 impl CellConfig {
     /// Deny raw memory + ports, with tight ceilings — the default for untrusted cells.
+    ///
+    /// The code cap is **half the physical budget** (code + locals end at `0xB000`,
+    /// the state region): it tracked the classic 4 KB `ORG→SCRATCH` window when that
+    /// window was the physical ceiling, and moved with the map when scratch became
+    /// relocatable — a multi-kernel softfloat cell is ~6 KB of honest bytes (each
+    /// cell carries its kernels; bank-resident kernels would shrink that and let
+    /// this tighten again). Cells stay priced: the byte cost rides the index.
     pub fn sandboxed() -> Self {
         CellConfig {
             allow_raw_memory: false,
             allow_ports: false,
-            max_code_bytes: Some(4096),
+            max_code_bytes: Some(8192),
             max_touched: Some(4096),
             div_by_zero: DivByZero::Halt,
         }

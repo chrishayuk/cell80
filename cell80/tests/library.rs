@@ -55,6 +55,8 @@ mod scoring_choice;
 mod sequences;
 #[path = "library/signed-deltas.rs"]
 mod signed_deltas;
+#[path = "library/softfloat.rs"]
+mod softfloat;
 #[path = "library/spatial-grid.rs"]
 mod spatial_grid;
 #[path = "library/stateful-rng.rs"]

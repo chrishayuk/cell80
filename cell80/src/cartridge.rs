@@ -21,7 +21,11 @@ const MAGIC: &[u8; 4] = b"CELL";
 // v7 adds an optional **fixed-point scale** (`//! scale: N` → the number of fractional
 // bits, so a Q8.8 cell declares 8): one presence byte after `limits`, then the value if
 // present. Pre-v7 cartridges have no scale byte and read back as `None`.
-const VERSION: u8 = 7;
+// v8 adds the **`finite_result` boundary contract** (F-wave §F0.4): one byte after the
+// scale — `1` (the default: an f32-returning entry escalates typed on a non-finite
+// result) or `0` (opted out, for cells whose *job* is IEEE plumbing). Pre-v8
+// cartridges read back as `true`; the flag is inert unless the entry returns f32.
+const VERSION: u8 = 8;
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -105,6 +109,13 @@ pub struct Manifest {
     /// this field is for the cell's *own* boundary, and pairs with the structured
     /// [`Halt::Escalate`](crate::Halt::Escalate) hand-off at run time.
     pub limits: Vec<String>,
+    /// The F0.4 boundary contract (`//! finite_result: off` to opt out): when the
+    /// entry returns f32 and this is `true` (the default), a returned non-finite
+    /// value becomes a typed escalation — `0xFF07 float_overflow` for ±Inf,
+    /// `0xFF08 float_domain` for NaN — instead of an answer. IEEE semantics
+    /// propagate *inside* the cell (oracle fidelity); escalate-not-lie applies at
+    /// the boundary. Inert for non-f32 entries.
+    pub finite_result: bool,
     /// Optional **fixed-point scale** (`//! scale: N`): the number of fractional bits in
     /// the cell's `u16`/`u32` values, so a consumer reads them as `raw / 2^N` (a Q8.8
     /// cell declares `8`). `None` = plain integers. The dialect has no float type — this
@@ -125,6 +136,9 @@ pub struct CartridgeOpts {
     pub limits: Vec<String>,
     /// Optional fixed-point scale (fractional bits) — see [`Manifest::scale`].
     pub scale: Option<u8>,
+    /// The F0.4 boundary contract — `None` means the default (`true`). See
+    /// [`Manifest::finite_result`].
+    pub finite_result: Option<bool>,
     /// Canonicalization strength (M2.5). Defaults to `Light` — the dialect
     /// normalizer only, byte-stable when nothing fires, so hand-authored library
     /// cells keep their hashes. The compose/campaign path passes `Full` (slots,
@@ -199,6 +213,7 @@ impl Cartridge {
                 state_addrs,
                 limits: opts.limits,
                 scale: opts.scale,
+                finite_result: opts.finite_result.unwrap_or(true),
             },
             program,
             signature: None,
@@ -240,6 +255,8 @@ impl Cartridge {
             }
             None => b.push(0),
         }
+        // v8: the finite_result boundary contract.
+        b.push(m.finite_result as u8);
         b
     }
 
@@ -353,6 +370,9 @@ impl Cartridge {
         } else {
             None
         };
+        // v8+ carries the finite_result flag; older cartridges default to the
+        // contract being on (inert unless the entry returns f32).
+        let finite_result = if ver >= 8 { r.u8()? != 0 } else { true };
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
         let (stored_hash, cart_sig) = if ver >= 5 {
@@ -416,6 +436,7 @@ impl Cartridge {
                 state_addrs,
                 limits,
                 scale,
+                finite_result,
             },
             program,
             signature: cart_sig,

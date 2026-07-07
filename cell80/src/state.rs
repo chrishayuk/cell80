@@ -79,7 +79,7 @@ impl StateCell {
         self.addrs.get(field).and_then(|&(a, ty)| match ty {
             Ty::U8 => Some(self.runner.peek_u8(a) as u64),
             Ty::U16 => Some(self.runner.peek_u16(a) as u64),
-            Ty::U32 => Some(self.runner.peek_u32(a) as u64),
+            Ty::U32 | Ty::F32 => Some(self.runner.peek_u32(a) as u64),
             Ty::Bytes(_) | Ty::Str(_) => None,
         })
     }
@@ -98,6 +98,8 @@ impl StateCell {
 fn scalar_ty(f: &rustz80::FieldLayout) -> Option<Ty> {
     if let Some(n) = f.bytes {
         Some(Ty::Bytes(n))
+    } else if f.f32 {
+        Some(Ty::F32)
     } else if f.dword {
         Some(Ty::U32)
     } else if f.slots == 1 {

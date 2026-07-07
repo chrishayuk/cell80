@@ -389,13 +389,6 @@ pub(crate) fn lower_stmt_expr(
             syn::Expr::Index(ix) => lower_index_assign(ix, &a.right, ctx, body)?,
             syn::Expr::Field(f) => {
                 let (val, vw) = lower_expr(&a.right, ctx)?;
-                if vw == Width::F32 {
-                    return Err(
-                        "f32 struct fields are not supported yet — the state ABI gains \
-                         Ty::F32 with the F1 wave; keep f32 values in locals"
-                            .into(),
-                    );
-                }
                 body.push(lower_field_store(f, val, vw, ctx)?);
             }
             _ => {

@@ -24,9 +24,16 @@
 //! normalize shift cannot move a rounding boundary across the jam bit); exponents ride
 //! a +300 offset where intermediate values can go negative.
 
-/// Restricted-dialect source of the kernel five, the comparison trio (`feq`/`flt`/
-/// `fle` — Rust comparison semantics exactly: NaN compares false, -0 == +0; `>`/`>=`
-/// lower as swapped `flt`/`fle`), and two helpers. Appended to the cell prelude by
+/// Restricted-dialect source of the whole family: the kernel five, the comparison
+/// trio (`feq`/`flt`/`fle` — Rust semantics exactly: NaN compares false, -0 == +0;
+/// `>`/`>=` lower as swapped `flt`/`fle`), the F1 set (conversions
+/// `int_to_f32`/`f32_to_int_trunc`/`q16_to_f32`/`f32_to_q16` — the `f32_to_*`
+/// pair halts typed `0xFF08 float_domain` on NaN/out-of-range, deliberate boundary
+/// behaviour, *not* rustc's saturating cast; the rounding family
+/// `ftrunc`/`ffloor`/`fceil`/`fround` — `fround` is Rust's round-half-away, not RNE;
+/// and `fmin`/`fmax` — Rust "NaN is missing data" semantics, with two deterministic
+/// pins where rustc itself is unspecified: `-0 < +0`, and a *signaling* NaN is
+/// ignored like a quiet one), and two helpers. Appended to the cell prelude by
 /// `cell80` and compiled per cell — DCE prunes whatever a cell doesn't call.
 pub const F32_KERNELS: &str = r#"
 fn f32_shr_jam(x: u32, n: u32) -> u32 {
@@ -421,6 +428,265 @@ fn fle(a: u32, b: u32) -> u32 {
     }
     r
 }
+
+
+fn int_to_f32(i: u32) -> u32 {
+    let mut result = 0u32;
+    if i != 0u32 {
+        let mut m = i;
+        let mut e = 158u32;
+        while m < 0x80000000u32 {
+            m = m << 1u32;
+            e = e - 1u32;
+        }
+        let mut m30 = m >> 2u32;
+        if m & 3u32 != 0u32 {
+            m30 = m30 | 1u32;
+        }
+        result = f32_pack(m30, e);
+    }
+    result
+}
+
+fn q16_to_f32(q: u32) -> u32 {
+    let mut result = 0u32;
+    if q != 0u32 {
+        let mut m = q;
+        let mut e = 142u32;
+        while m < 0x80000000u32 {
+            m = m << 1u32;
+            e = e - 1u32;
+        }
+        let mut m30 = m >> 2u32;
+        if m & 3u32 != 0u32 {
+            m30 = m30 | 1u32;
+        }
+        result = f32_pack(m30, e);
+    }
+    result
+}
+
+fn f32_to_int_trunc(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    let mut bad = 0u32;
+    if amag > 0x7F800000u32 {
+        bad = 1u32;
+    } else if amag < 0x3F800000u32 {
+        result = 0u32;
+    } else if (a >> 31u32) == 1u32 {
+        bad = 1u32;
+    } else if amag >= 0x4F800000u32 {
+        bad = 1u32;
+    } else {
+        let e = (amag >> 23u32) - 127u32;
+        let m24 = (amag & 0x7FFFFFu32) | 0x800000u32;
+        if e <= 23u32 {
+            let mut r = m24;
+            let mut k = 23u32 - e;
+            while k != 0u32 {
+                r = r >> 1u32;
+                k = k - 1u32;
+            }
+            result = r;
+        } else {
+            let mut r = m24;
+            let mut k = e - 23u32;
+            while k != 0u32 {
+                r = r << 1u32;
+                k = k - 1u32;
+            }
+            result = r;
+        }
+    }
+    if bad != 0u32 {
+        halt(0xFF08u16);
+    }
+    result
+}
+
+fn f32_to_q16(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    let mut bad = 0u32;
+    if amag > 0x7F800000u32 {
+        bad = 1u32;
+    } else if amag < 0x37800000u32 {
+        result = 0u32;
+    } else if (a >> 31u32) == 1u32 {
+        bad = 1u32;
+    } else if amag >= 0x47800000u32 {
+        bad = 1u32;
+    } else {
+        let e = (amag >> 23u32) - 111u32;
+        let m24 = (amag & 0x7FFFFFu32) | 0x800000u32;
+        if e <= 23u32 {
+            let mut r = m24;
+            let mut k = 23u32 - e;
+            while k != 0u32 {
+                r = r >> 1u32;
+                k = k - 1u32;
+            }
+            result = r;
+        } else {
+            let mut r = m24;
+            let mut k = e - 23u32;
+            while k != 0u32 {
+                r = r << 1u32;
+                k = k - 1u32;
+            }
+            result = r;
+        }
+    }
+    if bad != 0u32 {
+        halt(0xFF08u16);
+    }
+    result
+}
+
+fn ftrunc(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let s = a & 0x80000000u32;
+    let mut result = a;
+    if amag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag < 0x3F800000u32 {
+        result = s;
+    } else if amag < 0x4B000000u32 {
+        let mut mask = 0x7FFFFFu32;
+        let mut k = (amag >> 23u32) - 127u32;
+        while k != 0u32 {
+            mask = mask >> 1u32;
+            k = k - 1u32;
+        }
+        result = s | (amag & (0xFFFFFFFFu32 ^ mask));
+    }
+    result
+}
+
+fn ffloor(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let s = a & 0x80000000u32;
+    let mut result = a;
+    if amag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag < 0x3F800000u32 {
+        result = s;
+        if s != 0u32 && amag != 0u32 {
+            result = 0xBF800000u32;
+        }
+    } else if amag < 0x4B000000u32 {
+        let mut mask = 0x7FFFFFu32;
+        let mut k = (amag >> 23u32) - 127u32;
+        while k != 0u32 {
+            mask = mask >> 1u32;
+            k = k - 1u32;
+        }
+        let mut m = amag & (0xFFFFFFFFu32 ^ mask);
+        if s != 0u32 && (amag & mask) != 0u32 {
+            m = m + mask + 1u32;
+        }
+        result = s | m;
+    }
+    result
+}
+
+fn fceil(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let s = a & 0x80000000u32;
+    let mut result = a;
+    if amag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag < 0x3F800000u32 {
+        result = s;
+        if s == 0u32 && amag != 0u32 {
+            result = 0x3F800000u32;
+        }
+    } else if amag < 0x4B000000u32 {
+        let mut mask = 0x7FFFFFu32;
+        let mut k = (amag >> 23u32) - 127u32;
+        while k != 0u32 {
+            mask = mask >> 1u32;
+            k = k - 1u32;
+        }
+        let mut m = amag & (0xFFFFFFFFu32 ^ mask);
+        if s == 0u32 && (amag & mask) != 0u32 {
+            m = m + mask + 1u32;
+        }
+        result = s | m;
+    }
+    result
+}
+
+fn fround(a: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let s = a & 0x80000000u32;
+    let mut result = a;
+    if amag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag < 0x3F000000u32 {
+        result = s;
+    } else if amag < 0x3F800000u32 {
+        result = s | 0x3F800000u32;
+    } else if amag < 0x4B000000u32 {
+        let mut mask = 0x7FFFFFu32;
+        let mut k = (amag >> 23u32) - 127u32;
+        while k != 0u32 {
+            mask = mask >> 1u32;
+            k = k - 1u32;
+        }
+        let half = (mask >> 1u32) + 1u32;
+        let m = (amag + half) & (0xFFFFFFFFu32 ^ mask);
+        result = s | m;
+    }
+    result
+}
+
+fn fmin(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    if amag > 0x7F800000u32 && bmag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag > 0x7F800000u32 {
+        result = b;
+    } else if bmag > 0x7F800000u32 {
+        result = a;
+    } else if flt(a, b) == 1u32 {
+        result = a;
+    } else if flt(b, a) == 1u32 {
+        result = b;
+    } else {
+        result = a;
+        if (b >> 31u32) == 1u32 {
+            result = b;
+        }
+    }
+    result
+}
+
+fn fmax(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    if amag > 0x7F800000u32 && bmag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+    } else if amag > 0x7F800000u32 {
+        result = b;
+    } else if bmag > 0x7F800000u32 {
+        result = a;
+    } else if flt(a, b) == 1u32 {
+        result = b;
+    } else if flt(b, a) == 1u32 {
+        result = a;
+    } else {
+        result = a;
+        if (b >> 31u32) == 0u32 {
+            result = b;
+        }
+    }
+    result
+}
 "#;
 
 /// Transitive kernel dependencies — which helper `Func`s each kernel's `Func` needs
@@ -436,4 +702,14 @@ pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
     ("feq", &[]),
     ("flt", &[]),
     ("fle", &[]),
+    ("int_to_f32", &["f32_pack"]),
+    ("q16_to_f32", &["f32_pack"]),
+    ("f32_to_int_trunc", &[]),
+    ("f32_to_q16", &[]),
+    ("ftrunc", &[]),
+    ("ffloor", &[]),
+    ("fceil", &[]),
+    ("fround", &[]),
+    ("fmin", &["flt"]),
+    ("fmax", &["flt"]),
 ];

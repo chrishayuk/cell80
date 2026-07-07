@@ -169,6 +169,9 @@ pub struct FieldLayout {
     /// `true` for a `u32` field — two consecutive slots holding one little-endian
     /// 4-byte value (vs. `slots == 2` meaning a 2-element array).
     pub dword: bool,
+    /// `true` for an `f32` field — the same two-slot wide storage as `dword`, holding
+    /// IEEE binary32 bits (the F-wave tier; the cell layer types it `Ty::F32`).
+    pub f32: bool,
     /// `Some(N)` for a **byte-packed** `[u8; N]` field (Phase S §2.3): `N` raw bytes
     /// at `base + offset * 2`, occupying `ceil(N / 2)` slots. `None` for everything
     /// else — including `slots == 1` scalars, so a `[u8; 1]`/`[u8; 2]` field is never
@@ -195,6 +198,7 @@ pub fn struct_layout(src: &str, name: &str) -> Result<Vec<FieldLayout>, String> 
             // A `[u32; N]` field is wide-*elemented*, not a wide scalar — `dword`
             // must not fire for it (the cell layer would misread it as one u32).
             dword: f.width == ir::Width::DWord && f.wide_len.is_none(),
+            f32: f.width == ir::Width::F32,
             bytes: f.packed_len.map(|n| n as u16),
         });
         offset += f.slots as u16;

@@ -134,10 +134,22 @@ fn parse_scale(s: &str) -> Option<u8> {
     s.rsplit('.').next().unwrap_or(s).trim().parse::<u8>().ok()
 }
 
-/// Parse a cell source's leading `//!` header → `(summary, tags, entry, limits, scale)`.
-fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>, Option<u8>) {
+/// Parse a cell source's leading `//!` header →
+/// `(summary, tags, entry, limits, scale, finite_result)`.
+#[allow(clippy::type_complexity)]
+fn parse_meta(
+    src: &str,
+) -> (
+    String,
+    Vec<String>,
+    Option<String>,
+    Vec<String>,
+    Option<u8>,
+    Option<bool>,
+) {
     let (mut summary, mut tags, mut entry, mut limits, mut scale) =
         (String::new(), Vec::new(), None, Vec::new(), None);
+    let mut finite_result = None;
     let csv = |s: &str| -> Vec<String> {
         s.split(',')
             .map(|s| s.trim().to_string())
@@ -159,6 +171,13 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>, O
             } else if let Some(sv) = rest.strip_prefix("scale:") {
                 // Fixed-point scale (fractional bits) — `//! scale: 8` for a Q8.8 cell.
                 scale = parse_scale(sv);
+            } else if let Some(fv) = rest.strip_prefix("finite_result:") {
+                // The F0.4 boundary contract — `off` opts an IEEE-plumbing cell out
+                // of the non-finite-return escalation (default on).
+                finite_result = match fv.trim() {
+                    "off" | "false" | "0" => Some(false),
+                    _ => Some(true),
+                };
             } else if summary.is_empty() {
                 summary = rest.to_string();
             }
@@ -166,7 +185,7 @@ fn parse_meta(src: &str) -> (String, Vec<String>, Option<String>, Vec<String>, O
             break; // first code line — header done
         }
     }
-    (summary, tags, entry, limits, scale)
+    (summary, tags, entry, limits, scale, finite_result)
 }
 
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
@@ -177,7 +196,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
         Some("rs") => Some((|| {
             let src =
                 std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let (summary, tags, entry, limits, scale) = parse_meta(&src);
+            let (summary, tags, entry, limits, scale, finite_result) = parse_meta(&src);
             let id = path
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -193,6 +212,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
                     tags,
                     limits,
                     scale,
+                    finite_result,
                     ..Default::default()
                 },
             )
@@ -1230,6 +1250,36 @@ mod tests {
     use super::*;
     use crate::{Cartridge, CartridgeOpts, CellConfig};
 
+    #[test]
+    fn parse_meta_reads_finite_result() {
+        // The F0.4 header key: `off` opts an IEEE-plumbing cell out of the
+        // non-finite-return escalation; absent means the default (on).
+        let (.., finite) = parse_meta("//! s\n//! finite_result: off\nfn run() -> u16 { 1u16 }");
+        assert_eq!(finite, Some(false));
+        let (.., finite) = parse_meta("//! s\n//! finite_result: on\nfn run() -> u16 { 1u16 }");
+        assert_eq!(finite, Some(true));
+        let (.., finite) = parse_meta("//! s\nfn run() -> u16 { 1u16 }");
+        assert_eq!(finite, None);
+    }
+
+    #[test]
+    fn finite_result_header_flows_to_the_manifest() {
+        // A library `.rs` with the opt-out header compiles to a manifest with the
+        // contract off — the whole `library_cartridge` wiring, not just the parser.
+        let dir = std::env::temp_dir().join(format!("cell80-finres-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("nan_probe.rs");
+        std::fs::write(
+            &p,
+            "//! Returns NaN deliberately (IEEE plumbing).\n//! finite_result: off\nfn run() -> f32 { 0.0f32 / 0.0f32 }\n",
+        )
+        .unwrap();
+        let cart = library_cartridge(&p).unwrap().unwrap();
+        assert!(!cart.manifest.finite_result);
+        assert_eq!(cart.manifest.signature.ret, "f32");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     fn host() -> CellHost {
         let mut h = CellHost::new();
         h.add(
@@ -1259,12 +1309,12 @@ mod tests {
         assert_eq!(parse_scale("Q16.16"), Some(16));
         assert_eq!(parse_scale("  12 "), Some(12));
         assert_eq!(parse_scale("nonsense"), None);
-        let (summary, _, _, _, scale) =
+        let (summary, _, _, _, scale, _) =
             parse_meta("//! Q8.8 multiply\n//! tags: math\n//! scale: 8\nfn run() -> u16 { 0u16 }");
         assert_eq!(scale, Some(8));
         // The scale line never leaks into the summary; absent → None.
         assert_eq!(summary, "Q8.8 multiply");
-        let (_, _, _, _, none) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
+        let (_, _, _, _, none, _) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
         assert_eq!(none, None);
         // End-to-end: the library path picks up `q_mul`'s `//! scale: 8` (skip if the
         // sibling cells corpus isn't present, e.g. a packaged crates.io build).

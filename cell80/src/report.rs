@@ -43,6 +43,25 @@ pub const ESCALATE_REASONS: [(u16, &str); 9] = [
     (0xFF08, "float_domain"),
 ];
 
+/// The F0.4 boundary check (`finite_result`): for an f32-returning entry that
+/// declares the contract, a **returned** non-finite value becomes a typed
+/// escalation — `0xFF07 float_overflow` for ±Inf, `0xFF08 float_domain` for NaN —
+/// instead of an answer. Any other halt passes through; the f32 bits ride the wide
+/// return convention (`regs[0]` = low word, `regs[1]` = high).
+pub fn finite_result_check(halt: Halt, regs: [u16; 3]) -> Halt {
+    if halt != Halt::Returned {
+        return halt;
+    }
+    let mag = (regs[0] as u32 | (regs[1] as u32) << 16) & 0x7FFF_FFFF;
+    if mag > 0x7F80_0000 {
+        Halt::Escalate(0xFF08)
+    } else if mag == 0x7F80_0000 {
+        Halt::Escalate(0xFF07)
+    } else {
+        halt
+    }
+}
+
 /// Why a run stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Halt {
@@ -106,6 +125,11 @@ pub enum Ty {
     /// bytes), valid by the host-boundary contract. Manifest annotation for the
     /// Phase S3 `str_out` promotion; no field lowers to it before then.
     Str(u16),
+    /// `f32` — IEEE binary32 bits in the same two-slot wide storage as `u32` (the
+    /// F-wave tier). Scalar `set`/`get` carry the raw bits in the `u64` (the host
+    /// converts with `f32::from_bits`/`to_bits`); the typed distinction keeps f32
+    /// state from silently posing as an integer.
+    F32,
 }
 
 impl Ty {
@@ -115,6 +139,7 @@ impl Ty {
             "u8" => Ok(Ty::U8),
             "u16" => Ok(Ty::U16),
             "u32" => Ok(Ty::U32),
+            "f32" => Ok(Ty::F32),
             other => {
                 let buf = |prefix: &str| -> Option<Result<Ty, String>> {
                     let inner = other.strip_prefix(prefix)?.strip_suffix(']')?;
@@ -143,6 +168,7 @@ impl Ty {
             Ty::U8 => 2,
             Ty::Bytes(_) => 3,
             Ty::Str(_) => 4,
+            Ty::F32 => 5,
         }
     }
 
@@ -154,6 +180,7 @@ impl Ty {
             1 => Ok(Ty::U32),
             2 => Ok(Ty::U8),
             3 => Ok(Ty::Bytes(capacity)),
+            5 => Ok(Ty::F32),
             4 => Ok(Ty::Str(capacity)),
             other => Err(format!("unknown state-field type code {other}")),
         }
@@ -176,6 +203,7 @@ impl std::fmt::Display for Ty {
             Ty::U32 => write!(f, "u32"),
             Ty::Bytes(n) => write!(f, "bytes[{n}]"),
             Ty::Str(n) => write!(f, "str[{n}]"),
+            Ty::F32 => write!(f, "f32"),
         }
     }
 }

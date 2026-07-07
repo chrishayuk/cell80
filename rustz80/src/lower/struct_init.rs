@@ -202,9 +202,24 @@ pub(crate) fn store_struct_literal(
                     body.push(Stmt::Assign(base + off + i, v));
                 }
             }
-            // A `u32` field initialises wide (two slots, one `Assign32`).
-            _ if fd.is_some_and(|d| d.width == Width::DWord) => {
+            // A wide (`u32`/`f32`) field initialises wide (two slots, one
+            // `Assign32`) — the representation must agree (16-bit widens into u32
+            // only; f32 fields take f32 values).
+            _ if fd.is_some_and(|d| d.width.is_wide()) => {
+                let fw = fd.map(|d| d.width).unwrap_or(Width::DWord);
                 let (v, vw) = lower_expr(&fv.expr, ctx)?;
+                if (fw == Width::F32) != (vw == Width::F32) {
+                    return Err(format!(
+                        "field `{fname}` is {} but the initialiser is {} — conversions \
+                         are explicit",
+                        if fw == Width::F32 { "f32" } else { "u32" },
+                        if vw == Width::F32 {
+                            "f32"
+                        } else {
+                            "an integer"
+                        }
+                    ));
+                }
                 body.push(Stmt::Assign32(base + off, coerce32(v, vw)));
             }
             _ if slots == 1 => {

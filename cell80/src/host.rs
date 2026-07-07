@@ -16,6 +16,10 @@ pub(crate) struct Loaded {
     pub(crate) id: String,
     pub(crate) entry: String,
     pub(crate) state_addrs: Vec<(String, u16, Ty)>,
+    /// The F0.4 boundary contract applies: the manifest declares `finite_result`
+    /// *and* the entry returns f32 — precomputed at load so the run paths pay one
+    /// bool test.
+    pub(crate) finite_result: bool,
 }
 
 /// What a fact-aware behavioural route did — the ranking plus the provenance split
@@ -292,6 +296,7 @@ impl CellHost {
             id: id.to_string(),
             entry: cart.manifest.entry.clone(),
             state_addrs: cart.manifest.state_addrs.clone(),
+            finite_result: cart.manifest.finite_result && cart.manifest.signature.ret == "f32",
         };
         // Reuse a freed handle slot if there is one.
         match self.live.iter().position(Option::is_none) {
@@ -338,14 +343,26 @@ impl CellHost {
     ) -> Result<Report, String> {
         let l = self.loaded(handle)?;
         let entry = l.entry.clone();
-        l.runner.run_with_inputs(Some(&entry), args, inputs, budget)
+        let finite = l.finite_result;
+        let mut r = l
+            .runner
+            .run_with_inputs(Some(&entry), args, inputs, budget)?;
+        if finite {
+            r.halt = super::report::finite_result_check(r.halt, r.regs);
+        }
+        Ok(r)
     }
 
     /// The hot path: run a loaded cell for just the result registers/cycles/halt.
     pub fn run_fast(&mut self, handle: usize, args: &[u16], budget: u64) -> Result<Fast, String> {
         let l = self.loaded(handle)?;
         let entry = l.entry.clone();
-        l.runner.run_fast(Some(&entry), args, budget)
+        let finite = l.finite_result;
+        let mut r = l.runner.run_fast(Some(&entry), args, budget)?;
+        if finite {
+            r.halt = super::report::finite_result_check(r.halt, r.regs);
+        }
+        Ok(r)
     }
 
     /// The **cached** state-cell hot path (docs/12 §2): [`run_state`](Self::run_state)'s

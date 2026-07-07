@@ -129,13 +129,20 @@ today, no new compiler surface. Named reasons:
 | `0xFF08` | `float_domain` |
 
 The two float codes are the **`finite_result` boundary contract** (the F-wave
-amendment, `docs/real-valued-cells-amendment.md` §F0.4): a cell that declares it
-halts typed at return when its result is non-finite — `float_overflow` for ±Inf,
-`float_domain` for NaN. Inside the cell IEEE semantics propagate exactly (the
-softfloat kernels are bit-identical to rustc f32; an in-kernel trap would diverge
-from the golden reference); escalate-not-lie applies at the boundary. `0xFF02`
-(`needs_floats`) narrows to "float capability not yet in dialect" — transcendentals
-before F2 lands, f64, anything libm-shaped.
+amendment, `docs/real-valued-cells-amendment.md` §F0.4): an f32-returning cell that
+declares it (`.cell` v8 manifest field, default **on**; `//! finite_result: off`
+opts an IEEE-plumbing cell out) escalates typed when its returned value is
+non-finite — `float_overflow` for ±Inf, `float_domain` for NaN — enforced host-side
+on the wide return registers, so Inf never arrives wearing an answer's clothes.
+`0xFF08` is also the conversion kernels' domain halt (`f32_to_int_trunc`/`f32_to_q16`
+on NaN/out-of-range — deliberate boundary behaviour, not rustc's saturating cast).
+Inside the cell IEEE semantics propagate exactly (the softfloat kernels are
+bit-identical to rustc f32; an in-kernel trap would diverge from the golden
+reference); escalate-not-lie applies at the boundary. `0xFF02` (`needs_floats`)
+narrows to "float capability not yet in dialect" — transcendentals before F2 lands,
+f64, anything libm-shaped. State fields gained `f32` (`Ty::F32`, wire code 5, same
+two-slot storage as `u32`): scalar `set`/`get` carry raw binary32 bits in the `u64`,
+and the type keeps f32 state from silently posing as an integer.
 
 Unnamed codes in the band decode as `custom`; the raw code always rides along as
 `escalate_code`. The static half of the contract is the manifest's `limits` field

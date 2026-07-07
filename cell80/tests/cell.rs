@@ -683,7 +683,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("269 cells"));
+    assert!(listing.contains("range_check") && listing.contains("288 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -747,7 +747,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("269 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("288 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -758,7 +758,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 269, "got: {out}");
+    assert_eq!(cells.len(), 288, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -804,7 +804,7 @@ fn cli_index_gate_over_the_real_library() {
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("269 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("288 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
@@ -1181,6 +1181,7 @@ fn struct_layout_offsets() {
             offset: 0,
             slots: 1,
             dword: false,
+            f32: false,
             bytes: None
         }
     );
@@ -2017,9 +2018,10 @@ fn pre_v5_cartridges_still_load() {
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();
-    // Drop the trailing v5/v7 manifest fields a v4 stream never had: the empty limits
-    // u16 (2 bytes) and the v7 scale presence byte (1 byte).
-    v4.extend_from_slice(&v5[..manifest_end - 3]);
+    // Drop the trailing v5/v7/v8 manifest fields a v4 stream never had: the empty
+    // limits u16 (2 bytes), the v7 scale presence byte (1), and the v8
+    // finite_result byte (1).
+    v4.extend_from_slice(&v5[..manifest_end - 4]);
     v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
     v4[4] = 4; // version byte
     let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path

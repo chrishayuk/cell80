@@ -123,13 +123,9 @@ fn field_def(
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
         syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
-        syn::Type::Path(p) if p.path.is_ident("f32") => {
-            return Err(
-                "f32 struct fields are not supported yet — the state ABI gains \
-                 Ty::F32 with the F1 wave; keep f32 in locals/params/returns"
-                    .into(),
-            )
-        }
+        // An `f32` field: the same two-slot wide storage as `u32`, typed F32 — reads
+        // and stores keep the representation (no silent bits-crossing at fields).
+        syn::Type::Path(p) if p.path.is_ident("f32") => (2, None, Width::F32),
         syn::Type::Path(p) if p.path.is_ident("i16") => (1, None, Width::SWord),
         // A **nested struct** field (`sprite: Sprite`) — the field is the sub-struct's
         // whole layout, `struct_slots(sub)` consecutive slots. The element struct must
