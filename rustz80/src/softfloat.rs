@@ -24,8 +24,10 @@
 //! normalize shift cannot move a rounding boundary across the jam bit); exponents ride
 //! a +300 offset where intermediate values can go negative.
 
-/// Restricted-dialect source of the kernel five (+ two helpers), appended to the cell
-/// prelude by `cell80` and compiled per cell — DCE prunes whatever a cell doesn't call.
+/// Restricted-dialect source of the kernel five, the comparison trio (`feq`/`flt`/
+/// `fle` — Rust comparison semantics exactly: NaN compares false, -0 == +0; `>`/`>=`
+/// lower as swapped `flt`/`fle`), and two helpers. Appended to the cell prelude by
+/// `cell80` and compiled per cell — DCE prunes whatever a cell doesn't call.
 pub const F32_KERNELS: &str = r#"
 fn f32_shr_jam(x: u32, n: u32) -> u32 {
     let mut r = x;
@@ -361,5 +363,62 @@ fn fsqrt(a: u32) -> u32 {
         result = f32_pack(m30, e);
     }
     result
+}
+
+
+fn feq(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut r = 0u32;
+    if amag <= 0x7F800000u32 && bmag <= 0x7F800000u32 {
+        if a == b || (amag == 0u32 && bmag == 0u32) {
+            r = 1u32;
+        }
+    }
+    r
+}
+
+fn flt(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut r = 0u32;
+    if amag <= 0x7F800000u32 && bmag <= 0x7F800000u32 {
+        let sa = a >> 31u32;
+        let sb = b >> 31u32;
+        if sa != sb {
+            if sa == 1u32 && (amag != 0u32 || bmag != 0u32) {
+                r = 1u32;
+            }
+        } else if sa == 0u32 {
+            if amag < bmag {
+                r = 1u32;
+            }
+        } else if bmag < amag {
+            r = 1u32;
+        }
+    }
+    r
+}
+
+fn fle(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut r = 0u32;
+    if amag <= 0x7F800000u32 && bmag <= 0x7F800000u32 {
+        let sa = a >> 31u32;
+        let sb = b >> 31u32;
+        if sa != sb {
+            if sa == 1u32 || (amag == 0u32 && bmag == 0u32) {
+                r = 1u32;
+            }
+        } else if sa == 0u32 {
+            if amag <= bmag {
+                r = 1u32;
+            }
+        } else if bmag <= amag {
+            r = 1u32;
+        }
+    }
+    r
 }
 "#;

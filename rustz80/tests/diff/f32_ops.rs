@@ -30,12 +30,20 @@ const EDGES: [u32; 40] = [
     0x7F800000, 0xFF800000, 0x7FC00000, 0xFFC00000, 0x7F800001, 0x7FFFFFFF, 0x4CBEBC20, 0x501502F9,
 ];
 
-const OPS: [&str; 4] = ["fadd", "fsub", "fmul", "fdiv"];
+const OPS: [&str; 7] = ["fadd", "fsub", "fmul", "fdiv", "feq", "flt", "fle"];
 
 /// The rustc oracle: the same operation on host f32, canonicalized. This is the
 /// whole point of owning binary32 — the reference is bit-specified and portable.
 fn expect(op: &str, a: u32, b: u32) -> u32 {
     let (fa, fb) = (f32::from_bits(a), f32::from_bits(b));
+    // The comparison trio returns 0/1 with Rust semantics (NaN false, -0 == +0);
+    // `>`/`>=` lower as swapped `flt`/`fle`, so the trio covers all six.
+    match op {
+        "feq" => return (fa == fb) as u32,
+        "flt" => return (fa < fb) as u32,
+        "fle" => return (fa <= fb) as u32,
+        _ => {}
+    }
     canon(match op {
         "fadd" => (fa + fb).to_bits(),
         "fsub" => (fa - fb).to_bits(),
