@@ -42,6 +42,11 @@ cells — `extended_gcd`, `jacobi_symbol`, `order_modulo`, `is_quadratic_residue
 `discrete_log_naive` — see `docs/library-growth.md`'s "Wave 9" note. All five matched
 by exact name; no generalization-blind-spot rows to flag this time.*
 
+*Update (2026-07-08, Wave 10): the combinatorial-numbers slice landed as four cells —
+`bell_number`, `stirling_first`, `stirling_second`, `is_catalan_number` — see
+`docs/library-growth.md`'s "Wave 10" note. All four matched by exact name. First wave
+to use a local array in the dialect (verified standalone before designing around it).*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

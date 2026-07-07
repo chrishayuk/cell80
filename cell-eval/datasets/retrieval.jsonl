@@ -644,3 +644,11 @@
 {"id": "is_quadratic_residue-para-1", "query": "quadratic residue predicate over any modulus, checked by scanning every candidate root", "expected": "is_quadratic_residue", "category": "paraphrase"}
 {"id": "discrete_log_naive-direct-1", "query": "brute force search for a discrete logarithm within a bounded exponent range", "expected": "discrete_log_naive", "category": "direct"}
 {"id": "discrete_log_naive-para-1", "query": "smallest exponent making a base raised to it match a target value mod m, capped search", "expected": "discrete_log_naive", "category": "paraphrase"}
+{"id": "bell_number-direct-1", "query": "the nth bell number, count of set partitions", "expected": "bell_number", "category": "direct"}
+{"id": "bell_number-para-1", "query": "OEIS Bell triangle value, total number of equivalence-relation partitions on n labeled elements", "expected": "bell_number", "category": "paraphrase"}
+{"id": "is_catalan_number-direct-1", "query": "check whether a value is a catalan number", "expected": "is_catalan_number", "category": "direct"}
+{"id": "is_catalan_number-para-1", "query": "is this number one of the sequence 1 2 5 14 42 132 counting balanced bracketings", "expected": "is_catalan_number", "category": "paraphrase"}
+{"id": "stirling_first-direct-1", "query": "unsigned stirling number of the first kind", "expected": "stirling_first", "category": "direct"}
+{"id": "stirling_first-para-1", "query": "unsigned first-kind Stirling number counting permutation cycle structures", "expected": "stirling_first", "category": "paraphrase"}
+{"id": "stirling_second-direct-1", "query": "stirling number of the second kind", "expected": "stirling_second", "category": "direct"}
+{"id": "stirling_second-para-1", "query": "how many ways to partition n items into exactly k nonempty subsets", "expected": "stirling_second", "category": "paraphrase"}

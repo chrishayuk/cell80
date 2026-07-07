@@ -288,13 +288,25 @@ wave 9    286 cells   + modular / classic number theory, the math-server
                         and discrete_log_naive (brute-force search bounded
                         by a caller-supplied max exponent). See the pack
                         note below.
-next      ~301         + the remaining ~29 ready-now math-server candidates
-                        (combinatorics, geometry integer subset, vectors,
-                        matrix, statistics — docs/math-server-map.md) plus
-                        Wave Q0 (Q16.16 plumbing) as a prerequisite for the
-                        4 Q-format candidates; cosine_score_approx
-                        (deferred until cell_solve reads out); CORDIC trig
-                        remains demand-gated per
+wave 10   292 cells   + combinatorial numbers, the math-server map's next
+                        slice (286 -> 288 in between via the F-wave
+                        session's own softfloat pack landing in the same
+                        checkout, unrelated to this track): bell_number
+                        and stirling_first both needed a small local
+                        array (the first library cells to use one) --
+                        verified the syntax compiles standalone before
+                        committing to either design. stirling_second uses
+                        the inclusion-exclusion closed form instead (sign-
+                        magnitude accumulation, no array), and
+                        is_catalan_number walks catalan_number's own
+                        recurrence inline as a bounded membership search.
+                        See the pack note below.
+next      ~25          + the remaining ready-now math-server candidates
+                        (geometry integer subset, vectors, matrix,
+                        statistics) plus Wave Q0 (Q16.16 plumbing) as a
+                        prerequisite for the 4 Q-format candidates;
+                        cosine_score_approx (deferred until cell_solve
+                        reads out); CORDIC trig remains demand-gated per
                         docs/real-valued-cells-spec.md Wave 3
 ```
 
@@ -1535,6 +1547,63 @@ route around. Codegen golden regenerated — purely additive, and this pass also
 that the wave 7/8 golden update had never actually been committed (an oversight: the
 prior commit staged everything else but missed `codegen_golden.txt`), so this wave's
 commit carries all three waves' golden entries at once.
+
+**Wave 10 — combinatorial numbers (2026-07-08), the math-server map's next slice, landed
+after the F-wave/canon-split three-way merge settled.** Four cells, and the first two in
+the whole library to use a **local array** — every prior wave avoided them on principle
+(no proven precedent, `choose_u32`'s multiplicative running-division formula was always
+preferred), but two of this wave's recurrences (`bell_number`'s Bell triangle,
+`stirling_first`'s DP) genuinely need one, so the syntax was verified standalone with a
+throwaway 5-cell test program (mutable `[u32; N]`, runtime `as usize` indexing) before
+either cell was designed around it, not discovered by a failed compile mid-wave:
+
+- **`bell_number(n)`** computes the Bell triangle in **one array, updated in place** — not
+  the textbook two-array (previous row / current row) version, and not a whole-array copy
+  either (both left untested and best avoided): the recurrence needs a new row's `cur[j-1]`
+  *and* the old row's `prev[j-1]` simultaneously, which an in-place sweep can't hold at one
+  index, so the fix is a rolling scalar carry (`old_prev`) that snapshots each position's
+  old value the instant before it gets overwritten. First attempt used a genuine two-array
+  design and a Bell-number-as-sum-of-Stirling-numbers formula (reusing `stirling_second`'s
+  own verified technique) as fallbacks — the two-array version was rejected for needing an
+  unverified whole-array reassignment (`prev = cur`), and the Stirling-sum version was
+  rejected on the numbers themselves: simulating its checked-arithmetic in Python found it
+  overflows at `n=10`, far short of the Bell-triangle version's `n=14` (an intermediate `j^n`
+  term for `j` near `n` blows up long before the modest Bell number itself would) — a
+  real accuracy-vs-range tradeoff resolved by measurement, not guessed.
+- **`stirling_first(n, k)`** (unsigned Stirling numbers of the first kind — permutations by
+  cycle count, the signed convention `s(n,k) = (-1)^(n-k) c(n,k)` deliberately not used,
+  since a pure counting cell has no business returning a sign) hit a real off-by-one on
+  the first attempt: the in-place DP update only touches array indices `1..=top` each row
+  (mirroring the recurrence `c(n,k) = (n-1)*c(n-1,k) + c(n-1,k-1)`, which has no `k=-1`
+  term), so index `0` was never reset and silently stayed `1` (row 0's value) forever —
+  caught by a full sympy cross-check across every `(n,k)` up to `n=13` before writing the
+  cell, not by a single spot check, which would have passed on the two or three pairs a
+  human typically picks by hand. Fixed by explicitly zeroing index 0 after each row.
+- **`stirling_second(n, k)`** uses the inclusion-exclusion closed form instead of a DP
+  array (`S(n,k) = (1/k!) * sum_{j=0}^{k} (-1)^(k-j) * C(k,j) * j^n`), reusing
+  `wave 9`'s sign-magnitude-accumulator pattern for the alternating sum and `choose_u32`'s
+  multiplicative formula for `C(k,j)` inline — no array needed here, since the sum is over
+  a single index. Hit the same `self.field = if … else …` gotcha `extended_gcd` (wave 9)
+  and `backoff_next`/`accumulate_step` (Phase 2.3) already found — bind to a `let` first.
+- **`is_catalan_number(x)`** walks `catalan_number`'s own recurrence inline as a bounded
+  upward search (the `triangular_inverse_exact`/`is_polygonal_number` membership-test
+  shape), and — checked directly rather than assumed — **never actually escalates**: `x` is
+  `u16`-bounded and `C(12) = 208012` already exceeds `u16::MAX`, so the search always
+  terminates within the u16 domain before any `u32` intermediate could realistically
+  overflow. The first-drafted docstring claimed an escalation path anyway (copying the
+  pattern from sibling cells reflexively); caught and removed before landing, not left as
+  a harmless-but-false claim.
+
+Every retrieval row was actually verified against the live index before landing — and
+this wave is the reason that discipline matters written down twice: two rows (already
+sitting in `retrieval.jsonl` from earlier in the same session, likely added before a
+context compaction) turned out to rank the *wrong* cell when re-checked (`bell_number`'s
+paraphrase lost to `mask_has_any`, `stirling_first`'s lost to `permute_u32`, both generic-
+vocabulary collisions) — caught and fixed by the same query-testing loop every prior wave
+used, not assumed correct just because they were already on disk. Gate: 292 admitted, 0
+refused (softfloat no longer needs excluding — the F-wave session's own cap fix landed
+before this wave started). Full workspace test suite green. Codegen golden regenerated,
+purely additive (4 new entries, zero existing cell's bytes changed).
 
 ## Mine the ecosystem first
 
