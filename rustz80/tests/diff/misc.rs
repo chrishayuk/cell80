@@ -124,6 +124,11 @@ fn size_report_covers_image() {
 
 #[test]
 fn unsupported_is_an_error() {
-    // f32 is outside the dialect → a clear compile error (the host-only signal).
-    assert!(rustz80::compile_fn("fn f() -> u16 { let x = 1.5f32; 0u16 }").is_err());
+    // f32 is *in* the dialect since the F0 sugar (`1.5f32` routes to the owned
+    // softfloat kernels — `f32_ops.rs` owns that surface). What stays out, each
+    // with a clear compile error: f64 (demand-gated) and unsuffixed decimals
+    // (the canon pass's exact-decimal lane, not a dialect value).
+    assert!(rustz80::compile_fn("fn f() -> u16 { let x = 1.5f32; 0u16 }").is_ok());
+    assert!(rustz80::compile_fn("fn f() -> u16 { let x = 1.5f64; 0u16 }").is_err());
+    assert!(rustz80::compile_fn("fn f() -> u16 { let x = 1.5; 0u16 }").is_err());
 }

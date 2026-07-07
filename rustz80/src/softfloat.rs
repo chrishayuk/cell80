@@ -422,3 +422,18 @@ fn fle(a: u32, b: u32) -> u32 {
     r
 }
 "#;
+
+/// Transitive kernel dependencies — which helper `Func`s each kernel's `Func` needs
+/// when the f32 sugar auto-appends them (a name here must match a `fn` in
+/// [`F32_KERNELS`]). Kept honest by the diff bank: a missing dep is an unresolved
+/// symbol at encode, and every kernel is exercised source-level in `f32_ops.rs`.
+pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
+    ("fadd", &["f32_shr_jam", "f32_pack"]),
+    ("fsub", &["fadd", "f32_shr_jam", "f32_pack"]),
+    ("fmul", &["f32_shr_jam", "f32_pack"]),
+    ("fdiv", &["f32_shr_jam", "f32_pack"]),
+    ("fsqrt", &["f32_pack"]),
+    ("feq", &[]),
+    ("flt", &[]),
+    ("fle", &[]),
+];

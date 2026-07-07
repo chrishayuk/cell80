@@ -67,12 +67,21 @@ pub(crate) struct Ctx<'a> {
     pub(crate) fn_sigs: &'a HashMap<String, FnSig>,
     /// The function being lowered returns `u32` (rides `HL:DE`).
     pub(crate) ret_wide: bool,
+    /// The declared return is `f32` (implies `ret_wide`) — wide returns type-check
+    /// their representation, not just their slot count.
+    pub(crate) ret_f32: bool,
 }
 
 impl Ctx<'_> {
     /// The width of a type annotation, resolving a generic parameter to its concrete
     /// width for this instantiation (`u8` → byte; a type-param → its bound width;
     /// anything else → word).
+    /// Record that the f32 sugar routed to a softfloat kernel — the program-level
+    /// lowering appends the kernel `Func`s (and their deps) after all fns lower.
+    pub(crate) fn mark_f32(&self, kernel: &'static str) {
+        self.mono.borrow_mut().f32_kernels.insert(kernel);
+    }
+
     pub(crate) fn width_of_type(&self, t: &syn::Type) -> Width {
         if let syn::Type::Path(p) = t {
             if let Some(id) = p.path.get_ident() {
@@ -88,6 +97,9 @@ impl Ctx<'_> {
                 }
                 if s == "u32" {
                     return Width::DWord;
+                }
+                if s == "f32" {
+                    return Width::F32;
                 }
             }
         }
@@ -129,14 +141,29 @@ impl Ctx<'_> {
 /// A function's call-boundary signature: which arg slots are wide, and whether the
 /// return rides `HL:DE` — the one-u32-across-a-call convention (docs 10 §Calls).
 pub(crate) struct FnSig {
-    pub(crate) arg_wides: Vec<bool>,
-    pub(crate) ret_wide: bool,
+    pub(crate) args: Vec<Width>,
+    pub(crate) ret: Width,
 }
 
-/// `-> u32`?
-fn output_is_u32(out: &syn::ReturnType) -> bool {
-    matches!(out, syn::ReturnType::Type(_, t)
-        if matches!(&**t, syn::Type::Path(p) if p.path.is_ident("u32")))
+/// The call-boundary width of a bare type (no ctx: type args don't reach here).
+fn sig_width(t: &syn::Type) -> Width {
+    if let syn::Type::Path(p) = t {
+        if p.path.is_ident("u32") {
+            return Width::DWord;
+        }
+        if p.path.is_ident("f32") {
+            return Width::F32;
+        }
+    }
+    Width::Word
+}
+
+/// The declared return width (`u32` → wide, `f32` → wide f32 bits, else 16-bit).
+fn output_width(out: &syn::ReturnType) -> Width {
+    match out {
+        syn::ReturnType::Type(_, t) => sig_width(t),
+        syn::ReturnType::Default => Width::Word,
+    }
 }
 
 /// Collect the call-boundary signatures of every plain free `fn` (intrinsics,
@@ -150,20 +177,20 @@ fn collect_fn_sigs(file: &syn::File) -> HashMap<String, FnSig> {
         if is_intrinsic(&name) || is_generic_fn(f) {
             continue;
         }
-        let arg_wides = f
+        let args = f
             .sig
             .inputs
             .iter()
-            .map(|a| {
-                matches!(a, syn::FnArg::Typed(pt)
-                    if matches!(&*pt.ty, syn::Type::Path(p) if p.path.is_ident("u32")))
+            .map(|a| match a {
+                syn::FnArg::Typed(pt) => sig_width(&pt.ty),
+                syn::FnArg::Receiver(_) => Width::Word,
             })
             .collect();
         m.insert(
             name,
             FnSig {
-                arg_wides,
-                ret_wide: output_is_u32(&f.sig.output),
+                args,
+                ret: output_width(&f.sig.output),
             },
         );
     }
@@ -316,6 +343,48 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
         out.push((inst.name, func));
     }
 
+    // The f32 sugar routed operators to softfloat kernels — append the needed kernel
+    // `Func`s (with their transitive helpers) unless the program already defines them
+    // (the cell prelude ships the same text; user definitions shadow). The kernels are
+    // plain dialect fns, so they lower like any other — one implementation, one oracle.
+    let used: Vec<&'static str> = mono.borrow().f32_kernels.iter().copied().collect();
+    if !used.is_empty() {
+        let defined: std::collections::HashSet<String> =
+            out.iter().map(|(n, _)| n.clone()).collect();
+        let mut want: std::collections::HashSet<&str> = Default::default();
+        let mut need = used;
+        while let Some(k) = need.pop() {
+            if !want.insert(k) {
+                continue;
+            }
+            if let Some((_, deps)) = crate::softfloat::KERNEL_DEPS.iter().find(|(n, _)| *n == k) {
+                need.extend(deps.iter().copied());
+            }
+        }
+        let kfile: syn::File =
+            syn::parse_str(crate::softfloat::F32_KERNELS).expect("kernel source parses");
+        let ksigs = collect_fn_sigs(&kfile);
+        for item in &kfile.items {
+            let syn::Item::Fn(f) = item else { continue };
+            let kname = f.sig.ident.to_string();
+            if want.contains(kname.as_str()) && !defined.contains(&kname) {
+                let func = lower_with(
+                    f,
+                    &structs,
+                    &enums,
+                    prelude,
+                    &mono,
+                    &no_args,
+                    &no_const,
+                    None,
+                    &consts_cell,
+                    &ksigs,
+                )?;
+                out.push((kname, func));
+            }
+        }
+    }
+
     if out.is_empty() {
         return Err("no functions found".into());
     }
@@ -377,9 +446,9 @@ fn lower_method<'a>(
     );
     // Methods stay 16-bit at the boundary: `self` holds HL, so a wide param has no
     // register pair, and wide method returns wait on demand.
-    if output_is_u32(&m.sig.output) {
+    if output_width(&m.sig.output).is_wide() {
         return Err(format!(
-            "`{self_ty}::{}` returns u32 — wide returns are for free functions \
+            "`{self_ty}::{}` returns u32/f32 — wide returns are for free functions \
              (the `HL:DE` convention); return the words or use a free kernel",
             m.sig.ident
         ));
@@ -413,7 +482,9 @@ fn lower_with<'a>(
     let mut ctx = new_ctx(
         structs, enums, prelude, mono, type_args, const_args, consts, fn_sigs,
     );
-    ctx.ret_wide = output_is_u32(&item.sig.output);
+    let ret_w = output_width(&item.sig.output);
+    ctx.ret_wide = ret_w.is_wide();
+    ctx.ret_f32 = ret_w == Width::F32;
     let (params, wide_param, wide_second) = lower_inputs(&item.sig.inputs, &mut ctx, self_ty)?;
     let (body, ret) = lower_fn_block(&item.block, &mut ctx)?;
     Ok(Func {
@@ -442,6 +513,7 @@ fn new_ctx<'a>(
         vars: Vars::default(),
         fn_sigs,
         ret_wide: false,
+        ret_f32: false,
         structs,
         enums,
         prelude,
@@ -541,23 +613,23 @@ fn lower_inputs(
                         }
                         None => {
                             let w = ctx.width_of_type(&pt.ty);
-                            if w == Width::DWord {
-                                // The wide-param convention: u32s lead. The first
-                                // rides HL:DE; a second rides the stack (the
+                            if w.is_wide() {
+                                // The wide-param convention: u32s (and f32 bits) lead.
+                                // The first rides HL:DE; a second rides the stack (the
                                 // `__mul32` shape, docs 10 §Calls).
                                 match i {
                                     0 => wide_param = true,
                                     1 if wide_param => wide_second = true,
                                     _ => {
                                         return Err(format!(
-                                            "u32 parameter `{name}` must be a *leading* \
-                                             parameter (the first rides HL:DE, a second \
-                                             rides the stack; two per function) — reorder, \
-                                             or pass the words and widen with `as u32`"
+                                            "wide (u32/f32) parameter `{name}` must be a \
+                                             *leading* parameter (the first rides HL:DE, a \
+                                             second rides the stack; two per function) — \
+                                             reorder, or pass the words and widen with `as u32`"
                                         ));
                                     }
                                 }
-                                ctx.vars.declare(&name, 2, None, Width::DWord);
+                                ctx.vars.declare(&name, 2, None, w);
                                 slots += 2;
                             } else {
                                 ctx.vars.declare(&name, 1, None, w);
@@ -602,8 +674,8 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                     }
                     for e in &t.elems {
                         let (le, w) = lower_expr(e, ctx)?;
-                        if w == Width::DWord {
-                            return Err("a u32 can't be a tuple-return member (16-bit \
+                        if w.is_wide() {
+                            return Err("a u32/f32 can't be a tuple-return member (16-bit \
                                         registers) — narrow with `as u16`"
                                 .into());
                         }
@@ -623,11 +695,12 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
                 _ if is_value_expr(expr) => {
                     let (le, w) = lower_expr(expr, ctx)?;
                     if ctx.ret_wide {
+                        check_ret_repr(w, ctx)?;
                         ret.push(expr::coerce32(le, w));
                     } else {
-                        if w == Width::DWord {
+                        if w.is_wide() {
                             return Err("this function returns a 16-bit value — narrow \
-                                        with `as u16`, or declare `-> u32`"
+                                        with `as u16`, or declare the wide return type"
                                 .into());
                         }
                         ret.push(le);
@@ -647,18 +720,40 @@ fn lower_fn_block(block: &syn::Block, ctx: &mut Ctx) -> Result<(Vec<Stmt>, Vec<E
     Ok((body, ret))
 }
 
+/// A wide return value must match the declared representation: f32 results for
+/// `-> f32`, integer results for `-> u32` — bits never cross silently (F0.4's
+/// escalate-not-lie starts with the type system refusing to lie).
+pub(crate) fn check_ret_repr(w: Width, ctx: &Ctx) -> Result<(), String> {
+    if ctx.ret_f32 && w != Width::F32 {
+        return Err(
+            "this function returns f32 — the value is not f32 (f32 values come \
+                    from f32 params, float literals, arithmetic, and kernel calls)"
+                .into(),
+        );
+    }
+    if !ctx.ret_f32 && w == Width::F32 {
+        return Err(
+            "this function returns u32 — the value is f32; conversions are explicit \
+             (`f32_to_int` kernels arrive with the F1 wave)"
+                .into(),
+        );
+    }
+    Ok(())
+}
+
 /// Lower a tail-position value `if`/`match` through a hidden temp slot, returning the
 /// slot read the epilogue evaluates.
 fn lower_value_tail(expr: &syn::Expr, ctx: &mut Ctx, body: &mut Vec<Stmt>) -> Result<Expr, String> {
     let w = value_width(expr, ctx)?;
-    if w == Width::DWord && !ctx.ret_wide {
+    if w.is_wide() && !ctx.ret_wide {
         return Err(
             "this function returns a 16-bit value — narrow with `as u16`, or declare \
-             `-> u32`"
+             the wide return type"
                 .into(),
         );
     }
     if ctx.ret_wide {
+        check_ret_repr(w, ctx)?;
         let temp = ctx
             .vars
             .declare(&format!("__val{}", ctx.temp), 2, None, Width::DWord);

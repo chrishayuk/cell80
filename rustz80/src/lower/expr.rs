@@ -13,7 +13,7 @@ use crate::ir::*;
 /// codegen panic. `what` names the context in the message.
 pub(crate) fn lower_expr16(expr: &syn::Expr, ctx: &mut Ctx, what: &str) -> Result<Expr, String> {
     let (e, w) = lower_expr(expr, ctx)?;
-    if w == Width::DWord {
+    if w.is_wide() {
         return Err(format!(
             "u32 value in a 16-bit context ({what}) — narrow with `as u16`"
         ));
@@ -25,7 +25,7 @@ pub(crate) fn lower_expr16(expr: &syn::Expr, ctx: &mut Ctx, what: &str) -> Resul
 /// becomes a `u32` literal, and any other 16-bit value zero-extends (`Widen`) — this is
 /// the unsuffixed-literal mixing rustc itself allows (`part as u32 * 100`).
 pub(crate) fn coerce32(e: Expr, w: Width) -> Expr {
-    if w == Width::DWord {
+    if w.is_wide() {
         e
     } else if let Expr::Lit(k) = e {
         Expr::Lit32(k as u32)
@@ -181,6 +181,30 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 let name = ctx.consts.borrow_mut().intern_bytes(&bs.value())?;
                 Ok((Expr::ConstAddr(name), Width::Word))
             }
+            // An `f32`-suffixed literal converts at compile time — Rust's own
+            // decimal→binary32 parse is correctly rounded (RNE), so the bits match
+            // what rustc gives the same token. The suffix is *required*: an
+            // unsuffixed decimal (`12.5`) belongs to the canon pass's exact-decimal
+            // lane (the fraction tier), and in rustc it would infer f64 anyway.
+            syn::Lit::Float(fl) => {
+                if fl.suffix() == "f64" {
+                    return Err(format!(
+                        "`{}` — f64 is out of the dialect (demand-gated, no named \
+                         customer; the F-wave amendment); use `f32`",
+                        fl.token()
+                    ));
+                }
+                if fl.suffix() != "f32" {
+                    return Err(format!(
+                        "`{}` — an unsuffixed decimal is not a dialect value: suffix it \
+                         `f32` for binary32 (the owned softfloat tier), or leave it to \
+                         the canon pass's exact-decimal lifting (the fraction tier)",
+                        fl.token()
+                    ));
+                }
+                let v: f32 = fl.base10_parse().map_err(|e| e.to_string())?;
+                Ok((Expr::Lit32(v.to_bits()), Width::F32))
+            }
             other => Err(format!(
                 "unsupported literal: {} — the dialect's values are integers, bools, and \
                  byte literals (`b'a'`), plus (as data) string and byte-string literals; \
@@ -223,6 +247,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 let base = ctx.vars.base(&name);
                 match ctx.vars.ty(&name) {
                     Width::DWord => Ok((Expr::Var32(base), Width::DWord)),
+                    Width::F32 => Ok((Expr::Var32(base), Width::F32)),
                     w => Ok((Expr::Var(base), w)),
                 }
             }
@@ -248,6 +273,19 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             syn::UnOp::Neg(_) => {
                 let (e, w) = lower_expr(&u.expr, ctx)?;
                 match w {
+                    // `-x` on f32 flips the sign bit — exactly rustc's negation
+                    // (a pure bit op: works on NaN/Inf/zeros identically).
+                    Width::F32 => Ok(match e {
+                        Expr::Lit32(bits) => (Expr::Lit32(bits ^ 0x8000_0000), Width::F32),
+                        e => (
+                            Expr::Bin32(
+                                BinOp::Xor,
+                                Box::new(e),
+                                Box::new(Expr::Lit32(0x8000_0000)),
+                            ),
+                            Width::F32,
+                        ),
+                    }),
                     Width::SWord => Ok(match e {
                         Expr::Lit(m) => (Expr::Lit(m.wrapping_neg()), Width::SWord),
                         e => (
@@ -276,6 +314,12 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
         syn::Expr::Cast(c) => {
             let (e, ew) = lower_expr(&c.expr, ctx)?;
             let tw = ctx.width_of_type(&c.ty);
+            if ew == Width::F32 || tw == Width::F32 {
+                return Err("`as` casts to/from f32 are not in the dialect — numeric \
+                            conversion kernels (`int_to_f32`, `f32_to_int_trunc`, …) \
+                            arrive with the F1 wave"
+                    .into());
+            }
             if ew == Width::DWord {
                 return Ok(match tw {
                     Width::Byte => (
@@ -284,6 +328,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                     ),
                     Width::Word | Width::SWord => (Expr::Trunc32(Box::new(e)), tw),
                     Width::DWord => (e, Width::DWord),
+                    Width::F32 => unreachable!("f32 casts rejected above"),
                 });
             }
             if tw == Width::DWord {
@@ -350,9 +395,9 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             // A call to a generic function instantiates a specialized copy.
             let is_generic = ctx.mono.borrow().generics.contains_key(&name);
             if is_generic {
-                if lowered.iter().any(|(_, w)| *w == Width::DWord) {
+                if lowered.iter().any(|(_, w)| w.is_wide()) {
                     return Err(format!(
-                        "u32 arguments to a generic (`{name}`) are not supported — \
+                        "u32/f32 arguments to a generic (`{name}`) are not supported — \
                          type args erase to 16-bit; use a plain `fn` with a `u32` \
                          first parameter"
                     ));
@@ -369,10 +414,10 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             // first slot takes (or widens to) a u32; a wide value in a 16-bit slot
             // stays an error; the return width comes from the signature.
             if let Some(sig) = ctx.fn_sigs.get(&name) {
-                if lowered.len() != sig.arg_wides.len() {
+                if lowered.len() != sig.args.len() {
                     return Err(format!(
                         "`{name}` takes {} argument(s), got {}",
-                        sig.arg_wides.len(),
+                        sig.args.len(),
                         lowered.len()
                     ));
                 }
@@ -381,7 +426,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 // The only observable reordering is the first arg against the others,
                 // so it is sound unless the first arg *and* some later arg both carry
                 // effects — then at most one may, and the caller hoists the rest.
-                if sig.arg_wides.iter().filter(|w| **w).count() >= 2
+                if sig.args.iter().filter(|w| w.is_wide()).count() >= 2
                     && has_effects(&lowered[0].0)
                     && lowered[1..].iter().any(|(e, _)| has_effects(e))
                 {
@@ -392,31 +437,48 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                     ));
                 }
                 let mut args = Vec::with_capacity(lowered.len());
-                for (i, ((e, w), wide)) in lowered.into_iter().zip(&sig.arg_wides).enumerate() {
-                    if *wide {
+                for (i, ((e, w), sw)) in lowered.into_iter().zip(&sig.args).enumerate() {
+                    if sw.is_wide() {
+                        // The slot is wide; the *representation* must also agree —
+                        // f32 bits never silently pose as u32 or vice versa.
+                        if *sw == Width::F32 && w != Width::F32 {
+                            return Err(format!(
+                                "argument {} of `{name}` is f32 — this value is {} \
+                                 (conversions are explicit; the F1 kernels)",
+                                i + 1,
+                                if w == Width::DWord { "u32" } else { "16-bit" }
+                            ));
+                        }
+                        if *sw == Width::DWord && w == Width::F32 {
+                            return Err(format!(
+                                "argument {} of `{name}` is u32 — this value is f32 \
+                                 (conversions are explicit; the F1 kernels)",
+                                i + 1
+                            ));
+                        }
                         args.push(coerce32(e, w));
                     } else {
-                        if w == Width::DWord {
+                        if w.is_wide() {
                             return Err(format!(
                                 "argument {} of `{name}` is 16-bit — narrow with `as u16` \
-                                 (only *leading* u32 parameters ride wide)",
+                                 (only *leading* wide parameters ride HL:DE/stack)",
                                 i + 1
                             ));
                         }
                         args.push(e);
                     }
                 }
-                let ret_w = if sig.ret_wide {
-                    Width::DWord
+                let ret_w = if sig.ret.is_wide() {
+                    sig.ret
                 } else {
                     Width::Word
                 };
                 return Ok((Expr::Call(name, args), ret_w));
             }
             // An unknown callee (a prelude route, an appended kernel): 16-bit only.
-            if lowered.iter().any(|(_, w)| *w == Width::DWord) {
+            if lowered.iter().any(|(_, w)| w.is_wide()) {
                 return Err(format!(
-                    "u32 call arguments are not supported for `{name}` (unknown \
+                    "u32/f32 call arguments are not supported for `{name}` (unknown \
                      signature — args pass in 16-bit registers); narrow with `as u16`"
                 ));
             }
@@ -501,6 +563,20 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
     if let Some(cmp) = cmp_op(&b.op) {
         let (le, lw) = lower_expr(&b.left, ctx)?;
         let (re, rw) = lower_expr(&b.right, ctx)?;
+        // f32 compares through the comparison kernels — Rust semantics exactly
+        // (NaN false on every ordered op, -0 == +0), never an integer bit compare.
+        if lw == Width::F32 || rw == Width::F32 {
+            let call = f32_cmp_call(cmp, le, lw, re, rw, ctx)?;
+            return Ok((
+                Expr::Cmp {
+                    cmp: if cmp == Cmp::Ne { Cmp::Eq } else { Cmp::Ne },
+                    lhs: Box::new(Expr::Trunc32(Box::new(call))),
+                    rhs: Box::new(Expr::Lit(0)),
+                    signed: false,
+                },
+                Width::Byte,
+            ));
+        }
         // A u32 side makes it a 32-bit compare (the 16-bit side zero-extends).
         if lw == Width::DWord || rw == Width::DWord {
             return Ok((
@@ -533,6 +609,9 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
     let op = bin_op(&b.op)?;
     if matches!(op, BinOp::Shl | BinOp::Shr) {
         let (le, lw) = lower_expr(&b.left, ctx)?;
+        if lw == Width::F32 {
+            return Err("shifts are not defined on f32 (Rust rejects them too)".into());
+        }
         // A runtime (non-literal) 16-bit shift amount → a counted shift loop. `u32`
         // shifts and literal amounts keep the unrolled constant path below.
         if lw != Width::DWord && !is_int_literal(&b.right) {
@@ -571,6 +650,41 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
     }
     let (le, lw) = lower_expr(&b.left, ctx)?;
     let (re, rw) = lower_expr(&b.right, ctx)?;
+    // f32 arithmetic routes through the owned softfloat kernels — as *calls*, which
+    // keeps the canon pass's algebraic rewrites structurally unable to touch float
+    // chains (F0.6: the sugar and the canon guard land together, by construction).
+    if lw == Width::F32 || rw == Width::F32 {
+        require_f32_pair(lw, rw)?;
+        let kernel = match op {
+            BinOp::Add => "fadd",
+            BinOp::Sub => "fsub",
+            BinOp::Mul => "fmul",
+            BinOp::Div => "fdiv",
+            _ => {
+                return Err(
+                    "`%`, shifts, and bitwise ops are not defined on f32 (Rust rejects \
+                     them too; `%` on reals is a host question)"
+                        .into(),
+                )
+            }
+        };
+        // Two wide args reorder evaluation (the first is computed last — the stack
+        // shape); pure operands are unaffected, effectful pairs must hoist.
+        if has_effects(&le) && has_effects(&re) {
+            return Err(format!(
+                "both operands of this f32 `{}` have side effects and the wide call \
+                 convention reorders them — hoist one to a `let` binding",
+                match op {
+                    BinOp::Add => "+",
+                    BinOp::Sub => "-",
+                    BinOp::Mul => "*",
+                    _ => "/",
+                }
+            ));
+        }
+        ctx.mark_f32(kernel);
+        return Ok((Expr::Call(kernel.to_string(), vec![le, re]), Width::F32));
+    }
     if lw == Width::DWord || rw == Width::DWord {
         // Full 32-bit arithmetic: `+ - * / %` and `| & ^`. A 16-bit side zero-extends
         // (the unsuffixed-literal mixing rustc allows, `part as u32 * 100`).
@@ -580,6 +694,50 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         ));
     }
     Ok((Expr::Bin(op, Box::new(le), Box::new(re), lw), lw))
+}
+
+/// Both sides of an f32 op must be f32 — no implicit int↔float conversion, ever
+/// (the repr-tag discipline: bit patterns never cross representations silently).
+pub(crate) fn require_f32_pair(lw: Width, rw: Width) -> Result<(), String> {
+    if lw != rw {
+        return Err(
+            "f32 and integer values don't mix — there are no implicit conversions; \
+             keep the computation in one representation (explicit conversion kernels \
+             arrive with the F1 wave)"
+                .into(),
+        );
+    }
+    Ok(())
+}
+
+/// An f32 comparison as a kernel call returning 0/1 in a u32: `>`/`>=` swap operands
+/// onto `flt`/`fle`; `!=` is the caller's negation of `feq`.
+pub(crate) fn f32_cmp_call(
+    cmp: Cmp,
+    le: Expr,
+    lw: Width,
+    re: Expr,
+    rw: Width,
+    ctx: &mut Ctx,
+) -> Result<Expr, String> {
+    require_f32_pair(lw, rw)?;
+    let (kernel, swap) = match cmp {
+        Cmp::Eq | Cmp::Ne => ("feq", false),
+        Cmp::Lt => ("flt", false),
+        Cmp::Gt => ("flt", true),
+        Cmp::Le => ("fle", false),
+        Cmp::Ge => ("fle", true),
+    };
+    if has_effects(&le) && has_effects(&re) {
+        return Err(
+            "both operands of this f32 comparison have side effects and the wide call \
+             convention reorders them — hoist one to a `let` binding"
+                .into(),
+        );
+    }
+    ctx.mark_f32(kernel);
+    let (l, r) = if swap { (re, le) } else { (le, re) };
+    Ok(Expr::Call(kernel.to_string(), vec![l, r]))
 }
 
 /// What a field access resolves to: the receiver's base slot, the field's slot offset,
@@ -1131,6 +1289,32 @@ pub(crate) fn lower_method_call(
     ctx: &mut Ctx,
 ) -> Result<(Expr, Width), String> {
     let method = m.method.to_string();
+    // f32's method surface: `.sqrt()` (the fifth kernel) and `.abs()` (a sign-bit
+    // mask — pure bits, rustc-identical). Everything else on f32 is an error.
+    if method == "sqrt" || method == "abs" {
+        let (recv, rw) = lower_expr(&m.receiver, ctx)?;
+        if rw != Width::F32 {
+            return Err(format!(
+                "`.{method}()` is defined on f32 — for integers use the `isqrt` kernel \
+                 or `iabs_diff`"
+            ));
+        }
+        if !m.args.is_empty() {
+            return Err(format!("`.{method}()` takes no arguments"));
+        }
+        if method == "sqrt" {
+            ctx.mark_f32("fsqrt");
+            return Ok((Expr::Call("fsqrt".to_string(), vec![recv]), Width::F32));
+        }
+        return Ok((
+            Expr::Bin32(
+                BinOp::And,
+                Box::new(recv),
+                Box::new(Expr::Lit32(0x7FFF_FFFF)),
+            ),
+            Width::F32,
+        ));
+    }
     if let "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "wrapping_div" | "wrapping_rem" =
         method.as_str()
     {
@@ -1144,6 +1328,12 @@ pub(crate) fn lower_method_call(
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
         let arg = m.args.first().ok_or("wrapping_* needs an argument")?;
         let (re, aw) = lower_expr(arg, ctx)?;
+        if rw == Width::F32 || aw == Width::F32 {
+            return Err(format!(
+                "`.{method}()` is integer-only — f32 arithmetic is `+ - * /` \
+                 (correctly rounded; it doesn't wrap)"
+            ));
+        }
         // A `u32` receiver/argument makes it a 32-bit op (all `Bin32` arithmetic is
         // mod-2^32, i.e. wrapping, already).
         if rw == Width::DWord || aw == Width::DWord {

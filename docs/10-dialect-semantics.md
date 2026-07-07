@@ -245,18 +245,35 @@ in-range literal); a wide value in a 16-bit slot stays an error.
 
 ## The owned-softfloat family (F0)
 
-The F-wave amendment (`docs/real-valued-cells-amendment.md`) adds five IEEE binary32
-kernels to the prelude — `fadd`/`fsub`/`fmul`/`fdiv`/`fsqrt`, plus internal helpers
-`f32_shr_jam`/`f32_pack` — as **owned** integer softfloat (`rustz80::F32_KERNELS`;
-the text lives rustz80-side so its differential bank tests the same string cells
-compile). Bits ride `u32` (an f32 *type* is not yet in the dialect — this wave is the
-kernel floor). Semantics are bit-identical to rustc `f32` basic ops — full subnormals,
-signed zeros, RNE only — verified by `tests/diff/f32_ops.rs` on both targets over an
-edge bank and a seeded random bank, with **bit equality** post NaN-canonicalization
-(every kernel-produced NaN is the canonical `0x7FC0_0000`). The kernels never `halt()`
-— the boundary contract (`finite_result`, codes `0xFF07`/`0xFF08`, docs 09) is the
-cell's job, not the kernel's, because an in-kernel trap would diverge from the golden
-reference.
+The F-wave amendment (`docs/real-valued-cells-amendment.md`) adds IEEE binary32 to
+the dialect as **owned** integer softfloat — the kernel five `fadd`/`fsub`/`fmul`/
+`fdiv`/`fsqrt`, the comparison trio `feq`/`flt`/`fle`, and helpers `f32_shr_jam`/
+`f32_pack` (`rustz80::F32_KERNELS`; the text lives rustz80-side so the differential
+bank tests the same string cells compile). Semantics are bit-identical to rustc `f32`
+basic ops — full subnormals, signed zeros, RNE only — verified by
+`tests/diff/f32_ops.rs` on both targets over an edge bank and a seeded random bank,
+with **bit equality** post NaN-canonicalization (every kernel-produced NaN is the
+canonical `0x7FC0_0000`). The kernels never `halt()` — the boundary contract
+(`finite_result`, codes `0xFF07`/`0xFF08`, docs 09) is the cell's job, not the
+kernel's, because an in-kernel trap would diverge from the golden reference.
+
+**The `f32` type** rides on top: `f32` params/lets/returns (bits in the wide `u32`
+convention), `f32`-suffixed literals (compile-time decimal→binary32, RNE — the same
+correctly-rounded parse rustc applies, so literal bits match the oracle), operators
+`+ - * /` routing to the kernels, all six comparisons through the trio (Rust
+semantics: NaN false everywhere ordered, `-0.0 == 0.0`; `!=` negates `feq`, `>`/`>=`
+swap onto `flt`/`fle`), unary `-` and `.abs()` as pure sign-bit ops, `.sqrt()` as the
+fifth kernel. The needed kernels **auto-append** at lowering (name-collision-safe
+with the cell prelude's copies). Three deliberate boundaries: **unsuffixed decimals
+are not f32** — `12.5` stays the canon pass's exact-decimal lane (the fraction
+tier); **f32 never mixes with integers** — every cross (operators, comparisons,
+bindings, call boundaries, casts, returns) is a clean compile error, no implicit
+conversion existing at all until the F1 kernels (this repr discipline is the hard
+gate model-composed float cells depend on); and **f32 struct fields are rejected**
+until the state ABI gains `Ty::F32` (F1). Because float ops lower to *calls*, the
+canon pass's algebraic rewrites cannot touch float chains even in principle — and a
+guard enforces it anyway (`touches_f32` → structural-only), with H-F4 pinned in CI
+(`canon.rs::f32_chains_never_reassociate`).
 
 Measured cost (2026-07-07, single-kernel driver cell, baseline-subtracted; `fmul`'s
 four u32 multiplies ride `ED FE` traps charged ~4 T each, so its honest cost pairs
@@ -302,9 +319,9 @@ don't compile). Rejection tests pin the reject-don't-approximate rule.
 ## Out of the dialect (by design, not omission)
 
 Strings as a *type* (string literals compile as addressable const data — see above — but
-there is no `String`, no slices, no string ops), floats as a *type* (binary32 *values*
-compute through the owned softfloat kernels above, bits-in-u32; a `f32` type, float
-literals, and platform libm stay out — libm permanently, per the F-wave amendment),
+there is no `String`, no slices, no string ops), `f64` and platform libm (libm
+permanently, per the F-wave amendment; `f32` is in, owned, above), unsuffixed decimal
+literals (the canon pass's exact-decimal lane, not a dialect value),
 `u64`, heap allocation, closures, traits, recursion, I/O. These are the escalation path —
 a cell that needs them isn't a cell, and the honest answer is a typed hand-off to the
 host, not a bigger ISA. See the roadmap's non-goals.

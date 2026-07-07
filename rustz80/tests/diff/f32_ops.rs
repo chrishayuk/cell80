@@ -184,3 +184,91 @@ fn f32_random_bank() {
     }
     run_bank(&cases);
 }
+
+/// The typed surface, single-source: real f32 programs — literals (compile-time
+/// RNE decimal→binary32, same bits rustc gives the token), operator routing to the
+/// kernels, comparisons with NaN/zero semantics, unary neg, `.sqrt()`/`.abs()`,
+/// f32 params and returns — run on both targets and match a rustc-computed oracle.
+/// The kernels auto-append: no prelude text in these sources.
+#[test]
+fn f32_typed_surface() {
+    // (source, expected) — expected computed by the same expressions in host f32.
+    #[allow(clippy::excessive_precision)]
+    let host = {
+        let a = 1.5f32;
+        let b = 2.5f32;
+        let p = a * b;
+        let s = p + -0.75f32;
+        let q = s.sqrt();
+        (q > 1.0f32 && p == 3.75f32) as u16
+    };
+    let src = "fn f() -> u16 {
+        let a = 1.5f32;
+        let b = 2.5f32;
+        let p = a * b;
+        let s = p + -0.75f32;
+        let q = s.sqrt();
+        let mut r = 0u16;
+        if q > 1.0f32 && p == 3.75f32 { r = 1u16; }
+        r
+    }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+
+    // f32 params + f32 return: the wide convention carries bits, typed
+    let src = "fn lerp(a: f32, t: f32) -> f32 { a + t * (10.0f32 - a) }
+               fn f() -> u16 { let mut ok = 0u16; if lerp(2.0f32, 0.25f32) == 4.0f32 { ok = 1u16; } ok }";
+    assert_eq!(run_program_pruned(src, "f"), 1);
+
+    // the rounding-folklore witness: in binary32 `0.1 + 0.2 == 0.3` happens to be
+    // *true* (unlike f64) — what matters is that the kernels agree with rustc on
+    // it, whichever way the rounding falls
+    let host = ((0.1f32 + 0.2f32).to_bits() == 0.3f32.to_bits()) as u16;
+    let src = "fn f() -> u16 { let mut r = 0u16; if 0.1f32 + 0.2f32 == 0.3f32 { r = 1u16; } r }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+
+    // abs + division + <= ; also -0.0 == 0.0 (feq's signed-zero rule)
+    let host = {
+        let x = (-7.5f32).abs() / 2.0f32;
+        (x <= 3.75f32 && -0.0f32 == 0.0f32) as u16
+    };
+    let src = "fn f() -> u16 {
+        let x = (-7.5f32).abs() / 2.0f32;
+        let mut r = 0u16;
+        if x <= 3.75f32 && -0.0f32 == 0.0f32 { r = 1u16; }
+        r
+    }";
+    assert_eq!(run_program_pruned(src, "f"), host);
+}
+
+/// The repr discipline: f32 and integers never mix silently — every cross is a
+/// clean compile error naming the rule, never a silent bit-pattern operation.
+/// (This is the type-flow gate model-composed float cells depend on.)
+#[test]
+fn f32_never_mixes_with_integers() {
+    let rejects = [
+        "fn f(a: f32) -> f32 { a + 1u32 }",          // int rhs
+        "fn f(a: f32) -> f32 { a + 1u16 }",          // 16-bit rhs
+        "fn f(a: u32) -> u32 { a + 1.5f32 }",        // float rhs on u32
+        "fn f(a: f32) -> u16 { a as u16 }",          // cast out
+        "fn f(a: u16) -> f32 { a as f32 }",          // cast in
+        "fn f(a: f32) -> f32 { a % 2.0f32 }",        // % undefined
+        "fn f(a: f32) -> f32 { a << 1u32 }",         // shifts undefined
+        "fn f(a: f32) -> f32 { a.wrapping_add(a) }", // integer method
+        "fn f(a: f32) -> u32 { a }",                 // f32 bits posing as u32
+        "fn f(a: u32) -> f32 { a }",                 // u32 posing as f32
+        "fn f(a: f32) -> f32 { let x: u32 = a; x }", // annotation cross
+        "fn f(a: u32) -> f32 { let x: f32 = a; x }", // annotation cross
+        "fn f(a: f32) -> u16 { let mut r = 0u16; if a == 1u32 { r = 1u16; } r }", // cmp cross
+        "fn f() -> f32 { 1.5f64 }",                  // f64 literal
+        "fn g(x: u32) -> u32 { x } fn f(a: f32) -> u32 { g(a) }", // f32 into u32 param
+    ];
+    for src in rejects {
+        for target in crate::harness::TARGETS {
+            let file: syn::File = syn::parse_str(src).expect("parses");
+            assert!(
+                rustz80::compile_file_pruned(&file, target, &["f"]).is_err(),
+                "expected a clean rejection ({target:?}): {src}"
+            );
+        }
+    }
+}

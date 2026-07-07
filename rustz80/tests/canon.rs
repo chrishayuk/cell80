@@ -401,3 +401,30 @@ fn lifting_keeps_structural_constants_baked() {
     assert!(out.source.contains("* 3u16"), "{}", out.source);
     assert!(out.source.contains("/ 10u16"));
 }
+
+/// H-F4 (the F-wave amendment's hard constraint, a permanent CI member): a
+/// deliberately reassociation-sensitive f32 chain must survive Full-mode canon
+/// **bit-identically** — i.e. the algebraic pass (defer-division, sum/factor
+/// reassociation, exact constant folding) never fires on a fn that touches f32.
+/// A breach is a hashing-correctness bug: it silently forks the content address
+/// from runtime behaviour. Float literals would fold as exact rationals
+/// (`x * 3.0 / 3.0` cancels exactly; the f32 runtime disagrees), which is exactly
+/// what the guard blocks.
+#[test]
+fn f32_chains_never_reassociate() {
+    let cases = [
+        // defer-division would cancel *3.0/3.0; f32 must keep both roundings
+        "fn f(a: f32) -> f32 { a * 3.0f32 / 3.0f32 }",
+        // sum reassociation would reorder; f32 addition is order-sensitive
+        "fn f(a: f32, b: f32) -> f32 { a + 0.1f32 + b + 0.2f32 }",
+        // constant folding across a variable would change rounding points
+        "fn f(a: f32) -> f32 { 0.1f32 + a + 0.2f32 }",
+        // an integer-return fn that merely *touches* f32 is guarded too
+        "fn f() -> u16 { let x = 0.1f32 + 0.2f32; let mut r = 0u16; if x > 0.3f32 { r = 1u16; } r }",
+    ];
+    for src in cases {
+        let out = canonicalize_source(src, &full()).expect("canonicalizes");
+        assert_eq!(out.source, src, "algebraic canon fired on an f32 chain");
+        assert!(!out.changed, "canon reported a change on an f32 fn");
+    }
+}

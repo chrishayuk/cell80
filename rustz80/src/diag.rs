@@ -193,7 +193,7 @@ pub fn classify_error(msg: &str) -> Option<DiagCode> {
     if msg.contains("unknown call target") {
         return Some(DiagCode::UnknownCallTarget);
     }
-    if msg.contains("a float literal") {
+    if msg.contains("a float literal") || msg.contains("unsuffixed decimal") {
         return Some(DiagCode::RequiresFractionalScale);
     }
     if msg.contains("no macros in the dialect") {

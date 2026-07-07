@@ -681,7 +681,10 @@ fn u32_call_boundary_rejections() {
     let err = rustz80::compile_fn("fn f() -> u16 { let a = 1u16; a as u32 }")
         .err()
         .unwrap();
-    assert!(err.contains("declare `-> u32`"), "unexpected: {err}");
+    assert!(
+        err.contains("declare the wide return type"),
+        "unexpected: {err}"
+    );
     // A method with a wide return:
     let err = rustz80::compile_program(
         "struct S { x: u16 }

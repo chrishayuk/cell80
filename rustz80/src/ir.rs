@@ -27,6 +27,20 @@ pub enum Width {
     Word,
     SWord,
     DWord,
+    /// IEEE binary32 bits riding a u32 — a **lowering-only** type: it storage-plumbs
+    /// exactly like `DWord` (two slots, `HL:DE`, wide call convention) but routes
+    /// arithmetic/comparisons through the owned softfloat kernels instead of `Bin32`/
+    /// `Cmp32`, and never mixes with integer widths implicitly. Codegen receives only
+    /// the baked-in wide nodes; `F32` itself never reaches an IR node's semantics.
+    F32,
+}
+
+impl Width {
+    /// Two-slot, `HL:DE`-carried values: `u32`, and f32 bits riding u32. Use this for
+    /// storage/call plumbing; use `== Width::DWord` when the *operation* is integer.
+    pub fn is_wide(self) -> bool {
+        matches!(self, Width::DWord | Width::F32)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

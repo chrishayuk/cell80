@@ -1,10 +1,17 @@
 # The F-waves — owned IEEE binary32, an amendment to the real-valued-cells policy
 
-*Status: **registered 2026-07-07; F0 kernels landed same day** — the kernel five +
-oracle banks + escalation codes + measured cost table are in (see H-F2's recorded
-measurement and `docs/10-dialect-semantics.md` §owned-softfloat); the f32 dialect
-surface, `finite_result` enforcement, repr tags, and the F0.6 canon guard are the
-remaining F0 line items. Amends `docs/real-valued-cells-spec.md`
+*Status: **registered 2026-07-07; F0 substantially landed same day** — the kernel
+five + comparison trio + oracle banks + escalation codes + measured cost table +
+scratch relocation (multi-kernel cells fit) + **the f32 dialect surface with the
+F0.6 canon guard** (type, literals, operator routing, comparisons, H-F4 in CI; the
+guard landed *with* the sugar, as a precondition — float ops lower to calls, so
+algebraic canon cannot touch them even in principle). Remaining F0 line items:
+`finite_result` enforcement, repr tags in the plan unit system, `Ty::F32` state ABI.
+Interim rule until repr tags reach the plan layer: **float-touching cells are
+hand-authored only** — the typed surface rejects f32/int crosses at compile time,
+but bits-in-u32 kernel-layer composition has no such guard, and a model-composed
+cell doing integer `+` on f32 bit patterns is a silent-wrong generator the gate
+cannot catch. Amends `docs/real-valued-cells-spec.md`
 Part 1 (the float policy) and supersedes its Wave 3 in one respect (§F2 below). Companion
 to `docs/10-dialect-semantics.md` (gains an f32 tier), `docs/escalation-ladder.md`
 (one code re-scoped, two added), and the canonicalization pass (one hard interaction,

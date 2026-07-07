@@ -68,6 +68,10 @@ pub(crate) struct Instance {
 /// lower, and the set already requested (so each instance is emitted once).
 #[derive(Default)]
 pub(crate) struct Mono {
+    /// Softfloat kernels the f32 sugar routed to (`a + b` → `fadd`, …) — the
+    /// program-level lowering appends their `Func`s afterwards (piggy-backed here
+    /// because `Mono` is the one `RefCell` every `Ctx` already carries).
+    pub(crate) f32_kernels: std::collections::HashSet<&'static str>,
     pub(crate) generics: HashMap<String, GenericFn>,
     /// Const-/generic struct definitions, by base name.
     pub(crate) generic_structs: HashMap<String, GenericStruct>,
@@ -82,6 +86,7 @@ impl Mono {
     /// A registry seeded with the program's generic functions, empty worklist.
     pub(crate) fn new(generics: HashMap<String, GenericFn>) -> Self {
         Mono {
+            f32_kernels: Default::default(),
             generics,
             ..Mono::default()
         }
@@ -166,6 +171,7 @@ fn arg_tag(a: GArg) -> String {
         GArg::Width(Width::Word) => "u16".to_string(),
         GArg::Width(Width::SWord) => "i16".to_string(),
         GArg::Width(Width::DWord) => "u32".to_string(),
+        GArg::Width(Width::F32) => "f32".to_string(),
         GArg::Const(n) => n.to_string(),
     }
 }

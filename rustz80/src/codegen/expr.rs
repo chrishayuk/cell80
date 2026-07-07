@@ -110,7 +110,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     a.fx(&[0x6E]); // LD L,(HL)
                     a.fx(&[0x26, 0x00]); // LD H, 0    -> HL = zero-extended byte
                 }
-                Width::DWord => unreachable!("u32 array elements are unsupported"),
+                Width::DWord | Width::F32 => unreachable!("wide array elements are unsupported"),
             }
         }
         Expr::Call(name, args) => gen_call(a, name, args),
@@ -170,7 +170,9 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     a.fx(&[0x6E]); // LD L,(HL)
                     a.fx(&[0x26, 0x00]); // LD H, 0  (zero-extend)
                 }
-                Width::DWord => unreachable!("u32 array/field elements are unsupported"),
+                Width::DWord | Width::F32 => {
+                    unreachable!("wide array/field elements are unsupported")
+                }
             }
         }
         // A comparison as a value → `1`/`0` in `HL`.

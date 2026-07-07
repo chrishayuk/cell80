@@ -200,19 +200,35 @@ pub(crate) fn lower_local(
                 _ => None,
             };
             let w = value_width(cond, ctx)?;
-            if w == Width::DWord && matches!(ann, Some(a) if a != Width::DWord) {
+            if w.is_wide() && matches!(ann, Some(a) if a != w) {
+                // The only sanctioned widening is 16-bit → u32; every f32/u32 cross
+                // or wide→16-bit bind is an explicit-conversion question.
                 return Err(format!(
-                    "cannot bind a u32 value to 16-bit `{name}` — narrow with `as u16`"
+                    "cannot bind this {} value to `{name}`'s annotation — conversions \
+                     are explicit",
+                    if w == Width::F32 { "f32" } else { "u32" }
                 ));
             }
-            let dword = w == Width::DWord || ann == Some(Width::DWord);
+            if !w.is_wide() && ann == Some(Width::F32) {
+                return Err(format!(
+                    "`{name}` is annotated f32 but the branches produce integers — \
+                     no implicit conversion"
+                ));
+            }
+            let wide = if w == Width::F32 {
+                Some(Width::F32)
+            } else if w == Width::DWord || ann == Some(Width::DWord) {
+                Some(Width::DWord)
+            } else {
+                None
+            };
             let base = ctx.vars.declare(
                 &name,
-                if dword { 2 } else { 1 },
+                if wide.is_some() { 2 } else { 1 },
                 None,
-                if dword { Width::DWord } else { w },
+                wide.unwrap_or(w),
             );
-            lower_value_into(base, dword, cond, ctx, body)?;
+            lower_value_into(base, wide.is_some(), cond, ctx, body)?;
         }
         other => {
             let (e, ty) = lower_expr(other, ctx)?;
@@ -222,6 +238,26 @@ pub(crate) fn lower_local(
                 syn::Pat::Type(t) => Some(ctx.width_of_type(&t.ty)),
                 _ => None,
             };
+            // f32 bindings: representation must agree exactly — an f32 value takes
+            // an f32 (or absent) annotation; a `: f32` annotation needs an f32 value.
+            if ty == Width::F32 || ann == Some(Width::F32) {
+                if ty != Width::F32 {
+                    return Err(format!(
+                        "`{name}` is annotated f32 but the value is not f32 — f32 \
+                         values come from f32 params, float literals, arithmetic, \
+                         and kernel calls (no implicit conversion)"
+                    ));
+                }
+                if matches!(ann, Some(a) if a != Width::F32) {
+                    return Err(format!(
+                        "cannot bind an f32 value to `{name}`'s integer annotation — \
+                         conversions are explicit (the F1 kernels)"
+                    ));
+                }
+                let base = ctx.vars.declare(&name, 2, None, Width::F32);
+                body.push(Stmt::Assign32(base, e));
+                return Ok(());
+            }
             if ty == Width::DWord && matches!(ann, Some(w) if w != Width::DWord) {
                 return Err(format!(
                     "cannot bind a u32 value to 16-bit `{name}` — narrow with `as u16`"
@@ -353,6 +389,13 @@ pub(crate) fn lower_stmt_expr(
             syn::Expr::Index(ix) => lower_index_assign(ix, &a.right, ctx, body)?,
             syn::Expr::Field(f) => {
                 let (val, vw) = lower_expr(&a.right, ctx)?;
+                if vw == Width::F32 {
+                    return Err(
+                        "f32 struct fields are not supported yet — the state ABI gains \
+                         Ty::F32 with the F1 wave; keep f32 values in locals"
+                            .into(),
+                    );
+                }
                 body.push(lower_field_store(f, val, vw, ctx)?);
             }
             _ => {
@@ -360,12 +403,29 @@ pub(crate) fn lower_stmt_expr(
                 let slot = ctx.vars.base(&name);
                 // `x = if c { a } else { b };` — a value conditional into x's slot.
                 if matches!(&*a.right, syn::Expr::If(_) | syn::Expr::Match(_)) {
-                    let dword = ctx.vars.ty(&name) == Width::DWord;
-                    lower_value_into(slot, dword, &a.right, ctx, body)?;
+                    let vty = ctx.vars.ty(&name);
+                    let w = value_width(&a.right, ctx)?;
+                    if (vty == Width::F32) != (w == Width::F32) && (vty.is_wide() || w.is_wide()) {
+                        return Err(format!(
+                            "cannot assign this value to `{name}` — representations \
+                             differ (f32 vs integer); conversions are explicit"
+                        ));
+                    }
+                    lower_value_into(slot, vty.is_wide(), &a.right, ctx, body)?;
                     return Ok(());
                 }
                 let (e, ew) = lower_expr(&a.right, ctx)?;
-                if ctx.vars.ty(&name) == Width::DWord {
+                let vty = ctx.vars.ty(&name);
+                if vty == Width::F32 || ew == Width::F32 {
+                    // f32 assignment: representations must agree exactly.
+                    if vty != ew {
+                        return Err(format!(
+                            "cannot assign this value to `{name}` — representations \
+                             differ (f32 vs integer); conversions are explicit"
+                        ));
+                    }
+                    body.push(Stmt::Assign32(slot, e));
+                } else if vty == Width::DWord {
                     // A 16-bit value widens into a u32 var (`x = 5` on `x: u32`).
                     body.push(Stmt::Assign32(slot, coerce32(e, ew)));
                 } else if ew == Width::DWord {
@@ -472,14 +532,15 @@ pub(crate) fn lower_stmt_expr(
             if let Some(e) = r.expr.as_deref() {
                 if matches!(e, syn::Expr::If(_) | syn::Expr::Match(_)) {
                     let w = value_width(e, ctx)?;
-                    if w == Width::DWord && !ctx.ret_wide {
+                    if w.is_wide() && !ctx.ret_wide {
                         return Err(
                             "this function returns a 16-bit value — narrow with `as u16`, \
-                             or declare `-> u32`"
+                             or declare the wide return type"
                                 .into(),
                         );
                     }
                     if ctx.ret_wide {
+                        super::check_ret_repr(w, ctx)?;
                         let temp =
                             ctx.vars
                                 .declare(&format!("__val{}", ctx.temp), 2, None, Width::DWord);
@@ -500,6 +561,7 @@ pub(crate) fn lower_stmt_expr(
                     // A wide return: the value evaluates in HL:DE (gen_expr32 at the
                     // emit site — the function's `wide_ret` flag routes it).
                     let (le, w) = lower_expr(e, ctx)?;
+                    super::check_ret_repr(w, ctx)?;
                     Some(coerce32(le, w))
                 }
                 Some(e) => Some(lower_expr16(
@@ -553,8 +615,8 @@ fn lower_for(fl: &syn::ExprForLoop, ctx: &mut Ctx, body: &mut Vec<Stmt>) -> Resu
     // Evaluate both bounds before declaring the loop variable (they cannot see it).
     let (start_e, width) = lower_expr(start, ctx)?;
     let (end_e, end_w) = lower_expr(end_expr, ctx)?;
-    if width == Width::DWord || end_w == Width::DWord {
-        return Err("u32 `for` bounds are not supported yet — narrow with `as u16`".into());
+    if width.is_wide() || end_w.is_wide() {
+        return Err("u32/f32 `for` bounds are not supported — narrow with `as u16`".into());
     }
     let end_temp = ctx
         .vars
@@ -631,8 +693,17 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
         if let Some(cmp) = cmp_op(&b.op) {
             let (le, lw) = lower_expr(&b.left, ctx)?;
             let (re, rw) = lower_expr(&b.right, ctx)?;
-            // A u32 comparison materialises `0`/`1` and branches on `!= 0` (the
-            // compound-condition shape) — `Cond` itself stays 16-bit.
+            // f32 comparisons branch on the comparison kernel's 0/1 (Rust NaN
+            // semantics live in the kernel, not in flag tricks).
+            if lw == Width::F32 || rw == Width::F32 {
+                let call = super::expr::f32_cmp_call(cmp, le, lw, re, rw, ctx)?;
+                return Ok(Cond {
+                    cmp: if cmp == Cmp::Ne { Cmp::Eq } else { Cmp::Ne },
+                    lhs: Expr::Trunc32(Box::new(call)),
+                    rhs: Expr::Lit(0),
+                    signed: false,
+                });
+            }
             if lw == Width::DWord || rw == Width::DWord {
                 return Ok(Cond {
                     cmp: Cmp::Ne,
@@ -1002,10 +1073,10 @@ pub(crate) fn lower_value_into(
             let (e, w) = lower_expr(other, ctx)?;
             if dword {
                 body.push(Stmt::Assign32(slot, coerce32(e, w)));
-            } else if w == Width::DWord {
+            } else if w.is_wide() {
                 return Err(
-                    "this branch produces a u32 but the destination is 16-bit — narrow \
-                     with `as u16` (or make every branch u32)"
+                    "this branch produces a wide (u32/f32) value but the destination \
+                     is 16-bit — narrow with `as u16` (or make every branch wide)"
                         .into(),
                 );
             } else {

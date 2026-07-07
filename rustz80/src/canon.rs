@@ -347,6 +347,32 @@ enum Fail {
     Hard(Diag),
 }
 
+/// Does the fn mention the `f32` type or an `f32`-*suffixed* literal? (`syn::visit`
+/// walk — annotations, params, casts, and expression literals all count.)
+/// **Unsuffixed** decimals (`12.5`) are deliberately excluded: they are the canon
+/// pass's exact-decimal lane (money/GSM lifting into `Rat`s) — the fraction tier —
+/// not floats. Only the explicit `f32` suffix opts a value into binary32.
+fn touches_f32(f: &syn::ItemFn) -> bool {
+    use syn::visit::Visit;
+    struct Scan(bool);
+    impl<'ast> Visit<'ast> for Scan {
+        fn visit_lit_float(&mut self, fl: &'ast syn::LitFloat) {
+            if fl.suffix() == "f32" {
+                self.0 = true;
+            }
+        }
+        fn visit_type_path(&mut self, t: &'ast syn::TypePath) {
+            if t.path.is_ident("f32") {
+                self.0 = true;
+            }
+            syn::visit::visit_type_path(self, t);
+        }
+    }
+    let mut scan = Scan(false);
+    scan.visit_item_fn(f);
+    scan.0
+}
+
 fn soft<T>(reason: impl Into<String>) -> Result<T, Fail> {
     Err(Fail::Soft(reason.into()))
 }
@@ -736,6 +762,15 @@ impl<'a> FnCanon<'a> {
             || f.sig.abi.is_some()
         {
             return soft("generics/unsafe/abi");
+        }
+        // F0.6 (the amendment's hard constraint): float arithmetic is not
+        // associative, so *no* algebraic rewrite — defer-division, sum/factor
+        // reassociation, exact constant folding — may ever fire on a fn that
+        // touches f32. Float literals would otherwise parse into exact `Rat`s and
+        // fold. f32 chains canonicalize structurally only (the Light lane); a
+        // breach here forks content addresses from runtime behaviour (H-F4).
+        if touches_f32(f) {
+            return soft("f32/float literals — algebraic canon does not apply (F0.6)");
         }
         let ret_wide = match &f.sig.output {
             syn::ReturnType::Default => return soft("no return value"),

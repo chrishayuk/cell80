@@ -417,7 +417,7 @@ fn push_scalar(v: u16, w: Width, out: &mut Vec<u8>) -> Result<(), String> {
             out.push(v as u8);
             out.push((v >> 8) as u8);
         }
-        Width::DWord => return Err("u32 const data is not supported yet".into()),
+        Width::DWord | Width::F32 => return Err("u32/f32 const data is not supported yet".into()),
     }
     Ok(())
 }
