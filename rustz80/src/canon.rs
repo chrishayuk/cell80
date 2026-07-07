@@ -1234,7 +1234,7 @@ impl<'a> FnCanon<'a> {
         };
         // Walk each ordered op's FULL subtree (deterministic child order) so params
         // that only appear inside a Select arm still get dataflow-ordered slots.
-        let mut assign_subtree = |from: usize, slot_of_param: &mut HashMap<usize, usize>| {
+        let assign_subtree = |from: usize, slot_of_param: &mut HashMap<usize, usize>| {
             let mut st = vec![from];
             let mut seen: HashSet<usize> = HashSet::new();
             while let Some(id) = st.pop() {

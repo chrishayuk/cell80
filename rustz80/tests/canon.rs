@@ -523,3 +523,261 @@ fn verify_if_rewrites_to_computed_side() {
         .any(|r| r.code == DiagCode::VerifyRewrite));
     assert!(keep.source.contains("if "), "{}", keep.source);
 }
+
+// ---------------------------------------------------------- coverage: edges
+
+#[test]
+fn diag_codes_and_display_are_total() {
+    use rustz80::{classify_error, Diag, DiagCode, Repair};
+    let all = [
+        DiagCode::BareLiteralOperand,
+        DiagCode::QuantityLifted,
+        DiagCode::StatementMacro,
+        DiagCode::RedundantParens,
+        DiagCode::TrailingLet,
+        DiagCode::CompoundCallArg,
+        DiagCode::MethodToKernel,
+        DiagCode::VerifyRewrite,
+        DiagCode::WidthExceedsU16,
+        DiagCode::InexactConstDivision,
+        DiagCode::NegativeConst,
+        DiagCode::RequiresFractionalScale,
+        DiagCode::UnitScaled,
+        DiagCode::UnitNormalized,
+        DiagCode::Parse,
+        DiagCode::NonStraightLine,
+        DiagCode::WideCall,
+        DiagCode::UnknownCallTarget,
+        DiagCode::DeadLet,
+        DiagCode::ModSpaceRewrite,
+    ];
+    let mut seen = std::collections::HashSet::new();
+    for c in all {
+        assert!(c.code().starts_with('E'), "{}", c.code());
+        assert!(!c.slug().is_empty());
+        assert!(seen.insert(c.code()), "duplicate code {}", c.code());
+        let d = Diag::new(c, "msg").with_fix("do the thing");
+        let shown = format!("{d}");
+        assert!(
+            shown.contains(c.code()) && shown.contains("fix:"),
+            "{shown}"
+        );
+        assert!(format!("{}", Repair::new(c, "detail")).contains(c.slug()));
+    }
+    assert_eq!(classify_error("parse error: x"), Some(DiagCode::Parse));
+    assert_eq!(
+        classify_error("no macros in the dialect"),
+        Some(DiagCode::StatementMacro)
+    );
+    assert_eq!(
+        classify_error("narrow with `as u16`, or declare `-> u32`"),
+        Some(DiagCode::WidthExceedsU16)
+    );
+    assert_eq!(classify_error("something else entirely"), None);
+}
+
+#[test]
+fn canon_off_mode_and_unit_table_edges() {
+    let out = canonicalize_source(
+        "fn run() -> u16 { 1 }",
+        &CanonOptions {
+            mode: CanonMode::Off,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(!out.changed);
+    // Unit table long tail.
+    assert_eq!(canonical_unit("km"), ("meters".into(), 1000, 1));
+    assert_eq!(canonical_unit("weeks"), ("seconds".into(), 604800, 1));
+    assert_eq!(canonical_unit("scalar"), ("scalar".into(), 1, 1));
+    assert_eq!(canonical_unit("eur"), ("cents".into(), 100, 1));
+    assert_eq!(
+        canonical_unit("count_per_scalar"),
+        ("count_per_scalar".into(), 1, 1)
+    );
+}
+
+#[test]
+fn canon_soft_fallback_reasons_are_named() {
+    // Each construct outside the subset falls back to Light with a named reason —
+    // never a panic, never a guess.
+    for src in [
+        "fn run<T>(a: u16) -> u16 { a }",                       // generics
+        "fn run(a: u16) -> u16 { let x; x }",                   // no initializer
+        "fn run(a: u16) -> u16 { a; a }",                       // stmt expr
+        "fn run(a: u16) -> u16 { return a; a }",                // early return mid-body
+        "fn run(a: u16) -> u16 { -a }",                         // unary non-const
+        "fn run(a: u16) -> u16 { if a { 1 } else { 0 } }",      // non-comparison cond
+        "fn run(a: u16) -> u16 { if a > 1 { 1 } }",             // if without else (type err anyway)
+        "fn run(a: u16) -> u16 { a.pow(2) }",                   // unknown method
+        "fn run(a: u16) -> u16 { (a, a).0 }",                   // tuple field
+        "fn run(a: u8) -> u16 { a as u16 }",                    // u8 param
+        "fn run(a: u16) -> u16 { a as u8 as u16 }",             // cast to u8
+        "fn run(a: u16) -> i16 { 1i16 }",                       // i16 return
+        "fn run(a: u16) -> u16 { let (x, y) = (a, a); x + y }", // tuple pattern
+        "fn run(a: u16) -> u16 { b + a }",                      // unknown name
+        "fn run(a: u16) -> u16 { core::cmp::max(a, 1) }",       // qualified call
+        "fn run(a: u16) -> u16 { 'x' as u16 }",                 // char literal
+    ] {
+        let out = canonicalize_source(
+            src,
+            &CanonOptions {
+                mode: CanonMode::Full,
+                ..Default::default()
+            },
+        )
+        .unwrap_or_else(|e| panic!("soft, not hard, for {src}: {e}"));
+        assert!(
+            out.repairs
+                .iter()
+                .any(|r| r.code == DiagCode::NonStraightLine),
+            "expected light fallback for: {src}"
+        );
+    }
+}
+
+#[test]
+fn canon_hard_errors_are_typed() {
+    let hard = |src: &str| {
+        canonicalize_source(
+            src,
+            &CanonOptions {
+                mode: CanonMode::Full,
+                ..Default::default()
+            },
+        )
+        .unwrap_err()
+    };
+    assert_eq!(
+        hard("fn run() -> u16 { 7 % 0 }").code,
+        DiagCode::InexactConstDivision
+    );
+    assert_eq!(
+        hard("fn run(a: u16) -> u16 { a + 4294967296 * 2 }").code,
+        DiagCode::WidthExceedsU16
+    );
+    assert_eq!(hard("fn run(").code, DiagCode::Parse);
+    // Constant Rem folds; select on constant condition folds.
+    let out = full_canon("fn run(a: u16) -> u16 { a + 7 % 3 }");
+    assert!(out.source.contains("+ 1u16"), "{}", out.source);
+    let out = full_canon("fn run(a: u16) -> u16 { if 2 > 1 { a } else { a + 1 } }");
+    assert!(
+        !out.source.contains("if "),
+        "constant condition folds: {}",
+        out.source
+    );
+}
+
+#[test]
+fn nested_branch_rendering_covers_all_node_kinds() {
+    // Arm-exclusive subtrees exercise the inline renderer across node kinds:
+    // sum, muldiv chain, rem, call, nested select.
+    let src = "fn run(a: u16, b: u16) -> u16 {
+        if a < b {
+            (a + b + 3) * 2 / 5 % 7
+        } else {
+            if b == 4 { gcd(a, b) } else { a - b - 1 }
+        }
+    }";
+    let out = full_canon(src);
+    assert!(!out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    let with_kernel = format!(
+        "{}\nfn gcd(a: u16, b: u16) -> u16 {{ let mut x = a; let mut y = b; while y != 0u16 {{ let t = x % y; x = y; y = t; }} x }}\n",
+        out.source
+    );
+    assert_compiles(&with_kernel);
+    // Idempotent through the exotic shapes too.
+    assert_eq!(full_canon(&out.source).source, out.source);
+}
+
+#[test]
+fn wide_lane_select_trunc_and_declared_widths() {
+    // Truncation is real in the wide lane.
+    let out = full_canon("fn run(a: u16) -> u16 { ((a as u32) * 3) as u16 }");
+    assert!(out.widened);
+    assert!(out.source.contains("as u16"), "{}", out.source);
+    assert_compiles(&out.source);
+    // Select with wide arm-inline rendering.
+    let out = full_canon("fn run(a: u16) -> u32 { if a > 1 { (a as u32) * 70000 } else { 0 } }");
+    assert!(out.widened && out.source.contains("if "), "{}", out.source);
+    assert_compiles(&out.source);
+    // Declared-wide param and return pass straight through.
+    let out = full_canon("fn run(a: u32) -> u32 { a + 1 }");
+    assert!(out.widened);
+    assert!(out.source.contains("q0: u32"), "{}", out.source);
+    assert_compiles(&out.source);
+    // Constant-only adds with a trailing subtraction (negative-k emission path).
+    let out = full_canon("fn run(a: u16) -> u16 { 10 - a }");
+    assert!(out.source.contains("10u16 - "), "{}", out.source);
+    assert_compiles(&out.source);
+}
+
+#[test]
+fn light_mode_normalizes_impl_methods_and_lift_respects_hints() {
+    // Statement macros strip inside impl methods too (the state-cell surface).
+    let src =
+        "struct S { x: u16 }\nimpl S { fn run(&mut self) -> u16 { println!(\"x\"); self.x } }";
+    let out = canonicalize_source(src, &CanonOptions::default()).unwrap();
+    assert!(out.changed && !out.source.contains("println"));
+    // Unit scaling happens before lifting: a hinted $16.50 lifts as 1650 cents.
+    let out = canonicalize_source(
+        "fn run() -> u16 { let price = 16.50; let n = 3; price + n }",
+        &CanonOptions {
+            mode: CanonMode::Full,
+            hints: vec![UnitHint {
+                ident: "price".into(),
+                unit: "dollars".into(),
+            }],
+            lift_literals: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(out.lifted, vec![("q0".into(), 1650), ("q1".into(), 3)]);
+}
+
+#[test]
+fn full_mode_reassembles_non_fn_items_and_attrs() {
+    // A Full-canonicalized fn alongside items the pass leaves alone: the struct and
+    // impl token-print, inner attrs and `///` docs survive, and the whole file
+    // still parses and compiles.
+    let src = "#![allow(dead_code)]\n//! summary line\n/// doc on run\nfn run(a: u16) -> u16 { let x = a * 2; x }\nstruct S { f: u16 }\nimpl S { fn get(&mut self) -> u16 { self.f } }\nconst K: u16 = 3;\n";
+    let out = full_canon(src);
+    assert!(out.changed);
+    assert!(out.source.contains("//! summary line"), "{}", out.source);
+    assert!(out.source.contains("/// doc on run"), "{}", out.source);
+    assert!(out.source.contains("struct S"), "{}", out.source);
+    assert!(out.source.contains("allow"), "{}", out.source);
+    assert_compiles(&out.source);
+}
+
+#[test]
+fn cast_const_folds_and_hinted_derived_lets_carry_units() {
+    // `70000 as u16` folds at compile time to its truncation (70000 mod 65536).
+    let out = full_canon("fn run() -> u16 { 70000 as u16 }");
+    assert!(out.source.contains("4464u32"), "{}", out.source); // 70000 pre-fold widens the lane
+                                                               // A unit hint on a *derived* let rides the rename metadata (v-slot, factor 1).
+    let out = canonicalize_source(
+        "fn run(a: u16) -> u16 { let total = a * 2; total + 1 }",
+        &CanonOptions {
+            mode: CanonMode::Full,
+            hints: vec![UnitHint {
+                ident: "total".into(),
+                unit: "dollars".into(),
+            }],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let r = out
+        .renames
+        .iter()
+        .find(|r| r.source_name == "total")
+        .expect("derived rename present");
+    assert!(r.slot.starts_with('v'));
+    assert_eq!(r.unit.as_deref(), Some("cents"));
+}

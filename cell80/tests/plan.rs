@@ -343,3 +343,83 @@ fn cli_solve_verb() {
     assert!(run_cli(&["solve".into(), "/nope.json".into()]).is_err());
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn normalize_units_edges() {
+    use cell80::plan::Quantity;
+    // Fractional-factor rates are kept-and-recorded, never misscaled.
+    let mut p = Plan {
+        quantities: vec![Quantity {
+            id: "wage".into(),
+            value: 1200,
+            unit: "dollars_per_hour".into(),
+        }],
+        ops: vec![],
+        target: "wage".into(),
+        constraints: vec![],
+    };
+    let repairs = p.normalize_units().unwrap();
+    assert_eq!(
+        p.quantities[0].unit, "dollars_per_hour",
+        "kept: {repairs:?}"
+    );
+    assert_eq!(p.quantities[0].value, 1200);
+    assert!(
+        repairs.iter().any(|r| r.contains("unit_kept")),
+        "{repairs:?}"
+    );
+    // Scale overflow is a named error, not a wrap.
+    let mut p = Plan {
+        quantities: vec![Quantity {
+            id: "long".into(),
+            value: u32::MAX / 2,
+            unit: "weeks".into(),
+        }],
+        ops: vec![],
+        target: "long".into(),
+        constraints: vec![],
+    };
+    assert!(p.normalize_units().unwrap_err().contains("overflow"));
+    // Pure relabel records unit_normalized.
+    let mut p = Plan {
+        quantities: vec![Quantity {
+            id: "d".into(),
+            value: 3,
+            unit: "items".into(),
+        }],
+        ops: vec![],
+        target: "d".into(),
+        constraints: vec![],
+    };
+    let repairs = p.normalize_units().unwrap();
+    assert_eq!(p.quantities[0].unit, "count");
+    assert!(repairs.iter().any(|r| r.contains("unit_normalized")));
+}
+
+#[test]
+fn render_rejects_are_named() {
+    let bad = |json: &str, needle: &str| {
+        let err = plan(json).render().unwrap_err();
+        assert!(err.contains(needle), "wanted `{needle}` in `{err}`");
+    };
+    bad(
+        r#"{"quantities":[{"id":"","value":1,"unit":"count"}],"ops":[],"target":"x"}"#,
+        "empty quantity id",
+    );
+    bad(
+        r#"{"quantities":[{"id":"a","value":1,"unit":"count"},{"id":"a","value":2,"unit":"count"}],"ops":[],"target":"a"}"#,
+        "duplicate",
+    );
+    bad(
+        r#"{"quantities":[{"id":"a","value":1,"unit":"count"}],"ops":[["add","a","ghost","c"]],"target":"c"}"#,
+        "not defined",
+    );
+    bad(
+        r#"{"quantities":[{"id":"a","value":1,"unit":"count"}],"ops":[["add","a","a",""]],"target":"a"}"#,
+        "empty output id",
+    );
+    bad(
+        r#"{"quantities":[{"id":"a","value":1,"unit":"count"},{"id":"b","value":1,"unit":"cents"}],"ops":[["sub","a","b","c"]],"target":"c"}"#,
+        "unit mismatch",
+    );
+}
