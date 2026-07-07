@@ -277,7 +277,6 @@ fn math_wave3_fractions_slice() {
         &[("whole", 0), ("n", 1), ("d", 4)],
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
-
 }
 
 #[test]

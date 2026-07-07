@@ -33,7 +33,6 @@ fn verifier_ranker_cells_match_defined_behaviour() {
     assert_eq!(run_cell("diff_equals", &[10, 3, 6]), 0);
     assert_eq!(run_cell("diff_equals", &[3, 10, 0]), 0); // a < b → 0, not a wrapped u16
 
-
     let (ok, halt) = verify(
         "product_equals_u32",
         "ProductEquals",
@@ -428,5 +427,4 @@ fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
     // of the original ~100-cell proposal's category G (7 of the other 10 proposed cells
     // were exact duplicates of already-shipped verifier-ranker cells, per the wave-4 pack
     // note in docs/library-growth.md).
-
 }

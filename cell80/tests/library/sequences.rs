@@ -46,7 +46,6 @@ fn geometry_combinatorics_sequences_sequences_slice() {
         &[("a", 7), ("r", 0), ("n", 3)],
     );
     assert_eq!(cell.get("result"), Some(7)); // 7 + 0 + 0
-
 }
 
 #[test]
@@ -148,10 +147,9 @@ fn wave4_sequences_nth_term_sequences_slice() {
         &[("n", 0), ("sum", 5), ("step", 1)],
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // n == 0
-    // Wave 4, slice 3: sequences nth-term gap-fill — arithmetic_series_sum and
-    // geometric_series_sum only ever summed a whole sequence, never returned a single
-    // term; triangular had no inverse; and the original ~100-cell proposal's two
-    // separately-named odd/even "consecutive sum" variants collapse into one
-    // step-parameterized cell.
-
+                                                             // Wave 4, slice 3: sequences nth-term gap-fill — arithmetic_series_sum and
+                                                             // geometric_series_sum only ever summed a whole sequence, never returned a single
+                                                             // term; triangular had no inverse; and the original ~100-cell proposal's two
+                                                             // separately-named odd/even "consecutive sum" variants collapse into one
+                                                             // step-parameterized cell.
 }

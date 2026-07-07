@@ -19,10 +19,7 @@ fn vector_state_cells_match_defined_behaviour() {
 
 #[test]
 fn first_wave_vector_cells_match_defined_behaviour() {
-    let cases: &[(&str, &[u16], u16)] = &[
-        ("norm2_sq", &[3, 4], 25),
-        ("norm2_sq", &[0, 0], 0),
-    ];
+    let cases: &[(&str, &[u16], u16)] = &[("norm2_sq", &[3, 4], 25), ("norm2_sq", &[0, 0], 0)];
 
     let mut failures = Vec::new();
     for (id, args, exp) in cases {

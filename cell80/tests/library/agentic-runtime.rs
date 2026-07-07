@@ -175,10 +175,9 @@ fn agentic_runtime_state_cells_match_defined_behaviour() {
         .0,
         0
     ); // dead zone, holds OFF
-    // Rate-limiting / resilience state machines (wave 3): each call sets fields by name,
-    // runs one step, and reads the mutated state back — the host is responsible for
-    // re-feeding the updated fields as the next call's inputs.
-
+       // Rate-limiting / resilience state machines (wave 3): each call sets fields by name,
+       // runs one step, and reads the mutated state back — the host is responsible for
+       // re-feeding the updated fields as the next call's inputs.
 }
 
 #[test]
@@ -356,5 +355,4 @@ fn wave4_agentic_runtime_reflexes_agentic_runtime_slice() {
     // so neither was shipped as a separate cell. ucb1_score_q8 was not attempted: UCB1
     // needs a fixed-point ln the dialect has no primitive for (the same class of gap
     // cosine_score_approx is still blocked on).
-
 }
