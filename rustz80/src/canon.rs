@@ -85,6 +85,17 @@ pub struct CanonOptions {
     /// (parameter ABI). Unit scaling applies before lifting (`16.50` dollars lifts
     /// as `1650`).
     pub lift_literals: bool,
+    /// **Checked emission** (the campaign/compose path, paired with lifting): the
+    /// arithmetic lane is forced wide and every add/sub/mul emits through the
+    /// checked prelude kernels (`add_checked_u32`/`sub_checked_u32`/
+    /// `mul_checked_u32`) — overflow and negative intermediates **escalate**
+    /// instead of wrapping. Without this, lifting opens a silent-wrap hole: a
+    /// lifted quantity is no longer a constant, so the fold can't see that
+    /// `q0 * 1000` exceeds `u16::MAX` at the source's own values (found by the
+    /// cross-language parity check: 88*1000/11 wrapped to 2042 instead of 8000 —
+    /// and identical schemas wrap identically, so a gate could even *agree* on
+    /// the wrapped value). Matches the plan renderer's checked-line semantics.
+    pub checked: bool,
 }
 
 /// One alpha-rename: the source name survives only here, never in the rendered Rust.
@@ -899,6 +910,7 @@ impl<'a> FnCanon<'a> {
         hints: &'a HashMap<String, String>,
         wide_default: bool,
         lift: bool,
+        checked: bool,
     ) -> Result<FnOut, Fail> {
         if f.sig.generics.params.iter().next().is_some()
             || f.sig.unsafety.is_some()
@@ -1120,7 +1132,7 @@ impl<'a> FnCanon<'a> {
 
         // ---- width: literals / folded constants decide; wide_default forces ----
         let mut widened =
-            wide_default || ret_wide || c.force_wide || c.params.iter().any(|(_, w)| *w);
+            wide_default || checked || ret_wide || c.force_wide || c.params.iter().any(|(_, w)| *w);
         let mut const_over = c.max_lit > 65535;
         for &id in &reachable {
             let over = |r: Rat| r.n.abs() > 65535 || r.d > 65535;
@@ -1389,6 +1401,20 @@ impl<'a> FnCanon<'a> {
                             acc = fresh(&mut lines, format!("{acc} % {m}"));
                         }
                         acc
+                    } else if checked {
+                        // Campaign lane: adds and subs go through the checked
+                        // kernels — overflow/negative escalates, never wraps.
+                        let mut acc = adds[0].clone();
+                        for a in &adds[1..] {
+                            acc = fresh(&mut lines, format!("add_checked_u32({acc}, {a})"));
+                        }
+                        for s in &subs {
+                            acc = fresh(&mut lines, format!("sub_checked_u32({acc}, {s})"));
+                        }
+                        if adds.len() == 1 && subs.is_empty() {
+                            acc = fresh(&mut lines, acc);
+                        }
+                        acc
                     } else {
                         let mut acc = chain(&mut lines, &adds, "+", &mut fresh);
                         for s in &subs {
@@ -1432,6 +1458,28 @@ impl<'a> FnCanon<'a> {
                             acc = fresh(&mut lines, format!("{acc} % {m}"));
                         }
                         acc
+                    } else if checked {
+                        let kchain = |lines: &mut Vec<String>,
+                                      atoms: &[String],
+                                      fresh: &mut dyn FnMut(&mut Vec<String>, String) -> String|
+                         -> String {
+                            let mut acc = atoms[0].clone();
+                            for a in &atoms[1..] {
+                                acc = fresh(lines, format!("mul_checked_u32({acc}, {a})"));
+                            }
+                            acc
+                        };
+                        let na = kchain(&mut lines, &nums, &mut fresh);
+                        if dens.is_empty() {
+                            if nums.len() == 1 {
+                                fresh(&mut lines, na)
+                            } else {
+                                na
+                            }
+                        } else {
+                            let da = kchain(&mut lines, &dens, &mut fresh);
+                            fresh(&mut lines, format!("{na} / {da}"))
+                        }
                     } else {
                         let na = chain(&mut lines, &nums, "*", &mut fresh);
                         if dens.is_empty() {
@@ -1490,9 +1538,19 @@ impl<'a> FnCanon<'a> {
                     }
                 }
                 Node::Select { c: cond, t, f } => {
-                    let cs = render_inline(&c, cond, &atom_of, widened, suffix, &slot_of_param)?;
-                    let ts = render_inline(&c, t, &atom_of, widened, suffix, &slot_of_param)?;
-                    let fs = render_inline(&c, f, &atom_of, widened, suffix, &slot_of_param)?;
+                    let cs = render_inline(
+                        &c,
+                        cond,
+                        &atom_of,
+                        widened,
+                        checked,
+                        suffix,
+                        &slot_of_param,
+                    )?;
+                    let ts =
+                        render_inline(&c, t, &atom_of, widened, checked, suffix, &slot_of_param)?;
+                    let fs =
+                        render_inline(&c, f, &atom_of, widened, checked, suffix, &slot_of_param)?;
                     fresh(&mut lines, format!("if {cs} {{ {ts} }} else {{ {fs} }}"))
                 }
                 Node::Cmp { .. } => unreachable!("conditions render inside their Select"),
@@ -1601,6 +1659,7 @@ fn render_inline(
     id: usize,
     atom_of: &HashMap<usize, String>,
     widened: bool,
+    checked: bool,
     suffix: &str,
     slot_of_param: &HashMap<usize, usize>,
 ) -> Result<String, Fail> {
@@ -1641,6 +1700,7 @@ fn render_inline(
                     *d,
                     atom_of,
                     widened,
+                    checked,
                     suffix,
                     slot_of_param,
                 )?));
@@ -1651,24 +1711,42 @@ fn render_inline(
             if adds.is_empty() {
                 adds.push(format!("0{suffix}"));
             }
-            let mut out = adds.join(" + ");
-            for d in neg {
-                out = format!(
-                    "{out} - {}",
-                    wrap(render_inline(
-                        c,
-                        *d,
-                        atom_of,
-                        widened,
-                        suffix,
-                        slot_of_param
-                    )?)
-                );
+            if checked {
+                let mut out = adds[0].clone();
+                for a in &adds[1..] {
+                    out = format!("add_checked_u32({out}, {a})");
+                }
+                for d in neg {
+                    out = format!(
+                        "sub_checked_u32({out}, {})",
+                        render_inline(c, *d, atom_of, widened, checked, suffix, slot_of_param)?
+                    );
+                }
+                if k.n < 0 {
+                    out = format!("sub_checked_u32({out}, {})", rat_atom(Rat::int(-k.n))?);
+                }
+                out
+            } else {
+                let mut out = adds.join(" + ");
+                for d in neg {
+                    out = format!(
+                        "{out} - {}",
+                        wrap(render_inline(
+                            c,
+                            *d,
+                            atom_of,
+                            widened,
+                            checked,
+                            suffix,
+                            slot_of_param
+                        )?)
+                    );
+                }
+                if k.n < 0 {
+                    out = format!("{out} - {}", rat_atom(Rat::int(-k.n))?);
+                }
+                out
             }
-            if k.n < 0 {
-                out = format!("{out} - {}", rat_atom(Rat::int(-k.n))?);
-            }
-            out
         }
         Node::MulDiv { num, den, k } => {
             let mut nums: Vec<String> = Vec::new();
@@ -1678,6 +1756,7 @@ fn render_inline(
                     *d,
                     atom_of,
                     widened,
+                    checked,
                     suffix,
                     slot_of_param,
                 )?));
@@ -1692,6 +1771,7 @@ fn render_inline(
                     *d,
                     atom_of,
                     widened,
+                    checked,
                     suffix,
                     slot_of_param,
                 )?));
@@ -1699,11 +1779,24 @@ fn render_inline(
             if k.d != 1 {
                 dens.push(rat_atom(Rat::int(k.d))?);
             }
-            let na = nums.join(" * ");
+            let join_mul = |xs: &[String]| -> String {
+                if checked {
+                    let mut acc = xs[0].clone();
+                    for x in &xs[1..] {
+                        acc = format!("mul_checked_u32({acc}, {x})");
+                    }
+                    acc
+                } else {
+                    xs.join(" * ")
+                }
+            };
+            let na = join_mul(&nums);
             if dens.is_empty() {
                 na
             } else if dens.len() == 1 {
                 format!("{na} / {}", dens[0])
+            } else if checked {
+                format!("{na} / {}", join_mul(&dens))
             } else {
                 format!("{na} / ({})", dens.join(" * "))
             }
@@ -1715,6 +1808,7 @@ fn render_inline(
                 *a,
                 atom_of,
                 widened,
+                checked,
                 suffix,
                 slot_of_param
             )?),
@@ -1723,6 +1817,7 @@ fn render_inline(
                 *b,
                 atom_of,
                 widened,
+                checked,
                 suffix,
                 slot_of_param
             )?)
@@ -1735,6 +1830,7 @@ fn render_inline(
                     *d,
                     atom_of,
                     widened,
+                    checked,
                     suffix,
                     slot_of_param,
                 )?);
@@ -1743,7 +1839,7 @@ fn render_inline(
         }
         Node::Trunc(a) => {
             if !widened {
-                render_inline(c, *a, atom_of, widened, suffix, slot_of_param)?
+                render_inline(c, *a, atom_of, widened, checked, suffix, slot_of_param)?
             } else {
                 format!(
                     "{} as u16",
@@ -1752,6 +1848,7 @@ fn render_inline(
                         *a,
                         atom_of,
                         widened,
+                        checked,
                         suffix,
                         slot_of_param
                     )?)
@@ -1765,6 +1862,7 @@ fn render_inline(
                 *a,
                 atom_of,
                 widened,
+                checked,
                 suffix,
                 slot_of_param
             )?),
@@ -1774,15 +1872,16 @@ fn render_inline(
                 *b,
                 atom_of,
                 widened,
+                checked,
                 suffix,
                 slot_of_param
             )?)
         ),
         Node::Select { c: cond, t, f } => format!(
             "if {} {{ {} }} else {{ {} }}",
-            render_inline(c, *cond, atom_of, widened, suffix, slot_of_param)?,
-            render_inline(c, *t, atom_of, widened, suffix, slot_of_param)?,
-            render_inline(c, *f, atom_of, widened, suffix, slot_of_param)?
+            render_inline(c, *cond, atom_of, widened, checked, suffix, slot_of_param)?,
+            render_inline(c, *t, atom_of, widened, checked, suffix, slot_of_param)?,
+            render_inline(c, *f, atom_of, widened, checked, suffix, slot_of_param)?
         ),
     })
 }
@@ -1918,7 +2017,7 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
         for (i, item) in file.items.iter().enumerate() {
             if let syn::Item::Fn(f) = item {
                 let lift = opts.lift_literals && (f.sig.ident == "run" || f.sig.ident == "main");
-                match FnCanon::run(f, &hints, opts.wide_default, lift) {
+                match FnCanon::run(f, &hints, opts.wide_default, lift, opts.checked) {
                     Ok(out) => {
                         full_texts.insert(i, out.text);
                         repairs.extend(out.repairs);

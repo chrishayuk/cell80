@@ -242,6 +242,28 @@ cells ahead of u16 siblings, order-only, no score rescaling. Direct p@1: 0.7934 
 **0.8413** at 263 cells; paraphrase also up (0.33 → 0.37). The retrieval floor is
 restored to 0.80.
 
+## 4d. M2.8 closes (2026-07-07): parity, a silent-wrap hole found and fixed, and the second ensemble datapoint
+
+- **Cross-language defer-division parity: 7/7 PASS** (`parity_check.py` →
+  `parity_check_results.txt`). The registered byte-parity wording predates the fold
+  (canon reduces `30/100`→`3/10`; the Python arm deliberately doesn't) and the shape
+  split, so the meaningful invariants are what's checked: numeric equivalence on the
+  cell VM vs the simulated Python plan, and one-trailing-div structure on both arms.
+  Canon strictly subsumes `equations_to_plan` normalization.
+- **The parity check caught a real precision hole before M3 could ship it.**
+  Lifting made quantities non-constant, so the fold could no longer see that
+  `q0 * 1000` overflows at the source's own values: `88*1000/11` silently wrapped
+  to 2042 in the narrow lane — and identical schemas wrap *identically*, so a gate
+  could have agreed on the wrapped value across derivations. Fix (**checked
+  emission**, `CanonOptions::checked`, on for the whole compose path): lifted cells
+  emit adds/subs/muls through the checked prelude kernels — overflow and negative
+  intermediates escalate, never wrap — matching the plan renderer's semantics.
+  Full replay after: every configuration unchanged at 0 accepted-wrong; parity 7/7.
+- **qwen × gemma-reader: 15% → 65% at 100% precision, 0 wrong, 0 genuine
+  escalations** — the ensemble treatment reproduces on the second weak model,
+  landing exactly on qwen's composed-arm ceiling, as it did for granite (35%→75%).
+  The weak-composer + strong-reader configuration is now evidenced twice.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

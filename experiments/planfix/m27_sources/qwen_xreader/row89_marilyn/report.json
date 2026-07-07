@@ -1,0 +1,41 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 2000,
+   "artifact": "34a4e30a42ec4120f0cc2f35fb0f11bd6eca5565cf721a16c55a3c7a05ef862d",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvgrss1s5/d0.rs"
+  },
+  {
+   "answer": 79200,
+   "artifact": "3c916ecd84b5c30d64b953c2221d5e9e3910bea8e5145e678c3745497744c809",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `marlins_sales` = 8800 lifted to a parameter",
+    "E0301:width_exceeds_u16 a constant exceeds u16::MAX \u2014 lane widened to u32",
+    "E0505:dead_let dropped unused bindings: total_sales"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvgrss1s5/d1.rs"
+  },
+  {
+   "answer": 8000,
+   "artifact": "68db19af096e7804c9ca6ce0788a559a95e1f26d75c5da9d69592931a0a5c53c",
+   "kill": null,
+   "repairs": [
+    "E0301:width_exceeds_u16 a constant exceeds u16::MAX \u2014 lane widened to u32"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpvgrss1s5/d2.rs"
+  }
+ ],
+ "flagged": false
+}

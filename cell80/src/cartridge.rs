@@ -169,6 +169,7 @@ impl Cartridge {
                 hints: opts.canon_hints.clone(),
                 wide_default: opts.canon_wide,
                 lift_literals: false,
+                checked: false,
             },
         )
         .map_err(|d| d.to_string())?;

@@ -1,0 +1,42 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 13,
+   "artifact": "36cc3e708ea62d99583916c9dec1d6dfa977e5bdad0f05ba6e6e0d3d7958c7cd",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplb8d5nd3/d0.rs"
+  },
+  {
+   "answer": 18,
+   "artifact": "5bbcbcd3527106dbe10a5cc0fcc69be753b20ec3b9c5776fa1d5a0619f3c8e24",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplb8d5nd3/d1.rs"
+  },
+  {
+   "answer": 15,
+   "artifact": "ae08973b7c92bac807af9453e2dc32b4d0b94e912d63f29d67e51e51e1849318",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0102:quantity_lifted `difference` = 8 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmplb8d5nd3/d2.rs"
+  }
+ ],
+ "flagged": false
+}

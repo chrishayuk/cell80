@@ -1,0 +1,39 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 1620,
+   "artifact": "914a60442333cd4a576996d0e669ae710bc0f083522b921035dc2fed28a11263",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpme4e38fz/d0.rs"
+  },
+  {
+   "answer": 450,
+   "artifact": "deb23b954676c42f3f7c1047663a10397be12ce4ac2299878a6026fd58ada5a4",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sprints_per_session` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `sessions_per_week` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `meters_per_sprint` = 50 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpme4e38fz/d1.rs"
+  },
+  {
+   "answer": 540,
+   "artifact": "8c0696a613ff20e69904d6980c50b114d5d08c32c75f15f89e6681113c8f86e7",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpme4e38fz/d2.rs"
+  }
+ ],
+ "flagged": false
+}

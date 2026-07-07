@@ -217,6 +217,44 @@ path — demoted, not deleted.
   little from the format switch → the bakeoff result is a qwen/gemma idiosyncrasy, the
   headline configuration changes model, and that is stated openly.
 
+### M3 registration update (2026-07-07 — draft for sign-off before compute)
+
+Everything M2.5–M2.9 measured feeds these deltas to the original M3 registration:
+
+**Configurations.** {granite4.1:3b, qwen2.5:3b, gemma4:e4b} × {CoT, PAL-Python,
+cells-3way} as registered, **plus a registered ensemble column**: weak composer ×
+gemma reader (granite×reader, qwen×reader). Evidence: granite 35%→75% and qwen
+15%→65%, both at 100% precision with zero genuine escalations on the slice — the
+reader costs one inline generation and both weak models land on their composed-arm
+ceiling. The ensemble is reported as its own configuration, never as the weak
+model's solo number.
+
+**H-P2 verdict, stated openly (kill clause applied).** granite-solo code-form
+accepted-and-correct reached 45% vs its 30% plan-IR combined — 1.5×, under the
+registered ≥2× bar. Per the registered consequence the headline configuration
+changes: **gemma4 carries H-M2/H-P1; granite remains as the weak-model datapoint
+and ensemble composer.**
+
+**Accounting deltas (all landed and replay-verified).**
+- Gate outcomes are the frozen vocabulary: `unanimous` / `majority` (flagged,
+  audited separately) / `escalate` / `degenerate_zero` (zero-guard) /
+  `battery_escalate` / `single`. Precision reported at both strictness bands.
+- **Battery certificates required** for every multi-derivation accept: common
+  lifted quantities perturbed, agreement must survive; perturbation counts and
+  skipped values reported. (Priced: it correctly killed one exact-division-
+  coincidence agreement on the slice.)
+- **Checked emission everywhere on the compose path** — silent wrap is closed;
+  overflow/negative escalate (`needs_wider_math`), matching plan-solve.
+- **Precipitation (H-M3) counts post-canonicalization schema recurrence at the
+  instance level** — lifting makes same-structure-different-numbers one artifact,
+  so the schema curve is measured across problems, not just noun spellings.
+- The E-code repair taxonomy as of `E0102`–`E0505` is frozen for the campaign.
+
+**Phasing.** (1) gemma cells-3way at N=1,319 with CoT and PAL baselines — the
+H-M2/H-P1 flagship; (2) GSM-Symbolic on the same identities (H-M1, the headline);
+(3) weak-model solo + ensemble configs. The runner must checkpoint/resume
+(~10k+ local generations), export facts, and capture tokens/T-states/wall-clock
+per the original accounting.
 ### M4 — readout
 
 Unchanged decision structure: extend (contest packs) / narrow (verifier-only) / bank.

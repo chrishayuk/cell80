@@ -1,0 +1,38 @@
+{
+ "agreement": "majority",
+ "answer": 366,
+ "battery": "survived 0 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1tnec0pv/d0.rs"
+  },
+  {
+   "answer": 366,
+   "artifact": "5715e01d2f6ca00949d0a25a3abfa13c0cca6412c5d4620e019cbca802c7dfe0",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `first_month_downloads` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1tnec0pv/d1.rs"
+  },
+  {
+   "answer": 366,
+   "artifact": "afecb29af4f4ebd3dec4870f18363dcb722eb52d5a4fb8acc1ce5a749e3a2d7f",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1tnec0pv/d2.rs"
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,39 @@
+{
+ "agreement": "majority",
+ "answer": 44,
+ "battery": "survived 0 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 105,
+   "artifact": "85727e98f17628197d060835246b1a6f33282f6625a971a9b097ab065ca565b7",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpg3nqzvt4/d0.rs"
+  },
+  {
+   "answer": 44,
+   "artifact": "5d65bdab758bbfdfd259a1857b4f36c30f0afc7a6c65f1c9743e558cb64fb216",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `start_age` = 23 lifted to a parameter",
+    "E0102:quantity_lifted `current_age` = 34 lifted to a parameter",
+    "E0102:quantity_lifted `vacations_per_year` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpg3nqzvt4/d1.rs"
+  },
+  {
+   "answer": 44,
+   "artifact": "8bca69595be42aacea540c622299db94f5aab73ae9a45958ef56d845e41413a0",
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpg3nqzvt4/d2.rs"
+  }
+ ],
+ "flagged": true
+}

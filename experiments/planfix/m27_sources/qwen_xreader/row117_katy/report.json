@@ -1,0 +1,40 @@
+{
+ "agreement": "majority",
+ "answer": 42,
+ "battery": "survived 0 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp15gi344k/d0.rs"
+  },
+  {
+   "answer": 42,
+   "artifact": "04f78ddecb70ae86143e3dff81351b39ecaa116f71e46a2550e71e1d9e7ec122",
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: non-let statement (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp15gi344k/d1.rs"
+  },
+  {
+   "answer": 42,
+   "artifact": "ca09ec969520e72914a0b5f08f364d9061c2197eef25446632f3fc1d0266ff3d",
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_parts` = 20 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp15gi344k/d2.rs"
+  }
+ ],
+ "flagged": true
+}

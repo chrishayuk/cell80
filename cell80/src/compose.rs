@@ -219,6 +219,10 @@ pub fn compose(host: &CellHost, cells_dir: &Path, src: &str) -> Result<Compositi
             // schema precipitates across problem instances and the battery can
             // perturb them. The values ride in `Composition::lifted`.
             lift_literals: true,
+            // Checked emission: lifted quantities aren't constants, so the fold
+            // can't catch runtime overflow — the checked kernels escalate instead
+            // of wrapping (parity-check find: 88*1000/11 wrapped to 2042 silently).
+            checked: true,
         },
     )
     .map_err(|d| d.to_string())?;
