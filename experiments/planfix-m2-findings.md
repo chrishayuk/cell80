@@ -285,6 +285,30 @@ them from day one). Remaining pre-registered-for-M3-runner: per-generation
 provenance (model digest, seed, options) lives in the campaign runner when it's
 built — drift already killed one prediction, so results must be replayable.
 
+## 4f. Second residual-error pass (2026-07-07, post-amendments)
+
+Regenerating per-row outcomes across all five configurations after amendments 1–5:
+
+- **E0205 was width-blind — found and fixed.** The method rewrite targeted `imax`,
+  a u16 kernel, which can't take checked-lane values (granite row22 d1:
+  "argument 1 of `imax` is 16-bit"). The prelude gains `imax_u32`/`imin_u32`/
+  `iabs_diff_u32` (free fns, DCE-pruned) and the wide lane emits the `_u32` forms
+  with wide arguments.
+- **SSA reassignment landed** (the row92 class): `total = total + n` accumulator
+  style rebinds like a `let` shadow — semantics-preserving in a straight-line
+  body; `let mut x = a; x = x + b; x * 2` and `(a + b) * 2` are now one schema.
+- **Revived arms fail safely.** The suffix/checked work resurrected previously-dead
+  *wrong* derivations (granite row89 d1 now computes 79200) — every one lands as a
+  disagreeing answer and escalates. Zero wrong accepts held through two rounds of
+  coverage expansion; the gate is robust to arms coming back to life wrong.
+- **What remains, honestly:** qwen's stated-answer parse mass (20 of 34 kill rows —
+  instruction-shape, ensemble-solved); granite comprehension disagreements
+  (row121: three valid answers, all different — the gate's job); two tally-gated
+  Model-Rust one-offs (chained comparison `a < b < c`, exotic call targets); the
+  verify-if-with-panic-arm shape (row89 d0 — its answer exists only as a stated
+  literal, unrecoverable by design); and stranded single-correct-answers in
+  ensemble configs, which is the registered 4th-derivation question for M3 data.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

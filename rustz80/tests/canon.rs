@@ -824,3 +824,47 @@ fn width_belongs_to_the_compiler() {
         "unchecked keeps truncation"
     );
 }
+
+#[test]
+fn ssa_reassignment_is_a_rebind() {
+    // Accumulator style is a shadow, not a soft-fail (the granite row92 class).
+    let acc = full_canon(
+        "fn run(a: u16, b: u16) -> u16 { let mut total = a; total = total + b; total = total * 2; total }",
+    );
+    assert!(!acc
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    let direct = full_canon("fn run(a: u16, b: u16) -> u16 { (a + b) * 2 }");
+    assert_eq!(acc.source, direct.source, "one schema");
+    // Assigning an unbound name still falls back honestly.
+    let out = full_canon("fn run(a: u16) -> u16 { ghost = a + 1; a }");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+}
+
+#[test]
+fn wide_lane_method_rewrites_target_wide_kernels() {
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        checked: true,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source(
+        "fn run() -> u16 { let sams = 31; let ray = sams - 6; let son = ray - 23; (son.max(0)) as u16 }",
+        &opts,
+    )
+    .unwrap();
+    assert!(out.source.contains("imax_u32("), "{}", out.source);
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::MethodToKernel));
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NarrowingDropped));
+}

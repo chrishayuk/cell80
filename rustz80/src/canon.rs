@@ -983,6 +983,26 @@ impl<'a> FnCanon<'a> {
         };
         let mut lifted_pos: Vec<(usize, u64)> = Vec::new();
         for s in bindings {
+            // SSA reassignment: `x = <arith>;` where `x` is already bound rebinds
+            // the name to the new value — models write accumulator style
+            // (`total = total + n`) constantly, and a rebind is exactly what a
+            // `let` shadow is. Semantics-preserving in a straight-line body.
+            if let syn::Stmt::Expr(syn::Expr::Assign(assign), Some(_)) = s {
+                if let syn::Expr::Path(path) = &*assign.left {
+                    if let Some(ident) = path.path.get_ident() {
+                        let name = ident.to_string();
+                        if c.env.contains_key(&name) {
+                            let id = c.build(&assign.right)?;
+                            let id = c.scale_const(id, &name);
+                            c.env.insert(name.clone(), id);
+                            c.let_names.push((name, id));
+                            continue;
+                        }
+                        return soft(format!("assignment to unbound `{name}`"));
+                    }
+                }
+                return soft("assignment to a non-name");
+            }
             let syn::Stmt::Local(l) = s else {
                 return soft("non-let statement");
             };
@@ -1516,6 +1536,24 @@ impl<'a> FnCanon<'a> {
                     }
                 },
                 Node::Call { name, args } => {
+                    // In the wide lane the comparison kernels have `_u32` siblings in
+                    // the prelude — E0205 rewrites target those, with wide arguments
+                    // (a u16 kernel can't take checked-lane values; found on the
+                    // granite row22 replay).
+                    let wide_kernel =
+                        widened && matches!(name.as_str(), "imax" | "imin" | "iabs_diff");
+                    if wide_kernel {
+                        let rhs = format!(
+                            "{name}_u32({})",
+                            args.iter()
+                                .map(|d| atom_of[d].clone())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        );
+                        let a = fresh(&mut lines, rhs);
+                        atom_of.insert(id, a);
+                        continue;
+                    }
                     // Call arguments keep their *natural* width, not the lane width:
                     // a u16 parameter stays `q0` (no `as u32`) and a small constant
                     // stays `u16`-suffixed, so a u16 library callee still links in a
