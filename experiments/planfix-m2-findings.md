@@ -264,6 +264,27 @@ restored to 0.80.
   landing exactly on qwen's composed-arm ceiling, as it did for granite (35%→75%).
   The weak-composer + strong-reader configuration is now evidenced twice.
 
+## 4e. Width belongs to the compiler + the last pre-M3 nits (2026-07-07)
+
+Registered amendments 4–5, from the observation that suffix errors are bookkeeping
+noise, not arithmetic intent:
+- **`E0208 suffix_normalized`** — integer suffixes are advisory in Full mode
+  (stripped on parse, canonical ones re-emitted by the lane); an impossible
+  `88000u16` is named in the repair row and the *value* decides the lane.
+  All three spellings of a constant now reach one schema.
+- **`E0209 narrowing_dropped`** — a model's mid-chain `as u16` drops in the
+  checked lane (it fights the type checker; the kernels own overflow). Plain
+  Full/Light keep real truncation — the dialect and its rustc oracle untouched.
+  Replay precision check: every configuration still 0 accepted-wrong.
+
+Plus two pre-M3 fixes from the residual-error analysis: **exact-id linking**
+(`eq(a, b)` links by manifest lookup before any fuzzy score — 2-char names were
+unlinkable below every threshold) and **cost fields in the compose report**
+(`cycles`, `trapped_ops` per derivation — H-M4's cost-per-verified-answer needs
+them from day one). Remaining pre-registered-for-M3-runner: per-generation
+provenance (model digest, seed, options) lives in the campaign runner when it's
+built — drift already killed one prediction, so results must be replayable.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

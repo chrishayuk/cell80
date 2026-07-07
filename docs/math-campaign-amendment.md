@@ -397,6 +397,24 @@ captured-source replay precision check: **if any configuration's accepted-wrong
 moves off zero under replay, the rewrite reverts.** The zero-else arm is required
 — it is what makes the else side contentless.
 
+**Registered amendments 4–5 (2026-07-07): width belongs to the compiler.**
+Asking a 3B model to manage Rust integer widths is asking too much — the width
+errors it makes (`88000u16`, cargo-cult `as u16` mid-chain) are bookkeeping noise,
+not arithmetic intent, and the checked lane already owns overflow honestly.
+- **`E0208 suffix_normalized`** (Full mode): integer-literal width suffixes are
+  advisory — stripped on parse, canonical suffixes re-emitted by the lane rules.
+  An *impossible* suffix (value exceeds its own type, `88000u16`) is named in the
+  repair row instead of dying as a parse-adjacent error; this reaches light-fallback
+  fns inside a Full-mode source too.
+- **`E0209 narrowing_dropped`** (checked/campaign lane only): a model-written
+  `as u16` inside arithmetic is dropped — in the wide checked lane a mid-chain
+  truncation destroys information the kernels are protecting, and is almost always
+  the model fighting the type checker rather than meaning "reduce mod 65536".
+  Output-changing by design, so: replay precision check across every captured
+  configuration; **any accepted-wrong movement reverts it.** Hand-written sources
+  (Light mode, plain Full without `checked`) keep real truncation semantics — the
+  dialect and its rustc oracle are untouched.
+
 **Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
 the error analysis, and the proposed rule amendments awaiting registration:**
 `experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision

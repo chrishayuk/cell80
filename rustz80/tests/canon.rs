@@ -299,8 +299,9 @@ fn calls_survive_with_slot_args() {
 
 #[test]
 fn non_straight_line_falls_back_to_light() {
-    // if-value is canonical since the select node landed — a loop is the probe now.
-    let src = "fn run(a: u16) -> u16 { let mut s = 0u16; while s < a { s = s + 2u16; } s }";
+    // if-value is canonical since the select node landed — a loop is the probe now
+    // (unsuffixed literals: Full mode strips advisory suffixes, E0208).
+    let src = "fn run(a: u16) -> u16 { let mut s = 0; while s < a { s = s + 2; } s }";
     let out = full_canon(src);
     assert!(!out.changed, "control flow: light fallback, byte-stable");
     assert!(out
@@ -780,4 +781,46 @@ fn cast_const_folds_and_hinted_derived_lets_carry_units() {
         .expect("derived rename present");
     assert!(r.slot.starts_with('v'));
     assert_eq!(r.unit.as_deref(), Some("cents"));
+}
+
+#[test]
+fn width_belongs_to_the_compiler() {
+    // Registered amendments E0208/E0209: suffixes are advisory in Full mode; the
+    // impossible `88000u16` is named and survives instead of dying.
+    let out = full_canon("fn run(a: u16) -> u16 { a + 88000u16 / 11u16 }");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::SuffixNormalized && r.detail.contains("88000u16")));
+    assert!(out.widened, "the value, not the suffix, decides the lane");
+    assert!(out.source.contains("8000u32"), "{}", out.source);
+    assert_compiles(&out.source);
+    // All three spellings reach one schema — the model's width bookkeeping is noise.
+    let a = full_canon("fn run(x: u16) -> u16 { x * 30u16 / 100u16 }");
+    let b = full_canon("fn run(x: u16) -> u16 { x * 30u32 / 100 }");
+    let c = full_canon("fn run(x: u16) -> u16 { x * 30 / 100 }");
+    assert_eq!(a.source, c.source);
+    assert_eq!(b.source, c.source);
+    // Checked lane: a model's mid-chain `as u16` drops (E0209); plain Full keeps
+    // real truncation semantics (the dialect and its oracle are untouched).
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        checked: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source(
+        "fn run(a: u16, b: u16) -> u16 { ((a * b) as u16) + 1 }",
+        &opts,
+    )
+    .unwrap();
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NarrowingDropped));
+    assert!(!out.source.contains("as u16"), "{}", out.source);
+    let plain = full_canon("fn run(a: u16) -> u16 { ((a as u32) * 3) as u16 }");
+    assert!(
+        plain.source.contains("as u16"),
+        "unchecked keeps truncation"
+    );
 }

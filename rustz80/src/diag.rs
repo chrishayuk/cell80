@@ -33,6 +33,14 @@ pub enum DiagCode {
     /// E0207 — `if E == lit { lit } else { 0 }` (verify-not-compute) rewritten to
     /// return the computed side `E`. Registered amendment 2026-07-07.
     VerifyRewrite,
+    /// E0208 — an integer literal's width suffix was stripped (suffixes are
+    /// advisory in Full mode — the lane rules own width; an impossible suffix like
+    /// `88000u16` is named). Registered amendment 2026-07-07.
+    SuffixNormalized,
+    /// E0209 — a model-written narrowing cast (`as u16`) inside checked-lane
+    /// arithmetic was dropped: the compiler owns width. Registered amendment
+    /// 2026-07-07 (output-changing; replay precision-checked).
+    NarrowingDropped,
     /// E0301 — a constant exceeds `u16::MAX`; the arithmetic lane auto-widens to u32.
     WidthExceedsU16,
     /// E0302 — a constant division that cannot be exact (division by constant zero,
@@ -76,6 +84,8 @@ impl DiagCode {
             DiagCode::CompoundCallArg => "E0204",
             DiagCode::MethodToKernel => "E0205",
             DiagCode::VerifyRewrite => "E0207",
+            DiagCode::SuffixNormalized => "E0208",
+            DiagCode::NarrowingDropped => "E0209",
             DiagCode::WidthExceedsU16 => "E0301",
             DiagCode::InexactConstDivision => "E0302",
             DiagCode::NegativeConst => "E0303",
@@ -101,6 +111,8 @@ impl DiagCode {
             DiagCode::CompoundCallArg => "compound_call_arg",
             DiagCode::MethodToKernel => "method_to_kernel",
             DiagCode::VerifyRewrite => "verify_rewrite",
+            DiagCode::SuffixNormalized => "suffix_normalized",
+            DiagCode::NarrowingDropped => "narrowing_dropped",
             DiagCode::WidthExceedsU16 => "width_exceeds_u16",
             DiagCode::InexactConstDivision => "inexact_const_division",
             DiagCode::NegativeConst => "negative_const",

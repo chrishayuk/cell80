@@ -54,6 +54,11 @@ pub struct DerivationOutcome {
     pub repairs: Vec<String>,
     /// The composed schema was already catalogued (H-M3 precipitation counter).
     pub retrieved: bool,
+    /// Deterministic cost of the base run (H-M4 accounting): T-states and the
+    /// count of cost-bearing host traps (mul/div — near-free in cycles, so both
+    /// are reported; see `Report::cycles`' caveat).
+    pub cycles: u64,
+    pub trapped_ops: u64,
     /// Runtime-only: the warm handle, base arguments, and return width — what the
     /// counterfactual battery needs to re-run this derivation under perturbation.
     pub handle: Option<usize>,
@@ -136,6 +141,13 @@ fn resolve(
             if free_fn_arity(m).is_some_and(|a| arity.is_none_or(|want| a == want)) {
                 return Ok(wide_id);
             }
+        }
+    }
+    // An exact id is maximal confidence — it must not depend on trigram scores or
+    // name length (2-char names like `eq` score below every fuzzy threshold).
+    if let Some(m) = host.manifest(name) {
+        if free_fn_arity(m).is_some_and(|a| arity.is_none_or(|want| a == want)) {
+            return Ok(name.to_string());
         }
     }
     let hits = host.search_scored(name, 6);
@@ -338,6 +350,8 @@ pub fn run_composed(
         resolutions,
         repairs: comp.repairs,
         retrieved,
+        cycles: fast.cycles,
+        trapped_ops: fast.trapped_ops,
         handle: Some(h),
         base_args: args.to_vec(),
         lifted: comp.lifted,

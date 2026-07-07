@@ -415,6 +415,8 @@ fn link_budget_exhausts_with_a_named_error_and_battery_needs_handles() {
         resolutions: vec![],
         repairs: vec![],
         retrieved: false,
+        cycles: 0,
+        trapped_ops: 0,
         handle: None,
         base_args: vec![],
         lifted: vec![("q0".into(), 1)],
@@ -451,4 +453,29 @@ fn runtime_halts_are_named_kills() {
     assert!(out.contains("cycle_budget"), "{out}");
     // A lone dead derivation is `single` with no answer.
     assert_eq!(agreement(&[None]), (None, "single", false));
+}
+
+#[test]
+fn exact_id_links_regardless_of_name_length_and_costs_are_reported() {
+    // `eq` exists as a cell under exactly that id — a 2-char name that every fuzzy
+    // threshold refuses must still link by exact match (maximal confidence).
+    let src = tmp(
+        "eqcall.rs",
+        "fn run(a: u16, b: u16) -> u16 { eq(a, b) * 7 }",
+    );
+    let out = run_cli(&[
+        "compose".into(),
+        cells_dir(),
+        src,
+        "--args".into(),
+        "4,4".into(),
+        "--json".into(),
+    ])
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["derivations"][0]["answer"], 7, "{out}");
+    assert_eq!(v["derivations"][0]["resolutions"][0]["cell"], "eq");
+    // H-M4 accounting rides in the report.
+    assert!(v["derivations"][0]["cycles"].as_u64().unwrap() > 0, "{out}");
+    assert!(v["derivations"][0]["trapped_ops"].is_u64());
 }

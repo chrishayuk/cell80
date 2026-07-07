@@ -692,6 +692,8 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                 resolutions: Vec::new(),
                 repairs: Vec::new(),
                 retrieved: false,
+                cycles: 0,
+                trapped_ops: 0,
                 handle: None,
                 base_args: Vec::new(),
                 lifted: Vec::new(),
@@ -757,6 +759,8 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                 "kill": o.kill,
                 "artifact": o.artifact,
                 "retrieved": o.retrieved,
+                "cycles": o.cycles,
+                "trapped_ops": o.trapped_ops,
                 "resolutions": o.resolutions.iter()
                     .map(|(n, id)| json!({"call": n, "cell": id}))
                     .collect::<Vec<_>>(),

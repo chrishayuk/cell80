@@ -425,6 +425,8 @@ struct FnCanon<'a> {
     max_lit: i128,
     /// An explicit `as u32` in the source forces the wide lane.
     force_wide: bool,
+    /// Campaign lane (checked kernels): model narrowing casts drop (`E0209`).
+    checked: bool,
 }
 
 struct FnOut {
@@ -597,6 +599,17 @@ impl<'a> FnCanon<'a> {
                     // `as u32` is zero-extension — the identity, but it commits the
                     // fn to the wide lane (matching the source author's intent).
                     self.force_wide = true;
+                    return Ok(inner);
+                }
+                if self.checked {
+                    // Registered amendment `E0209`: in the checked lane the
+                    // compiler owns width — a model's mid-chain `as u16` is
+                    // bookkeeping noise, and truncating a protected wide value
+                    // is never what the arithmetic means.
+                    self.repairs.push(Repair::new(
+                        DiagCode::NarrowingDropped,
+                        "`as u16` dropped in the checked lane",
+                    ));
                     return Ok(inner);
                 }
                 if let Some(r) = self.as_const(inner) {
@@ -937,6 +950,7 @@ impl<'a> FnCanon<'a> {
             repairs: Vec::new(),
             max_lit: 0,
             force_wide: false,
+            checked,
         };
         for p in &f.sig.inputs {
             let syn::FnArg::Typed(pt) = p else {
@@ -2009,6 +2023,57 @@ pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput
     let mut lifted: Vec<(String, u64)> = Vec::new();
     let mut full_texts: HashMap<usize, String> = HashMap::new();
     if matches!(opts.mode, CanonMode::Full) {
+        // Width belongs to the compiler (registered amendment `E0208`): integer
+        // suffixes are advisory in Full mode. Strip them all — the lane rules
+        // re-emit canonical ones — and NAME the impossible ones (`88000u16`),
+        // which would otherwise die even in light-fallback fns.
+        struct SuffixStrip {
+            stripped: usize,
+            impossible: Vec<String>,
+        }
+        impl VisitMut for SuffixStrip {
+            fn visit_lit_int_mut(&mut self, lit: &mut syn::LitInt) {
+                let suffix = lit.suffix().to_string();
+                if suffix.is_empty() {
+                    return;
+                }
+                if let Ok(v) = lit.base10_parse::<u128>() {
+                    let max: u128 = match suffix.as_str() {
+                        "u8" => u8::MAX as u128,
+                        "u16" => u16::MAX as u128,
+                        "u32" => u32::MAX as u128,
+                        "i16" => i16::MAX as u128,
+                        _ => u128::MAX,
+                    };
+                    if v > max {
+                        self.impossible.push(format!("{v}{suffix}"));
+                    }
+                    self.stripped += 1;
+                    *lit = syn::LitInt::new(lit.base10_digits(), lit.span());
+                }
+            }
+        }
+        let mut strip = SuffixStrip {
+            stripped: 0,
+            impossible: Vec::new(),
+        };
+        strip.visit_file_mut(&mut file);
+        if !strip.impossible.is_empty() {
+            repairs.push(Repair::new(
+                DiagCode::SuffixNormalized,
+                format!(
+                    "impossible suffixes stripped: {}",
+                    strip.impossible.join(", ")
+                ),
+            ));
+            light_fired = true; // the text changed even if no fn full-canonicalizes
+        } else if strip.stripped > 0 {
+            repairs.push(Repair::new(
+                DiagCode::SuffixNormalized,
+                format!("{} advisory width suffixes stripped", strip.stripped),
+            ));
+            light_fired = true;
+        }
         let hints: HashMap<String, String> = opts
             .hints
             .iter()
