@@ -1,329 +1,16 @@
-//! `canon` — the deterministic **source canonicalization pass** (M2.5) and **dialect
-//! normalizer** (M2.6). Text in, text out, *before* hashing and lowering: the cell layer
-//! canonicalizes the source it is about to hash so that structurally identical programs
-//! reach one byte-identical spelling — the precondition for precipitation (same schema ⇒
-//! same artifact hash, `docs/math-campaign-amendment.md`).
+//! `canon::full` — Full canonicalization: the straight-line arithmetic DAG.
 //!
-//! Two strengths, chosen by [`CanonMode`]:
-//!
-//! - **Light** (default, semantics-preserving): the dialect normalizer only — strip
-//!   statement macros, rewrite a trailing `let`/`return` into a tail expression, collapse
-//!   redundant parens. If no rule fires the input text is returned **byte-identical**
-//!   (no hash churn for already-clean sources).
-//! - **Full** (the campaign/compose path): additionally rewrites every *straight-line
-//!   arithmetic* `fn` into canonical form — bindings alpha-renamed to slots (`q0…` for
-//!   parameters, `v0…` for derived values) in dataflow order, ops topologically sorted
-//!   with a deterministic tie-break, constants folded exactly (decimal literals become
-//!   exact fractions), `*`/`/` chains flattened so division happens **once at the end**
-//!   (defer-division), and the arithmetic lane auto-widened to `u32` when any literal or
-//!   folded constant exceeds `u16::MAX`.
-//!
-//! Full mode is deliberately **not** semantics-preserving around truncating division:
-//! reassociating `a / b * c` into `a * c / b` is the defer-division *repair* (precision
-//! fix), applied deterministically and recorded as a typed [`Repair`]. Constants are
-//! treated as exact rationals; a constant division that cannot be exact is a typed
-//! compile error ([`DiagCode::InexactConstDivision`]), not a silently truncated value.
-//! Functions outside the straight-line subset (control flow, state, casts, intrinsics)
-//! fall back to Light with a [`DiagCode::NonStraightLine`] note — never an error.
-//!
-//! The **unit base-scale table** ([`canonical_unit`], versioned by
-//! [`UNIT_TABLE_VERSION`]) lives here, not in any prompt: money → cents, time → seconds,
-//! unknown nouns → count, rates → explicit `numerator_per_denominator`. Scaling is
-//! applied only where a [`UnitHint`] names a binding or literal, and every application
-//! is recorded ([`DiagCode::UnitScaled`]).
-//!
-//! This pass is invoked by the cell layer on source text (so the canonical form reaches
-//! both the manifest's source hash and codegen); the `compile_*` entry points in this
-//! crate stay pure and never canonicalize behind the caller's back.
+//! A `fn` in the straight-line subset is interned to an expression DAG, then
+//! re-emitted in topological order with slot names, exact constant folding,
+//! defer-division, and static width — the campaign/compose canonical form.
+//! Anything outside the subset returns [`Fail::Soft`] and the caller falls back
+//! to Light.
 
+use super::rat::{parse_decimal, Rat};
+use super::{canonical_unit, Rename};
 use crate::diag::{Diag, DiagCode, Repair};
 use quote::ToTokens;
 use std::collections::{HashMap, HashSet};
-use syn::visit_mut::VisitMut;
-
-/// Version of the unit base-scale table below. Bumped whenever an entry changes —
-/// canonical hashes are only comparable within one table version.
-pub const UNIT_TABLE_VERSION: u32 = 1;
-
-/// How hard to canonicalize. See the module docs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum CanonMode {
-    /// Return the source untouched.
-    Off,
-    /// Dialect normalizer only; byte-identical output when no rule fires.
-    #[default]
-    Light,
-    /// Normalizer + straight-line canonicalization (slots, topo order, folding,
-    /// defer-division, width).
-    Full,
-}
-
-/// A caller-supplied unit tag for a parameter, `let` binding, or literal (matched by
-/// its exact source text, e.g. `"16.50"`). Units are normalized through the base-scale
-/// table; scale factors are applied to hinted *literals* and recorded for parameters.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UnitHint {
-    pub ident: String,
-    pub unit: String,
-}
-
-/// Options for [`canonicalize_source`].
-#[derive(Debug, Clone, Default)]
-pub struct CanonOptions {
-    pub mode: CanonMode,
-    pub hints: Vec<UnitHint>,
-    /// Widen the arithmetic lane to `u32` regardless of what the constants require —
-    /// the compose harness sets this (composed cells default to a `u32` return).
-    pub wide_default: bool,
-    /// **Literal lifting** (`Full` mode, entry fns only): a let-bound bare literal —
-    /// a quantity the model *named* — becomes a `q*` parameter instead of folding
-    /// into the constants; its value is returned in [`CanonOutput::lifted`]. The
-    /// schema then generalizes over the numbers (same structure, different values ⇒
-    /// same artifact — the H-M3 shape), and the counterfactual battery can perturb
-    /// composed cells. Inline expression constants (`* 30 / 100`) stay baked —
-    /// they're structure, not quantities; values over `u16::MAX` stay baked too
-    /// (parameter ABI). Unit scaling applies before lifting (`16.50` dollars lifts
-    /// as `1650`).
-    pub lift_literals: bool,
-    /// **Checked emission** (the campaign/compose path, paired with lifting): the
-    /// arithmetic lane is forced wide and every add/sub/mul emits through the
-    /// checked prelude kernels (`add_checked_u32`/`sub_checked_u32`/
-    /// `mul_checked_u32`) — overflow and negative intermediates **escalate**
-    /// instead of wrapping. Without this, lifting opens a silent-wrap hole: a
-    /// lifted quantity is no longer a constant, so the fold can't see that
-    /// `q0 * 1000` exceeds `u16::MAX` at the source's own values (found by the
-    /// cross-language parity check: 88*1000/11 wrapped to 2042 instead of 8000 —
-    /// and identical schemas wrap identically, so a gate could even *agree* on
-    /// the wrapped value). Matches the plan renderer's checked-line semantics.
-    pub checked: bool,
-}
-
-/// One alpha-rename: the source name survives only here, never in the rendered Rust.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Rename {
-    pub source_name: String,
-    pub slot: String,
-    /// Canonical unit (post-table), when a hint named this binding.
-    pub unit: Option<String>,
-    /// Multiplicative factor into the canonical base unit (1 = already canonical).
-    pub factor: u32,
-}
-
-/// What [`canonicalize_source`] returns.
-#[derive(Debug, Clone)]
-pub struct CanonOutput {
-    /// The canonical source. Equal to the input iff `changed` is false.
-    pub source: String,
-    pub changed: bool,
-    pub renames: Vec<Rename>,
-    pub repairs: Vec<Repair>,
-    /// The arithmetic lane was widened to u32 (by constants or `wide_default`).
-    pub widened: bool,
-    /// Lifted quantities, `(slot, original value)` in slot order — the arguments a
-    /// caller passes to run the canonical cell at the source's original numbers.
-    pub lifted: Vec<(String, u64)>,
-}
-
-// ---------------------------------------------------------------------------
-// The unit base-scale table (fixed and versioned here, not in any prompt).
-// ---------------------------------------------------------------------------
-
-/// Canonical base + multiplicative factor for one unit word. Unknown nouns are the
-/// `count` convention by design (sheep, cups, GB — a count of that noun).
-fn base_scale(word: &str) -> (&'static str, u32) {
-    match word {
-        "cents" | "cent" | "money" => ("cents", 1),
-        "dollars" | "dollar" | "usd" | "bucks" | "pounds" | "gbp" | "euros" | "euro" | "eur" => {
-            ("cents", 100)
-        }
-        "seconds" | "second" | "secs" | "sec" | "time" => ("seconds", 1),
-        "minutes" | "minute" | "mins" | "min" => ("seconds", 60),
-        "hours" | "hour" | "hrs" | "hr" => ("seconds", 3600),
-        "days" | "day" => ("seconds", 86400),
-        "weeks" | "week" => ("seconds", 604800),
-        "meters" | "meter" | "metres" | "metre" | "m" | "distance" => ("meters", 1),
-        "km" | "kilometers" | "kilometres" => ("meters", 1000),
-        "miles" | "mile" => ("meters", 1609),
-        "" | "scalar" | "ratio" => ("scalar", 1),
-        "count" | "items" | "item" => ("count", 1),
-        _ => ("count", 1),
-    }
-}
-
-/// Normalize a unit through the base-scale table: `(canonical, num_factor, den_factor)`.
-/// A rate `x_per_y` normalizes each side (`dollars_per_egg` → `("cents_per_count", 100, 1)`);
-/// a plain unit has `den_factor == 1`.
-pub fn canonical_unit(unit: &str) -> (String, u32, u32) {
-    match unit.split_once("_per_") {
-        Some((num, den)) => {
-            let (nb, nf) = base_scale(num);
-            let (db, df) = base_scale(den);
-            (format!("{nb}_per_{db}"), nf, df)
-        }
-        None => {
-            let (b, f) = base_scale(unit);
-            (b.to_string(), f, 1)
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Exact rational constants.
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Rat {
-    n: i128,
-    d: i128, // > 0, reduced
-}
-
-fn gcd128(a: i128, b: i128) -> i128 {
-    let (mut x, mut y) = (a.abs(), b.abs());
-    while y != 0 {
-        let t = x % y;
-        x = y;
-        y = t;
-    }
-    x
-}
-
-impl Rat {
-    fn int(n: i128) -> Rat {
-        Rat { n, d: 1 }
-    }
-    fn new(n: i128, d: i128) -> Rat {
-        debug_assert!(d != 0);
-        let s = if d < 0 { -1 } else { 1 };
-        let g = gcd128(n, d).max(1);
-        Rat {
-            n: s * n / g,
-            d: s * d / g,
-        }
-    }
-    fn mul(self, o: Rat) -> Rat {
-        Rat::new(self.n * o.n, self.d * o.d)
-    }
-    fn div(self, o: Rat) -> Rat {
-        Rat::new(self.n * o.d, self.d * o.n)
-    }
-    fn add(self, o: Rat) -> Rat {
-        Rat::new(self.n * o.d + o.n * self.d, self.d * o.d)
-    }
-    fn sub(self, o: Rat) -> Rat {
-        Rat::new(self.n * o.d - o.n * self.d, self.d * o.d)
-    }
-    fn is_int(self) -> bool {
-        self.d == 1
-    }
-    fn is_zero(self) -> bool {
-        self.n == 0
-    }
-    fn is_one(self) -> bool {
-        self.n == 1 && self.d == 1
-    }
-}
-
-/// Exact decimal-literal parse: `"16.50"` → 33/2. No float arithmetic anywhere.
-fn parse_decimal(digits: &str) -> Option<Rat> {
-    if digits.contains(['e', 'E']) {
-        return None; // exponent floats stay out of the dialect
-    }
-    let clean: String = digits.chars().filter(|c| *c != '_').collect();
-    match clean.split_once('.') {
-        Some((int, frac)) => {
-            let scale = 10i128.checked_pow(frac.len() as u32)?;
-            let int: i128 = if int.is_empty() { 0 } else { int.parse().ok()? };
-            let frac: i128 = if frac.is_empty() {
-                0
-            } else {
-                frac.parse().ok()?
-            };
-            Some(Rat::new(int * scale + frac, scale))
-        }
-        None => clean.parse().ok().map(Rat::int),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Light normalization (the dialect normalizer): semantics-preserving rewrites.
-// ---------------------------------------------------------------------------
-
-struct ParenFold {
-    fired: bool,
-}
-
-impl VisitMut for ParenFold {
-    fn visit_expr_mut(&mut self, e: &mut syn::Expr) {
-        syn::visit_mut::visit_expr_mut(self, e); // bottom-up
-        if let syn::Expr::Paren(p) = e {
-            if matches!(
-                &*p.expr,
-                syn::Expr::Paren(_) | syn::Expr::Lit(_) | syn::Expr::Path(_)
-            ) {
-                let inner = (*p.expr).clone();
-                *e = inner;
-                self.fired = true;
-            }
-        }
-    }
-}
-
-fn returns_value(sig: &syn::Signature) -> bool {
-    !matches!(sig.output, syn::ReturnType::Default)
-}
-
-/// Apply the normalizer to one fn body. Returns whether anything fired.
-fn normalize_block(block: &mut syn::Block, value_fn: bool, repairs: &mut Vec<Repair>) -> bool {
-    let mut fired = false;
-    // Strip statement macros — the dialect has none; a bare `println!(…);` line is
-    // exactly the model-dialect noise the normalizer exists for.
-    let before = block.stmts.len();
-    block.stmts.retain(|s| {
-        if let syn::Stmt::Macro(m) = s {
-            repairs.push(Repair::new(
-                DiagCode::StatementMacro,
-                format!("stripped `{}!`", m.mac.path.to_token_stream()),
-            ));
-            false
-        } else {
-            true
-        }
-    });
-    fired |= block.stmts.len() != before;
-    // Trailing `let` / trailing `return` → tail expression (the row93 class).
-    if value_fn {
-        let rewrite = match block.stmts.last() {
-            Some(syn::Stmt::Local(l)) => l.init.as_ref().map(|i| ((*i.expr).clone(), "let")),
-            Some(syn::Stmt::Expr(syn::Expr::Return(r), _)) => {
-                r.expr.as_ref().map(|e| ((**e).clone(), "return"))
-            }
-            _ => None,
-        };
-        if let Some((tail, kind)) = rewrite {
-            *block.stmts.last_mut().unwrap() = syn::Stmt::Expr(tail, None);
-            repairs.push(Repair::new(
-                DiagCode::TrailingLet,
-                format!("rewrote trailing `{kind}` to a tail expression"),
-            ));
-            fired = true;
-        }
-    }
-    // Collapse redundant parens.
-    let mut fold = ParenFold { fired: false };
-    fold.visit_block_mut(block);
-    if fold.fired {
-        repairs.push(Repair::new(
-            DiagCode::RedundantParens,
-            "collapsed redundant parentheses",
-        ));
-        fired = true;
-    }
-    fired
-}
-
-// ---------------------------------------------------------------------------
-// Full canonicalization: the straight-line arithmetic DAG.
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
 enum Node {
@@ -400,7 +87,7 @@ impl CmpKind {
     }
 }
 
-enum Fail {
+pub(crate) enum Fail {
     /// Outside the straight-line subset — the fn falls back to Light, never an error.
     Soft(String),
     /// A typed defect in the arithmetic itself — a real compile error.
@@ -411,7 +98,7 @@ fn soft<T>(reason: impl Into<String>) -> Result<T, Fail> {
     Err(Fail::Soft(reason.into()))
 }
 
-struct FnCanon<'a> {
+pub(crate) struct FnCanon<'a> {
     nodes: Vec<Node>,
     keys: Vec<String>,
     memo: HashMap<String, usize>,
@@ -429,13 +116,13 @@ struct FnCanon<'a> {
     checked: bool,
 }
 
-struct FnOut {
-    text: String,
-    renames: Vec<Rename>,
-    repairs: Vec<Repair>,
-    widened: bool,
+pub(crate) struct FnOut {
+    pub(crate) text: String,
+    pub(crate) renames: Vec<Rename>,
+    pub(crate) repairs: Vec<Repair>,
+    pub(crate) widened: bool,
     /// `(slot, original value)` for lifted quantities, in slot order.
-    lifted: Vec<(String, u64)>,
+    pub(crate) lifted: Vec<(String, u64)>,
 }
 
 impl<'a> FnCanon<'a> {
@@ -918,7 +605,7 @@ impl<'a> FnCanon<'a> {
     }
 
     /// Canonicalize one free fn. `Err(Soft)` = not straight-line (fall back to Light).
-    fn run(
+    pub(crate) fn run(
         f: &syn::ItemFn,
         hints: &'a HashMap<String, String>,
         wide_default: bool,
@@ -2004,7 +1691,7 @@ fn expr_kind(e: &syn::Expr) -> &'static str {
 }
 
 /// The doc text of a `///` / `//!` attribute, if this is one.
-fn doc_line(a: &syn::Attribute) -> Option<String> {
+pub(crate) fn doc_line(a: &syn::Attribute) -> Option<String> {
     if !a.path().is_ident("doc") {
         return None;
     }
@@ -2018,160 +1705,6 @@ fn doc_line(a: &syn::Attribute) -> Option<String> {
     None
 }
 
-fn print_item(item: &syn::Item) -> String {
+pub(crate) fn print_item(item: &syn::Item) -> String {
     item.to_token_stream().to_string()
-}
-
-/// Canonicalize `src` under `opts`. See the module docs for what each mode does.
-/// The output's `source` is what the caller should hash and compile; `changed` is
-/// false (and `source == src`) when nothing fired.
-pub fn canonicalize_source(src: &str, opts: &CanonOptions) -> Result<CanonOutput, Diag> {
-    if matches!(opts.mode, CanonMode::Off) {
-        return Ok(CanonOutput {
-            source: src.to_string(),
-            changed: false,
-            renames: Vec::new(),
-            repairs: Vec::new(),
-            widened: false,
-            lifted: Vec::new(),
-        });
-    }
-    let mut file: syn::File =
-        syn::parse_str(src).map_err(|e| Diag::new(DiagCode::Parse, format!("{e}")))?;
-    let mut repairs = Vec::new();
-    let mut light_fired = false;
-    for item in &mut file.items {
-        match item {
-            syn::Item::Fn(f) => {
-                light_fired |= normalize_block(&mut f.block, returns_value(&f.sig), &mut repairs);
-            }
-            syn::Item::Impl(imp) => {
-                for it in &mut imp.items {
-                    if let syn::ImplItem::Fn(m) = it {
-                        light_fired |=
-                            normalize_block(&mut m.block, returns_value(&m.sig), &mut repairs);
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    let mut renames = Vec::new();
-    let mut widened = false;
-    let mut lifted: Vec<(String, u64)> = Vec::new();
-    let mut full_texts: HashMap<usize, String> = HashMap::new();
-    if matches!(opts.mode, CanonMode::Full) {
-        // Width belongs to the compiler (registered amendment `E0208`): integer
-        // suffixes are advisory in Full mode. Strip them all — the lane rules
-        // re-emit canonical ones — and NAME the impossible ones (`88000u16`),
-        // which would otherwise die even in light-fallback fns.
-        struct SuffixStrip {
-            stripped: usize,
-            impossible: Vec<String>,
-        }
-        impl VisitMut for SuffixStrip {
-            fn visit_lit_int_mut(&mut self, lit: &mut syn::LitInt) {
-                let suffix = lit.suffix().to_string();
-                if suffix.is_empty() {
-                    return;
-                }
-                if let Ok(v) = lit.base10_parse::<u128>() {
-                    let max: u128 = match suffix.as_str() {
-                        "u8" => u8::MAX as u128,
-                        "u16" => u16::MAX as u128,
-                        "u32" => u32::MAX as u128,
-                        "i16" => i16::MAX as u128,
-                        _ => u128::MAX,
-                    };
-                    if v > max {
-                        self.impossible.push(format!("{v}{suffix}"));
-                    }
-                    self.stripped += 1;
-                    *lit = syn::LitInt::new(lit.base10_digits(), lit.span());
-                }
-            }
-        }
-        let mut strip = SuffixStrip {
-            stripped: 0,
-            impossible: Vec::new(),
-        };
-        strip.visit_file_mut(&mut file);
-        if !strip.impossible.is_empty() {
-            repairs.push(Repair::new(
-                DiagCode::SuffixNormalized,
-                format!(
-                    "impossible suffixes stripped: {}",
-                    strip.impossible.join(", ")
-                ),
-            ));
-            light_fired = true; // the text changed even if no fn full-canonicalizes
-        } else if strip.stripped > 0 {
-            repairs.push(Repair::new(
-                DiagCode::SuffixNormalized,
-                format!("{} advisory width suffixes stripped", strip.stripped),
-            ));
-            light_fired = true;
-        }
-        let hints: HashMap<String, String> = opts
-            .hints
-            .iter()
-            .map(|h| (h.ident.clone(), h.unit.clone()))
-            .collect();
-        for (i, item) in file.items.iter().enumerate() {
-            if let syn::Item::Fn(f) = item {
-                let lift = opts.lift_literals && (f.sig.ident == "run" || f.sig.ident == "main");
-                match FnCanon::run(f, &hints, opts.wide_default, lift, opts.checked) {
-                    Ok(out) => {
-                        full_texts.insert(i, out.text);
-                        repairs.extend(out.repairs);
-                        renames.extend(out.renames);
-                        widened |= out.widened;
-                        lifted.extend(out.lifted);
-                    }
-                    Err(Fail::Soft(reason)) => {
-                        repairs.push(Repair::new(
-                            DiagCode::NonStraightLine,
-                            format!("fn {}: {reason} (light normalization only)", f.sig.ident),
-                        ));
-                    }
-                    Err(Fail::Hard(d)) => return Err(d),
-                }
-            }
-        }
-    }
-    if full_texts.is_empty() && !light_fired {
-        return Ok(CanonOutput {
-            source: src.to_string(),
-            changed: false,
-            renames,
-            repairs,
-            widened,
-            lifted,
-        });
-    }
-    let mut out = String::new();
-    for a in &file.attrs {
-        match doc_line(a) {
-            Some(doc) => out.push_str(&format!("//!{doc}\n")),
-            None => out.push_str(&format!("{}\n", a.to_token_stream())),
-        }
-    }
-    for (i, item) in file.items.iter().enumerate() {
-        match full_texts.get(&i) {
-            Some(t) => out.push_str(t),
-            None => {
-                out.push_str(&print_item(item));
-                out.push('\n');
-            }
-        }
-    }
-    let changed = out != src;
-    Ok(CanonOutput {
-        source: out,
-        changed,
-        renames,
-        repairs,
-        widened,
-        lifted,
-    })
 }
