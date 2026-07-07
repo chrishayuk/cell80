@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (283 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (286 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -204,7 +204,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
 | `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
 
-## number-theory (47)
+## number-theory (52)
 
 | id | signature | summary |
 |---|---|---|
@@ -217,9 +217,11 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `digit_reverse` | `run(n: u16) -> u16` | Reverse the decimal digits of n (e.g. 123 -> 321; trailing zeros drop, so 120 -> 21). |
 | `digit_sum` | `run(n: u16) -> u16` | Sum of the decimal digits of n. |
 | `digital_root` | `run(n: u16) -> u16` | Digital root: repeatedly sum the decimal digits of n until a single digit remains, computed via the exact closed form (1 + (n-1) mod 9, 0 for n == 0) rather than iterating -- distinct from digit_sum (one summing pass) and persistent_digital_root (which counts the iterations this cell short-circuits). |
+| `discrete_log_naive` | `DiscreteLogNaive::run() -> u16` | Discrete logarithm by brute-force search: the smallest k in [0, max_exp) with base^k == target (mod m). Genuinely bounded by the caller-supplied max_exp (unlike a general discrete-log solve, which is believed hard) -- a plan verifier's "does this exponent exist within a reasonable search window" check. |
 | `divides` | `run(a: u16, b: u16) -> u16` | Returns 1 if a divides b evenly (b % a == 0, a != 0), else 0. |
 | `divisor_power_sum` | `DivisorPowerSum::run() -> u16` | sigma_k(n): sum of the k-th powers of the positive divisors of n (n >= 1) -- generalizes factor_count (k=0, counts divisors) and sum_divisors (k=1, sums them) with an explicit exponent, the same general-parameter-sibling shape weighted_sum2 already gives weighted_sum. |
 | `euler_totient` | `run(n: u16) -> u16` | Euler's totient (phi): count of integers in [1, n] coprime to n (n >= 1; phi(1) = 1 by convention). |
+| `extended_gcd` | `ExtendedGcd::run() -> u16` | Extended Euclidean algorithm: gcd(a, b) plus the Bezout coefficients x, y with a*x + b*y == gcd(a, b). mod_inverse and crt_solve_pair each inline one Bezout chain internally already (a u32 value still can't cross more than one call boundary, so there's no shared subroutine to call) -- this is the standalone two-chain version those two only compute half of. |
 | `factor_count` | `run(n: u16) -> u16` | Number of positive divisors of n (0 for n == 0). |
 | `gcd` | `run(a: u16, b: u16) -> u16` | Greatest common divisor (Euclid's algorithm). |
 | `gcd3` | `run(a: u16, b: u16, c: u16) -> u16` | Greatest common divisor of three values. |
@@ -230,9 +232,11 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `is_pow2` | `run(x: u16) -> u16` | Returns 1 if x is a power of two, else 0. |
 | `is_prime` | `run(n: u16) -> u16` | Returns 1 if n is prime, else 0. |
 | `is_prime_u32` | `IsPrimeWide::run() -> u16` | Returns 1 if n is prime at wide u32 width, else 0 — the wide sibling of is_prime (which works over u16, up to 65535). Trial division scales with sqrt(n): a large prime near u32::MAX needs on the order of tens of millions of cycles, far past the 2,000,000 default — pass a larger --cycles budget explicitly for n much beyond a few million. |
+| `is_quadratic_residue` | `run(x: u16, p: u16) -> u16` | Check whether x is a quadratic residue mod p: does some y in [0, p) satisfy y*y == x (mod p)? Works for any modulus p >= 2, not just primes, via direct search over every residue -- so cost scales with p (like is_prime_u32; budget a larger --cycles for p much beyond a few thousand). |
 | `is_repdigit` | `run(n: u16) -> u16` | Check whether every decimal digit of n is the same digit (e.g. 4444, 555, 22 -- and trivially any single digit 0-9). Distinct from is_palindromic_number: a repdigit is always a palindrome but not vice versa (121 is palindromic, not a repdigit). |
 | `is_square` | `run(n: u16) -> u16` | Returns 1 if n is a perfect square, else 0. |
 | `isqrt` | `run(n: u16) -> u16` | Integer square root: the largest r with r*r <= n. |
+| `jacobi_symbol` | `run(a: u16, n: u16) -> i16` | The Jacobi symbol (a/n) for odd n > 0: 1 if a is a quadratic residue mod every prime factor of n (with multiplicity) an even number of times, -1 for an odd number of times, 0 if gcd(a, n) > 1. Computed by the standard law-of-quadratic-reciprocity reduction, tracking the sign as a parity flip (XOR) rather than a signed accumulator, since every intermediate value stays a plain nonnegative u16. |
 | `jordan_totient` | `JordanTotient::run() -> u16` | Jordan's totient J_k(n): generalizes euler_totient with an exponent k (J_1(n) = phi(n)) -- the product over each prime-power factor p^e of n of p^((e-1)*k) * (p^k - 1). The (e-1)*k exponent is never computed as a scalar product (e up to ~15 times k up to 65535 would overflow u16 before any p^_ term is even reached) -- instead p^((e-1)*k) is built by repeatedly squaring the already-computed p^k value e-1 times, which stays small since e-1 is itself bounded (<= 15 in the u16 domain). |
 | `lcm` | `run(a: u16, b: u16) -> u16` | Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain. |
 | `lcm3` | `run(a: u16, b: u16, c: u16) -> u16` | Least common multiple of three values. |
@@ -245,6 +249,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `next_palindrome` | `run(n: u16) -> u16` | The smallest decimal palindrome strictly greater than n. Searches upward candidate by candidate (the worst-case gap within the u16 domain is 110, at n=1001 -- cheap); escalates if no palindrome exists at or below 65535 (true for n in roughly [65456, 65535], where reaching one would need a 6th digit). |
 | `next_pow2` | `run(n: u16) -> u16` | Smallest power of two >= n (0 if it would exceed 65535; next_pow2(0) = 1). |
 | `num_digits` | `run(n: u16) -> u16` | Number of decimal digits of n (0 has 1 digit). |
+| `order_modulo` | `run(a: u16, n: u16) -> u16` | Multiplicative order of a mod n: the smallest k >= 1 with a^k == 1 (mod n). Requires gcd(a, n) == 1 (else no finite order exists) -- the order always divides euler_totient(n), so the search loop is bounded by n itself. |
 | `persistent_digital_root` | `run(n: u16) -> u16` | Additive persistence: the number of digit-summing passes needed to reduce n to a single digit (0 if n is already a single digit) -- the step count, not the resulting digit itself. |
 | `polygonal_number` | `run(s: u16, n: u16) -> u16` | The nth s-gonal (polygonal) number: P(s, n) = n + (s-2)*n*(n-1)/2, for a polygon with s sides (s >= 3). s=3 reproduces triangular's own values (kept as a separate cell for its own retrieval identity, not folded away), s=4 is the perfect squares, s=5 is pentagonal, s=6 is hexagonal, and so on — one general cell instead of a differently-named cell for every side count. |
 | `pow_mod` | `run(base: u16, exp: u16, m: u16) -> u16` | Modular exponentiation: (base^exp) mod m (0 if m == 0). u16 domain m <= 256. |
@@ -374,13 +379,6 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
-
-## softfloat (2)
-
-| id | signature | summary |
-|---|---|---|
-| `lerp_f32` | `LerpF32::run() -> u16` | Linear interpolation a + t*(b - a) in IEEE binary32 — the owned softfloat kernels, correctly rounded per op and bit-identical to rustc f32; t is a plain f32 (not clamped), so t=0 gives a and t=1 gives a + (b - a). |
-| `norm2_f32` | `Norm2F32::run() -> u16` | Euclidean length of a 2-vector in IEEE binary32 — sqrt(x*x + y*y) through the owned softfloat kernels: correctly rounded per op, bit-identical to rustc f32, deterministic on every host (no libm). |
 
 ## spatial-grid (6)
 

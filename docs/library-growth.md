@@ -276,14 +276,26 @@ wave 8    281 cells   + recursive sequences + digit operations, the
                         past the u16 ceiling), is_repdigit, and
                         is_automorphic_number (n^2 ends with n). See the
                         pack note below.
-next      ~306         + the remaining ~34 ready-now math-server candidates
-                        (modular/classic number theory, combinatorics,
-                        geometry integer subset, vectors, matrix,
-                        statistics — docs/math-server-map.md) plus Wave Q0
-                        (Q16.16 plumbing) as a prerequisite for the 4
-                        Q-format candidates; cosine_score_approx (deferred
-                        until cell_solve reads out); CORDIC trig remains
-                        demand-gated per docs/real-valued-cells-spec.md Wave 3
+wave 9    286 cells   + modular / classic number theory, the math-server
+                        map's next slice: extended_gcd (the standalone
+                        two-Bezout-chain extended Euclidean algorithm --
+                        mod_inverse/crt_solve_pair each only inline one
+                        chain internally today), jacobi_symbol (i16-typed,
+                        via the standard reciprocity reduction tracked as
+                        a parity flip rather than a signed accumulator),
+                        order_modulo (multiplicative order, bounded by n),
+                        is_quadratic_residue (any modulus, direct search),
+                        and discrete_log_naive (brute-force search bounded
+                        by a caller-supplied max exponent). See the pack
+                        note below.
+next      ~301         + the remaining ~29 ready-now math-server candidates
+                        (combinatorics, geometry integer subset, vectors,
+                        matrix, statistics — docs/math-server-map.md) plus
+                        Wave Q0 (Q16.16 plumbing) as a prerequisite for the
+                        4 Q-format candidates; cosine_score_approx
+                        (deferred until cell_solve reads out); CORDIC trig
+                        remains demand-gated per
+                        docs/real-valued-cells-spec.md Wave 3
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -1480,6 +1492,49 @@ real, over-cap sizes — the golden test itself has no cap check, only `index`/`
 (`examples/retrieval_compare`, hardcoded to the real `cell80/cells` path) could not be run for
 the same reason and is deferred to whoever next touches this file once `softfloat` lands
 clean.
+
+**Wave 9 — modular / classic number theory (2026-07-07), the math-server map's next
+slice.** Five cells, no generalize-away-a-duplicate story this time — the map's five
+`modular_number_theory` candidates were each independently novel, not a family with a
+folding opportunity like waves 7/8:
+
+- **`extended_gcd(a, b)`** returns `gcd(a, b)` plus both Bezout coefficients `x, y` with
+  `a*x + b*y == gcd(a, b)` — the standalone version of what `mod_inverse` and
+  `crt_solve_pair` each already inline *half* of (they only track one Bezout chain, since
+  they only need one coefficient). Genuinely new work, not a copy-paste: tracking *two*
+  sign-magnitude chains (`x` for `a`, `y` for `b`) simultaneously through one Euclidean
+  loop, verified against Python's `math`-free reference implementation on the textbook
+  `240, 46 → gcd 2, x=-9, y=47` case plus 20 random pairs before transcribing any test
+  row. Hit the documented `self.field = if … else …` gotcha directly (`library-growth.md`'s
+  own Phase 2.3 dialect-gotchas list, previously seen on `backoff_next`/
+  `accumulate_step`) — fixed the same way, bind to a `let` first, then assign the field.
+- **`jacobi_symbol(a, n)`** returns `i16` (`-1`/`0`/`1`) via the standard
+  quadratic-reciprocity reduction — tracked as a **parity-flip counter** (`u16`, XORed)
+  rather than a signed accumulator, since every intermediate value in the reduction stays
+  a plain nonnegative residue and only the *final sign* is ever negative. Cross-checked
+  the flip-counter transcription against a signed-accumulator reference implementation
+  over 3,000 random `(a, n)` pairs before authoring the cell — a discipline one level more
+  paranoid than the usual handful of spot checks, since a sign-tracking bug here would be
+  the kind that only shows up on some inputs, not all.
+- **`order_modulo(a, n)`**, **`is_quadratic_residue(x, p)`**, **`discrete_log_naive`** are
+  each a bounded search over the modulus's own residues — `is_quadratic_residue` and
+  `discrete_log_naive` both carry a `//! limits:` cost note (`is_prime_u32`'s precedent)
+  since their search is `O(n)`/`O(max_exp)` rather than sub-linear.
+
+Every retrieval query verified end-to-end before landing, same discipline as waves 7/8 —
+three of the five direct queries needed a reword after the first draft collided with an
+existing cell's own vocabulary (`gcd3`, `is_square`, `mod_mul_u32` each briefly out-ranked
+the intended target on an under-specified paraphrase), caught by running every candidate
+query against the real index before writing it into `retrieval.jsonl`, not after. Gate
+(scratch copy, `softfloat` still excluded for the same reason as wave 8): 286 admitted, 0
+refused. Full test suite green except the same 4 `softfloat`-cap-dependent tests wave 8
+left failing (unrelated, not this wave's concern) — and `pre_v5_cartridges_still_load`,
+which the F-wave session fixed on its own between wave 8 and wave 9, confirming that
+failure really was theirs to resolve, not something this file's own changes needed to
+route around. Codegen golden regenerated — purely additive, and this pass also caught
+that the wave 7/8 golden update had never actually been committed (an oversight: the
+prior commit staged everything else but missed `codegen_golden.txt`), so this wave's
+commit carries all three waves' golden entries at once.
 
 ## Mine the ecosystem first
 

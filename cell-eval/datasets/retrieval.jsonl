@@ -634,3 +634,13 @@
 {"id": "is_repdigit-para-1", "query": "check whether every digit of a number is identical, a repdigit", "expected": "is_repdigit", "category": "paraphrase"}
 {"id": "is_automorphic_number-direct-1", "query": "check if a number squared ends in the number itself", "expected": "is_automorphic_number", "category": "direct"}
 {"id": "is_automorphic_number-para-1", "query": "self-reproducing number whose square ends with the number itself", "expected": "is_automorphic_number", "category": "paraphrase"}
+{"id": "extended_gcd-direct-1", "query": "extended Euclidean algorithm returning Bezout coefficients for two numbers", "expected": "extended_gcd", "category": "direct"}
+{"id": "extended_gcd-para-1", "query": "the Bezout coefficients x and y for two integers a and b, standalone from any modular inverse", "expected": "extended_gcd", "category": "paraphrase"}
+{"id": "jacobi_symbol-direct-1", "query": "the Jacobi symbol of a over n", "expected": "jacobi_symbol", "category": "direct"}
+{"id": "jacobi_symbol-para-1", "query": "generalized Legendre symbol for a composite odd denominator via quadratic reciprocity", "expected": "jacobi_symbol", "category": "paraphrase"}
+{"id": "order_modulo-direct-1", "query": "the multiplicative order of a number modulo n", "expected": "order_modulo", "category": "direct"}
+{"id": "order_modulo-para-1", "query": "smallest positive power that returns a value to 1 in a multiplicative group mod n", "expected": "order_modulo", "category": "paraphrase"}
+{"id": "is_quadratic_residue-direct-1", "query": "check if a number is a quadratic residue modulo p", "expected": "is_quadratic_residue", "category": "direct"}
+{"id": "is_quadratic_residue-para-1", "query": "quadratic residue predicate over any modulus, checked by scanning every candidate root", "expected": "is_quadratic_residue", "category": "paraphrase"}
+{"id": "discrete_log_naive-direct-1", "query": "brute force search for a discrete logarithm within a bounded exponent range", "expected": "discrete_log_naive", "category": "direct"}
+{"id": "discrete_log_naive-para-1", "query": "smallest exponent making a base raised to it match a target value mod m, capped search", "expected": "discrete_log_naive", "category": "paraphrase"}

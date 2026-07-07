@@ -37,6 +37,11 @@ cells (`digital_root`, `persistent_digital_root`, `is_palindromic_number`,
 `next_palindrome`, `is_repdigit`, `is_automorphic_number`) from this map's
 `digital_operations` category — those all matched by exact name, no stale rows.*
 
+*Update (2026-07-07, Wave 9): the modular/classic-number-theory slice landed as five
+cells — `extended_gcd`, `jacobi_symbol`, `order_modulo`, `is_quadratic_residue`,
+`discrete_log_naive` — see `docs/library-growth.md`'s "Wave 9" note. All five matched
+by exact name; no generalization-blind-spot rows to flag this time.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

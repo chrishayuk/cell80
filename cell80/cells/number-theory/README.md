@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (47)
+## Landed (52)
 
 | id | signature | summary |
 |---|---|---|
@@ -20,9 +20,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `digit_reverse` | `run(n: u16) -> u16` | Reverse the decimal digits of n (e.g. 123 -> 321; trailing zeros drop, so 120 -> 21). |
 | `digit_sum` | `run(n: u16) -> u16` | Sum of the decimal digits of n. |
 | `digital_root` | `run(n: u16) -> u16` | Digital root: repeatedly sum the decimal digits of n until a single digit remains, computed via the exact closed form (1 + (n-1) mod 9, 0 for n == 0) rather than iterating -- distinct from digit_sum (one summing pass) and persistent_digital_root (which counts the iterations this cell short-circuits). |
+| `discrete_log_naive` | `DiscreteLogNaive::run() -> u16` | Discrete logarithm by brute-force search: the smallest k in [0, max_exp) with base^k == target (mod m). Genuinely bounded by the caller-supplied max_exp (unlike a general discrete-log solve, which is believed hard) -- a plan verifier's "does this exponent exist within a reasonable search window" check. |
 | `divides` | `run(a: u16, b: u16) -> u16` | Returns 1 if a divides b evenly (b % a == 0, a != 0), else 0. |
 | `divisor_power_sum` | `DivisorPowerSum::run() -> u16` | sigma_k(n): sum of the k-th powers of the positive divisors of n (n >= 1) -- generalizes factor_count (k=0, counts divisors) and sum_divisors (k=1, sums them) with an explicit exponent, the same general-parameter-sibling shape weighted_sum2 already gives weighted_sum. |
 | `euler_totient` | `run(n: u16) -> u16` | Euler's totient (phi): count of integers in [1, n] coprime to n (n >= 1; phi(1) = 1 by convention). |
+| `extended_gcd` | `ExtendedGcd::run() -> u16` | Extended Euclidean algorithm: gcd(a, b) plus the Bezout coefficients x, y with a*x + b*y == gcd(a, b). mod_inverse and crt_solve_pair each inline one Bezout chain internally already (a u32 value still can't cross more than one call boundary, so there's no shared subroutine to call) -- this is the standalone two-chain version those two only compute half of. |
 | `factor_count` | `run(n: u16) -> u16` | Number of positive divisors of n (0 for n == 0). |
 | `gcd` | `run(a: u16, b: u16) -> u16` | Greatest common divisor (Euclid's algorithm). |
 | `gcd3` | `run(a: u16, b: u16, c: u16) -> u16` | Greatest common divisor of three values. |
@@ -33,9 +35,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `is_pow2` | `run(x: u16) -> u16` | Returns 1 if x is a power of two, else 0. |
 | `is_prime` | `run(n: u16) -> u16` | Returns 1 if n is prime, else 0. |
 | `is_prime_u32` | `IsPrimeWide::run() -> u16` | Returns 1 if n is prime at wide u32 width, else 0 — the wide sibling of is_prime (which works over u16, up to 65535). Trial division scales with sqrt(n): a large prime near u32::MAX needs on the order of tens of millions of cycles, far past the 2,000,000 default — pass a larger --cycles budget explicitly for n much beyond a few million. |
+| `is_quadratic_residue` | `run(x: u16, p: u16) -> u16` | Check whether x is a quadratic residue mod p: does some y in [0, p) satisfy y*y == x (mod p)? Works for any modulus p >= 2, not just primes, via direct search over every residue -- so cost scales with p (like is_prime_u32; budget a larger --cycles for p much beyond a few thousand). |
 | `is_repdigit` | `run(n: u16) -> u16` | Check whether every decimal digit of n is the same digit (e.g. 4444, 555, 22 -- and trivially any single digit 0-9). Distinct from is_palindromic_number: a repdigit is always a palindrome but not vice versa (121 is palindromic, not a repdigit). |
 | `is_square` | `run(n: u16) -> u16` | Returns 1 if n is a perfect square, else 0. |
 | `isqrt` | `run(n: u16) -> u16` | Integer square root: the largest r with r*r <= n. |
+| `jacobi_symbol` | `run(a: u16, n: u16) -> i16` | The Jacobi symbol (a/n) for odd n > 0: 1 if a is a quadratic residue mod every prime factor of n (with multiplicity) an even number of times, -1 for an odd number of times, 0 if gcd(a, n) > 1. Computed by the standard law-of-quadratic-reciprocity reduction, tracking the sign as a parity flip (XOR) rather than a signed accumulator, since every intermediate value stays a plain nonnegative u16. |
 | `jordan_totient` | `JordanTotient::run() -> u16` | Jordan's totient J_k(n): generalizes euler_totient with an exponent k (J_1(n) = phi(n)) -- the product over each prime-power factor p^e of n of p^((e-1)*k) * (p^k - 1). The (e-1)*k exponent is never computed as a scalar product (e up to ~15 times k up to 65535 would overflow u16 before any p^_ term is even reached) -- instead p^((e-1)*k) is built by repeatedly squaring the already-computed p^k value e-1 times, which stays small since e-1 is itself bounded (<= 15 in the u16 domain). |
 | `lcm` | `run(a: u16, b: u16) -> u16` | Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain. |
 | `lcm3` | `run(a: u16, b: u16, c: u16) -> u16` | Least common multiple of three values. |
@@ -48,6 +52,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `next_palindrome` | `run(n: u16) -> u16` | The smallest decimal palindrome strictly greater than n. Searches upward candidate by candidate (the worst-case gap within the u16 domain is 110, at n=1001 -- cheap); escalates if no palindrome exists at or below 65535 (true for n in roughly [65456, 65535], where reaching one would need a 6th digit). |
 | `next_pow2` | `run(n: u16) -> u16` | Smallest power of two >= n (0 if it would exceed 65535; next_pow2(0) = 1). |
 | `num_digits` | `run(n: u16) -> u16` | Number of decimal digits of n (0 has 1 digit). |
+| `order_modulo` | `run(a: u16, n: u16) -> u16` | Multiplicative order of a mod n: the smallest k >= 1 with a^k == 1 (mod n). Requires gcd(a, n) == 1 (else no finite order exists) -- the order always divides euler_totient(n), so the search loop is bounded by n itself. |
 | `persistent_digital_root` | `run(n: u16) -> u16` | Additive persistence: the number of digit-summing passes needed to reduce n to a single digit (0 if n is already a single digit) -- the step count, not the resulting digit itself. |
 | `polygonal_number` | `run(s: u16, n: u16) -> u16` | The nth s-gonal (polygonal) number: P(s, n) = n + (s-2)*n*(n-1)/2, for a polygon with s sides (s >= 3). s=3 reproduces triangular's own values (kept as a separate cell for its own retrieval identity, not folded away), s=4 is the perfect squares, s=5 is pentagonal, s=6 is hexagonal, and so on — one general cell instead of a differently-named cell for every side count. |
 | `pow_mod` | `run(base: u16, exp: u16, m: u16) -> u16` | Modular exponentiation: (base^exp) mod m (0 if m == 0). u16 domain m <= 256. |
@@ -59,7 +64,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `triangular` | `run(n: u16) -> u16` | nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361). |
 | `triangular_inverse_exact` | `run(x: u16) -> u16` | Solve n*(n+1)/2 = x for n, the exact inverse of triangular: given a triangular number x, return which n produced it. Escalates if x isn't triangular (a wrong-plan signal, e.g. GSM8K's "how many rows" problems). Domain matches triangular's own (n <= 361, x <= 65341). |
 
-## Math-server coverage — 18 candidate(s) not yet built
+## Math-server coverage — 13 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
@@ -67,16 +72,11 @@ Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 funct
 |---|---|
 | `carmichael_number_test` | Korselt's criterion (n square-free and (p-1)\|(n-1) for every prime factor p) is a bounded, deterministic integer test buildable from a smallest_prime_factor-style factorization loop; genuinely new. |
 | `digit_sort` | Distinct bounded operation (sort digits ascending/descending into a small fixed-size buffer, max 5 digits for u16), not covered. |
-| `discrete_log_naive` | Brute-force search explicitly bounded by the caller-supplied max_exp, single int output; 4 args slightly over the usual cap but fits a small state struct. |
-| `extended_gcd` | cell80's mod_inverse/crt_solve_pair only inline extended Euclid internally; a standalone cell returning gcd plus Bezout coefficients (sign-magnitude pair) is a genuine, distinct, bounded gap. |
 | `goldbach_conjecture_check` | Bounded single-value witness search (loop p up to n/2 using is_prime-style checks) for one specific n, matching the 'bounded single check' pattern. |
 | `is_pronic_number` | Inverse-search predicate; feasible via isqrt(4n+1) parity check but chains enough operations (isqrt, arithmetic, compare) to warrant a dedicated small cell rather than a brittle multi-call composition. |
-| `is_quadratic_residue` | Bounded single predicate (search residues mod n up to n-1) over 2 int args, not covered or composable from any existing cell. |
-| `jacobi_symbol` | Bounded recursive reciprocity algorithm (like extended GCD) over 2 int args, genuinely distinct from Legendre and not covered. |
 | `liouville_function` | lambda(n) = (-1)^Omega(n) is a bounded sign-parity function over prime-factor count; no existing cell computes it (big_omega itself doesn't exist yet either, so it isn't reachable via composition). |
 | `magic_constants` | Simple closed-form n*(n^2+1)/2 for an n x n magic square, single arg, not covered by any existing cell. |
 | `number_to_base` | Bounded exact conversion (u16 input needs at most 16 digits in binary), fits a small fixed-size digit-array output rather than a string. |
-| `order_modulo` | Bounded single-value search (loop up to n) for multiplicative order, 2 int args, not covered. |
 | `solve_linear_diophantine` | Bounded exact 3-arg problem (particular solution to ax+by=c via extended Euclid), escalates when gcd doesn't divide c — fits the checked-cell pattern, not currently covered. |
 | `star_number` | Distinct closed-form figurate number (6n(n-1)+1), bounded and exact, not covered. |
 | `sum_digit_powers` | Generalizes digit_sum to arbitrary power per digit; bounded (few digits), 2 args, not directly composable since digit_sum hardcodes power=1. |

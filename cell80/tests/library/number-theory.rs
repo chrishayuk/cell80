@@ -648,3 +648,103 @@ fn digit_operations_wave8_cells_match_defined_behaviour() {
         cell80::Halt::Escalate(0xFF05)
     );
 }
+
+#[test]
+fn modular_classic_number_theory_wave9_cells_match_defined_behaviour() {
+    // Wave 9 (docs/math-server-map.md's modular_number_theory category): extended_gcd is
+    // the standalone two-Bezout-chain version mod_inverse/crt_solve_pair only inline half
+    // of; the other four are independent bounded modular searches. Every expected value
+    // below was cross-checked against an independent Python reference implementation
+    // before being transcribed here.
+
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // extended_gcd: gcd(a,b) plus Bezout x,y with a*x + b*y == gcd. Sign-magnitude output
+    // fields (mag, neg): neg == 1 means negative, mag == 0 is always neg == 0.
+    let (_, cell) = step("extended_gcd", "ExtendedGcd", &[("a", 240), ("b", 46)]);
+    assert_eq!(cell.get("gcd"), Some(2));
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(9), Some(1))); // x = -9
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(47), Some(0))); // y = 47
+    let (_, cell) = step("extended_gcd", "ExtendedGcd", &[("a", 0), ("b", 5)]);
+    assert_eq!(cell.get("gcd"), Some(5));
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(0), Some(0)));
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(1), Some(0)));
+    let (_, cell) = step("extended_gcd", "ExtendedGcd", &[("a", 5), ("b", 0)]);
+    assert_eq!(cell.get("gcd"), Some(5));
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(1), Some(0)));
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(0), Some(0)));
+    let (_, cell) = step("extended_gcd", "ExtendedGcd", &[("a", 17), ("b", 5)]);
+    assert_eq!(cell.get("gcd"), Some(1));
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(2), Some(1))); // x = -2
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(7), Some(0))); // y = 7
+    let (_, cell) = step("extended_gcd", "ExtendedGcd", &[("a", 48), ("b", 18)]);
+    assert_eq!(cell.get("gcd"), Some(6));
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(1), Some(1))); // x = -1
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(3), Some(0))); // y = 3
+
+    // jacobi_symbol: -1/0/1, i16-typed. 65535 is the u16 bit pattern for -1i16 (the
+    // same convention mobius_function/sign_i16 already use).
+    assert_eq!(run_cell("jacobi_symbol", &[1001, 9907]), 65535); // -1
+    assert_eq!(run_cell("jacobi_symbol", &[19, 45]), 1);
+    assert_eq!(run_cell("jacobi_symbol", &[8, 21]), 65535); // -1
+    assert_eq!(run_cell("jacobi_symbol", &[5, 21]), 1);
+    assert_eq!(run_cell("jacobi_symbol", &[3, 9]), 0); // gcd(3,9) = 3 != 1
+    assert_eq!(run_cell("jacobi_symbol", &[1, 1]), 1);
+    assert_eq!(run_cell("jacobi_symbol", &[0, 5]), 0);
+    assert_eq!(
+        free_report("jacobi_symbol", &[1, 4]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // n even
+
+    // order_modulo: smallest k >= 1 with a^k == 1 (mod n).
+    assert_eq!(run_cell("order_modulo", &[3, 7]), 6); // 3 is a primitive root mod 7
+    assert_eq!(run_cell("order_modulo", &[2, 7]), 3);
+    assert_eq!(run_cell("order_modulo", &[1, 5]), 1);
+    assert_eq!(
+        free_report("order_modulo", &[2, 4]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // gcd(2,4) = 2 != 1
+
+    // is_quadratic_residue: works for any modulus, not just primes.
+    assert_eq!(run_cell("is_quadratic_residue", &[4, 7]), 1); // 2^2 = 4
+    assert_eq!(run_cell("is_quadratic_residue", &[5, 7]), 0);
+    assert_eq!(run_cell("is_quadratic_residue", &[0, 7]), 1); // 0^2 = 0
+    assert_eq!(
+        free_report("is_quadratic_residue", &[1, 1]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // p < 2
+
+    // discrete_log_naive: smallest k in [0, max_exp) with base^k == target (mod m).
+    let (_, cell) = step(
+        "discrete_log_naive",
+        "DiscreteLogNaive",
+        &[("base", 3), ("target", 13), ("m", 17), ("max_exp", 20)],
+    );
+    assert_eq!(cell.get("k"), Some(4));
+    let (_, cell) = step(
+        "discrete_log_naive",
+        "DiscreteLogNaive",
+        &[("base", 2), ("target", 1), ("m", 5), ("max_exp", 10)],
+    );
+    assert_eq!(cell.get("k"), Some(0));
+    let (report, _) = step(
+        "discrete_log_naive",
+        "DiscreteLogNaive",
+        &[("base", 2), ("target", 3), ("m", 5), ("max_exp", 2)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // not found within the bound
+}
