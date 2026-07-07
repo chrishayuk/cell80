@@ -94,3 +94,61 @@ fn geometry_combinatorics_sequences_combinatorics_slice() {
     let (_, _, cell) = step("derangement_count", "DerangementCount", &[("n", 8)]);
     assert_eq!(cell.get("result"), Some(14_833));
 }
+
+#[test]
+fn recursive_sequences_wave8_cells_match_defined_behaviour() {
+    // Wave 8 (docs/math-server-map.md's recursive_sequences category): lucas_u_v folds
+    // pell_number and pell_lucas_number in as its p=2,q=1 case (both are U/V of the same
+    // recurrence structure), and tribonacci_number is its own genuinely-distinct 3-term
+    // recurrence. Every expected value below was cross-checked against an independent
+    // Python reference implementation before being transcribed here.
+
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // lucas_u_v(p=2, q=1): U is the Pell numbers 0,1,2,5,12,29,...; V is the companion
+    // Pell (Pell-Lucas) numbers 2,2,6,14,34,...
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 0)]);
+    assert_eq!((cell.get("u"), cell.get("v")), (Some(0), Some(2)));
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 1)]);
+    assert_eq!((cell.get("u"), cell.get("v")), (Some(1), Some(2)));
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 5)]);
+    assert_eq!((cell.get("u"), cell.get("v")), (Some(29), Some(82)));
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 9)]);
+    assert_eq!((cell.get("u"), cell.get("v")), (Some(985), Some(2786)));
+    // lucas_u_v(p=1, q=1): U is Fibonacci 0,1,1,2,3,5,...; V is the classic Lucas numbers
+    // 2,1,3,4,7,11,...
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 1), ("q", 1), ("n", 6)]);
+    assert_eq!((cell.get("u"), cell.get("v")), (Some(8), Some(18)));
+    // The overflow boundary: U(2,1,26) and V(2,1,26) both exceed u32::MAX; n=25 is the
+    // last value that fits.
+    let (_, cell) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 25)]);
+    assert_eq!(
+        (cell.get("u"), cell.get("v")),
+        (Some(1_311_738_121), Some(3_710_155_682))
+    );
+    let (report, _) = step("lucas_u_v", "LucasUV", &[("p", 2), ("q", 1), ("n", 26)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // tribonacci_number: 0,1,1,2,4,7,13,24,44,81,149,...; T(38) is the last value that
+    // fits u32, T(39) overflows.
+    let (_, cell) = step("tribonacci_number", "TribonacciChecked", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, cell) = step("tribonacci_number", "TribonacciChecked", &[("n", 1)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, cell) = step("tribonacci_number", "TribonacciChecked", &[("n", 2)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, cell) = step("tribonacci_number", "TribonacciChecked", &[("n", 9)]);
+    assert_eq!(cell.get("result"), Some(81));
+    let (_, cell) = step("tribonacci_number", "TribonacciChecked", &[("n", 38)]);
+    assert_eq!(cell.get("result"), Some(3_831_006_429));
+    let (report, _) = step("tribonacci_number", "TribonacciChecked", &[("n", 39)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

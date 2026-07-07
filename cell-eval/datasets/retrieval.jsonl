@@ -608,3 +608,29 @@
 {"id": "jordan_totient-para-1", "query": "the k-tuple version of Euler's totient function counting coprime k-tuples", "expected": "jordan_totient", "category": "paraphrase"}
 {"id": "carmichael_lambda-direct-1", "query": "the Carmichael function lambda of n, exponent of the multiplicative group mod n", "expected": "carmichael_lambda", "category": "direct"}
 {"id": "carmichael_lambda-para-1", "query": "the smallest universal exponent that sends every number coprime to n back to 1 mod n", "expected": "carmichael_lambda", "category": "paraphrase"}
+{"id": "polygonal_number-direct-1", "query": "compute the nth s-gonal or polygonal number given the side count and index", "expected": "polygonal_number", "category": "direct"}
+{"id": "polygonal_number-para-1", "query": "turn a shape's side count and index into its exact figurate number value, like squares or pentagonals under one formula", "expected": "polygonal_number", "category": "paraphrase"}
+{"id": "is_polygonal_number-direct-1", "query": "check whether a number is an s-gonal polygonal number", "expected": "is_polygonal_number", "category": "direct"}
+{"id": "is_polygonal_number-para-1", "query": "is this value a pentagonal or hexagonal number for some polygon", "expected": "is_polygonal_number", "category": "paraphrase"}
+{"id": "centered_polygonal_number-direct-1", "query": "the nth centered s-gonal number, a center point plus rings of points", "expected": "centered_polygonal_number", "category": "direct"}
+{"id": "centered_polygonal_number-para-1", "query": "star number or ring-of-points figure count built up around a single center dot", "expected": "centered_polygonal_number", "category": "paraphrase"}
+{"id": "square_pyramidal_number-direct-1", "query": "the nth square pyramidal number, sum of squares from 1 to n", "expected": "square_pyramidal_number", "category": "direct"}
+{"id": "square_pyramidal_number-para-1", "query": "how many cannonballs stack in a square-based pyramid n layers tall", "expected": "square_pyramidal_number", "category": "paraphrase"}
+{"id": "norm2_f32-direct-1", "query": "euclidean length of a 2d vector in f32 floating point", "expected": "norm2_f32", "category": "direct"}
+{"id": "norm2_f32-para-1", "query": "how long is a vector given its x and y components with real number precision", "expected": "norm2_f32", "category": "paraphrase"}
+{"id": "lerp_f32-direct-1", "query": "linear interpolation between two f32 floating point values", "expected": "lerp_f32", "category": "direct"}
+{"id": "lerp_f32-para-1", "query": "blend smoothly from one real-valued number to another by a fraction t", "expected": "lerp_f32", "category": "paraphrase"}
+{"id": "lucas_u_v-direct-1", "query": "generalized Pell and companion Pell sequence with tunable recurrence weights p and q", "expected": "lucas_u_v", "category": "direct"}
+{"id": "lucas_u_v-para-1", "query": "Pell numbers and their companion sequence computed together from two weight parameters", "expected": "lucas_u_v", "category": "paraphrase"}
+{"id": "tribonacci_number-direct-1", "query": "the nth Tribonacci number, a three-term Fibonacci-like sequence", "expected": "tribonacci_number", "category": "direct"}
+{"id": "tribonacci_number-para-1", "query": "the Tribonacci sequence, summing the previous three terms each step", "expected": "tribonacci_number", "category": "paraphrase"}
+{"id": "digital_root-direct-1", "query": "the digital root of a number", "expected": "digital_root", "category": "direct"}
+{"id": "digital_root-para-1", "query": "numerology digital root value of an integer", "expected": "digital_root", "category": "paraphrase"}
+{"id": "persistent_digital_root-direct-1", "query": "keep summing digits together until only one is left, and count the passes", "expected": "persistent_digital_root", "category": "direct"}
+{"id": "persistent_digital_root-para-1", "query": "how many rounds of digit-summing does it take to get to a single digit", "expected": "persistent_digital_root", "category": "paraphrase"}
+{"id": "is_palindromic_number-direct-1", "query": "check whether a number reads the same forwards and backwards in a given base", "expected": "is_palindromic_number", "category": "direct"}
+{"id": "next_palindrome-direct-1", "query": "find the very next palindrome number after n", "expected": "next_palindrome", "category": "direct"}
+{"id": "is_repdigit-direct-1", "query": "check if every digit of a number is identical", "expected": "is_repdigit", "category": "direct"}
+{"id": "is_repdigit-para-1", "query": "check whether every digit of a number is identical, a repdigit", "expected": "is_repdigit", "category": "paraphrase"}
+{"id": "is_automorphic_number-direct-1", "query": "check if a number squared ends in the number itself", "expected": "is_automorphic_number", "category": "direct"}
+{"id": "is_automorphic_number-para-1", "query": "self-reproducing number whose square ends with the number itself", "expected": "is_automorphic_number", "category": "paraphrase"}

@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (269 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (283 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -113,7 +113,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
 | `sub_checked_u32` | `SubChecked::run() -> u16` | Checked u32 subtract: escalates (needs_wider_math) instead of wrapping if b > a (the result would be negative). |
 
-## combinatorics (6)
+## combinatorics (8)
 
 | id | signature | summary |
 |---|---|---|
@@ -122,7 +122,9 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `derangement_count` | `DerangementCount::run() -> u16` | The nth derangement number (D(0)=1, D(1)=0, D(n)=(n-1)*(D(n-1)+D(n-2)) — the count of permutations of n items with no fixed point), checked: escalates instead of silently wrapping once D(n) would exceed u32::MAX (n >= 14). Unlike catalan_number's recurrence, this one's intermediate never overflows before the true result itself would (verified) — the multiplier grows linearly (n-1) against a linearly-combined sum, not against an already-exponential value. |
 | `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
 | `fibonacci_checked_u32` | `FibonacciChecked::run() -> u16` | The nth Fibonacci number (F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)), checked: escalates instead of silently wrapping once F(n) would exceed u32::MAX (n >= 47). |
+| `lucas_u_v` | `LucasUV::run() -> u16` | Generalized Lucas sequence pair U_n/V_n for parameters p, q (both non-negative): U(0)=0, U(1)=1, U(n)=p*U(n-1)+q*U(n-2); V(0)=2, V(1)=p, V(n)=p*V(n-1)+q*V(n-2) -- both share one recurrence structure, so one cell computes them together. p=2,q=1 gives the Pell numbers (U) and companion Pell / Pell-Lucas numbers (V) -- pell_number and pell_lucas_number are not shipped as separate cells for exactly that reason. p=1,q=1 reproduces fibonacci_checked_u32 (U) and the classic Lucas numbers (V); fibonacci_checked_u32 stays its own cell for its own retrieval identity, not folded away, the same precedent triangular/polygonal_number(3,n) already set. |
 | `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
+| `tribonacci_number` | `TribonacciChecked::run() -> u16` | The nth Tribonacci number (T(0)=0, T(1)=1, T(2)=1, T(n)=T(n-1)+T(n-2)+T(n-3)), checked: escalates instead of silently wrapping once T(n) would exceed u32::MAX. Distinct from fibonacci_checked_u32's two-term recurrence -- a genuinely different sequence, not reducible to lucas_u_v's two-term p/q family. |
 
 ## distance (4)
 
@@ -202,27 +204,33 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
 | `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
 
-## number-theory (37)
+## number-theory (47)
 
 | id | signature | summary |
 |---|---|---|
 | `big_omega` | `run(n: u16) -> u16` | Omega(n): total count of prime factors of n counted with multiplicity (n >= 1; Omega(1) = 0) -- distinct from little_omega (counts distinct primes only) and factor_count (counts divisors, not prime factors). |
 | `carmichael_lambda` | `run(n: u16) -> u16` | The Carmichael function lambda(n): the exponent of the multiplicative group mod n -- the smallest m such that a^m == 1 (mod n) for every a coprime to n. Computed as the lcm of lambda(p^e) over each prime-power factor of n: lambda(2)=1, lambda(4)=2, lambda(2^e)=2^(e-2) for e>=3; lambda(p^e)=(p-1)*p^(e-1) for odd p (the same formula euler_totient uses at odd prime powers). Every intermediate lcm combination is itself a divisor of the final lambda(n), which is always <= n -- so despite computing at u32 width for safety, nothing in the u16 input domain can actually overflow it (proven, not just unobserved). |
+| `centered_polygonal_number` | `run(s: u16, n: u16) -> u16` | The nth centered s-gonal number: C(s, n) = 1 + s*n*(n+1)/2 — the center point plus n rings of s points each (s >= 3, n >= 0; n=0 is the bare center point, 1, for every s). Star numbers are this family's s=12 case one ring later than its own usual 1-indexed convention (star_number(k) = centered_polygonal_number(12, k-1)) — not shipped as a separate cell for exactly that reason. |
 | `crt_solve_pair` | `CrtSolvePair::run() -> u16` | Chinese Remainder Theorem for two congruences: the unique x in [0, m1*m2) with x == r1 (mod m1) and x == r2 (mod m2), when m1 and m2 are coprime. Computes the inverse of m1 modulo m2 via an inlined extended Euclidean algorithm (the same one mod_inverse uses — duplicated here rather than called, since a u32 value still can't cross more than one call boundary), then combines it with the standard closed-form x = r1 + m1*((r2-r1)*inv(m1, m2) mod m2). |
 | `cube_sat` | `run(n: u16) -> u16` | Saturating cube: n*n*n, capped at 65535 (n >= 41 saturates). |
 | `digit_product` | `run(n: u16) -> u16` | Product of the decimal digits of n (0 has product 0, its only digit). |
 | `digit_reverse` | `run(n: u16) -> u16` | Reverse the decimal digits of n (e.g. 123 -> 321; trailing zeros drop, so 120 -> 21). |
 | `digit_sum` | `run(n: u16) -> u16` | Sum of the decimal digits of n. |
+| `digital_root` | `run(n: u16) -> u16` | Digital root: repeatedly sum the decimal digits of n until a single digit remains, computed via the exact closed form (1 + (n-1) mod 9, 0 for n == 0) rather than iterating -- distinct from digit_sum (one summing pass) and persistent_digital_root (which counts the iterations this cell short-circuits). |
 | `divides` | `run(a: u16, b: u16) -> u16` | Returns 1 if a divides b evenly (b % a == 0, a != 0), else 0. |
 | `divisor_power_sum` | `DivisorPowerSum::run() -> u16` | sigma_k(n): sum of the k-th powers of the positive divisors of n (n >= 1) -- generalizes factor_count (k=0, counts divisors) and sum_divisors (k=1, sums them) with an explicit exponent, the same general-parameter-sibling shape weighted_sum2 already gives weighted_sum. |
 | `euler_totient` | `run(n: u16) -> u16` | Euler's totient (phi): count of integers in [1, n] coprime to n (n >= 1; phi(1) = 1 by convention). |
 | `factor_count` | `run(n: u16) -> u16` | Number of positive divisors of n (0 for n == 0). |
 | `gcd` | `run(a: u16, b: u16) -> u16` | Greatest common divisor (Euclid's algorithm). |
 | `gcd3` | `run(a: u16, b: u16, c: u16) -> u16` | Greatest common divisor of three values. |
+| `is_automorphic_number` | `run(n: u16) -> u16` | Check whether n^2 ends with the decimal digits of n itself (e.g. 5^2=25, 6^2=36, 25^2=625, 76^2=5776) -- a classic "self-reproducing" number check. Computed exactly via n*n mod 10^(digit count of n), so no string/digit-array comparison is needed. |
 | `is_coprime` | `run(a: u16, b: u16) -> u16` | Returns 1 if a and b are coprime (gcd == 1), else 0. |
+| `is_palindromic_number` | `run(n: u16, base: u16) -> u16` | Check whether n is palindromic when written in the given base (base >= 2) -- its digits read the same forwards and backwards. Computed by reversing n's base-b digits (the same trick digit_reverse uses at base 10) and comparing to the original, rather than building a digit array. |
+| `is_polygonal_number` | `run(s: u16, x: u16) -> u16` | Check whether x is an s-gonal (polygonal) number for a given side count s (s >= 3) -- is there some n >= 0 with polygonal_number(s, n) == x. The membership-test counterpart of polygonal_number, one general predicate instead of a separate fixed-s check for every side count. |
 | `is_pow2` | `run(x: u16) -> u16` | Returns 1 if x is a power of two, else 0. |
 | `is_prime` | `run(n: u16) -> u16` | Returns 1 if n is prime, else 0. |
 | `is_prime_u32` | `IsPrimeWide::run() -> u16` | Returns 1 if n is prime at wide u32 width, else 0 — the wide sibling of is_prime (which works over u16, up to 65535). Trial division scales with sqrt(n): a large prime near u32::MAX needs on the order of tens of millions of cycles, far past the 2,000,000 default — pass a larger --cycles budget explicitly for n much beyond a few million. |
+| `is_repdigit` | `run(n: u16) -> u16` | Check whether every decimal digit of n is the same digit (e.g. 4444, 555, 22 -- and trivially any single digit 0-9). Distinct from is_palindromic_number: a repdigit is always a palindrome but not vice versa (121 is palindromic, not a repdigit). |
 | `is_square` | `run(n: u16) -> u16` | Returns 1 if n is a perfect square, else 0. |
 | `isqrt` | `run(n: u16) -> u16` | Integer square root: the largest r with r*r <= n. |
 | `jordan_totient` | `JordanTotient::run() -> u16` | Jordan's totient J_k(n): generalizes euler_totient with an exponent k (J_1(n) = phi(n)) -- the product over each prime-power factor p^e of n of p^((e-1)*k) * (p^k - 1). The (e-1)*k exponent is never computed as a scalar product (e up to ~15 times k up to 65535 would overflow u16 before any p^_ term is even reached) -- instead p^((e-1)*k) is built by repeatedly squaring the already-computed p^k value e-1 times, which stays small since e-1 is itself bounded (<= 15 in the u16 domain). |
@@ -234,12 +242,16 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `mod_inverse` | `ModInverse::run() -> u16` | Modular multiplicative inverse of a mod m: the x in [0, m) with a*x == 1 (mod m), via the iterative extended Euclidean algorithm. The Bezout coefficient tracked along the way can go negative, so it's carried as a sign-magnitude pair inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same convention smag_add/pow_mod_u32 use. |
 | `mod_mul_u32` | `ModMulWide::run() -> u16` | Modular multiplication at wide u32 width: (a * b) mod m — reduces both operands mod m first, then multiplies; the non-exponentiating sibling of pow_mod_u32, sharing its overflow bound. |
 | `mod_sub_u32` | `ModSubWide::run() -> u16` | Modular subtraction at wide u32 width: (a - b) mod m, always returned in [0, m) — e.g. 3 - 5 mod 7 = 5, not a negative remainder. |
+| `next_palindrome` | `run(n: u16) -> u16` | The smallest decimal palindrome strictly greater than n. Searches upward candidate by candidate (the worst-case gap within the u16 domain is 110, at n=1001 -- cheap); escalates if no palindrome exists at or below 65535 (true for n in roughly [65456, 65535], where reaching one would need a 6th digit). |
 | `next_pow2` | `run(n: u16) -> u16` | Smallest power of two >= n (0 if it would exceed 65535; next_pow2(0) = 1). |
 | `num_digits` | `run(n: u16) -> u16` | Number of decimal digits of n (0 has 1 digit). |
+| `persistent_digital_root` | `run(n: u16) -> u16` | Additive persistence: the number of digit-summing passes needed to reduce n to a single digit (0 if n is already a single digit) -- the step count, not the resulting digit itself. |
+| `polygonal_number` | `run(s: u16, n: u16) -> u16` | The nth s-gonal (polygonal) number: P(s, n) = n + (s-2)*n*(n-1)/2, for a polygon with s sides (s >= 3). s=3 reproduces triangular's own values (kept as a separate cell for its own retrieval identity, not folded away), s=4 is the perfect squares, s=5 is pentagonal, s=6 is hexagonal, and so on — one general cell instead of a differently-named cell for every side count. |
 | `pow_mod` | `run(base: u16, exp: u16, m: u16) -> u16` | Modular exponentiation: (base^exp) mod m (0 if m == 0). u16 domain m <= 256. |
 | `pow_mod_u32` | `PowModWide::run() -> u16` | Modular exponentiation at wide u32 width: (base^exp) mod m — the wide sibling of pow_mod (u16 domain, m <= 256); lifts the modulus ceiling to 65536, wide enough for AIME's "find the remainder mod 1000" finishing move. Returns 0 if m == 0, matching pow_mod's convention. |
 | `pow_small` | `run(base: u16, exp: u16) -> u16` | base raised to exp (saturating at 65535). 0^0 = 1. |
 | `smallest_prime_factor` | `run(n: u16) -> u16` | Smallest prime factor of n (n >= 2) — the least prime p dividing n; returns n itself if n is prime. |
+| `square_pyramidal_number` | `SquarePyramidal::run() -> u16` | The nth square pyramidal number: 1^2 + 2^2 + ... + n^2 = n*(n+1)*(2n+1)/6, checked — escalates instead of silently wrapping once the running sum would exceed u32::MAX. Computed by iterative summation rather than the closed form, so cost scales with n (like is_prime_u32, budget a larger --cycles for n much beyond a few thousand). |
 | `sum_divisors` | `SumDivisors::run() -> u16` | Sum of the positive divisors of n (n >= 1), including 1 and n itself (sigma(n)) — the sum-valued sibling of factor_count (which counts divisors; this sums them, so it needs a wide result field since sigma(n) routinely exceeds 65535 within the u16 domain). |
 | `triangular` | `run(n: u16) -> u16` | nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361). |
 | `triangular_inverse_exact` | `run(x: u16) -> u16` | Solve n*(n+1)/2 = x for n, the exact inverse of triangular: given a triangular number x, return which n produced it. Escalates if x isn't triangular (a wrong-plan signal, e.g. GSM8K's "how many rows" problems). Domain matches triangular's own (n <= 361, x <= 65341). |
@@ -362,6 +374,13 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
+
+## softfloat (2)
+
+| id | signature | summary |
+|---|---|---|
+| `lerp_f32` | `LerpF32::run() -> u16` | Linear interpolation a + t*(b - a) in IEEE binary32 — the owned softfloat kernels, correctly rounded per op and bit-identical to rustc f32; t is a plain f32 (not clamped), so t=0 gives a and t=1 gives a + (b - a). |
+| `norm2_f32` | `Norm2F32::run() -> u16` | Euclidean length of a 2-vector in IEEE binary32 — sqrt(x*x + y*y) through the owned softfloat kernels: correctly rounded per op, bit-identical to rustc f32, deterministic on every host (no libm). |
 
 ## spatial-grid (6)
 

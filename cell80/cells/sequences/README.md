@@ -17,7 +17,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `geometric_nth_checked_u32` | `GeometricNthChecked::run() -> u16` | The nth term of a geometric sequence starting at start with ratio ratio: start * ratio^(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of geometric_series_sum (which only sums the sequence, not a single term). Computed by direct iterative multiplication rather than exponentiation, so it escalates exactly when the true term doesn't fit u32, no earlier. |
 | `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
 
-## Math-server coverage — 17 candidate(s) not yet built
+## Math-server coverage — 14 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
@@ -33,11 +33,8 @@ Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 funct
 | `is_pentagonal_number` | Inverse pentagonal-number test (via isqrt on 24x+1) mirrors triangular_inverse_exact's pattern; likely ships as one dual-purpose pentagonal_inverse_exact cell alongside pentagonal_number. |
 | `kaprekar_constant` | Small bounded lookup (the known Kaprekar constant per digit count, e.g. 6174 for 4 digits), not covered. |
 | `kaprekar_sequence` | Kaprekar's routine provably converges in <=7 steps for standard digit counts; best shaped as a step-cell (like counter_step/bresenham_step) rather than returning a raw list, but the underlying computation is genuinely bounded and new. CAVEAT: as named this returns the whole intermediate sequence (list output) — not cell-shaped. Build as kaprekar_stopping_time (steps to reach the Kaprekar constant) instead, mirroring collatz_stopping_time/collatz_max_value's already-correct bounded-scalar framing, not a literal sequence-generator cell. |
-| `lucas_u_v` | Generalized Lucas U/V sequence with parameters P,Q; bounded iterative recurrence, fixed 2-int output, 3 args, not covered. |
 | `pell_lucas_number` | Companion Pell-Lucas recurrence; not composable since no Pell cell exists yet in cell80, bounded single-arg loop. |
 | `pell_number` | Distinct 2-term recurrence (P(n)=2P(n-1)+P(n-2)) not composable from Fibonacci, bounded single-arg loop like fibonacci_checked_u32. |
 | `pentagonal_number` | P_n = n(3n-1)/2 is a genuinely new figurate-number formula, same shape as the existing triangular cell; no pentagonal cell exists. |
 | `series_sum` | Same closed-form sum as arithmetic_series_sum but parameterized by endpoints (first,last,count) instead of (a,d,n); composing via avg2-then-multiply is unsound (avg2 floors before the multiply, corrupting odd first+last cases), and deriving d then calling arithmetic_series_sum needs an extra exact-division step, so a dedicated endpoint-based cell is the safe, minimal implementation. |
-| `square_pyramidal_number` | Sum of the first n squares, n(n+1)(2n+1)/6, is a genuinely new figurate/pyramidal-number formula parallel to triangular_number; no existing cell computes it. |
-| `tribonacci_number` | Well-known 3-term recurrence, distinct from Fibonacci, bounded single-arg loop, genuinely useful. |
 

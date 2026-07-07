@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (6)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,7 +16,9 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `derangement_count` | `DerangementCount::run() -> u16` | The nth derangement number (D(0)=1, D(1)=0, D(n)=(n-1)*(D(n-1)+D(n-2)) — the count of permutations of n items with no fixed point), checked: escalates instead of silently wrapping once D(n) would exceed u32::MAX (n >= 14). Unlike catalan_number's recurrence, this one's intermediate never overflows before the true result itself would (verified) — the multiplier grows linearly (n-1) against a linearly-combined sum, not against an already-exponential value. |
 | `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
 | `fibonacci_checked_u32` | `FibonacciChecked::run() -> u16` | The nth Fibonacci number (F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)), checked: escalates instead of silently wrapping once F(n) would exceed u32::MAX (n >= 47). |
+| `lucas_u_v` | `LucasUV::run() -> u16` | Generalized Lucas sequence pair U_n/V_n for parameters p, q (both non-negative): U(0)=0, U(1)=1, U(n)=p*U(n-1)+q*U(n-2); V(0)=2, V(1)=p, V(n)=p*V(n-1)+q*V(n-2) -- both share one recurrence structure, so one cell computes them together. p=2,q=1 gives the Pell numbers (U) and companion Pell / Pell-Lucas numbers (V) -- pell_number and pell_lucas_number are not shipped as separate cells for exactly that reason. p=1,q=1 reproduces fibonacci_checked_u32 (U) and the classic Lucas numbers (V); fibonacci_checked_u32 stays its own cell for its own retrieval identity, not folded away, the same precedent triangular/polygonal_number(3,n) already set. |
 | `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
+| `tribonacci_number` | `TribonacciChecked::run() -> u16` | The nth Tribonacci number (T(0)=0, T(1)=1, T(2)=1, T(n)=T(n-1)+T(n-2)+T(n-3)), checked: escalates instead of silently wrapping once T(n) would exceed u32::MAX. Distinct from fibonacci_checked_u32's two-term recurrence -- a genuinely different sequence, not reducible to lucas_u_v's two-term p/q family. |
 
 ## Math-server coverage — 4 candidate(s) not yet built
 

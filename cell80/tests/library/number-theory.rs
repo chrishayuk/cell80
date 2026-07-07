@@ -413,6 +413,102 @@ fn math_server_number_theory_family_cells_match_defined_behaviour() {
 }
 
 #[test]
+fn figurate_number_family_cells_match_defined_behaviour() {
+    // Wave 7 (docs/math-server-map.md's figurate_numbers category): polygonal_number
+    // generalizes the s-gonal formula (s=3 reproduces triangular, s=4 is the perfect
+    // squares, s=5 is pentagonal, s=6 is hexagonal — folding what would otherwise be a
+    // differently-named cell per side count), is_polygonal_number is its membership
+    // predicate, centered_polygonal_number folds star_number in as its s=12 case, and
+    // square_pyramidal_number is the checked-u32 sum-of-squares sequence. Every expected
+    // value below was cross-checked against an independent hand derivation of the closed
+    // forms (P(s,n) = n + (s-2)*n*(n-1)/2, C(s,n) = 1 + s*n*(n+1)/2,
+    // S(n) = n*(n+1)*(2n+1)/6) before being transcribed here.
+
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // polygonal_number: P(s, n) = n + (s-2)*n*(n-1)/2.
+    assert_eq!(run_cell("polygonal_number", &[3, 10]), 55); // triangular(10)
+    assert_eq!(run_cell("polygonal_number", &[4, 5]), 25); // perfect square 5^2
+    assert_eq!(run_cell("polygonal_number", &[5, 4]), 22); // pentagonal: 1,5,12,22,35
+    assert_eq!(run_cell("polygonal_number", &[6, 3]), 15); // hexagonal: 1,6,15,28,45
+    assert_eq!(run_cell("polygonal_number", &[3, 0]), 0);
+    assert_eq!(
+        free_report("polygonal_number", &[2, 5]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // s < 3 is not a polygon
+    assert_eq!(
+        free_report("polygonal_number", &[65535, 1000]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    ); // genuinely doesn't fit u16
+
+    // is_polygonal_number: membership test via the same closed form, bounded by x.
+    assert_eq!(run_cell("is_polygonal_number", &[5, 22]), 1); // pentagonal
+    assert_eq!(run_cell("is_polygonal_number", &[5, 23]), 0);
+    assert_eq!(run_cell("is_polygonal_number", &[6, 28]), 1); // hexagonal
+    assert_eq!(run_cell("is_polygonal_number", &[3, 100]), 0); // 100 is not triangular
+    assert_eq!(run_cell("is_polygonal_number", &[3, 0]), 1); // the degenerate n=0 term
+    assert_eq!(
+        free_report("is_polygonal_number", &[2, 5]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+
+    // centered_polygonal_number: C(s, n) = 1 + s*n*(n+1)/2.
+    assert_eq!(run_cell("centered_polygonal_number", &[6, 0]), 1);
+    assert_eq!(run_cell("centered_polygonal_number", &[6, 1]), 7);
+    assert_eq!(run_cell("centered_polygonal_number", &[6, 3]), 37); // centered hexagonal
+    assert_eq!(run_cell("centered_polygonal_number", &[3, 2]), 10); // centered triangular
+    assert_eq!(run_cell("centered_polygonal_number", &[12, 0]), 1); // star_number(1)
+    assert_eq!(run_cell("centered_polygonal_number", &[12, 1]), 13); // star_number(2)
+    assert_eq!(run_cell("centered_polygonal_number", &[12, 2]), 37); // star_number(3)
+    assert_eq!(
+        free_report("centered_polygonal_number", &[2, 5]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+    assert_eq!(
+        free_report("centered_polygonal_number", &[65535, 1000]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    );
+
+    // square_pyramidal_number: S(n) = 1^2 + 2^2 + ... + n^2, checked u32 state cell.
+    let (_, cell) = step("square_pyramidal_number", "SquarePyramidal", &[("n", 1)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, cell) = step("square_pyramidal_number", "SquarePyramidal", &[("n", 4)]);
+    assert_eq!(cell.get("result"), Some(30));
+    let (_, cell) = step("square_pyramidal_number", "SquarePyramidal", &[("n", 10)]);
+    assert_eq!(cell.get("result"), Some(385));
+    let (_, cell) = step("square_pyramidal_number", "SquarePyramidal", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(0));
+    {
+        // The overflow point (sum > u32::MAX around n ~ 2350) needs more iterations than
+        // DEFAULT_CYCLES affords for this pack's checked-arithmetic-call-per-iteration
+        // cost — budget a larger cycle count explicitly, per the cell's own doc note.
+        let mut cell = StateCell::bind(
+            &cell_src("square_pyramidal_number"),
+            "SquarePyramidal",
+            None,
+        )
+        .unwrap();
+        cell.set("n", 100_000).unwrap();
+        let report = cell.run(20_000_000).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+    }
+}
+
+#[test]
 fn first_wave_number_theory_cells_match_defined_behaviour() {
     let cases: &[(&str, &[u16], u16)] = &[
         ("lcm", &[4, 6], 12),
@@ -469,5 +565,86 @@ fn first_wave_number_theory_cells_match_defined_behaviour() {
         failures.is_empty(),
         "cell mismatches:\n{}",
         failures.join("\n")
+    );
+}
+
+#[test]
+fn digit_operations_wave8_cells_match_defined_behaviour() {
+    // Wave 8 (docs/math-server-map.md's digital_operations category). Every expected
+    // value below was cross-checked against an independent Python reference
+    // implementation before being transcribed here.
+
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    let cases: &[(&str, &[u16], u16)] = &[
+        // digital_root: closed form 1 + (n-1) mod 9, 0 for n == 0.
+        ("digital_root", &[0], 0),
+        ("digital_root", &[9], 9),
+        ("digital_root", &[18], 9),
+        ("digital_root", &[123], 6),
+        ("digital_root", &[65535], 6),
+        // persistent_digital_root: additive persistence (step count).
+        ("persistent_digital_root", &[0], 0),
+        ("persistent_digital_root", &[5], 0),
+        ("persistent_digital_root", &[10], 1),
+        ("persistent_digital_root", &[19], 2),
+        ("persistent_digital_root", &[9875], 3),
+        // is_palindromic_number: digit-reversal comparison, any base >= 2.
+        ("is_palindromic_number", &[121, 10], 1),
+        ("is_palindromic_number", &[123, 10], 0),
+        ("is_palindromic_number", &[5, 2], 1), // 101 in binary
+        ("is_palindromic_number", &[6, 2], 0), // 110 in binary
+        ("is_palindromic_number", &[0, 10], 1),
+        // next_palindrome: smallest decimal palindrome strictly greater than n.
+        ("next_palindrome", &[1001], 1111),
+        ("next_palindrome", &[9], 11),
+        ("next_palindrome", &[65455], 65456),
+        // is_repdigit: every decimal digit identical.
+        ("is_repdigit", &[0], 1),
+        ("is_repdigit", &[5], 1),
+        ("is_repdigit", &[55], 1),
+        ("is_repdigit", &[54], 0),
+        ("is_repdigit", &[9999], 1),
+        // is_automorphic_number: n^2 ends with n.
+        ("is_automorphic_number", &[0], 1),
+        ("is_automorphic_number", &[5], 1),
+        ("is_automorphic_number", &[6], 1),
+        ("is_automorphic_number", &[25], 1),
+        ("is_automorphic_number", &[76], 1),
+        ("is_automorphic_number", &[376], 1),
+        ("is_automorphic_number", &[12], 0),
+        ("is_automorphic_number", &[100], 0),
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+
+    // Domain/overflow escalations.
+    assert_eq!(
+        free_report("is_palindromic_number", &[5, 1]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // base < 2
+       // next_palindrome: no palindrome fits u16 for n in [65456, 65535].
+    assert_eq!(
+        free_report("next_palindrome", &[65456]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    );
+    assert_eq!(
+        free_report("next_palindrome", &[65535]).halt,
+        cell80::Halt::Escalate(0xFF05)
     );
 }

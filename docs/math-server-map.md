@@ -13,6 +13,30 @@ of the mining pass rather than hand-edited — re-check against the live
 `docs/cell-index.md` before authoring anything from the remaining ~71 candidates, per
 this doc's own "How this gates authoring" section below.*
 
+*Update (2026-07-07, Wave 7): the figurate-numbers slice landed as four cells —
+`polygonal_number`, `is_polygonal_number`, `centered_polygonal_number`,
+`square_pyramidal_number` — see `docs/library-growth.md`'s "Wave 7" note. This
+snapshot's `pentagonal_number`/`is_pentagonal_number`/`star_number` candidate rows
+are now stale for a subtler reason than an exact-name match: they're `covered` by
+**generalization**, not by a same-named cell — `polygonal_number(5, n)` is
+`pentagonal_number`, `is_polygonal_number(5, x)` is `is_pentagonal_number`, and
+`centered_polygonal_number(12, n)` is `star_number(n+1)` (1-indexed). The pack
+READMEs' auto-generated "not yet built" lists (`gen_pack_readmes.py`, exact-name
+matching only) still show these three — a known blind spot of that matcher, not a
+gap in the library; verify against `docs/cell-index.md` before treating any
+generated "not yet built" entry as ground truth.*
+
+*Update (2026-07-07, Wave 8): the recursive-sequences slice landed as two cells —
+`lucas_u_v`, `tribonacci_number` — see `docs/library-growth.md`'s "Wave 8" note.
+Same generalization-blind-spot pattern as Wave 7: `pell_number` and
+`pell_lucas_number` are now `covered` by `lucas_u_v(2, 1, n)`'s U and V outputs
+respectively, but the pack README generator's exact-name matcher still lists both
+as "not yet built" — check `docs/cell-index.md`, not the generated README, before
+treating either as an open candidate. Also landed the same day: six digit-operation
+cells (`digital_root`, `persistent_digital_root`, `is_palindromic_number`,
+`next_palindrome`, `is_repdigit`, `is_automorphic_number`) from this map's
+`digital_operations` category — those all matched by exact name, no stale rows.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate
