@@ -53,6 +53,32 @@ At ~0.24 µs/call (fast path) the cell runs **~4 million evaluations per second*
 within "call it in an agent loop." The pitch isn't a Wasm replacement; it's a *smaller,
 more inspectable, deterministic sandbox for tiny agent-generated programs.*
 
+## Floats: what Wasm already solved, and what it didn't
+
+Concede the tie first: **WASM's basic float ops are already deterministic** — f32/f64
+add, sub, mul, div, sqrt are fully specified IEEE, and runtimes ship NaN-canonicalization
+flags that close the one hole (the same `0x7FC0_0000` move cell80's kernels make). On
+basic arithmetic, WASM ties on determinism and wins ~10³ on speed, at hardware float
+rates. "Deterministic floats, unlike WASM" would be false; don't say it.
+
+The claim lives one layer up, in the float *lifecycle*:
+
+- **Transcendentals** — the WASM spec has no sin/cos/exp/log; modules import them from
+  the host (the libm disease) or bundle an unversioned, uncontracted libm. Owned,
+  ULP-declared, MPFR-checked transcendentals with the contract in the manifest are the
+  F2 plan — a registered plan, not yet a measurement, but one WASM structurally lacks.
+- **The boundary contract** — WASM propagates NaN/Inf silently forever, by design. A
+  cell's `finite_result` turns a non-finite result into a typed escalation
+  (`float_overflow`/`float_domain`): Inf never arrives wearing an answer's clothes.
+- **Cost as a fact** — WASM float ops are hardware-priced and invisible; a cell's fadd
+  costs 10,854 T-states and the fact file records cost per result.
+- **Provenance** — a `.wasm` binary's IEEE behaviour is trusted; a cell's float kernels
+  are dialect source differentially proven against release rustc as an admission
+  property, inside the verification boundary.
+
+One sentence, if it must be one: *WASM made basic float arithmetic deterministic;
+cell80 makes the whole float lifecycle accountable.*
+
 ## Cold setup, broken down
 
 The harness also prints where the cell's cold setup goes (the ~0.59 ms table figure is a

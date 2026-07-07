@@ -221,8 +221,14 @@ any approximation enters).
   fdiv 36,644 / fsqrt 53,219 T-states — the low-thousands prediction missed ~3×
   (scratch-slot traffic and shift-by-1 loops dominate; constant-shift codegen was
   already improved to land these numbers). Single-op cells hold the µs envelope at
-  emulated speed; fdiv/fsqrt are priced, not killed. One F0 finding the spec did not
-  predict: **the 4KB code window (locals scratch at `0x9000`) fits roughly one kernel
+  emulated speed; fdiv/fsqrt are priced, not killed. **F3 pre-verdict against the
+  budget** (recorded before F3 is scoped, not discovered when the first `dist_f32`
+  cell blows up): a physics-shaped cell — a few fmul/fadd plus one fsqrt — is
+  ~90–120k T-states, i.e. ~5% of `DEFAULT_CYCLES` (2,000,000): the kill clause does
+  not fire; the shape fits with ~20× headroom, and per-cell wall-clock at emulated
+  speed stays sub-millisecond. What *is* out of envelope: fsqrt/fdiv in inner loops
+  (a per-frame N-body cell), which route to Q-format or host by design. One F0
+  finding the spec did not predict: **the 4KB code window (locals scratch at `0x9000`) fits roughly one kernel
   per cell** — found and fixed same day: scratch now relocates above the code when it
   outgrows the classic window (byte-stable for everything that fits it; Cell ceiling
   `0xB000` = the VM's state region, ~12KB for code+locals), and a three-kernel lerp
