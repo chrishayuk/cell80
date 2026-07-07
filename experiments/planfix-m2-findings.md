@@ -183,6 +183,32 @@ plan-solve.
    **verify-`if` → computed-side rewrite**: `if E == lit { lit } else { 0 }` returns
    `E` — converts granite's signature disease into honest computation.
 
+## 4b. The PAL baseline (H-M2) and width routing — 2026-07-07
+
+**PAL-Python** (`pal_baseline.py`, one derivation, subprocess exec, no gate — every
+wrong answer silent by construction):
+
+| model | PAL accuracy | PAL silent-wrong (+crash) | cells yield @ 0 silent |
+|---|---|---|---|
+| gemma4 | 90% | 2 (+0) | **100%** (3-way + lifting + battery) |
+| granite | 75% | 3 (+2) | 45% solo · 75% ensemble |
+| qwen | 70% | 5 (+1) | 15% |
+
+**H-M2 verdict on the 20-slice:** *passes decisively for gemma* — cells beat PAL by
+ten points while eliminating its silent errors. granite reaches PAL parity only in
+the ensemble configuration (equal accuracy, 0 silent vs 3 silent + 2 crashes). qwen
+fails H-M2 solo — its Python is fine and its restricted-Rust inline arm is not, which
+localizes the gap to instruction shape, not the substrate. Across all 60 PAL rows: 10
+silent wrongs (16.7% of answers indistinguishable from correct ones); across every
+cells configuration ever run: 0. The registered claim that the differentiators are
+precision and auditability, not raw accuracy, is now measured, not asserted.
+
+**Width-aware routing** (`CellHost::search`): width-intent queries (exact tokens
+`wide/u32/32-bit/65535/large/big/huge` — superlatives excluded) stably rank wide
+cells ahead of u16 siblings, order-only, no score rescaling. Direct p@1: 0.7934 →
+**0.8413** at 263 cells; paraphrase also up (0.33 → 0.37). The retrieval floor is
+restored to 0.80.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

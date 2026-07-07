@@ -36,14 +36,11 @@ def test_direct_queries_are_strong():
     regresses, search broke. Paraphrase/adversarial are intentionally NOT asserted: those
     are the open problem the harness exists to measure.
 
-    Floor re-priced 0.80 -> 0.79 at 263 cells (2026-07-06, measured 0.7934): the growth
-    to 263 diluted the IDF of the width qualifiers ("wide"/"large"/"u32") across the
-    ever-larger _u32-sibling family, so wide cells lose top-1 to their u16 siblings —
-    the dominant miss class (see baselines/retrieval-direct-misses-263cells-2026-07-06.txt;
-    56 misses, ~15 wide-sibling, rest long-standing family confusables like gcd/gcd3).
-    This is the registered retrieval-curve cost of the library slices, priced consciously,
-    not a broken search. The real fix is width-aware routing (the type-led index knows a
-    query's width intent), not tag stuffing — tracked in the roadmap. If this floor is
-    hit again, re-measure and re-price the same way; never edit rows to pass."""
+    Floor history: 0.80 -> 0.79 at 263 cells (2026-07-06, measured 0.7934 — wide-sibling
+    IDF dilution, miss list in baselines/retrieval-direct-misses-263cells-2026-07-06.txt),
+    then RESTORED to 0.80 (2026-07-07) after width-aware routing landed in
+    CellHost::search (width-intent queries stably rank wide cells first; measured direct
+    p@1 0.8413 at 263 cells). If this floor is hit again: measure the misses, commit the
+    list to baselines/, and re-price or fix search — never edit rows to pass."""
     rep = run_retrieval()
-    assert rep.by_category["direct"].precision_at_1 >= 0.79
+    assert rep.by_category["direct"].precision_at_1 >= 0.8

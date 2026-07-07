@@ -343,7 +343,30 @@ strictly by sequence; the library grows by eval need:
    4 of gemma's 5 escalations are one-path-correct and would accept under the 2-of-3
    rule → **next: M2.7** (third derivation, decorrelated reader), then the error
    chase (qwen's `expected ';'` dialect, granite's `E0502` mass) from captured
-   sources, then M2.8 proper and M3. CI re-priced the retrieval direct-p@1 floor
+   sources, then M2.8 proper and M3.
+   **Error-chase backlog, priced from captured sources (2026-07-07):**
+   (a) **casts in the straight-line subset** — `as u16`/`as u32` currently soft-fail
+   canon Full, which blocked the `E0205` method rule and lifting on granite row22's
+   otherwise-clean derivation; small build, unblocks two landed passes on real
+   sources. (b) **if-value (select) support in Full canon** — the *inline* arm, the
+   most common derivation shape (19/20 correct on gemma), gets Light fallback today:
+   no lifting, no folding, no battery participation; supporting `if c { a } else
+   { b }` as a canonical select node is the single largest coverage item and also
+   reaches the verify-`if` shapes granite wraps its arithmetic in (row89-class).
+   (c) **verify-`if` → computed-side rewrite** (`if E == lit { lit } else { 0 }`
+   returns `E`) — converts granite's signature verify-not-compute dialect into
+   honest computation; output-changing, so it needs its own registration plus a
+   captured-source precision recheck before landing. (d) **free-fn `_u32` siblings**
+   — the widened lane can only link free fns and every wide cell is a state cell;
+   legal since two-u32-params, and the linker already prefers `{name}_u32`.
+   (e) **`then`-sugar / Model-Rust superset entries** — priced at ~2–3 rows today,
+   entry decided by M3 escalation tallies per the dialect discipline, and only safe
+   behind the (landed) zero-guard. Explicitly *not* backlog: qwen's
+   stated-answer-then-work (no honest repair exists — `correct_via_solve` forbids
+   it; its path is the ensemble reader or a registered instruction-shape amendment),
+   and per-model prompt schemas (registered exclusion). Tooling debt from the same
+   chase: `cell80-py` sits outside `cargo test --workspace`, so `CartridgeOpts`
+   changes break it invisibly until CI — needs a local-loop parity check. CI re-priced the retrieval direct-p@1 floor
    to 0.79 at 263 cells (measured 0.7934 — wide-sibling IDF dilution; the fix is
    width-aware routing in the type-led index, not tag stuffing;
    `cell-eval/baselines/retrieval-direct-misses-263cells-2026-07-06.txt`).

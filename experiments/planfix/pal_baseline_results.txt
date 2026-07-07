@@ -1,0 +1,81 @@
+=== gemma4:e4b ===
+model = gemma4:e4b   PAL-Python baseline (one derivation, no gate)
+
+row4_james       want    540  got      540  ok
+row7_sheep       want    260  got      260  ok
+row11_downloads  want    366  got      366  ok
+row22_raymond    want     14  got        2  WRONG (silent)
+row85_football   want     15  got       15  ok
+row86_gene       want     44  got       44  ok
+row89_marilyn    want   8000  got     8000  ok
+row92_jan        want     28  got       28  ok
+row93_emily      want      4  got        4  ok
+row94_lee        want     36  got 36.36363636363636  WRONG (silent)
+row97_harry      want      3  got        3  ok
+row101_jerome    want    175  got      175  ok
+row104_fog       want    140  got      140  ok
+row106_cody      want     20  got       20  ok
+row111_marcell   want     45  got       45  ok
+row117_katy      want     42  got       42  ok
+row119_customs   want      4  got        4  ok
+row121_miguel    want    240  got      240  ok
+row122_morisette want     27  got       27  ok
+row124_rosie     want     50  got       50  ok
+------------------------------------------------------------
+accuracy 18/20 = 90%   silent-wrong 2   crashed 0
+(every wrong PAL answer is silent by construction — no gate, no escalation)
+
+=== granite4.1:3b ===
+model = granite4.1:3b   PAL-Python baseline (one derivation, no gate)
+
+row4_james       want    540  got      540  ok
+row7_sheep       want    260  got      260  ok
+row11_downloads  want    366  got      366  ok
+row22_raymond    want     14  got       -2  WRONG (silent)
+row85_football   want     15  got     None  crash [NameError: name 'losses' is not defined]
+row86_gene       want     44  got       48  WRONG (silent)
+row89_marilyn    want   8000  got     None  crash [SyntaxError: unterminated string literal (detected at line 3]
+row92_jan        want     28  got       28  ok
+row93_emily      want      4  got        9  WRONG (silent)
+row94_lee        want     36  got       36  ok
+row97_harry      want      3  got        3  ok
+row101_jerome    want    175  got      175  ok
+row104_fog       want    140  got      140  ok
+row106_cody      want     20  got       20  ok
+row111_marcell   want     45  got       45  ok
+row117_katy      want     42  got       42  ok
+row119_customs   want      4  got        4  ok
+row121_miguel    want    240  got      240  ok
+row122_morisette want     27  got       27  ok
+row124_rosie     want     50  got       50  ok
+------------------------------------------------------------
+accuracy 15/20 = 75%   silent-wrong 3   crashed 2
+(every wrong PAL answer is silent by construction — no gate, no escalation)
+
+=== qwen2.5:3b ===
+model = qwen2.5:3b   PAL-Python baseline (one derivation, no gate)
+
+row4_james       want    540  got      540  ok
+row7_sheep       want    260  got      260  ok
+row11_downloads  want    366  got      366  ok
+row22_raymond    want     14  got        8  WRONG (silent)
+row85_football   want     15  got       19  WRONG (silent)
+row86_gene       want     44  got       48  WRONG (silent)
+row89_marilyn    want   8000  got     8000  ok
+row92_jan        want     28  got       28  ok
+row93_emily      want      4  got        4  ok
+row94_lee        want     36  got       33  WRONG (silent)
+row97_harry      want      3  got        3  ok
+row101_jerome    want    175  got      175  ok
+row104_fog       want    140  got      140  ok
+row106_cody      want     20  got       20  ok
+row111_marcell   want     45  got       45  ok
+row117_katy      want     42  got       84  WRONG (silent)
+row119_customs   want      4  got        4  ok
+row121_miguel    want    240  got      240  ok
+row122_morisette want     27  got       27  ok
+row124_rosie     want     50  got     None  crash [non-numeric output]
+------------------------------------------------------------
+accuracy 14/20 = 70%   silent-wrong 5   crashed 1
+(every wrong PAL answer is silent by construction — no gate, no escalation)
+
