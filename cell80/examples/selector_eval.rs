@@ -53,77 +53,77 @@ fn fixture() -> Vec<Spec> {
     vec![
         s!(
             "min",
-            "../cells/min.rs",
+            "../cells/ranking-stats/min.rs",
             "the smaller of two numbers",
             "which of two values is lower",
             "pick the lesser of two numbers, not the larger"
         ),
         s!(
             "max",
-            "../cells/max.rs",
+            "../cells/ranking-stats/max.rs",
             "the larger of two numbers",
             "which of two values is higher",
             "the bigger of two numbers, not the smaller one"
         ),
         s!(
             "gcd",
-            "../cells/gcd.rs",
+            "../cells/number-theory/gcd.rs",
             "the greatest common divisor of two numbers",
             "the largest integer that divides both numbers evenly",
             "the common factor shared by two numbers"
         ),
         s!(
             "lcm",
-            "../cells/lcm.rs",
+            "../cells/number-theory/lcm.rs",
             "the least common multiple of two numbers",
             "the smallest number both values divide into",
             "the common multiple of two numbers"
         ),
         s!(
             "divides",
-            "../cells/divides.rs",
+            "../cells/number-theory/divides.rs",
             "does the first number divide evenly by the second",
             "is one number a whole multiple of another",
             "can two numbers be divided with no remainder"
         ),
         s!(
             "abs_diff",
-            "../cells/abs_diff.rs",
+            "../cells/distance/abs_diff.rs",
             "the absolute difference between two numbers",
             "how far apart two values are",
             "the distance between two numbers on a line"
         ),
         s!(
             "eq",
-            "../cells/eq.rs",
+            "../cells/predicates/eq.rs",
             "are two numbers equal",
             "do two values match exactly",
             "compare two numbers for equality, not order"
         ),
         s!(
             "is_lt",
-            "../cells/is_lt.rs",
+            "../cells/predicates/is_lt.rs",
             "is the first number less than the second",
             "does one value come before another in order",
             "compare two numbers, is the first the smaller"
         ),
         s!(
             "is_gt",
-            "../cells/is_gt.rs",
+            "../cells/predicates/is_gt.rs",
             "is the first number greater than the second",
             "does one value exceed another",
             "compare two numbers, is the first the larger"
         ),
         s!(
             "avg2",
-            "../cells/avg2.rs",
+            "../cells/safe-arith/avg2.rs",
             "the average of two numbers",
             "add two numbers and halve the result",
             "the value in the middle of two numbers"
         ),
         s!(
             "safe_mod",
-            "../cells/safe_mod.rs",
+            "../cells/safe-arith/safe_mod.rs",
             "the remainder after dividing two numbers",
             "what is left over when one number is divided by another",
             "divide two numbers and give the leftover, not the quotient"

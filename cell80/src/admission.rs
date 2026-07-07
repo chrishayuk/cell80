@@ -203,11 +203,7 @@ fn cell_shape(cart: &crate::Cartridge) -> CellShape {
 pub fn admit(dir: &str, retrieval_jsonl: &Path) -> Result<AdmissionReport, String> {
     let by_id = load_retrieval_rows(retrieval_jsonl)?;
 
-    let mut paths: Vec<_> = std::fs::read_dir(dir)
-        .map_err(|e| format!("{dir}: {e}"))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .collect();
-    paths.sort();
+    let paths = crate::discover::discover_cell_files(dir)?;
 
     let mut admitted: Vec<Cartridge> = Vec::new();
     let mut fp_cache: Vec<(String, CellShape, Fingerprint)> = Vec::new();

@@ -26,20 +26,33 @@ fn sub_checked_u32(a: u32, b: u32) -> u32 { if a < b { halt(0xFF05u16); } a - b 
 /// The DCE roots for a cell: its entry functions — every free `fn run`/`fn main` and every
 /// `impl` method named `run`/`main` (`Type::run`), matching the cartridge's entry convention.
 /// DCE keeps only what these reach, so the appended prelude (and any dead code) is pruned to
-/// what the cell actually uses. No entry found → an empty root set → DCE is a no-op (keep all).
+/// what the cell actually uses. No entry found → every function the *cell itself* defines
+/// becomes a root (they stay compiled and resolvable), while the appended prelude still
+/// prunes — with the f32 kernel family aboard, keep-all would overrun the code window.
 fn entry_roots(file: &syn::File) -> Vec<String> {
     let is_entry = |id: &syn::Ident| id == "run" || id == "main";
     let mut roots = Vec::new();
+    let mut cell_fns = Vec::new();
     for item in &file.items {
         match item {
-            syn::Item::Fn(f) if is_entry(&f.sig.ident) => roots.push(f.sig.ident.to_string()),
+            syn::Item::Fn(f) => {
+                let name = f.sig.ident.to_string();
+                if is_entry(&f.sig.ident) {
+                    roots.push(name);
+                } else if !prelude_fn_names().contains(&name) {
+                    cell_fns.push(name);
+                }
+            }
             syn::Item::Impl(imp) => {
                 if let syn::Type::Path(p) = &*imp.self_ty {
                     if let Some(ty) = p.path.segments.last() {
                         for it in &imp.items {
                             if let syn::ImplItem::Fn(m) = it {
+                                let name = format!("{}::{}", ty.ident, m.sig.ident);
                                 if is_entry(&m.sig.ident) {
-                                    roots.push(format!("{}::{}", ty.ident, m.sig.ident));
+                                    roots.push(name);
+                                } else {
+                                    cell_fns.push(name);
                                 }
                             }
                         }
@@ -49,7 +62,29 @@ fn entry_roots(file: &syn::File) -> Vec<String> {
             _ => {}
         }
     }
-    roots
+    if roots.is_empty() {
+        cell_fns
+    } else {
+        roots
+    }
+}
+
+/// The fn names the shared prelude defines (the classic set + the f32 kernel family),
+/// parsed once — the no-entry root fallback excludes them so DCE still prunes kernels.
+fn prelude_fn_names() -> &'static std::collections::HashSet<String> {
+    use std::sync::OnceLock;
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        let text = format!("{CELL_PRELUDE}{}", rustz80::F32_KERNELS);
+        let file: syn::File = syn::parse_str(&text).expect("prelude parses");
+        file.items
+            .iter()
+            .filter_map(|item| match item {
+                syn::Item::Fn(f) => Some(f.sig.ident.to_string()),
+                _ => None,
+            })
+            .collect()
+    })
 }
 
 /// A **compiled** cell: the result of parse + lower + codegen under a policy. Cheap to
@@ -78,10 +113,11 @@ impl CellProgram {
     /// Compile `src` under `cfg`: enforce its capability gates (`poke`/`peek`/`inport`)
     /// and `max_code_bytes`. Parses once (shared by the cap scan and the compile).
     pub fn compile_with_config(src: &str, cfg: CellConfig) -> Result<Self, String> {
-        // Append the shared kernel prelude, then DCE down to what the cell's entry reaches —
-        // so a cell calls `gcd`/`iabs_diff`/… without re-implementing them, and the kernels it
-        // doesn't use are pruned away.
-        let combined = format!("{src}\n{CELL_PRELUDE}");
+        // Append the shared kernel prelude (plus the owned-softfloat family, which lives
+        // in rustz80 so its differential bank tests the same text), then DCE down to what
+        // the cell's entry reaches — so a cell calls `gcd`/`iabs_diff`/`fadd`/… without
+        // re-implementing them, and the kernels it doesn't use are pruned away.
+        let combined = format!("{src}\n{CELL_PRELUDE}{}", rustz80::F32_KERNELS);
         let file: syn::File = syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
         check_caps(&file, &cfg)?;
         let roots = entry_roots(&file);

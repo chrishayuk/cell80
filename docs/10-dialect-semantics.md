@@ -243,6 +243,43 @@ split exact.
 A 16-bit argument in a wide slot zero-extends (the value rustc would infer for an
 in-range literal); a wide value in a 16-bit slot stays an error.
 
+## The owned-softfloat family (F0)
+
+The F-wave amendment (`docs/real-valued-cells-amendment.md`) adds five IEEE binary32
+kernels to the prelude — `fadd`/`fsub`/`fmul`/`fdiv`/`fsqrt`, plus internal helpers
+`f32_shr_jam`/`f32_pack` — as **owned** integer softfloat (`rustz80::F32_KERNELS`;
+the text lives rustz80-side so its differential bank tests the same string cells
+compile). Bits ride `u32` (an f32 *type* is not yet in the dialect — this wave is the
+kernel floor). Semantics are bit-identical to rustc `f32` basic ops — full subnormals,
+signed zeros, RNE only — verified by `tests/diff/f32_ops.rs` on both targets over an
+edge bank and a seeded random bank, with **bit equality** post NaN-canonicalization
+(every kernel-produced NaN is the canonical `0x7FC0_0000`). The kernels never `halt()`
+— the boundary contract (`finite_result`, codes `0xFF07`/`0xFF08`, docs 09) is the
+cell's job, not the kernel's, because an in-kernel trap would diverge from the golden
+reference.
+
+Measured cost (2026-07-07, single-kernel driver cell, baseline-subtracted; `fmul`'s
+four u32 multiplies ride `ED FE` traps charged ~4 T each, so its honest cost pairs
+`cycles` with `trapped_ops` — the others are pure shifts/adds, authentic cycles):
+
+| kernel | T-states | traps | image bytes (kernel + helpers + driver) |
+|---|---|---|---|
+| `fadd` | 10,854 | 0 | 3,164 |
+| `fsub` | 12,586 | 0 | 3,225 |
+| `fmul` | 11,227 | 4 | 3,429 |
+| `fdiv` | 36,644 | 0 | 3,332 |
+| `fsqrt` | 53,219 | 0 | 2,254 |
+
+H-F2's pre-registered prediction ("fadd/fmul low thousands") missed by ~3× — recorded,
+not hidden. Pinned as regression ceilings in `cell80/tests/f32_kernels.rs`. Two honest
+limits, both F1 work: **a cell can afford roughly one f32 kernel today** (the code
+window ends at the `0x9000` locals scratch; `fadd`+`fmul` together overrun it, so
+multi-op f32 cells need kernel-size work or a scratch-region move first), and the
+variable-distance shifts inside `f32_shr_jam`/alignment are shift-by-1 loops because
+u32 shifts take literal amounts only. The enabling codegen win is already in: constant
+u32 shifts now decompose word/byte-first (`<< 31` is ~15 bytes, not 248), which also
+shrank every Q-format cell that shifts.
+
 ## What `check!` actually guarantees
 
 Every differential test compiles its block for **both targets** — `Spectrum48` (software
@@ -257,10 +294,12 @@ don't compile). Rejection tests pin the reject-don't-approximate rule.
 ## Out of the dialect (by design, not omission)
 
 Strings as a *type* (string literals compile as addressable const data — see above — but
-there is no `String`, no slices, no string ops), floats, `u64`, heap allocation, closures,
-traits, recursion, I/O. These are the escalation path — a cell that needs them isn't a
-cell, and the honest answer is a typed hand-off to the host, not a bigger ISA. See the
-roadmap's non-goals.
+there is no `String`, no slices, no string ops), floats as a *type* (binary32 *values*
+compute through the owned softfloat kernels above, bits-in-u32; a `f32` type, float
+literals, and platform libm stay out — libm permanently, per the F-wave amendment),
+`u64`, heap allocation, closures, traits, recursion, I/O. These are the escalation path —
+a cell that needs them isn't a cell, and the honest answer is a typed hand-off to the
+host, not a bigger ISA. See the roadmap's non-goals.
 
 **Floats specifically are rejected permanently, not deferred — the reason is the oracle.**
 `check!`'s guarantee is that both compile targets agree with each other *and* with

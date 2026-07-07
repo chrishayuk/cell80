@@ -594,3 +594,17 @@
 {"id": "cos_frac_from_sides-para-1", "query": "law of cosines rearranged to give cos C as a fraction with no square root", "expected": "cos_frac_from_sides", "category": "paraphrase"}
 {"id": "heron_16a2-direct-1", "query": "16 times the squared area of a triangle from its integer side lengths", "expected": "heron_16a2", "category": "direct"}
 {"id": "heron_16a2-para-1", "query": "Heron's formula rearranged so a triangle's area never needs a square root", "expected": "heron_16a2", "category": "paraphrase"}
+
+# ── math-server mined number-theory family (docs/math-server-map.md candidates) ──
+{"id": "little_omega-direct-1", "query": "count the distinct prime factors of a number", "expected": "little_omega", "category": "direct"}
+{"id": "little_omega-para-1", "query": "how many different primes divide this value, ignoring repeats", "expected": "little_omega", "category": "paraphrase"}
+{"id": "big_omega-direct-1", "query": "total number of prime factors of a number counted with multiplicity", "expected": "big_omega", "category": "direct"}
+{"id": "big_omega-para-1", "query": "if you fully factor this number into primes, how many factors total, repeats included", "expected": "big_omega", "category": "paraphrase"}
+{"id": "mobius_function-direct-1", "query": "the Mobius function mu of n", "expected": "mobius_function", "category": "direct"}
+{"id": "mobius_function-para-1", "query": "return zero if this number has a squared prime factor, else plus or minus one by how many distinct primes divide it", "expected": "mobius_function", "category": "paraphrase"}
+{"id": "divisor_power_sum-direct-1", "query": "sum of the kth powers of the divisors of n, sigma_k", "expected": "divisor_power_sum", "category": "direct"}
+{"id": "divisor_power_sum-para-1", "query": "add up every divisor of this number, each one raised to a chosen exponent first", "expected": "divisor_power_sum", "category": "paraphrase"}
+{"id": "jordan_totient-direct-1", "query": "Jordan's totient function J_k, a generalization of Euler's totient with an exponent", "expected": "jordan_totient", "category": "direct"}
+{"id": "jordan_totient-para-1", "query": "the k-tuple version of Euler's totient function counting coprime k-tuples", "expected": "jordan_totient", "category": "paraphrase"}
+{"id": "carmichael_lambda-direct-1", "query": "the Carmichael function lambda of n, exponent of the multiplicative group mod n", "expected": "carmichael_lambda", "category": "direct"}
+{"id": "carmichael_lambda-para-1", "query": "the smallest universal exponent that sends every number coprime to n back to 1 mod n", "expected": "carmichael_lambda", "category": "paraphrase"}

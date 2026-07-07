@@ -679,19 +679,76 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
         },
         Expr::Shift32 { left, e, k } => {
             gen_expr32(a, e); // HL:DE = lo:hi
-            for _ in 0..*k {
+                              // Constant shifts decompose word/byte-first: a 16-bit distance is one
+                              // register move, an 8-bit distance one byte rotation, and only the
+                              // residue pays per-bit shifts — `<< 31` is ~15 bytes, not 248. (The
+                              // softfloat kernels live on 16/23/31-bit field shifts.)
+            let mut k = *k;
+            if k >= 32 {
+                // Everything shifts out (what the per-bit loop used to compute).
+                a.fx(&[0x21, 0x00, 0x00]); // LD HL,0
+                a.fx(&[0x11, 0x00, 0x00]); // LD DE,0
+            } else if k >= 16 {
+                k -= 16;
                 if *left {
-                    // DE:HL << 1  (low first, carry up)
-                    a.fx(&[0xCB, 0x25]); // SLA L
-                    a.fx(&[0xCB, 0x14]); // RL H
-                    a.fx(&[0xCB, 0x13]); // RL E
-                    a.fx(&[0xCB, 0x12]); // RL D
+                    // hi = lo << residue, lo = 0 — the residue shifts a zero low
+                    // word, so only the (new) high word needs moving.
+                    a.fx(&[0xEB]); // EX DE,HL        (hi = old lo)
+                    a.fx(&[0x21, 0x00, 0x00]); // LD HL,0  (lo = 0)
+                    if k >= 8 {
+                        k -= 8;
+                        a.fx(&[0x53]); // LD D,E
+                        a.fx(&[0x1E, 0x00]); // LD E,0
+                    }
+                    for _ in 0..k {
+                        a.fx(&[0xCB, 0x23]); // SLA E
+                        a.fx(&[0xCB, 0x12]); // RL D
+                    }
                 } else {
-                    // DE:HL >> 1  (high first, carry down)
-                    a.fx(&[0xCB, 0x3A]); // SRL D
-                    a.fx(&[0xCB, 0x1B]); // RR E
-                    a.fx(&[0xCB, 0x1C]); // RR H
-                    a.fx(&[0xCB, 0x1D]); // RR L
+                    // lo = hi >> residue, hi = 0.
+                    a.fx(&[0xEB]); // EX DE,HL        (lo = old hi)
+                    a.fx(&[0x11, 0x00, 0x00]); // LD DE,0  (hi = 0)
+                    if k >= 8 {
+                        k -= 8;
+                        a.fx(&[0x6C]); // LD L,H
+                        a.fx(&[0x26, 0x00]); // LD H,0
+                    }
+                    for _ in 0..k {
+                        a.fx(&[0xCB, 0x3C]); // SRL H
+                        a.fx(&[0xCB, 0x1D]); // RR L
+                    }
+                }
+            } else {
+                if k >= 8 {
+                    k -= 8;
+                    if *left {
+                        // bytes up: D←E, E←H, H←L, L←0
+                        a.fx(&[0x53]); // LD D,E
+                        a.fx(&[0x5C]); // LD E,H
+                        a.fx(&[0x65]); // LD H,L
+                        a.fx(&[0x2E, 0x00]); // LD L,0
+                    } else {
+                        // bytes down: L←H, H←E, E←D, D←0
+                        a.fx(&[0x6C]); // LD L,H
+                        a.fx(&[0x63]); // LD H,E
+                        a.fx(&[0x5A]); // LD E,D
+                        a.fx(&[0x16, 0x00]); // LD D,0
+                    }
+                }
+                for _ in 0..k {
+                    if *left {
+                        // DE:HL << 1  (low first, carry up)
+                        a.fx(&[0xCB, 0x25]); // SLA L
+                        a.fx(&[0xCB, 0x14]); // RL H
+                        a.fx(&[0xCB, 0x13]); // RL E
+                        a.fx(&[0xCB, 0x12]); // RL D
+                    } else {
+                        // DE:HL >> 1  (high first, carry down)
+                        a.fx(&[0xCB, 0x3A]); // SRL D
+                        a.fx(&[0xCB, 0x1B]); // RR E
+                        a.fx(&[0xCB, 0x1C]); // RR H
+                        a.fx(&[0xCB, 0x1D]); // RR L
+                    }
                 }
             }
         }

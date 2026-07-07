@@ -73,25 +73,61 @@ fn act(src: &str, id: &str, arg: u16) -> Act {
 fn actions() -> Vec<Act> {
     vec![
         act(
-            include_str!("../cells/mask_intersection.rs"),
+            include_str!("../cells/bit-mask/mask_intersection.rs"),
             "mask_intersection",
             0xFF00,
         ), // AND (lossy)
         act(
-            include_str!("../cells/mask_intersection.rs"),
+            include_str!("../cells/bit-mask/mask_intersection.rs"),
             "mask_intersection",
             0x0FF0,
         ), // AND (lossy)
-        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x00FF), // OR (lossy)
-        act(include_str!("../cells/mask_union.rs"), "mask_union", 0x0F0F), // OR (lossy)
-        act(include_str!("../cells/mask_xor.rs"), "mask_xor", 0x0F0F),
-        act(include_str!("../cells/mask_xor.rs"), "mask_xor", 0xF0F0),
-        act(include_str!("../cells/toggle_bit.rs"), "toggle_bit", 0),
-        act(include_str!("../cells/toggle_bit.rs"), "toggle_bit", 7),
-        act(include_str!("../cells/toggle_bit.rs"), "toggle_bit", 15),
-        act(include_str!("../cells/rotl16.rs"), "rotl16", 4),
-        act(include_str!("../cells/swap_bytes.rs"), "swap_bytes", 0),
-        act(include_str!("../cells/reverse_bits.rs"), "reverse_bits", 0),
+        act(
+            include_str!("../cells/bit-mask/mask_union.rs"),
+            "mask_union",
+            0x00FF,
+        ), // OR (lossy)
+        act(
+            include_str!("../cells/bit-mask/mask_union.rs"),
+            "mask_union",
+            0x0F0F,
+        ), // OR (lossy)
+        act(
+            include_str!("../cells/bit-mask/mask_xor.rs"),
+            "mask_xor",
+            0x0F0F,
+        ),
+        act(
+            include_str!("../cells/bit-mask/mask_xor.rs"),
+            "mask_xor",
+            0xF0F0,
+        ),
+        act(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_bit",
+            0,
+        ),
+        act(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_bit",
+            7,
+        ),
+        act(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_bit",
+            15,
+        ),
+        act(include_str!("../cells/bit-encoding/rotl16.rs"), "rotl16", 4),
+        act(
+            include_str!("../cells/bit-encoding/swap_bytes.rs"),
+            "swap_bytes",
+            0,
+        ),
+        act(
+            include_str!("../cells/bit-encoding/reverse_bits.rs"),
+            "reverse_bits",
+            0,
+        ),
     ]
 }
 

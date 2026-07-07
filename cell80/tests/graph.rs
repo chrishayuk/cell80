@@ -27,14 +27,18 @@ fn host() -> CellHost {
     h.add(cell(
         "manhattan",
         Some("Pts::run"),
-        include_str!("../cells/manhattan.rs"),
+        include_str!("../cells/distance/manhattan.rs"),
     ));
     h.add(cell(
         "weighted_sum",
         None,
-        include_str!("../cells/weighted_sum.rs"),
+        include_str!("../cells/scoring-choice/weighted_sum.rs"),
     ));
-    h.add(cell("clamp", None, include_str!("../cells/clamp.rs")));
+    h.add(cell(
+        "clamp",
+        None,
+        include_str!("../cells/bounds/clamp.rs"),
+    ));
     h
 }
 

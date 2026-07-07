@@ -52,7 +52,10 @@ class CellLibrary:
     def _load(self, d: pathlib.Path) -> None:
         if not d.is_dir():
             raise FileNotFoundError(f"cell library dir not found: {d}")
-        for f in sorted(d.iterdir()):
+        # Cells live in pack subdirectories (cell80/cells/<pack>/<id>.rs), so this walks
+        # the tree recursively rather than assuming a flat directory.
+        files = sorted(d.rglob("*.rs")) + sorted(d.rglob("*.cell"))
+        for f in files:
             if f.suffix == ".rs":
                 src = f.read_text()
                 summary, tags, entry, limits = _parse_header(src)

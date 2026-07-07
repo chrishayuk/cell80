@@ -68,25 +68,61 @@ fn op(src: &str, id: &str, arg: u16) -> Op {
 fn ops() -> Vec<Op> {
     vec![
         op(
-            include_str!("../cells/mask_intersection.rs"),
+            include_str!("../cells/bit-mask/mask_intersection.rs"),
             "and_ff00",
             0xFF00,
         ),
         op(
-            include_str!("../cells/mask_intersection.rs"),
+            include_str!("../cells/bit-mask/mask_intersection.rs"),
             "and_0ff0",
             0x0FF0,
         ),
-        op(include_str!("../cells/mask_union.rs"), "or_00ff", 0x00FF),
-        op(include_str!("../cells/mask_union.rs"), "or_0f0f", 0x0F0F),
-        op(include_str!("../cells/mask_xor.rs"), "xor_0f0f", 0x0F0F),
-        op(include_str!("../cells/mask_xor.rs"), "xor_f0f0", 0xF0F0),
-        op(include_str!("../cells/toggle_bit.rs"), "toggle_0", 0),
-        op(include_str!("../cells/toggle_bit.rs"), "toggle_7", 7),
-        op(include_str!("../cells/toggle_bit.rs"), "toggle_15", 15),
-        op(include_str!("../cells/rotl16.rs"), "rol_4", 4),
-        op(include_str!("../cells/swap_bytes.rs"), "swap", 0),
-        op(include_str!("../cells/reverse_bits.rs"), "rev", 0),
+        op(
+            include_str!("../cells/bit-mask/mask_union.rs"),
+            "or_00ff",
+            0x00FF,
+        ),
+        op(
+            include_str!("../cells/bit-mask/mask_union.rs"),
+            "or_0f0f",
+            0x0F0F,
+        ),
+        op(
+            include_str!("../cells/bit-mask/mask_xor.rs"),
+            "xor_0f0f",
+            0x0F0F,
+        ),
+        op(
+            include_str!("../cells/bit-mask/mask_xor.rs"),
+            "xor_f0f0",
+            0xF0F0,
+        ),
+        op(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_0",
+            0,
+        ),
+        op(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_7",
+            7,
+        ),
+        op(
+            include_str!("../cells/bit-mask/toggle_bit.rs"),
+            "toggle_15",
+            15,
+        ),
+        op(include_str!("../cells/bit-encoding/rotl16.rs"), "rol_4", 4),
+        op(
+            include_str!("../cells/bit-encoding/swap_bytes.rs"),
+            "swap",
+            0,
+        ),
+        op(
+            include_str!("../cells/bit-encoding/reverse_bits.rs"),
+            "rev",
+            0,
+        ),
     ]
 }
 

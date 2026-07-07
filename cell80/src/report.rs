@@ -26,7 +26,7 @@ pub const ESCALATE_BASE: u16 = 0xFF00;
 
 /// The named reasons of the escalation band (`ESCALATE_BASE + offset`). Codes in the
 /// band beyond the named set decode as `"custom"` — the code itself is always carried.
-pub const ESCALATE_REASONS: [(u16, &str); 7] = [
+pub const ESCALATE_REASONS: [(u16, &str); 9] = [
     (0xFF00, "unspecified"),
     (0xFF01, "needs_strings"),
     (0xFF02, "needs_floats"),
@@ -34,6 +34,13 @@ pub const ESCALATE_REASONS: [(u16, &str); 7] = [
     (0xFF04, "needs_network"),
     (0xFF05, "needs_wider_math"),
     (0xFF06, "out_of_domain"),
+    // The f32 boundary contract (`finite_result`, amendment §F0.4): a cell whose
+    // return would be non-finite escalates instead of answering. IEEE semantics
+    // propagate *inside* the cell (oracle fidelity); escalate-not-lie applies at
+    // the boundary. `0xFF02` remains "float capability not yet in dialect"
+    // (transcendentals pre-F2, f64, anything libm-shaped).
+    (0xFF07, "float_overflow"),
+    (0xFF08, "float_domain"),
 ];
 
 /// Why a run stopped.

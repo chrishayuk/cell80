@@ -23,14 +23,20 @@ fn cell(id: &str, src: &str) -> Cartridge {
 }
 
 fn ops() -> Vec<Op> {
-    let xor = cell("mask_xor", include_str!("../cells/mask_xor.rs"));
+    let xor = cell("mask_xor", include_str!("../cells/bit-mask/mask_xor.rs"));
     let and = cell(
         "mask_intersection",
-        include_str!("../cells/mask_intersection.rs"),
+        include_str!("../cells/bit-mask/mask_intersection.rs"),
     );
-    let or = cell("mask_union", include_str!("../cells/mask_union.rs"));
-    let swap = cell("swap_bytes", include_str!("../cells/swap_bytes.rs"));
-    let rotl = cell("rotl16", include_str!("../cells/rotl16.rs"));
+    let or = cell(
+        "mask_union",
+        include_str!("../cells/bit-mask/mask_union.rs"),
+    );
+    let swap = cell(
+        "swap_bytes",
+        include_str!("../cells/bit-encoding/swap_bytes.rs"),
+    );
+    let rotl = cell("rotl16", include_str!("../cells/bit-encoding/rotl16.rs"));
     vec![
         Op::from_cell("xor_00ff", &xor, 0x00FF),
         Op::from_cell("xor_ff00", &xor, 0xFF00),

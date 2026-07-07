@@ -4,6 +4,15 @@
 `docs/real-valued-cells-spec.md` ("the coverage oracle — build before authoring
 anything"). Machine-readable form: [`cell80/data/math_server_catalog_map.json`](../cell80/data/math_server_catalog_map.json).*
 
+*Update (2026-07-07): the first slice of the 77 candidates has been authored — the
+number-theory family (`mobius_function`, `little_omega`, `big_omega`,
+`divisor_power_sum`, `jordan_totient`, `carmichael_lambda`), see
+`docs/library-growth.md`'s "Wave 6" note. This snapshot's `candidate` rows for those
+six are now stale (they're `covered`); the JSON itself is left as-authored evidence
+of the mining pass rather than hand-edited — re-check against the live
+`docs/cell-index.md` before authoring anything from the remaining ~71 candidates, per
+this doc's own "How this gates authoring" section below.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

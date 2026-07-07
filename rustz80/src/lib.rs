@@ -22,6 +22,7 @@ pub mod diag;
 mod inline;
 mod ir;
 mod lower;
+mod softfloat;
 mod tap;
 
 pub use canon::{
@@ -32,6 +33,7 @@ pub use codegen::{codegen_loop, Target};
 pub use diag::{classify_error, Diag, DiagCode, Repair};
 pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
+pub use softfloat::F32_KERNELS;
 pub use tap::to_tap;
 
 /// [`codegen_loop`] over a [`Lowered`] program — lays the **const-data section**

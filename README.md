@@ -150,8 +150,8 @@ correct 0.93** — graph-authoring ergonomics, not the VM, was the lever.
 ```bash
 git clone https://github.com/chrishayuk/cell80 && cd cell80
 
-# run a cell from source
-cargo run -p cell80 --bin cell80 -- run cell80/cells/gcd.rs --args 1071,462
+# run a cell from source (cells live in pack subdirectories: cell80/cells/<pack>/<id>.rs)
+cargo run -p cell80 --bin cell80 -- run cell80/cells/number-theory/gcd.rs --args 1071,462
 # → result 21
 
 # browse + search the seed library, then run one warm in a persistent session

@@ -53,8 +53,16 @@ fn render() -> String {
     let mut out = String::new();
 
     // 1. The stdlib cells — the CellProgram pipeline (prelude append, cap check,
-    //    inline, DCE, Cell target).
-    for path in rs_files(&manifest.join("cells")) {
+    //    inline, DCE, Cell target). Cells live in pack subdirectories, discovered
+    //    recursively (rs_files below is flat, reused as-is for the showcase samples).
+    let mut cell_paths: Vec<PathBuf> =
+        cell80::discover_cell_files(manifest.join("cells").to_str().unwrap())
+            .unwrap_or_else(|e| panic!("{e}"))
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+            .collect();
+    cell_paths.sort();
+    for path in cell_paths {
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = fs::read_to_string(&path).unwrap();
         let prog = CellProgram::compile(&src)

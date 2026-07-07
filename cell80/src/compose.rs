@@ -184,7 +184,7 @@ fn resolve(
 /// Load a library cell's source for inlining: strip the `//!` header, rename its
 /// entry `fn run` to the call-site name.
 fn cell_fn_source(cells_dir: &Path, id: &str, as_name: &str) -> Result<String, String> {
-    let path = cells_dir.join(format!("{id}.rs"));
+    let path = crate::discover::find_cell_file(cells_dir, id)?;
     let src = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let body: String = src
         .lines()
