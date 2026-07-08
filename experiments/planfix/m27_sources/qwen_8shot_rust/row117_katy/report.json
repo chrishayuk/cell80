@@ -1,0 +1,55 @@
+{
+ "agreement": "unanimous",
+ "answer": 42,
+ "battery": "survived 1 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 42,
+   "artifact": "b404c0f56d8ddcf1d52b93311bb30354c048b08be338da456d6b9325be7cbdce",
+   "cycles": 1399,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total` = 120 lifted to a parameter",
+    "E0102:quantity_lifted `ratio_sugar` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `ratio_water` = 13 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbn6h0yst/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 42,
+   "artifact": "00eba7732acbd461371faed995e3cb2b82de97545f02f8152e198fc4e4eaf621",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total` = 120 lifted to a parameter",
+    "E0102:quantity_lifted `parts` = 20 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbn6h0yst/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 42,
+   "artifact": "e530d8e326fb58ac2254053350aeefe781630246c90aa941f9195865e8ac3ee1",
+   "cycles": 998,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_parts` = 20 lifted to a parameter",
+    "E0102:quantity_lifted `sugar_parts` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `total_mixture` = 120 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbn6h0yst/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

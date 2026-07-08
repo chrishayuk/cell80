@@ -1,0 +1,56 @@
+{
+ "agreement": "unanimous",
+ "answer": 50,
+ "battery": "survived 0 perturbation(s) (5 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 50,
+   "artifact": "78c5740384419f3fd7dd8a284816c675f8e23164dafdc2e4b641077249e6d676",
+   "cycles": 1208,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_miles` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `remaining_hours` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqcg_jtma/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 50,
+   "artifact": "e4186a53fd2b60019741f8f6e051d09bc5dc811cafcb434dc4494e1f9c007425",
+   "cycles": 3003,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_time` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `time_segment_1` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `speed_segment_1` = 10 lifted to a parameter",
+    "E0103:lift_cap_reached `speed_segment_2` = 5 stays baked (3-slot ABI cap)",
+    "E0505:dead_let dropped unused bindings: speed_segment_2"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqcg_jtma/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 50,
+   "artifact": "e4186a53fd2b60019741f8f6e051d09bc5dc811cafcb434dc4494e1f9c007425",
+   "cycles": 3003,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_time` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `time_1` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `rate_1` = 10 lifted to a parameter",
+    "E0103:lift_cap_reached `rate_2` = 5 stays baked (3-slot ABI cap)",
+    "E0505:dead_let dropped unused bindings: rate_2"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqcg_jtma/d2.rs",
+   "trapped_ops": 4
+  }
+ ],
+ "flagged": false
+}

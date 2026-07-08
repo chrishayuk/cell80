@@ -1,0 +1,55 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 175,
+   "artifact": "67bcb251c2c8b2e18c89524e057bf2c33a59f241705847f8a94d6dfa856d5a6c",
+   "cycles": 2276,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `f1_rings` = 20 lifted to a parameter",
+    "E0102:quantity_lifted `f2_rings` = 25 lifted to a parameter",
+    "E0102:quantity_lifted `f3_rings` = 70 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdxggpa9n/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 765,
+   "artifact": "67bcb251c2c8b2e18c89524e057bf2c33a59f241705847f8a94d6dfa856d5a6c",
+   "cycles": 2276,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `f1` = 20 lifted to a parameter",
+    "E0102:quantity_lifted `f2` = 25 lifted to a parameter",
+    "E0102:quantity_lifted `f3` = 660 lifted to a parameter",
+    "E0103:lift_cap_reached `f4` = 60 stays baked (3-slot ABI cap)",
+    "E0505:dead_let dropped unused bindings: f4"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdxggpa9n/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 195,
+   "artifact": "a69f401c1dbfeac8dce70bb82d41ce64ab8c9512ad6fc5852aadc11d3a1cd9fd",
+   "cycles": 4509,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `v4` = 60 lifted to a parameter",
+    "E0102:quantity_lifted `v1` = 20 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpdxggpa9n/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,51 @@
+{
+ "agreement": "unanimous",
+ "answer": 14,
+ "battery": "survived 1 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 14,
+   "artifact": "41ca594bf4db55c55769dd04ab3114b10d62a6c51edf094639840b5af8c471fc",
+   "cycles": 953,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `samantha_age` = 31 lifted to a parameter",
+    "E0102:quantity_lifted `age_difference` = 6 lifted to a parameter",
+    "E0102:quantity_lifted `son_birth_age` = 23 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqde90lt8/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 14,
+   "artifact": "41ca594bf4db55c55769dd04ab3114b10d62a6c51edf094639840b5af8c471fc",
+   "cycles": 953,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `samantha_age` = 31 lifted to a parameter",
+    "E0102:quantity_lifted `age_difference` = 6 lifted to a parameter",
+    "E0102:quantity_lifted `son_birth_age` = 23 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqde90lt8/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 14,
+   "artifact": "ec56632614a0851d38c005eba27ac3e21948f8aa7a5a95463d44f41d5eea5012",
+   "cycles": 859,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `samantha` = 31 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqde90lt8/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

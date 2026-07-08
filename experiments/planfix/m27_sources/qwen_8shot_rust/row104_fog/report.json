@@ -1,0 +1,53 @@
+{
+ "agreement": "unanimous",
+ "answer": 140,
+ "battery": "survived 2 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 140,
+   "artifact": "8f74e6519432ef3739aadb5f61431827c13a3269d571a3ddf61874fc7609d4bd",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `miles_per_10_min` = 3 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6uzreceb/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "8f74e6519432ef3739aadb5f61431827c13a3269d571a3ddf61874fc7609d4bd",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `miles_per_10_minutes` = 3 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6uzreceb/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "8f74e6519432ef3739aadb5f61431827c13a3269d571a3ddf61874fc7609d4bd",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `area_length` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `total_width` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6uzreceb/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

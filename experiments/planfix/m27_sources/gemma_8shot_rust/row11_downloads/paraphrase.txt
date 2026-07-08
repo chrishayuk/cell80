@@ -1,0 +1,1 @@
+A program recorded 60 downloads during its initial month. In the subsequent month, the number of downloads tripled compared to the first month's figure. Following this, the download count decreased by 30% in the third month. What was the cumulative total number of downloads for the program across these three months?

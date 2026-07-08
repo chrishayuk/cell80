@@ -1,0 +1,1 @@
+For his art supplies, Miguel requires 2 pads every week. Given that each pad contains exactly 30 sheets of paper, what is the total number of sheets he will use over the course of a month?

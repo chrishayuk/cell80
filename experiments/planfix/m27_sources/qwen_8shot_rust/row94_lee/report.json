@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 1/10 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzzlijbys/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 5/4 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzzlijbys/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 36,
+   "artifact": "782bce2120020cc07675ec71f35989c99d34e5b63822f7c7e18ef3025c8c335a",
+   "cycles": 1371,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `lee_time` = 38 lifted to a parameter",
+    "E0102:quantity_lifted `lees_speed_bonus` = 2 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzzlijbys/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

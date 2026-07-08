@@ -1,0 +1,48 @@
+{
+ "agreement": "majority",
+ "answer": 260,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 260,
+   "artifact": "445685a39819fefc4430027f9228349aa44b11c93f11657ade334cb23ef5df75",
+   "cycles": 3563,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `seattle` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp12qoqqnp/d0.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 260,
+   "artifact": "445685a39819fefc4430027f9228349aa44b11c93f11657ade334cb23ef5df75",
+   "cycles": 3563,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `seattle_sheep` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp12qoqqnp/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 140,
+   "artifact": "67454d554805d4e92e3bdf38523051c9b10abaa2b9649dc1e714f79df3985d5d",
+   "cycles": 2340,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `seattle_sheep` = 20 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp12qoqqnp/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": true
+}

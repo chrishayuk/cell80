@@ -1,0 +1,56 @@
+{
+ "agreement": "unanimous",
+ "answer": 140,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 140,
+   "artifact": "e530d8e326fb58ac2254053350aeefe781630246c90aa941f9195865e8ac3ee1",
+   "cycles": 998,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `rate_miles` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `time_per_rate` = 10 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6ows4g6n/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "e530d8e326fb58ac2254053350aeefe781630246c90aa941f9195865e8ac3ee1",
+   "cycles": 998,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_distance` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `segment_distance` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `time_per_segment` = 10 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6ows4g6n/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "e530d8e326fb58ac2254053350aeefe781630246c90aa941f9195865e8ac3ee1",
+   "cycles": 998,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `distance` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `group_size` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `time_per_group` = 10 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp6ows4g6n/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,1 @@
+James is 10 years old and is one year younger than Corey. Given that Amy is two years younger than Corey and five years older than Jackson, you can determine Jackson's age by figuring out the ages of the other siblings first.

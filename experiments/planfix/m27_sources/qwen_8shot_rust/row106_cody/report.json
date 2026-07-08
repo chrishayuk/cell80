@@ -1,0 +1,47 @@
+{
+ "agreement": "unanimous",
+ "answer": 20,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 20,
+   "artifact": "e337e85f0da5c9a323e9b976fb1ae7b417f660f841abe0ff22f847184dcef9d9",
+   "cycles": 1162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwh66z2ep/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 20,
+   "artifact": "e337e85f0da5c9a323e9b976fb1ae7b417f660f841abe0ff22f847184dcef9d9",
+   "cycles": 1162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwh66z2ep/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 20,
+   "artifact": "e337e85f0da5c9a323e9b976fb1ae7b417f660f841abe0ff22f847184dcef9d9",
+   "cycles": 1162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `amir` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwh66z2ep/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": false
+}

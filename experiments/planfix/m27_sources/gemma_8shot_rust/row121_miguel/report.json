@@ -1,0 +1,52 @@
+{
+ "agreement": "majority",
+ "answer": 240,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 60,
+   "artifact": "8a9216a8155d5e272af4985034ea896ed0da68a598ec83f944d6ba4b9a9310a5",
+   "cycles": 809,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26d6m9rn/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 240,
+   "artifact": "42ddf2ab4d4c0b0a115e423d6ce857e78284ecc35b8a8bac0904600cb00d2a7c",
+   "cycles": 2199,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `weeks_per_month` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26d6m9rn/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 240,
+   "artifact": "42ddf2ab4d4c0b0a115e423d6ce857e78284ecc35b8a8bac0904600cb00d2a7c",
+   "cycles": 2199,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `weeks` = 4 lifted to a parameter",
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26d6m9rn/d2.rs",
+   "trapped_ops": 4
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,30 @@
+model = gemma4:e4b   third reader = paraphrase-then-extract (same model)   format = rust   fewshot = 8+2   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366     366  unanimous  ACCEPT ok
+row22_raymond        14      14  unanimous  ACCEPT ok
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44      44  unanimous  ACCEPT ok
+row89_marilyn      8000    8000   majority  ACCEPT ok [flagged 2-of-3]
+row92_jan            28      28  unanimous  ACCEPT ok
+row93_emily           4       4  unanimous  ACCEPT ok
+row94_lee            36      36  unanimous  ACCEPT ok
+row97_harry           3       3  unanimous  ACCEPT ok
+row101_jerome       175    None   escalate  escalate (recoverable)
+row104_fog          140     140  unanimous  ACCEPT ok
+row106_cody          20      20  unanimous  ACCEPT ok
+row111_marcell       45      45  unanimous  ACCEPT ok
+row117_katy          42    None battery_escalate  escalate (recoverable)
+row119_customs        4       4  unanimous  ACCEPT ok
+row121_miguel       240     240   majority  ACCEPT ok [flagged 2-of-3]
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 18/20   yield 18/20   escalations: 2 recoverable, 0 genuine
+precision strict (unanimous only): 16/16   with majority: 18/18
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0102': 120, 'E0202': 29, 'E0505': 6, 'E0103': 3}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/gemma_8shot_rust

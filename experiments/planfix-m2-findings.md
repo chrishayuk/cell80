@@ -523,6 +523,50 @@ still cost three rows across configurations; phrase changes against failure
 classes, verify against every captured configuration, and treat an unexplained
 `changed:` line as a defect until diagnosed.
 
+## 4h. The 8-shot uniformity check — REFUSED as uniform config, and the first
+strict-unanimous wrong (2026-07-09)
+
+The gate on whether `FEWSHOT=1` could enter the registered M3 configuration:
+run it uniformly on the other two models.
+
+| model | 0-shot (accepted/correct/wrong) | 8-shot | verdict |
+|---|---|---|---|
+| granite | 10/10/0 | 16/15/1 (flagged) | authorship-bound → net +5 |
+| gemma | 20/20/0 | **18/18/0** | −2 yield (2 recoverable escalates) |
+| qwen | 3/3/0 | 17/15/**2 — one UNANIMOUS** | fluency up, diversity destroyed |
+
+**The law the three runs measure:** demonstrations trade arm diversity for
+fluency, and the trade's sign depends on the model's bottleneck. granite's
+bottleneck was authorship — demonstrations fixed what was broken and the
+correlation cost was smaller than the gain. gemma had no authorship problem —
+demonstrations only homogenized its arms (row117's truncate-early style now
+appears in enough arms for the battery to catch a division coincidence; row101
+escalates). qwen got granite's fluency gift (3 → 15 correct solo, its inline
+disease displaced exactly as predicted) *and* the full correlation cost:
+**row22 accepted-wrong UNANIMOUS at 8** — d0 and d1 byte-identical, and the
+paraphrase arm, solving a genuinely different rewording, converging on the
+same dropped-offset misread. The demonstrations didn't just standardize the
+output format; they standardized the *reading path*, and the self-paraphrase
+arm's decorrelation died with it.
+
+**The broken invariant, stated plainly:** strict-unanimous precision was 100%
+across every configuration of the campaign until this run. Its boundary is now
+measured: **unanimity is only evidence while the arms are diverse.** Under
+uniform 8-shot, "three agreeing derivations" can be one derivation printed
+three times — unanimity with zero information. The gate's safety was never the
+counting rule; it is the structural diversity the count summarizes (the §4f
+equations lesson, §4g's restatement lesson, and now the prompt-shape version,
+each biting one level deeper).
+
+**Registration verdict:** 8-shot does NOT enter the uniform config — gemma
+regresses and qwen breaks the campaign's core precision claim. What the
+evidence supports instead: demonstrations as an explicitly per-configuration
+axis, with the headline candidate **granite-8shot composer × gemma reader
+(18/17/1)** — the reader's decorrelation is what contains the composer's
+correlation, so the pairing is load-bearing in both directions. The M3
+registration decision (uniform 0-shot vs. named mixed configuration, stated
+openly) is the user's call, made before any N=1,319 generation.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

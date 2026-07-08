@@ -1,0 +1,47 @@
+{
+ "agreement": "unanimous",
+ "answer": 4,
+ "battery": "survived 0 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "5228c30aa7b7525af64bfca76cdc76a1d450660fa3b381e0a045b2ad2cb63cd6",
+   "cycles": 1748,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james_age` = 10 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqz25zj4t/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "0a3bd710b326cd81152dd9bbd5f6a17e02871c0e841842b808b2a841681b7aa6",
+   "cycles": 1369,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `corey_age` = 11 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqz25zj4t/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "5228c30aa7b7525af64bfca76cdc76a1d450660fa3b381e0a045b2ad2cb63cd6",
+   "cycles": 1748,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james_age` = 10 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpqz25zj4t/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

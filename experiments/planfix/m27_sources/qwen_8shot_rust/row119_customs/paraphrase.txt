@@ -1,0 +1,1 @@
+At SeaSide's main port, initially, a customs officer inspected 2 shipping containers, each containing 5 imported cars. On the following day, additional containers arrived and increased the total count of cars at the port to 30. How many new containers were loaded with 5 cars each on that second day?

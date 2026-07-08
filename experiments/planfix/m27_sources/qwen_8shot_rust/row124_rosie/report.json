@@ -1,0 +1,51 @@
+{
+ "agreement": "unanimous",
+ "answer": 50,
+ "battery": "survived 1 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 50,
+   "artifact": "b43bc1657068095fe4d751b074389a787a088ac22484760e9e7ca00bc55a7a6f",
+   "cycles": 2925,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `full_speed_hours` = 3 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpul6ral2q/d0.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 50,
+   "artifact": "b43bc1657068095fe4d751b074389a787a088ac22484760e9e7ca00bc55a7a6f",
+   "cycles": 2925,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `full_speed_hours` = 3 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpul6ral2q/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 50,
+   "artifact": "d700c19f63b5f1a93f0e4ebacc43f2adf6505435c3e07c625382417dcc518e91",
+   "cycles": 3162,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_speed` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `initial_hours` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `total_hours` = 7 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpul6ral2q/d2.rs",
+   "trapped_ops": 5
+  }
+ ],
+ "flagged": false
+}

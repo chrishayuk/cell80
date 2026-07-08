@@ -1,0 +1,51 @@
+{
+ "agreement": "majority",
+ "answer": 8000,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 8000,
+   "artifact": "3831dd75ad95809d67a4e4de7cf6d4ff5dc7ae49a435f45b5d9511b12b88d0f7",
+   "cycles": 236,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `multiplier` = 11 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end",
+    "E0505:dead_let dropped unused bindings: total"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpto4ucl05/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 8000,
+   "artifact": "3831dd75ad95809d67a4e4de7cf6d4ff5dc7ae49a435f45b5d9511b12b88d0f7",
+   "cycles": 236,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `ratio_sum` = 11 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end",
+    "E0505:dead_let dropped unused bindings: total_sold"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpto4ucl05/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 80000,
+   "artifact": "f66bb8a9c7506f97c6625400f8343b721046cf98afde70a93c1bca47a8d8185d",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total_sales"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpto4ucl05/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

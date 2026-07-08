@@ -1,0 +1,53 @@
+{
+ "agreement": "unanimous",
+ "answer": 45,
+ "battery": "survived 2 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 45,
+   "artifact": "e25b6a6f38a548436dd637b0c6fe2f920afc18a7642098f02de576695dea911b",
+   "cycles": 667,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `beatrice_rolls` = 48 lifted to a parameter",
+    "E0102:quantity_lifted `marcell_rolls` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpl9alltxz/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 45,
+   "artifact": "e25b6a6f38a548436dd637b0c6fe2f920afc18a7642098f02de576695dea911b",
+   "cycles": 667,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `beatrice_rolls` = 48 lifted to a parameter",
+    "E0102:quantity_lifted `marcell_rolls` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpl9alltxz/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 45,
+   "artifact": "e25b6a6f38a548436dd637b0c6fe2f920afc18a7642098f02de576695dea911b",
+   "cycles": 667,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `beatrice_total` = 48 lifted to a parameter",
+    "E0102:quantity_lifted `marcell_total` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpl9alltxz/d2.rs",
+   "trapped_ops": 1
+  }
+ ],
+ "flagged": false
+}

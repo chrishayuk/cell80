@@ -1,0 +1,41 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwzbv3bcw/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwzbv3bcw/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwzbv3bcw/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

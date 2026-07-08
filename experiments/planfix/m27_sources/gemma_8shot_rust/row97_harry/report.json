@@ -1,0 +1,50 @@
+{
+ "agreement": "unanimous",
+ "answer": 3,
+ "battery": "survived 1 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 3,
+   "artifact": "ef1006637825321c6dd1de2673267d4a2f61fe09172b56bf88b9503359c50714",
+   "cycles": 1313,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpednvi7__/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 3,
+   "artifact": "ef1006637825321c6dd1de2673267d4a2f61fe09172b56bf88b9503359c50714",
+   "cycles": 1313,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpednvi7__/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 3,
+   "artifact": "12bc8f191a729472107f0fac11a5ec7f8077aab1f62dfd70b3c536792eec1105",
+   "cycles": 512,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0102:quantity_lifted `james_sleep` = 6 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpednvi7__/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

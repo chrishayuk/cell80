@@ -1,0 +1,56 @@
+{
+ "agreement": "unanimous",
+ "answer": 4,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "064510a0a120eaa1936c7bc704b458ffb2e932c5693e1983bceef3bb320d67b5",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpijo2jap8/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 4,
+   "artifact": "064510a0a120eaa1936c7bc704b458ffb2e932c5693e1983bceef3bb320d67b5",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpijo2jap8/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 4,
+   "artifact": "064510a0a120eaa1936c7bc704b458ffb2e932c5693e1983bceef3bb320d67b5",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `capacity` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpijo2jap8/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

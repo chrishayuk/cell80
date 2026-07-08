@@ -1,0 +1,53 @@
+{
+ "agreement": "unanimous",
+ "answer": 44,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 44,
+   "artifact": "526dda4ac057000f84b2cacf44ff677ae95ce7a9b919e647a073f3b86408ff29",
+   "cycles": 1248,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `current_age` = 34 lifted to a parameter",
+    "E0102:quantity_lifted `start_age` = 23 lifted to a parameter",
+    "E0102:quantity_lifted `vacations_per_year` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe2bm5g5e/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 44,
+   "artifact": "526dda4ac057000f84b2cacf44ff677ae95ce7a9b919e647a073f3b86408ff29",
+   "cycles": 1248,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `current_age` = 34 lifted to a parameter",
+    "E0102:quantity_lifted `age_when_started` = 23 lifted to a parameter",
+    "E0102:quantity_lifted `vacations_per_year` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe2bm5g5e/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 44,
+   "artifact": "526dda4ac057000f84b2cacf44ff677ae95ce7a9b919e647a073f3b86408ff29",
+   "cycles": 1248,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `current_age` = 34 lifted to a parameter",
+    "E0102:quantity_lifted `start_age` = 23 lifted to a parameter",
+    "E0102:quantity_lifted `annual_vacations` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe2bm5g5e/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,1 @@
+A collector keeps a souvenir item from every trip he takes. He began traveling when he was 23 years old, and his current age is 34. If this individual averages four trips each year, what is the total number of souvenirs he has accumulated?

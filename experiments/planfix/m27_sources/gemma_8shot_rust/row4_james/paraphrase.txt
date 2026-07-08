@@ -1,0 +1,1 @@
+If James completes three separate runs over the course of a week, and every single sprint within those runs measures sixty meters, what total distance does he cover knowing that he executes three sprints during each run?

@@ -1,0 +1,51 @@
+{
+ "agreement": "majority",
+ "answer": 4,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "064510a0a120eaa1936c7bc704b458ffb2e932c5693e1983bceef3bb320d67b5",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles_after_first_day` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyqilox5a/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyqilox5a/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "064510a0a120eaa1936c7bc704b458ffb2e932c5693e1983bceef3bb320d67b5",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `initial_cars_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_cars_after_second_day` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpyqilox5a/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": true
+}
