@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (295 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (302 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -288,6 +288,16 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `scale_percent_u32` | `ScalePercentWide::run() -> u16` | Take pct percent of a wide value: value*pct/100 at u32, escalating if the multiply overflows — the wide sibling of scale_percent, and the percent-of core the widened (u32) arithmetic lane resolves to. |
 | `within_percent` | `run(actual: u16, target: u16, pct: u16) -> u16` | Returns 1 if actual is within pct percent of target (\|actual-target\|*100 <= target*pct). |
 
+## physics (5)
+
+| id | signature | summary |
+|---|---|---|
+| `clamp_f32` | `ClampF32::run() -> u16` | Clamp an f32 into [lo, hi] via max-then-min (x.max(lo).min(hi)) -- the branch-free form; NaN x resolves to lo (min/max treat NaN as missing data, the documented divergence from f32::clamp's NaN-propagating semantics), so the output is always a real bound. |
+| `drag_force_f32` | `DragForce::run() -> u16` | Quadratic drag force k*v*\|v\| in IEEE binary32 -- signed (opposes the sign of v when the caller negates), correctly rounded per op through the owned softfloat kernels; a non-finite force escalates instead of flowing onward. |
+| `kinetic_energy_f32` | `KineticEnergy::run() -> u16` | Kinetic energy 0.5*m*v*v in IEEE binary32 through the owned softfloat kernels -- correctly rounded per op, bit-identical to rustc f32; escalates float_overflow/float_domain instead of reporting a non-finite energy. |
+| `spring_damper_step_f32` | `SpringDamperStep::run() -> u16` | One semi-implicit-Euler spring-damper step, IEEE binary32: a = -(k*x + c*v)*inv_m, then v' = v + a*dt and x' = x + v'*dt -- inverse mass as input, exactly how a Rapier-style engine stores it (and it keeps the cell division-free); non-finite state escalates instead of exploding the spring silently. |
+| `verlet_step_f32` | `VerletStep::run() -> u16` | One position-Verlet step under constant acceleration, IEEE binary32: x' = x + v*dt + 0.5*a*dt*dt and v' = v + a*dt -- the integrator's arithmetic exactly as a Rapier-style f32 engine computes it, correctly rounded per op; non-finite results escalate instead of corrupting the trajectory. |
+
 ## predicates (14)
 
 | id | signature | summary |
@@ -426,13 +436,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 |---|---|---|
 | `range_check` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x <= hi, else 0. |
 
-## vector (4)
+## vector (6)
 
 | id | signature | summary |
 |---|---|---|
 | `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
+| `triple_scalar_product` | `TripleScalarProduct::run() -> u16` | Triple scalar product a . (b x c) of three 3D vectors -- the signed volume of the parallelepiped they span (zero exactly when the three vectors are coplanar). Computed as cross_product(b, c) followed by a signed dot with a, reusing the same (magnitude, sign) tracking cross_product and vectors_parallel already establish, so no new arithmetic technique is introduced here. |
+| `triple_vector_product` | `TripleVectorProduct::run() -> u16` | Triple vector product a x (b x c) of three 3D vectors, via the BAC-CAB identity a x (b x c) = b*(a.c) - c*(a.b) -- pure dot-products and scalar multiplies, never an actual cross-product computation. Each stage (the two dot products, the two vector scalings, the final vector subtract) is tracked as a (magnitude, sign) pair, the same discipline cross_product/triple_scalar_product use. Genuinely narrower-range than those two: scaling a vector component by a dot product can reach i16's product-of-three-factors territory, so this escalates well before either input vector's own magnitude would suggest trouble. |
 | `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |
 
 ## verifier-ranker (19)

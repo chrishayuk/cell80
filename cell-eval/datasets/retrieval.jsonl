@@ -658,9 +658,23 @@
 {"id": "vectors_parallel-para-1", "query": "do two direction vectors point along the same or exactly opposite line", "expected": "vectors_parallel", "category": "paraphrase"}
 {"id": "cross_product-direct-1", "query": "cross product of two 3D vectors", "expected": "cross_product", "category": "direct"}
 {"id": "cross_product-para-1", "query": "the vector at right angles to two other 3D vectors, i cross j equals k", "expected": "cross_product", "category": "paraphrase"}
+{"id": "triple_scalar_product-direct-1", "query": "triple scalar product of three 3D vectors, signed volume", "expected": "triple_scalar_product", "category": "direct"}
+{"id": "triple_scalar_product-para-1", "query": "signed volume of the parallelepiped spanned by three vectors", "expected": "triple_scalar_product", "category": "paraphrase"}
+{"id": "triple_vector_product-direct-1", "query": "triple vector product a cross b cross c, BAC-CAB identity", "expected": "triple_vector_product", "category": "direct"}
+{"id": "triple_vector_product-para-1", "query": "vector formed by crossing a vector with the cross product of two others, BAC-CAB", "expected": "triple_vector_product", "category": "paraphrase"}
 {"id": "geom_distance_3d-direct-1", "query": "squared euclidean distance between two 3d points", "expected": "geom_distance_3d", "category": "direct"}
 {"id": "geom_distance_3d-para-1", "query": "how far apart are two points in space given signed xyz coordinates, without the square root", "expected": "geom_distance_3d", "category": "paraphrase"}
 {"id": "cross_product-direct-1", "query": "cross product of two 3d integer vectors", "expected": "cross_product", "category": "direct"}
 {"id": "cross_product-para-1", "query": "the perpendicular vector to two given 3d vectors with signed components", "expected": "cross_product", "category": "paraphrase"}
 {"id": "vectors_parallel-direct-1", "query": "check whether two 3d vectors are parallel", "expected": "vectors_parallel", "category": "direct"}
 {"id": "vectors_parallel-para-1", "query": "do two vectors point along the same or exactly opposite direction, are they collinear", "expected": "vectors_parallel", "category": "paraphrase"}
+{"id": "kinetic_energy_f32-direct-1", "query": "kinetic energy of a mass at a velocity in f32", "expected": "kinetic_energy_f32", "category": "direct"}
+{"id": "kinetic_energy_f32-para-1", "query": "how much energy of motion does a moving body have, half m v squared", "expected": "kinetic_energy_f32", "category": "paraphrase"}
+{"id": "drag_force_f32-direct-1", "query": "quadratic drag force from velocity and drag coefficient", "expected": "drag_force_f32", "category": "direct"}
+{"id": "drag_force_f32-para-1", "query": "air resistance that grows with the square of speed, keeping the sign of motion", "expected": "drag_force_f32", "category": "paraphrase"}
+{"id": "clamp_f32-direct-1", "query": "clamp a floating point value between a lower and upper bound", "expected": "clamp_f32", "category": "direct"}
+{"id": "clamp_f32-para-1", "query": "keep a real number inside a min and max range, saturating at the edges", "expected": "clamp_f32", "category": "paraphrase"}
+{"id": "verlet_step_f32-direct-1", "query": "one verlet integration step for position and velocity", "expected": "verlet_step_f32", "category": "direct"}
+{"id": "verlet_step_f32-para-1", "query": "advance a simulated particle by one timestep under constant acceleration", "expected": "verlet_step_f32", "category": "paraphrase"}
+{"id": "spring_damper_step_f32-direct-1", "query": "spring damper simulation step with stiffness and damping", "expected": "spring_damper_step_f32", "category": "direct"}
+{"id": "spring_damper_step_f32-para-1", "query": "integrate a damped harmonic oscillator one tick using inverse mass", "expected": "spring_damper_step_f32", "category": "paraphrase"}

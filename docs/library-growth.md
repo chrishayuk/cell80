@@ -313,13 +313,22 @@ wave 11   295 cells   + 3D vector basics, the geometry/vector integer
                         checked against a 2,000-case random sweep).
                         triple_scalar_product/triple_vector_product
                         deliberately deferred — see the pack note below.
-next      ~22          + the remaining ready-now math-server candidates
-                        (triple_scalar_product, triple_vector_product,
-                        matrix, statistics) plus Wave Q0 (Q16.16 plumbing)
-                        as a prerequisite for the 4 Q-format candidates;
-                        cosine_score_approx (deferred until cell_solve
-                        reads out); CORDIC trig remains demand-gated per
-                        docs/real-valued-cells-spec.md Wave 3
+wave 12   297 cells   + the vector pack's deferred triple products,
+                        completing the geometry/vector integer subset:
+                        triple_scalar_product (a . (b x c), reuses
+                        cross_product's own computation as its first
+                        stage, then a signed dot) and
+                        triple_vector_product (a x (b x c) via the
+                        BAC-CAB identity, never an actual cross product).
+                        Both cross-checked against a 2,000-case random
+                        sweep each. See the pack note below.
+next      ~20          + the remaining ready-now math-server candidates
+                        (matrix, statistics) plus Wave Q0 (Q16.16
+                        plumbing) as a prerequisite for the 4 Q-format
+                        candidates; cosine_score_approx (deferred until
+                        cell_solve reads out); CORDIC trig remains
+                        demand-gated per docs/real-valued-cells-spec.md
+                        Wave 3
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
@@ -1680,6 +1689,48 @@ workspace test suite green (one transient `host_from_dir_loads_the_seed_library`
 mid-session, traced to a race with the other session's concurrent `peephole.rs` edits, not
 a real bug — confirmed by an immediate clean re-run). Codegen golden regenerated, purely
 additive (3 new entries).
+
+**Wave 12 — the vector pack's deferred triple products (2026-07-08), completing the
+geometry/vector integer subset.** The two cells wave 11 scoped out once their real
+complexity became concrete, built now on wave 11's own proven sign-magnitude techniques
+rather than inventing new ones:
+
+- **`triple_scalar_product(a, b, c)`** computes `a . (b x c)` — the signed volume of the
+  parallelepiped the three vectors span, zero exactly when they're coplanar. Its first
+  stage is *literally* `cross_product`'s own computation (`cross(b, c)`), reused inline
+  since cells can't call each other; the second stage is a signed dot product of `a`
+  against that result, chaining two more sign-magnitude combines. Verified against an
+  independent Python reference over 2,000 random triples before writing a line of the
+  cell, the same discipline wave 11's `cross_product` used.
+- **`triple_vector_product(a, b, c)`** computes `a x (b x c)` via the **BAC-CAB
+  identity** (`b*(a.c) - c*(a.b)`) rather than two nested cross products — pure dot
+  products and scalar multiplies, per `docs/math-server-map.md`'s own note on this
+  candidate. This is the pack's one genuine new finding: the *scaling* step (a dot
+  product times a vector component) is effectively a product of **three** i16-scale
+  factors, so it overflows `u32` for inputs well within `i16`'s own comfortable range —
+  measured directly (three vectors at `30000` in every component escalate cleanly) and
+  written into the cell's own `//! limits:` line rather than left as a surprise. Also
+  verified against 2,000 random triples, including the `worst dot magnitude fits u32 but
+  worst scale magnitude doesn't` finding that shaped the escalation note.
+
+One more shared-checkout hazard surfaced, distinct from the untracked-file-disappearance
+class waves 9 and 11 already logged: a **new `physics` pack** (another session's F3 work,
+`clamp_f32`/`drag_force_f32`/`kinetic_energy_f32`/`spring_damper_step_f32`/
+`verlet_step_f32`) landed mid-wave and pushed one of its own cells over the sandboxed
+code-size cap — the exact same failure class the `softfloat` pack caused at waves 8/9,
+just a different pack. Confirmed not self-inflicted (both new cells here compile standalone
+at 2,263 and 2,879 bytes, nowhere near the 8,192-byte cap that tripped) and worked around
+the same way: retrieval verification and the admission gate ran against a scratch copy of
+`cell80/cells` with `physics` excluded, never touching the other session's files. Gate
+(scratch copy): 297 admitted, 0 refused. The four real-directory CLI tests
+(`cli_index_and_search_the_seed_library` and siblings) are updated to the correct `297`
+count but will stay red until the `physics` pack's own cap issue resolves — not this
+wave's concern, the same call made for `softfloat` at waves 8/9. Codegen golden
+regenerated, purely additive for this wave's two cells (the physics pack's own new
+entries ride along in the same shared file, unavoidably, as before).
+
+This closes out `docs/math-server-map.md`'s vector candidates in full — every
+`linear_algebra.vectors` candidate that map named is now landed.
 
 ## Mine the ecosystem first
 

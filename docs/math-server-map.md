@@ -54,6 +54,10 @@ as three cells — `geom_distance_3d`, `vectors_parallel`, `cross_product` — s
 candidates) were deliberately deferred to a follow-up wave for complexity/risk
 reasons, not built and not forgotten.*
 
+*Update (2026-07-08, Wave 12): `triple_scalar_product` and `triple_vector_product`
+landed — see `docs/library-growth.md`'s "Wave 12" note. Both matched by exact name.
+This closes out every `linear_algebra.vectors` candidate this map named.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

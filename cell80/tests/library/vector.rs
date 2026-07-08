@@ -107,3 +107,115 @@ fn wave11_3d_vector_cells_match_defined_behaviour() {
     assert_eq!(parallel((1, 0, 0), (0, 1, 0)), 0);
     assert_eq!(parallel((0, 0, 0), (0, 0, 0)), 1); // the zero vector is trivially parallel
 }
+
+#[test]
+fn wave12_triple_product_cells_match_defined_behaviour() {
+    // Wave 12: the vector pack's deferred triple products (docs/math-server-map.md),
+    // built on wave 11's sign-magnitude technique. Cross-checked against an independent
+    // Python reference implementation, including a 2,000-case random sweep for each
+    // cell against the true (non-sign-magnitude) formula, before transcribing any row.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+    fn vec9_fields(
+        a: (i16, i16, i16),
+        b: (i16, i16, i16),
+        c: (i16, i16, i16),
+    ) -> Vec<(&'static str, u64)> {
+        vec![
+            ("ax", i16_bits(a.0)),
+            ("ay", i16_bits(a.1)),
+            ("az", i16_bits(a.2)),
+            ("bx", i16_bits(b.0)),
+            ("by", i16_bits(b.1)),
+            ("bz", i16_bits(b.2)),
+            ("cx", i16_bits(c.0)),
+            ("cy", i16_bits(c.1)),
+            ("cz", i16_bits(c.2)),
+        ]
+    }
+
+    // triple_scalar_product: a . (b x c), the signed volume of the parallelepiped.
+    let (_, cell) = step(
+        "triple_scalar_product",
+        "TripleScalarProduct",
+        &vec9_fields((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    );
+    assert_eq!(
+        (cell.get("result_mag"), cell.get("result_neg")),
+        (Some(1), Some(0))
+    ); // unit cube, right-handed
+
+    let (_, cell) = step(
+        "triple_scalar_product",
+        "TripleScalarProduct",
+        &vec9_fields((1, 2, 3), (4, 5, 6), (7, 8, 10)),
+    );
+    assert_eq!(
+        (cell.get("result_mag"), cell.get("result_neg")),
+        (Some(3), Some(1))
+    );
+
+    let (_, cell) = step(
+        "triple_scalar_product",
+        "TripleScalarProduct",
+        &vec9_fields((3, -1, 2), (1, 4, -2), (-1, 1, 3)),
+    );
+    assert_eq!(
+        (cell.get("result_mag"), cell.get("result_neg")),
+        (Some(53), Some(0))
+    );
+
+    // Coplanar vectors: the scalar triple product vanishes.
+    let (_, cell) = step(
+        "triple_scalar_product",
+        "TripleScalarProduct",
+        &vec9_fields((1, 0, 0), (0, 1, 0), (1, 1, 0)),
+    );
+    assert_eq!(
+        (cell.get("result_mag"), cell.get("result_neg")),
+        (Some(0), Some(0))
+    );
+
+    // triple_vector_product: a x (b x c), via the BAC-CAB identity.
+    let (_, cell) = step(
+        "triple_vector_product",
+        "TripleVectorProduct",
+        &vec9_fields((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    );
+    assert_eq!(
+        (cell.get("rx_mag"), cell.get("ry_mag"), cell.get("rz_mag")),
+        (Some(0), Some(0), Some(0))
+    ); // b x c is parallel to a here, so a x (b x c) vanishes
+
+    let (_, cell) = step(
+        "triple_vector_product",
+        "TripleVectorProduct",
+        &vec9_fields((1, 2, 3), (2, 0, 1), (1, 1, 1)),
+    );
+    assert_eq!((cell.get("rx_mag"), cell.get("rx_neg")), (Some(7), Some(0)));
+    assert_eq!((cell.get("ry_mag"), cell.get("ry_neg")), (Some(5), Some(1)));
+    assert_eq!((cell.get("rz_mag"), cell.get("rz_neg")), (Some(1), Some(0)));
+
+    // Overflow: triple_vector_product's scaling step (a dot product times a vector
+    // component) can overflow for inputs well within i16's own range.
+    let (report, _) = step(
+        "triple_vector_product",
+        "TripleVectorProduct",
+        &vec9_fields(
+            (30000, 30000, 30000),
+            (30000, 30000, 30000),
+            (30000, 30000, 30000),
+        ),
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
