@@ -153,7 +153,20 @@ impl Fingerprint {
                 } else {
                     let inputs: Vec<(u16, crate::Ty, u64)> = state
                         .iter()
-                        .map(|(addr, ty, i)| (*addr, *ty, p[i % 3] as u64))
+                        .map(|(addr, ty, i)| {
+                            // An f32 field takes the probe as a *float* (3 → 3.0's
+                            // bits): the raw small integers are subnormals whose
+                            // products all underflow to zero, which made every f32
+                            // cell fingerprint identical (the collision the Ty::F32
+                            // tag exists to prevent — the probe must speak the
+                            // field's representation).
+                            let v = if *ty == crate::Ty::F32 {
+                                (p[i % 3] as f32).to_bits() as u64
+                            } else {
+                                p[i % 3] as u64
+                            };
+                            (*addr, *ty, v)
+                        })
                         .collect();
                     runner.run_with_inputs(Some(entry), &[crate::STATE_BASE], &inputs, budget)
                 };

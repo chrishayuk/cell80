@@ -199,6 +199,18 @@ kernels. Contract structure from the Q-spec, one honest narrowing stated loudly:
 
 ### F3 — the physics pack (the customer that justifies the family)
 
+*Status 2026-07-08: **landed** — `cell80/cells/physics/`: `kinetic_energy_f32`,
+`drag_force_f32`, `clamp_f32`, `verlet_step_f32`, `spring_damper_step_f32` (the
+integrators take **inverse mass**, the Rapier convention, which also keeps them
+division-free), each finite-gated (`0xFF07`/`0xFF08` on non-finite outputs), each
+bit-identical to host rustc f32 in the library oracle, each through full admission.
+**Two cells are authored but blocked on kernel bytes** — `impulse_1d_f32` (8,197 B,
+five bytes over the 8,192 sandbox cap) and `elastic_collision_1d_f32` (8,570 B),
+parked in `cell80/cells-pending/physics/` with their measurements: they are the
+**bank-resident-kernels demand signal** this amendment anticipated, recorded rather
+than cap-gamed. `lerp_f32`/`norm2_f32` live in the `softfloat` pack. The
+bit-for-bit Rapier-trace validation remains open and gates any video claim.*
+
 Named, demand-sourced from `chuk-mcp-physics` (Rapier) and SOMA rather than a taxonomy:
 `verlet_step`, `impulse_1d`, `drag_force`, `spring_damper_step`, `kinetic_energy`,
 `elastic_collision_1d`, `lerp_f32`, `clamp_f32`. The interop claim that makes this a

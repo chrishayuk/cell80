@@ -41,6 +41,8 @@ mod number_theory;
 mod packing_bcd;
 #[path = "library/percent.rs"]
 mod percent;
+#[path = "library/physics.rs"]
+mod physics;
 #[path = "library/predicates.rs"]
 mod predicates;
 #[path = "library/ranking-stats.rs"]

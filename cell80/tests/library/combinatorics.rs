@@ -203,11 +203,7 @@ fn combinatorial_numbers_wave10_cells_match_defined_behaviour() {
     assert_eq!(cell.get("result"), Some(1));
     let (_, cell) = step("stirling_second", "StirlingSecond", &[("n", 3), ("k", 5)]);
     assert_eq!(cell.get("result"), Some(0)); // k > n
-    let (report, _) = step(
-        "stirling_second",
-        "StirlingSecond",
-        &[("n", 10), ("k", 9)],
-    );
+    let (report, _) = step("stirling_second", "StirlingSecond", &[("n", 10), ("k", 9)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 
     // stirling_first: unsigned c(n,k), the number of permutations of n elements
@@ -228,10 +224,6 @@ fn combinatorial_numbers_wave10_cells_match_defined_behaviour() {
     // Domain guards.
     let (report, _) = step("bell_number", "BellNumber", &[("n", 20)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
-    let (report, _) = step(
-        "stirling_first",
-        "StirlingFirst",
-        &[("n", 30), ("k", 24)],
-    );
+    let (report, _) = step("stirling_first", "StirlingFirst", &[("n", 30), ("k", 24)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
