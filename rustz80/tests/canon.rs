@@ -1102,3 +1102,252 @@ fn full_canon_const_fold_edges() {
         assert_eq!(again.source, out.source, "idempotence: {src}");
     }
 }
+
+/// The checked-emission and mod-space lanes, shape-pinned: a subtraction chain
+/// renders through `sub_checked_u32` (negative intermediates escalate, never
+/// wrap), a `% m` over a mul/add chain threads the modulus through every step
+/// (the mod-space rewrite — intermediates never outgrow `m`), and the widened
+/// lane renders an explicit `as u16` truncation.
+#[test]
+fn checked_and_mod_space_lanes_render_their_shapes() {
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        checked: true,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source(
+        "fn run() -> u16 { let a = 250; let b = 30; (a * 3 - b - 5 - a) as u16 }",
+        &opts,
+    )
+    .unwrap();
+    assert!(out.source.contains("mul_checked_u32("), "{}", out.source);
+    assert!(out.source.contains("sub_checked_u32("), "{}", out.source);
+    assert_eq!(out.lifted.len(), 2, "both named quantities lift");
+
+    let out =
+        canonicalize_source("fn run(a: u16, m: u16) -> u16 { (a * 3 + 5) % m }", &opts).unwrap();
+    // the modulus guards div-by-zero and threads through the chain
+    assert!(out.source.contains("halt(0xFF06u16)"), "{}", out.source);
+    assert!(out.source.contains("add_checked_u32("), "{}", out.source);
+    assert!(
+        out.source.matches("% (q1 as u32)").count() >= 3,
+        "mod-space must thread the modulus: {}",
+        out.source
+    );
+
+    // constant chains still fold exactly under the checked lane
+    let out =
+        canonicalize_source("fn run() -> u16 { let a = 70000; (a / 2) as u16 }", &opts).unwrap();
+    assert!(out.source.contains("35000u32"), "{}", out.source);
+
+    // the widened lane renders explicit truncation, not silent narrowing
+    let wide = CanonOptions {
+        mode: CanonMode::Full,
+        wide_default: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source("fn run(a: u16) -> u16 { (a * 9 / 4) as u16 }", &wide).unwrap();
+    assert!(out.source.contains("as u16"), "{}", out.source);
+}
+
+/// The remaining Full-mode arms, shape-pinned: multi-addend and multi-factor
+/// mod-space threading, single-factor reduction, if-value Select in both the
+/// plain and checked lanes, an explicit cast chain, and method-to-kernel in
+/// the checked lane — each renders its registered shape.
+#[test]
+fn full_canon_remaining_arm_shapes() {
+    let checked = CanonOptions {
+        mode: CanonMode::Full,
+        checked: true,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let plain = full();
+    // (source, options, required fragments)
+    let rows: [(&str, &CanonOptions, &[&str]); 7] = [
+        (
+            "fn run(a: u16, b: u16, m: u16) -> u16 { (a + b + 10 - 3) % m }",
+            &checked,
+            &["add_checked_u32(", "7u32 % (q2 as u32)", "else { v"],
+        ),
+        (
+            "fn run(a: u16, b: u16, m: u16) -> u16 { (a * b * 3) % m }",
+            &checked,
+            &["mul_checked_u32(v0, v1)", "3u32 % (q2 as u32)"],
+        ),
+        (
+            "fn run(a: u16, m: u16) -> u16 { (a * 5) % m }",
+            &checked,
+            &["5u32 % (q1 as u32)", "mul_checked_u32("],
+        ),
+        (
+            "fn run(a: u16) -> u16 { if a > 3u16 { a * 2u16 } else { a + 1u16 } }",
+            &plain,
+            &["if 3u16 < q0 { q0 * 2u16 } else { q0 + 1u16 }"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { let x = if a > 3u16 { a } else { 3u16 }; x + 1u16 }",
+            &checked,
+            &["if 3u32 <", "add_checked_u32(v0, 1u32)"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { (a as u32 * 9u32 / 4u32) as u16 }",
+            &plain,
+            &["as u16"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { let c = a.max(3u16); c * 2u16 }",
+            &checked,
+            &["imax_u32(", "mul_checked_u32("],
+        ),
+    ];
+    for (src, opts, needles) in rows {
+        let out = canonicalize_source(src, opts).expect("canonicalizes");
+        for n in needles {
+            assert!(out.source.contains(n), "missing `{n}` in:\n{}", out.source);
+        }
+    }
+}
+
+/// Select-node edges: a constant condition folds the branch away entirely,
+/// identical arms drop the condition as decoration, `else if` chains nest,
+/// every comparison kind lowers (>= and > flip onto <= and <), a compound call
+/// argument hoists through the checked lane, and the soft shapes (`match`,
+/// if-in-expression) fall back naming what they are.
+#[test]
+fn select_edges_fold_flip_and_nest() {
+    let checked = CanonOptions {
+        mode: CanonMode::Full,
+        checked: true,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let plain = full();
+    let rows: [(&str, &CanonOptions, &[&str]); 7] = [
+        // constant condition: the select vanishes, only the taken arm remains
+        (
+            "fn run(a: u16) -> u16 { if 3u16 < 5u16 { a } else { a + 1u16 } }",
+            &plain,
+            &["{\n    q0\n}"],
+        ),
+        // identical arms: the condition is decoration
+        (
+            "fn run(a: u16) -> u16 { if a > 3u16 { a } else { a } }",
+            &plain,
+            &["{\n    q0\n}"],
+        ),
+        // >= flips onto <=
+        (
+            "fn run(a: u16) -> u16 { if a >= 3u16 { a } else { 3u16 } }",
+            &plain,
+            &["if 3u16 <= q0"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { if a == 3u16 { 1u16 } else { 2u16 } }",
+            &plain,
+            &["if 3u16 == q0"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { if a != 3u16 { 1u16 } else { 2u16 } }",
+            &plain,
+            &["if 3u16 != q0"],
+        ),
+        // else-if nests as a select-in-else
+        (
+            "fn run(a: u16) -> u16 { if a > 5u16 { a } else if a > 2u16 { 2u16 } else { 1u16 } }",
+            &plain,
+            &["else { if 2u16 < q0"],
+        ),
+        // compound call argument hoists into the checked chain
+        (
+            "fn run(a: u16) -> u16 { (a + 1u16).max(3u16) }",
+            &checked,
+            &["add_checked_u32((q0 as u32), 1u32)", "imax_u32(v0, 3u32)"],
+        ),
+    ];
+    for (src, opts, needles) in rows {
+        let out = canonicalize_source(src, opts).expect("canonicalizes");
+        for n in needles {
+            assert!(out.source.contains(n), "missing `{n}` in:\n{}", out.source);
+        }
+    }
+    // soft shapes stay themselves (Light re-print only), never a partial rewrite
+    for src in [
+        "fn run(a: u16) -> u16 { match a { 1u16 => 2u16, _ => 3u16 } }",
+        "fn run(a: u16) -> u16 { if a > 3u16 { a } else { 3u16 } * 2u16 }",
+    ] {
+        let out = canonicalize_source(src, &plain).expect("canonicalizes");
+        assert!(
+            out.source.contains("match") || out.source.contains("* 2"),
+            "{}",
+            out.source
+        );
+    }
+}
+
+/// Inline-select rendering and its edges: a select consumed by later arithmetic
+/// renders inline (plain and widened lanes), a branch may divide by a variable,
+/// a *fractional constant* inside a branch is the E0302 hard error, and a wide
+/// cast inside a branch renders an explicit inline `as u16`.
+#[test]
+fn select_inline_rendering_and_hard_edges() {
+    let plain = full();
+    let wide = CanonOptions {
+        mode: CanonMode::Full,
+        wide_default: true,
+        ..Default::default()
+    };
+    let rows: [(&str, &CanonOptions, &[&str]); 5] = [
+        (
+            "fn run(a: u16) -> u16 { let x = if a > 3u16 { a } else { 3u16 }; x + 1u16 }",
+            &plain,
+            &["if 3u16 < q0 { q0 } else { 3u16 }", "v0 + 1u16"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { let x = if a > 3u16 { a / 2u16 } else { 5u16 }; x }",
+            &plain,
+            &["q0 / 2u16"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { ((a as u32 + 70000u32) as u16) }",
+            &plain,
+            &["v0 as u16"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { let x = if a > 3u16 { (a as u32 * 2u32) as u16 } else { 0u16 }; x }",
+            &plain,
+            &["* 2u32) as u16", "if 3u32 <"],
+        ),
+        (
+            "fn run(a: u16) -> u16 { let x = if a > 3u16 { a } else { 3u16 }; x * 2u16 }",
+            &wide,
+            &["(q0 as u32)", "v0 * 2u32"],
+        ),
+    ];
+    for (src, opts, needles) in rows {
+        let out = canonicalize_source(src, opts).expect("canonicalizes");
+        for n in needles {
+            assert!(out.source.contains(n), "missing `{n}` in:\n{}", out.source);
+        }
+    }
+    // a fractional constant in a branch is typed, hard, and names the fold
+    let err = canonicalize_source(
+        "fn run(a: u16) -> u16 { let x = if a > 3u16 { 1u16 / 2u16 } else { 5u16 }; x }",
+        &plain,
+    )
+    .unwrap_err();
+    assert!(format!("{err}").contains("E0302"), "{err}");
+    // shapes outside the straight-line subset re-print untouched (soft, named)
+    for src in [
+        "fn run(a: u16) -> u16 { a & 3u16 }",
+        "fn run(a: u16) -> u16 { let v = [a, 3u16]; v[0] }",
+    ] {
+        let out = canonicalize_source(src, &plain).expect("canonicalizes");
+        assert!(
+            out.source.contains('&') || out.source.contains('['),
+            "{}",
+            out.source
+        );
+    }
+}

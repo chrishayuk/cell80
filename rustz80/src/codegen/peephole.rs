@@ -216,6 +216,11 @@ mod tests {
         let funcs =
             crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default()).ok()?;
         let mut a = Asm::new(0x8000, target);
+        // Mirror `codegen_program_c`: without the wide-call signature map, a call
+        // to a wide fn (an auto-appended f32 kernel — the first corpus cells that
+        // both lower standalone *and* make wide calls) emits 16-bit call plumbing
+        // and trips the wide-node-in-16-bit-context unreachable.
+        a.wide_sigs = crate::codegen::wide_sig_map(&funcs);
         let mut base = 0u16;
         for (name, f) in &funcs {
             a.define(name);
@@ -235,6 +240,11 @@ mod tests {
         let funcs =
             crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default()).ok()?;
         let mut a = Asm::new(0x8000, target);
+        // Mirror `codegen_program_c`: without the wide-call signature map, a call
+        // to a wide fn (an auto-appended f32 kernel — the first corpus cells that
+        // both lower standalone *and* make wide calls) emits 16-bit call plumbing
+        // and trips the wide-node-in-16-bit-context unreachable.
+        a.wide_sigs = crate::codegen::wide_sig_map(&funcs);
         let mut base = 0u16;
         for (name, f) in &funcs {
             a.define(name);
