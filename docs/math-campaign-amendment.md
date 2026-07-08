@@ -443,6 +443,38 @@ rows): removes the single accepted-and-wrong at **zero yield cost**. The general
 defense against correlated misreading remains a decorrelated reader; this guard
 closes the unverified-wide subclass and is honest about the rest.
 
+**Registered amendments 8–10 (2026-07-08): the lifting tier hardened — the
+mechanical backlog from the 8-shot runs, plus the stated-answer hole the fix
+itself exposed.** All three verified together by full replay over every captured
+configuration; the loop ran three iterations (each replay surfaced the next
+defect) before converging at 0 accepted-wrong movement.
+
+- **8 — `E0103 lift_cap_reached` (the lift cap).** Literal lifting stops at the
+  calling convention's 3 register slots (HL/DE/BC); a 4th quantity stays a baked
+  constant, reported, instead of the whole fn dying at lowering with "parameters
+  exceed the 3 register slots" (the row124 class — equation-format sources lift
+  many quantities).
+- **9 — `E0211 call_to_wide_kernel`.** A call to `max`/`min`/`abs_diff` whose
+  arguments include a wide *computed* value routes to the prelude's wide kernels
+  (`imax_u32`/`imin_u32`/`iabs_diff_u32`) — the u16 library cell cannot take a
+  u32 argument, and the wide `_u32` library siblings are deliberately state
+  cells (the u32 test/CLI surface), not inlinable. Narrow-argument calls keep
+  resolving to library cells, so retrieval/precipitation is untouched (the
+  row97 class).
+- **10 — the restatement guard.** A canonicalized tail that is a constant while
+  quantities were lifted, or is itself a lifted literal parameter, is a *stated
+  answer* wearing a cell's clothes (granite's `let total = 160 + 80 + 20`
+  restatement style) — unfalsifiable or frozen under the battery, and a
+  majority-confirmation backdoor. Such fns soft-fall to Light and run as
+  written, with no lifted values, so the battery's skip semantics stay honest
+  about them. This hole predates the cap — the slot-ceiling death was
+  accidentally masking it. *Tried and reverted in the same loop:* restricting
+  lifting to bare literals only — replay showed folded-init lifting is
+  load-bearing (it rescues the row94 `E0302` false-kill class and gives the
+  battery the reach behind its row117 exact-division-coincidence catch); the
+  restriction cost three real rows to fix a case the guard's soft-fall plus the
+  agreement set's own exclusion already handled honestly.
+
 **Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
 the error analysis, and the proposed rule amendments awaiting registration:**
 `experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision

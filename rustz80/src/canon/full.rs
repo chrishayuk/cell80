@@ -744,24 +744,39 @@ impl<'a> FnCanon<'a> {
             }
             let mut id = c.build(&init.expr)?;
             id = c.scale_const(id, &name);
-            // Literal lifting: a let-bound bare literal is a *named quantity* —
-            // promote it to a parameter so the schema generalizes over the value
-            // and the battery can perturb it. Post-scaling, u16-range, ints only.
+            // Literal lifting: a let-bound literal quantity (bare, or an init that
+            // folds to a constant — folded inits are load-bearing: lifting them is
+            // what rescues the row94 E0302 false-kill class and gives the battery
+            // its perturbation reach) promotes to a parameter so the schema
+            // generalizes over the value. Post-scaling, u16-range, ints only.
+            // A bare-literal-only restriction was tried and reverted by replay
+            // (2026-07-08): it cost the row94 recoveries and a battery coincidence
+            // catch. Capped at the calling convention's 3 register slots (HL/DE/BC)
+            // — a 4th quantity stays a baked constant (`E0103`, reported so the
+            // battery's reduced coverage is visible) instead of the whole fn dying
+            // at lowering (registered amendment 2026-07-08).
             if lift && real_params == 0 {
                 if let Some(r) = c.as_const(id) {
                     if r.is_int() && (0..=65535).contains(&r.n) {
-                        let pos = c.params.len();
-                        let pid = c.intern(Node::Param(pos), format!("p{pos}"));
-                        c.params.push((name.clone(), false));
-                        c.param_nodes.push(pid);
-                        lifted_pos.push((pos, r.n as u64));
-                        c.repairs.push(Repair::new(
-                            DiagCode::QuantityLifted,
-                            format!("`{name}` = {} lifted to a parameter", r.n),
-                        ));
-                        c.env.insert(name.clone(), pid);
-                        c.let_names.push((name, pid));
-                        continue;
+                        if c.params.len() >= 3 {
+                            c.repairs.push(Repair::new(
+                                DiagCode::LiftCapReached,
+                                format!("`{name}` = {} stays baked (3-slot ABI cap)", r.n),
+                            ));
+                        } else {
+                            let pos = c.params.len();
+                            let pid = c.intern(Node::Param(pos), format!("p{pos}"));
+                            c.params.push((name.clone(), false));
+                            c.param_nodes.push(pid);
+                            lifted_pos.push((pos, r.n as u64));
+                            c.repairs.push(Repair::new(
+                                DiagCode::QuantityLifted,
+                                format!("`{name}` = {} lifted to a parameter", r.n),
+                            ));
+                            c.env.insert(name.clone(), pid);
+                            c.let_names.push((name, pid));
+                            continue;
+                        }
                     }
                 }
             }
@@ -772,6 +787,22 @@ impl<'a> FnCanon<'a> {
             syn::Stmt::Expr(e, None) => c.build(e)?,
             _ => return soft("no tail expression"),
         };
+        // Restatement guard: a tail that is (a) a constant while quantities were
+        // lifted, or (b) itself a lifted literal parameter, means the derivation
+        // never reaches the answer — the source restated its result as a literal
+        // (granite's `let total = 160 + 80 + 20` style), and canonicalizing it would
+        // emit a *stated answer* wearing a cell's clothes (unfalsifiable or frozen
+        // under the battery, and a majority-confirmation backdoor). Soft-fall to
+        // Light: the arm runs as written, with no lifted values, and the battery's
+        // skip semantics stay honest about it.
+        let stated_tail = match c.nodes[root] {
+            Node::Const(_) => !lifted_pos.is_empty(),
+            Node::Param(pos) => lifted_pos.iter().any(|(p, _)| *p == pos),
+            _ => false,
+        };
+        if stated_tail {
+            return soft("literal restatement leaves a stated-answer tail");
+        }
 
         // ---- linearize: topo order with deterministic tie-break ----
         let mut reachable: HashSet<usize> = HashSet::new();
@@ -1105,6 +1136,7 @@ impl<'a> FnCanon<'a> {
             acc
         };
         let mut defer_div_applied = false;
+        let mut kernel_aliases: Vec<String> = Vec::new();
         for &id in &order {
             let node = c.nodes[id].clone();
             let atom = match node {
@@ -1276,6 +1308,38 @@ impl<'a> FnCanon<'a> {
                         atom_of.insert(id, a);
                         continue;
                     }
+                    // A call to `max`/`min`/`abs_diff` whose arguments include a wide
+                    // *computed* value cannot link the u16 library cell, and the wide
+                    // `_u32` library siblings are state cells (not inlinable) — route
+                    // it to the prelude's wide kernel instead (`E0211`, registered
+                    // amendment 2026-07-08). Narrow-argument calls fall through and
+                    // keep resolving to library cells (the precipitation story).
+                    if widened && args.len() == 2 {
+                        let kernel = match name.as_str() {
+                            "max" => Some("imax_u32"),
+                            "min" => Some("imin_u32"),
+                            "abs_diff" => Some("iabs_diff_u32"),
+                            _ => None,
+                        };
+                        let wide_arg = args.iter().any(|d| match &c.nodes[*d] {
+                            Node::Param(_) | Node::Trunc(_) => false,
+                            Node::Const(r) => r.n > 65535,
+                            _ => true, // computed values ride the wide lane
+                        });
+                        if let (Some(kernel), true) = (kernel, wide_arg) {
+                            let rhs = format!(
+                                "{kernel}({})",
+                                args.iter()
+                                    .map(|d| atom_of[d].clone())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                            kernel_aliases.push(format!("{name} -> {kernel} (wide args)"));
+                            let a = fresh(&mut lines, rhs);
+                            atom_of.insert(id, a);
+                            continue;
+                        }
+                    }
                     // Call arguments keep their *natural* width, not the lane width:
                     // a u16 parameter stays `q0` (no `as u32`) and a small constant
                     // stays `u16`-suffixed, so a u16 library callee still links in a
@@ -1337,6 +1401,10 @@ impl<'a> FnCanon<'a> {
                 DiagCode::RedundantParens,
                 "defer_division: mul/div chain divides once at the end",
             ));
+        }
+        for alias in kernel_aliases {
+            c.repairs
+                .push(Repair::new(DiagCode::CallToWideKernel, alias));
         }
 
         // ---- renames + dead lets ----
@@ -1609,7 +1677,24 @@ fn render_inline(
                     slot_of_param,
                 )?);
             }
-            format!("{name}({})", rendered.join(", "))
+            // Same wide-kernel routing as the eager Call emission (`E0211`) — an
+            // arm-exclusive call with wide computed args can't take the u16 cell.
+            let callee = if widened && args.len() == 2 {
+                let wide_arg = args.iter().any(|d| match &c.nodes[*d] {
+                    Node::Param(_) | Node::Trunc(_) => false,
+                    Node::Const(r) => r.n > 65535,
+                    _ => true,
+                });
+                match (name.as_str(), wide_arg) {
+                    ("max", true) => "imax_u32",
+                    ("min", true) => "imin_u32",
+                    ("abs_diff", true) => "iabs_diff_u32",
+                    _ => name.as_str(),
+                }
+            } else {
+                name.as_str()
+            };
+            format!("{callee}({})", rendered.join(", "))
         }
         Node::Trunc(a) => {
             if !widened {
