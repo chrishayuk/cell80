@@ -662,6 +662,14 @@
 {"id": "triple_scalar_product-para-1", "query": "signed volume of the parallelepiped spanned by three vectors", "expected": "triple_scalar_product", "category": "paraphrase"}
 {"id": "triple_vector_product-direct-1", "query": "triple vector product a cross b cross c, BAC-CAB identity", "expected": "triple_vector_product", "category": "direct"}
 {"id": "triple_vector_product-para-1", "query": "vector formed by crossing a vector with the cross product of two others, BAC-CAB", "expected": "triple_vector_product", "category": "paraphrase"}
+{"id": "matrix_det_2x2-direct-1", "query": "determinant of a 2x2 matrix", "expected": "matrix_det_2x2", "category": "direct"}
+{"id": "matrix_det_2x2-para-1", "query": "ad minus bc, the determinant formula for a 2 by 2 matrix", "expected": "matrix_det_2x2", "category": "paraphrase"}
+{"id": "matrix_solve_2x2-direct-1", "query": "solve a 2x2 system of linear equations using Cramer's rule", "expected": "matrix_solve_2x2", "category": "direct"}
+{"id": "matrix_solve_2x2-para-1", "query": "find x and y satisfying two linear equations with two unknowns", "expected": "matrix_solve_2x2", "category": "paraphrase"}
+{"id": "covariance-direct-1", "query": "covariance between two datasets given precomputed sums", "expected": "covariance", "category": "direct"}
+{"id": "covariance-para-1", "query": "how much two paired variables move together as a fraction, from summed products and counts", "expected": "covariance", "category": "paraphrase"}
+{"id": "linear_regression_slope-direct-1", "query": "slope of a linear regression fit", "expected": "linear_regression_slope", "category": "direct"}
+{"id": "linear_regression_slope-para-1", "query": "best-fit line slope, ordinary least squares from summary statistics", "expected": "linear_regression_slope", "category": "paraphrase"}
 {"id": "geom_distance_3d-direct-1", "query": "squared euclidean distance between two 3d points", "expected": "geom_distance_3d", "category": "direct"}
 {"id": "geom_distance_3d-para-1", "query": "how far apart are two points in space given signed xyz coordinates, without the square root", "expected": "geom_distance_3d", "category": "paraphrase"}
 {"id": "cross_product-direct-1", "query": "cross product of two 3d integer vectors", "expected": "cross_product", "category": "direct"}

@@ -58,6 +58,12 @@ reasons, not built and not forgotten.*
 landed — see `docs/library-growth.md`'s "Wave 12" note. Both matched by exact name.
 This closes out every `linear_algebra.vectors` candidate this map named.*
 
+*Update (2026-07-08, Wave 13): `matrix_det_2x2`, `matrix_solve_2x2`, `covariance`,
+`linear_regression_slope` landed — see `docs/library-growth.md`'s "Wave 13" note. All
+four matched by exact name. `correlation`/`effect_size_r` (this map's remaining
+`statistics.descriptive`/`statistics.inference` candidates, both Q8.8) deferred to a
+follow-up — the last two candidates from this map's original 77.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

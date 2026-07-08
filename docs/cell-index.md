@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (302 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (306 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -195,6 +195,13 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `fnv1a_step` | `run(hash: u16, byte: u16) -> u16` | One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit). |
 | `hash_pair` | `run(a: u16, b: u16) -> u16` | Deterministic hash mixing two values into one u16. |
 | `mix16` | `run(x: u16) -> u16` | Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value). |
+
+## matrix (2)
+
+| id | signature | summary |
+|---|---|---|
+| `matrix_det_2x2` | `MatrixDet2x2::run() -> u16` | Determinant of a 2x2 matrix [[a, b], [c, d]]: a*d - b*c. Signed result tracked as a (magnitude, sign) pair, the same technique the vector pack's cross_product/triple_scalar_product use -- the "vector floor" exception to the matrix non-goal extends this far and no further (see docs/library-growth.md). |
+| `matrix_solve_2x2` | `MatrixSolve2x2::run() -> u16` | Solve a 2x2 linear system [[a, b], [c, d]] * [x, y] = [e, f] via Cramer's rule, returning x and y as exact signed fractions sharing one positive denominator (det, normalized positive by flipping both numerators' signs if the raw determinant was negative) -- matrix_det_2x2's own formula computes that shared denominator's magnitude and sign before this cell reuses it inline. |
 
 ## money-bps (8)
 
@@ -420,6 +427,13 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `counter_step` | `CounterStep::run() -> u16` | Modular counter step: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap — a plain saturating-free incrementer). Useful for round-robin dispatch or a bounded retry index. The caller threads `count` through — re-supply the field each call. |
 | `lcg_next` | `Lcg::run() -> u16` | Linear congruential generator step: seed = seed * 1664525 + 1013904223 (mod 2^32, Numerical Recipes constants), returning the top 16 bits (the higher bits of an LCG are far less patterned than the low bits). The caller threads `seed` through — re-supply the field each call, since state cells don't persist memory across separate runs. |
 | `xorshift16` | `Xorshift16::run() -> u16` | 16-bit xorshift generator step (x ^= x<<7; x ^= x>>9; x ^= x<<8) — a distinct pseudo-random recurrence from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
+
+## statistics (2)
+
+| id | signature | summary |
+|---|---|---|
+| `covariance` | `Covariance::run() -> u16` | Population covariance from precomputed sums (not a raw dataset -- that aggregation stays upstream, matching running_variance_step's own bivariate framing): cov = (n*sum_xy - sum_x*sum_y) / n^2, returned as an exact signed fraction (num/den, den always positive) rather than rounded to an integer. |
+| `linear_regression_slope` | `LinearRegressionSlope::run() -> u16` | Ordinary-least-squares regression slope from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2 -- raw-dataset aggregation stays upstream): slope = (n*sum_xy - sum_x*sum_y) / (n*sum_x2 - sum_x^2), returned as an exact signed fraction rather than rounded. The denominator is n^2 times the population variance of x, which is always non-negative by construction -- zero only when every x value is identical (a vertical "line", no defined slope). |
 
 ## units (4)
 

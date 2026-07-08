@@ -33,6 +33,8 @@ mod fractions;
 mod geometry;
 #[path = "library/hashing.rs"]
 mod hashing;
+#[path = "library/matrix.rs"]
+mod matrix;
 #[path = "library/money-bps.rs"]
 mod money_bps;
 #[path = "library/number-theory.rs"]
@@ -63,6 +65,8 @@ mod softfloat;
 mod spatial_grid;
 #[path = "library/stateful-rng.rs"]
 mod stateful_rng;
+#[path = "library/statistics.rs"]
+mod statistics;
 #[path = "library/units.rs"]
 mod units;
 #[path = "library/vector.rs"]

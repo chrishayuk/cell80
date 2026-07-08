@@ -322,13 +322,25 @@ wave 12   297 cells   + the vector pack's deferred triple products,
                         BAC-CAB identity, never an actual cross product).
                         Both cross-checked against a 2,000-case random
                         sweep each. See the pack note below.
-next      ~20          + the remaining ready-now math-server candidates
-                        (matrix, statistics) plus Wave Q0 (Q16.16
-                        plumbing) as a prerequisite for the 4 Q-format
-                        candidates; cosine_score_approx (deferred until
-                        cell_solve reads out); CORDIC trig remains
-                        demand-gated per docs/real-valued-cells-spec.md
-                        Wave 3
+wave 13   301 cells   + matrix (matrix_det_2x2, matrix_solve_2x2 — the
+                        "vector floor" exception to the matrix non-goal
+                        extended exactly this far, per
+                        docs/math-server-map.md's own scoping) and
+                        statistics from precomputed sums, not raw
+                        datasets (covariance, linear_regression_slope —
+                        both exact signed fractions over a shared
+                        positive denominator, the same "two fractions
+                        sharing a denominator" shape matrix_solve_2x2
+                        uses). correlation/effect_size_r (Q8.8, needing
+                        q_sqrt/q_div) deferred — see the pack note below.
+next      ~2           + correlation, effect_size_r (Q8.8, deferred from
+                        wave 13) plus Wave Q0 (Q16.16 plumbing) as a
+                        prerequisite for the 4 Q-format candidates;
+                        cosine_score_approx (deferred until cell_solve
+                        reads out); CORDIC trig remains demand-gated per
+                        docs/real-valued-cells-spec.md Wave 3 — this is
+                        the last wave from the original 77-candidate
+                        math-server map
 ```
 
 All five originally-planned wave-3 packs (calendrical/checksum, fixed-point, agentic
