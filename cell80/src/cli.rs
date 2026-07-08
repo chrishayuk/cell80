@@ -701,6 +701,9 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
         return Ok(out);
     }
     let mut outcomes: Vec<crate::compose::DerivationOutcome> = Vec::new();
+    // Original source per derivation — the guard below scans the accepted ones
+    // for wide literals (what the canonical/linked form may have folded away).
+    let mut sources_text: Vec<String> = Vec::new();
     for path in &sources {
         let src = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
         let outcome = match crate::compose::compose(&host, cells_dir, &src) {
@@ -721,6 +724,7 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
             },
         };
         outcomes.push(outcome);
+        sources_text.push(src);
     }
     let answers: Vec<Option<u64>> = outcomes.iter().map(|o| o.answer).collect();
     let (mut answer, mut agreement, flagged) = crate::compose::agreement(&answers);
@@ -729,10 +733,13 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
     // `a+b == a*b` at 2,2 class) and escalates instead.
     let mut battery_note: Option<String> = None;
     if let Some(top) = answer {
-        let accepted: Vec<&crate::compose::DerivationOutcome> = outcomes
-            .iter()
-            .filter(|o| o.answer == Some(top) && o.handle.is_some())
+        let acc_idx: Vec<usize> = (0..outcomes.len())
+            .filter(|&i| outcomes[i].answer == Some(top) && outcomes[i].handle.is_some())
             .collect();
+        let accepted: Vec<&crate::compose::DerivationOutcome> =
+            acc_idx.iter().map(|&i| &outcomes[i]).collect();
+        // Perturbations the battery actually ran — its coverage, not just its verdict.
+        let mut verified = 0usize;
         if accepted.len() >= 2 && accepted.iter().any(|o| !o.lifted.is_empty()) {
             let rep = crate::compose::battery(&mut host, &accepted, cycles)?;
             match rep.failed_on {
@@ -744,6 +751,7 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                     ));
                 }
                 None => {
+                    verified = rep.perturbed.len();
                     battery_note = Some(format!(
                         "survived {} perturbation(s){}",
                         rep.perturbed.len(),
@@ -757,6 +765,30 @@ fn cmd_compose(args: &[String]) -> Result<String, String> {
                         }
                     ));
                 }
+            }
+        }
+        // Battery-unverified guard (registered amendment 2026-07-08): a *majority*
+        // accept the battery could not verify at all (zero perturbations — wide
+        // values are unliftable, so the battery is structurally blind exactly
+        // there), with wide values in play, escalates instead of accepting. The
+        // flagged band's contract is "accepted agreements survived perturbation";
+        // this refuses to pretend an unverifiable one did. Unanimous accepts are
+        // exempt. Counterfactually verified over every captured campaign config
+        // (8 configs, 160 rows): removes the single accepted-and-wrong (the row89
+        // correlated misreading, 79200) at zero yield cost.
+        if answer.is_some() && agreement == "majority" && verified == 0 {
+            let wide = answer.unwrap() > u16::MAX as u64
+                || acc_idx
+                    .iter()
+                    .any(|&i| crate::compose::has_wide_literal(&sources_text[i]));
+            if wide {
+                answer = None;
+                agreement = "battery_unverified";
+                battery_note = Some(
+                    "majority with zero battery coverage over wide values — \
+                     unverified agreement, escalate"
+                        .into(),
+                );
             }
         }
     }

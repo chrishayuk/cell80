@@ -1,0 +1,47 @@
+{
+ "agreement": "majority",
+ "answer": 3,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 3,
+   "artifact": "8f2a8a503e18d6757b56ff5590f869f4be02f77ac0a4e0d71249bd5e47a8e084",
+   "cycles": 1313,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp765dh4c8/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "u32 call arguments are not supported for `abs_diff` (unknown signature \u2014 args pass in 16-bit registers); narrow with `as u16`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp765dh4c8/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 3,
+   "artifact": "8f2a8a503e18d6757b56ff5590f869f4be02f77ac0a4e0d71249bd5e47a8e084",
+   "cycles": 1313,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp765dh4c8/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": true
+}

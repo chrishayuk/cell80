@@ -1,0 +1,45 @@
+{
+ "agreement": "battery_unverified",
+ "answer": null,
+ "battery": "majority with zero battery coverage over wide values \u2014 unverified agreement, escalate",
+ "derivations": [
+  {
+   "answer": 8000,
+   "artifact": "68db19af096e7804c9ca6ce0788a559a95e1f26d75c5da9d69592931a0a5c53c",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmptzeayl5s/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 8000,
+   "artifact": "68db19af096e7804c9ca6ce0788a559a95e1f26d75c5da9d69592931a0a5c53c",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmptzeayl5s/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmptzeayl5s/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

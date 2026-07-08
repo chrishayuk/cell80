@@ -1,0 +1,53 @@
+{
+ "agreement": "unanimous",
+ "answer": 140,
+ "battery": "survived 1 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 140,
+   "artifact": "9ca152cdb205908ebfb1cb94a2efab7c850e968bdc901be4dcb6cba10cfc6e3a",
+   "cycles": 904,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjkymre_n/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "48524a5d16cbee355fa4c1cba9058dea30f1957e7838b5706972946b858e51b0",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0102:quantity_lifted `coverage_per_10_min` = 3 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjkymre_n/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "bfb9287fba1f8082cff20d0870b66bb61df28a12052e1946967945db0896a9a9",
+   "cycles": 956,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `speed` = 18 lifted to a parameter",
+    "E0102:quantity_lifted `total_distance` = 42 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjkymre_n/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

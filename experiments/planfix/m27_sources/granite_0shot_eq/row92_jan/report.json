@@ -1,0 +1,45 @@
+{
+ "agreement": "majority",
+ "answer": 28,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_9fdqjtb/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_9fdqjtb/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_9fdqjtb/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": true
+}

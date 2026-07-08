@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 56,
+   "artifact": "95ced424d01b1e5a0d590457bd4a3d70e9cc9418d029974ca1a4ab4ec79f27de",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp05khg3pb/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 105,
+   "artifact": "130d72a46e632c0f6073c751237f5c6cbfce2aa83b52da017ae604ff798a6420",
+   "cycles": 306,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: assignment to unbound `min` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp05khg3pb/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 140,
+   "artifact": "15a2105a78a7fee8a23e2bcbbc1f60eac767b3b888919c0ff1c811e4a687fcd9",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0210:then_desugared `if C then a else b` -> `if C { a } else { b }`"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp05khg3pb/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

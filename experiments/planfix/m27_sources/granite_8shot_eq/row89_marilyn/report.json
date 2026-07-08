@@ -1,0 +1,51 @@
+{
+ "agreement": "majority",
+ "answer": 8000,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 8000,
+   "artifact": "b002900d75d95e9c8c74a94aeb149b786dc32954ac6a6fd4446a19c0c285c79d",
+   "cycles": 236,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `parts` = 11 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end",
+    "E0505:dead_let dropped unused bindings: total"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf7ohd7ar/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 8000,
+   "artifact": "b002900d75d95e9c8c74a94aeb149b786dc32954ac6a6fd4446a19c0c285c79d",
+   "cycles": 236,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `ratio` = 11 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end",
+    "E0505:dead_let dropped unused bindings: total_copies"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf7ohd7ar/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 0,
+   "artifact": "507a331463ce05ec8ec4e90fe53d50aa7ad32733070610f67795085b2a619d1a",
+   "cycles": 296,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `harald` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpf7ohd7ar/d2.rs",
+   "trapped_ops": 1
+  }
+ ],
+ "flagged": true
+}

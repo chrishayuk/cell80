@@ -1,0 +1,47 @@
+{
+ "agreement": "majority",
+ "answer": 2,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 2,
+   "artifact": "4093a584fe314d25b9d73d1fcf1da7cc7821c87e236147b147d5414042fa10ae",
+   "cycles": 1604,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sam_age` = 31 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe6coh_rf/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 2,
+   "artifact": "41997356739629093b7bb7f0e8e9c0e2007c77f72472614431f3caa49358e63f",
+   "cycles": 1672,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sam_age` = 31 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe6coh_rf/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 8,
+   "artifact": "96e7857618ff1eef9234f969eeaaa7cc7f8d39e78a52b7dd31ed6c139a81ed8b",
+   "cycles": 374,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `raymond_age_now` = 25 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpe6coh_rf/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

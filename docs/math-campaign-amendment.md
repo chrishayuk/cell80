@@ -415,6 +415,34 @@ not arithmetic intent, and the checked lane already owns overflow honestly.
   (Light mode, plain Full without `checked`) keep real truncation semantics — the
   dialect and its rustc oracle are untouched.
 
+**Registered amendment 6 (2026-07-07): `then`-sugar desugaring (`E0210
+then_desugared`).** `if <cond> then <a> else <b>` — a non-Rust conditional granite
+emits — desugars textually (comment-safe, before parsing) to `if <cond> { <a> }
+else { <b> }`, coercing a `!`/`panic!()` else-arm to `0`, so the verify shape
+reaches `E0207` instead of dying at `E0501 parse`. `then` never appears in valid
+Rust, so the pass is byte-identical on well-formed sources. Replay: granite solo
+9→10/20 (row104), granite×reader row104 majority→unanimous, 0 accepted-wrong in
+every configuration.
+
+**Registered amendment 7 (2026-07-08, user sign-off): the battery-unverified
+guard.** A **majority** (flagged-band) accept that the counterfactual battery
+could not verify at all (zero perturbations ran — wide values are unliftable
+under the u16 parameter ABI, so the battery is structurally blind exactly there),
+with wide values in play (a source literal or the agreed answer exceeds
+`u16::MAX`), escalates as `battery_unverified` instead of accepting. Rationale:
+the flagged band's contract is *accepted agreements survived perturbation*; this
+refuses to pretend an unverifiable agreement did. Unanimous accepts are exempt.
+Found by the two-weak-model ensemble experiment (granite composes × qwen reads
+composed): both weak models made the same canonical ratio misreading of row89
+("10 times as many" → divide by 10), agreeing on 79200 — a **correlated
+misreading**, which no perturbation battery (u16 or u32; a recompile-perturb
+variant was built, refuted by replay, and reverted — inexact-division kills the
+exact perturbed values that would discriminate) can catch in general.
+Counterfactually verified over every captured configuration (8 configs, 160
+rows): removes the single accepted-and-wrong at **zero yield cost**. The general
+defense against correlated misreading remains a decorrelated reader; this guard
+closes the unverified-wide subclass and is honest about the rest.
+
 **Consolidated write-up of the full M2.5–M2.7 arc — builds, all three model runs,
 the error analysis, and the proposed rule amendments awaiting registration:**
 `experiments/planfix-m2-findings.md`. Headlines: gemma4 **19/20 at 100% precision

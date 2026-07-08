@@ -1,0 +1,53 @@
+{
+ "agreement": "majority",
+ "answer": 140,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 140,
+   "artifact": "15a2105a78a7fee8a23e2bcbbc1f60eac767b3b888919c0ff1c811e4a687fcd9",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0210:then_desugared `if C then a else b` -> `if C { a } else { b }`"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb_7b35dd/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 140,
+   "artifact": "9c7bfd65d0e466eb2f0c2c1c5eb23dde7e3dabb1f71e1ce9323d31ce35e1f5a1",
+   "cycles": 146,
+   "kill": null,
+   "repairs": [
+    "E0204:compound_call_arg `max`: compound argument bound to a slot",
+    "E0503:wide_call wide lane calls: max (prefer _u32 overloads)"
+   ],
+   "resolutions": [
+    {
+     "call": "max",
+     "cell": "max"
+    }
+   ],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb_7b35dd/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 105,
+   "artifact": "130d72a46e632c0f6073c751237f5c6cbfce2aa83b52da017ae604ff798a6420",
+   "cycles": 306,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: assignment to unbound `min` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb_7b35dd/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": true
+}

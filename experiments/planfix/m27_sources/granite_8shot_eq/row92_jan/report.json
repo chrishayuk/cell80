@@ -1,0 +1,47 @@
+{
+ "agreement": "unanimous",
+ "answer": 28,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpve_9_sxx/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpve_9_sxx/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpve_9_sxx/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": false
+}

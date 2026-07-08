@@ -1,0 +1,49 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 1620,
+   "artifact": "e2e314ae4af380cc0a0808a8f06b357ac76941f3359ca13932cc1ebd3e5f9b54",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmprav_pp4o/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 450,
+   "artifact": "6b17060dfce4eea78303cebfbb15bb669fd9ca30946cd9a8f98a0addcf82ecc2",
+   "cycles": 2199,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sprints_per_session` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `sessions_per_week` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `meters_per_sprint` = 50 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmprav_pp4o/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 540,
+   "artifact": "6b17060dfce4eea78303cebfbb15bb669fd9ca30946cd9a8f98a0addcf82ecc2",
+   "cycles": 2199,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sprints_per_session` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `sessions_per_week` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `meters_per_sprint` = 60 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmprav_pp4o/d2.rs",
+   "trapped_ops": 4
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,44 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 2/3 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5uadj8_w/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 2/3 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5uadj8_w/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 3,
+   "artifact": "8f2a8a503e18d6757b56ff5590f869f4be02f77ac0a4e0d71249bd5e47a8e084",
+   "cycles": 1313,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `harry_sleep` = 9 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5uadj8_w/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

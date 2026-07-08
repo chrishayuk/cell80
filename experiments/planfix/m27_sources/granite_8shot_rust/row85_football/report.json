@@ -1,0 +1,50 @@
+{
+ "agreement": "unanimous",
+ "answer": 15,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 15,
+   "artifact": "0e4bfecbcb233f46762f585b3077b5d9ef9489d025df41eed798027319ad55e3",
+   "cycles": 615,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpi6t7nw8t/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 15,
+   "artifact": "0e4bfecbcb233f46762f585b3077b5d9ef9489d025df41eed798027319ad55e3",
+   "cycles": 615,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpi6t7nw8t/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 15,
+   "artifact": "1b9c4e3bc754e2140d15f8db7b60801a6a042e8c7590d5da19d56ace65fcc446",
+   "cycles": 1718,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpi6t7nw8t/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

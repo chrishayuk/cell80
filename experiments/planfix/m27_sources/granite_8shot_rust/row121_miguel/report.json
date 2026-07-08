@@ -1,0 +1,51 @@
+{
+ "agreement": "majority",
+ "answer": 240,
+ "battery": "survived 2 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 240,
+   "artifact": "6b17060dfce4eea78303cebfbb15bb669fd9ca30946cd9a8f98a0addcf82ecc2",
+   "cycles": 2199,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `weeks_per_month` = 4 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp16tpd9xi/d0.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 240,
+   "artifact": "bc7db659aff90a8e4d534e711913d7fb37550b198e44fd3c6ff8684a8cdd6c26",
+   "cycles": 2163,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp16tpd9xi/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 60,
+   "artifact": "d3e073b8b49958d00580a09acb232401611471ea586fd3c2cc851279c04bc6f8",
+   "cycles": 809,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `pads_per_week` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `sheets_per_pad` = 30 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp16tpd9xi/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": true
+}

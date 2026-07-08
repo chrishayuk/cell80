@@ -1,0 +1,30 @@
+model = granite4.1:3b   third reader = paraphrase-then-extract (same model)   format = rust   fewshot = 8+2   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540    None battery_escalate  escalate (recoverable)
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None battery_escalate  escalate (recoverable)
+row22_raymond        14       2   majority  ACCEPT WRONG(!) [flagged 2-of-3]
+row85_football       15      15  unanimous  ACCEPT ok
+row86_gene           44      44  unanimous  ACCEPT ok
+row89_marilyn      8000    None battery_unverified  escalate (recoverable)  [number too large to fit in target type]
+row92_jan            28      28  unanimous  ACCEPT ok
+row93_emily           4       4   majority  ACCEPT ok [flagged 2-of-3]
+row94_lee            36    None   escalate  escalate (recoverable)  [unsupported literal: a float literal — the dialect's values ]
+row97_harry           3    None   escalate  escalate (recoverable)  [u32 call arguments are not supported for `abs_diff` (unknown]
+row101_jerome       175     175   majority  ACCEPT ok [flagged 2-of-3]
+row104_fog          140     140  unanimous  ACCEPT ok
+row106_cody          20      20  unanimous  ACCEPT ok
+row111_marcell       45      45  unanimous  ACCEPT ok
+row117_katy          42      42   majority  ACCEPT ok [flagged 2-of-3]
+row119_customs        4       4   majority  ACCEPT ok [flagged 2-of-3]
+row121_miguel       240     240   majority  ACCEPT ok [flagged 2-of-3]
+row122_morisette     27      27   majority  ACCEPT ok [flagged 2-of-3]
+row124_rosie         50      50   majority  ACCEPT ok [flagged 2-of-3]
+------------------------------------------------------------------------------
+accepted 15/20   yield 14/20   escalations: 5 recoverable, 0 genuine
+precision strict (unanimous only): 7/7   with majority: 14/15
+SAFETY: accepted-but-wrong = 1 (unanimous 0, majority 1)
+repairs applied (E-code tally): {'E0102': 83, 'E0202': 21, 'E0209': 3, 'E0505': 2, 'E0502': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/granite_8shot_rust

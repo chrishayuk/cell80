@@ -1,0 +1,44 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected one of: identifier, `::`, `<`, `_`, literal, `const`, `ref`, `mut`, `&`, parentheses, square brackets, `..`, `const`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp71vvvtlu/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 36,
+   "artifact": "e95fdeaf2853e34b22666254cdb765e409f55c8c5a2e7ec4f677656c607b15cc",
+   "cycles": 1319,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `lees_time` = 38 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp71vvvtlu/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 52,
+   "artifact": "7f0ab9a87c70a0d40c70d59bee3c2b9c25d85fd3bd7d31abcb36a6a6762ef349",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp71vvvtlu/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

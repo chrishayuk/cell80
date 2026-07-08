@@ -1,0 +1,1 @@
+Each week, James runs 3 sprints at a rate of 60 meters per sprint, doing this routine 3 times. What is the total distance in meters he covers in one week?

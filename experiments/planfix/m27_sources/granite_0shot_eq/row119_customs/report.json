@@ -1,0 +1,55 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 0,
+   "artifact": "679b3f397921d443aa454540f5290cdee8132161131bf0139d043a98c9078799",
+   "cycles": 222,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `x` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa6o6vlmm/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 5,
+   "artifact": "ef22b7ad295c3a65fce0be2692682b45d33b6e58d33e88d0d91cc6e7b871d2b2",
+   "cycles": 770,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `name` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0503:wide_call wide lane calls: is_gt (prefer _u32 overloads)",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [
+    {
+     "call": "is_gt",
+     "cell": "is_gt"
+    }
+   ],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa6o6vlmm/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 13105,
+   "artifact": "2c9b8075b189defdaba83342d627810f2e1ce0149e26ae13ed3539a70826e6ef",
+   "cycles": 329,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `total_vehicles` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa6o6vlmm/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": false
+}

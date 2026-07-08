@@ -1,0 +1,43 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 0,
+   "artifact": "8ce83262a2c2f43ea8147abf328f6c8322ce9772748dba9e6add08c4c255296d",
+   "cycles": 220,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `James` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1ze7eml2/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "method receiver jackson is not a struct",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1ze7eml2/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp1ze7eml2/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

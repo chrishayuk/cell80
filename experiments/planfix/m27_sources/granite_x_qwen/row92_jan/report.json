@@ -1,0 +1,44 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "unsupported expression: an assignment (assignments are statements \u2014 end with `;`) \u2014 the dialect accepts integer/bool arithmetic, comparisons, calls, indexing, field access, casts, and `if`/`match` values; restructure around those",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxn15ai8q/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 28,
+   "artifact": "595e29768200074df4b555b26275a461a101ff49d85178bf143fd3b0e01397d9",
+   "cycles": 2930,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `cindy` = 4 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxn15ai8q/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 40,
+   "artifact": "d3b9822d815d051b17f1d7ee06bdb776a4fdbaccac6af590f3c1e38ea4c53102",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxn15ai8q/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,52 @@
+{
+ "agreement": "unanimous",
+ "answer": 27,
+ "battery": "survived 0 perturbation(s) (4 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 27,
+   "artifact": "9c5c5d72b268a19387fe811c40f386fed5f5893429fb417f23ea11000d663804",
+   "cycles": 3089,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `apples_morisette` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `oranges_morisette` = 8 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmps83q1rw1/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 27,
+   "artifact": "9c5c5d72b268a19387fe811c40f386fed5f5893429fb417f23ea11000d663804",
+   "cycles": 3089,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `apples_morisette` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `oranges_morisette` = 8 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmps83q1rw1/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 27,
+   "artifact": "0c40d1146d8775e26595bf53e7ac16a73947f4882f45c9f6f668cd1ed5971a09",
+   "cycles": 2240,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `apples_kael` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `oranges_kael` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmps83q1rw1/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

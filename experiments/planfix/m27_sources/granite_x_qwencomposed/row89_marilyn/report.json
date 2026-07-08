@@ -1,0 +1,46 @@
+{
+ "agreement": "majority",
+ "answer": 79200,
+ "battery": "survived 0 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "number too large to fit in target type",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpv00asavh/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 79200,
+   "artifact": "d02a7082c86125dd36396c04dae06bfce24ef1a3c405f60df00219ced7a79025",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [
+    "E0505:dead_let dropped unused bindings: total"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpv00asavh/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 79200,
+   "artifact": "ecc8a613caf2f941da9e310940b5197e58cc88dd170073070bff3958a367230b",
+   "cycles": 470,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `marlins_sales` = 8800 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: total_sales"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpv00asavh/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

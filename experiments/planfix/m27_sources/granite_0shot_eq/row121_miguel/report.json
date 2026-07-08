@@ -1,0 +1,47 @@
+{
+ "agreement": "unanimous",
+ "answer": 240,
+ "battery": "survived 0 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 240,
+   "artifact": "1740cfb785ac8c22fbe0dc62b6f7256402f82a2c6a1b80c648d7449074a74377",
+   "cycles": 751,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sheets_per_week` = 60 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8rfwqsxf/d0.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 240,
+   "artifact": "1740cfb785ac8c22fbe0dc62b6f7256402f82a2c6a1b80c648d7449074a74377",
+   "cycles": 751,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sheets_per_week` = 60 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8rfwqsxf/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 240,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sheets_per_month` = 240 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8rfwqsxf/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

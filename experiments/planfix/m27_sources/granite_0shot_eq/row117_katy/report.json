@@ -1,0 +1,50 @@
+{
+ "agreement": "unanimous",
+ "answer": 42,
+ "battery": "survived 0 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 42,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `teaspoons_sugar` = 42 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpr1q4i35u/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 42,
+   "artifact": "4e5000659533f9bdbaf55e2e8640cf17e19b3575d34d9c8988fb0026f642ac9f",
+   "cycles": 797,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `name` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `total_ratio_parts` = 20 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: cups_of_water,total_ratio_parts"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpr1q4i35u/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": 42,
+   "artifact": "8a27418ae52279ea497739e0efe3b620ea5040da31b973bc58b4f8cc1663b030",
+   "cycles": 236,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_parts` = 20 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpr1q4i35u/d2.rs",
+   "trapped_ops": 1
+  }
+ ],
+ "flagged": false
+}

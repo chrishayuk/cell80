@@ -1,0 +1,49 @@
+{
+ "agreement": "majority",
+ "answer": 50,
+ "battery": "survived 0 perturbation(s) (4 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa4ooo1y7/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 50,
+   "artifact": "676b3de5a4b177012de10687ceafd86089319cae44a04003674bbff8a6094faa",
+   "cycles": 2967,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_hours` = 7 lifted to a parameter",
+    "E0102:quantity_lifted `first_part_hours` = 3 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa4ooo1y7/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 50,
+   "artifact": "a380fd09c12278ed46b88028bbccb5c5fe88643834c5a6a2b586fa70c2b4b42e",
+   "cycles": 817,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `distance_first_period` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `distance_second_period` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa4ooo1y7/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

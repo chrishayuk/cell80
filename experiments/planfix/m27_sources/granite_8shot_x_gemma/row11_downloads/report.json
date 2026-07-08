@@ -1,0 +1,51 @@
+{
+ "agreement": "battery_escalate",
+ "answer": null,
+ "battery": "agreement did not survive perturbing 60 (coincidental)",
+ "derivations": [
+  {
+   "answer": 366,
+   "artifact": "129866dde3da1cd4d8fae1ac24ad22f323c4791e23b3945d5ecf832cb8a2503e",
+   "cycles": 4145,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `month1` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpgj3q2d3x/d0.rs",
+   "trapped_ops": 5
+  },
+  {
+   "answer": 366,
+   "artifact": "129866dde3da1cd4d8fae1ac24ad22f323c4791e23b3945d5ecf832cb8a2503e",
+   "cycles": 4145,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `month1` = 60 lifted to a parameter",
+    "E0209:narrowing_dropped `as u16` dropped in the checked lane",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpgj3q2d3x/d1.rs",
+   "trapped_ops": 5
+  },
+  {
+   "answer": 366,
+   "artifact": "7b1a2f8abdf339a19267afd8b685577b76983bd6c5a032dfd63401f574825b80",
+   "cycles": 3716,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `m1` = 60 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpgj3q2d3x/d2.rs",
+   "trapped_ops": 5
+  }
+ ],
+ "flagged": false
+}

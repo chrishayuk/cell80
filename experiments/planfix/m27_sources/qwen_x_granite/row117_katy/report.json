@@ -1,0 +1,45 @@
+{
+ "agreement": "majority",
+ "answer": 42,
+ "battery": "survived 0 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmfawhyjr/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 42,
+   "artifact": "04f78ddecb70ae86143e3dff81351b39ecaa116f71e46a2550e71e1d9e7ec122",
+   "cycles": 50024,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: non-let statement (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmfawhyjr/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 42,
+   "artifact": "13d72972c670d3c7e40858a54cb3e2261d216358b80f37748a6cf80b80f23585",
+   "cycles": 470,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_parts` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpmfawhyjr/d2.rs",
+   "trapped_ops": 1
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,1 @@
+The main port of SeaSide's customs officer counted 2 containers, each holding 5 imported vehicles initially. Subsequently, the total vehicle count at the port rose to 30. If every container continues to hold 5 vehicles, determine how many additional containers were imported on the following day.

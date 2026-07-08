@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxcqt70x4/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 9,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `name` = 9 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxcqt70x4/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "b5e7636e583b8cfe48a2956bf5177ca3a2f32ef1bed272de7ba18e4c61288b44",
+   "cycles": 1748,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `age_James` = 10 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpxcqt70x4/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

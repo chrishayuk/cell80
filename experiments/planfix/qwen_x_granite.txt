@@ -1,0 +1,30 @@
+model = qwen2.5:3b   third reader = model:granite4.1:3b   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540    None   escalate  escalate (recoverable)
+row7_sheep          260     260  unanimous  ACCEPT ok
+row11_downloads     366    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row22_raymond        14    None   escalate  escalate (genuine)  [expected a plain variable name here, got a binary expression]
+row85_football       15    None   escalate  escalate (recoverable)
+row86_gene           44      44   majority  ACCEPT ok [flagged 2-of-3]
+row89_marilyn      8000    None   escalate  escalate (genuine)  [number too large to fit in target type]
+row92_jan            28    None   escalate  escalate (recoverable)  [unsupported expression: an assignment (assignments are state]
+row93_emily           4    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row94_lee            36    None   escalate  escalate (recoverable)  [[E0501 parse] expected one of: identifier, `::`, `<`, `_`, l]
+row97_harry           3       3   majority  ACCEPT ok [flagged 2-of-3]
+row101_jerome       175    None   escalate  escalate (genuine)  [[E0501 parse] unexpected token, expected `;`]
+row104_fog          140    None   escalate  escalate (recoverable)
+row106_cody          20    None   escalate  escalate (recoverable)  [[E0501 parse] expected `,`]
+row111_marcell       45    None   escalate  escalate (recoverable)  [unsupported call target — call a named function (`f(a, b)`) ]
+row117_katy          42      42   majority  ACCEPT ok [flagged 2-of-3]
+row119_customs        4       4   majority  ACCEPT ok [flagged 2-of-3]
+row121_miguel       240    None   escalate  escalate (recoverable)  [[E0501 parse] unexpected token, expected `;`]
+row122_morisette     27      27   majority  ACCEPT ok [flagged 2-of-3]
+row124_rosie         50      50   majority  ACCEPT ok [flagged 2-of-3]
+------------------------------------------------------------------------------
+accepted 7/20   yield 7/20   escalations: 10 recoverable, 3 genuine
+precision strict (unanimous only): 1/1   with majority: 7/7
+SAFETY: accepted-but-wrong = 0 (unanimous 0, majority 0)
+repairs applied (E-code tally): {'E0102': 48, 'E0202': 14, 'E0502': 4, 'E0209': 5, 'E0505': 1, 'E0210': 1, 'E0503': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/qwen_x_granite

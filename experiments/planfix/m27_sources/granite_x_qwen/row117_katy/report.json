@@ -1,0 +1,50 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 42,
+   "artifact": "13d72972c670d3c7e40858a54cb3e2261d216358b80f37748a6cf80b80f23585",
+   "cycles": 470,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_parts` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmparx09w0r/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 78,
+   "artifact": "cd7800a20491c72f0c4415ec2df27e5ce79c9e556b594c98fdd5c19fefda23b5",
+   "cycles": 830,
+   "kill": null,
+   "repairs": [
+    "E0503:wide_call wide lane calls: max (prefer _u32 overloads)"
+   ],
+   "resolutions": [
+    {
+     "call": "max",
+     "cell": "max"
+    }
+   ],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmparx09w0r/d1.rs",
+   "trapped_ops": 2
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] unexpected token, expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmparx09w0r/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

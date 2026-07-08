@@ -1,0 +1,46 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 13,
+   "artifact": "0b32e8a1c6a0f10c6c8bae2458f5d3bf1eedd01fb7babcb7a27d703e08ace9d3",
+   "cycles": 51,
+   "kill": null,
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa0l8zvch/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 18,
+   "artifact": "7a38a61a859f7d7dd0a984530c89116016ec1bc1a1cb838652fa6eb6339ddedc",
+   "cycles": 1018,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `total_games` = 22 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa0l8zvch/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 15,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `wins` = 15 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpa0l8zvch/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

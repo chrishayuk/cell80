@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwnrecres/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwnrecres/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 50,
+   "artifact": "a5dfcd7fbf452013efad06ad47590dc051d2da0728c1329dc636fc5652208ec1",
+   "cycles": 2997,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_speed` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `initial_time` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `final_speed` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpwnrecres/d2.rs",
+   "trapped_ops": 4
+  }
+ ],
+ "flagged": false
+}
