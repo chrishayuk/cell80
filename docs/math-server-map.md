@@ -47,6 +47,13 @@ by exact name; no generalization-blind-spot rows to flag this time.*
 `docs/library-growth.md`'s "Wave 10" note. All four matched by exact name. First wave
 to use a local array in the dialect (verified standalone before designing around it).*
 
+*Update (2026-07-08, Wave 11): the geometry/vector integer subset's first slice landed
+as three cells — `geom_distance_3d`, `vectors_parallel`, `cross_product` — see
+`docs/library-growth.md`'s "Wave 11" note. All three matched by exact name.
+`triple_scalar_product`/`triple_vector_product` (this map's remaining vector
+candidates) were deliberately deferred to a follow-up wave for complexity/risk
+reasons, not built and not forgotten.*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

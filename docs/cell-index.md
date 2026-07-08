@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (292 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (295 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -176,11 +176,12 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
 
-## geometry (5)
+## geometry (6)
 
 | id | signature | summary |
 |---|---|---|
 | `cos_frac_from_sides` | `CosFracFromSides::run() -> u16` | Cosine of the angle opposite side c in a triangle with integer sides (a, b, c), via the law of cosines rearranged to an exact fraction: cos C = (a² + b² − c²) / (2ab) — no square root, no trig, just integer arithmetic. Returned as a sign-magnitude fraction (mag_num, neg_num, den) since the numerator is negative whenever angle C is obtuse; reduced to lowest terms via the shared gcd_u32 kernel. |
+| `geom_distance_3d` | `GeomDistance3d::run() -> u16` | Squared Euclidean distance between two 3D points -- the missing 3D sibling of euclid_sq, which stays squared for the same reason euclid_sq does (no square root in the dialect). Each signed coordinate difference is computed via an excess-32768 shift (mapping i16's range onto u16 losslessly) feeding the shared iabs_diff kernel, so no i16 subtraction ever risks overflowing i16's own range. |
 | `heron_16a2` | `Heron16A2::run() -> u16` | 16 times the squared area of a triangle with integer sides (a, b, c), via Heron's formula rearranged to avoid square roots entirely: 16·Area² = (a+b+c)(−a+b+c)(a−b+c)(a+b−c). Always a non-negative integer for a valid triangle — comparable, summable, and equality-testable without ever taking a root. |
 | `shoelace_area_x2` | `ShoelaceAreaX2::run() -> u16` | Twice the area of a triangle from three integer vertices (x1,y1),(x2,y2),(x3,y3), via the shoelace formula: \|x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)\| — always an integer, unlike the raw area (which is a half-integer for e.g. a right triangle with legs 1 and 1). Coordinates are unsigned; the three (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), since a term or the running sum can go negative before the final absolute value. |
 | `shoelace_area_x2_quad` | `ShoelaceAreaX2Quad::run() -> u16` | Twice the area of a quadrilateral from four integer vertices (x1,y1)..(x4,y4), generalizing shoelace_area_x2's triangle formula to \|x1*(y2-y4) + x2*(y3-y1) + x3*(y4-y2) + x4*(y1-y3)\| — always an integer. Coordinates are unsigned; the four (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same pattern shoelace_area_x2 uses, extended to a fourth term. |
@@ -425,12 +426,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 |---|---|---|
 | `range_check` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x <= hi, else 0. |
 
-## vector (2)
+## vector (4)
 
 | id | signature | summary |
 |---|---|---|
+| `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
+| `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |
 
 ## verifier-ranker (19)
 

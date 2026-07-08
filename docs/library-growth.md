@@ -301,10 +301,22 @@ wave 10   292 cells   + combinatorial numbers, the math-server map's next
                         is_catalan_number walks catalan_number's own
                         recurrence inline as a bounded membership search.
                         See the pack note below.
-next      ~25          + the remaining ready-now math-server candidates
-                        (geometry integer subset, vectors, matrix,
-                        statistics) plus Wave Q0 (Q16.16 plumbing) as a
-                        prerequisite for the 4 Q-format candidates;
+wave 11   295 cells   + 3D vector basics, the geometry/vector integer
+                        subset's first slice: geom_distance_3d (euclid_sq's
+                        missing 3D sibling, an excess-32768 coordinate
+                        shift avoids ever forming a signed i16 subtraction
+                        that could overflow i16's own range), vectors_parallel
+                        (cross-product component equality via paired signed
+                        products, no combining step needed), and
+                        cross_product (full sign-magnitude tracking through
+                        both the multiply and the combining subtract,
+                        checked against a 2,000-case random sweep).
+                        triple_scalar_product/triple_vector_product
+                        deliberately deferred — see the pack note below.
+next      ~22          + the remaining ready-now math-server candidates
+                        (triple_scalar_product, triple_vector_product,
+                        matrix, statistics) plus Wave Q0 (Q16.16 plumbing)
+                        as a prerequisite for the 4 Q-format candidates;
                         cosine_score_approx (deferred until cell_solve
                         reads out); CORDIC trig remains demand-gated per
                         docs/real-valued-cells-spec.md Wave 3
@@ -1604,6 +1616,70 @@ used, not assumed correct just because they were already on disk. Gate: 292 admi
 refused (softfloat no longer needs excluding — the F-wave session's own cap fix landed
 before this wave started). Full workspace test suite green. Codegen golden regenerated,
 purely additive (4 new entries, zero existing cell's bytes changed).
+
+**Wave 11 — 3D vector basics (2026-07-08), the geometry/vector integer subset's first
+slice.** Three cells, deliberately scoped down mid-design from an original five (the
+map's own `triple_scalar_product`/`triple_vector_product` deferred — see below) once the
+real complexity of signed 3D arithmetic in a dialect with no signed-32-bit width became
+concrete, not assumed going in:
+
+- **`geom_distance_3d(a, b)`** is `euclid_sq`'s missing 3D sibling (stays squared, for the
+  same no-sqrt reason `euclid_sq` does). The real design question was how to compute a
+  signed coordinate difference — `ax - bx` for `i16` inputs — without ever letting that
+  subtraction's *result* overflow `i16`'s own range (a genuine risk: two `i16`s up to
+  65535 apart). Solved by an **excess-32768 shift**: `(v as u16).wrapping_add(32768u16)`
+  losslessly remaps `i16`'s whole range onto `u16` while preserving every pairwise
+  difference exactly, so the shared `iabs_diff(u16, u16) -> u16` kernel can compute
+  `|ax - bx|` directly — no signed subtraction, no sign-magnitude bookkeeping, no new
+  arithmetic at all, just an existing kernel fed pre-shifted inputs. Verified against an
+  independent Python reference over 2,000 random coordinate pairs before writing the cell.
+- **`vectors_parallel(a, b)`** checks whether the cross product of two 3D vectors vanishes
+  — but never actually *forms* a cross-product component. Each of the three terms being
+  compared (e.g. `ay*bz` vs `az*by`) is a signed product; rather than subtracting them (which
+  would need the full combining logic `cross_product` below needs), the cell checks
+  **product equality directly**: same magnitude, and same sign unless either magnitude is
+  zero. This sidesteps needing any signed-subtract step at all, at the cost of being a
+  predicate rather than a value — exactly the shape the map's own candidate wants.
+- **`cross_product(a, b)`** is the one that actually needs the full technique: each output
+  component is a **(magnitude, sign) pair tracked through both the multiply and the
+  combining subtract** — the same sign-magnitude discipline `extended_gcd` (wave 9) and
+  `cross_product`'s own sibling `vectors_parallel` (above) established, applied to a
+  genuine signed *result* this time rather than an equality check. Output fields ride wide
+  `u32` magnitudes rather than being narrowed back to `i16`, since a cross-product
+  component can exceed either input's own magnitude. Verified against a 2,000-case random
+  sweep against Python's true integer cross product (not just a handful of textbook
+  examples) before transcribing any test row.
+
+Two genuine new dialect facts surfaced authoring this wave, both found by the compiler
+itself rather than assumed: **`i16 as u32` sign-extends in Rust and the dialect rejects
+it outright** ("take the bits explicitly, `x as u16 as u32`") — caught on the first
+compile attempt of the shared `i16_mag` helper, fixed by following the compiler's own
+suggested rewrite verbatim. And **a local helper function can't take two `u32` parameters
+plus any additional narrower ones** — only the shared prelude's `mul_checked_u32`/
+`add_checked_u32` (exactly two `u32` parameters, nothing else) fit the three-register
+calling convention; a `smag_add(mag1: u32, mag2: u32, neg1: u16, neg2: u16)` helper was
+drafted, compile-tested standalone, and rejected by the compiler itself
+("parameters exceed the 3 register slots") before any cell was written around it — the
+fallback was the single-`i16`-param `i16_mag`/`i16_neg` helpers actually shipped (the
+library's first local, non-prelude helper functions, proven to work via the same
+standalone-test-before-design discipline wave 10's array precedent established).
+
+**`triple_scalar_product` and `triple_vector_product`** (the map's remaining vector
+candidates, `a · (b × c)` and `a × (b × c)`) are deliberately deferred, not forgotten:
+each chains multiple signed multiply/add steps on top of the sign-magnitude machinery
+this wave built, and this wave was *already* scoped down once (from an original five
+cells to three) once the real per-component cost of full signed 3D arithmetic became
+concrete rather than assumed — a second complexity escalation in the same wave was judged
+worse than landing three solid cells and reassessing scope for the next one. Every cell
+file also fell victim to the same **untracked-file-disappearance** hazard waves 9's own
+note first flagged (files vanishing mid-session in this shared checkout, presumably from
+another session's directory-wide operation) — recreated from verified in-context content
+and committed immediately after re-verification this time, rather than continuing to draft
+further cells first, to minimize the exposure window. Gate: 295 admitted, 0 refused. Full
+workspace test suite green (one transient `host_from_dir_loads_the_seed_library` failure
+mid-session, traced to a race with the other session's concurrent `peephole.rs` edits, not
+a real bug — confirmed by an immediate clean re-run). Codegen golden regenerated, purely
+additive (3 new entries).
 
 ## Mine the ecosystem first
 

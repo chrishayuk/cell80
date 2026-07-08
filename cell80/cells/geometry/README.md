@@ -7,17 +7,18 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (6)
 
 | id | signature | summary |
 |---|---|---|
 | `cos_frac_from_sides` | `CosFracFromSides::run() -> u16` | Cosine of the angle opposite side c in a triangle with integer sides (a, b, c), via the law of cosines rearranged to an exact fraction: cos C = (a² + b² − c²) / (2ab) — no square root, no trig, just integer arithmetic. Returned as a sign-magnitude fraction (mag_num, neg_num, den) since the numerator is negative whenever angle C is obtuse; reduced to lowest terms via the shared gcd_u32 kernel. |
+| `geom_distance_3d` | `GeomDistance3d::run() -> u16` | Squared Euclidean distance between two 3D points -- the missing 3D sibling of euclid_sq, which stays squared for the same reason euclid_sq does (no square root in the dialect). Each signed coordinate difference is computed via an excess-32768 shift (mapping i16's range onto u16 losslessly) feeding the shared iabs_diff kernel, so no i16 subtraction ever risks overflowing i16's own range. |
 | `heron_16a2` | `Heron16A2::run() -> u16` | 16 times the squared area of a triangle with integer sides (a, b, c), via Heron's formula rearranged to avoid square roots entirely: 16·Area² = (a+b+c)(−a+b+c)(a−b+c)(a+b−c). Always a non-negative integer for a valid triangle — comparable, summable, and equality-testable without ever taking a root. |
 | `shoelace_area_x2` | `ShoelaceAreaX2::run() -> u16` | Twice the area of a triangle from three integer vertices (x1,y1),(x2,y2),(x3,y3), via the shoelace formula: \|x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)\| — always an integer, unlike the raw area (which is a half-integer for e.g. a right triangle with legs 1 and 1). Coordinates are unsigned; the three (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), since a term or the running sum can go negative before the final absolute value. |
 | `shoelace_area_x2_quad` | `ShoelaceAreaX2Quad::run() -> u16` | Twice the area of a quadrilateral from four integer vertices (x1,y1)..(x4,y4), generalizing shoelace_area_x2's triangle formula to \|x1*(y2-y4) + x2*(y3-y1) + x3*(y4-y2) + x4*(y1-y3)\| — always an integer. Coordinates are unsigned; the four (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same pattern shoelace_area_x2 uses, extended to a fourth term. |
 | `triangle_is_valid` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if three side lengths (a, b, c) form a valid (non-degenerate) triangle, i.e. each side is strictly less than the sum of the other two, else 0. Sums are widened to u32 internally so a large pair (e.g. two sides near 65535) can't wrap past u16 and silently flip the verdict. |
 
-## Math-server coverage — 5 candidate(s) not yet built
+## Math-server coverage — 4 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
@@ -25,7 +26,6 @@ Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 funct
 |---|---|
 | `geom_circle_area` | Area = pi*r^2 with r bounded; a fixed Q16.16 PI constant gives a boundable-truncation-error result, the same shape as the already-shipped q_mul/q_sqrt cells. |
 | `geom_circle_circumference` | Circumference = 2*pi*r is a single constant-multiply with boundable fixed-point truncation error. |
-| `geom_distance_3d` | No 3D squared-distance cell exists (euclid_sq is 2D only); dx^2+dy^2+dz^2 is an exact bounded integer, the natural 3D sibling of euclid_sq, with isqrt/q_sqrt available afterward for the actual distance. |
 | `geom_line_intersection` | Cramer's-rule intersection of two infinite lines is an exact rational point (2x2-determinant numerator/denominator over the 8 input coords); no existing cell computes it but it fits the project's exact-fraction convention. |
 | `geom_segment_intersection` | Matches the project's own already-named gap 'segments_intersect_int': an exact-integer boolean predicate (orientation/cross-product sign tests) for whether two segments cross; the actual crossing point extends geom_line_intersection's exact-fraction approach with segment-bound checks. |
 

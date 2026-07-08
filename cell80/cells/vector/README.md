@@ -7,27 +7,27 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (2)
+## Landed (4)
 
 | id | signature | summary |
 |---|---|---|
+| `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
+| `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |
 
 ## Roadmap — open items
 
 `cosine_score_approx` is blocked on an overflow-safe fixed-point square root of a product — not yet worked out.
 
-## Math-server coverage — 6 candidate(s) not yet built
+## Math-server coverage — 4 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
 | name | reason |
 |---|---|
-| `cross_product` | 3D cross product's three components (ay*bz-az*by, etc.) are exact bounded integer products/differences from 6 integer inputs; no sqrt or division needed. |
 | `matrix_det_2x2` | ad-bc: 4 args, exact integer, bounded — a genuine exception to the matrix-is-host_only default (this project's Never-list exempts a 'vector floor'; a 2x2 determinant is the same class of small exception). |
 | `matrix_solve_2x2` | Cramer's rule for a 2x2 system: exact via two fractions sharing a denominator (composes a new det2x2-style helper + existing frac_* reduction) — bounded and exact, but a 6-input/4-output state cell; lower priority than matrix_det_2x2 given the complexity. |
 | `triple_scalar_product` | a.(bxc) for three 3D integer vectors is an exact bounded integer (a 3x3 determinant, sum of products/differences, no division or sqrt); 9 input fields is consistent with shoelace_area_x2_quad's 8-field precedent. |
 | `triple_vector_product` | ax(bxc) expands via the BAC-CAB identity into pure integer dot-products and scalar multiplies (b*(a.c) - c*(a.b)); exact and bounded for 3D integer vectors. |
-| `vectors_parallel` | 2D case reduces to an exact cross-product-sign check (ax*by - ay*bx == 0), matching the project's own already-named 'orientation2d' gap, which doesn't exist yet; general N-dim plus float tolerance is out of scope. |
 
