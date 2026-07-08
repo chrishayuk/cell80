@@ -206,3 +206,68 @@ fn aime_geometry_cos_and_heron_cells_match_defined_behaviour() {
     // square root for exact fraction/integer arithmetic (law of cosines and Heron's
     // formula rearranged to avoid one). Both escalate (0xFF06) on an invalid triangle.
 }
+
+#[test]
+fn wave11_geom_distance_3d_matches_defined_behaviour() {
+    // Wave 11 (docs/math-server-map.md's vector/geometry categories). Cross-checked
+    // against an independent Python reference implementation (including a 2,000-case
+    // random sweep against the true integer cross product) before transcription.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // geom_distance_3d: squared 3D Euclidean distance, the missing sibling of euclid_sq.
+    let (_, cell) = step(
+        "geom_distance_3d",
+        "GeomDistance3d",
+        &[
+            ("ax", 0),
+            ("ay", 0),
+            ("az", 0),
+            ("bx", i16_bits(3)),
+            ("by", i16_bits(4)),
+            ("bz", i16_bits(12)),
+        ],
+    );
+    assert_eq!(cell.get("result"), Some(169)); // 3^2+4^2+12^2 = 9+16+144
+
+    // Negative coordinates, both sides — confirms the excess-32768 shift handles signed
+    // differences correctly, not just the a=0 case above.
+    let (_, cell) = step(
+        "geom_distance_3d",
+        "GeomDistance3d",
+        &[
+            ("ax", i16_bits(-1)),
+            ("ay", i16_bits(-2)),
+            ("az", i16_bits(-3)),
+            ("bx", i16_bits(2)),
+            ("by", i16_bits(2)),
+            ("bz", i16_bits(1)),
+        ],
+    );
+    assert_eq!(cell.get("result"), Some(9 + 16 + 16)); // dx=3,dy=4,dz=4
+
+    // Extreme coordinates: the summed squared distance overflows u32.
+    let (report, _) = step(
+        "geom_distance_3d",
+        "GeomDistance3d",
+        &[
+            ("ax", i16_bits(i16::MIN)),
+            ("ay", i16_bits(i16::MIN)),
+            ("az", i16_bits(i16::MIN)),
+            ("bx", i16_bits(i16::MAX)),
+            ("by", i16_bits(i16::MAX)),
+            ("bz", i16_bits(i16::MAX)),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

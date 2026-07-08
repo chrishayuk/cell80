@@ -652,3 +652,15 @@
 {"id": "stirling_first-para-1", "query": "unsigned first-kind Stirling number counting permutation cycle structures", "expected": "stirling_first", "category": "paraphrase"}
 {"id": "stirling_second-direct-1", "query": "stirling number of the second kind", "expected": "stirling_second", "category": "direct"}
 {"id": "stirling_second-para-1", "query": "how many ways to partition n items into exactly k nonempty subsets", "expected": "stirling_second", "category": "paraphrase"}
+{"id": "geom_distance_3d-direct-1", "query": "distance between two 3D points including the z axis, squared, no square root", "expected": "geom_distance_3d", "category": "direct"}
+{"id": "geom_distance_3d-para-1", "query": "3D point distance with height or depth, x y z", "expected": "geom_distance_3d", "category": "paraphrase"}
+{"id": "vectors_parallel-direct-1", "query": "check whether two 3D vectors are scalar multiples of each other, parallel", "expected": "vectors_parallel", "category": "direct"}
+{"id": "vectors_parallel-para-1", "query": "do two direction vectors point along the same or exactly opposite line", "expected": "vectors_parallel", "category": "paraphrase"}
+{"id": "cross_product-direct-1", "query": "cross product of two 3D vectors", "expected": "cross_product", "category": "direct"}
+{"id": "cross_product-para-1", "query": "the vector at right angles to two other 3D vectors, i cross j equals k", "expected": "cross_product", "category": "paraphrase"}
+{"id": "geom_distance_3d-direct-1", "query": "squared euclidean distance between two 3d points", "expected": "geom_distance_3d", "category": "direct"}
+{"id": "geom_distance_3d-para-1", "query": "how far apart are two points in space given signed xyz coordinates, without the square root", "expected": "geom_distance_3d", "category": "paraphrase"}
+{"id": "cross_product-direct-1", "query": "cross product of two 3d integer vectors", "expected": "cross_product", "category": "direct"}
+{"id": "cross_product-para-1", "query": "the perpendicular vector to two given 3d vectors with signed components", "expected": "cross_product", "category": "paraphrase"}
+{"id": "vectors_parallel-direct-1", "query": "check whether two 3d vectors are parallel", "expected": "vectors_parallel", "category": "direct"}
+{"id": "vectors_parallel-para-1", "query": "do two vectors point along the same or exactly opposite direction, are they collinear", "expected": "vectors_parallel", "category": "paraphrase"}
