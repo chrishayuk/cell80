@@ -410,6 +410,72 @@ unverified-wide subclass only; a correlated misreading landing on narrow, liftab
 values would still pass majority, so the decorrelated reader remains the general
 defense and granite×gemma remains the registered weak-composer configuration.
 
+## 4f. The 8-shot experiment — granite is a format-continuer, and it changes the
+headline configuration (2026-07-08)
+
+**The hypothesis** (from granite's own benchmark profile — GSM8K 86.88 *8-shot* vs
+BigCodeBench 32.19): granite continues demonstrated formats; it does not author
+under instructions. Every prior campaign run was zero/one-shot instructions. The
+test: a fixed 8-shot demonstration (8 original problems → derive-style dialect
+cells, **every cell verified through `cell80 compose` before use**; problems not
+from the test slice) plus two repair-shaped pairs (the *user* turn carries the bad
+attempt + E-code, the assistant answers only with the fix — the assistant never
+authors the disease), delivered as real chat pairs, uniform across models and arms
+(`FEWSHOT=1`). A second axis re-tests the "simpler dialect" question: `FORMAT=
+equations` — bare `name = expr` lines, wrapped into a cell mechanically (line →
+`let`, last name → tail; transport, not repair).
+
+**Granite solo, all four configs:**
+
+| config | accepted | correct | wrong (all majority-band) | strict-unanimous |
+|---|---|---|---|---|
+| rust 0-shot (baseline) | 10 | 10 | 0 | 100% |
+| **rust 8-shot** | **15** | **14** | 1 | 7/7 |
+| equations 0-shot | 12 | 11 | 1 | 9/9 |
+| equations 8-shot | 16 | 12 | **4** | 10/10 |
+
+**Finding 1 — confirmed at the mechanism level.** 8-shot rust: 10 → 14 correct
+(70% solo, equal to the 0-shot granite×gemma ensemble). The dumped sources show
+the diseases were not repaired downstream — they were **never emitted**:
+verify-not-compute 14 files → **0**, `then`-sugar 5 → **0**, `E0502` 11 → **1**.
+Demonstrations rewired the output dialect. The 86.88 GSM8K number and the 15%
+plan-IR number were never a contradiction — the same property measured with and
+without demonstrations.
+
+**Finding 2 — the simpler dialect works, and the twist matters more.** Equations
+beat rust at 0-shot (11 vs 10 correct): granite handles a line dialect fine (the
+JSON failure was format-tax, confirmed). But equations-8-shot put **4 wrongs** in
+the majority band, and the sources show why: inline and composed arms collapse
+into byte-identical derivations (row101 d0 == d1). A narrower surface language
+buys legality by spending **arm diversity** — and the gate's safety was never the
+format, it is structured diversity. More agreement when right, more agreement
+when wrong.
+
+**The capstone — granite 8-shot composer × gemma reader: 18 accepted / 17
+correct / 1 wrong (85% yield), 11/11 strict-unanimous.** The best configuration
+on the board, with granite doing all the authorship and gemma doing one cheap
+inline read. Escalations: 2, both recoverable, both battery-caught coincidences
+(`battery_escalate`) — the gate machinery visibly working.
+
+**The residual wrong is the deepest lesson.** row22: granite's two arms — now
+fluent, legal, derive-style — independently encode the *same misreading*
+(`31−6−23 = 2`), and gemma's **correct** dissent (14) is outvoted 2-to-1. Making
+the composer more fluent made its errors more *correlated*: at 0-shot those two
+arms died as dialect noise; at 8-shot they survive to agree. The obvious rule fix
+("a live dissenting reader escalates the composer-pair majority") **fails the
+counterfactual across all six model-reader configs: catches 1 wrong, costs 9
+correct** — the dissenting reader is usually the wrong one (qwen dissents with
+garbage against correct pairs; even gemma dissents wrongly once, row121). The
+cross-model-agreement variant prices identically. No amendment survives the
+evidence; the correlated-misreading residual (~1 row/config on this slice) is
+carried, by design, in the flagged audit band. Strict-unanimous precision after
+today's four runs: **37/37 — still 100% campaign-wide.**
+
+**Backlog surfaced:** equation format lifts enough quantities to hit the
+3-register ABI ceiling (row124: `parameters exceed HL/DE/BC`); a composed arm
+called `abs_diff` with wide args where only the u16 cell links (row97, `E0503`
+class — wants the free-fn wide sibling).
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

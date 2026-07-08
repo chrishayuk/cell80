@@ -1,0 +1,50 @@
+{
+ "agreement": "majority",
+ "answer": 175,
+ "battery": "survived 2 perturbation(s) (1 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 175,
+   "artifact": "9cfd8fa439468093dfc51032630f4d0f7bdac185002ac999b02b852a202475a3",
+   "cycles": 2953,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `fourth` = 60 lifted to a parameter",
+    "E0102:quantity_lifted `second` = 25 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb73xlqhq/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 150,
+   "artifact": "186e6fd9f876fe3475f8302fd5ad1c0dc91d54cdfe7577db970827b1e890b510",
+   "cycles": 283,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `first` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb73xlqhq/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 175,
+   "artifact": "d7a8bf07b82a16ae360dcf899d19987dbce8d063dd20068a38bc2fc18bd537b3",
+   "cycles": 2989,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `fourth` = 60 lifted to a parameter",
+    "E0102:quantity_lifted `second` = 25 lifted to a parameter",
+    "E0102:quantity_lifted `first` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb73xlqhq/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

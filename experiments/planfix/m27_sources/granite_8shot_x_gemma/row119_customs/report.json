@@ -1,0 +1,56 @@
+{
+ "agreement": "unanimous",
+ "answer": 4,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "186b7513fd1f23d3a0fe0f30dfe2c7e921586b1bcd74818b8ebdc26c0ba3eee6",
+   "cycles": 711,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbvzrpm0y/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 4,
+   "artifact": "c32e47ac51872a2d42017cf1c7d42f40ef77cef13e5d4442a4f3af91918bbfb1",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbvzrpm0y/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 4,
+   "artifact": "c32e47ac51872a2d42017cf1c7d42f40ef77cef13e5d4442a4f3af91918bbfb1",
+   "cycles": 1407,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_containers` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `vehicles_per_container` = 5 lifted to a parameter",
+    "E0102:quantity_lifted `total_vehicles` = 30 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbvzrpm0y/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

@@ -1,0 +1,30 @@
+model = granite4.1:3b   third reader = paraphrase-then-extract (same model)   format = equations   fewshot = off   gate = 2-of-3 registered rule
+
+row                want     got       gate  verdict
+------------------------------------------------------------------------------
+row4_james          540     540  unanimous  ACCEPT ok
+row7_sheep          260     260   majority  ACCEPT ok [flagged 2-of-3]
+row11_downloads     366     366  unanimous  ACCEPT ok
+row22_raymond        14       2   majority  ACCEPT WRONG(!) [flagged 2-of-3]
+row85_football       15    None   escalate  escalate (recoverable)  [unsupported expression: an assignment (assignments are state]
+row86_gene           44      44  unanimous  ACCEPT ok
+row89_marilyn      8000    None   escalate  escalate (genuine)  [number too large to fit in target type; [E0501 parse] expect]
+row92_jan            28      28   majority  ACCEPT ok [flagged 2-of-3]
+row93_emily           4    None   escalate  escalate (recoverable)  [parameters exceed the 3 register slots (HL/DE/BC — a u32 tak]
+row94_lee            36    None   escalate  escalate (recoverable)  [[E0302 inexact_const_division] constant division folds to 1/]
+row97_harry           3    None   escalate  escalate (recoverable)  [[E0501 parse] expected an expression]
+row101_jerome       175    None   escalate  escalate (recoverable)
+row104_fog          140    None   escalate  escalate (recoverable)  [[E0501 parse] expected `;`; [E0302 inexact_const_division] c]
+row106_cody          20      20  unanimous  ACCEPT ok
+row111_marcell       45      45  unanimous  ACCEPT ok
+row117_katy          42      42  unanimous  ACCEPT ok
+row119_customs        4    None   escalate  escalate (genuine)
+row121_miguel       240     240  unanimous  ACCEPT ok
+row122_morisette     27      27  unanimous  ACCEPT ok
+row124_rosie         50      50  unanimous  ACCEPT ok
+------------------------------------------------------------------------------
+accepted 12/20   yield 11/20   escalations: 6 recoverable, 2 genuine
+precision strict (unanimous only): 9/9   with majority: 11/12
+SAFETY: accepted-but-wrong = 1 (unanimous 0, majority 1)
+repairs applied (E-code tally): {'E0102': 61, 'E0202': 13, 'E0502': 5, 'E0505': 2, 'E0503': 1}
+sources dumped under /Users/christopherhay/chris-source/cell80-m25/experiments/planfix/m27_sources/granite_0shot_eq

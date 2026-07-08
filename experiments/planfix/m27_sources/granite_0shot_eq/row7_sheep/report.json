@@ -1,0 +1,45 @@
+{
+ "agreement": "majority",
+ "answer": 260,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbegj51af/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 260,
+   "artifact": "9b8314ee1797b299a2502fa4e0c4bca9a9de29ca8b370cb839008b453dd8f94b",
+   "cycles": 3563,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `seattle_sheep` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbegj51af/d1.rs",
+   "trapped_ops": 4
+  },
+  {
+   "answer": 260,
+   "artifact": "9b8314ee1797b299a2502fa4e0c4bca9a9de29ca8b370cb839008b453dd8f94b",
+   "cycles": 3563,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `sheep_seattle` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpbegj51af/d2.rs",
+   "trapped_ops": 4
+  }
+ ],
+ "flagged": true
+}

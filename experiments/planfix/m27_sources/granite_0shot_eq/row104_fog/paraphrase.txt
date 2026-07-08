@@ -1,0 +1,1 @@
+The fog bank covers 3 miles of the city in 10 minutes. Given that the city spans 42 miles from the oceanfront to the opposite inland edge, how long will it take for the fog bank to completely cover this distance?

@@ -1,0 +1,49 @@
+{
+ "agreement": "majority",
+ "answer": 4,
+ "battery": "survived 0 perturbation(s) (4 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 4,
+   "artifact": "3eb2a0b3e548b1c2ef4dfbe37c2e38202980bcff1f1bb7bad5cef204b057b8be",
+   "cycles": 1836,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `amy_younger_than_corey` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `jackson_older_than_amy` = 5 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzkkpiuml/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 12,
+   "artifact": "e1c6daf8ee254f0c796f68bda237d42a7bd5a7e553c454464ca5e45d1e4766bb",
+   "cycles": 2805,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james` = 10 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzkkpiuml/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "edbb8d8374f233826a62b7198cb27c2d6f375eeb2d6ca0c977dfedb88572d0f6",
+   "cycles": 1369,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `corey` = 11 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpzkkpiuml/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

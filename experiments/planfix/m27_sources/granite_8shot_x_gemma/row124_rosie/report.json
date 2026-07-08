@@ -1,0 +1,47 @@
+{
+ "agreement": "majority",
+ "answer": 50,
+ "battery": "survived 1 perturbation(s) (2 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 50,
+   "artifact": "c86f2995a857d4ca8513a916620fbf8095a35da2e6253005973a6c1e185559d9",
+   "cycles": 514,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `first_part` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `second_part` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_vx674b_/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "parameters exceed the 3 register slots (HL/DE/BC \u2014 a u32 takes two; only a *second u32* may ride the stack)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_vx674b_/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 50,
+   "artifact": "70320c3540afdf4ea1f7be89c8983ec563a7bf82f12fddf8815c60a2009faf94",
+   "cycles": 1208,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `initial_miles` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `remaining_hours` = 4 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp_vx674b_/d2.rs",
+   "trapped_ops": 2
+  }
+ ],
+ "flagged": true
+}

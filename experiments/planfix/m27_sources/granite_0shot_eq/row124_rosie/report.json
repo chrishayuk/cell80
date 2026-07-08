@@ -1,0 +1,49 @@
+{
+ "agreement": "unanimous",
+ "answer": 50,
+ "battery": "survived 0 perturbation(s) (3 value(s) not liftable in every derivation, skipped)",
+ "derivations": [
+  {
+   "answer": 50,
+   "artifact": "c86f2995a857d4ca8513a916620fbf8095a35da2e6253005973a6c1e185559d9",
+   "cycles": 514,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `distance1` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `distance2` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5x5oo973/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 50,
+   "artifact": "c86f2995a857d4ca8513a916620fbf8095a35da2e6253005973a6c1e185559d9",
+   "cycles": 514,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `distance_first_period` = 30 lifted to a parameter",
+    "E0102:quantity_lifted `distance_second_period` = 20 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5x5oo973/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 50,
+   "artifact": "2557fee46fe8d2a9df6d699a8e7f1abe5167b8e661e7fc671e1f437f69055abd",
+   "cycles": 67,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `distance` = 50 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp5x5oo973/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

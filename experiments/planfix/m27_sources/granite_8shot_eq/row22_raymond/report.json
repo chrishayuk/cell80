@@ -1,0 +1,45 @@
+{
+ "agreement": "majority",
+ "answer": 2,
+ "battery": "survived 1 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 2,
+   "artifact": "5bea4da4c02370a3e2557c9690a9025231fec2871687ad4a11b3c341ad25d3e6",
+   "cycles": 1369,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `samantha_age` = 31 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb1t4st05/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 2,
+   "artifact": "5bea4da4c02370a3e2557c9690a9025231fec2871687ad4a11b3c341ad25d3e6",
+   "cycles": 1369,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `samantha_age` = 31 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb1t4st05/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "unsupported expression: an assignment (assignments are statements \u2014 end with `;`) \u2014 the dialect accepts integer/bool arithmetic, comparisons, calls, indexing, field access, casts, and `if`/`match` values; restructure around those",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpb1t4st05/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

@@ -1,0 +1,53 @@
+{
+ "agreement": "majority",
+ "answer": 8,
+ "battery": "survived 3 perturbation(s)",
+ "derivations": [
+  {
+   "answer": 8,
+   "artifact": "ccad0b0e3d1e19123a421735d20f53c994bb13a8b2d84053dce2bb20b714a07a",
+   "cycles": 1830,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `amy_younger_than_corey` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `amy_older_than_jackson` = 5 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: amy_older_than_jackson"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26kip9jl/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 8,
+   "artifact": "ccad0b0e3d1e19123a421735d20f53c994bb13a8b2d84053dce2bb20b714a07a",
+   "cycles": 1830,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `james` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `amy_younger_than_corey` = 2 lifted to a parameter",
+    "E0102:quantity_lifted `amy_older_than_jackson` = 5 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: amy_older_than_jackson"
+   ],
+   "resolutions": [],
+   "retrieved": true,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26kip9jl/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 65530,
+   "artifact": "03be5fff976a4a61cf94989a1298f976c512d9bcbfb82333dae539c34fb1b9c9",
+   "cycles": 215,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `James` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp26kip9jl/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": true
+}

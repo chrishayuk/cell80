@@ -1,0 +1,47 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 1/10 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryq9vsqs/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 36,
+   "artifact": "71fa5e0c3b49b1c22fd7f76e5f97fa38224ba1b310ffb425d233653d409a91ac",
+   "cycles": 904,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `name` = 40 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryq9vsqs/d1.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 44,
+   "artifact": "dc41cac56040f9d5798ff83e554cef5c0e8c68e38bfcc328a225dba96d5fdc8d",
+   "cycles": 1319,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `time_lee` = 38 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpryq9vsqs/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

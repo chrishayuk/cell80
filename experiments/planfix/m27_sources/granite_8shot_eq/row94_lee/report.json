@@ -1,0 +1,50 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 36,
+   "artifact": "e95fdeaf2853e34b22666254cdb765e409f55c8c5a2e7ec4f677656c607b15cc",
+   "cycles": 1319,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `lee` = 38 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjof3hevg/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": 0,
+   "artifact": "58ef6dffa2311630bcae5101f21e36cc6af2a5fa5f0860e53f252972ff2dd7ce",
+   "cycles": 287,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `gercil_original` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjof3hevg/d1.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 44,
+   "artifact": "4e88a0e77b2dedce83ac6759e4b6f528dc720bc1856ed10c65b55c9509c88d83",
+   "cycles": 1371,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `lee_time` = 38 lifted to a parameter",
+    "E0102:quantity_lifted `original_difference` = 2 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpjof3hevg/d2.rs",
+   "trapped_ops": 3
+  }
+ ],
+ "flagged": false
+}

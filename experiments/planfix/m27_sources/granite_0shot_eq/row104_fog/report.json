@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 140,
+   "artifact": "97ad5141c20d385af9917428bb97756e1d104ec3f6b03e3717bce885d3311560",
+   "cycles": 982,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `minutes_per_3_miles` = 10 lifted to a parameter",
+    "E0102:quantity_lifted `total_miles` = 42 lifted to a parameter",
+    "E0202:redundant_parens defer_division: mul/div chain divides once at the end"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8grjia7u/d0.rs",
+   "trapped_ops": 3
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8grjia7u/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0302 inexact_const_division] constant division folds to 3/10 (fix: make the constant division exact or keep a variable factor)",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmp8grjia7u/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

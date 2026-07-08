@@ -1,0 +1,47 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 3,
+   "artifact": "fe5db154f26f52b4d6d4c0613088eea7be074b011f69d1693991b0c1b0ad5eb4",
+   "cycles": 470,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `hours_james` = 6 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpuqz0o67i/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected an expression",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpuqz0o67i/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 6,
+   "artifact": "cfcffbee1695ae30f53892cb8d6583da25024f8808b90802057659814c190e67",
+   "cycles": 113,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `difference` = 3 lifted to a parameter",
+    "E0102:quantity_lifted `answer` = 6 lifted to a parameter",
+    "E0505:dead_let dropped unused bindings: difference"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpuqz0o67i/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

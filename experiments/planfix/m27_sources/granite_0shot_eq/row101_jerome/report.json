@@ -1,0 +1,47 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 110,
+   "artifact": "778c9550f18e9971c7e3f539305de25c8dde1b4c03201f106f198e83d460f271",
+   "cycles": 382,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `fourth_friend` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmphphijvw7/d0.rs",
+   "trapped_ops": 1
+  },
+  {
+   "answer": 115,
+   "artifact": "e1db2a27ca27b7fd23b449469bde39102e09245dad2804777511a64f5eeb4f2d",
+   "cycles": 373,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `fourth_friend` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmphphijvw7/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 175,
+   "artifact": "c6c08347e6443de24f59ed2c9896b4a17b64c2ad8d33759c3a4e9e46c294ac56",
+   "cycles": 1487,
+   "kill": null,
+   "repairs": [
+    "E0102:quantity_lifted `name` = 60 lifted to a parameter"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmphphijvw7/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}

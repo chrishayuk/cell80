@@ -1,0 +1,45 @@
+{
+ "agreement": "escalate",
+ "answer": null,
+ "battery": null,
+ "derivations": [
+  {
+   "answer": 8,
+   "artifact": "2db8b0e5b8b8298b216b8d6325be7f6c6e912b9793269dea76d0daf09da433e4",
+   "cycles": 173,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `wins` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpka4ngfnh/d0.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": null,
+   "artifact": null,
+   "cycles": 0,
+   "kill": "[E0501 parse] expected `;`",
+   "repairs": [],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpka4ngfnh/d1.rs",
+   "trapped_ops": 0
+  },
+  {
+   "answer": 4,
+   "artifact": "2821774c4e43fe4cef801d0669402a96afd1bebd5e2596611b8b900d52b8995b",
+   "cycles": 173,
+   "kill": null,
+   "repairs": [
+    "E0502:non_straight_line fn run: unknown name `wins` (light normalization only)"
+   ],
+   "resolutions": [],
+   "retrieved": false,
+   "source": "/var/folders/s0/jr8xqb3j4knghlz30kw3pfyc0000gn/T/tmpka4ngfnh/d2.rs",
+   "trapped_ops": 0
+  }
+ ],
+ "flagged": false
+}
