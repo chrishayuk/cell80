@@ -565,7 +565,18 @@ running-stat cells toward "ask the agent to write Python."
   the renderer type-flows representation like dimension; mixed-repr/q-mul/f32-exactness
   are named kills, f32 targets gate on finiteness, the battery perturbs f32 by +1.0):
   model-composed float *plans* are legal through the renderer; model-authored f32
-  *source* stays hand-reviewed.**
+  *source* stays hand-reviewed. **✓ F3 physics pack shipped (7 cells, finite-gated,
+  bit-identical oracle, inverse-mass Rapier convention) and the resident kernel bank
+  answered the pack's own demand signal one day after it was measured**: the
+  arithmetic five + comparisons + helpers live once at `BANK_ORG = 0xC000` (bank
+  locals at `0xB800`, disjoint from cell scratch), a banked cell's image carries only
+  its own logic (`impulse_1d_f32` 8,197 B → 337 B, `elastic_collision_1d_f32`
+  8,570 B → 650 B), and the bank's SHA-256 is pinned in the manifest (`.cell` v9;
+  different bank ⇒ hard load error — never silently different arithmetic). Banking
+  is opt-in (`//! kernel_bank: on`); inline cells keep their bytes and hashes.
+  Still open: the bit-for-bit Rapier-trace validation (gates any video claim),
+  `fma` (demand-gated), and the sandbox cap re-tighten once bank-by-default is
+  decided.**
 - **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
   halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
   DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the

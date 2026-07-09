@@ -7,10 +7,12 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (2)
+## Landed (4)
 
 | id | signature | summary |
 |---|---|---|
+| `correlation` | `Correlation::run() -> u16` | Pearson correlation coefficient from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2, sum_y2 -- raw-dataset aggregation stays upstream), returned as a Q8.8 fixed-point value bounded to [-1, 1] by construction (Cauchy-Schwarz). r = (n*sum_xy - sum_x*sum_y) / sqrt((n*sum_x2 - sum_x^2) * (n*sum_y2 - sum_y^2)) -- the numerator signed, the two variance-like factors always non-negative, their product's integer square root taken at a 256x-scaled precision (the same order effect_size_r uses: scale up, sqrt once, divide last). |
 | `covariance` | `Covariance::run() -> u16` | Population covariance from precomputed sums (not a raw dataset -- that aggregation stays upstream, matching running_variance_step's own bivariate framing): cov = (n*sum_xy - sum_x*sum_y) / n^2, returned as an exact signed fraction (num/den, den always positive) rather than rounded to an integer. |
+| `effect_size_r` | `EffectSizeR::run() -> u16` | Convert a t-statistic to effect size r: r = t / sqrt(t^2 + df), a Q8.8 fixed-point value always bounded to [-1, 1] (t^2 <= t^2+df, so \|t\|/sqrt(t^2+df) <= 1 by construction). Computed by scaling t^2+df up by 256 before taking an integer square root (the same precision-preserving order q_sqrt uses -- sqrt first, divide last, loses far less precision than dividing by a truncated integer sqrt directly), then dividing a further-scaled numerator by that root in one step. |
 | `linear_regression_slope` | `LinearRegressionSlope::run() -> u16` | Ordinary-least-squares regression slope from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2 -- raw-dataset aggregation stays upstream): slope = (n*sum_xy - sum_x*sum_y) / (n*sum_x2 - sum_x^2), returned as an exact signed fraction rather than rounded. The denominator is n^2 times the population variance of x, which is always non-negative by construction -- zero only when every x value is identical (a vertical "line", no defined slope). |
 

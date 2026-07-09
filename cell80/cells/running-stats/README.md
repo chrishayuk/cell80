@@ -21,14 +21,12 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 
 Percentile-from-histogram is open, gated on the array-state-field question no landed cell has needed to answer yet. The math-server mining separately flags a **sliding-window** family (`simple_moving_average`, `weighted_moving_average`, `rolling_variance`, `rolling_std`) as candidates distinct from the already-shipped `running_variance_step` (cumulative over the whole stream, not windowed) — same array-state-field gate.
 
-## Math-server coverage — 7 candidate(s) not yet built
+## Math-server coverage — 5 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
 | name | reason |
 |---|---|
-| `correlation` | Pearson r is bounded to [-1,1] given precomputed sums (sum_x, sum_y, sum_xy, sum_x2, sum_y2, n) -- ideal for a Q8.8 cell using q_sqrt/q_div, though the general arbitrary-list aggregation must happen upstream. |
-| `effect_size_r` | r = t/sqrt(t^2+df) from just two bounded scalar inputs (t_statistic, df); fits a small Q8.8 cell using the existing q_sqrt/q_div shapes. |
 | `linear_regression` | Given precomputed sums (sum_x, sum_y, sum_xy, sum_x2, n), the slope is an exact rational number obtainable via frac_reduce-style arithmetic, mirroring the project's frac_* exactness convention; general arbitrary-list aggregation and R^2 are out of scope for a single cell. |
 | `rolling_std` | Same gap as rolling_variance, plus a sqrt (Q16.16, not exact). Defer behind both the array-state question and Wave Q0 (q_sqrt_q16). |
 | `rolling_variance` | Distinct from the already-shipped running_variance_step (which is cumulative over the whole stream, not a sliding window) — a real gap, but needs array state (remembers N past values). Defer. |

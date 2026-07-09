@@ -34,8 +34,10 @@ identical result, identical cycle count, identical touched-set (asserted by
 |---|---|---|
 | trampoline | `0x7000` | argument loader + `CALL entry` + `HALT` (written per run) |
 | code (`ORG`) | `0x8000` | the compiled program; **const data** (data `const` items, interned string literals) is byte-packed immediately after the code, each blob at its own symbol |
-| scratch / locals | `0x9000` | the "virtual register file": local `i` at `0x9000 + i*2` |
+| scratch / locals | `0x9000` | the "virtual register file": local `i` at `0x9000 + i*2` (relocates above the code when the code outgrows the classic window; ceiling `0xB000`) |
 | typed state (convention) | `0xB000` (`STATE_BASE`) | where `StateCell` lays a state struct |
+| kernel-bank locals | `0xB800` (`BANK_SCRATCH`) | the resident bank's *own* register file — disjoint from cell scratch, so a bank call never clobbers its caller's frame |
+| kernel bank | `0xC000` (`BANK_ORG`) | the resident softfloat bank (arithmetic five + comparisons + helpers, ~11 KB), loaded outside touch-tracking for cells compiled `//! kernel_bank: on`; identity pinned by SHA-256 in the manifest (`.cell` v9), image flag in cell-image v2 |
 | stack | `0xFFF0` (`SP_TOP`), grows down | |
 
 64 KiB flat. A program may read/write anywhere it has the capability for; the runner zeroes

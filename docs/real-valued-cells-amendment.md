@@ -1,6 +1,8 @@
 # The F-waves — owned IEEE binary32, an amendment to the real-valued-cells policy
 
-*Status: **registered 2026-07-07; F0 and F1 landed same day** — the kernel five +
+*Status: **registered 2026-07-07; F0–F3 + repr tags + the kernel bank all landed
+within two days** (see §F3 for the bank's measurements; open: Rapier-trace
+validation, F2 behind Wave 3's counter, `fma`). Original F0/F1 record: — the kernel five +
 comparison trio + oracle banks + escalation codes + measured cost table + scratch
 relocation + the typed f32 surface with the F0.6 canon guard (H-F4 in CI) + the F1
 set: conversions (typed builtins; `f32_to_*` halts `0xFF08` on domain, the family's
