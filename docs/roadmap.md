@@ -2,8 +2,9 @@
 
 > **Execution plan:** [roadmap-phases.md](roadmap-phases.md) sequences the work as
 > phased gates (0: determinism contract ✓ → 1: LLM-facing compiler → 2: retrieval →
-> 3: trust → 4: codegen stage 2), with a DoD per item and the end-state narrative.
-> This file stays the ledger of what's *built*.
+> 3: trust → 4: codegen stage 2 → 5: multi-target, the cell-family —
+> [13-multi-target-spec.md](13-multi-target-spec.md)), with a DoD per item and the
+> end-state narrative. This file stays the ledger of what's *built*.
 
 cell80 is the deterministic **executable-tool-capsule** layer extracted from
 [`chuk-speccy`](https://github.com/chrishayuk/chuk-speccy): a Z80 CPU core (`z80`), a

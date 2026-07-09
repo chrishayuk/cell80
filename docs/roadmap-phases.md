@@ -328,6 +328,44 @@ diagnostics).
 
 ---
 
+## Phase 5 — Multi-target: the cell-family (spec: [13-multi-target-spec.md](13-multi-target-spec.md))
+
+The pre-registered "ISA attachment" clause (non-goals, below) coming due: the cell
+contract — content-addressed, capability-manifested, cycle-accounted, differentially
+verified — made portable across ISAs, with Z80 as backend zero of a family (RV32I/Hazard3
+primary, Thumb-1/M0+ secondary; deployment driver: the SOMA reflex organ on the antweight
+bot). Accepted 2026-07-10 after a repo-grounded review of the v0.1 draft; the spec carries
+the revisions (WS-A re-scoped as a contract rewrite, the reference IR interpreter as a
+first-class deliverable, signed re-specced as *widening* — i16 already shipped, the
+cell-layer workstream WS-E, evaluation order pinned left-to-right, "no hardware floats").
+
+**5.1 WS-A — cell-core + target descriptor (first, ~3 weeks).** Descriptor introduced,
+Z80 ported onto it (Spectrum48/Cell become descriptor instances), width generalisation +
+sign_extend, i32, the reference IR interpreter, `cell-core` extraction.
+*DoD:* rustz80 suite green; `codegen_golden` byte-identical except the single
+pre-registered evaluation-order break (M0 kill criterion + golden-break policy in the
+spec §5).
+
+**5.2 WS-B — RV32 backend + executor (critical path).** RV32I codegen against Sail from
+the first instruction; cycle-accounted executor; rustc-adversary matrix extended; RP2350
+bring-up with the `mcycle` co-sign.
+*DoD:* spec §3 WS-B — the M2 demo: same-source cell on Spectrum and Pico 2, same
+answers, two cycle certificates (Z80 side: Spectrum48 target).
+
+**5.3 WS-C — robo dialect.** Q-format (Q8.8 gate — live machinery today; Q16.16
+stretch), the `bounded` WCET sub-dialect (static cycle bounds — new machinery), sensor
+typing on the escalation-band pattern.
+*DoD:* three MVP robo cells compile `bounded`, static WCET ≤ 50µs each @150MHz in
+manifests, 1kHz HIL loop from synthetic sensor streams.
+
+**5.4 WS-D + WS-E — Thumb-1 sibling; cell-layer multi-target.** Thumb-1 forces
+descriptor honesty (Z80 as adversarial third); manifest target id + family hash
+(`.cell` v10), per-target state-address story, host/runner generalisation.
+*DoD:* three-ISA demo — one family hash, three per-target artifact hashes, three cycle
+certificates.
+
+---
+
 ## Explicit non-goals (in the README)
 
 - **Strings, floats-by-default, I/O, network** — that's the escalation path (3.2), not
@@ -341,7 +379,10 @@ diagnostics).
   conformance suites (1.53M SingleStepTests vectors, ZEXDOC) are why the Z80 currently
   earns its seat. Codegen emits symbolic `Ins`, encoded once at the end — so a second
   backend target, if the contract ever needs one, is an encoder swap behind a stable
-  artifact format, not a rewrite. The format survives the chip.
+  artifact format, not a rewrite. The format survives the chip. *(This clause came due:
+  Phase 5 / [13-multi-target-spec.md](13-multi-target-spec.md). The review found
+  "encoder swap" was optimistic — the IR's contract bakes in 16-bit/HL:DE:BC/2-byte-slot
+  assumptions, hence WS-A's descriptor rewrite — but the artifact-format half held.)*
 
 The failure mode that would dissolve everything is feature drift toward a worse Wasm; the
 implicit bet is that a narrow thing that's *actually true* beats a broad thing that's
@@ -356,4 +397,6 @@ admission gate) are shipped; 2.3 (the scale curve) is the remaining open item, g
 behind 2.2 by design since growing to 1K cells before ingest gating would manufacture
 the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
-the next dialect expansion, as required.
+the next dialect expansion, as required. Phase 5 (multi-target) opens 2026-07-10 with
+WS-A: the target descriptor + cell-core, gated by the codegen golden (M0 kill criterion
+in the spec) before any new ISA is touched.
