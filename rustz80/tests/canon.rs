@@ -752,6 +752,11 @@ fn diag_codes_and_display_are_total() {
         DiagCode::UnknownCallTarget,
         DiagCode::DeadLet,
         DiagCode::ModSpaceRewrite,
+        DiagCode::LiftCapReached,
+        DiagCode::SuffixNormalized,
+        DiagCode::NarrowingDropped,
+        DiagCode::ThenDesugared,
+        DiagCode::CallToWideKernel,
     ];
     let mut seen = std::collections::HashSet::new();
     for c in all {
@@ -1444,6 +1449,25 @@ fn select_inline_rendering_and_hard_edges() {
         assert!(
             out.source.contains('&') || out.source.contains('['),
             "{}",
+            out.source
+        );
+    }
+}
+
+/// Select soft edges: an if-value without an `else`, and an arm that isn't a
+/// single value expression, each fall back whole (Light re-print) — never a
+/// partial select build.
+#[test]
+fn select_soft_edges_fall_back_whole() {
+    for src in [
+        "fn f(a: u16) -> u16 { let x = if a > 1u16 { a }; x }",
+        "fn f(a: u16) -> u16 { let x = if a > 1u16 { let y = a + 1u16; y } else { 3u16 }; x }",
+        "fn f(a: u16) -> u16 { let x = if a > 1u16 { a } else { let y = 3u16; y }; x }",
+    ] {
+        let out = canonicalize_source(src, &full()).expect("canonicalizes");
+        assert!(
+            out.source.contains("if"),
+            "select must survive whole: {}",
             out.source
         );
     }
