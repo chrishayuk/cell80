@@ -141,10 +141,13 @@ pub(super) fn encode(
     org: u16,
     scratch: u16,
     n_labels: usize,
+    externs: &HashMap<String, u16>,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
-    // Pass 1: label/symbol addresses.
+    // Pass 1: label/symbol addresses. Extern symbols (the resident kernel bank)
+    // seed the table at their absolute addresses; a local definition of the same
+    // name shadows them (pass 1 inserts over the seed).
     let mut labels: Vec<Option<u16>> = vec![None; n_labels];
-    let mut symbols: HashMap<String, u16> = HashMap::new();
+    let mut symbols: HashMap<String, u16> = externs.clone();
     let mut pc = org;
     for i in ins {
         match i {

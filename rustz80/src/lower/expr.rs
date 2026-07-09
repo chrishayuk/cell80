@@ -137,6 +137,23 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
     match expr {
         syn::Expr::Lit(l) => match &l.lit {
             syn::Lit::Int(i) => {
+                // `2f32` (no decimal point) tokenizes as an *int* literal with a
+                // float suffix — it is an f32 value, same compile-time RNE parse
+                // as `2.0f32` (and `2f64` is out, like every f64).
+                if i.suffix() == "f32" {
+                    let v: f32 = i
+                        .base10_digits()
+                        .parse()
+                        .map_err(|e| format!("bad f32 literal: {e}"))?;
+                    return Ok((Expr::Lit32(v.to_bits()), Width::F32));
+                }
+                if i.suffix() == "f64" {
+                    return Err(format!(
+                        "`{}` — f64 is out of the dialect (demand-gated, no named \
+                         customer; the F-wave amendment); use `f32`",
+                        i.token()
+                    ));
+                }
                 if i.suffix() == "u32" {
                     return Ok((
                         Expr::Lit32(i.base10_parse::<u32>().map_err(|e| e.to_string())?),

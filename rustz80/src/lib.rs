@@ -33,7 +33,7 @@ pub use codegen::{codegen_loop, Target};
 pub use diag::{classify_error, Diag, DiagCode, Repair};
 pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
-pub use softfloat::F32_KERNELS;
+pub use softfloat::{kernel_bank, KernelBank, BANK_FNS, BANK_ORG, BANK_SCRATCH, F32_KERNELS};
 pub use tap::to_tap;
 
 /// [`codegen_loop`] over a [`Lowered`] program — lays the **const-data section**
@@ -123,8 +123,14 @@ pub fn compile_program_for(src: &str, target: Target) -> Result<Program, String>
 pub fn compile_file(file: &syn::File, target: Target) -> Result<Program, String> {
     let lowered = lower_program_full(file, &PreludeConfig::default())?;
     let funcs = inline::inline(lowered.funcs, &[]);
-    let (code, symbols) =
-        codegen::codegen_program_c(&funcs, &lowered.consts.data, ORG, None, target)?;
+    let (code, symbols) = codegen::codegen_program_c(
+        &funcs,
+        &lowered.consts.data,
+        ORG,
+        None,
+        target,
+        &Default::default(),
+    )?;
     Ok(Program { code, symbols })
 }
 
@@ -149,8 +155,38 @@ pub fn compile_file_pruned(
     let lowered = lower_program_full(file, &PreludeConfig::default())?;
     let funcs = inline::inline(lowered.funcs, roots);
     let funcs = dce::prune(funcs, roots);
-    let (code, symbols) =
-        codegen::codegen_program_c(&funcs, &lowered.consts.data, ORG, None, target)?;
+    let (code, symbols) = codegen::codegen_program_c(
+        &funcs,
+        &lowered.consts.data,
+        ORG,
+        None,
+        target,
+        &Default::default(),
+    )?;
+    Ok(Program { code, symbols })
+}
+
+/// [`compile_file_pruned`] against the **resident kernel bank**: calls to the bank
+/// members ([`BANK_FNS`]) resolve to absolute addresses in [`kernel_bank`]'s image
+/// (loaded by the runtime at [`BANK_ORG`]) instead of appending local copies — an
+/// f32 cell's artifact then carries only its own logic, not ~8 KB of kernel bytes.
+/// Cell-target only (the bank is a Cell-VM residency concept; Spectrum images stay
+/// self-contained).
+pub fn compile_file_pruned_banked(file: &syn::File, roots: &[&str]) -> Result<Program, String> {
+    let mut prelude = PreludeConfig::default();
+    prelude.f32_bank = true;
+    let lowered = lower_program_full(file, &prelude)?;
+    let funcs = inline::inline(lowered.funcs, roots);
+    let funcs = dce::prune(funcs, roots);
+    let bank = softfloat::kernel_bank();
+    let (code, symbols) = codegen::codegen_program_c(
+        &funcs,
+        &lowered.consts.data,
+        ORG,
+        None,
+        Target::Cell,
+        &bank.symbols,
+    )?;
     Ok(Program { code, symbols })
 }
 
@@ -358,6 +394,7 @@ pub fn compile_to_tap(src: &str, entry: &str, name: &str) -> Result<Vec<u8>, Str
         ORG,
         Some(entry),
         Target::Spectrum48,
+        &Default::default(),
     )?;
     Ok(to_tap(&code, ORG, ORG, name))
 }

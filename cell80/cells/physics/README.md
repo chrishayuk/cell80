@@ -7,12 +7,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (7)
 
 | id | signature | summary |
 |---|---|---|
 | `clamp_f32` | `ClampF32::run() -> u16` | Clamp an f32 into [lo, hi] via max-then-min (x.max(lo).min(hi)) -- the branch-free form; NaN x resolves to lo (min/max treat NaN as missing data, the documented divergence from f32::clamp's NaN-propagating semantics), so the output is always a real bound. |
 | `drag_force_f32` | `DragForce::run() -> u16` | Quadratic drag force k*v*\|v\| in IEEE binary32 -- signed (opposes the sign of v when the caller negates), correctly rounded per op through the owned softfloat kernels; a non-finite force escalates instead of flowing onward. |
+| `elastic_collision_1d_f32` | `ElasticCollision1d::run() -> u16` | Perfectly elastic 1D collision, IEEE binary32: v1' = ((m1-m2)*v1 + 2*m2*v2) / (m1+m2) and v2' = ((m2-m1)*v2 + 2*m1*v1) / (m1+m2) -- momentum and energy conserving in exact arithmetic, correctly rounded here; zero total mass or non-finite results escalate typed instead of answering. |
+| `impulse_1d_f32` | `Impulse1d::run() -> u16` | 1D collision impulse with restitution, IEEE binary32: j = -(1+e)*(v1 - v2) / (inv_m1 + inv_m2) -- inverse masses as inputs (the Rapier convention; a static body is inv_m = 0, and two static bodies make the denominator 0 -> j = +/-Inf -> float_overflow escalation, never a silent explosion). |
 | `kinetic_energy_f32` | `KineticEnergy::run() -> u16` | Kinetic energy 0.5*m*v*v in IEEE binary32 through the owned softfloat kernels -- correctly rounded per op, bit-identical to rustc f32; escalates float_overflow/float_domain instead of reporting a non-finite energy. |
 | `spring_damper_step_f32` | `SpringDamperStep::run() -> u16` | One semi-implicit-Euler spring-damper step, IEEE binary32: a = -(k*x + c*v)*inv_m, then v' = v + a*dt and x' = x + v'*dt -- inverse mass as input, exactly how a Rapier-style engine stores it (and it keeps the cell division-free); non-finite state escalates instead of exploding the spring silently. |
 | `verlet_step_f32` | `VerletStep::run() -> u16` | One position-Verlet step under constant acceleration, IEEE binary32: x' = x + v*dt + 0.5*a*dt*dt and v' = v + a*dt -- the integrator's arithmetic exactly as a Rapier-style f32 engine computes it, correctly rounded per op; non-finite results escalate instead of corrupting the trajectory. |

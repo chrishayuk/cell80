@@ -281,6 +281,7 @@ mod tests {
             limits: Vec::new(),
             scale: None,
             finite_result: true,
+            kernel_bank: None,
         };
         let idx = TfidfIndex::build(vec![
             mk(
@@ -328,6 +329,7 @@ mod tests {
             limits: Vec::new(),
             scale: None,
             finite_result: true,
+            kernel_bank: None,
         };
         let idx = TfidfIndex::build(vec![mk("a", sig(2, 0)), mk("b", sig(0, 6))]);
 

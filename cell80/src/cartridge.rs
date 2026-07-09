@@ -25,7 +25,25 @@ const MAGIC: &[u8; 4] = b"CELL";
 // scale — `1` (the default: an f32-returning entry escalates typed on a non-finite
 // result) or `0` (opted out, for cells whose *job* is IEEE plumbing). Pre-v8
 // cartridges read back as `true`; the flag is inert unless the entry returns f32.
-const VERSION: u8 = 8;
+// v9 adds the **kernel-bank pin**: a presence byte, then (when the cell compiled
+// against the resident bank) the SHA-256 of the bank image it assumed — loading the
+// cartridge under a *different* bank is a hard error, never silently different
+// arithmetic. Pre-v9 cartridges read back as unbanked.
+const VERSION: u8 = 9;
+
+/// SHA-256 of the resident kernel bank's image — the content identity a banked
+/// cartridge pins in its manifest (v9): same bank bytes ⇒ same arithmetic. Cached
+/// per process (the bank itself is a deterministic compile).
+pub fn kernel_bank_hash() -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    use std::sync::OnceLock;
+    static H: OnceLock<[u8; 32]> = OnceLock::new();
+    *H.get_or_init(|| {
+        let mut h = Sha256::new();
+        h.update(&rustz80::kernel_bank().code);
+        h.finalize().into()
+    })
+}
 
 /// Serialize / read a `(name, type)` pair list (signature params / state fields).
 fn put_pairs(b: &mut Vec<u8>, v: &[(String, String)]) {
@@ -116,6 +134,10 @@ pub struct Manifest {
     /// propagate *inside* the cell (oracle fidelity); escalate-not-lie applies at
     /// the boundary. Inert for non-f32 entries.
     pub finite_result: bool,
+    /// The kernel-bank pin (v9): `Some(sha256(bank image))` for a cell compiled
+    /// against the resident softfloat bank — the arithmetic's content identity,
+    /// covered by the artifact hash the way the code bytes are.
+    pub kernel_bank: Option<[u8; 32]>,
     /// Optional **fixed-point scale** (`//! scale: N`): the number of fractional bits in
     /// the cell's `u16`/`u32` values, so a consumer reads them as `raw / 2^N` (a Q8.8
     /// cell declares `8`). `None` = plain integers. The dialect has no float type — this
@@ -139,6 +161,9 @@ pub struct CartridgeOpts {
     /// The F0.4 boundary contract — `None` means the default (`true`). See
     /// [`Manifest::finite_result`].
     pub finite_result: Option<bool>,
+    /// Compile against the resident kernel bank (`//! kernel_bank: on`) — the
+    /// image calls into `BANK_ORG` and the manifest pins the bank's hash.
+    pub kernel_bank: bool,
     /// Canonicalization strength (M2.5). Defaults to `Light` — the dialect
     /// normalizer only, byte-stable when nothing fires, so hand-authored library
     /// cells keep their hashes. The compose/campaign path passes `Full` (slots,
@@ -188,7 +213,11 @@ impl Cartridge {
         )
         .map_err(|d| d.to_string())?;
         let src: &str = &canon.source;
-        let program = CellProgram::compile_with_config(src, cfg)?;
+        let program = if opts.kernel_bank {
+            CellProgram::compile_with_config_banked(src, cfg)?
+        } else {
+            CellProgram::compile_with_config(src, cfg)?
+        };
         let syms = &program.program().symbols;
         let entry = match opts.entry {
             Some(e) if syms.contains_key(&e) => e,
@@ -215,6 +244,7 @@ impl Cartridge {
                 limits: opts.limits,
                 scale: opts.scale,
                 finite_result: opts.finite_result.unwrap_or(true),
+                kernel_bank: opts.kernel_bank.then(kernel_bank_hash),
             },
             program,
             signature: None,
@@ -258,6 +288,14 @@ impl Cartridge {
         }
         // v8: the finite_result boundary contract.
         b.push(m.finite_result as u8);
+        // v9: the kernel-bank pin (presence + 32-byte SHA-256 of the bank image).
+        match &m.kernel_bank {
+            Some(h) => {
+                b.push(1);
+                b.extend_from_slice(h);
+            }
+            None => b.push(0),
+        }
         b
     }
 
@@ -374,6 +412,28 @@ impl Cartridge {
         // v8+ carries the finite_result flag; older cartridges default to the
         // contract being on (inert unless the entry returns f32).
         let finite_result = if ver >= 8 { r.u8()? != 0 } else { true };
+        // v9+ may pin a kernel bank; loading under a different bank would be
+        // silently different arithmetic — hard error instead.
+        let kernel_bank = if ver >= 9 {
+            match r.u8()? {
+                0 => None,
+                1 => {
+                    let mut h = [0u8; 32];
+                    h.copy_from_slice(r.take(32)?);
+                    if h != kernel_bank_hash() {
+                        return Err(
+                            "cartridge pins a different kernel-bank version — recompile \
+                             against this compiler's bank (same schema, same admission)"
+                                .into(),
+                        );
+                    }
+                    Some(h)
+                }
+                other => return Err(format!("bad kernel-bank marker {other}")),
+            }
+        } else {
+            None
+        };
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
         let (stored_hash, cart_sig) = if ver >= 5 {
@@ -438,6 +498,7 @@ impl Cartridge {
                 limits,
                 scale,
                 finite_result,
+                kernel_bank,
             },
             program,
             signature: cart_sig,

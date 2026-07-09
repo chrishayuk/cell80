@@ -47,6 +47,9 @@ pub(super) struct Asm {
     /// `HL`/`DE`/`BC`. Built by the program-level entries from the lowered
     /// `Func` flags.
     pub(super) wide_sigs: HashMap<String, (bool, bool, bool)>,
+    /// Absolute extern symbols (the resident kernel bank) — seeded into the encode
+    /// symbol table so `CALL fadd` resolves to the bank when no local `fadd` exists.
+    pub(super) externs: HashMap<String, u16>,
     /// Whether the used runtime routines have been appended ([`Asm::seal`] ran).
     sealed: bool,
     /// Per-rule peephole fire counts from [`Asm::seal`] (measurement, not behaviour).
@@ -70,6 +73,7 @@ impl Asm {
             loop_stack: Vec::new(),
             func_ret_wide: false,
             wide_sigs: HashMap::new(),
+            externs: HashMap::new(),
             func_end: None,
             sealed: false,
             peep: PeepholeCounts::default(),
@@ -231,6 +235,12 @@ impl Asm {
     /// entry surfaces it as a normal compile error.
     pub(super) fn finish(mut self) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
         self.seal();
-        encode(&self.ins, self.org, self.scratch, self.n_labels)
+        encode(
+            &self.ins,
+            self.org,
+            self.scratch,
+            self.n_labels,
+            &self.externs,
+        )
     }
 }

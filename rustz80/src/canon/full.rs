@@ -108,6 +108,14 @@ pub(super) fn touches_f32(f: &syn::ItemFn) -> bool {
                 self.0 = true;
             }
         }
+        fn visit_lit_int(&mut self, li: &'ast syn::LitInt) {
+            // `2f32` tokenizes as an *int* literal with a float suffix — without
+            // this arm it would slip past the guard and the algebraic pass would
+            // fold a float as an exact integer (the F0.6 hash-fork hazard).
+            if li.suffix() == "f32" {
+                self.0 = true;
+            }
+        }
         fn visit_type_path(&mut self, t: &'ast syn::TypePath) {
             if t.path.is_ident("f32") {
                 self.0 = true;

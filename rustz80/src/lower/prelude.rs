@@ -11,6 +11,11 @@ use std::collections::HashMap;
 pub struct PreludeConfig {
     /// `(handle type name, method) → prelude function name`.
     routes: HashMap<(String, String), String>,
+    /// Compile against the **resident kernel bank**: the f32 sugar's kernel calls
+    /// resolve to `rustz80::BANK_ORG` instead of auto-appending local `Func`s, and
+    /// direct calls to bank names get their signatures injected. The caller (the
+    /// cell layer) loads the bank image before running.
+    pub f32_bank: bool,
 }
 
 impl PreludeConfig {

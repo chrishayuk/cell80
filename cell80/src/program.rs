@@ -98,6 +98,10 @@ fn prelude_fn_names() -> &'static std::collections::HashSet<String> {
 pub struct CellProgram {
     pub(super) prog: Program,
     pub(super) cfg: CellConfig,
+    /// Compiled against the **resident kernel bank**: the image's `CALL`s into
+    /// [`rustz80::BANK_ORG`] assume the bank is loaded — [`crate::Runner::new`]
+    /// places it (outside touch-tracking, like the code itself).
+    pub(super) bank: bool,
 }
 
 impl CellProgram {
@@ -136,7 +140,44 @@ impl CellProgram {
                 ));
             }
         }
-        Ok(CellProgram { prog, cfg })
+        Ok(CellProgram {
+            prog,
+            cfg,
+            bank: false,
+        })
+    }
+
+    /// [`compile_with_config`](Self::compile_with_config) against the **resident
+    /// kernel bank**: the softfloat family resolves to [`rustz80::BANK_ORG`]
+    /// instead of being appended per cell — an f32 cell's image carries only its
+    /// own logic (a banked `norm2` is ~100 bytes, not ~5,700). The classic
+    /// prelude (`gcd`, the checked family, …) still appends and prunes as ever.
+    pub fn compile_with_config_banked(src: &str, cfg: CellConfig) -> Result<Self, String> {
+        let combined = format!("{src}\n{CELL_PRELUDE}");
+        let file: syn::File = syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
+        check_caps(&file, &cfg)?;
+        let roots = entry_roots(&file);
+        let root_refs: Vec<&str> = roots.iter().map(String::as_str).collect();
+        let prog = rustz80::compile_file_pruned_banked(&file, &root_refs)?;
+        if let Some(max) = cfg.max_code_bytes {
+            if prog.code.len() > max {
+                return Err(format!(
+                    "code is {} bytes, over the {max}-byte limit",
+                    prog.code.len()
+                ));
+            }
+        }
+        Ok(CellProgram {
+            prog,
+            cfg,
+            bank: true,
+        })
+    }
+
+    /// Whether this program calls into the resident kernel bank (the runner must
+    /// load it).
+    pub fn uses_kernel_bank(&self) -> bool {
+        self.bank
     }
 
     /// The underlying program (symbol map, code).
@@ -168,7 +209,9 @@ impl CellProgram {
             | (c.max_touched.is_some() as u8) << 3
             // Bit 4 = the legacy saturate opt-in; absent (0) = halt on divide-by-zero,
             // so pre-policy images load with the safe default.
-            | ((c.div_by_zero == DivByZero::Saturate) as u8) << 4;
+            | ((c.div_by_zero == DivByZero::Saturate) as u8) << 4
+            // Bit 5 = compiled against the resident kernel bank (image v2).
+            | (self.bank as u8) << 5;
         b.push(flags);
         b.extend_from_slice(&(c.max_code_bytes.unwrap_or(0) as u32).to_le_bytes());
         b.extend_from_slice(&(c.max_touched.unwrap_or(0) as u32).to_le_bytes());
@@ -182,7 +225,7 @@ impl CellProgram {
             return Err("not a CZ80 cell image".into());
         }
         let ver = r.u8()?;
-        if ver != IMAGE_VER {
+        if ver != 1 && ver != IMAGE_VER {
             return Err(format!("unsupported cell-image version {ver}"));
         }
         let code_len = r.u16()? as usize;
@@ -200,6 +243,7 @@ impl CellProgram {
         let max_code = r.u32()? as usize;
         let max_touched = r.u32()? as usize;
         Ok(CellProgram {
+            bank: flags & 32 != 0,
             prog: Program { code, symbols },
             cfg: CellConfig {
                 allow_raw_memory: flags & 1 != 0,
@@ -218,7 +262,10 @@ impl CellProgram {
 
 const IMAGE_MAGIC: &[u8; 4] = b"CZ80";
 
-const IMAGE_VER: u8 = 1;
+// v2 adds the kernel-bank flag (bit 5 of the policy byte): a banked image's
+// `CALL`s assume the resident bank at `BANK_ORG`, so a pre-bank host must reject
+// it rather than run it bankless into garbage. v1 images load unchanged.
+const IMAGE_VER: u8 = 2;
 
 /// A tiny bounds-checked byte cursor — shared by [`CellProgram::from_bytes`] and the
 /// `.cell` cartridge reader ([`super::cartridge`]).

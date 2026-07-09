@@ -713,3 +713,85 @@ pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
     ("fmin", &["flt"]),
     ("fmax", &["flt"]),
 ];
+
+/// Where the resident kernel bank lives in the Cell VM's map: code at
+/// [`BANK_ORG`], the bank's *own* locals at [`BANK_SCRATCH`] (disjoint from the
+/// calling cell's scratch at `0x9000+`, or a kernel call would clobber its
+/// caller's locals), everything below the stack.
+pub const BANK_ORG: u16 = 0xC000;
+/// The bank's private register file: `0xB800..0xC000` (state ends well below).
+pub const BANK_SCRATCH: u16 = 0xB800;
+
+/// The bank membership: the arithmetic five, the comparison trio, and the two
+/// helpers — the heavy shared family. Conversions/rounding/min-max stay
+/// per-cell (they're small and often absent); when compiled banked they resolve
+/// `f32_pack`/`f32_shr_jam`/`flt` into the bank by name.
+pub const BANK_FNS: &[&str] = &[
+    "fadd",
+    "fsub",
+    "fmul",
+    "fdiv",
+    "fsqrt",
+    "feq",
+    "flt",
+    "fle",
+    "f32_shr_jam",
+    "f32_pack",
+];
+
+/// The call-boundary shapes of the bank fns (`(wide first, wide second, wide
+/// ret)`), for seeding `wide_sigs` when the definitions aren't local.
+pub(crate) const BANK_WIDE_SIGS: &[(&str, (bool, bool, bool))] = &[
+    ("fadd", (true, true, true)),
+    ("fsub", (true, true, true)),
+    ("fmul", (true, true, true)),
+    ("fdiv", (true, true, true)),
+    ("fsqrt", (true, false, true)),
+    ("feq", (true, true, true)),
+    ("flt", (true, true, true)),
+    ("fle", (true, true, true)),
+    ("f32_shr_jam", (true, true, true)),
+    ("f32_pack", (true, true, true)),
+];
+
+/// The resident kernel bank: [`BANK_FNS`] compiled once at [`BANK_ORG`] with
+/// locals at [`BANK_SCRATCH`]. Deterministic (same compiler ⇒ same bytes), so
+/// its content identity can enter a cartridge's artifact-hash context the way
+/// the trap table's semantics already do. Built lazily, cached for the process.
+pub struct KernelBank {
+    /// The bank image, loaded verbatim at [`BANK_ORG`].
+    pub code: Vec<u8>,
+    /// Absolute entry addresses by kernel name.
+    pub symbols: std::collections::HashMap<String, u16>,
+}
+
+pub fn kernel_bank() -> &'static KernelBank {
+    use std::sync::OnceLock;
+    static BANK: OnceLock<KernelBank> = OnceLock::new();
+    BANK.get_or_init(|| {
+        let file: syn::File = syn::parse_str(F32_KERNELS).expect("kernel source parses");
+        let kept: Vec<syn::Item> = file
+            .items
+            .into_iter()
+            .filter(|item| match item {
+                syn::Item::Fn(f) => BANK_FNS.contains(&f.sig.ident.to_string().as_str()),
+                _ => false,
+            })
+            .collect();
+        let file = syn::File {
+            shebang: None,
+            attrs: Vec::new(),
+            items: kept,
+        };
+        let funcs = crate::lower::lower_program(&file, &crate::lower::PreludeConfig::default())
+            .expect("bank lowers");
+        let (code, symbols) =
+            crate::codegen::codegen_bank(&funcs, BANK_ORG, BANK_SCRATCH).expect("bank encodes");
+        assert!(
+            BANK_ORG as usize + code.len() <= 0xFF00,
+            "kernel bank outgrew its region ({} bytes)",
+            code.len()
+        );
+        KernelBank { code, symbols }
+    })
+}

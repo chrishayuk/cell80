@@ -181,6 +181,14 @@ impl Runner {
         let mut mem = vec![0u8; 0x1_0000];
         let org = ORG as usize;
         mem[org..org + program.prog.code.len()].copy_from_slice(&program.prog.code);
+        if program.uses_kernel_bank() {
+            // The resident kernel bank, placed like the code itself — outside the
+            // touch-tracking bus, so it survives the per-run reset (sandboxed cells
+            // can't write it: no raw memory, and stores go to scratch/state).
+            let bank = rustz80::kernel_bank();
+            let b = rustz80::BANK_ORG as usize;
+            mem[b..b + bank.code.len()].copy_from_slice(&bank.code);
+        }
         Runner {
             prog: program.prog.clone(),
             cfg: program.cfg.clone(),

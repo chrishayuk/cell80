@@ -334,6 +334,16 @@ target, `0xF000` on Spectrum. That gives a cell ~12KB for code + locals — a
 three-kernel `lerp` chain (fsub → fmul → fadd, ~8KB) compiles, runs both targets,
 and stays bit-identical to rustc (`diff::f32_ops::f32_multi_kernel_chain`).
 
+**The resident kernel bank** (opt-in, `//! kernel_bank: on`): the arithmetic five +
+comparison trio + helpers compile once to an 11,156-byte bank at `BANK_ORG = 0xC000`
+(its own locals at `0xB800`, disjoint from cell scratch); a banked cell's `CALL`s
+resolve into it and its image carries only its own logic — `impulse_1d_f32` went
+8,197 B → 337 B. The cartridge pins the bank image's SHA-256 (`.cell` v9;
+different bank ⇒ hard load error), the cell image carries a bank flag (image v2),
+and the runner places the bank outside touch-tracking so it survives per-run
+resets. Non-bank kernels (conversions, rounding, min/max) still append per cell
+and resolve their `f32_pack`/`flt` calls into the bank when banked.
+
 One honest limit remains, F1 work: the variable-distance shifts inside
 `f32_shr_jam`/alignment are shift-by-1 loops because u32 shifts take literal amounts
 only — the main T-state lever. The enabling codegen win is already in: *constant* u32

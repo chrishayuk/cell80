@@ -429,6 +429,15 @@ fn f32_chains_never_reassociate() {
     // is that the *float arithmetic structure* survives untouched — every f32
     // literal still present, every chain in source order, no fold, no
     // cancellation, no reassociation.
+    // the suffix-only spelling (`3f32`, an *int* token with a float suffix) is
+    // guarded identically — it once slipped past the float-literal visitor
+    let out = canonicalize_source("fn f(a: f32) -> f32 { a * 3f32 / 3f32 }", &full())
+        .expect("canonicalizes");
+    assert!(
+        out.source.replace(' ', "").contains("a*3f32/3f32"),
+        "suffix-only f32 chain rewritten: {}",
+        out.source
+    );
     let squash = |s: &str| s.replace([' ', '\n'], "");
     for (src, chain) in cases.iter().zip([
         "a*3.0f32/3.0f32",   // defer-division must NOT cancel *3.0/3.0

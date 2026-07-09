@@ -45,7 +45,7 @@ pub fn codegen_program(
     entry: Option<&str>,
     target: Target,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
-    codegen_program_c(funcs, &[], org, entry, target)
+    codegen_program_c(funcs, &[], org, entry, target, &HashMap::new())
 }
 
 /// [`codegen_program`] with a **const-data section**: after the functions, every
@@ -57,9 +57,18 @@ pub(crate) fn codegen_program_c(
     org: u16,
     entry: Option<&str>,
     target: Target,
+    externs: &HashMap<String, u16>,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
     let mut a = Asm::new(org, target);
     a.wide_sigs = wide_sig_map(funcs);
+    if !externs.is_empty() {
+        // Extern (bank) call boundaries: seed the wide-call shapes for names with
+        // no local definition, and the absolute addresses for encode.
+        for (name, sig) in crate::softfloat::BANK_WIDE_SIGS {
+            a.wide_sigs.entry(name.to_string()).or_insert(*sig);
+        }
+        a.externs = externs.clone();
+    }
     if let Some(e) = entry {
         a.fx(&[0xF3]); // DI
         a.call(e); // CALL entry
@@ -106,6 +115,35 @@ pub(crate) fn codegen_program_c(
     a.scratch = scratch as u16;
     let (code, symbols) = a.finish()?;
     Ok((code, symbols))
+}
+
+/// Compile a self-contained routine bank: `funcs` at `org` with locals at a
+/// **fixed** private scratch base (the caller guarantees the region is disjoint
+/// from any calling program's own scratch). No entry preamble — every fn is a
+/// plain `CALL` target; the symbol map is the bank's public interface.
+pub(crate) fn codegen_bank(
+    funcs: &[(String, Func)],
+    org: u16,
+    scratch: u16,
+) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
+    let mut a = Asm::new(org, Target::Cell);
+    a.wide_sigs = wide_sig_map(funcs);
+    let mut base = 0u16;
+    for (name, func) in funcs {
+        a.define(name);
+        a.base = base;
+        emit_func(&mut a, func);
+        base += func.n_locals as u16;
+    }
+    a.seal();
+    let total_slots: u32 = funcs.iter().map(|(_, f)| f.n_locals as u32).sum();
+    if scratch as u32 + total_slots * 2 > org as u32 {
+        return Err(format!(
+            "bank locals ({total_slots} slots from {scratch:#06x}) overrun the bank code at {org:#06x}"
+        ));
+    }
+    a.scratch = scratch;
+    a.finish()
 }
 
 /// A generic **frame-synced entry loop** at `org`: zero a `state_bytes` region at

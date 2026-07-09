@@ -204,12 +204,22 @@ kernels. Contract structure from the Q-spec, one honest narrowing stated loudly:
 integrators take **inverse mass**, the Rapier convention, which also keeps them
 division-free), each finite-gated (`0xFF07`/`0xFF08` on non-finite outputs), each
 bit-identical to host rustc f32 in the library oracle, each through full admission.
-**Two cells are authored but blocked on kernel bytes** — `impulse_1d_f32` (8,197 B,
-five bytes over the 8,192 sandbox cap) and `elastic_collision_1d_f32` (8,570 B),
-parked in `cell80/cells-pending/physics/` with their measurements: they are the
-**bank-resident-kernels demand signal** this amendment anticipated, recorded rather
-than cap-gamed. `lerp_f32`/`norm2_f32` live in the `softfloat` pack. The
-bit-for-bit Rapier-trace validation remains open and gates any video claim.*
+**The bank answered the demand signal one day later (2026-07-09)**: the resident
+kernel bank — the arithmetic five + comparison trio + helpers (11,156 B), compiled
+once at `BANK_ORG = 0xC000` with its own locals at `0xB800` (disjoint from cell
+scratch), loaded by the runner outside touch-tracking like the code itself — and
+`impulse_1d_f32`/`elastic_collision_1d_f32` moved in **unchanged except one header
+line** (`//! kernel_bank: on`): **8,197 B → 337 B and 8,570 B → 650 B**. A banked
+cartridge pins the bank image's SHA-256 in its manifest (`.cell` v9) and loading
+under a different bank is a hard error — same-bank-or-refuse, never silently
+different arithmetic. Banking is opt-in per cell (existing inline cells keep their
+bytes and hashes); the diff bank proves the bank bit-invisible
+(`f32_bank_is_bit_invisible_and_small`). The banked-compile work also surfaced and
+fixed a latent literal bug: `2f32` (no decimal point) tokenizes as an *int* literal
+with a float suffix — it now lowers as f32 and the F0.6 canon guard covers it
+(previously it slipped past the float-literal visitor: a real hash-fork hazard).
+`lerp_f32`/`norm2_f32` live in the `softfloat` pack. The bit-for-bit Rapier-trace
+validation remains open and gates any video claim.*
 
 Named, demand-sourced from `chuk-mcp-physics` (Rapier) and SOMA rather than a taxonomy:
 `verlet_step`, `impulse_1d`, `drag_force`, `spring_damper_step`, `kinetic_energy`,

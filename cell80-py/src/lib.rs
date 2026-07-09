@@ -76,7 +76,7 @@ impl CellHost {
     }
 
     /// Compile a dialect `.rs` source into the catalog. `entry` defaults to `run`/`main`.
-    #[pyo3(signature = (id, src, summary="", tags=Vec::new(), entry=None, limits=Vec::new()))]
+    #[pyo3(signature = (id, src, summary="", tags=Vec::new(), entry=None, limits=Vec::new(), kernel_bank=false))]
     fn add_source(
         &mut self,
         id: &str,
@@ -85,6 +85,7 @@ impl CellHost {
         tags: Vec<String>,
         entry: Option<String>,
         limits: Vec<String>,
+        kernel_bank: bool,
     ) -> PyResult<()> {
         let cart = Cartridge::compile(
             src,
@@ -95,6 +96,7 @@ impl CellHost {
                 tags,
                 entry,
                 limits,
+                kernel_bank,
                 ..Default::default()
             },
         )

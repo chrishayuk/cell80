@@ -134,3 +134,84 @@ fn physics_pack_escalates_non_finite() {
         Halt::Escalate(0xFF07)
     );
 }
+
+/// The banked pair (`//! kernel_bank: on` — their images call into the resident
+/// bank at `BANK_ORG` and carry only their own logic: 337 B and 650 B, down from
+/// 8,197 B and 8,570 B inline). Same oracle discipline: bit-identical to host
+/// rustc f32, typed escalation on non-finite results.
+#[test]
+fn banked_physics_cells_match_rustc_bit_for_bit() {
+    // impulse: j = -(1+e)*(v1 - v2) / (inv_m1 + inv_m2), inverse masses in
+    for (e, v1, v2, im1, im2) in [
+        (0.8f32, 3.0f32, -1.0f32, 0.5f32, 1.0f32),
+        (0.0, 10.0, 0.0, 0.1, 0.0), // second body static (inv_m = 0)
+        (1.0, -2.5, 2.5, 2.0, 2.0),
+    ] {
+        let cell = run_f32(
+            "impulse_1d_f32",
+            "Impulse1d",
+            &[
+                ("e", e),
+                ("v1", v1),
+                ("v2", v2),
+                ("inv_m1", im1),
+                ("inv_m2", im2),
+            ],
+        );
+        let want = -((1.0f32 + e) * (v1 - v2)) / (im1 + im2);
+        assert_eq!(
+            get(&cell, "j").to_bits(),
+            want.to_bits(),
+            "impulse({e},{v1},{v2})"
+        );
+    }
+    // elastic: the cell's exact parenthesization, reproduced host-side
+    for (m1, v1, m2, v2) in [
+        (2.0f32, 3.0f32, 1.0f32, -1.5f32),
+        (1.0, 5.0, 1.0, 0.0), // equal masses swap velocities
+        (0.145, 40.0, 5.4, 0.0),
+    ] {
+        let cell = run_f32(
+            "elastic_collision_1d_f32",
+            "ElasticCollision1d",
+            &[("m1", m1), ("v1", v1), ("m2", m2), ("v2", v2)],
+        );
+        let msum = m1 + m2;
+        let d = m1 - m2;
+        let w1 = (d * v1 + (2.0f32 * m2) * v2) / msum;
+        let w2 = ((2.0f32 * m1) * v1 - d * v2) / msum;
+        assert_eq!(get(&cell, "v1_out").to_bits(), w1.to_bits());
+        assert_eq!(get(&cell, "v2_out").to_bits(), w2.to_bits());
+    }
+}
+
+/// The banked boundary story: two static bodies (both inverse masses zero) make
+/// the impulse denominator zero — ±Inf — and the cell escalates float_overflow
+/// exactly as its doc line promises; zero total mass NaNs the elastic split.
+#[test]
+fn banked_physics_cells_escalate_non_finite() {
+    assert_eq!(
+        halt_of(
+            "impulse_1d_f32",
+            "Impulse1d",
+            &[
+                ("e", 0.5),
+                ("v1", 1.0),
+                ("v2", -1.0),
+                ("inv_m1", 0.0),
+                ("inv_m2", 0.0)
+            ],
+        ),
+        Halt::Escalate(0xFF07),
+        "static-static contact must escalate, not answer Inf"
+    );
+    assert_eq!(
+        halt_of(
+            "elastic_collision_1d_f32",
+            "ElasticCollision1d",
+            &[("m1", 0.0), ("v1", 1.0), ("m2", 0.0), ("v2", -1.0)],
+        ),
+        Halt::Escalate(0xFF08),
+        "zero total mass is 0/0 — float_domain"
+    );
+}

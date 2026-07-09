@@ -146,10 +146,12 @@ fn parse_meta(
     Vec<String>,
     Option<u8>,
     Option<bool>,
+    bool,
 ) {
     let (mut summary, mut tags, mut entry, mut limits, mut scale) =
         (String::new(), Vec::new(), None, Vec::new(), None);
     let mut finite_result = None;
+    let mut kernel_bank = false;
     let csv = |s: &str| -> Vec<String> {
         s.split(',')
             .map(|s| s.trim().to_string())
@@ -171,6 +173,10 @@ fn parse_meta(
             } else if let Some(sv) = rest.strip_prefix("scale:") {
                 // Fixed-point scale (fractional bits) — `//! scale: 8` for a Q8.8 cell.
                 scale = parse_scale(sv);
+            } else if let Some(kv) = rest.strip_prefix("kernel_bank:") {
+                // Compile against the resident kernel bank — the image calls into
+                // BANK_ORG and the manifest pins the bank hash (`.cell` v9).
+                kernel_bank = matches!(kv.trim(), "on" | "true" | "1");
             } else if let Some(fv) = rest.strip_prefix("finite_result:") {
                 // The F0.4 boundary contract — `off` opts an IEEE-plumbing cell out
                 // of the non-finite-return escalation (default on).
@@ -185,7 +191,15 @@ fn parse_meta(
             break; // first code line — header done
         }
     }
-    (summary, tags, entry, limits, scale, finite_result)
+    (
+        summary,
+        tags,
+        entry,
+        limits,
+        scale,
+        finite_result,
+        kernel_bank,
+    )
 }
 
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
@@ -196,7 +210,8 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
         Some("rs") => Some((|| {
             let src =
                 std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let (summary, tags, entry, limits, scale, finite_result) = parse_meta(&src);
+            let (summary, tags, entry, limits, scale, finite_result, kernel_bank) =
+                parse_meta(&src);
             let id = path
                 .file_stem()
                 .and_then(|s| s.to_str())
@@ -213,6 +228,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
                     limits,
                     scale,
                     finite_result,
+                    kernel_bank,
                     ..Default::default()
                 },
             )
@@ -1304,11 +1320,11 @@ mod tests {
     fn parse_meta_reads_finite_result() {
         // The F0.4 header key: `off` opts an IEEE-plumbing cell out of the
         // non-finite-return escalation; absent means the default (on).
-        let (.., finite) = parse_meta("//! s\n//! finite_result: off\nfn run() -> u16 { 1u16 }");
+        let (.., finite, _) = parse_meta("//! s\n//! finite_result: off\nfn run() -> u16 { 1u16 }");
         assert_eq!(finite, Some(false));
-        let (.., finite) = parse_meta("//! s\n//! finite_result: on\nfn run() -> u16 { 1u16 }");
+        let (.., finite, _) = parse_meta("//! s\n//! finite_result: on\nfn run() -> u16 { 1u16 }");
         assert_eq!(finite, Some(true));
-        let (.., finite) = parse_meta("//! s\nfn run() -> u16 { 1u16 }");
+        let (.., finite, _) = parse_meta("//! s\nfn run() -> u16 { 1u16 }");
         assert_eq!(finite, None);
     }
 
@@ -1359,12 +1375,12 @@ mod tests {
         assert_eq!(parse_scale("Q16.16"), Some(16));
         assert_eq!(parse_scale("  12 "), Some(12));
         assert_eq!(parse_scale("nonsense"), None);
-        let (summary, _, _, _, scale, _) =
+        let (summary, _, _, _, scale, _, _) =
             parse_meta("//! Q8.8 multiply\n//! tags: math\n//! scale: 8\nfn run() -> u16 { 0u16 }");
         assert_eq!(scale, Some(8));
         // The scale line never leaks into the summary; absent → None.
         assert_eq!(summary, "Q8.8 multiply");
-        let (_, _, _, _, none, _) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
+        let (_, _, _, _, none, _, _) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
         assert_eq!(none, None);
         // End-to-end: the library path picks up `q_mul`'s `//! scale: 8` (skip if the
         // sibling cells corpus isn't present, e.g. a packaged crates.io build).

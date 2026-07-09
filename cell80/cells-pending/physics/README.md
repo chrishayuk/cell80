@@ -1,17 +1,14 @@
-# cells-pending/physics — authored, verified shape, blocked on kernel bytes
+# cells-pending/physics — emptied: the bank answered
 
-These cells are **complete and correct by construction** (typed f32 through the
-owned softfloat kernels, finite-gated outputs) but **refused by the sandbox code
-cap**: each pulls all four arithmetic kernels and lands just over the 8192-byte
-policy (measured 2026-07-08: `impulse_1d_f32` **8,197 B** — five bytes over —
-and `elastic_collision_1d_f32` **8,570 B**, after bit-exact restructuring).
+The two cells that sat here (`impulse_1d_f32` at 8,197 B, `elastic_collision_1d_f32`
+at 8,570 B — each just over the 8,192-byte sandbox cap because it carried all four
+arithmetic kernels) moved into `cell80/cells/physics/` the day after they were
+parked, **unchanged except for one header line** (`//! kernel_bank: on`): the
+resident kernel bank landed, their images now call into `BANK_ORG` and carry only
+their own logic — **337 B and 650 B**. The demand signal worked exactly as the
+F-wave amendment registered it: measure the refusal, build the bank, move the
+cells, never bend the cap.
 
-They are the **bank-resident-kernels demand signal** the F-wave amendment
-registered: a cell carrying its own ~8 KB of kernel bytes is honest but heavy,
-and the moment two cells in one pack breach the cap, the fix is the kernel bank
-(load the family once, hash the bank version into the artifact context), not a
-bigger cap. When the bank lands, these move into `cell80/cells/physics/`
-unchanged and pay admission like everyone else.
-
-They are deliberately *outside* the discovered library tree so the index, golden,
-and admission gates stay truthful about what actually ships.
+This directory stays as the pattern's home: a cell blocked on a *policy* gate
+parks here with its measurements, and the gate's answer — not an exception —
+unblocks it.

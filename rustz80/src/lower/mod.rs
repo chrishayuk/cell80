@@ -228,7 +228,21 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
     mono_state.generic_structs = generic_structs;
     let mono = RefCell::new(mono_state);
     let consts_cell = RefCell::new(consts::collect_consts(file)?);
-    let fn_sigs = collect_fn_sigs(file);
+    let mut fn_sigs = collect_fn_sigs(file);
+    if prelude.f32_bank {
+        // Bank mode: direct (bits-level) calls to bank kernels type-check against
+        // the kernel text's u32 signatures even though no local definition exists —
+        // the call resolves to the bank at encode. A local definition still shadows.
+        for name in crate::softfloat::BANK_FNS {
+            if !fn_sigs.contains_key(*name) {
+                let (args, ret) = match *name {
+                    "fsqrt" => (vec![Width::DWord], Width::DWord),
+                    _ => (vec![Width::DWord, Width::DWord], Width::DWord),
+                };
+                fn_sigs.insert(name.to_string(), FnSig { args, ret });
+            }
+        }
+    }
     let no_args = HashMap::new();
     let no_const = HashMap::new();
     let mut out = Vec::new();
@@ -367,6 +381,12 @@ pub fn lower_program_full(file: &syn::File, prelude: &PreludeConfig) -> Result<L
         for item in &kfile.items {
             let syn::Item::Fn(f) = item else { continue };
             let kname = f.sig.ident.to_string();
+            // Bank mode: bank members resolve to the resident bank — never appended
+            // locally (a non-bank kernel like `int_to_f32` still appends, and its
+            // internal `f32_pack` call resolves into the bank at encode).
+            if prelude.f32_bank && crate::softfloat::BANK_FNS.contains(&kname.as_str()) {
+                continue;
+            }
             if want.contains(kname.as_str()) && !defined.contains(&kname) {
                 let func = lower_with(
                     f,

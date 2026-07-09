@@ -241,6 +241,25 @@ pub(crate) fn run_program_pruned(src: &str, entry: &str) -> u16 {
     spectrum
 }
 
+/// Run a **banked** program on the Cell target: compile against the resident
+/// kernel bank, preload the bank image at `BANK_ORG`, run, return `HL`. The
+/// caller asserts against the same rustc oracle as the inline path — the bank
+/// must be bit-invisible.
+pub(crate) fn run_program_banked(src: &str, entry: &str) -> u16 {
+    let file: syn::File =
+        syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
+    let prog = rustz80::compile_file_pruned_banked(&file, &[entry])
+        .unwrap_or_else(|e| panic!("banked compile failed: {e}"));
+    let bank = rustz80::kernel_bank();
+    let (cpu, _) = exec_args(
+        &prog.code,
+        prog.symbols[entry],
+        &[],
+        &[(rustz80::BANK_ORG, &bank.code)],
+    );
+    cpu.regs.hl()
+}
+
 /// Run a program for its memory effects and return the bus. Both targets run and the
 /// buses must agree everywhere **except the code region** (`ORG..SCRATCH`), which
 /// differs by construction (traps vs software routines) and is masked out.

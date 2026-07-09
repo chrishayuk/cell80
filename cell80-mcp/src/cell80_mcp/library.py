@@ -14,11 +14,12 @@ import pathlib
 import cell80_py
 
 
-def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str]]:
-    """Read a cell source's leading `//!` header → (summary, tags, entry, limits).
-    `limits` is the escalation contract: what the cell declares it can't do
-    (`//! limits: floats, inputs > 65535`)."""
-    summary, tags, entry, limits = "", [], None, []
+def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str], bool]:
+    """Read a cell source's leading `//!` header → (summary, tags, entry, limits,
+    kernel_bank). `limits` is the escalation contract: what the cell declares it
+    can't do (`//! limits: floats, inputs > 65535`); `kernel_bank` compiles the
+    cell against the resident softfloat bank (`//! kernel_bank: on`)."""
+    summary, tags, entry, limits, kernel_bank = "", [], None, [], False
     for line in src.splitlines():
         s = line.strip()
         if s.startswith("//!"):
@@ -29,11 +30,13 @@ def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str]]:
                 entry = r[6:].strip()
             elif r.startswith("limits:"):
                 limits = [x.strip() for x in r[7:].split(",") if x.strip()]
+            elif r.startswith("kernel_bank:"):
+                kernel_bank = r[12:].strip() in ("on", "true", "1")
             elif not summary:
                 summary = r
         elif s and not s.startswith("//"):
             break  # first code line — header done
-    return summary, tags, entry, limits
+    return summary, tags, entry, limits, kernel_bank
 
 
 class CellLibrary:
@@ -58,8 +61,8 @@ class CellLibrary:
         for f in files:
             if f.suffix == ".rs":
                 src = f.read_text()
-                summary, tags, entry, limits = _parse_header(src)
-                self.host.add_source(f.stem, src, summary, tags, entry, limits)
+                summary, tags, entry, limits, kernel_bank = _parse_header(src)
+                self.host.add_source(f.stem, src, summary, tags, entry, limits, kernel_bank)
                 self._ids.append(f.stem)
             elif f.suffix == ".cell":
                 self.host.add_cell(f.read_bytes())

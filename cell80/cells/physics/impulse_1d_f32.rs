@@ -1,5 +1,6 @@
 //! 1D collision impulse with restitution, IEEE binary32: j = -(1+e)*(v1 - v2) / (inv_m1 + inv_m2) -- inverse masses as inputs (the Rapier convention; a static body is inv_m = 0, and two static bodies make the denominator 0 -> j = +/-Inf -> float_overflow escalation, never a silent explosion).
 //! tags: physics, impulse, collision, restitution, contact, momentum, f32, float, softfloat, mechanics
+//! kernel_bank: on
 //! entry: Impulse1d::run
 struct Impulse1d {
     e: f32,

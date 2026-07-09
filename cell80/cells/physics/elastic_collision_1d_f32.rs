@@ -1,5 +1,6 @@
 //! Perfectly elastic 1D collision, IEEE binary32: v1' = ((m1-m2)*v1 + 2*m2*v2) / (m1+m2) and v2' = ((m2-m1)*v2 + 2*m1*v1) / (m1+m2) -- momentum and energy conserving in exact arithmetic, correctly rounded here; zero total mass or non-finite results escalate typed instead of answering.
 //! tags: physics, elastic, collision, momentum, conservation, bounce, f32, float, softfloat, mechanics
+//! kernel_bank: on
 //! entry: ElasticCollision1d::run
 struct ElasticCollision1d {
     m1: f32,
