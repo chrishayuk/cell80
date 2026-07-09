@@ -333,13 +333,16 @@ wave 13   301 cells   + matrix (matrix_det_2x2, matrix_solve_2x2 — the
                         sharing a denominator" shape matrix_solve_2x2
                         uses). correlation/effect_size_r (Q8.8, needing
                         q_sqrt/q_div) deferred — see the pack note below.
-next      ~2           + correlation, effect_size_r (Q8.8, deferred from
-                        wave 13) plus Wave Q0 (Q16.16 plumbing) as a
-                        prerequisite for the 4 Q-format candidates;
+wave 14   303 cells   + Q8.8 statistics gap-fill: correlation,
+                        effect_size_r (deferred from wave 13) — closes
+                        out the original 77-candidate math-server map
+                        in full. See the pack note below.
+next      ~4           + Wave Q0 (Q16.16 plumbing) as a prerequisite for
+                        the 4 Q-format candidates it unlocks;
                         cosine_score_approx (deferred until cell_solve
                         reads out); CORDIC trig remains demand-gated per
-                        docs/real-valued-cells-spec.md Wave 3 — this is
-                        the last wave from the original 77-candidate
+                        docs/real-valued-cells-spec.md Wave 3 — none of
+                        this remains from the original 77-candidate
                         math-server map
 ```
 
@@ -1743,6 +1746,71 @@ entries ride along in the same shared file, unavoidably, as before).
 
 This closes out `docs/math-server-map.md`'s vector candidates in full — every
 `linear_algebra.vectors` candidate that map named is now landed.
+
+**Wave 13 — matrix + statistics from precomputed sums (2026-07-09), the "vector
+floor" exception and the bivariate-statistics slice.**
+
+- **`matrix_det_2x2(a, b, c, d)`** computes `a*d - b*c` as a signed sign-magnitude
+  result — the smallest genuinely useful matrix operation, and, per
+  `docs/math-server-map.md`'s own scoping, as far as the library's matrix non-goal
+  extends: no general NxN solver, just the 2x2 floor a handful of other candidates
+  (Cramer's rule, area-of-triangle-style uses) actually need.
+- **`matrix_solve_2x2(...)`** solves a 2x2 linear system via Cramer's rule,
+  returning x and y as exact signed fractions sharing one positive denominator
+  (the determinant) — the same "two fractions, one shared denominator" shape
+  `linear_regression_slope` below also uses, never rounded.
+- **`covariance(n, sum_x, sum_y, sum_xy)`** and **`linear_regression_slope(n,
+  sum_x, sum_y, sum_xy, sum_x2)`** both compute from precomputed sums rather than
+  a raw dataset — that aggregation stays upstream, matching `running_variance_step`'s
+  own bivariate framing — and both return exact signed fractions (numerator over
+  denominator) instead of rounding to an integer. `linear_regression_slope`
+  escalates when every x value is identical (the denominator vanishes — undefined
+  slope, a vertical line).
+
+`correlation`/`effect_size_r` — this map's remaining statistics candidates, both
+Q8.8, needing an integer square root at real precision the sums above don't
+naturally fit — were deliberately deferred to a follow-up wave; see the Wave 14
+note below.
+
+Gate: 301 admitted, this wave's own contribution (297→301). The real total landed
+at 306 once a concurrent session's F3 physics pack settled its own in-flight
+sandboxed-cap issue mid-wave — unrelated cells, not this wave's concern, the same
+"two sessions' work lands in the same commit" shape wave 12's note already logged
+for the `physics` pack.
+
+**Wave 14 — Q8.8 statistics gap-fill (2026-07-09): `correlation` and
+`effect_size_r`, closing out `docs/math-server-map.md`'s entire original
+77-candidate list.**
+
+- **`correlation(n, sum_x, sum_y, sum_xy, sum_x2, sum_y2)`** computes the Pearson
+  correlation coefficient from precomputed sums as a Q8.8 fixed-point value bounded
+  to [-1, 1] by construction (Cauchy-Schwarz): a signed numerator
+  (`n*sum_xy - sum_x*sum_y`) over the square root of a product of two variance-like
+  factors (`n*sum_x2 - sum_x^2`) and (`n*sum_y2 - sum_y^2`), each guarded
+  non-negative before the product is taken. Escalates (halt `0xFF06`) when either
+  factor — or their product — is zero: no variance in x or y, correlation
+  undefined.
+- **`effect_size_r(t, df)`** converts a t-statistic to effect size `r = t /
+  sqrt(t^2 + df)`, a Q8.8 value bounded to [-1, 1] by construction (`t^2 <=
+  t^2+df` always). `df = 0` returns exactly ±1 (`r = t/|t|`) rather than a
+  near-miss.
+- Both share the same **scale-before-sqrt precision technique**: rather than
+  dividing by a truncated integer square root directly (an early prototype measured
+  ~13% relative error on small inputs doing exactly that), the value under the root
+  is scaled by 256 *before* the integer sqrt, then a further-scaled numerator is
+  divided by that root in one step — the same order `q_sqrt` itself uses (sqrt
+  first, divide last). Verified against an independent Python reference over
+  thousands of random trials: worst-case error under one Q8.8 unit.
+- One "vocabulary pollution" retrieval bug surfaced and got fixed in the same
+  wave: `covariance`'s own tags had carried the literal word `"correlation"` since
+  wave 13 (added before a dedicated `correlation` cell existed), which out-ranked
+  the new cell on its own paraphrase query. Trimmed from `covariance`'s tags — the
+  same bug class waves 7 and 9 already hit.
+
+Gate: 310 admitted, 0 refused. Codegen golden regenerated, purely additive. This
+closes `docs/math-server-map.md`'s original 77-candidate list in full — every
+`candidate`-classified function that map named is now either landed or explicitly
+folded/deferred with a documented reason.
 
 ## Mine the ecosystem first
 

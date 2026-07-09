@@ -1,5 +1,5 @@
 //! Population covariance from precomputed sums (not a raw dataset -- that aggregation stays upstream, matching running_variance_step's own bivariate framing): cov = (n*sum_xy - sum_x*sum_y) / n^2, returned as an exact signed fraction (num/den, den always positive) rather than rounded to an integer.
-//! tags: statistics, covariance, correlation, bivariate, mean, fraction, wide, u32, checked, escalate
+//! tags: statistics, covariance, bivariate, mean, fraction, wide, u32, checked, escalate
 //! entry: Covariance::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if n == 0; escalates (halt 0xFF05, needs_wider_math) if an intermediate product or sum overflows u32
 struct Covariance { n: u32, sum_x: u32, sum_y: u32, sum_xy: u32, num_mag: u32, num_neg: u16, den: u32 }

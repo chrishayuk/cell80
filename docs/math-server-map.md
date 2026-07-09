@@ -64,6 +64,13 @@ four matched by exact name. `correlation`/`effect_size_r` (this map's remaining
 `statistics.descriptive`/`statistics.inference` candidates, both Q8.8) deferred to a
 follow-up — the last two candidates from this map's original 77.*
 
+*Update (2026-07-09, Wave 14): `correlation` and `effect_size_r` landed — see
+`docs/library-growth.md`'s "Wave 14" note. Both matched by exact name, both Q8.8
+fixed-point via the same scale-before-sqrt precision technique `q_sqrt` itself
+uses. This closes out every `candidate`-classified function this map named —
+**the original 77-candidate list is now fully resolved** (landed, folded into a
+generalization, or explicitly deferred with a documented reason).*
+
 ## What this is
 
 `chuk-mcp-math-server` (the MCP server named in the spec) depends on a separate

@@ -268,7 +268,7 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — 209 cells across 30+ families (2026-07-05).**
+6. **Grow the standard cell library — 310 cells across 30+ families (2026-07-09).**
    `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
    number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
    scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
@@ -281,6 +281,24 @@ strictly by sequence; the library grows by eval need:
    surfacing which schemas actually recur — not more speculative candidates. Every batch has
    cost real, only partially-recovered retrieval precision; the library-growth doc tracks the
    tradeoff checkpoint by checkpoint.
+   **The 209→310 gap is `docs/math-server-map.md`'s mining pass** (`chuk-mcp-math-server`'s
+   642 functions classified against the live library) **plus its full harvest, waves 6-14
+   (2026-07-07 to 2026-07-09)**: number theory (Möbius/omega/divisor-power-sum/Jordan
+   totient/Carmichael lambda, figurate numbers, recursive sequences, digit operations,
+   modular/classic number theory, combinatorics), the geometry/vector integer subset
+   (3D distance, cross/triple products), the matrix "vector floor" exception
+   (`matrix_det_2x2`/`matrix_solve_2x2`), and bivariate statistics from precomputed sums
+   (`covariance`/`linear_regression_slope`/`correlation`/`effect_size_r`, the last two Q8.8
+   via the same scale-before-sqrt precision technique `q_sqrt` uses). Unlike the paused
+   speculative M1 growth, this was **catalog-driven, not speculative** — every candidate
+   traced to a real function in an external math library, each folding duplicates into
+   generalizations rather than authoring near-identical siblings (`polygonal_number(5,n)`
+   *is* `pentagonal_number`, `lucas_u_v(2,1,n)` *is* `pell_number`/`pell_lucas_number`).
+   **Wave 14 (`correlation`, `effect_size_r`) closes the original 77-candidate list in
+   full** — every `candidate`-classified function that map named is now landed, folded, or
+   explicitly deferred with a documented reason. Full per-wave detail:
+   `docs/library-growth.md`'s wave notes; live status trail: `docs/math-server-map.md`'s
+   "Update" bullets.
 7. **Signed `i16` — ✓ done (Phase 1.4; see "Built" above).** Signed compare via S ⊕ V,
    truncating `__sdivmod16`, arithmetic `>>`; unblocks scoring/delta cells (`x_y_delta`,
    signed `lerp`, risk deltas) — the library's signed wave can now land.

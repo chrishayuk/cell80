@@ -690,3 +690,7 @@
 {"id": "impulse_1d_f32-para-1", "query": "how hard do two colliding bodies push apart given a bounciness coefficient", "expected": "impulse_1d_f32", "category": "paraphrase"}
 {"id": "elastic_collision_1d_f32-direct-1", "query": "elastic collision final velocities of two masses in one dimension", "expected": "elastic_collision_1d_f32", "category": "direct"}
 {"id": "elastic_collision_1d_f32-para-1", "query": "two balls bounce off each other head on conserving momentum and energy, what speeds result", "expected": "elastic_collision_1d_f32", "category": "paraphrase"}
+{"id": "effect_size_r-direct-1", "query": "convert a t-statistic to effect size r", "expected": "effect_size_r", "category": "direct"}
+{"id": "effect_size_r-para-1", "query": "how large is an effect given a t-value and degrees of freedom, bounded -1 to 1", "expected": "effect_size_r", "category": "paraphrase"}
+{"id": "correlation-direct-1", "query": "Pearson correlation coefficient from precomputed sums", "expected": "correlation", "category": "direct"}
+{"id": "correlation-para-1", "query": "correlation coefficient strength of a linear relationship, unlike covariance which is unbounded", "expected": "correlation", "category": "paraphrase"}
