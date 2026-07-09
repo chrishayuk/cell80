@@ -503,6 +503,38 @@ fn casts_are_transparent_and_unblock_rewrites() {
 }
 
 #[test]
+fn restatement_constant_tail_soft_falls_instead_of_stating_the_answer() {
+    // Registered amendment 2026-07-08: granite's restatement style
+    // (`let total = a * 13; let total = 260;`) rebinds the derivation to a literal —
+    // lifting the quantities then leaves a constant tail the parameters never reach.
+    // Canonicalizing that would emit a stated answer (unfalsifiable under the
+    // battery); it must soft-fall to Light instead.
+    let src = "fn run() -> u16 { let a = 20; let total = a * 13; let total = 260; total }";
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source(src, &opts).expect("light fallback, not an error");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+    assert!(
+        out.lifted.is_empty(),
+        "no lifted values on the fallback arm"
+    );
+    // A genuinely computed tail with the same shape still canonicalizes + lifts.
+    let good = "fn run() -> u16 { let a = 20; let total = a * 13; total }";
+    let ok = canonicalize_source(good, &opts).expect("canonicalizes");
+    assert_eq!(ok.lifted.len(), 1);
+    assert!(!ok
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::NonStraightLine));
+}
+
+#[test]
 fn if_value_canonicalizes_and_normalizes_comparisons() {
     // `a > b` and `b < a` are one comparison; both spellings reach one schema.
     let gt = full_canon("fn run(a: u16, b: u16) -> u16 { if a > b { a } else { b } }");
@@ -585,6 +617,62 @@ fn verify_if_rewrites_to_computed_side() {
         .iter()
         .any(|r| r.code == DiagCode::VerifyRewrite));
     assert!(keep.source.contains("if "), "{}", keep.source);
+}
+
+#[test]
+fn lift_cap_stops_at_three_register_slots() {
+    // Registered amendment 2026-07-08 (E0103): a 4th let-bound literal quantity
+    // stays a baked constant (reported) instead of the fn dying at lowering with
+    // "parameters exceed the 3 register slots".
+    let src = "fn run() -> u16 { let a = 2; let b = 3; let c = 5; let d = 7; a * b + c * d }";
+    let opts = CanonOptions {
+        mode: CanonMode::Full,
+        lift_literals: true,
+        ..Default::default()
+    };
+    let out = canonicalize_source(src, &opts).expect("canonicalizes");
+    assert_eq!(out.lifted.len(), 3, "first three lift: {:?}", out.lifted);
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::LiftCapReached));
+    assert!(
+        out.source.contains("7u16"),
+        "4th stays baked:\n{}",
+        out.source
+    );
+    assert_compiles(&out.source);
+}
+
+#[test]
+fn wide_computed_args_route_comparison_calls_to_kernels() {
+    // Registered amendment 2026-07-08 (E0211): `abs_diff`/`max`/`min` with a wide
+    // COMPUTED argument route to the prelude's wide kernels (the u16 library cell
+    // can't take a u32; the wide library siblings are state cells). The row97
+    // class: a v-slot argument in the widened lane.
+    let out = full_canon("fn run(a: u16) -> u16 { let v = a * 88000 / 11; abs_diff(v, 100000) }");
+    assert!(out
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::CallToWideKernel));
+    assert!(
+        out.source.contains("iabs_diff_u32("),
+        "got:\n{}",
+        out.source
+    );
+    // The wide kernel is a cell-prelude fn; append a stub so the bare compiler links it.
+    assert_compiles(&format!(
+        "{}\nfn iabs_diff_u32(a: u32, b: u32) -> u32 {{ let mut d = 0u32; if a > b {{ d = a - b; }} if b > a {{ d = b - a; }} d }}\n",
+        out.source
+    ));
+
+    // Narrow arguments keep the library call — the linker/precipitation path.
+    let narrow = full_canon("fn run(a: u16, b: u16) -> u16 { abs_diff(a, b) }");
+    assert!(!narrow
+        .repairs
+        .iter()
+        .any(|r| r.code == DiagCode::CallToWideKernel));
+    assert!(narrow.source.contains("abs_diff("), "{}", narrow.source);
 }
 
 #[test]

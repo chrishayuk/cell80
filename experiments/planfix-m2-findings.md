@@ -476,6 +476,53 @@ today's four runs: **37/37 — still 100% campaign-wide.**
 called `abs_diff` with wide args where only the u16 cell links (row97, `E0503`
 class — wants the free-fn wide sibling).
 
+## 4g. The lifting tier hardened — amendments 8–10, and a fix the replay loop
+rejected (2026-07-08)
+
+The two mechanical backlog items from §4f, plus the hole fixing them exposed.
+Three replay iterations; the third was wrong and the loop caught it.
+
+- **`E0103` lift cap** (amendment 8): lifting stops at the 3-register ABI
+  ceiling; a 4th quantity stays baked, reported. row124's class: all three arms
+  now compute 50 (previously dead at lowering).
+- **`E0211` wide-kernel routing** (amendment 9): `max`/`min`/`abs_diff` calls
+  with wide *computed* args route to the prelude's `_u32` kernels; narrow-arg
+  calls keep linking library cells (precipitation untouched). row97's arm now
+  computes 3. The wide `_u32` library cells stay state cells deliberately —
+  they are the u32 test/CLI surface (run args are u16-bound).
+- **The restatement guard** (amendment 10): iteration 1's replay showed the cap
+  turning granite's restatement style (`let Charleston = 4 * Seattle; let
+  Charleston = 80; … let total = 160 + 80 + 20`) into arms whose tail is a
+  baked or lifted-frozen literal — a **stated answer wearing a cell's clothes**,
+  unfalsifiable under the battery and a majority-confirmation backdoor that
+  predates the cap (the slot-ceiling death was masking it). Such fns now
+  soft-fall to Light and run as written, with no lifted values.
+- **Tried and reverted — bare-literal-only lifting.** Iteration 2's replay
+  showed one more change (row117-0shot unanimous → `battery_escalate`), which I
+  first misread as a guard misfire and "fixed" by restricting lifting to bare
+  literals. Iteration 3's replay refuted the fix on three fronts: gemma's row94
+  recovery vanished (folded-init lifting IS the registered `E0302` false-kill
+  rescue — `let t = 38 + 2` must lift for `t*10/11` to divide at runtime),
+  qwen_xreader lost row94, and the xreader row117 coincidence catch disappeared
+  (the battery's reach comes from folded lifts). Re-examining the "misfire":
+  row117-0shot's kill is d1-vs-d2 divergence under perturbation (`7*(120/20)`
+  truncate-early vs `7*120/20` deferred split at 20→21: 35 vs 40) — the
+  registered GSM-Symbolic coincidence class, working as designed; d0's raw arm
+  was excluded from the agreement anyway. Reverted; folded-init lifting stands.
+
+**Final replay (all 12 configs):** vs. pre-amendment baseline, +2 correct
+(row97 in 8-shot rust → **16 accepted / 15 correct / 1 flagged**, row93 in
+0-shot eq), −1 correct-but-coincidental (row117-0shot, the honest trade), the
+capstone config tightened (row97/row124 majority → unanimous, still 18/17/1),
+and **0 accepted-wrong movement anywhere**. 552 tests green, cold clippy clean.
+
+The method note this section exists to record: **of tonight's four canon
+changes, one was wrong — and only the captured-source replay loop caught it.**
+A fix that spot-checks green (57 canon tests passed on iteration 3 too) can
+still cost three rows across configurations; phrase changes against failure
+classes, verify against every captured configuration, and treat an unexplained
+`changed:` line as a defect until diagnosed.
+
 ## 5. Honest limits
 
 N=20, and the slice runs hot for gemma (its no-gate bakeoff was already 95% here vs

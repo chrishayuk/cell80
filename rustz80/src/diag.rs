@@ -19,6 +19,11 @@ pub enum DiagCode {
     /// registered amendment path 2026-07-07): the schema generalizes over the value,
     /// and the counterfactual battery can perturb it.
     QuantityLifted,
+    /// E0103 — a let-bound literal quantity NOT lifted because the parameter ABI is
+    /// full (3 register slots, HL/DE/BC); it stays a baked constant instead of the
+    /// whole fn dying at lowering. Registered amendment 2026-07-08. The battery
+    /// cannot perturb a baked value — reported, never silent.
+    LiftCapReached,
     /// E0201 — a statement macro in the body (stripped; the dialect has no macros).
     StatementMacro,
     /// E0202 — redundant parentheses (collapsed).
@@ -46,6 +51,12 @@ pub enum DiagCode {
     /// verify shape reaches `E0207` instead of dying at `E0501`. A `!`/`panic!()`
     /// else-arm coerces to `0`. Registered amendment 2026-07-07.
     ThenDesugared,
+    /// E0211 — a call to `max`/`min`/`abs_diff` whose arguments include a wide
+    /// computed value rewrote to the prelude's wide kernel (`imax_u32`/`imin_u32`/
+    /// `iabs_diff_u32`) — a u16 library cell cannot take a u32 argument, and the
+    /// wide `_u32` library siblings are state cells (not inlinable). Narrow-argument
+    /// calls still resolve to library cells. Registered amendment 2026-07-08.
+    CallToWideKernel,
     /// E0301 — a constant exceeds `u16::MAX`; the arithmetic lane auto-widens to u32.
     WidthExceedsU16,
     /// E0302 — a constant division that cannot be exact (division by constant zero,
@@ -83,6 +94,8 @@ impl DiagCode {
         match self {
             DiagCode::BareLiteralOperand => "E0101",
             DiagCode::QuantityLifted => "E0102",
+            DiagCode::LiftCapReached => "E0103",
+            DiagCode::CallToWideKernel => "E0211",
             DiagCode::StatementMacro => "E0201",
             DiagCode::RedundantParens => "E0202",
             DiagCode::TrailingLet => "E0203",
@@ -111,6 +124,8 @@ impl DiagCode {
         match self {
             DiagCode::BareLiteralOperand => "bare_literal_operand",
             DiagCode::QuantityLifted => "quantity_lifted",
+            DiagCode::LiftCapReached => "lift_cap_reached",
+            DiagCode::CallToWideKernel => "call_to_wide_kernel",
             DiagCode::StatementMacro => "statement_macro",
             DiagCode::RedundantParens => "redundant_parens",
             DiagCode::TrailingLet => "trailing_let",
