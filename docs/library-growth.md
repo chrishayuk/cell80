@@ -673,7 +673,22 @@ above) — it turned out not to need the compounding-truncation care Welford's a
 usually reached for: recomputing the mean fresh from the exact running sum on each side of
 the update, rather than carrying a previously-truncated running mean forward, sidesteps the
 concern this note originally deferred on. Percentile-from-histogram is still open, gated on
-the array-state-field question this variance cell didn't need to answer.
+the array-state-field question this variance cell didn't need to answer — **now confirmed, not
+just suspected** (`experiments/sliding-window-state-cells-findings.md`): every `Runner::run()`
+zeros the previous run's writes before applying this run's inputs, so a state cell's only
+"memory" is whatever the host re-supplies as named scalar inputs each call, and the named-field
+surface (`StateCell`, `CellHost::run_state`) round-trips scalars only, never array fields. A
+hand-authored `simple_moving_average` (an 8-sample ring buffer) verified its own window/head/
+sum logic and the compiler's array-field layout correct end to end via a raw-address round
+trip, then failed silently past the first call through every real driving surface — exactly
+the class of wrong-answer-with-no-error the admission gate exists to keep out of the shipped
+library, so it stays unlanded in `experiments/` until the round-trip surface exists. That
+surface is the same primitive Phase S3's `bytes[N]`/`str[N]` byte-buffer I/O already needs and
+never built (`docs/09-cell80-abi.md`) — one design should cover both element widths, not two
+separate builds; the open questions (element width, whole-envelope vs. logical-length, per-field
+vs. whole-state-blob round-trip) are written up in the findings doc. `weighted_moving_average`/
+`rolling_variance`/`rolling_std` (`docs/math-server-map.md`'s mining) are blocked on the
+identical gate and should land as a batch right behind `simple_moving_average` once it does.
 
 **Spatial / grid, first slice (wave 3): `grid_index`, `point_in_rect`, `aabb_intersect`.**
 `grid_index` is a plain arity-3 free function; the other two are state cells purely for arg
