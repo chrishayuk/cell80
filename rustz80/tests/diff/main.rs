@@ -31,6 +31,7 @@ mod bytes;
 mod conditionals;
 mod consts;
 mod control_flow;
+mod eval_order;
 mod f32_ops;
 mod functions;
 mod generics;

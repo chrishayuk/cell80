@@ -276,13 +276,12 @@ pub(super) fn gen_cond_skip(a: &mut Asm, cond: &Cond, target: usize) {
             Cmp::Le => (true, false),
             _ => unreachable!(),
         };
-        let (left, right) = if swap {
-            (&cond.rhs, &cond.lhs)
+        if swap {
+            gen_sub_rev(a, &cond.lhs, &cond.rhs); // S/V from `rhs - lhs`, source order
         } else {
-            (&cond.lhs, &cond.rhs)
-        };
-        gen_sub(a, left, right); // S/V from `left - right`
-                                 // Jump to `target` when the condition is FALSE.
+            gen_sub(a, &cond.lhs, &cond.rhs); // S/V from `lhs - rhs`
+        }
+        // Jump to `target` when the condition is FALSE.
         let no_ovf = a.label();
         let cont = a.label();
         a.jump(0xE2, no_ovf); // JP PO (V = 0)
@@ -296,11 +295,14 @@ pub(super) fn gen_cond_skip(a: &mut Asm, cond: &Cond, target: usize) {
         return;
     }
     let (swap, jp_false) = cmp_false_jump(cond.cmp);
-    let (left, right) = if swap {
-        (&cond.rhs, &cond.lhs)
+    // `==`/`!=` with a side-effecting operand take the swapped flags (the zero flag
+    // is symmetric), so source order comes free there too.
+    let sym_impure = matches!(cond.cmp, Cmp::Eq | Cmp::Ne)
+        && !(effect_free(&cond.lhs) && effect_free(&cond.rhs));
+    if swap || sym_impure {
+        gen_sub_rev(a, &cond.lhs, &cond.rhs);
     } else {
-        (&cond.lhs, &cond.rhs)
-    };
-    gen_sub(a, left, right);
+        gen_sub(a, &cond.lhs, &cond.rhs);
+    }
     a.jump(jp_false, target);
 }

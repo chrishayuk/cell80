@@ -376,23 +376,47 @@ pub(super) fn gen_call(a: &mut Asm, name: &str, args: &[Expr]) {
 /// for `>=`). `>`/`<=` swap operands. Equality: `OR` over the difference's four
 /// bytes, then `CP 1` sets carry iff zero. Branch-free — no labels.
 fn gen_cmp32(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr) {
-    // Normalise Gt/Le to Lt/Ge with swapped operands.
-    let (l, r, cmp) = match cmp {
-        Cmp::Gt => (rhs, lhs, Cmp::Lt),
-        Cmp::Le => (rhs, lhs, Cmp::Ge),
-        c => (lhs, rhs, c),
+    let pure = effect_free(lhs) && effect_free(rhs);
+    // Normalise Gt/Le to Lt/Ge with swapped roles — the classic shape below then
+    // already evaluates the source-left operand first. A side-effecting `==`/`!=`
+    // swaps roles too (the zero test is symmetric), keeping source order free.
+    // A side-effecting `<`/`>=` is the one orientation that cannot swap: it takes
+    // the reshuffled sequence (source order, `BC` copies of the right operand).
+    let (l, r, cmp, reshuffle) = match cmp {
+        Cmp::Gt => (rhs, lhs, Cmp::Lt, false),
+        Cmp::Le => (rhs, lhs, Cmp::Ge, false),
+        Cmp::Eq | Cmp::Ne if !pure => (rhs, lhs, cmp, false),
+        Cmp::Lt | Cmp::Ge if !pure => (lhs, rhs, cmp, true),
+        c => (lhs, rhs, c, false),
     };
-    // The Sub32 operand sequence: r evaluated first (pushed), then l; SBC = l - r.
-    gen_expr32(a, r);
-    a.push(R16::De); // PUSH DE   (r.high)
-    a.push(R16::Hl); // PUSH HL   (r.low)
-    gen_expr32(a, l); // HL = l.low, DE = l.high
-    a.pop(R16::Bc); // POP BC    (r.low)
-    a.fx(&[0xB7]); // OR A        (clear carry)
-    a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
-    a.ex_de_hl(); // EX DE,HL    (HL = l.high; EX/POP leave flags alone)
-    a.pop(R16::Bc); // POP BC    (r.high)
-    a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff − borrow → CF = l < r)
+    if reshuffle {
+        gen_expr32(a, l);
+        a.push(R16::De); // PUSH DE   (l.high)
+        a.push(R16::Hl); // PUSH HL   (l.low)
+        gen_expr32(a, r); // HL = r.low, DE = r.high
+        a.fx(&[0x44]);
+        a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = r.low)
+        a.pop(R16::Hl); // POP HL    (l.low)
+        a.fx(&[0xB7]); // OR A        (clear carry)
+        a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+        a.fx(&[0x42]);
+        a.fx(&[0x4B]); // ld b,d ; ld c,e   (BC = r.high; flags untouched)
+        a.ex_de_hl(); // EX DE,HL    (DE = low diff)
+        a.pop(R16::Hl); // POP HL    (l.high)
+        a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff − borrow → CF = l < r)
+    } else {
+        // The Sub32 operand sequence: r evaluated first (pushed), then l; SBC = l - r.
+        gen_expr32(a, r);
+        a.push(R16::De); // PUSH DE   (r.high)
+        a.push(R16::Hl); // PUSH HL   (r.low)
+        gen_expr32(a, l); // HL = l.low, DE = l.high
+        a.pop(R16::Bc); // POP BC    (r.low)
+        a.fx(&[0xB7]); // OR A        (clear carry)
+        a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+        a.ex_de_hl(); // EX DE,HL    (HL = l.high; EX/POP leave flags alone)
+        a.pop(R16::Bc); // POP BC    (r.high)
+        a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff − borrow → CF = l < r)
+    }
     match cmp {
         Cmp::Lt => {}
         Cmp::Ge => a.fx(&[0x3F]), // CCF
@@ -461,7 +485,15 @@ fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
 /// the signs up (quotient truncates toward zero; the remainder takes the dividend's
 /// sign — rustc semantics).
 fn gen_sdivmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
-    gen_pair(a, r, l); // HL = l (dividend), DE = r (divisor)
+    if effect_free(l) && effect_free(r) {
+        gen_pair(a, r, l); // HL = l (dividend), DE = r (divisor)
+    } else {
+        gen_expr(a, l); // source order (A2a)
+        a.push(R16::Hl); // PUSH HL   (l)
+        gen_expr(a, r); // HL = r
+        a.ex_de_hl(); // EX DE,HL  (DE = r)
+        a.pop(R16::Hl); // POP HL    (HL = l)
+    }
     a.call("__sdivmod16");
     a.needs_sdiv = true;
     if rem {
@@ -472,9 +504,18 @@ fn gen_sdivmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
 /// `HL = l / r` (or `l % r` if `rem`), neither a power of two. Software: the
 /// appended runtime. HostTrap: an `ED FE` host trap.
 pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
+    let pure = effect_free(l) && effect_free(r);
     match a.arith() {
         ArithStrategy::Software => {
-            gen_pair(a, r, l); // HL = l, DE = r
+            if pure {
+                gen_pair(a, r, l); // HL = l, DE = r
+            } else {
+                gen_expr(a, l); // source order (A2a)
+                a.push(R16::Hl); // PUSH HL   (l)
+                gen_expr(a, r); // HL = r
+                a.ex_de_hl(); // EX DE,HL  (DE = r)
+                a.pop(R16::Hl); // POP HL    (HL = l)
+            }
             a.call("__divmod16"); // HL = l/r, DE = l%r
             a.needs_div = true;
             if rem {
@@ -482,12 +523,21 @@ pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
             }
         }
         ArithStrategy::HostTrap => {
-            gen_expr(a, r);
-            a.push(R16::Hl); // PUSH HL  (r = divisor)
-            gen_expr(a, l);
-            a.fx(&[0x44]);
-            a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = l = dividend)
-            a.pop(R16::De); // POP DE   (DE = r = divisor)
+            if pure {
+                gen_expr(a, r);
+                a.push(R16::Hl); // PUSH HL  (r = divisor)
+                gen_expr(a, l);
+                a.fx(&[0x44]);
+                a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = l = dividend)
+                a.pop(R16::De); // POP DE   (DE = r = divisor)
+            } else {
+                gen_expr(a, l); // source order (A2a) — the pop lands the dividend
+                a.push(R16::Hl); // PUSH HL  (l = dividend)
+                gen_expr(a, r);
+                a.fx(&[0x54]);
+                a.fx(&[0x5D]); // ld d,h ; ld e,l   (DE = r = divisor)
+                a.pop(R16::Bc); // POP BC   (BC = l = dividend)
+            }
             gen_trap(a, TRAP_DIVMOD16); // HL = BC/DE, DE = BC%DE
             if rem {
                 a.ex_de_hl(); // EX DE,HL  -> HL = remainder
@@ -660,19 +710,39 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
                 a.fx(&[0xED, 0x4A]); // ADC HL,BC   (high sum + carry)
                 a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
             }
-            // 32-bit sub: `SBC` chains the borrow (r evaluated first, like `gen_sub`).
+            // 32-bit sub: `SBC` chains the borrow. The effect-free pair keeps the
+            // classic right-first shape; a side-effecting pair evaluates
+            // left-to-right (A2a) and reshuffles through `BC` copies instead.
             BinOp::Sub => {
-                gen_expr32(a, r);
-                a.push(R16::De); // PUSH DE   (r.high)
-                a.push(R16::Hl); // PUSH HL   (r.low)
-                gen_expr32(a, l); // HL = l.low, DE = l.high
-                a.pop(R16::Bc); // POP BC    (r.low)
-                a.fx(&[0xB7]); // OR A        (clear carry)
-                a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
-                a.ex_de_hl(); // EX DE,HL    (HL = l.high)
-                a.pop(R16::Bc); // POP BC    (r.high)
-                a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff - borrow)
-                a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
+                if effect_free(l) && effect_free(r) {
+                    gen_expr32(a, r);
+                    a.push(R16::De); // PUSH DE   (r.high)
+                    a.push(R16::Hl); // PUSH HL   (r.low)
+                    gen_expr32(a, l); // HL = l.low, DE = l.high
+                    a.pop(R16::Bc); // POP BC    (r.low)
+                    a.fx(&[0xB7]); // OR A        (clear carry)
+                    a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+                    a.ex_de_hl(); // EX DE,HL    (HL = l.high)
+                    a.pop(R16::Bc); // POP BC    (r.high)
+                    a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff - borrow)
+                    a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
+                } else {
+                    gen_expr32(a, l);
+                    a.push(R16::De); // PUSH DE   (l.high)
+                    a.push(R16::Hl); // PUSH HL   (l.low)
+                    gen_expr32(a, r); // HL = r.low, DE = r.high
+                    a.fx(&[0x44]);
+                    a.fx(&[0x4D]); // ld b,h ; ld c,l   (BC = r.low)
+                    a.pop(R16::Hl); // POP HL    (l.low)
+                    a.fx(&[0xB7]); // OR A        (clear carry)
+                    a.fx(&[0xED, 0x42]); // SBC HL,BC   (low diff, borrow out)
+                    a.fx(&[0x42]);
+                    a.fx(&[0x4B]); // ld b,d ; ld c,e   (BC = r.high; flags untouched)
+                    a.ex_de_hl(); // EX DE,HL    (DE = low diff)
+                    a.pop(R16::Hl); // POP HL    (l.high)
+                    a.fx(&[0xED, 0x42]); // SBC HL,BC   (high diff - borrow)
+                    a.ex_de_hl(); // EX DE,HL  -> HL = low, DE = high
+                }
             }
             BinOp::Mul => gen_mul32(a, l, r),
             BinOp::Div => gen_divmod32(a, l, r, false),
@@ -854,6 +924,40 @@ pub(super) fn gen_pair(a: &mut Asm, first: &Expr, second: &Expr) {
     a.pop(R16::De); // POP DE  (DE = first)
 }
 
+/// No side effects anywhere in the subtree — safe to commute with any other
+/// effect-free expression, exactly the reordering freedom rustc itself has.
+/// `Call` (callee effects unknown), `InPort` (a device read), and `Halt` are
+/// effects; everything else is a pure function of memory and operands. (`/`/`%`
+/// can halt on a zero divisor — a divergence, not a reorderable effect: a program
+/// that halts, halts either way.)
+pub(super) fn effect_free(e: &Expr) -> bool {
+    match e {
+        Expr::Lit(_)
+        | Expr::Var(_)
+        | Expr::AddrOf(_)
+        | Expr::ConstAddr(_)
+        | Expr::Lit32(_)
+        | Expr::Var32(_) => true,
+        Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => false,
+        Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r) => effect_free(l) && effect_free(r),
+        Expr::Cmp { lhs, rhs, .. }
+        | Expr::Cmp32 { lhs, rhs, .. }
+        | Expr::Logic { lhs, rhs, .. } => effect_free(lhs) && effect_free(rhs),
+        Expr::ShiftVar { e, amount, .. } => effect_free(e) && effect_free(amount),
+        Expr::PtrIndex { ptr, index, .. } => effect_free(ptr) && effect_free(index),
+        Expr::Index(_, i, _) => effect_free(i),
+        Expr::Trunc(e)
+        | Expr::Trunc32(e)
+        | Expr::Widen(e)
+        | Expr::Peek(e)
+        | Expr::MulConst(e, _)
+        | Expr::LoadAt(e, _)
+        | Expr::Shift32 { e, .. }
+        | Expr::Deref(e, _)
+        | Expr::Deref32(e, _) => effect_free(e),
+    }
+}
+
 /// Leave `HL = &base[index]` (each element is `u16`, so address = slot base + index*2).
 pub(super) fn gen_elem_addr(a: &mut Asm, base: usize, index: &Expr) {
     gen_expr(a, index); // HL = index
@@ -863,9 +967,30 @@ pub(super) fn gen_elem_addr(a: &mut Asm, base: usize, index: &Expr) {
     a.add_hl(R16::De); // ADD HL, DE  -> element address
 }
 
-/// `HL = left - right`, flags from the subtraction (carry = borrow).
+/// `HL = left - right`, flags from the subtraction (carry = borrow). An operand
+/// pair with a side effect evaluates **left-to-right** (rustc's order — the A2a
+/// canonicalization, docs 13 §2.2.3) at the cost of one `EX DE,HL`; the effect-free
+/// pair keeps the classic right-first shape, where reordering is unobservable.
 pub(super) fn gen_sub(a: &mut Asm, left: &Expr, right: &Expr) {
-    gen_pair(a, right, left); // HL = left, DE = right
+    if effect_free(left) && effect_free(right) {
+        gen_pair(a, right, left); // HL = left, DE = right
+    } else {
+        gen_expr(a, left);
+        a.push(R16::Hl); // PUSH HL   (left)
+        gen_expr(a, right); // HL = right
+        a.ex_de_hl(); // EX DE,HL  (DE = right)
+        a.pop(R16::Hl); // POP HL    (HL = left)
+    }
+    a.fx(&[0xB7]); // OR A   (clear carry)
+    a.fx(&[0xED, 0x52]); // SBC HL, DE
+}
+
+/// `HL = rhs - lhs`, flags from the subtraction — the orientation the swapped
+/// comparisons (`>`/`<=`) test, and the `==`/`!=` route when an operand has effects
+/// (the zero flag is symmetric). Evaluates **lhs first** by construction, so source
+/// order comes free — same bytes as the classic `gen_sub(rhs, lhs)`.
+pub(super) fn gen_sub_rev(a: &mut Asm, lhs: &Expr, rhs: &Expr) {
+    gen_pair(a, lhs, rhs); // HL = rhs, DE = lhs
     a.fx(&[0xB7]); // OR A   (clear carry)
     a.fx(&[0xED, 0x52]); // SBC HL, DE
 }
@@ -896,7 +1021,8 @@ pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr, signed: boo
     let false_l = a.label();
     let end_l = a.label();
     if signed && !matches!(cmp, Cmp::Eq | Cmp::Ne) {
-        // Normalize to Lt/Ge by swapping (a > b ≡ b < a; a <= b ≡ b >= a).
+        // Normalize to Lt/Ge by flag-swapping (a > b ≡ b < a; a <= b ≡ b >= a) —
+        // `gen_sub_rev` produces the swapped flags with source-order evaluation.
         let (swap, want_lt) = match cmp {
             Cmp::Lt => (false, true),
             Cmp::Ge => (false, false),
@@ -904,9 +1030,12 @@ pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr, signed: boo
             Cmp::Le => (true, false),
             _ => unreachable!(),
         };
-        let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
-        gen_sub(a, left, right); // S/V/Z from `left - right`
-                                 // `left < right` (signed) ⟺ S ⊕ V. Route the four flag cases to false_l.
+        if swap {
+            gen_sub_rev(a, lhs, rhs); // S/V/Z from `rhs - lhs`
+        } else {
+            gen_sub(a, lhs, rhs); // S/V/Z from `lhs - rhs`
+        }
+        // `left < right` (signed) ⟺ S ⊕ V. Route the four flag cases to false_l.
         let no_ovf = a.label();
         let true_l = a.label();
         a.jump(0xE2, no_ovf); // JP PO (V = 0)
@@ -920,8 +1049,15 @@ pub(super) fn gen_cmp(a: &mut Asm, cmp: Cmp, lhs: &Expr, rhs: &Expr, signed: boo
         a.place(true_l);
     } else {
         let (swap, jp_false) = cmp_false_jump(cmp);
-        let (left, right) = if swap { (rhs, lhs) } else { (lhs, rhs) };
-        gen_sub(a, left, right); // flags set; HL clobbered (overwritten below)
+        // `==`/`!=` with a side-effecting operand take the swapped flags too — the
+        // zero flag is symmetric, so source order comes free.
+        let sym_impure =
+            matches!(cmp, Cmp::Eq | Cmp::Ne) && !(effect_free(lhs) && effect_free(rhs));
+        if swap || sym_impure {
+            gen_sub_rev(a, lhs, rhs); // flags set; HL clobbered (overwritten below)
+        } else {
+            gen_sub(a, lhs, rhs);
+        }
         a.jump(jp_false, false_l);
     }
     a.ld_imm(R16::Hl, Imm::Abs(1)); // LD HL, 1   (true)

@@ -162,12 +162,20 @@ exercises `/ 0` (rustc would panic), so this corner is covered by the runner tes
 
 ## Evaluation order
 
-Left-to-right, with one deliberate exception: the **right operand of `-`, `/`, `%`, and
-16-bit `*` is evaluated first** (an operand-ordering artifact of the accumulator scheme).
-This is observable only by side-effecting operands (`poke`, function calls with effects);
-pure expressions — the overwhelming cell shape — cannot tell. Write side-effecting
-operands as separate statements if order matters. `&&`/`||` short-circuit exactly as in
-Rust. A `for` range's bounds are evaluated once, before the loop.
+**Left-to-right, as in Rust, wherever order is observable.** An operand pair containing
+a side effect (a function call, `inport`, `halt`) evaluates strictly left-to-right —
+diff-tested against rustc with side-effecting methods in both operand positions
+(`tests/diff/eval_order.rs`). Effect-free operands may evaluate in either order
+(exactly the reordering freedom rustc itself has), which lets codegen keep the compact
+accumulator shapes where nothing can tell. Assignment statements evaluate the value
+before the destination address (also rustc's order). `&&`/`||` short-circuit exactly
+as in Rust. A `for` range's bounds are evaluated once, before the loop.
+
+*(History: until A2a of the multi-target spec — 2026-07-10,
+[13-multi-target-spec.md](13-multi-target-spec.md) §2.2.3 — the right operand of `-`,
+`/`, `%`, and comparisons evaluated first, an accumulator-scheme artifact. The
+canonicalization was the spec's one sanctioned golden break: 4 of 347 golden programs,
+−8 bytes net.)*
 
 ## Recursion: rejected
 

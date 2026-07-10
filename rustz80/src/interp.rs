@@ -12,13 +12,11 @@
 //! `scratch + (base + i) * 2`, little-endian), so `AddrOf`/`Deref`/`Peek`/`Poke`
 //! alias exactly as on the Z80, and a memory-effect comparison masks only the
 //! execution substrate (code image, trampoline, hardware stack) the interpreter
-//! doesn't have. Deliberately **not** mirrored: evaluation order of the operand pairs
-//! the accumulator scheme flips (`-`, `/`, `%`, comparisons — right operand first
-//! today). The interpreter is left-to-right throughout: the rustc-diff battery cannot
-//! observe the difference (rustc is left-to-right, so an order-sensitive program
-//! would already fail the oracle), and left-to-right is the pre-registered A2a
-//! canonical order codegen converges to. It is a *reference*, not a deployment
-//! target: no cycle model, no peephole, deliberately naive.
+//! doesn't have. Evaluation is left-to-right throughout — the canonical order
+//! codegen shares since A2a (side-effecting operand pairs evaluate in source order;
+//! effect-free pairs may reorder, which no program can observe). It is a
+//! *reference*, not a deployment target: no cycle model, no peephole, deliberately
+//! naive.
 //!
 //! Two Z80-target behaviours have no single IR meaning and surface as errors here:
 //! `halt(code)` (a Cell trap, a Spectrum no-op — the interpreter stops with the
