@@ -91,12 +91,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: publish (cell80-z80 → rustz80 → cell80, in dependency order)
+      - name: publish (cell80-z80 → cell80-core → rustz80 → cell80, in dependency order)
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           set -uo pipefail
-          for p in cell80-z80 rustz80 cell80; do
+          for p in cell80-z80 cell80-core rustz80 cell80; do
             echo "::group::publish $p"
             if ! cargo publish -p "$p" 2>publish.err; then
               cat publish.err

@@ -1,0 +1,17 @@
+# cell80-core (Phase 5 WS-A/A5): the target-independent compiler core extracted from
+# rustz80 — the typed IR, the IR-to-IR passes (inline, DCE), the reference IR
+# interpreter, and the target descriptors. Backend zero (rustz80) consumes this; new
+# backends (rustrv32, rustthumb — WS-B/WS-D) build against it without touching Z80.
+[package]
+name = "cell80-core"
+description = "The cell80 compiler core: typed IR, IR passes, the reference IR interpreter, and target descriptors — the target-independent half of the cell-family (rustz80 is backend zero)."
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["ir", "compiler", "interpreter", "cell80"]
+categories = ["compilers"]
+
+[dependencies]
+# Deliberately none: the IR, passes, interpreter, and descriptors are pure std.

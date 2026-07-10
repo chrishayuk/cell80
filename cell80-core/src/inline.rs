@@ -40,7 +40,7 @@ enum Slot {
 /// Inline single-call-site, early-return-free helpers into their caller. `roots` are
 /// never inlined away (e.g. a game's `entry`). Returns the rewritten function list (the
 /// folded-in callees become uncalled — run [`crate::dce::prune`] after to drop them).
-pub(crate) fn inline(mut funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, Func)> {
+pub fn inline(mut funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, Func)> {
     let counts = call_counts(&funcs);
     let cand: HashMap<String, Func> = funcs
         .iter()

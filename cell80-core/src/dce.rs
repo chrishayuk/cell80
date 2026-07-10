@@ -126,7 +126,7 @@ fn calls_in_func(f: &Func, out: &mut Vec<String>) {
 /// **empty `roots` is a no-op** — every function is kept — so a caller that doesn't designate
 /// entries (a whole-program/game compile) gets the full image, while the cell layer passes
 /// its entry (`run`/`main`/`Type::run`) and prunes everything that entry can't reach.
-pub(crate) fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, Func)> {
+pub fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, Func)> {
     if roots.is_empty() {
         return funcs;
     }
@@ -159,7 +159,7 @@ pub(crate) fn prune(funcs: Vec<(String, Func)>, roots: &[&str]) -> Vec<(String, 
 /// the data section's own DCE: only consts a kept function actually addresses are
 /// laid into the image. Walks with the same traversal as `calls_in_*`, collecting
 /// `ConstAddr` leaves instead of call names.
-pub(crate) fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
+pub fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
     fn in_expr(e: &Expr, out: &mut HashSet<String>) {
         if let Expr::ConstAddr(n) = e {
             out.insert(n.clone());
@@ -282,7 +282,7 @@ pub(crate) fn callees(f: &Func) -> Vec<String> {
 /// (tail-shaped recursion only works by accident, riding the hardware stack). Rejecting
 /// the cycle at lowering keeps the "an accepted program matches rustc" contract true.
 /// Unknown callees (prelude routes resolved later) are treated as leaves.
-pub(crate) fn find_recursion(funcs: &[(String, Func)]) -> Option<String> {
+pub fn find_recursion(funcs: &[(String, Func)]) -> Option<String> {
     let graph: HashMap<&str, Vec<String>> = funcs
         .iter()
         .map(|(n, f)| (n.as_str(), callees(f)))

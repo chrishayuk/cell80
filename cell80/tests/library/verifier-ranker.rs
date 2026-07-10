@@ -438,7 +438,8 @@ fn linear_eq_holds_matches_defined_behaviour() {
         fn bits(v: i16) -> u64 {
             (v as u16) as u64
         }
-        let mut cell = StateCell::bind(&cell_src("linear_eq_holds"), "LinearEqHolds", None).unwrap();
+        let mut cell =
+            StateCell::bind(&cell_src("linear_eq_holds"), "LinearEqHolds", None).unwrap();
         cell.set("a", bits(a)).unwrap();
         cell.set("b", bits(b)).unwrap();
         cell.set("c", bits(c)).unwrap();

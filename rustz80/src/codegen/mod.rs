@@ -20,16 +20,9 @@ use asm::Asm;
 use ins::{Imm, R16};
 use stmt::{gen_return, gen_stmt};
 
-/// Code-generation target. `Spectrum48` is authentic Z80 — `*`/`/`/`%` use the appended
-/// software micro-runtime, so the output runs anywhere (real ROM, `.tap`). `Cell` is the
-/// micro-VM (the `cell80` crate): those ops lower to the `ED FE` host-trap (serviced natively
-/// by the cell bus — see the Cell80 plan), so no software runtime is appended. `ED FE` is
-/// a no-op on real hardware, so it never reaches a real game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Target {
-    Spectrum48,
-    Cell,
-}
+// The target enum lives with the descriptors in `cell80-core` (A5); re-exported
+// here where it has always been importable from.
+pub use cell80_core::Target;
 
 /// Compile a whole program (functions laid out in order, micro-runtime appended).
 ///

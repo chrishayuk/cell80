@@ -14,7 +14,10 @@ keywords = ["z80", "compiler", "spectrum", "codegen", "retro"]
 categories = ["compilers", "emulators"]
 
 [dependencies]
-# The compiler is dependency-free apart from its `syn` frontend (`quote` is syn's own
+# The target-independent core: typed IR, passes, the reference interpreter, and the
+# target descriptors (Phase 5 A5) — this crate is backend zero on top of it.
+cell80-core = { version = "0.8.0", path = "../cell80-core" }
+# Otherwise dependency-free apart from the `syn` frontend (`quote` is syn's own
 # printing half, already in the tree — the canon pass re-emits transformed items with it).
 syn = { version = "2", features = ["full", "extra-traits", "visit", "visit-mut"] }
 quote = "1"

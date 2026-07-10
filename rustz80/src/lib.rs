@@ -17,25 +17,25 @@
 
 mod canon;
 mod codegen;
-mod dce;
-mod descriptor;
 pub mod diag;
-mod inline;
 mod interp;
-mod ir;
 mod lower;
 mod softfloat;
 mod tap;
+
+// The target-independent core (typed IR, passes, interpreter engine, descriptors)
+// lives in `cell80-core` (A5); re-exported at the old paths so the rest of the
+// crate — and its public API — is unchanged.
+pub(crate) use cell80_core::{dce, descriptor, inline, ir};
 
 pub use canon::{
     canonical_unit, canonicalize_source, CanonMode, CanonOptions, CanonOutput, Rename, UnitHint,
     UNIT_TABLE_VERSION,
 };
-pub use codegen::{codegen_loop, Target};
-pub use descriptor::{ArithStrategy, TargetDescriptor};
+pub use cell80_core::{ArithStrategy, Func, Target, TargetDescriptor, ORG};
+pub use codegen::codegen_loop;
 pub use diag::{classify_error, Diag, DiagCode, Repair};
 pub use interp::{interp_fn, interp_fn_args, interp_program, interp_program_mem};
-pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
 pub use softfloat::{kernel_bank, KernelBank, BANK_FNS, BANK_ORG, BANK_SCRATCH, F32_KERNELS};
 pub use tap::to_tap;
@@ -61,9 +61,6 @@ pub fn codegen_loop_full(
 }
 
 use std::collections::HashMap;
-
-/// Where compiled code is laid out (absolute jump targets are resolved against it).
-pub const ORG: u16 = 0x8000;
 
 /// A compiled program: the machine code (loaded at [`ORG`]) and the absolute
 /// address of each function by name.

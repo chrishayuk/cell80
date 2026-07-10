@@ -164,8 +164,8 @@ hooks, not code — budget WS-D accordingly).*
 
 ```
 cell80/
-  cell-core/        # typed IR, IR interpreter, cell contracts, manifests, hashing, family hash
-  cell-descriptor/  # target descriptors (may fold into cell-core)
+  cell80-core/      # typed IR, IR interpreter, IR passes, target descriptors (landed, A5);
+                    # cell contracts + family hash join at WS-E
   rustz80/          # backend zero: Z80 Ins + codegen (+ emulator glue)
   rustrv32/         # RV32I(M) Ins + codegen + reference executor
   rustthumb/        # Thumb-1 Ins + codegen + reference executor
@@ -228,6 +228,15 @@ top:
 - A5. `cell-core` crate extraction (ir + passes + interpreter + contracts + family
   hash). Mechanically easy (ir.rs has zero imports; z80 is dev-only) — the contract
   rewrite is A1/A2, not this move.
+  *Landed 2026-07-11 as **`cell80-core`*** (crates.io-ready, dependency-free): the
+  typed IR, inline/DCE, the interpreter *engine* (neutral `(name, bytes)` const
+  pool — no lowering types cross the boundary), and the descriptors + `Target`.
+  rustz80 consumes it behind root re-exports, so `crate::ir`-style paths and the
+  public API are unchanged; the syn/lowering interp entries stay in rustz80. The
+  cell *contract* layer (cartridge, manifest, capability policy, family-hash
+  field) deliberately stays in `cell80` until WS-E generalises it per-target —
+  extracting it now would just move Z80-shaped state addresses into a crate named
+  "core". CI publishes `cell80-z80 → cell80-core → rustz80 → cell80`.
 
 ### WS-B: RV32 backend + executor (critical path, ~4–5 weeks)
 - B1. RV32I codegen, naive strategy (memory-slot regfile). Emission tests against

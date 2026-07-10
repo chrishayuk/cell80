@@ -6,7 +6,16 @@
 //! arithmetic strategy), proving the mechanism on backend zero before any new ISA
 //! exists.
 
-use crate::codegen::Target;
+/// Code-generation target. `Spectrum48` is authentic Z80 — `*`/`/`/`%` use the appended
+/// software micro-runtime, so the output runs anywhere (real ROM, `.tap`). `Cell` is the
+/// micro-VM (the `cell80` crate): those ops lower to the `ED FE` host-trap (serviced natively
+/// by the cell bus — see the Cell80 plan), so no software runtime is appended. `ED FE` is
+/// a no-op on real hardware, so it never reaches a real game.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    Spectrum48,
+    Cell,
+}
 
 /// How `*`/`/`/`%` and `[v; N]` fills lower. `Software`: the appended micro-runtime
 /// (authentic — the output runs anywhere, real ROM included). `HostTrap`: the
