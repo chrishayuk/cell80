@@ -599,7 +599,8 @@ impl<'p> Interp<'p> {
             | Expr::Deref32(..)
             | Expr::Bin32(..)
             | Expr::Shift32 { .. }
-            | Expr::Widen(..) => {
+            | Expr::Widen(..)
+            | Expr::SignExtend(..) => {
                 return Err("interp: u32 node in a 16-bit context".into());
             }
         })
@@ -629,6 +630,7 @@ impl<'p> Interp<'p> {
                 }
             },
             Expr::Widen(inner) => self.eval16(fr, inner)? as u32,
+            Expr::SignExtend(inner) => self.eval16(fr, inner)? as i16 as i32 as u32,
             Expr::Bin32(op, l, r) => {
                 let lv = self.eval32(fr, l)?;
                 let rv = self.eval32(fr, r)?;

@@ -44,6 +44,7 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
         | Expr::LoadAt(e, _)
         | Expr::Trunc32(e)
         | Expr::Widen(e)
+        | Expr::SignExtend(e)
         | Expr::Shift32 { e, .. }
         | Expr::Halt(e) => calls_in_expr(e, out),
         Expr::Lit(_)
@@ -197,6 +198,7 @@ pub(crate) fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
             | Expr::LoadAt(e, _)
             | Expr::Trunc32(e)
             | Expr::Widen(e)
+            | Expr::SignExtend(e)
             | Expr::Shift32 { e, .. }
             | Expr::Halt(e) => in_expr(e, out),
             Expr::Lit(_)

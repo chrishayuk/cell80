@@ -97,6 +97,18 @@ proving the mechanism on backend zero before any new ISA exists.
    **no sign-extend anywhere** — `i16 as u32` is a deliberate compile error). Z80 keeps
    16-bit-natural lowering; RV32/Thumb get 32-bit-natural lowering with u8/u16 as masked
    cases.
+   *Landed (A2b, 2026-07-10) with two recorded decisions.* (a) **The node-family
+   split stays**: the 16/32-bit sibling nodes *are* the width explicitness (every
+   node's width is statically known without an IR type checker); merging them into
+   width-parameterised nodes is deferred until WS-B/WS-D supply a second backend's
+   evidence — the §1 rule that an abstraction fitting only backend zero hasn't earned
+   it. What landed: `SignExtend` completes the explicit bridge family, `i16 as u32`
+   unfreezes (rustc semantics, width-stress diff corpus), and the IR module doc now
+   *specifies* the target-independent contract. (b) **The 2-byte slot ABI is
+   family-wide**: locals, elements, and fields stay 2-byte little-endian slots on
+   every target (it is the frozen `StateCell`/manifest ABI, and it keeps manifests
+   and memory images portable) — a wider-word backend loads 2-byte slots and computes
+   at native width with wrap-at-width masking; it does not get a wider slot.
 2. **Signed *widening*, not signed introduction.** *(revised: v0.1 specced signed from
    scratch; `i16` is fully shipped on Z80 — `Width::SWord`, S⊕V compare, `__sdivmod16`,
    arithmetic `>>`, sign-boundary diff tests.)* The critical-path work is **i32** (and

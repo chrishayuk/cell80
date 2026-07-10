@@ -1,5 +1,27 @@
-//! The compiler's own small typed IR — decoupled from `syn`. Stage 0 is `u16`
-//! throughout (8-bit narrowing comes later); locals are addressed by slot.
+//! The compiler's own small typed IR — decoupled from `syn`, and (A2,
+//! `docs/13-multi-target-spec.md` §2.2) carrying **target-independent semantics**:
+//!
+//! - **Every value's width is statically explicit** — on the node family (the
+//!   `*32` siblings are `DWord` by construction) or a [`Width`] parameter. There
+//!   is no implicit width anywhere; a backend may compute at its native width so
+//!   long as results wrap (mod 2^width) at every step a program can observe.
+//! - **The slot ABI is family-wide**: locals, array elements, and struct fields
+//!   occupy 2-byte little-endian slots (`u8` in the low byte, `u32`/f32-bits as
+//!   two consecutive slots, low word first), byte-addressed. This is the frozen
+//!   `StateCell`/manifest ABI — a wider-word backend loads/stores 2-byte slots,
+//!   it does not get a wider slot.
+//! - **Width bridges are explicit ops** — [`Expr::Trunc`] (to u8),
+//!   [`Expr::Trunc32`] (u32 → its low u16), [`Expr::Widen`] (zero-extend to u32),
+//!   [`Expr::SignExtend`] (sign-extend to u32). Nothing converts implicitly.
+//! - **Evaluation order is left-to-right wherever observable** (A2a): an operand
+//!   pair containing a side effect evaluates in source order; effect-free pairs
+//!   may reorder.
+//!
+//! The 16-bit/32-bit node-family *split* (`Lit`/`Lit32`, `Bin`/`Bin32`, …) is not
+//! a Z80-ism to erase: it is how widths stay static without a type checker over
+//! the IR. Merging the families into width-parameterised nodes is deferred until
+//! a second backend supplies evidence the merge is the right shape (the spec's
+//! "an abstraction that still fits backend zero has earned it").
 
 #[derive(Debug, Clone, Copy)]
 pub enum BinOp {
@@ -150,6 +172,11 @@ pub enum Expr {
     /// Widen a 16-bit expr to `u32` (`x as u32`) — zero-extend into the high word. The bridge
     /// *up* to 32-bit, so a `u16` can feed a `u32` op (e.g. a wide intermediate).
     Widen(Box<Expr>),
+    /// Widen a **signed** 16-bit expr to `u32` (`i16 as u32`) — the high word takes the
+    /// sign fill (rustc's `as` semantics). With [`Expr::Trunc`]/[`Expr::Trunc32`]/
+    /// [`Expr::Widen`] this completes the explicit width-bridge family (A2:
+    /// truncate / zero-extend / sign-extend are IR ops, never implicit).
+    SignExtend(Box<Expr>),
     /// `halt(code)` — a Cell80 intrinsic: stop the run with a status code (the `ED FE`
     /// HALT trap). A no-op on real hardware / the Spectrum target.
     Halt(Box<Expr>),

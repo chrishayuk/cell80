@@ -350,9 +350,10 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
             }
             if tw == Width::DWord {
                 if ew == Width::SWord {
-                    return Err("`i16 as u32` sign-extends in Rust, which the dialect \
-                                doesn't do — take the bits explicitly (`x as u16 as u32`)"
-                        .into());
+                    // `i16 as u32` sign-extends, exactly as in rustc (A2: the explicit
+                    // sign-extend bridge; `x as u16 as u32` stays the take-the-bits
+                    // spelling).
+                    return Ok((Expr::SignExtend(Box::new(e)), Width::DWord));
                 }
                 // Widen a 16-bit value up to `u32` (zero-extend), so a `u16` can feed a wide
                 // intermediate (e.g. `part as u32 * 100`). `Byte`/`Word` widen identically —
@@ -1935,7 +1936,11 @@ pub(crate) fn has_effects(e: &Expr) -> bool {
         | Expr::Logic { lhs, rhs, .. }
         | Expr::Cmp32 { lhs, rhs, .. } => has_effects(lhs) || has_effects(rhs),
         Expr::Index(_, i, _) => has_effects(i),
-        Expr::Trunc(x) | Expr::Trunc32(x) | Expr::Widen(x) | Expr::Peek(x) => has_effects(x),
+        Expr::Trunc(x)
+        | Expr::Trunc32(x)
+        | Expr::Widen(x)
+        | Expr::SignExtend(x)
+        | Expr::Peek(x) => has_effects(x),
         Expr::Deref(p, _) | Expr::Deref32(p, _) => has_effects(p),
         Expr::PtrIndex { ptr, index, .. } => has_effects(ptr) || has_effects(index),
         Expr::MulConst(x, _) => has_effects(x),

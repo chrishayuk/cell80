@@ -234,7 +234,8 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
         | Expr::Deref32(..)
         | Expr::Bin32(..)
         | Expr::Shift32 { .. }
-        | Expr::Widen(..) => {
+        | Expr::Widen(..)
+        | Expr::SignExtend(..) => {
             unreachable!("u32 node in a 16-bit context — the lowering guards reject these")
         }
     }
@@ -684,6 +685,15 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             gen_expr(a, inner); // HL = the u16 value
             a.ld_imm(R16::De, Imm::Abs(0)); // LD DE, 0   (high word)
         }
+        // `i16 as u32` — sign-extend: the high word takes the sign fill (0 / 0xFFFF).
+        Expr::SignExtend(inner) => {
+            gen_expr(a, inner); // HL = the i16 value
+            a.fx(&[0x7C]); // LD A,H
+            a.fx(&[0x17]); // RLA         (sign bit -> carry)
+            a.fx(&[0x9F]); // SBC A,A     (A = 0x00 / 0xFF)
+            a.fx(&[0x57]); // LD D,A
+            a.fx(&[0x5F]); // LD E,A      -> DE = 0x0000 / 0xFFFF
+        }
         Expr::Bin32(op, l, r) => match op {
             BinOp::Or | BinOp::And | BinOp::Xor => {
                 gen_expr32(a, l);
@@ -950,6 +960,7 @@ pub(super) fn effect_free(e: &Expr) -> bool {
         | Expr::Trunc32(e)
         | Expr::Widen(e)
         | Expr::Peek(e)
+        | Expr::SignExtend(e)
         | Expr::MulConst(e, _)
         | Expr::LoadAt(e, _)
         | Expr::Shift32 { e, .. }
