@@ -1,0 +1,19 @@
+# rustrv32 (Phase 5 WS-B): the RV32I(M) sibling of rustz80 — its own symbolic
+# instruction layer (`Ins`) + encoder, a cycle-accounted reference executor, and
+# (arriving with B1) restricted-Rust codegen over the shared cell80-core IR.
+# Deployment driver: Hazard3 on RP2350 (the SOMA reflex organ).
+[package]
+name = "rustrv32"
+description = "RV32I(M) backend for the cell-family: symbolic instruction layer, exact encoder, and a cycle-accounted reference executor over the cell80-core IR (Hazard3/RP2350 is the deployment target)."
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["riscv", "rv32", "compiler", "emulator", "cell80"]
+categories = ["compilers", "emulators"]
+publish = false # joins the publish set when consumable (M2)
+
+[dependencies]
+# The target-independent core: typed IR, passes, the reference IR interpreter.
+cell80-core = { version = "0.8.0", path = "../cell80-core" }
