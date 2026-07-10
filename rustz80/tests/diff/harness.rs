@@ -162,7 +162,18 @@ pub(crate) fn run_str(bytes: &[u8], s: &str) -> u16 {
         .hl()
 }
 
-/// Compile + run one block on **both targets** and assert they match the rustc oracle.
+/// The IR-interpreter leg of `check_str!`: the same length-prefixed buffer at
+/// [`STR_INPUT`], interpreted instead of compiled.
+pub(crate) fn interp_str(src: &str, s: &str) -> Result<u16, String> {
+    let mut buf = Vec::with_capacity(s.len() + 2);
+    buf.extend_from_slice(&(s.len() as u16).to_le_bytes());
+    buf.extend_from_slice(s.as_bytes());
+    rustz80::interp_fn_args(src, &[STR_INPUT], &[(STR_INPUT, &buf)])
+}
+
+/// Compile + run one block on **both targets** — and interpret its IR directly —
+/// asserting all three against the rustc oracle. The interpreter leg is the A4
+/// contract: the typed IR has one executable meaning, backend-independent.
 macro_rules! check {
     ($body:block) => {{
         #[allow(unused_assignments)]
@@ -178,6 +189,13 @@ macro_rules! check {
                 host()
             );
         }
+        let got_ir = rustz80::interp_fn(&src)
+            .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+        assert_eq!(
+            got_ir, host(),
+            "IR interpreter vs rustc diverged\nsrc: {src}\n  ir={got_ir} host={}",
+            host()
+        );
     }};
 }
 
@@ -206,21 +224,50 @@ macro_rules! check_str {
                 );
             )+
         }
+        $(
+            let got_ir = crate::harness::interp_str(&src, $input)
+                .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+            assert_eq!(
+                got_ir,
+                host($input),
+                "IR interpreter vs rustc diverged for input {:?}\nsrc: {}\n  ir={} host={}",
+                $input, src, got_ir, host($input)
+            );
+        )+
     }};
 }
 
-/// Run a multi-function program from its `entry` symbol on **both targets**, assert the
-/// targets agree, and return the result — the caller then asserts it against the oracle.
+/// Run a multi-function program from its `entry` symbol on **both targets** and on
+/// the IR interpreter, assert all three agree, and return the result — the caller
+/// then asserts it against the oracle.
 pub(crate) fn run_program(src: &str, entry: &str) -> u16 {
-    both(src, entry, |cpu, _| cpu.regs.hl())
+    let hl = both(src, entry, |cpu, _| cpu.regs.hl());
+    let ir = rustz80::interp_program(src, entry)
+        .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+    assert_eq!(
+        ir.first().copied().unwrap_or(0),
+        hl,
+        "IR interpreter vs Z80 diverged\nsrc: {src}"
+    );
+    hl
 }
 
 /// Like [`run_program`] but return the three result registers `[HL, DE, BC]` —
-/// to inspect a tuple return's register layout.
+/// to inspect a tuple return's register layout. The interpreter leg compares the
+/// registers the return arity actually defines (the rest are leftovers on the Z80).
 pub(crate) fn run_program_regs(src: &str, entry: &str) -> [u16; 3] {
-    both(src, entry, |cpu, _| {
+    let regs = both(src, entry, |cpu, _| {
         [cpu.regs.hl(), cpu.regs.de(), cpu.regs.bc()]
-    })
+    });
+    let ir = rustz80::interp_program(src, entry)
+        .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+    for (i, v) in ir.iter().enumerate().take(3) {
+        assert_eq!(
+            *v, regs[i],
+            "IR interpreter vs Z80 diverged on result register {i}\nsrc: {src}"
+        );
+    }
+    regs
 }
 
 /// Like [`run_program`] but DCE-prunes to `entry`'s reachable set first (the same
@@ -238,6 +285,15 @@ pub(crate) fn run_program_pruned(src: &str, entry: &str) -> u16 {
     let spectrum = results.next().unwrap();
     let cell = results.next().unwrap();
     assert_eq!(spectrum, cell, "Spectrum48 vs Cell targets diverged");
+    // The interpreter runs the unpruned set (DCE only removes functions; only the
+    // entry's reachable set executes either way).
+    let ir = rustz80::interp_program(src, entry)
+        .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+    assert_eq!(
+        ir.first().copied().unwrap_or(0),
+        spectrum,
+        "IR interpreter vs Z80 diverged\nsrc: {src}"
+    );
     spectrum
 }
 
@@ -262,13 +318,31 @@ pub(crate) fn run_program_banked(src: &str, entry: &str) -> u16 {
 
 /// Run a program for its memory effects and return the bus. Both targets run and the
 /// buses must agree everywhere **except the code region** (`ORG..SCRATCH`), which
-/// differs by construction (traps vs software routines) and is masked out.
+/// differs by construction (traps vs software routines) and is masked out. The IR
+/// interpreter's image must agree too, under a slightly wider mask covering the
+/// execution substrate it doesn't have: the trampoline (`0x7000..ORG`), the code
+/// image, and the hardware stack's residue (`0xFE00..`).
 pub(crate) fn run_to_memory(src: &str, entry: &str) -> Vec<u8> {
-    both(src, entry, |_, bus| {
+    let mem = both(src, entry, |_, bus| {
         let mut m = bus.mem.clone();
         m[rustz80::ORG as usize..0x9000].fill(0);
         m
-    })
+    });
+    let mut ir = rustz80::interp_program_mem(src, entry)
+        .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+    let mut z80 = mem.clone();
+    for m in [&mut ir, &mut z80] {
+        m[0x7000..0x9000].fill(0);
+        m[0xFE00..].fill(0);
+    }
+    if ir != z80 {
+        let at = ir.iter().zip(&z80).position(|(a, b)| a != b).unwrap();
+        panic!(
+            "IR interpreter vs Z80 memory diverged at {at:#06x} (ir={:#04x} z80={:#04x})\nsrc: {src}",
+            ir[at], z80[at]
+        );
+    }
+    mem
 }
 
 /// Compile `src` for both targets, run `entry`, extract a value from each run, assert

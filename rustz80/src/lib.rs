@@ -21,6 +21,7 @@ mod dce;
 mod descriptor;
 pub mod diag;
 mod inline;
+mod interp;
 mod ir;
 mod lower;
 mod softfloat;
@@ -33,6 +34,7 @@ pub use canon::{
 pub use codegen::{codegen_loop, Target};
 pub use descriptor::{ArithStrategy, TargetDescriptor};
 pub use diag::{classify_error, Diag, DiagCode, Repair};
+pub use interp::{interp_fn, interp_fn_args, interp_program, interp_program_mem};
 pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};
 pub use softfloat::{kernel_bank, KernelBank, BANK_FNS, BANK_ORG, BANK_SCRATCH, F32_KERNELS};
