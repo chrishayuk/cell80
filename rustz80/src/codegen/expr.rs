@@ -2,7 +2,7 @@
 use super::asm::*;
 use super::ins::{Imm, R16};
 use super::runtime::*;
-use super::Target;
+use crate::descriptor::ArithStrategy;
 use crate::ir::*;
 
 /// Evaluate `e`, leaving the result in `HL`.
@@ -281,15 +281,15 @@ pub(super) fn const_fold(op: BinOp, x: u16, y: u16) -> Option<u16> {
     })
 }
 
-/// `HL = l * r` (full 16-bit, neither operand constant). Spectrum: the software runtime.
-/// Cell: an `ED FE` host trap, serviced natively by the cell bus.
+/// `HL = l * r` (full 16-bit, neither operand constant). Software: the appended
+/// runtime. HostTrap: an `ED FE` host trap, serviced natively by the cell bus.
 pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
     // `x * x` (one variable squared) — load it once and fan it out to the operand
     // registers, instead of evaluating + reloading the operand twice. Restricted to a bare
     // `Var` so it stays side-effect-free (`f() * f()` must still evaluate twice).
     let square = matches!((l, r), (Expr::Var(s1), Expr::Var(s2)) if s1 == s2);
-    match a.target {
-        Target::Spectrum48 => {
+    match a.arith() {
+        ArithStrategy::Software => {
             if square {
                 gen_expr(a, l); // HL = x
                 a.fx(&[0x54]);
@@ -300,7 +300,7 @@ pub(super) fn gen_mul(a: &mut Asm, l: &Expr, r: &Expr) {
             a.call("__mul16"); // HL = HL * DE
             a.needs_mul = true;
         }
-        Target::Cell => {
+        ArithStrategy::HostTrap => {
             if square {
                 gen_expr(a, l); // HL = x
                 a.fx(&[0x54]);
@@ -421,12 +421,12 @@ fn gen_mul32(a: &mut Asm, l: &Expr, r: &Expr) {
     a.push(R16::De); // PUSH DE   (l.high)
     a.push(R16::Hl); // PUSH HL   (l.low)
     gen_expr32(a, r); // HL:DE = r
-    match a.target {
-        Target::Spectrum48 => {
+    match a.arith() {
+        ArithStrategy::Software => {
             a.call("__mul32");
             a.needs_mul32 = true;
         }
-        Target::Cell => gen_trap(a, TRAP_MUL32),
+        ArithStrategy::HostTrap => gen_trap(a, TRAP_MUL32),
     }
     a.pop(R16::Bc); // POP BC   ─┐ drop l
     a.pop(R16::Bc); // POP BC   ─┘
@@ -440,12 +440,12 @@ fn gen_divmod32(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
     a.push(R16::De); // PUSH DE   (l.high)
     a.push(R16::Hl); // PUSH HL   (l.low)
     gen_expr32(a, r); // HL:DE = r (the divisor)
-    match a.target {
-        Target::Spectrum48 => {
+    match a.arith() {
+        ArithStrategy::Software => {
             a.call("__divmod32");
             a.needs_div32 = true;
         }
-        Target::Cell => gen_trap(a, TRAP_DIVMOD32),
+        ArithStrategy::HostTrap => gen_trap(a, TRAP_DIVMOD32),
     }
     if rem {
         a.pop(R16::Hl); // POP HL   (rem.low)
@@ -469,11 +469,11 @@ fn gen_sdivmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
     }
 }
 
-/// `HL = l / r` (or `l % r` if `rem`), neither a power of two. Spectrum: the software
-/// runtime. Cell: an `ED FE` host trap.
+/// `HL = l / r` (or `l % r` if `rem`), neither a power of two. Software: the
+/// appended runtime. HostTrap: an `ED FE` host trap.
 pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
-    match a.target {
-        Target::Spectrum48 => {
+    match a.arith() {
+        ArithStrategy::Software => {
             gen_pair(a, r, l); // HL = l, DE = r
             a.call("__divmod16"); // HL = l/r, DE = l%r
             a.needs_div = true;
@@ -481,7 +481,7 @@ pub(super) fn gen_divmod(a: &mut Asm, l: &Expr, r: &Expr, rem: bool) {
                 a.ex_de_hl(); // EX DE,HL  -> HL = remainder
             }
         }
-        Target::Cell => {
+        ArithStrategy::HostTrap => {
             gen_expr(a, r);
             a.push(R16::Hl); // PUSH HL  (r = divisor)
             gen_expr(a, l);

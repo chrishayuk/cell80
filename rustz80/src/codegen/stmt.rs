@@ -3,7 +3,7 @@ use super::asm::*;
 use super::expr::*;
 use super::ins::{Imm, R16};
 use super::runtime::*;
-use super::Target;
+use crate::descriptor::ArithStrategy;
 use crate::ir::*;
 
 /// Emit a function's return values into the result convention `HL`/`DE`/`BC`: none
@@ -30,15 +30,15 @@ pub(super) fn gen_return(a: &mut Asm, rets: &[Expr]) {
 
 /// Fill `count` slots at local `base` with `value`. Every array element is one 2-byte
 /// slot (a `u8` lives in the low byte, `H = 0`), so the fill is always slot-stride.
-/// Spectrum: store the first slot then `LDIR` (compact, fast — beats `N` unrolled stores).
-/// Cell: an `ED FE` fill trap (host-native).
+/// Software: store the first slot then `LDIR` (compact, fast — beats `N` unrolled
+/// stores). HostTrap: an `ED FE` fill trap (host-native).
 pub(super) fn gen_fill(a: &mut Asm, base: usize, count: usize, value: &Expr) {
     if count == 0 {
         return;
     }
     let addr = a.slot(base);
-    match a.target {
-        Target::Spectrum48 => {
+    match a.arith() {
+        ArithStrategy::Software => {
             gen_expr(a, value); // HL = value
             a.st_hl_mem(addr); // LD (addr),HL    (first slot)
             if count >= 2 {
@@ -48,7 +48,7 @@ pub(super) fn gen_fill(a: &mut Asm, base: usize, count: usize, value: &Expr) {
                 a.fx(&[0xED, 0xB0]); // LDIR  (propagates the slot forward)
             }
         }
-        Target::Cell => {
+        ArithStrategy::HostTrap => {
             gen_expr(a, value);
             a.push(R16::Hl); // PUSH HL  (value)
             a.ld_imm(R16::Hl, addr); // LD HL, addr   (base)

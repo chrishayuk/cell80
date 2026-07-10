@@ -18,6 +18,7 @@
 mod canon;
 mod codegen;
 mod dce;
+mod descriptor;
 pub mod diag;
 mod inline;
 mod ir;
@@ -30,6 +31,7 @@ pub use canon::{
     UNIT_TABLE_VERSION,
 };
 pub use codegen::{codegen_loop, Target};
+pub use descriptor::{ArithStrategy, TargetDescriptor};
 pub use diag::{classify_error, Diag, DiagCode, Repair};
 pub use ir::Func;
 pub use lower::{lower_program, lower_program_full, Lowered, PreludeConfig};

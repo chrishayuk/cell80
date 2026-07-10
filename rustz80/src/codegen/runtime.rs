@@ -1,7 +1,7 @@
 //! The appended mul/div micro-runtime (Spectrum target) + the Cell80 `ED FE` trap ids.
 use super::asm::Asm;
 use super::ins::{Imm, R16};
-use super::Target;
+use crate::descriptor::ArithStrategy;
 
 /// `__mul16`: HL = HL * DE (low 16). Shift-add, **multiplier-terminated**: loops once
 /// per bit up to the multiplier's (DE's) top set bit, then returns — so small operands
@@ -357,9 +357,9 @@ pub(super) fn emit_sdivmod16(a: &mut Asm) {
     a.fx(&[0x13]); // INC DE
     a.place(abs_r);
     // The unsigned core: HL/DE -> HL = q, DE = rem.
-    match a.target {
-        Target::Spectrum48 => a.call("__divmod16"),
-        Target::Cell => {
+    match a.arith() {
+        ArithStrategy::Software => a.call("__divmod16"),
+        ArithStrategy::HostTrap => {
             a.fx(&[0x44]); // LD B,H
             a.fx(&[0x4D]); // LD C,L        (BC = |dividend|)
             gen_trap(a, TRAP_DIVMOD16); // HL = BC/DE, DE = BC%DE

@@ -6,14 +6,8 @@ use super::runtime::{
     emit_divmod32, emit_mul16w, emit_mul32, emit_sdivmod16, BIT_ROUTINES, DIVMOD16, MUL16,
 };
 use super::Target;
+use crate::descriptor::ArithStrategy;
 use std::collections::HashMap;
-
-/// Default base for locals: slot `i` lives at `SCRATCH + i*2` (`u16` each). Each function
-/// reuses the same region (Stage 1 has no recursion / overlapping live ranges yet). This is
-/// only a *default* (used by `codegen_program`); the frame loop ([`super::codegen_loop`])
-/// overrides `Asm::scratch` to sit just above the emitted code, so a large program's code
-/// can't grow into the locals region.
-pub(super) const SCRATCH: u16 = 0x9000;
 
 pub(super) struct Asm {
     pub(super) org: u16,
@@ -30,8 +24,10 @@ pub(super) struct Asm {
     /// locals occupy a disjoint scratch region (correct for non-recursive calls;
     /// real stack frames are a later stage).
     pub(super) base: u16,
-    /// Base address of the locals scratch region. Defaults to [`SCRATCH`]; the frame loop
-    /// raises it to just above the code so code and locals never overlap.
+    /// Base address of the locals scratch region: slot `i` lives at `scratch + i*2`
+    /// (`u16` each; each function reuses the region — Stage 1 has no recursion).
+    /// Defaults to the descriptor's `scratch`; the frame loop raises it to just
+    /// above the code so code and locals never overlap.
     pub(super) scratch: u16,
     /// Enclosing loops as `(continue target, break target)` labels — the innermost
     /// is last. `continue`/`break` jump to the top entry's targets.
@@ -57,6 +53,12 @@ pub(super) struct Asm {
 }
 
 impl Asm {
+    /// The target's mul/div/fill lowering strategy (descriptor-owned — codegen
+    /// forks on this, never on the target itself).
+    pub(super) fn arith(&self) -> ArithStrategy {
+        self.target.descriptor().arith
+    }
+
     pub(super) fn new(org: u16, target: Target) -> Self {
         Asm {
             org,
@@ -69,7 +71,7 @@ impl Asm {
             needs_div32: false,
             needs_sdiv: false,
             base: 0,
-            scratch: SCRATCH,
+            scratch: target.descriptor().scratch,
             loop_stack: Vec::new(),
             func_ret_wide: false,
             wide_sigs: HashMap::new(),
@@ -183,10 +185,10 @@ impl Asm {
             emit_divmod32(self);
         }
         if self.needs_sdiv {
-            // The signed wrapper forks per target inside: the Spectrum path calls the
-            // software `__divmod16`, so that must be appended too.
+            // The signed wrapper forks per strategy inside: the software path calls
+            // `__divmod16`, so that must be appended too.
             emit_sdivmod16(self);
-            if self.target == Target::Spectrum48 {
+            if self.arith() == ArithStrategy::Software {
                 self.needs_div = true;
             }
         }

@@ -84,26 +84,21 @@ pub(crate) fn codegen_program_c(
     }
     emit_const_data(&mut a, funcs, consts);
     a.seal();
-    // Locals live *above* the code. The classic base is [`asm::SCRATCH`] (`0x9000`) —
-    // kept whenever the code fits below it, so every historical image stays
-    // byte-identical — but a larger program (a multi-kernel f32 cell) places scratch
-    // just past its own code instead of failing at the historical window. Slot
-    // operands stay symbolic in the stream and encode as 2-byte immediates regardless
-    // of value, so one emission suffices: measure, place scratch, encode (the same
-    // move `codegen_loop_c` has always made against its `state_base`).
+    // Locals live *above* the code. The classic base is the descriptor's `scratch`
+    // (`0x9000`) — kept whenever the code fits below it, so every historical image
+    // stays byte-identical — but a larger program (a multi-kernel f32 cell) places
+    // scratch just past its own code instead of failing at the historical window.
+    // Slot operands stay symbolic in the stream and encode as 2-byte immediates
+    // regardless of value, so one emission suffices: measure, place scratch, encode
+    // (the same move `codegen_loop_c` has always made against its `state_base`).
+    let desc = target.descriptor();
     let code_end = org as u32 + a.encoded_len() as u32;
-    let scratch = if code_end <= asm::SCRATCH as u32 {
-        asm::SCRATCH as u32
+    let scratch = if code_end <= desc.scratch as u32 {
+        desc.scratch as u32
     } else {
         (code_end + 1) & !1 // round up to a u16 slot boundary
     };
-    // The ceiling above the locals: the Cell VM lays state structs and I/O buffers at
-    // `0xB000` (`cell80`'s `STATE_BASE`), so code + locals must stay below it; the
-    // Spectrum whole-program path just needs stack headroom.
-    let ceiling: u32 = match target {
-        Target::Cell => 0xB000,
-        _ => 0xF000,
-    };
+    let ceiling: u32 = desc.ceiling as u32;
     let total_slots: u32 = funcs.iter().map(|(_, f)| f.n_locals as u32).sum();
     let scratch_top = scratch + total_slots * 2;
     if scratch_top > ceiling {
