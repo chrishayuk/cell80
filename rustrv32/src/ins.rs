@@ -162,12 +162,16 @@ pub enum StoreW {
 }
 
 /// One symbolic RV32 instruction. Branch/jump targets are label ids placed with
-/// [`Ins::At`]; everything else is concrete. (`Call`/`Def` symbols arrive with
-/// the B1 codegen — labels carry the bootstrap.)
+/// [`Ins::At`]; call targets are names defined with [`Ins::Def`] — both resolve
+/// at [`encode`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ins {
     /// A label placement (assembles to nothing).
     At(usize),
+    /// A named symbol placement (a function entry; assembles to nothing).
+    Def(String),
+    /// `jal ra, <symbol>` — a call to a defined name.
+    Call(String),
     /// `rd = imm << 12` (U-type LUI).
     Lui(Reg, u32),
     /// R-type ALU: `rd = rs1 <op> rs2`.
@@ -193,17 +197,30 @@ pub enum Ins {
 /// real instruction is 4 bytes), then emit. `Err` on an unplaced label or an
 /// out-of-range displacement/immediate — diagnostics, never silent truncation.
 pub fn encode(ins: &[Ins]) -> Result<Vec<u8>, String> {
-    // Pass 1: label offsets.
+    Ok(encode_with_symbols(ins)?.0)
+}
+
+/// [`encode`], also returning each [`Ins::Def`] symbol's byte offset — the image's
+/// public entry map (the codegen consumer).
+pub fn encode_with_symbols(
+    ins: &[Ins],
+) -> Result<(Vec<u8>, std::collections::HashMap<String, u32>), String> {
+    // Pass 1: label + symbol offsets.
     let mut labels: Vec<Option<u32>> = Vec::new();
+    let mut symbols = std::collections::HashMap::new();
     let mut pc = 0u32;
     for i in ins {
-        if let Ins::At(l) = i {
-            if labels.len() <= *l {
-                labels.resize(l + 1, None);
+        match i {
+            Ins::At(l) => {
+                if labels.len() <= *l {
+                    labels.resize(l + 1, None);
+                }
+                labels[*l] = Some(pc);
             }
-            labels[*l] = Some(pc);
-        } else {
-            pc += 4;
+            Ins::Def(name) => {
+                symbols.insert(name.clone(), pc);
+            }
+            _ => pc += 4,
         }
     }
     let label = |l: usize, at: u32| -> Result<i32, String> {
@@ -220,7 +237,24 @@ pub fn encode(ins: &[Ins]) -> Result<Vec<u8>, String> {
     let mut pc = 0u32;
     for i in ins {
         let word = match i {
-            Ins::At(_) => continue,
+            Ins::At(_) | Ins::Def(_) => continue,
+            Ins::Call(name) => {
+                let target = *symbols
+                    .get(name)
+                    .ok_or_else(|| format!("rustrv32: call to undefined symbol `{name}`"))?;
+                let d = target as i32 - pc as i32;
+                if !(-(1 << 20)..(1 << 20)).contains(&d) {
+                    return Err(format!("rustrv32: call displacement {d} out of range"));
+                }
+                let d = d as u32;
+                // jal ra, <sym>
+                (((d >> 20) & 1) << 31)
+                    | (((d >> 1) & 0x3FF) << 21)
+                    | (((d >> 11) & 1) << 20)
+                    | (((d >> 12) & 0xFF) << 12)
+                    | (Reg::Ra.n() << 7)
+                    | 0b1101111
+            }
             Ins::Lui(rd, imm20) => {
                 if *imm20 > 0xF_FFFF {
                     return Err(format!(
@@ -312,7 +346,7 @@ pub fn encode(ins: &[Ins]) -> Result<Vec<u8>, String> {
         out.extend_from_slice(&word.to_le_bytes());
         pc += 4;
     }
-    Ok(out)
+    Ok((out, symbols))
 }
 
 /// A sign-extended 12-bit immediate, encoded into its field bits.

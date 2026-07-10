@@ -147,7 +147,7 @@ pub(crate) fn run(bytes: &[u8]) -> u16 {
 }
 
 /// Where `run_str` plants the input buffer — far above the code + scratch region.
-const STR_INPUT: u16 = 0xB000;
+pub(crate) const STR_INPUT: u16 = 0xB000;
 
 /// Run compiled `fn f(s: &str) -> u16` bytes: pack `s` as a length-prefixed buffer
 /// (u16 LE length, then the bytes — the Phase S wire format) at [`STR_INPUT`], pass
@@ -160,6 +160,37 @@ pub(crate) fn run_str(bytes: &[u8], s: &str) -> u16 {
         .0
         .regs
         .hl()
+}
+
+/// The RV32 leg (WS-B/B3): lower the same source, compile with the rustrv32
+/// backend, run on the cycle-accounted executor. Args ride `a0..a2`; 16-bit
+/// results come back zero-extended in `a0`. `data` pairs plant into the 64 KiB
+/// window (the interpreter's memory map on a different substrate).
+pub(crate) fn run_rv32(src: &str, entry: &str, args: &[u32], data: &[(u16, &[u8])]) -> u16 {
+    let file: syn::File =
+        syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
+    let funcs = rustz80::lower_program(&file, &rustz80::PreludeConfig::default())
+        .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
+    let image = rustrv32::compile(&funcs, &[])
+        .unwrap_or_else(|e| panic!("rv32 compile failed: {e}\nsrc: {src}"));
+    let entry_off = *image
+        .symbols
+        .get(entry)
+        .unwrap_or_else(|| panic!("rv32: no entry `{entry}`"));
+    let (regs, _cycles, stop, _window) = rustrv32::run_cell(
+        &image.code,
+        &image.consts,
+        entry_off,
+        args,
+        data,
+        10_000_000,
+    );
+    assert_eq!(
+        stop,
+        rustrv32::Stop::Returned,
+        "rv32 run did not return cleanly\nsrc: {src}"
+    );
+    regs[0] as u16
 }
 
 /// The IR-interpreter leg of `check_str!`: the same length-prefixed buffer at
@@ -196,6 +227,12 @@ macro_rules! check {
             "IR interpreter vs rustc diverged\nsrc: {src}\n  ir={got_ir} host={}",
             host()
         );
+        let got_rv = crate::harness::run_rv32(&src, "f", &[], &[]);
+        assert_eq!(
+            got_rv, host(),
+            "RV32 vs rustc diverged\nsrc: {src}\n  rv32={got_rv} host={}",
+            host()
+        );
     }};
 }
 
@@ -214,6 +251,14 @@ macro_rules! check_ir {
         assert_eq!(
             got_ir, host(),
             "IR interpreter vs rustc diverged\nsrc: {src}\n  ir={got_ir} host={}",
+            host()
+        );
+        // Signed-32 is native on RV32 — the first machine backend for the i32
+        // corpus (rustz80 gates it; landing it is exactly WS-B's point).
+        let got_rv = crate::harness::run_rv32(&src, "f", &[], &[]);
+        assert_eq!(
+            got_rv, host(),
+            "RV32 vs rustc diverged\nsrc: {src}\n  rv32={got_rv} host={}",
             host()
         );
     }};
@@ -252,6 +297,21 @@ macro_rules! check_str {
                 host($input),
                 "IR interpreter vs rustc diverged for input {:?}\nsrc: {}\n  ir={} host={}",
                 $input, src, got_ir, host($input)
+            );
+            let mut buf = Vec::with_capacity($input.len() + 2);
+            buf.extend_from_slice(&($input.len() as u16).to_le_bytes());
+            buf.extend_from_slice($input.as_bytes());
+            let got_rv = crate::harness::run_rv32(
+                &src,
+                "f",
+                &[crate::harness::STR_INPUT as u32],
+                &[(crate::harness::STR_INPUT, &buf)],
+            );
+            assert_eq!(
+                got_rv,
+                host($input),
+                "RV32 vs rustc diverged for input {:?}\nsrc: {}\n  rv32={} host={}",
+                $input, src, got_rv, host($input)
             );
         )+
     }};

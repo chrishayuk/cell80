@@ -10,8 +10,10 @@
 //! adversary as a linux-only CI job (B1's emission oracle — spec §6 risk 2), then
 //! codegen (B1) joining the diff harness's `TARGETS` matrix (B3).
 
+pub mod codegen;
 pub mod exec;
 pub mod ins;
 
-pub use exec::{run_fn, Rv32, Stop, RETURN_SENTINEL, SRAM_BASE};
+pub use codegen::{compile, Image};
+pub use exec::{run_cell, run_fn, Rv32, Stop, CODE_OFFSET, RETURN_SENTINEL, SRAM_BASE};
 pub use ins::{encode, Alu, AluI, Bcc, Ins, LoadW, Reg, StoreW};

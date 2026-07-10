@@ -205,9 +205,18 @@ impl Rv32 {
                 self.wr_reg(rd, v);
                 self.cycles += cost;
             }
-            // LOAD
+            // LOAD — misalignment faults, as on Hazard3 (no HW misaligned support):
+            // the battery proves codegen never emits one.
             0b0000011 => {
                 let addr = self.rd_reg(rs1).wrapping_add(imm_i as u32);
+                let align = match f3 {
+                    0b001 | 0b101 => 2,
+                    0b010 => 4,
+                    _ => 1,
+                };
+                if addr % align != 0 {
+                    return Some(Stop::Fault);
+                }
                 let v = match f3 {
                     0b000 => self.rd_mem(addr, 1).map(|v| v as u8 as i8 as i32 as u32),
                     0b001 => self.rd_mem(addr, 2).map(|v| v as u16 as i16 as i32 as u32),
@@ -233,6 +242,9 @@ impl Rv32 {
                     0b010 => 4,
                     _ => return Some(Stop::Fault),
                 };
+                if addr % len != 0 {
+                    return Some(Stop::Fault);
+                }
                 if !self.wr_mem(addr, len, self.rd_reg(rs2)) {
                     return Some(Stop::Fault);
                 }
@@ -303,6 +315,50 @@ impl Rv32 {
         }
         Stop::Fuel
     }
+}
+
+/// Where compiled code lands, above the 64 KiB data window at `s0` (the window
+/// mirrors the interpreter's map: consts at `0x8000`, slots at `0x9000`, state at
+/// `0xB000` — all 16-bit addresses relative to `s0`).
+pub const CODE_OFFSET: u32 = 0x1_0000;
+
+/// Run a compiled image the cell way: the 64 KiB data window at `s0 = SRAM_BASE`
+/// (consts planted at their window addresses, `data` pairs likewise), code at
+/// [`CODE_OFFSET`], `sp` at the top, `a0..a2` = args, `ra` = the sentinel. Enter
+/// at `entry` (a byte offset into `code`) and run to a stop. Returns
+/// `(a0, a1, a2, cycles, stop, window)` — the result registers, the honest cycle
+/// count, why the run ended, and the final data window for memory comparison.
+#[allow(clippy::type_complexity)]
+pub fn run_cell(
+    code: &[u8],
+    consts: &[u8],
+    entry: u32,
+    args: &[u32],
+    data: &[(u16, &[u8])],
+    fuel: u64,
+) -> ([u32; 3], u64, Stop, Vec<u8>) {
+    let size = 0x2_0000; // 64 KiB window + 64 KiB code/stack region
+    let mut cpu = Rv32::new(size);
+    cpu.load(SRAM_BASE + CODE_OFFSET, code);
+    cpu.load(SRAM_BASE + 0x8000, consts);
+    for (addr, bytes) in data {
+        cpu.load(SRAM_BASE + *addr as u32, bytes);
+    }
+    for (i, &v) in args.iter().enumerate().take(3) {
+        cpu.regs[10 + i] = v; // a0..a2
+    }
+    cpu.regs[1] = RETURN_SENTINEL; // ra
+    cpu.regs[2] = SRAM_BASE + size as u32; // sp (grows down)
+    cpu.regs[8] = SRAM_BASE; // s0: the data window base (the codegen convention)
+    cpu.pc = SRAM_BASE + CODE_OFFSET + entry;
+    let stop = cpu.run(fuel);
+    let window = cpu.mem[..0x1_0000].to_vec();
+    (
+        [cpu.regs[10], cpu.regs[11], cpu.regs[12]],
+        cpu.cycles,
+        stop,
+        window,
+    )
 }
 
 /// Load `code` at [`SRAM_BASE`], call it as a function — `a0..a2` = `args`,

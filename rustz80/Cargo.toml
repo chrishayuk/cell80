@@ -25,5 +25,8 @@ quote = "1"
 [dev-dependencies]
 # Run the compiled bytes on the real CPU to differential-test against rustc.
 z80 = { package = "cell80-z80", version = "0.8.0", path = "../z80" }
+# The RV32 sibling backend: the diff battery drives it through the same rustc
+# oracle (WS-B/B3 — same source, second ISA, one truth).
+rustrv32 = { path = "../rustrv32" }
 # The ROM-gated `.tap` boot test lives in `chuk-speccy` (where the full Spectrum +
 # ROM are) and depends on this crate — it tests compiled output on the real machine.
