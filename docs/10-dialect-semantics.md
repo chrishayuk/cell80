@@ -112,7 +112,10 @@ in machine-authored cells: `a.saturating_add(b)` now means what it means in host
 Rust.
 
 **`u32` comparisons** are in, condition and value position alike: `if a < b`,
-`while total < cap`, `(a == b) as u16` — unsigned (the dialect has no `i32`),
+`while total < cap`, `(a == b) as u16` — unsigned (`i32` exists as an IR-and-
+interpreter-only lane since Phase 5 A3: signed-32 compare/divide/`>>` are gated out
+of Z80 codegen with an instructive error until a backend lands them, WS-B;
+bit-identical signed add/sub/mul/bitwise compile as u32 patterns),
 oracle-checked across the word seams. The lowering computes `l - r` through the
 32-bit `SBC` chain and reads the final borrow as `l < r` (equality ORs the
 difference's four bytes) — branch-free, no labels, no traps. In condition position

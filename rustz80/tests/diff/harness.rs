@@ -199,6 +199,26 @@ macro_rules! check {
     }};
 }
 
+/// Interpreter-only `check!` — the A3 shape: constructs that lower to the IR and
+/// run on the reference interpreter *before any machine backend emits them*
+/// (signed-32 today). Single-source against the rustc oracle, like `check!`, but
+/// no Z80 legs: `compile_fn_for` refuses these programs by design (the
+/// `reject_signed32` gate), which the companion reject-tests pin.
+macro_rules! check_ir {
+    ($body:block) => {{
+        #[allow(unused_assignments)]
+        fn host() -> u16 $body
+        let src = format!("fn f() -> u16 {}", stringify!($body));
+        let got_ir = rustz80::interp_fn(&src)
+            .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+        assert_eq!(
+            got_ir, host(),
+            "IR interpreter vs rustc diverged\nsrc: {src}\n  ir={got_ir} host={}",
+            host()
+        );
+    }};
+}
+
 /// Compile + run one `fn f(s: &str) -> u16` body on **both targets**, over one or
 /// more input strings, asserting each against the rustc oracle. The single-source
 /// property of `check!`, for string kernels. The parameter name is passed first

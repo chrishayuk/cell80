@@ -214,6 +214,15 @@ top:
   new width-stress tests pass under rustc diff.
 - A3. Signed widening (i32; sign_extend). **Acceptance:** signed corpus passes under
   rustc diff **on the IR interpreter (A4)** before any backend emits it.
+  *Landed 2026-07-10:* `Width::SDWord` shares DWord storage; signedness travels as
+  flags on `Bin32`/`Cmp32`/`Shift32` (only compare, `/`/`%`, and arithmetic `>>`
+  differ — the i16 precedent). Scope: scalars, params/returns (the wide convention),
+  arithmetic, comparisons, casts (`i16 as i32` sign-extends; `i32 ↔ u32` is a bit
+  identity; i32/u32 never mix, as in rustc). Deferred with instructive rejections:
+  i32 struct fields (WS-E owns the manifest `Ty` signedness), `[i32; N]` arrays,
+  i32 consts, saturating/bit methods. The `reject_signed32` gate refuses signed-32
+  ops at every codegen entry with a WS-B pointer; `check_ir!` is the
+  interpreter-only harness leg; corpus in `tests/diff/signed32.rs`.
 - A4. The reference IR interpreter (§2.3). **Acceptance:** agrees with the Z80 emulator
   across the existing diff battery on both Z80 targets.
 - A5. `cell-core` crate extraction (ir + passes + interpreter + contracts + family

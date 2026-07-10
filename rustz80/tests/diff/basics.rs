@@ -629,7 +629,7 @@ fn bit_method_rejections() {
     let err = rustz80::compile_fn("fn f(a: u16) -> u16 { ((a as u32).count_ones()) as u16 }")
         .err()
         .unwrap();
-    assert!(err.contains("u32 `count_ones`"), "unexpected: {err}");
+    assert!(err.contains("u32/i32 `count_ones`"), "unexpected: {err}");
 }
 
 #[test]

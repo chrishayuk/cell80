@@ -41,6 +41,7 @@ mod nested_structs;
 mod peephole;
 mod recursion;
 mod signed;
+mod signed32;
 mod strings;
 mod structs;
 mod u32_ops;

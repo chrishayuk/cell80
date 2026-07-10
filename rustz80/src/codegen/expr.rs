@@ -110,7 +110,9 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     a.fx(&[0x6E]); // LD L,(HL)
                     a.fx(&[0x26, 0x00]); // LD H, 0    -> HL = zero-extended byte
                 }
-                Width::DWord | Width::F32 => unreachable!("wide array elements are unsupported"),
+                Width::DWord | Width::SDWord | Width::F32 => {
+                    unreachable!("wide array elements are unsupported")
+                }
             }
         }
         Expr::Call(name, args) => gen_call(a, name, args),
@@ -170,7 +172,7 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
                     a.fx(&[0x6E]); // LD L,(HL)
                     a.fx(&[0x26, 0x00]); // LD H, 0  (zero-extend)
                 }
-                Width::DWord | Width::F32 => {
+                Width::DWord | Width::SDWord | Width::F32 => {
                     unreachable!("wide array/field elements are unsupported")
                 }
             }
@@ -220,8 +222,17 @@ pub(super) fn gen_expr(a: &mut Asm, e: &Expr) {
             a.place(done);
             mask_to_width(a, *w);
         }
-        // A u32 comparison materialised to `0`/`1` in HL.
-        Expr::Cmp32 { cmp, lhs, rhs } => gen_cmp32(a, *cmp, lhs, rhs),
+        // A u32 comparison materialised to `0`/`1` in HL. (Signed-32 never reaches
+        // codegen — `reject_signed32` gates it with an instructive error first.)
+        Expr::Cmp32 {
+            cmp,
+            lhs,
+            rhs,
+            signed,
+        } => {
+            debug_assert!(!signed, "signed-32 is gated before codegen");
+            gen_cmp32(a, *cmp, lhs, rhs)
+        }
         // `x as u16` — the low word of a `u32` value (the high word is discarded).
         Expr::Trunc32(e) => gen_expr32(a, e),
         // `halt(code)` — code in HL, then the HALT trap (no-op on real hardware).
@@ -694,7 +705,12 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             a.fx(&[0x57]); // LD D,A
             a.fx(&[0x5F]); // LD E,A      -> DE = 0x0000 / 0xFFFF
         }
-        Expr::Bin32(op, l, r) => match op {
+        Expr::Bin32(op, l, r, signed) => match op {
+            // Signed `/`/`%` never reach codegen (gated); the other ops share the
+            // unsigned bit patterns, so the flag is irrelevant here.
+            BinOp::Div | BinOp::Rem if *signed => {
+                unreachable!("signed-32 is gated before codegen")
+            }
             BinOp::Or | BinOp::And | BinOp::Xor => {
                 gen_expr32(a, l);
                 a.push(R16::De); // PUSH DE   (l.high)
@@ -759,7 +775,10 @@ pub(super) fn gen_expr32(a: &mut Asm, e: &Expr) {
             BinOp::Rem => gen_divmod32(a, l, r, true),
             BinOp::Shl | BinOp::Shr => unreachable!("u32 shifts lower to Shift32"),
         },
-        Expr::Shift32 { left, e, k } => {
+        Expr::Shift32 { left, e, k, signed } => {
+            // An arithmetic (signed) right shift never reaches codegen (gated);
+            // left shifts ignore the flag.
+            debug_assert!(*left || !signed, "signed-32 is gated before codegen");
             gen_expr32(a, e); // HL:DE = lo:hi
                               // Constant shifts decompose word/byte-first: a 16-bit distance is one
                               // register move, an 8-bit distance one byte rotation, and only the
@@ -949,7 +968,7 @@ pub(super) fn effect_free(e: &Expr) -> bool {
         | Expr::Lit32(_)
         | Expr::Var32(_) => true,
         Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => false,
-        Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r) => effect_free(l) && effect_free(r),
+        Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r, _) => effect_free(l) && effect_free(r),
         Expr::Cmp { lhs, rhs, .. }
         | Expr::Cmp32 { lhs, rhs, .. }
         | Expr::Logic { lhs, rhs, .. } => effect_free(lhs) && effect_free(rhs),

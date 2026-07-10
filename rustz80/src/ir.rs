@@ -49,6 +49,12 @@ pub enum Width {
     Word,
     SWord,
     DWord,
+    /// `i32` — two's-complement over `DWord` storage (two slots, same wrapping
+    /// add/sub/mul/bitwise bit patterns); only compare / divide / arithmetic-`>>`
+    /// differ, carried as `signed` flags on the 32-bit nodes. **IR + interpreter
+    /// only until a backend lands** (Phase 5 A3: the signed-32 ops are gated out of
+    /// Z80 codegen with an instructive error; RV32 gets them natively at WS-B).
+    SDWord,
     /// IEEE binary32 bits riding a u32 — a **lowering-only** type: it storage-plumbs
     /// exactly like `DWord` (two slots, `HL:DE`, wide call convention) but routes
     /// arithmetic/comparisons through the owned softfloat kernels instead of `Bin32`/
@@ -58,10 +64,16 @@ pub enum Width {
 }
 
 impl Width {
-    /// Two-slot, `HL:DE`-carried values: `u32`, and f32 bits riding u32. Use this for
-    /// storage/call plumbing; use `== Width::DWord` when the *operation* is integer.
+    /// Two-slot values: `u32`/`i32`, and f32 bits riding u32. Use this for
+    /// storage/call plumbing; use [`Width::is_int_wide`] when the *operation* is
+    /// 32-bit integer arithmetic.
     pub fn is_wide(self) -> bool {
-        matches!(self, Width::DWord | Width::F32)
+        matches!(self, Width::DWord | Width::SDWord | Width::F32)
+    }
+    /// A 32-bit *integer* lane (`u32` or `i32`) — the `Bin32`/`Cmp32`/`Shift32`
+    /// node family, signed or not.
+    pub fn is_int_wide(self) -> bool {
+        matches!(self, Width::DWord | Width::SDWord)
     }
 }
 
@@ -134,15 +146,16 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
-    /// A **u32** comparison as a value: `1`/`0` in `HL` (`Width::Byte` bool).
-    /// Unsigned only (the dialect has no `i32`). Ordering rides the 32-bit `SBC`
-    /// chain's borrow; equality tests the difference's four bytes. In condition
-    /// position this materialises and branches on `!= 0` (the compound-`Cond`
-    /// pattern) — `Cond` itself stays 16-bit.
+    /// A 32-bit comparison as a value: `1`/`0` in `HL` (`Width::Byte` bool).
+    /// Unsigned ordering rides the 32-bit `SBC` chain's borrow; equality tests the
+    /// difference's four bytes; `signed` (`i32`) orders by two's complement.
+    /// In condition position this materialises and branches on `!= 0` (the
+    /// compound-`Cond` pattern) — `Cond` itself stays 16-bit.
     Cmp32 {
         cmp: Cmp,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+        signed: bool,
     },
     /// Shift by a **runtime** amount: `e << amount` (`left = true`) or `e >> amount`.
     /// The amount's low byte is the count (a count ≥ 16 shifts a `u16` out to `0`);
@@ -159,11 +172,20 @@ pub enum Expr {
     Lit32(u32),
     /// A `u32` local, by slot index (occupies `slot` and `slot + 1`).
     Var32(usize),
-    /// A `u32` binary op: `+ - * / %` (add/sub as an inline carry chain; mul/div via
+    /// A 32-bit binary op: `+ - * / %` (add/sub as an inline carry chain; mul/div via
     /// the software runtime on Spectrum or the `ED FE` trap on Cell) and `| & ^`.
-    Bin32(BinOp, Box<Expr>, Box<Expr>),
-    /// A `u32` shift by a constant: `e << k` (`left`) or `e >> k`.
-    Shift32 { left: bool, e: Box<Expr>, k: u8 },
+    /// `signed` (`i32`) changes only `/`/`%` (truncate toward zero, remainder takes
+    /// the dividend's sign); add/sub/mul/bitwise share the unsigned bit patterns.
+    Bin32(BinOp, Box<Expr>, Box<Expr>, bool),
+    /// A 32-bit shift by a constant: `e << k` (`left`) or `e >> k`. `signed` makes
+    /// the right shift arithmetic (`i32 >> k` sign-propagates); left shifts and
+    /// unsigned right shifts ignore it.
+    Shift32 {
+        left: bool,
+        e: Box<Expr>,
+        k: u8,
+        signed: bool,
+    },
     /// Truncate a `u32` to its low `u16` (`x as u16`) — the bridge back to 16-bit.
     Trunc32(Box<Expr>),
     /// Read a `u32` at `*(ptr + byte_offset)` — a wide field access through a pointer

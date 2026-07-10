@@ -25,10 +25,19 @@ pub(crate) fn lower_expr16(expr: &syn::Expr, ctx: &mut Ctx, what: &str) -> Resul
 /// becomes a `u32` literal, and any other 16-bit value zero-extends (`Widen`) — this is
 /// the unsuffixed-literal mixing rustc itself allows (`part as u32 * 100`).
 pub(crate) fn coerce32(e: Expr, w: Width) -> Expr {
+    coerce32s(e, w, false)
+}
+
+/// [`coerce32`] into a lane of known signedness: a 16-bit side entering an **i32**
+/// lane sign-extends when it is itself signed (`i16`) — rustc's `as` semantics —
+/// and zero-extends otherwise (a non-negative literal reads the same either way).
+pub(crate) fn coerce32s(e: Expr, w: Width, signed: bool) -> Expr {
     if w.is_wide() {
         e
     } else if let Expr::Lit(k) = e {
         Expr::Lit32(k as u32)
+    } else if signed && w == Width::SWord {
+        Expr::SignExtend(Box::new(e))
     } else {
         Expr::Widen(Box::new(e))
     }
@@ -160,6 +169,15 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         Width::DWord,
                     ));
                 }
+                if i.suffix() == "i32" {
+                    // Parse the magnitude (a negative literal arrives as `-` around
+                    // it, so `-2147483648i32`'s magnitude must parse); bits are u32.
+                    let m = i.base10_parse::<i64>().map_err(|e| e.to_string())?;
+                    if m > 0x8000_0000i64 {
+                        return Err(format!("`{m}` is out of range for i32"));
+                    }
+                    return Ok((Expr::Lit32(m as u32), Width::SDWord));
+                }
                 if i.suffix() == "i16" {
                     // Parse the magnitude (a negative literal arrives as `-` around it,
                     // so `-32768i16`'s magnitude 32768 must parse); the bits are u16.
@@ -264,6 +282,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 let base = ctx.vars.base(&name);
                 match ctx.vars.ty(&name) {
                     Width::DWord => Ok((Expr::Var32(base), Width::DWord)),
+                    Width::SDWord => Ok((Expr::Var32(base), Width::SDWord)),
                     Width::F32 => Ok((Expr::Var32(base), Width::F32)),
                     w => Ok((Expr::Var(base), w)),
                 }
@@ -299,8 +318,17 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                                 BinOp::Xor,
                                 Box::new(e),
                                 Box::new(Expr::Lit32(0x8000_0000)),
+                                false,
                             ),
                             Width::F32,
+                        ),
+                    }),
+                    // `-x` on i32: two's-complement negation over the 32-bit nodes.
+                    Width::SDWord => Ok(match e {
+                        Expr::Lit32(m) => (Expr::Lit32(m.wrapping_neg()), Width::SDWord),
+                        e => (
+                            Expr::Bin32(BinOp::Sub, Box::new(Expr::Lit32(0)), Box::new(e), true),
+                            Width::SDWord,
                         ),
                     }),
                     Width::SWord => Ok(match e {
@@ -316,7 +344,7 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                         ),
                     }),
                     _ => Err("unary `-` needs a signed operand — suffix the literal \
-                              (`-5i16`) or cast first (`x as i16`)"
+                              (`-5i16` / `-5i32`) or cast first (`x as i16`)"
                         .into()),
                 }
             }
@@ -337,28 +365,29 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                             arrive with the F1 wave"
                     .into());
             }
-            if ew == Width::DWord {
+            if ew.is_int_wide() {
                 return Ok(match tw {
                     Width::Byte => (
                         Expr::Trunc(Box::new(Expr::Trunc32(Box::new(e)))),
                         Width::Byte,
                     ),
                     Width::Word | Width::SWord => (Expr::Trunc32(Box::new(e)), tw),
-                    Width::DWord => (e, Width::DWord),
+                    // 32 → 32 is a bit-identity; the value adopts the target's
+                    // signedness (`i32 as u32` / `u32 as i32` — rustc semantics).
+                    Width::DWord | Width::SDWord => (e, tw),
                     Width::F32 => unreachable!("f32 casts rejected above"),
                 });
             }
-            if tw == Width::DWord {
-                if ew == Width::SWord {
-                    // `i16 as u32` sign-extends, exactly as in rustc (A2: the explicit
-                    // sign-extend bridge; `x as u16 as u32` stays the take-the-bits
-                    // spelling).
-                    return Ok((Expr::SignExtend(Box::new(e)), Width::DWord));
-                }
-                // Widen a 16-bit value up to `u32` (zero-extend), so a `u16` can feed a wide
-                // intermediate (e.g. `part as u32 * 100`). `Byte`/`Word` widen identically —
-                // the value is held in `HL` and the high word is zeroed.
-                return Ok((Expr::Widen(Box::new(e)), Width::DWord));
+            if tw.is_int_wide() {
+                // 16 → 32: `i16` sign-extends (rustc's `as` — the A2 explicit bridge),
+                // `u8`/`u16` zero-extend; the high word takes the fill.
+                // `x as u16 as u32` stays the take-the-bits spelling.
+                let wide = if ew == Width::SWord {
+                    Expr::SignExtend(Box::new(e))
+                } else {
+                    Expr::Widen(Box::new(e))
+                };
+                return Ok((wide, tw));
             }
             if tw == Width::Byte {
                 Ok((Expr::Trunc(Box::new(e)), Width::Byte))
@@ -509,7 +538,14 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                                 i + 1
                             ));
                         }
-                        args.push(coerce32(e, w));
+                        if sw.is_int_wide() && w.is_int_wide() && *sw != w {
+                            return Err(format!(
+                                "argument {} of `{name}` mixes i32 and u32 — cast \
+                                 explicitly (`as i32` / `as u32`)",
+                                i + 1
+                            ));
+                        }
+                        args.push(coerce32s(e, w, *sw == Width::SDWord));
                     } else {
                         if w.is_wide() {
                             return Err(format!(
@@ -630,13 +666,22 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
                 Width::Byte,
             ));
         }
-        // A u32 side makes it a 32-bit compare (the 16-bit side zero-extends).
-        if lw == Width::DWord || rw == Width::DWord {
+        // A 32-bit side makes it a 32-bit compare (a 16-bit side extends); an i32
+        // side orders by two's complement. i32 and u32 never mix (rustc rejects the
+        // comparison too).
+        if lw.is_int_wide() || rw.is_int_wide() {
+            let signed = lw == Width::SDWord || rw == Width::SDWord;
+            if signed && (lw == Width::DWord || rw == Width::DWord) {
+                return Err("i32 and u32 don't mix in a comparison — cast one side \
+                            explicitly (`as i32` / `as u32`)"
+                    .into());
+            }
             return Ok((
                 Expr::Cmp32 {
                     cmp,
-                    lhs: Box::new(coerce32(le, lw)),
-                    rhs: Box::new(coerce32(re, rw)),
+                    lhs: Box::new(coerce32s(le, lw, signed)),
+                    rhs: Box::new(coerce32s(re, rw, signed)),
+                    signed,
                 },
                 Width::Byte,
             ));
@@ -667,10 +712,10 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         }
         // A runtime (non-literal) 16-bit shift amount → a counted shift loop. `u32`
         // shifts and literal amounts keep the unrolled constant path below.
-        if lw != Width::DWord && !is_int_literal(&b.right) {
+        if !lw.is_int_wide() && !is_int_literal(&b.right) {
             let (ae, aw) = lower_expr(&b.right, ctx)?;
             // A `u32` amount is fine in rustc (`x << y32`) — only its low byte counts.
-            let amount = Box::new(if aw == Width::DWord {
+            let amount = Box::new(if aw.is_int_wide() {
                 Expr::Trunc32(Box::new(ae))
             } else {
                 ae
@@ -686,14 +731,16 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
             ));
         }
         let k = lit_shift_amount(&b.right)?;
-        if lw == Width::DWord {
+        if lw.is_int_wide() {
             return Ok((
                 Expr::Shift32 {
                     left: matches!(op, BinOp::Shl),
                     e: Box::new(le),
                     k,
+                    // `i32 >> k` is arithmetic (sign-propagating); `<<` ignores it.
+                    signed: lw == Width::SDWord,
                 },
-                Width::DWord,
+                lw,
             ));
         }
         return Ok((
@@ -738,12 +785,25 @@ fn lower_binary(b: &syn::ExprBinary, ctx: &mut Ctx) -> Result<(Expr, Width), Str
         ctx.mark_f32(kernel);
         return Ok((Expr::Call(kernel.to_string(), vec![le, re]), Width::F32));
     }
-    if lw == Width::DWord || rw == Width::DWord {
-        // Full 32-bit arithmetic: `+ - * / %` and `| & ^`. A 16-bit side zero-extends
-        // (the unsuffixed-literal mixing rustc allows, `part as u32 * 100`).
+    if lw.is_int_wide() || rw.is_int_wide() {
+        // Full 32-bit arithmetic: `+ - * / %` and `| & ^`. A 16-bit side extends
+        // (the unsuffixed-literal mixing rustc allows, `part as u32 * 100`); an i32
+        // side makes `/`/`%` signed (add/sub/mul/bitwise share the bit patterns).
+        // i32 and u32 never mix (rustc rejects the op too).
+        let signed = lw == Width::SDWord || rw == Width::SDWord;
+        if signed && (lw == Width::DWord || rw == Width::DWord) {
+            return Err("i32 and u32 don't mix in arithmetic — cast one side \
+                        explicitly (`as i32` / `as u32`)"
+                .into());
+        }
         return Ok((
-            Expr::Bin32(op, Box::new(coerce32(le, lw)), Box::new(coerce32(re, rw))),
-            Width::DWord,
+            Expr::Bin32(
+                op,
+                Box::new(coerce32s(le, lw, signed)),
+                Box::new(coerce32s(re, rw, signed)),
+                signed,
+            ),
+            if signed { Width::SDWord } else { Width::DWord },
         ));
     }
     Ok((Expr::Bin(op, Box::new(le), Box::new(re), lw), lw))
@@ -1431,6 +1491,7 @@ pub(crate) fn lower_method_call(
                     BinOp::And,
                     Box::new(recv),
                     Box::new(Expr::Lit32(0x7FFF_FFFF)),
+                    false,
                 ),
                 Width::F32,
             ));
@@ -1447,12 +1508,15 @@ pub(crate) fn lower_method_call(
                         BinOp::And,
                         Box::new(recv),
                         Box::new(Expr::Lit32(0x7FFF_FFFF)),
+                        false,
                     )),
                     Box::new(Expr::Bin32(
                         BinOp::And,
                         Box::new(ae),
                         Box::new(Expr::Lit32(0x8000_0000)),
+                        false,
                     )),
+                    false,
                 ),
                 Width::F32,
             ));
@@ -1472,12 +1536,14 @@ pub(crate) fn lower_method_call(
                 BinOp::And,
                 Box::new(e.clone()),
                 Box::new(Expr::Lit32(0x7FFF_FFFF)),
+                false,
             )
         };
         let cmp32 = |cmp, lhs, rhs: u32| Expr::Cmp32 {
             cmp,
             lhs: Box::new(lhs),
             rhs: Box::new(Expr::Lit32(rhs)),
+            signed: false,
         };
         let e = match method.as_str() {
             "is_nan" => cmp32(Cmp::Gt, mag(&recv), 0x7F80_0000),
@@ -1511,10 +1577,21 @@ pub(crate) fn lower_method_call(
         }
         // A `u32` receiver/argument makes it a 32-bit op (all `Bin32` arithmetic is
         // mod-2^32, i.e. wrapping, already).
-        if rw == Width::DWord || aw == Width::DWord {
+        if rw.is_int_wide() || aw.is_int_wide() {
+            let signed = rw == Width::SDWord || aw == Width::SDWord;
+            if signed && (rw == Width::DWord || aw == Width::DWord) {
+                return Err("i32 and u32 don't mix — cast one side explicitly \
+                            (`as i32` / `as u32`)"
+                    .into());
+            }
             return Ok((
-                Expr::Bin32(op, Box::new(coerce32(recv, rw)), Box::new(coerce32(re, aw))),
-                Width::DWord,
+                Expr::Bin32(
+                    op,
+                    Box::new(coerce32s(recv, rw, signed)),
+                    Box::new(coerce32s(re, aw, signed)),
+                    signed,
+                ),
+                if signed { Width::SDWord } else { Width::DWord },
             ));
         }
         return Ok((Expr::Bin(op, Box::new(recv), Box::new(re), rw), rw));
@@ -1576,10 +1653,10 @@ fn lower_saturating(
     let (recv, rw) = lower_expr(&m.receiver, ctx)?;
     let arg = m.args.first().ok_or("saturating_* needs an argument")?;
     let (re, aw) = lower_expr(arg, ctx)?;
-    if rw == Width::SWord || aw == Width::SWord {
+    if rw == Width::SWord || aw == Width::SWord || rw == Width::SDWord || aw == Width::SDWord {
         return Err(
-            "i16 saturating_* is not supported — the clamp bounds are signed \
-             (-32768/32767); write the comparison explicitly"
+            "i16/i32 saturating_* is not supported — the clamp bounds are signed; \
+             write the comparison explicitly"
                 .into(),
         );
     }
@@ -1593,11 +1670,12 @@ fn lower_saturating(
     // u32: the same mask trick over the 32-bit nodes (`Cmp32` supplies the flag).
     if rw == Width::DWord || aw == Width::DWord {
         let (recv, re) = (coerce32(recv, rw), coerce32(re, aw));
-        let bin32 = |op, a: Expr, b: Expr| Expr::Bin32(op, Box::new(a), Box::new(b));
+        let bin32 = |op, a: Expr, b: Expr| Expr::Bin32(op, Box::new(a), Box::new(b), false);
         let cmp32 = |c, lhs: Expr, rhs: Expr| Expr::Cmp32 {
             cmp: c,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
+            signed: false,
         };
         // `0 - flag` widened: `0xFFFF_FFFF` when set, `0` otherwise.
         let mask32 = |flag: Expr| bin32(BinOp::Sub, Expr::Lit32(0), Expr::Widen(Box::new(flag)));
@@ -1668,11 +1746,13 @@ fn lower_saturating(
                     BinOp::Mul,
                     Box::new(Expr::Widen(Box::new(recv))),
                     Box::new(Expr::Widen(Box::new(re))),
+                    false,
                 );
                 let hi = Expr::Trunc32(Box::new(Expr::Shift32 {
                     left: false,
                     e: Box::new(p.clone()),
                     k: 16,
+                    signed: false,
                 }));
                 let ovf = cmp(Cmp::Ne, hi, Expr::Lit(0));
                 bin(
@@ -1709,9 +1789,9 @@ fn lower_bit_method(
     ctx: &mut Ctx,
 ) -> Result<(Expr, Width), String> {
     let (recv, rw) = lower_expr(&m.receiver, ctx)?;
-    if rw == Width::DWord {
+    if rw.is_int_wide() {
         return Err(format!(
-            "u32 `{method}` is not supported yet — split the words and combine"
+            "u32/i32 `{method}` is not supported yet — split the words and combine"
         ));
     }
     if rw == Width::SWord {
@@ -1797,7 +1877,7 @@ fn lower_bit_method(
     // std's rotate amount is a `u32` — a wide amount narrows freely, the rotate
     // only reads `k % bits`.
     let k = match lower_expr(arg, ctx)? {
-        (e, Width::DWord) => Expr::Trunc32(Box::new(e)),
+        (e, w) if w.is_int_wide() => Expr::Trunc32(Box::new(e)),
         (e, _) => e,
     };
     if has_effects(&k) {
@@ -1931,7 +2011,7 @@ pub(crate) fn has_effects(e: &Expr) -> bool {
         Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => true,
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => false,
         Expr::Lit32(_) | Expr::Var32(_) => false,
-        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => has_effects(a) || has_effects(b),
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b, _) => has_effects(a) || has_effects(b),
         Expr::Cmp { lhs, rhs, .. }
         | Expr::Logic { lhs, rhs, .. }
         | Expr::Cmp32 { lhs, rhs, .. } => has_effects(lhs) || has_effects(rhs),

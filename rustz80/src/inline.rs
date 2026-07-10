@@ -290,7 +290,7 @@ fn reads_slot(e: &Expr, slot: usize) -> bool {
         Expr::Var(s) | Expr::Var32(s) | Expr::AddrOf(s) => *s == slot,
         Expr::Index(s, i, _) => *s == slot || r(i),
         Expr::Lit(_) | Expr::Lit32(_) | Expr::ConstAddr(_) => false,
-        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => r(a) || r(b),
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b, _) => r(a) || r(b),
         Expr::Cmp { lhs, rhs, .. }
         | Expr::Logic { lhs, rhs, .. }
         | Expr::Cmp32 { lhs, rhs, .. } => r(lhs) || r(rhs),
@@ -339,7 +339,7 @@ fn effect_free(e: &Expr) -> bool {
         Expr::Call(..) | Expr::InPort(_) | Expr::Halt(_) => false,
         Expr::Lit(_) | Expr::Var(_) | Expr::AddrOf(_) | Expr::ConstAddr(_) => true,
         Expr::Lit32(_) | Expr::Var32(_) => true,
-        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => effect_free(a) && effect_free(b),
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b, _) => effect_free(a) && effect_free(b),
         Expr::Cmp { lhs, rhs, .. }
         | Expr::Logic { lhs, rhs, .. }
         | Expr::Cmp32 { lhs, rhs, .. } => effect_free(lhs) && effect_free(rhs),
@@ -406,7 +406,7 @@ fn collect_addr(body: &[Stmt], out: &mut HashSet<usize>) {
             Expr::AddrOf(s) => {
                 out.insert(*s);
             }
-            Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => {
+            Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b, _) => {
                 ex(a, out);
                 ex(b, out);
             }
@@ -551,7 +551,7 @@ fn count_expr(e: &Expr, m: &mut HashMap<String, usize>) {
             *m.entry(n.clone()).or_default() += 1;
             args.iter().for_each(|a| count_expr(a, m));
         }
-        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b) => {
+        Expr::Bin(_, a, b, _) | Expr::Bin32(_, a, b, _) => {
             count_expr(a, m);
             count_expr(b, m);
         }
@@ -684,7 +684,7 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
         Expr::Lit32(n) => Expr::Lit32(*n),
         Expr::ConstAddr(n) => Expr::ConstAddr(n.clone()),
         Expr::Bin(op, a, c, w) => Expr::Bin(*op, e(a), e(c), *w),
-        Expr::Bin32(op, a, c) => Expr::Bin32(*op, e(a), e(c)),
+        Expr::Bin32(op, a, c, s) => Expr::Bin32(*op, e(a), e(c), *s),
         Expr::Call(n, args) => Expr::Call(
             n.clone(),
             args.iter().map(|a| remap_expr(a, plan)).collect(),
@@ -721,10 +721,16 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
             lhs: e(lhs),
             rhs: e(rhs),
         },
-        Expr::Cmp32 { cmp, lhs, rhs } => Expr::Cmp32 {
+        Expr::Cmp32 {
+            cmp,
+            lhs,
+            rhs,
+            signed,
+        } => Expr::Cmp32 {
             cmp: *cmp,
             lhs: e(lhs),
             rhs: e(rhs),
+            signed: *signed,
         },
         Expr::ShiftVar {
             left,
@@ -737,10 +743,16 @@ fn remap_expr(x: &Expr, plan: &[Slot]) -> Expr {
             amount: e(amount),
             w: *w,
         },
-        Expr::Shift32 { left, e: x, k } => Expr::Shift32 {
+        Expr::Shift32 {
+            left,
+            e: x,
+            k,
+            signed,
+        } => Expr::Shift32 {
             left: *left,
             e: e(x),
             k: *k,
+            signed: *signed,
         },
     }
 }

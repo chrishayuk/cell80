@@ -4,8 +4,8 @@
 //! `match` to an if-chain over a scrutinee temp — no codegen support needed for either.
 
 use super::expr::{
-    array_base, coerce32, lower_expr, lower_expr16, lower_field_store, lower_index_store,
-    lower_method_call, path_ident, path_str,
+    array_base, coerce32, coerce32s, lower_expr, lower_expr16, lower_field_store,
+    lower_index_store, lower_method_call, path_ident, path_str,
 };
 use super::generics::infer_struct_args;
 use super::layout::{
@@ -96,6 +96,13 @@ pub(crate) fn lower_local(
             // `[v; N]` — a block fill (one evaluation of `v`, repeated over N slots).
             let n = array_len(&r.len, ctx)?;
             let elem = elem_width(&r.expr);
+            if elem == Width::SDWord {
+                return Err(
+                    "`[i32; N]` arrays are not supported yet — use i16 elements, or \
+                     `[u32; N]` bits with explicit conversion"
+                        .into(),
+                );
+            }
             // `[v; N]` of u32: per-element wide stores. Rust evaluates the repeat
             // value once, so an effectful `v` (a call) steers to a binding.
             if elem == Width::DWord {
@@ -122,6 +129,13 @@ pub(crate) fn lower_local(
         }
         syn::Expr::Array(arr) => {
             let elem = arr.elems.first().map(elem_width).unwrap_or(Width::Word);
+            if elem == Width::SDWord {
+                return Err(
+                    "`[i32; N]` arrays are not supported yet — use i16 elements, or \
+                     `[u32; N]` bits with explicit conversion"
+                        .into(),
+                );
+            }
             if elem == Width::DWord {
                 let base = ctx.vars.declare_wide_array(&name, arr.elems.len());
                 for (i, e) in arr.elems.iter().enumerate() {
@@ -177,19 +191,32 @@ pub(crate) fn lower_local(
         syn::Expr::Lit(l)
             if matches!(&l.lit, syn::Lit::Int(_))
                 && matches!(&local.pat, syn::Pat::Type(t)
-                    if ctx.width_of_type(&t.ty) == Width::DWord) =>
+                    if ctx.width_of_type(&t.ty).is_int_wide()) =>
         {
+            let syn::Pat::Type(pt) = &local.pat else {
+                unreachable!()
+            };
+            let ann = ctx.width_of_type(&pt.ty);
             let syn::Lit::Int(i) = &l.lit else {
                 unreachable!()
             };
-            if !i.suffix().is_empty() && i.suffix() != "u32" {
+            let expect = if ann == Width::SDWord { "i32" } else { "u32" };
+            if !i.suffix().is_empty() && i.suffix() != expect {
                 return Err(format!(
-                    "`{name}` is annotated u32 but the literal is suffixed `{}`",
+                    "`{name}` is annotated {expect} but the literal is suffixed `{}`",
                     i.suffix()
                 ));
             }
-            let v = i.base10_parse::<u32>().map_err(|e| e.to_string())?;
-            let base = ctx.vars.declare(&name, 2, None, Width::DWord);
+            let v = if ann == Width::SDWord {
+                let m = i.base10_parse::<i64>().map_err(|e| e.to_string())?;
+                if m > i32::MAX as i64 {
+                    return Err(format!("`{m}` is out of range for i32"));
+                }
+                m as u32
+            } else {
+                i.base10_parse::<u32>().map_err(|e| e.to_string())?
+            };
+            let base = ctx.vars.declare(&name, 2, None, ann);
             body.push(Stmt::Assign32(base, Expr::Lit32(v)));
         }
         // `let x = if c { a } else { b };` / `let x = match … { … };` — the value-position
@@ -217,8 +244,10 @@ pub(crate) fn lower_local(
             }
             let wide = if w == Width::F32 {
                 Some(Width::F32)
-            } else if w == Width::DWord || ann == Some(Width::DWord) {
-                Some(Width::DWord)
+            } else if w.is_int_wide() {
+                Some(w)
+            } else if matches!(ann, Some(a) if a.is_int_wide()) {
+                Some(ann.unwrap())
             } else {
                 None
             };
@@ -258,14 +287,21 @@ pub(crate) fn lower_local(
                 body.push(Stmt::Assign32(base, e));
                 return Ok(());
             }
-            if ty == Width::DWord && matches!(ann, Some(w) if w != Width::DWord) {
+            if ty.is_int_wide() && matches!(ann, Some(w) if w.is_int_wide() && w != ty) {
+                return Err(format!(
+                    "`{name}`'s annotation mixes i32 and u32 with its value — cast \
+                     explicitly (`as i32` / `as u32`)"
+                ));
+            }
+            if ty.is_int_wide() && matches!(ann, Some(w) if !w.is_int_wide()) {
                 return Err(format!(
                     "cannot bind a u32 value to 16-bit `{name}` — narrow with `as u16`"
                 ));
             }
-            if ty == Width::DWord || ann == Some(Width::DWord) {
-                let base = ctx.vars.declare(&name, 2, None, Width::DWord);
-                body.push(Stmt::Assign32(base, coerce32(e, ty)));
+            if ty.is_int_wide() || matches!(ann, Some(a) if a.is_int_wide()) {
+                let w = if ty.is_int_wide() { ty } else { ann.unwrap() };
+                let base = ctx.vars.declare(&name, 2, None, w);
+                body.push(Stmt::Assign32(base, coerce32s(e, ty, w == Width::SDWord)));
             } else {
                 let base = ctx.vars.declare(&name, 1, None, ty);
                 body.push(Stmt::Assign(base, e));
@@ -418,10 +454,16 @@ pub(crate) fn lower_stmt_expr(
                         ));
                     }
                     body.push(Stmt::Assign32(slot, e));
-                } else if vty == Width::DWord {
-                    // A 16-bit value widens into a u32 var (`x = 5` on `x: u32`).
-                    body.push(Stmt::Assign32(slot, coerce32(e, ew)));
-                } else if ew == Width::DWord {
+                } else if vty.is_int_wide() {
+                    if ew.is_int_wide() && ew != vty {
+                        return Err(format!(
+                            "assignment to `{name}` mixes i32 and u32 — cast explicitly \
+                             (`as i32` / `as u32`)"
+                        ));
+                    }
+                    // A 16-bit value widens into a wide var (`x = 5` on `x: u32`).
+                    body.push(Stmt::Assign32(slot, coerce32s(e, ew, vty == Width::SDWord)));
+                } else if ew.is_int_wide() {
                     return Err(format!(
                         "cannot assign a u32 value to 16-bit `{name}` — narrow with `as u16`"
                     ));
@@ -697,13 +739,20 @@ fn lower_cond(expr: &syn::Expr, ctx: &mut Ctx) -> Result<Cond, String> {
                     signed: false,
                 });
             }
-            if lw == Width::DWord || rw == Width::DWord {
+            if lw.is_int_wide() || rw.is_int_wide() {
+                let signed = lw == Width::SDWord || rw == Width::SDWord;
+                if signed && (lw == Width::DWord || rw == Width::DWord) {
+                    return Err("i32 and u32 don't mix in a comparison — cast one \
+                                side explicitly (`as i32` / `as u32`)"
+                        .into());
+                }
                 return Ok(Cond {
                     cmp: Cmp::Ne,
                     lhs: Expr::Cmp32 {
                         cmp,
-                        lhs: Box::new(coerce32(le, lw)),
-                        rhs: Box::new(coerce32(re, rw)),
+                        lhs: Box::new(coerce32s(le, lw, signed)),
+                        rhs: Box::new(coerce32s(re, rw, signed)),
+                        signed,
                     },
                     rhs: Expr::Lit(0),
                     signed: false,

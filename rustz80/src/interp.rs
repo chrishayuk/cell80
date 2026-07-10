@@ -562,16 +562,33 @@ impl<'p> Interp<'p> {
                     self.eval16(fr, rhs)?
                 }
             }
-            Expr::Cmp32 { cmp, lhs, rhs } => {
+            Expr::Cmp32 {
+                cmp,
+                lhs,
+                rhs,
+                signed,
+            } => {
                 let l = self.eval32(fr, lhs)?;
                 let r = self.eval32(fr, rhs)?;
-                let t = match cmp {
-                    Cmp::Lt => l < r,
-                    Cmp::Le => l <= r,
-                    Cmp::Gt => l > r,
-                    Cmp::Ge => l >= r,
-                    Cmp::Eq => l == r,
-                    Cmp::Ne => l != r,
+                let t = if *signed {
+                    let (l, r) = (l as i32, r as i32);
+                    match cmp {
+                        Cmp::Lt => l < r,
+                        Cmp::Le => l <= r,
+                        Cmp::Gt => l > r,
+                        Cmp::Ge => l >= r,
+                        Cmp::Eq => l == r,
+                        Cmp::Ne => l != r,
+                    }
+                } else {
+                    match cmp {
+                        Cmp::Lt => l < r,
+                        Cmp::Le => l <= r,
+                        Cmp::Gt => l > r,
+                        Cmp::Ge => l >= r,
+                        Cmp::Eq => l == r,
+                        Cmp::Ne => l != r,
+                    }
                 };
                 t as u16
             }
@@ -631,7 +648,7 @@ impl<'p> Interp<'p> {
             },
             Expr::Widen(inner) => self.eval16(fr, inner)? as u32,
             Expr::SignExtend(inner) => self.eval16(fr, inner)? as i16 as i32 as u32,
-            Expr::Bin32(op, l, r) => {
+            Expr::Bin32(op, l, r, signed) => {
                 let lv = self.eval32(fr, l)?;
                 let rv = self.eval32(fr, r)?;
                 match op {
@@ -642,10 +659,14 @@ impl<'p> Interp<'p> {
                         if rv == 0 {
                             return Err("interp: divide by zero".into());
                         }
-                        if matches!(op, BinOp::Div) {
-                            lv / rv
-                        } else {
-                            lv % rv
+                        // Signed: truncate toward zero, remainder takes the
+                        // dividend's sign; MIN/-1 wraps (rustc's wrapping_*).
+                        match (op, *signed) {
+                            (BinOp::Div, true) => (lv as i32).wrapping_div(rv as i32) as u32,
+                            (BinOp::Rem, true) => (lv as i32).wrapping_rem(rv as i32) as u32,
+                            (BinOp::Div, false) => lv / rv,
+                            (BinOp::Rem, false) => lv % rv,
+                            _ => unreachable!(),
                         }
                     }
                     BinOp::Or => lv | rv,
@@ -656,9 +677,13 @@ impl<'p> Interp<'p> {
                     }
                 }
             }
-            Expr::Shift32 { left, e, k } => {
+            Expr::Shift32 { left, e, k, signed } => {
                 let v = self.eval32(fr, e)?;
-                if *k >= 32 {
+                if *signed && !*left {
+                    // Arithmetic: sign-propagating; a count ≥ 32 saturates at the
+                    // sign fill (the per-step reading).
+                    ((v as i32) >> (*k).min(31) as u32) as u32
+                } else if *k >= 32 {
                     0
                 } else if *left {
                     v << k

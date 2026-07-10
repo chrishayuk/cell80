@@ -171,6 +171,7 @@ fn arg_tag(a: GArg) -> String {
         GArg::Width(Width::Word) => "u16".to_string(),
         GArg::Width(Width::SWord) => "i16".to_string(),
         GArg::Width(Width::DWord) => "u32".to_string(),
+        GArg::Width(Width::SDWord) => "i32".to_string(),
         GArg::Width(Width::F32) => "f32".to_string(),
         GArg::Const(n) => n.to_string(),
     }

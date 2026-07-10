@@ -123,6 +123,14 @@ fn field_def(
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
         // wide typed-state lane. `width` marks it so access lowers to a wide load/store.
         syn::Type::Path(p) if p.path.is_ident("u32") => (2, None, Width::DWord),
+        // i32 fields wait for the cell-layer signedness story (Phase 5 WS-C/WS-E:
+        // the manifest's `Ty` has no signed-32 code yet) — hold the bits in `u32`.
+        syn::Type::Path(p) if p.path.is_ident("i32") => {
+            return Err(format!(
+                "i32 struct fields are not supported yet — hold the bits in a `u32` \
+                 field and convert in code (field `{name}`)"
+            ))
+        }
         // An `f32` field: the same two-slot wide storage as `u32`, typed F32 — reads
         // and stores keep the representation (no silent bits-crossing at fields).
         syn::Type::Path(p) if p.path.is_ident("f32") => (2, None, Width::F32),
@@ -291,6 +299,9 @@ pub(crate) fn elem_width(e: &syn::Expr) -> Width {
             }
             if i.suffix() == "u32" {
                 return Width::DWord;
+            }
+            if i.suffix() == "i32" {
+                return Width::SDWord;
             }
         }
     }

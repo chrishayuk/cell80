@@ -98,6 +98,9 @@ impl Ctx<'_> {
                 if s == "u32" {
                     return Width::DWord;
                 }
+                if s == "i32" {
+                    return Width::SDWord;
+                }
                 if s == "f32" {
                     return Width::F32;
                 }
@@ -150,6 +153,9 @@ fn sig_width(t: &syn::Type) -> Width {
     if let syn::Type::Path(p) = t {
         if p.path.is_ident("u32") {
             return Width::DWord;
+        }
+        if p.path.is_ident("i32") {
+            return Width::SDWord;
         }
         if p.path.is_ident("f32") {
             return Width::F32;

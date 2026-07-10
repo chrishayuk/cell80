@@ -59,6 +59,7 @@ pub(crate) fn codegen_program_c(
     target: Target,
     externs: &HashMap<String, u16>,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
+    reject_signed32(funcs)?;
     let mut a = Asm::new(org, target);
     a.wide_sigs = wide_sig_map(funcs);
     if !externs.is_empty() {
@@ -121,6 +122,7 @@ pub(crate) fn codegen_bank(
     org: u16,
     scratch: u16,
 ) -> Result<(Vec<u8>, HashMap<String, u16>), String> {
+    reject_signed32(funcs)?;
     let mut a = Asm::new(org, Target::Cell);
     a.wide_sigs = wide_sig_map(funcs);
     let mut base = 0u16;
@@ -170,6 +172,7 @@ pub(crate) fn codegen_loop_c(
     // Inline single-call-site helpers, then DCE.
     let inlined = crate::inline::inline(funcs.to_vec(), &[entry]);
     let pruned = crate::dce::prune(inlined, &[entry]);
+    reject_signed32(&pruned)?;
 
     // Place the locals scratch region *just above the emitted code* rather than at a fixed
     // address, so a large program's code can't grow into its own locals (which silently
@@ -251,6 +254,107 @@ fn emit_const_data(a: &mut Asm, funcs: &[(String, Func)], consts: &[DataConst]) 
     for d in consts.iter().filter(|d| used.contains(&d.name)) {
         a.define(&d.name);
         a.data_bytes(d.bytes.clone());
+    }
+}
+
+/// Phase 5 A3: `i32` lowers to the IR and runs on the reference interpreter, but no
+/// machine backend emits the **signed-32** operations yet (WS-B gives RV32
+/// `slt`/signed div natively; Z80 would need flag gymnastics the robo targets don't
+/// justify). Only the ops whose signedness changes the bits are gated — signed
+/// add/sub/mul/bitwise share the unsigned patterns and pass through untouched.
+fn find_signed32(funcs: &[(String, Func)]) -> Option<&'static str> {
+    fn in_expr(e: &Expr) -> Option<&'static str> {
+        match e {
+            Expr::Cmp32 { signed: true, .. } => return Some("a signed 32-bit comparison"),
+            Expr::Bin32(BinOp::Div | BinOp::Rem, .., true) => {
+                return Some("a signed 32-bit divide")
+            }
+            Expr::Shift32 {
+                left: false,
+                signed: true,
+                ..
+            } => return Some("an arithmetic 32-bit shift"),
+            _ => {}
+        }
+        match e {
+            Expr::Lit(_)
+            | Expr::Var(_)
+            | Expr::AddrOf(_)
+            | Expr::ConstAddr(_)
+            | Expr::Lit32(_)
+            | Expr::Var32(_) => None,
+            Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r, _) => in_expr(l).or_else(|| in_expr(r)),
+            Expr::Cmp { lhs, rhs, .. }
+            | Expr::Cmp32 { lhs, rhs, .. }
+            | Expr::Logic { lhs, rhs, .. } => in_expr(lhs).or_else(|| in_expr(rhs)),
+            Expr::ShiftVar { e, amount, .. } => in_expr(e).or_else(|| in_expr(amount)),
+            Expr::PtrIndex { ptr, index, .. } => in_expr(ptr).or_else(|| in_expr(index)),
+            Expr::Index(_, i, _) => in_expr(i),
+            Expr::Call(_, args) => args.iter().find_map(in_expr),
+            Expr::Trunc(x)
+            | Expr::Trunc32(x)
+            | Expr::Widen(x)
+            | Expr::SignExtend(x)
+            | Expr::Peek(x)
+            | Expr::InPort(x)
+            | Expr::Halt(x)
+            | Expr::MulConst(x, _)
+            | Expr::LoadAt(x, _)
+            | Expr::Deref(x, _)
+            | Expr::Deref32(x, _)
+            | Expr::Shift32 { e: x, .. } => in_expr(x),
+        }
+    }
+    fn in_stmt(s: &Stmt) -> Option<&'static str> {
+        match s {
+            Stmt::Assign(_, e)
+            | Stmt::Assign32(_, e)
+            | Stmt::Poke(_, e)
+            | Stmt::Eval(e)
+            | Stmt::AssignTuple(_, e) => in_expr(e),
+            Stmt::StoreIndex(_, i, v, _) => in_expr(i).or_else(|| in_expr(v)),
+            Stmt::Store(p, _, v) | Stmt::Store32(p, _, v) | Stmt::StoreAt(p, v, _) => {
+                in_expr(p).or_else(|| in_expr(v))
+            }
+            Stmt::PtrStoreIndex {
+                ptr, index, value, ..
+            } => in_expr(ptr)
+                .or_else(|| in_expr(index))
+                .or_else(|| in_expr(value)),
+            Stmt::Fill { value, .. } => in_expr(value),
+            Stmt::If(c, t, e) => in_cond(c)
+                .or_else(|| t.iter().find_map(in_stmt))
+                .or_else(|| e.iter().find_map(in_stmt)),
+            Stmt::While(c, body) => in_cond(c).or_else(|| body.iter().find_map(in_stmt)),
+            Stmt::Loop(body) => body.iter().find_map(in_stmt),
+            Stmt::ForRange { end, body, .. } => {
+                in_expr(end).or_else(|| body.iter().find_map(in_stmt))
+            }
+            Stmt::Return(v) => v.as_ref().and_then(in_expr),
+            Stmt::Break | Stmt::Continue => None,
+        }
+    }
+    fn in_cond(c: &Cond) -> Option<&'static str> {
+        in_expr(&c.lhs).or_else(|| in_expr(&c.rhs))
+    }
+    funcs.iter().find_map(|(_, f)| {
+        f.body
+            .iter()
+            .find_map(in_stmt)
+            .or_else(|| f.ret.iter().find_map(in_expr))
+    })
+}
+
+/// The gate the compile entries run before emitting: a clean, instructive error
+/// instead of a miscompile or a panic deep in codegen.
+pub(crate) fn reject_signed32(funcs: &[(String, Func)]) -> Result<(), String> {
+    match find_signed32(funcs) {
+        Some(what) => Err(format!(
+            "rustz80: this program uses {what} — i32 compiles to the IR and runs on \
+             the reference interpreter (`interp_*`), but no machine backend emits \
+             signed-32 ops yet (Phase 5 WS-B lands them on RV32)"
+        )),
+        None => Ok(()),
     }
 }
 

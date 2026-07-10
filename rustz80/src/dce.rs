@@ -16,7 +16,7 @@ fn calls_in_expr(e: &Expr, out: &mut Vec<String>) {
                 calls_in_expr(a, out);
             }
         }
-        Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r) => {
+        Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r, _) => {
             calls_in_expr(l, out);
             calls_in_expr(r, out);
         }
@@ -170,7 +170,7 @@ pub(crate) fn const_refs(funcs: &[(String, Func)]) -> HashSet<String> {
         // over the same arms keeps the two walkers in sync via the exhaustive match.
         match e {
             Expr::Call(_, args) => args.iter().for_each(|a| in_expr(a, out)),
-            Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r) => {
+            Expr::Bin(_, l, r, _) | Expr::Bin32(_, l, r, _) => {
                 in_expr(l, out);
                 in_expr(r, out);
             }
