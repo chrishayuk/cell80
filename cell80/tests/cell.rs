@@ -683,7 +683,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("310 cells"));
+    assert!(listing.contains("range_check") && listing.contains("313 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -747,7 +747,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("310 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("313 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -758,7 +758,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 310, "got: {out}");
+    assert_eq!(cells.len(), 313, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -798,13 +798,18 @@ fn cli_index_gate_over_the_real_library() {
     // and since the fingerprint exemptions were lifted (state cells digest their
     // post-run fields; the probe bank drives all three registers; shapes compare by
     // ordered field types), that 0 covers *every* cell, not just the arity-≤2 slice.
+    // 313: three cells mined from chuk-math-gym (a training-environment sibling repo,
+    // distinct from the already-fully-mined chuk-mcp-math-server) — linear_solve_1var
+    // (fractions), linear_eq_holds (verifier-ranker), and difficulty_zone_step
+    // (agentic-runtime, a new curriculum/difficulty domain) — all state cells, still
+    // 0 refusals.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("310 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("313 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

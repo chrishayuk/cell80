@@ -428,3 +428,29 @@ fn wave4_verifier_ranker_gap_fill_cells_match_defined_behaviour() {
     // were exact duplicates of already-shipped verifier-ranker cells, per the wave-4 pack
     // note in docs/library-growth.md).
 }
+
+#[test]
+fn linear_eq_holds_matches_defined_behaviour() {
+    // Mined from chuk-math-gym's linear_equations domain: verify a candidate x against
+    // ax + b == cx + d in one call, exact (no float tolerance) — the fused sibling of
+    // linear_solve_1var's solve step so a solved x round-trips with zero error.
+    fn holds(a: i16, b: i16, c: i16, d: i16, x: i16) -> u64 {
+        fn bits(v: i16) -> u64 {
+            (v as u16) as u64
+        }
+        let mut cell = StateCell::bind(&cell_src("linear_eq_holds"), "LinearEqHolds", None).unwrap();
+        cell.set("a", bits(a)).unwrap();
+        cell.set("b", bits(b)).unwrap();
+        cell.set("c", bits(c)).unwrap();
+        cell.set("d", bits(d)).unwrap();
+        cell.set("x", bits(x)).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("ok").unwrap()
+    }
+
+    assert_eq!(holds(2, 3, 5, -6, 3), 1); // the true solution
+    assert_eq!(holds(2, 3, 5, -6, 4), 0); // a wrong candidate
+    assert_eq!(holds(1, 0, 2, 3, -3), 1); // a negative solution
+    assert_eq!(holds(1, 0, 2, 3, -2), 0);
+    assert_eq!(holds(0, 5, 0, 5, 100), 1); // degenerate identity: any x holds
+}

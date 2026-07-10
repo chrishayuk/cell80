@@ -356,3 +356,32 @@ fn wave4_agentic_runtime_reflexes_agentic_runtime_slice() {
     // needs a fixed-point ln the dialect has no primitive for (the same class of gap
     // cosine_score_approx is still blocked on).
 }
+
+#[test]
+fn difficulty_zone_step_matches_defined_behaviour() {
+    // Mined from chuk-math-gym's curriculum-scheduling strategy: a 3-way advance/hold/
+    // retreat decision from an accuracy tally against a target+-tolerance band, gated by
+    // a minimum sample count — exact via cross-multiplication, no accuracy ratio computed.
+    // A state cell purely for arg count (5 named fields), not because it remembers
+    // anything itself — distinct from hysteresis's raw single-value 2-state latch.
+    fn step(correct: u16, total: u16, target: u16, tolerance: u16, min_problems: u16) -> u16 {
+        let mut cell = StateCell::bind(
+            &cell_src("difficulty_zone_step"),
+            "DifficultyZoneStep",
+            None,
+        )
+        .unwrap();
+        cell.set("correct", correct as u64).unwrap();
+        cell.set("total", total as u64).unwrap();
+        cell.set("target_pct", target as u64).unwrap();
+        cell.set("tolerance_pct", tolerance as u64).unwrap();
+        cell.set("min_problems", min_problems as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    assert_eq!(step(5, 5, 75, 10, 10), 1); // not enough samples yet -> hold
+    assert_eq!(step(9, 10, 75, 10, 5), 2); // 90% vs band 65-85 -> advance
+    assert_eq!(step(5, 10, 75, 10, 5), 0); // 50% vs band 65-85 -> retreat
+    assert_eq!(step(8, 10, 75, 10, 5), 1); // 80% vs band 65-85 -> hold
+    assert_eq!(step(17, 20, 75, 10, 5), 1); // exactly 85% is not > 85 (strict) -> hold
+}

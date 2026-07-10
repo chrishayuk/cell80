@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (8)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
@@ -15,6 +15,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `circuit_breaker_step` | `CircuitBreaker::run() -> u16` | Circuit-breaker state machine step: closed(0) counts failures and opens at the threshold; open(1) waits for cooldown then tries half-open(2); half-open resolves to closed on success or back to open on failure. |
 | `cooldown_step` | `CooldownStep::run() -> u16` | Countdown-to-ready state cell: decrements cooldown by 1 (floored at 0) each call, reporting 1 once it reaches 0 — distinct from counter_step (modular increment, round-robin) and backoff_next (exponential growth); no existing agentic-runtime cell does a plain decrement-to-zero. |
 | `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
+| `difficulty_zone_step` | `DifficultyZoneStep::run() -> u16` | Difficulty-zone advance/stay/retreat decision from an accuracy tally against a target-accuracy band (target_pct +/- tolerance_pct), gated by a minimum sample count. Exact via cross-multiplication (correct*100 vs total*(target+-tolerance)) rather than dividing, so no float accuracy ratio is ever computed. Distinct from hysteresis (a raw single-value 2-state latch with no sample-size gate): this is a 3-way ratio decision over an explicit sample count. |
 | `epsilon_greedy_pick3` | `EpsilonGreedyPick3::run() -> u16` | Epsilon-greedy selection: returns alt_idx (explore) if rand_bps < epsilon_bps, else best_idx (exploit) — composes with the already-shipped lcg_next/xorshift16 (for rand_bps, via safe_mod against 10000) and epsilon_bps as a basis-points exploration rate (e.g. 1000 = 10% exploration). |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
 | `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |

@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (19)
+## Landed (20)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,6 +16,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 | `diff_equals` | `run(a: u16, b: u16, remainder: u16) -> u16` | Verifies a claimed difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative). |
 | `diff_equals_u32` | `DiffEqualsWide::run() -> u16` | Verifies a claimed wide difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative) — the wide sibling of diff_equals (which works over u16). |
+| `linear_eq_holds` | `LinearEqHolds::run() -> u16` | Verify a candidate x against a general one-variable linear equation a*x + b == c*x + d in one call -- the fused sibling of linear_solve_1var's solve step, exact via sign-magnitude arithmetic (no float tolerance), so a solved x round-trips through this check with zero error instead of an epsilon compare. |
 | `mul_add_equals_u32` | `MulAddEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-add: returns 1 if a * b + c == total, else 0, including when either step overflows u32 — the reverse-equation counterpart of mul_add_checked_u32. |
 | `mul_sub_equals_u32` | `MulSubEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-subtract: returns 1 if a * b - c == total, else 0, including when the multiply overflows u32 or c exceeds the product — the reverse-equation counterpart of mul_sub_checked_u32. |
 | `nonnegative_after_delta` | `run(value: u16, delta: i16) -> u16` | Returns 1 if applying a signed delta to an unsigned value would stay nonnegative, else 0 — the boolean-verdict form of the sign-handling idiom apply_delta_clamped already uses, for a caller (e.g. a plan verifier) that wants to kill a wrong "subtract too much" plan cheaply without needing the clamped value itself. |

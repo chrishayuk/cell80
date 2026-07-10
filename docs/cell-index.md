@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (310 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (313 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -9,7 +9,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 
 See `docs/library-growth.md` for the packs' purpose, the contribution rule, and the admission gate that enforces "no behavioural duplicates."
 
-## agentic-runtime (8)
+## agentic-runtime (9)
 
 | id | signature | summary |
 |---|---|---|
@@ -17,6 +17,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `circuit_breaker_step` | `CircuitBreaker::run() -> u16` | Circuit-breaker state machine step: closed(0) counts failures and opens at the threshold; open(1) waits for cooldown then tries half-open(2); half-open resolves to closed on success or back to open on failure. |
 | `cooldown_step` | `CooldownStep::run() -> u16` | Countdown-to-ready state cell: decrements cooldown by 1 (floored at 0) each call, reporting 1 once it reaches 0 — distinct from counter_step (modular increment, round-robin) and backoff_next (exponential growth); no existing agentic-runtime cell does a plain decrement-to-zero. |
 | `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
+| `difficulty_zone_step` | `DifficultyZoneStep::run() -> u16` | Difficulty-zone advance/stay/retreat decision from an accuracy tally against a target-accuracy band (target_pct +/- tolerance_pct), gated by a minimum sample count. Exact via cross-multiplication (correct*100 vs total*(target+-tolerance)) rather than dividing, so no float accuracy ratio is ever computed. Distinct from hysteresis (a raw single-value 2-state latch with no sample-size gate): this is a 3-way ratio decision over an explicit sample count. |
 | `epsilon_greedy_pick3` | `EpsilonGreedyPick3::run() -> u16` | Epsilon-greedy selection: returns alt_idx (explore) if rand_bps < epsilon_bps, else best_idx (exploit) — composes with the already-shipped lcg_next/xorshift16 (for rand_bps, via safe_mod against 10000) and epsilon_bps as a basis-points exploration rate (e.g. 1000 = 10% exploration). |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
 | `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |
@@ -149,7 +150,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `q_sigmoid` | `run(x: i16) -> u16` | Q8.8 fixed-point "hard sigmoid": a well-known piecewise-linear stand-in for the true sigmoid, clamp(x/4 + 0.5, 0, 1) — exact at x=0, saturating to 0/1 outside roughly [-4, 4], monotonic and cheap everywhere between. Input is signed (Q8.8, negative values meaningful, e.g. -256 = -1.0); output is unsigned Q8.8 in [0, 256] (0.0 to 1.0). q_tanh is deliberately not a separate cell: the same derivation (tanh(x) = 2*sigmoid(2x)-1) reduces to clamp_i16(x, -256, 256) exactly, already covered by that cell's own tags. |
 | `q_sqrt` | `run(x: u16) -> u16` | Q8.8 fixed-point square root: sqrt(x/256)*256, via a branch-free bitwise integer square root on the widened x*256 (u32 only as a local, never a call param/return — the pattern every Q8.8 free function follows). A naive linear-scan integer sqrt was tried first and cost 3.6M cycles at the domain extreme (past the 2,000,000 default); this bitwise version costs under 20,000. |
 
-## fractions (22)
+## fractions (23)
 
 | id | signature | summary |
 |---|---|---|
@@ -172,6 +173,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
+| `linear_solve_1var` | `LinearSolve1Var::run() -> u16` | Solve a general one-variable linear equation a*x + b = c*x + d for x, returned as an exact signed fraction (num_mag/num_neg over a positive den) in lowest terms via the shared gcd_u32 kernel -- the single-unknown sibling of matrix_solve_2x2's two-unknown Cramer's-rule solve. num = d - b and den = a - c are plain signed subtractions, not products, so this needs sign-magnitude tracking (the dialect has no i32 yet) but no overflow-prone multiply. |
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
@@ -465,7 +467,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `triple_vector_product` | `TripleVectorProduct::run() -> u16` | Triple vector product a x (b x c) of three 3D vectors, via the BAC-CAB identity a x (b x c) = b*(a.c) - c*(a.b) -- pure dot-products and scalar multiplies, never an actual cross-product computation. Each stage (the two dot products, the two vector scalings, the final vector subtract) is tracked as a (magnitude, sign) pair, the same discipline cross_product/triple_scalar_product use. Genuinely narrower-range than those two: scaling a vector component by a dot product can reach i16's product-of-three-factors territory, so this escalates well before either input vector's own magnitude would suggest trouble. |
 | `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |
 
-## verifier-ranker (19)
+## verifier-ranker (20)
 
 | id | signature | summary |
 |---|---|---|
@@ -474,6 +476,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 | `diff_equals` | `run(a: u16, b: u16, remainder: u16) -> u16` | Verifies a claimed difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative). |
 | `diff_equals_u32` | `DiffEqualsWide::run() -> u16` | Verifies a claimed wide difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative) — the wide sibling of diff_equals (which works over u16). |
+| `linear_eq_holds` | `LinearEqHolds::run() -> u16` | Verify a candidate x against a general one-variable linear equation a*x + b == c*x + d in one call -- the fused sibling of linear_solve_1var's solve step, exact via sign-magnitude arithmetic (no float tolerance), so a solved x round-trips through this check with zero error instead of an epsilon compare. |
 | `mul_add_equals_u32` | `MulAddEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-add: returns 1 if a * b + c == total, else 0, including when either step overflows u32 — the reverse-equation counterpart of mul_add_checked_u32. |
 | `mul_sub_equals_u32` | `MulSubEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-subtract: returns 1 if a * b - c == total, else 0, including when the multiply overflows u32 or c exceeds the product — the reverse-equation counterpart of mul_sub_checked_u32. |
 | `nonnegative_after_delta` | `run(value: u16, delta: i16) -> u16` | Returns 1 if applying a signed delta to an unsigned value would stay nonnegative, else 0 — the boolean-verdict form of the sign-handling idiom apply_delta_clamped already uses, for a caller (e.g. a plan verifier) that wants to kill a wrong "subtract too much" plan cheaply without needing the clamped value itself. |

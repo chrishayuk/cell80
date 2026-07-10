@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (22)
+## Landed (23)
 
 | id | signature | summary |
 |---|---|---|
@@ -30,6 +30,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
+| `linear_solve_1var` | `LinearSolve1Var::run() -> u16` | Solve a general one-variable linear equation a*x + b = c*x + d for x, returned as an exact signed fraction (num_mag/num_neg over a positive den) in lowest terms via the shared gcd_u32 kernel -- the single-unknown sibling of matrix_solve_2x2's two-unknown Cramer's-rule solve. num = d - b and den = a - c are plain signed subtractions, not products, so this needs sign-magnitude tracking (the dialect has no i32 yet) but no overflow-prone multiply. |
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |

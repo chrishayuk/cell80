@@ -321,3 +321,54 @@ fn wave4_width_precision_fractions_slice() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn linear_solve_1var_matches_defined_behaviour() {
+    // Mined from chuk-math-gym's linear_equations domain: the single-unknown sibling of
+    // matrix_solve_2x2's two-unknown Cramer's-rule solve, ax + b = cx + d for x, exact
+    // via sign-magnitude subtraction + gcd_u32 reduction (no i32 in the dialect yet).
+    fn solve(id: &str, a: u64, b: u64, c: u64, d: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), "LinearSolve1Var", None).unwrap();
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+
+    // 2x + 3 = 5x - 6 -> x = 3 (as 3/1).
+    let (_, cell) = solve(
+        "linear_solve_1var",
+        i16_bits(2),
+        i16_bits(3),
+        i16_bits(5),
+        i16_bits(-6),
+    );
+    assert_eq!(cell.get("num_mag"), Some(3));
+    assert_eq!(cell.get("num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(1));
+    // x = 2x + 3 -> x = -3 (as -3/1: num_neg = 1).
+    let (_, cell) = solve(
+        "linear_solve_1var",
+        i16_bits(1),
+        i16_bits(0),
+        i16_bits(2),
+        i16_bits(3),
+    );
+    assert_eq!(cell.get("num_mag"), Some(3));
+    assert_eq!(cell.get("num_neg"), Some(1));
+    assert_eq!(cell.get("den"), Some(1));
+    // 4x + 2 = 4x + 9 -> a == c, no unique solution -> escalate.
+    let (report, _) = solve(
+        "linear_solve_1var",
+        i16_bits(4),
+        i16_bits(2),
+        i16_bits(4),
+        i16_bits(9),
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

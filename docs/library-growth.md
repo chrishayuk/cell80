@@ -1832,6 +1832,41 @@ folded/deferred with a documented reason.
 `chuk-math` / `chuk-mcp-math` / `chuk-synthetic-data` likely already hold integer kernels worth
 porting straight in — cheaper than authoring from scratch, and it ties the loop.
 
+**Update (2026-07-10):** all three sources checked. `chuk-mcp-math` *is* `chuk-mcp-math-server`'s
+642-function library — already exhaustively mined above (`docs/math-server-map.md`, closed
+through Wave 14), not a separate source. `chuk-synthetic-data` is a 3-file toy directory
+(`hello.py`/`oddeven.py`/`equation.py`) — confirmed negligible, not worth surveying.
+`chuk-math` (`chuk_math_gym`, a verifiable-reasoning training gym distinct from the function
+library) yielded three genuinely new cells after cross-checking `docs/cell-index.md` — its
+`verifiers/`/`domains/*/verifier.py` were otherwise already covered by the existing
+`verifier-ranker`/`fractions` packs (fraction equality/reduction, tolerance-based verification,
+partial-credit-as-percent, and an EMA-threshold advance/retreat shape already matching
+`hysteresis`), confirming those packs' coverage rather than adding to it:
+
+- **`linear_solve_1var`** (`fractions` pack) — solve `a*x + b = c*x + d` for `x` as an exact
+  signed fraction, mined from `linear_equations/generator.py`. The single-unknown sibling of
+  `matrix_solve_2x2`; `num`/`den` are plain signed subtractions (not products), so no
+  overflow-prone multiply is needed, just sign-magnitude tracking (the dialect has no `i32` yet).
+- **`linear_eq_holds`** (`verifier-ranker` pack) — verify a candidate `x` against
+  `a*x + b == c*x + d` in one call, mined from `linear_equations/verifier.py`'s
+  substitution check, exactified (no float tolerance) and fused so a solved `x` round-trips
+  through it with zero error.
+- **`difficulty_zone_step`** (`agentic-runtime` pack) — a 3-way advance/hold/retreat decision
+  from an accuracy tally against a target+-tolerance band, gated by a minimum sample count,
+  mined from `curriculum/strategies.py`'s `PerformanceBasedStrategy`. Exact via
+  cross-multiplication (`correct*100` vs `total*(target+-tolerance)`), never dividing. A genuinely
+  new domain for the library (curriculum/difficulty adaptation) but structurally closest to
+  `hysteresis`'s self-adjusting-control-loop shape, hence landed in the same pack; distinguished
+  by its 3-way output and explicit sample-size gate rather than a raw single-value 2-state latch.
+
+All three are state cells purely for arg count or output shape (5-6 named fields), not because
+they persist anything internally between calls — none hit the array-state-field gap
+(`experiments/sliding-window-state-cells-findings.md`). Gate: 313 admitted, 0 refused; retrieval
+rows verified #1 direct via `cell80 search`; codegen golden regenerated, purely additive.
+`curriculum/strategies.py`'s EMA-threshold variant (`SelfPacedStrategy`) and `verifiers/base.py`'s
+error-classification heuristics were surveyed and explicitly ruled out — the former duplicates
+`hysteresis`, the latter relies on float thresholds with no clean exact-integer formalization.
+
 ## After authoring: re-run the evals
 
 Each new **family** is a retrieval test case; each **predicate + transform** pair a composition

@@ -269,7 +269,7 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — 310 cells across 30+ families (2026-07-09).**
+6. **Grow the standard cell library — 313 cells across 30+ families (2026-07-10).**
    `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
    number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
    scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
@@ -281,7 +281,12 @@ strictly by sequence; the library grows by eval need:
    growth is meant to come from **precipitation** (item 9, `cell_solve`) — real problems
    surfacing which schemas actually recur — not more speculative candidates. Every batch has
    cost real, only partially-recovered retrieval precision; the library-growth doc tracks the
-   tradeoff checkpoint by checkpoint.
+   tradeoff checkpoint by checkpoint. **310→313 (2026-07-10) is the ecosystem-mining track
+   instead**, sanctioned as a cheaper-than-authoring source distinct from speculative
+   hand-authoring: `linear_solve_1var`/`linear_eq_holds`/`difficulty_zone_step`, ported from
+   `chuk-math-gym`'s linear-equation and curriculum-scheduling domains after confirming
+   `chuk-mcp-math` was already fully mined and `chuk-synthetic-data` negligible
+   (`docs/library-growth.md`'s "Mine the ecosystem first").
    **The 209→310 gap is `docs/math-server-map.md`'s mining pass** (`chuk-mcp-math-server`'s
    642 functions classified against the live library) **plus its full harvest, waves 6-14
    (2026-07-07 to 2026-07-09)**: number theory (Möbius/omega/divisor-power-sum/Jordan

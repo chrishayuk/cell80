@@ -694,3 +694,11 @@
 {"id": "effect_size_r-para-1", "query": "how large is an effect given a t-value and degrees of freedom, bounded -1 to 1", "expected": "effect_size_r", "category": "paraphrase"}
 {"id": "correlation-direct-1", "query": "Pearson correlation coefficient from precomputed sums", "expected": "correlation", "category": "direct"}
 {"id": "correlation-para-1", "query": "correlation coefficient strength of a linear relationship, unlike covariance which is unbounded", "expected": "correlation", "category": "paraphrase"}
+{"id": "linear_solve_1var-direct-1", "query": "solve a one-variable linear equation ax + b = cx + d for x", "expected": "linear_solve_1var", "category": "direct"}
+{"id": "linear_solve_1var-para-1", "query": "find x as an exact fraction given a linear equation with x on both sides", "expected": "linear_solve_1var", "category": "paraphrase"}
+{"id": "linear_solve_1var-adv-1", "query": "the single-unknown counterpart to solving a 2x2 system with Cramer's rule", "expected": "linear_solve_1var", "category": "adversarial"}
+{"id": "linear_eq_holds-direct-1", "query": "check whether a candidate value of x satisfies ax + b = cx + d", "expected": "linear_eq_holds", "category": "direct"}
+{"id": "linear_eq_holds-para-1", "query": "verify a solution to a linear equation exactly, no tolerance", "expected": "linear_eq_holds", "category": "paraphrase"}
+{"id": "difficulty_zone_step-direct-1", "query": "decide whether to advance, hold, or retreat difficulty based on recent accuracy", "expected": "difficulty_zone_step", "category": "direct"}
+{"id": "difficulty_zone_step-para-1", "query": "adaptive curriculum difficulty adjustment given a target accuracy band and a minimum sample count", "expected": "difficulty_zone_step", "category": "paraphrase"}
+{"id": "difficulty_zone_step-adv-1", "query": "a 3-way threshold-band decision over a hit rate, not a raw single-value latch like hysteresis", "expected": "difficulty_zone_step", "category": "adversarial"}
