@@ -88,6 +88,41 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
+### 2026-07-11 — Typed-state readback: the state cells join the GPU (WS-E follow-up)
+
+**Shipped.** The biggest coverage block lands: state cells
+(`impl X { fn run(&mut self) }`, two-thirds of the library) now run on Metal.
+Each thread carries a private state window at `STATE_BASE` (0xB000) — loaded
+from an input buffer, byte-routed through the same `rd8`/`wr8` emulation, and
+written back after the run, **even on a trap** (the interpreter's memory at
+the trap point is observable, and identical tick placement makes the mutation
+point identical). A state cell's param 0 is the `&mut self` pointer
+(`STATE_BASE`, not an input word); extra scalar params ride the input triple.
+The battery drives **adversarial random state bytes** (any bit pattern is a
+valid scalar field — arrays included, which the named-field surface can't
+even set yet) and asserts values, status, steps, **and final state bytes**
+per input. Result: **496 state cells eligible, 496 compiled, 496 bit-exact**
+(five corner tests pin the shape: field roundtrip, state-dependent control
+flow, array-field loops, u32 fields with extra args, and a mid-mutation trap
+leaving partial state identically). GPU library coverage goes from 245 value
+cells to **741 of 746** — everything except f32 (E4) and two filed defects.
+
+**Found.** The adversarial-state battery immediately caught a real defect
+class: two day-old sliding-window cells (`simple_moving_average`,
+`weighted_moving_average`) index an array field by an **unmasked state field**
+(`self.window[self.head]`) — under fuzzed state the write lands far outside
+the declared struct. The interpreter's open 64 KiB absorbs it silently; the
+GPU's typed window traps it (`STATUS_OOW`) — the stricter reading, and
+arguably the correct family semantics: a state-derived wild write should be a
+refusal, not an absorption. Skip-listed with a filed reason; the fix (mask
+the index on read — free on the operational envelope) belongs to the
+sliding-window pack. This is the "state-derived unbounded write" sibling of
+the step-budget finding: adversarial batteries keep converting latent cell
+assumptions into typed refusals.
+
+**Owed.** Unchanged otherwise: the library-launch fixed cost, `Body::Msl` +
+E6 attestation, f32 (E4), CUDA before H3 — and the two OOW cells' bounds fix.
+
 ### 2026-07-11 — Oracle transcripts: the gate's interpreter cost paid once (WS-E follow-up)
 
 **Shipped.** The bit-exactness gate's wall clock was never the GPU (its full

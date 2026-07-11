@@ -85,6 +85,14 @@ fn lower_cell(src: &str) -> Result<(Funcs, Consts, String), String> {
     Ok((funcs, consts, src_hash))
 }
 
+/// Per-cell battery seed, derived from the combined-source hash: stable while
+/// the cell is unchanged (library growth can't shift it — an index-derived
+/// seed orphaned every transcript whenever a cell was added), and it rotates
+/// exactly when the source changes, which stales the transcript regardless.
+fn cell_seed(src_hash: &str, salt: u64) -> u64 {
+    u64::from_str_radix(&src_hash[..16], 16).unwrap_or(0x5eed) ^ salt
+}
+
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
@@ -142,12 +150,13 @@ fn cell_paths() -> Vec<PathBuf> {
 struct InterpBlock<'a> {
     funcs: &'a Funcs,
     consts: &'a Consts,
+    entry: &'a str,
     interp: Interp<'a>,
     pristine: Vec<u8>,
 }
 
 impl<'a> InterpBlock<'a> {
-    fn new(funcs: &'a Funcs, consts: &'a Consts) -> Self {
+    fn new(funcs: &'a Funcs, consts: &'a Consts, entry: &'a str) -> Self {
         let interp = Interp::new(
             funcs,
             consts.iter().map(|(n, b)| (n.as_str(), b.as_slice())),
@@ -157,6 +166,7 @@ impl<'a> InterpBlock<'a> {
         InterpBlock {
             funcs,
             consts,
+            entry,
             interp,
             pristine,
         }
@@ -170,30 +180,39 @@ impl<'a> InterpBlock<'a> {
         );
     }
 
-    /// One pristine run: `(quad-shaped result, steps this run)`. Memory resets
+    /// One pristine run: `(quad-shaped result, steps this run, final state
+    /// bytes)`. `state_in` plants at [`rustmsl::STATE_BASE`] (empty for a
+    /// value cell) and the same window reads back after the run. Memory resets
     /// between runs (cheap memcpy); the instance recreates only when the
     /// cumulative fuel spend could shortchange a heavy run — ≥ half the budget
     /// always remains, orders of magnitude above any admitted cell run.
-    fn run(&mut self, args: &[u16]) -> (Result<Vec<u16>, String>, u32) {
+    fn run(&mut self, args: &[u16], state_in: &[u8]) -> (Result<Vec<u16>, String>, u32, Vec<u8>) {
         if self.interp.steps() > 50_000_000 {
             self.recreate();
         } else {
             self.interp.mem.copy_from_slice(&self.pristine);
         }
+        if !state_in.is_empty() {
+            self.interp.plant(rustmsl::STATE_BASE, state_in);
+        }
         let fresh = self.interp.steps() == 0;
         let s0 = self.interp.steps();
-        let res = self.interp.run("run", args);
+        let mut res = self.interp.run(self.entry, args);
+        let mut used = u32::try_from(self.interp.steps() - s0).expect("steps fit");
         // A fuel trap must burn the *full* budget to mirror the GPU exactly —
         // a warm instance would trap early, so regrade that input cold (only
         // runaway inputs reach this, and they cost ~1 s each regardless).
         if !fresh && matches!(&res, Err(e) if e.contains("fuel exhausted")) {
             self.recreate();
-            let res = self.interp.run("run", args);
-            let steps = u32::try_from(self.interp.steps()).expect("steps fit");
-            return (res, steps);
+            if !state_in.is_empty() {
+                self.interp.plant(rustmsl::STATE_BASE, state_in);
+            }
+            res = self.interp.run(self.entry, args);
+            used = u32::try_from(self.interp.steps()).expect("steps fit");
         }
-        let used = u32::try_from(self.interp.steps() - s0).expect("steps fit");
-        (res, used)
+        let sb = rustmsl::STATE_BASE as usize;
+        let state_out = self.interp.mem[sb..sb + state_in.len()].to_vec();
+        (res, used, state_out)
     }
 }
 
@@ -235,25 +254,31 @@ fn sextet_digest(outs: &[[u16; 6]]) -> String {
 /// The GPU graded everything in one dispatch; the *oracle* is the wall clock,
 /// and it fans out — each worker grades disjoint chunks with its own
 /// interpreter, so a step-heavy cell uses every core, not one.
+#[allow(clippy::too_many_arguments)]
 fn grade_cell(
     name: &str,
     funcs: &Funcs,
     consts: &Consts,
+    entry: &str,
     n_args: usize,
+    state_len: usize,
     inputs: &[[u16; 3]],
+    state_in: &[u8],
     got: &[[u16; 6]],
-) -> (usize, Vec<[u16; 6]>) {
+    gpu_state: &[u8],
+) -> (usize, Vec<[u16; 6]>, Vec<u8>) {
     let workers = std::thread::available_parallelism()
         .map(|p| p.get())
         .unwrap_or(8);
     let chunk = (inputs.len() / (workers * 8)).max(256);
     let next = std::sync::atomic::AtomicUsize::new(0);
     let total_bad = std::sync::atomic::AtomicUsize::new(0);
-    let parts: std::sync::Mutex<Vec<(usize, Vec<[u16; 6]>)>> = std::sync::Mutex::new(Vec::new());
+    type Part = (usize, Vec<[u16; 6]>, Vec<u8>);
+    let parts: std::sync::Mutex<Vec<Part>> = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|s| {
         for _ in 0..workers {
             s.spawn(|| {
-                let mut block = InterpBlock::new(funcs, consts);
+                let mut block = InterpBlock::new(funcs, consts, entry);
                 loop {
                     let start = next.fetch_add(chunk, std::sync::atomic::Ordering::Relaxed);
                     if start >= inputs.len() {
@@ -261,8 +286,23 @@ fn grade_cell(
                     }
                     let end = (start + chunk).min(inputs.len());
                     let mut want_out = Vec::with_capacity(end - start);
-                    for (args, gpu_out) in inputs[start..end].iter().zip(&got[start..end]) {
-                        let (res, steps) = block.run(&args[..n_args]);
+                    let mut want_state = Vec::with_capacity((end - start) * state_len);
+                    for (i, (args, gpu_out)) in
+                        inputs[start..end].iter().zip(&got[start..end]).enumerate()
+                    {
+                        let idx = start + i;
+                        // A state cell's arg 0 is the &mut self pointer; the
+                        // input triple only feeds what follows it.
+                        let mut call: Vec<u16> = Vec::with_capacity(n_args);
+                        let extras = if state_len > 0 {
+                            call.push(rustmsl::STATE_BASE);
+                            n_args - 1
+                        } else {
+                            n_args
+                        };
+                        call.extend_from_slice(&args[..extras]);
+                        let st_in = &state_in[idx * state_len..(idx + 1) * state_len];
+                        let (res, steps, st_out) = block.run(&call, st_in);
                         let want = interp_quad(res).unwrap_or_else(|e| {
                             panic!("{name}: unexpected interpreter refusal: {e}")
                         });
@@ -274,26 +314,37 @@ fn grade_cell(
                             steps as u16,
                             (steps >> 16) as u16,
                         ];
-                        if gpu_out != &sext {
+                        let gpu_st = &gpu_state[idx * state_len..(idx + 1) * state_len];
+                        if gpu_out != &sext || gpu_st != st_out {
                             let seen = total_bad.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             if seen < 5 {
                                 eprintln!(
-                                    "{name}: args {args:?} — gpu {gpu_out:?} != \
-                                     interpreter {sext:?}"
+                                    "{name}: args {args:?} — gpu {gpu_out:?}/{gpu_st:?} != \
+                                     interpreter {sext:?}/{st_out:?}"
                                 );
                             }
                         }
                         want_out.push(sext);
+                        want_state.extend_from_slice(&st_out);
                     }
-                    parts.lock().unwrap().push((start, want_out));
+                    parts.lock().unwrap().push((start, want_out, want_state));
                 }
             });
         }
     });
     let mut parts = parts.into_inner().unwrap();
-    parts.sort_by_key(|(start, _)| *start);
-    let oracle: Vec<[u16; 6]> = parts.into_iter().flat_map(|(_, v)| v).collect();
-    (total_bad.load(std::sync::atomic::Ordering::Relaxed), oracle)
+    parts.sort_by_key(|(start, _, _)| *start);
+    let mut oracle = Vec::new();
+    let mut oracle_state = Vec::new();
+    for (_, v, st) in parts {
+        oracle.extend(v);
+        oracle_state.extend(st);
+    }
+    (
+        total_bad.load(std::sync::atomic::Ordering::Relaxed),
+        oracle,
+        oracle_state,
+    )
 }
 
 /// The oracle-transcript book (docs 12's fact-file idea applied to the GPU
@@ -374,7 +425,7 @@ fn battery(n: usize) {
     let mut cached = 0usize;
     let mut defects: Vec<String> = Vec::new();
     let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
-    for (i, (name, funcs, consts, src_hash)) in lib.cells.iter().enumerate() {
+    for (name, funcs, consts, src_hash) in lib.cells.iter() {
         let module = match rustmsl::compile(funcs, consts, "run") {
             Ok(m) => m,
             Err(e) => {
@@ -389,9 +440,7 @@ fn battery(n: usize) {
             }
         };
         compiled += 1;
-        // Per-cell seed: stable across runs (the eligible list is sorted),
-        // distinct across cells, order-independent.
-        let seed = 0x5eed_e100_0000_0000 ^ i as u64;
+        let seed = cell_seed(src_hash, 0x5eed_e100);
         let inputs = gen_inputs(n, seed);
         let gpu = GpuBatch::new(&module)
             .unwrap_or_else(|e| panic!("{name}: gpu pipeline failed: {e}\n{}", module.source));
@@ -411,7 +460,18 @@ fn battery(n: usize) {
         }
         // Miss, stale, or disagreement: the live oracle decides (and
         // localizes any disagreeing inputs).
-        let (bad, oracle) = grade_cell(name, funcs, consts, module.cells[0].params, &inputs, &got);
+        let (bad, oracle, _) = grade_cell(
+            name,
+            funcs,
+            consts,
+            "run",
+            module.cells[0].params,
+            0,
+            &inputs,
+            &[],
+            &got,
+            &[],
+        );
         if bad == 0 {
             clean += 1;
         } else {
@@ -491,6 +551,7 @@ fn library_megakernel_matches_interpreter() {
             funcs,
             consts,
             entry: "run",
+            state_len: 0,
         })
         .collect();
     let module = rustmsl::compile_library(&cells).expect("library compile");
@@ -518,10 +579,10 @@ fn library_megakernel_matches_interpreter() {
     let mut bad = 0usize;
     for (ci, (name, funcs, consts, _)) in compilable.iter().enumerate() {
         let n_args = module.cells[ci].params;
-        let mut block = InterpBlock::new(funcs, consts);
+        let mut block = InterpBlock::new(funcs, consts, "run");
         for (pi, probe) in probes.iter().enumerate() {
             let gpu_out = &got[ci * probes.len() + pi];
-            let (res, want_steps) = block.run(&probe[..n_args]);
+            let (res, want_steps, _) = block.run(&probe[..n_args], &[]);
             let want = interp_quad(res)
                 .unwrap_or_else(|e| panic!("{name}: unexpected interpreter refusal: {e}"));
             let got_quad = [gpu_out[0], gpu_out[1], gpu_out[2], gpu_out[3]];
@@ -599,6 +660,7 @@ fn throughput_library() {
             funcs,
             consts,
             entry: "run",
+            state_len: 0,
         })
         .collect();
     let t0 = std::time::Instant::now();
@@ -695,11 +757,11 @@ fn divergence_probe_gcd() {
 fn gate_cost_estimate() {
     let lib = eligible_cells();
     let mut rows: Vec<(String, u64)> = Vec::new(); // (name, mean steps per input)
-    for (i, (name, funcs, consts, _)) in lib.cells.iter().enumerate() {
+    for (name, funcs, consts, src_hash) in lib.cells.iter() {
         let Ok(module) = rustmsl::compile(funcs, consts, "run") else {
             continue;
         };
-        let seed = 0x5eed_e100_0000_0000 ^ i as u64;
+        let seed = cell_seed(src_hash, 0x5eed_e100);
         let inputs = gen_inputs(512, seed);
         let gpu = GpuBatch::new(&module).unwrap();
         let got = gpu.run(&inputs).unwrap();
@@ -727,4 +789,254 @@ fn gate_cost_estimate() {
     for (name, mean) in top.iter().take(10) {
         println!("  {name:>28}: {mean} steps/input");
     }
+}
+
+// ── the state-cell battery: typed-state readback (docs 14, owed with E3) ───
+
+/// Lower a **state cell** (`impl X { fn run(&mut self, …) }`): same pipeline
+/// as [`lower_cell`], entry `X::run`, plus the state struct's byte length at
+/// `STATE_BASE` from its slot layout.
+#[allow(clippy::type_complexity)]
+fn lower_state_cell(src: &str) -> Result<(Funcs, Consts, String, String, usize), String> {
+    let combined = format!("{src}\n{}{}", cell80::CELL_PRELUDE, rustz80::F32_KERNELS);
+    let file: syn::File = syn::parse_str(&combined).map_err(|e| format!("parse: {e}"))?;
+    let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())?;
+    let entry = lowered
+        .funcs
+        .iter()
+        .map(|(n, _)| n.as_str())
+        .find(|n| n.ends_with("::run"))
+        .ok_or_else(|| "no `impl … fn run` entry (not a state cell)".to_string())?
+        .to_string();
+    let state_name = entry.trim_end_matches("::run").to_string();
+    let layout = rustz80::struct_layout(src, &state_name)?;
+    let state_len = layout
+        .iter()
+        .map(|f| (f.offset + f.slots) as usize * 2)
+        .max()
+        .unwrap_or(0);
+    if state_len == 0 {
+        return Err("empty state struct".into());
+    }
+    let consts = lowered.const_data();
+    let funcs = cell80_core::inline::inline(lowered.funcs, &[&entry]);
+    let funcs = cell80_core::dce::prune(funcs, &[&entry]);
+    let src_hash = {
+        use sha2::{Digest, Sha256};
+        let mut h = Sha256::new();
+        h.update(combined.as_bytes());
+        hex(&h.finalize())
+    };
+    Ok((funcs, consts, src_hash, entry, state_len))
+}
+
+/// Every eligible state cell: `(name, funcs, consts, src_hash, entry,
+/// state_len)`, plus honest skip counts.
+struct EligibleState {
+    cells: Vec<(String, Funcs, Consts, String, String, usize)>,
+    skipped: BTreeMap<String, usize>,
+}
+
+/// Filed defects, excluded until fixed: under **adversarial state** (the
+/// battery's random bytes) these cells index an array field by an unmasked
+/// state field (`self.window[self.head]` with `head` fuzzed wild), writing far
+/// outside their declared state struct. The interpreter's open 64 KiB absorbs
+/// it; the GPU's typed window traps it (`STATUS_OOW`) — the stricter reading,
+/// and the defect class the battery exists to surface. Fix: mask the index on
+/// read (free on the operational envelope, where the cell's own `% 8`
+/// maintains the invariant). Owned by the sliding-window pack.
+const STATE_OOW_DEFECTS: &[&str] = &["simple_moving_average", "weighted_moving_average"];
+
+fn eligible_state_cells() -> EligibleState {
+    let mut cells = Vec::new();
+    let mut skipped: BTreeMap<String, usize> = BTreeMap::new();
+    for path in &cell_paths() {
+        let name = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let src = std::fs::read_to_string(path).unwrap();
+        if STATE_OOW_DEFECTS.contains(&name.as_str()) {
+            *skipped
+                .entry("state-derived OOW write (filed defect)".into())
+                .or_default() += 1;
+            continue;
+        }
+        // Value cells belong to the value battery; this sweep takes the rest.
+        if scalar_signature(&src) {
+            continue;
+        }
+        if !src.contains("impl ") {
+            *skipped
+                .entry("pointer-param value cell".into())
+                .or_default() += 1;
+            continue;
+        }
+        match lower_state_cell(&src) {
+            Ok((funcs, consts, src_hash, entry, state_len)) => {
+                cells.push((name, funcs, consts, src_hash, entry, state_len));
+            }
+            Err(e) => {
+                let key = if e.contains("f32") {
+                    "f32 (E4)".to_string()
+                } else {
+                    e
+                };
+                *skipped.entry(key).or_default() += 1;
+            }
+        }
+    }
+    EligibleState { cells, skipped }
+}
+
+/// Random state blocks for `n` inputs — any bit pattern is a valid scalar
+/// field, so bytes are the honest fuzz (arrays included, which the named
+/// surface can't even drive yet).
+fn gen_state(n: usize, state_len: usize, seed: u64) -> Vec<u8> {
+    let mut rng = Rng(seed);
+    let mut v = vec![0u8; n * state_len];
+    for b in v.iter_mut() {
+        *b = rng.next() as u8;
+    }
+    v
+}
+
+/// Sweep the state cells: compile each to MSL with its state window, run the
+/// battery (GPU state in/out vs the interpreter's memory at `STATE_BASE`),
+/// and report coverage + refusals. Transcripts key as `{name}@st{n}` and
+/// digest sextets ‖ final state bytes.
+fn state_battery(n: usize) {
+    let lib = eligible_state_cells();
+    let mut book = load_book();
+    let update = std::env::var("UPDATE_GOLDEN").is_ok();
+    let mut compiled = 0usize;
+    let mut clean = 0usize;
+    let mut cached = 0usize;
+    let mut defects: Vec<String> = Vec::new();
+    let mut refusals: BTreeMap<String, usize> = BTreeMap::new();
+    for (name, funcs, consts, src_hash, entry, state_len) in lib.cells.iter() {
+        let module = match rustmsl::compile_library(&[rustmsl::LibraryCell {
+            funcs,
+            consts,
+            entry,
+            state_len: *state_len,
+        }]) {
+            Ok(m) => m,
+            Err(e) => {
+                let key = if e.contains("f32") || e.contains("E4") {
+                    "f32 (E4)".to_string()
+                } else {
+                    e
+                };
+                *refusals.entry(key).or_default() += 1;
+                continue;
+            }
+        };
+        compiled += 1;
+        let seed = cell_seed(src_hash, 0x5eed_e500);
+        let inputs = gen_inputs(n, seed);
+        let state_in = gen_state(inputs.len(), *state_len, seed ^ 0x57a7);
+        let gpu = GpuBatch::new(&module)
+            .unwrap_or_else(|e| panic!("{name}: gpu pipeline failed: {e}\n{}", module.source));
+        let (got, gpu_state) = gpu
+            .run_with_state(&inputs, &state_in)
+            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let gpu_digest = {
+            use sha2::{Digest, Sha256};
+            let mut h = Sha256::new();
+            for o in &got {
+                for w in o {
+                    h.update(w.to_le_bytes());
+                }
+            }
+            h.update(&gpu_state);
+            hex(&h.finalize())
+        };
+
+        let key = format!("{name}@st{n}");
+        let hit = book.get(&key).is_some_and(|e| {
+            e["src"].as_str() == Some(src_hash.as_str())
+                && e["seed"].as_u64() == Some(seed)
+                && e["digest"].as_str() == Some(gpu_digest.as_str())
+        });
+        if hit {
+            cached += 1;
+            clean += 1;
+            continue;
+        }
+        let (bad, oracle, oracle_state) = grade_cell(
+            name,
+            funcs,
+            consts,
+            entry,
+            module.cells[0].params,
+            *state_len,
+            &inputs,
+            &state_in,
+            &got,
+            &gpu_state,
+        );
+        if bad == 0 {
+            clean += 1;
+        } else {
+            defects.push(format!("{name}: {bad} disagreeing inputs"));
+        }
+        if update {
+            let oracle_digest = {
+                use sha2::{Digest, Sha256};
+                let mut h = Sha256::new();
+                for o in &oracle {
+                    for w in o {
+                        h.update(w.to_le_bytes());
+                    }
+                }
+                h.update(&oracle_state);
+                hex(&h.finalize())
+            };
+            book.insert(
+                key,
+                serde_json::json!({
+                    "src": src_hash,
+                    "seed": seed,
+                    "digest": oracle_digest,
+                }),
+            );
+            save_book(&book);
+        }
+    }
+    println!(
+        "msl state battery: {} eligible — {compiled} compiled ({clean} clean, \
+         {cached} via transcript), skipped: {:?}, refusals: {:?}",
+        lib.cells.len(),
+        lib.skipped,
+        refusals
+    );
+    assert!(
+        defects.is_empty(),
+        "GPU ≠ interpreter on {} state cells:\n{}",
+        defects.len(),
+        defects.join("\n")
+    );
+    // A floor so a silent regression can't read as green.
+    assert!(
+        compiled >= 300,
+        "only {compiled} state cells reached the GPU — the fragment shrank"
+    );
+}
+
+/// The CI-speed state battery: corner sweep + 256 random (input, state) pairs
+/// per cell. The full gate is [`state_gate_one_million`].
+#[test]
+fn state_cells_battery() {
+    let n = std::env::var("CELL80_MSL_FUZZ_N")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(256);
+    state_battery(n);
+}
+
+/// The state-cell gate: 10⁶ random (input, state) pairs per cell — values,
+/// status, steps, AND final state bytes bit-exact. Run with `UPDATE_GOLDEN=1`
+/// to bless transcripts; cached re-runs take seconds.
+#[test]
+#[ignore = "the 10^6-input state gate — run explicitly in release"]
+fn state_gate_one_million() {
+    state_battery(1_000_000);
 }

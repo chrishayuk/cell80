@@ -83,8 +83,14 @@ Metal compiler bug** (integer divide + branch-guarded stores through a
 thread-reference param inverts the branch when not inlined) — bisected to a
 10-line repro, dodged structurally with noinline div helpers and pinned
 noinline cell functions: the shipped configuration is the validated one.
-Owed: the library-launch fixed cost, typed-state readback (455 state cells),
-`Body::Msl` + family-hash attestation (E6), f32 (E4), CUDA before H3.
+**Typed-state readback shipped same-day**: state cells run with per-thread
+state windows under adversarial random state — 496/496 bit-exact on values,
+status, steps, and final state bytes (741 of 746 cells now on the GPU); the
+battery's first catch was two sliding-window cells writing through an
+unmasked state index — trapped by the GPU's typed window, absorbed silently
+by the open interpreter memory, filed as a defect. Owed: the library-launch
+fixed cost, `Body::Msl` + family-hash attestation (E6), f32 (E4), the OOW
+bounds fix, CUDA before H3.
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`

@@ -122,15 +122,20 @@ kernels, one thread per input, the interpreter still the one source of meaning.
 Loops carry the interpreter's exact fuel discipline, so each thread reports its
 **IR-step count** and the batteries assert step parity alongside value parity;
 a runaway loop is the same counted trap on both substrates. The gate ran clean
-on an M3 Max: **245 library cells × 10⁶ seeded-random inputs, values, status,
+on an M3 Max: **245 value cells × 10⁶ seeded-random inputs, values, status,
 and steps bit-identical to the reference interpreter**, at a measured
 **3.7×10⁸ evals/s** peak with metering on — and the whole library runs against
 a probe set in a single megakernel dispatch (retrieval by execution's
-substrate). The batteries earn their keep: they caught a genuine Apple Metal
-compiler bug (a divide feeding branch-guarded stores inverts the branch in
-non-inlined functions), bisected it to a 10-line repro, and the shipped codegen
-dodges it structurally. A GPU result that disagrees with the interpreter is a
-defect, never a "GPU difference".
+substrate). **State cells run too** — each thread carries a private state
+window, driven with adversarial random state bytes and compared on final
+state bytes as well: 496/496 bit-exact, taking GPU coverage to **741 of 746
+cells** (f32 is next). The batteries earn their keep: they caught a genuine
+Apple Metal compiler bug (a divide feeding branch-guarded stores inverts the
+branch in non-inlined functions, bisected to a 10-line repro, dodged
+structurally in the shipped codegen) *and* two library cells writing through
+an unmasked state index — trapped by the GPU's typed window, silently
+absorbed by open interpreter memory, filed. A GPU result that disagrees with
+the interpreter is a defect, never a "GPU difference".
 
 ## The vision
 

@@ -20,7 +20,8 @@ mod codegen;
 
 pub use codegen::{
     compile, compile_library, CellMeta, LibraryCell, MslModule, CONST_BASE, FUEL, IN_STRIDE,
-    KERNEL_NAME, OUT_STRIDE, SCRATCH, STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK, STATUS_OOW,
+    KERNEL_NAME, OUT_STRIDE, SCRATCH, STATE_BASE, STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK,
+    STATUS_OOW,
 };
 
 #[cfg(target_os = "macos")]

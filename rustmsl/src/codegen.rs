@@ -49,6 +49,9 @@ use std::fmt::Write as _;
 pub const CONST_BASE: u16 = 0x8000;
 /// The slot file's window base (the family scratch region).
 pub const SCRATCH: u16 = 0x9000;
+/// Where a state cell's struct lays in the window (`cell80::STATE_BASE`) —
+/// per thread, loaded from `buffer(4)` and written back to `buffer(5)`.
+pub const STATE_BASE: u16 = 0xB000;
 
 /// Per-thread run status: clean.
 pub const STATUS_OK: u16 = 0;
@@ -78,11 +81,17 @@ pub const OUT_STRIDE: usize = 6;
 pub struct CellMeta {
     /// The IR entry function this cell's case wraps.
     pub entry: String,
-    /// Entry parameter slots consumed from the input triple (≤ 3).
+    /// Entry parameter slots consumed from the input triple (≤ 3). For a
+    /// state cell, param 0 is the `&mut self` pointer ([`STATE_BASE`], not an
+    /// input word) and the input triple feeds params 1…
     pub params: usize,
     /// Result registers the entry produces (a wide return is 2: low, high).
     pub ret_regs: usize,
     pub wide_ret: bool,
+    /// The state struct's byte length at [`STATE_BASE`] (0 for a value cell).
+    /// Each thread gets a private state window loaded from `buffer(4)` and
+    /// written back to `buffer(5)` — the typed-state I/O surface.
+    pub state_len: usize,
 }
 
 /// A compiled MSL module: one translation unit (one kernel, [`KERNEL_NAME`])
@@ -98,16 +107,19 @@ pub struct MslModule {
 }
 
 /// One cell's compile input for [`compile_library`]: lowered+pruned functions,
-/// its const pool, and its entry name.
+/// its const pool, its entry name, and (for a state cell) the state struct's
+/// byte length at [`STATE_BASE`] — 0 for a value cell.
 pub struct LibraryCell<'a> {
     pub funcs: &'a [(String, Func)],
     pub consts: &'a [(String, Vec<u8>)],
     pub entry: &'a str,
+    pub state_len: usize,
 }
 
-/// Compile one cell (the one-cell × N-inputs layout). Refuses (with a typed
-/// error) anything outside the E1+E2 fragment: recursion, ports-by-policy,
-/// f32 (E4).
+/// Compile one **value** cell (the one-cell × N-inputs layout). Refuses (with
+/// a typed error) anything outside the E1+E2 fragment: recursion,
+/// ports-by-policy, f32 (E4). State cells go through [`compile_library`] with
+/// their `state_len`.
 pub fn compile(
     funcs: &[(String, Func)],
     consts: &[(String, Vec<u8>)],
@@ -117,6 +129,7 @@ pub fn compile(
         funcs,
         consts,
         entry,
+        state_len: 0,
     }])
 }
 
@@ -138,8 +151,11 @@ pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
     let mut blob = Vec::new();
     let mut metas = Vec::new();
     let mut max_slots = 1u16;
-    // Per-cell: (const buffer offset, const len, slot bytes, entry base, fn).
-    let mut cases: Vec<(usize, usize, u32, u16, CellMeta)> = Vec::new();
+    let mut max_state = 0usize;
+    // Per-cell: (const buffer offset, const len, slot bytes, entry base,
+    // cumulative state bytes before this cell, meta).
+    let mut cases: Vec<(usize, usize, u32, u16, usize, CellMeta)> = Vec::new();
+    let mut state_cum = 0usize;
 
     for (ci, cell) in cells.iter().enumerate() {
         let tag = |e: String| {
@@ -200,23 +216,40 @@ pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
         for (name, f) in cell.funcs {
             g.gen_fn(name, f).map_err(&tag)?;
         }
+        if STATE_BASE as usize + cell.state_len > 0x1_0000 {
+            return Err(tag("msl: state struct overflows the window".into()));
+        }
+        max_state = max_state.max(cell.state_len);
         let meta = CellMeta {
             entry: cell.entry.to_string(),
-            params: entry_fn.params.min(IN_STRIDE),
+            // A state cell's param 0 is the `&mut self` pointer; the input
+            // triple only feeds what follows it.
+            params: entry_fn
+                .params
+                .min(IN_STRIDE + usize::from(cell.state_len > 0)),
             ret_regs: if entry_fn.wide_ret {
                 2
             } else {
                 entry_fn.ret.len()
             },
             wide_ret: entry_fn.wide_ret,
+            state_len: cell.state_len,
         };
-        cases.push((cst_off, cst_len, base as u32 * 2, entry_base, meta.clone()));
+        cases.push((
+            cst_off,
+            cst_len,
+            base as u32 * 2,
+            entry_base,
+            state_cum,
+            meta.clone(),
+        ));
+        state_cum += cell.state_len;
         metas.push(meta);
     }
-    // The prelude needs the fused slot-file size (the Ctx array member), so it
-    // prepends after every cell has been walked.
+    // The prelude needs the fused slot-file and state-window sizes (the Ctx
+    // array members), so it prepends after every cell has been walked.
     let funcs_text = std::mem::take(&mut g.out);
-    g.prelude(max_slots);
+    g.prelude(max_slots, max_state);
     g.out.push_str(&funcs_text);
     g.kernel(&cases);
     Ok(MslModule {
@@ -249,8 +282,9 @@ struct Gen {
 }
 
 impl Gen {
-    fn prelude(&mut self, n_slots: u16) {
+    fn prelude(&mut self, n_slots: u16, n_state: usize) {
         let n_slots = n_slots.max(1);
+        let n_state = n_state.max(1);
         let o = &mut self.out;
         // The slot file is an array *member*, not a thread pointer: passing a
         // struct holding a `thread ushort*` into non-inlined functions
@@ -266,9 +300,11 @@ impl Gen {
              \n\
              struct Ctx {{\n\
              \x20   ushort slots[{n_slots}];\n\
+             \x20   uchar state[{n_state}];\n\
              \x20   device const uchar* cst;\n\
              \x20   uint cst_len;\n\
              \x20   uint slot_bytes;\n\
+             \x20   uint state_len;\n\
              \x20   uint trap;\n\
              \x20   uint halt;\n\
              \x20   uint fuel;\n\
@@ -301,8 +337,9 @@ impl Gen {
              static __attribute__((noinline)) uint sdiv32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? a : (uint)(sx32(a) / sx32(b)); }}\n\
              static __attribute__((noinline)) uint srem32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? 0u : (uint)(sx32(a) % sx32(b)); }}\n\
              \n\
-             // Byte-routed window emulation: consts (read-only), the slot file, else\n\
-             // zero on read and a trap on write (the pre-registered E1 weakening).\n\
+             // Byte-routed window emulation: consts (read-only), the slot file,\n\
+             // the state struct, else zero on read and a trap on write (the\n\
+             // pre-registered E1 weakening).\n\
              static uint rd8(thread Ctx& c, uint a) {{\n\
              \x20   a &= 0xFFFFu;\n\
              \x20   if (a >= 0x{cb:X}u && a < 0x{cb:X}u + c.cst_len) return (uint)c.cst[a - 0x{cb:X}u];\n\
@@ -310,6 +347,7 @@ impl Gen {
              \x20       uint o = a - 0x{sc:X}u;\n\
              \x20       return ((uint)c.slots[o >> 1] >> ((o & 1u) * 8u)) & 0xFFu;\n\
              \x20   }}\n\
+             \x20   if (a >= 0x{sb:X}u && a < 0x{sb:X}u + c.state_len) return (uint)c.state[a - 0x{sb:X}u];\n\
              \x20   return 0u;\n\
              }}\n\
              static void wr8(thread Ctx& c, uint a, uint v) {{\n\
@@ -321,6 +359,10 @@ impl Gen {
              \x20       c.slots[i] = (ushort)(((uint)c.slots[i] & ~(0xFFu << sh)) | ((v & 0xFFu) << sh));\n\
              \x20       return;\n\
              \x20   }}\n\
+             \x20   if (a >= 0x{sb:X}u && a < 0x{sb:X}u + c.state_len) {{\n\
+             \x20       c.state[a - 0x{sb:X}u] = (uchar)(v & 0xFFu);\n\
+             \x20       return;\n\
+             \x20   }}\n\
              \x20   c.trap = {oow}u;\n\
              }}\n\
              static uint rd16(thread Ctx& c, uint a) {{ return rd8(c, a) | (rd8(c, a + 1u) << 8u); }}\n\
@@ -329,6 +371,7 @@ impl Gen {
              static void wr32(thread Ctx& c, uint a, uint v) {{ wr16(c, a, v); wr16(c, a + 2u, v >> 16u); }}\n",
             cb = CONST_BASE,
             sc = SCRATCH,
+            sb = STATE_BASE,
             oow = STATUS_OOW,
             fuel_trap = STATUS_FUEL,
         );
@@ -1060,9 +1103,10 @@ impl Gen {
     }
 
     /// The kernel: grid `n_cells × n_inputs`, cell-major; each case selects the
-    /// cell's window (const slice, slot-file length), loads its args, runs its
-    /// entry, and latches its result shape.
-    fn kernel(&mut self, cases: &[(usize, usize, u32, u16, CellMeta)]) {
+    /// cell's window (const slice, slot-file length, state slice), loads its
+    /// args (a state cell's param 0 is the `&mut self` pointer), runs its
+    /// entry, latches its result shape, and writes its state back.
+    fn kernel(&mut self, cases: &[(usize, usize, u32, u16, usize, CellMeta)]) {
         let o = &mut self.out;
         let _ = writeln!(
             o,
@@ -1071,6 +1115,8 @@ impl Gen {
              \x20   device ushort* outp [[buffer(1)]],\n\
              \x20   device const uchar* cst [[buffer(2)]],\n\
              \x20   constant uint& n_inputs [[buffer(3)]],\n\
+             \x20   device const uchar* stin [[buffer(4)]],\n\
+             \x20   device uchar* stout [[buffer(5)]],\n\
              \x20   uint tid [[thread_position_in_grid]])\n\
              {{\n\
              \x20   uint cell = tid / n_inputs;\n\
@@ -1080,7 +1126,9 @@ impl Gen {
              \x20   uint r0 = 0u; uint r1 = 0u; uint r2 = 0u;\n\
              \x20   switch (cell) {{"
         );
-        for (ci, (cst_off, cst_len, slot_bytes, entry_base, meta)) in cases.iter().enumerate() {
+        for (ci, (cst_off, cst_len, slot_bytes, entry_base, state_cum, meta)) in
+            cases.iter().enumerate()
+        {
             let _ = writeln!(
                 o,
                 "    case {ci}u: {{\n\
@@ -1088,11 +1136,29 @@ impl Gen {
                  \x20       c.cst_len = {cst_len}u;\n\
                  \x20       c.slot_bytes = {slot_bytes}u;"
             );
-            for i in 0..meta.params {
-                let slot = entry_base.wrapping_add(i as u16);
+            let sl = meta.state_len;
+            if sl > 0 {
+                // The state slice is cell-major like the outputs: this cell's
+                // blocks start after every prior cell's `n_inputs` blocks.
                 let _ = writeln!(
                     o,
-                    "        c.slots[{slot}u] = inp[idx * {IN_STRIDE}u + {i}u];"
+                    "        c.state_len = {sl}u;\n\
+                     \x20       for (uint si = 0u; si < {sl}u; si++) {{\n\
+                     \x20           c.state[si] = stin[{state_cum}u * n_inputs + idx * {sl}u + si];\n\
+                     \x20       }}"
+                );
+            }
+            let self_param = usize::from(sl > 0);
+            if self_param == 1 {
+                let slot = *entry_base;
+                let _ = writeln!(o, "        c.slots[{slot}u] = {}u;", STATE_BASE);
+            }
+            for i in self_param..meta.params {
+                let slot = entry_base.wrapping_add(i as u16);
+                let w = i - self_param;
+                let _ = writeln!(
+                    o,
+                    "        c.slots[{slot}u] = inp[idx * {IN_STRIDE}u + {w}u];"
                 );
             }
             // The per-cell prefix is positional, mirroring compile_library.
@@ -1106,18 +1172,28 @@ impl Gen {
                 let _ = writeln!(
                     o,
                     "        r0 = c.rw & 0xFFFFu;\n\
-                     \x20       r1 = c.rw >> 16u;\n\
-                     \x20       break; }}"
+                     \x20       r1 = c.rw >> 16u;"
                 );
             } else {
                 let _ = writeln!(
                     o,
                     "        r0 = (c.rn > 0u) ? c.r0 : 0u;\n\
                      \x20       r1 = (c.rn > 1u) ? c.r1 : 0u;\n\
-                     \x20       r2 = (c.rn > 2u) ? c.r2 : 0u;\n\
-                     \x20       break; }}"
+                     \x20       r2 = (c.rn > 2u) ? c.r2 : 0u;"
                 );
             }
+            if sl > 0 {
+                // Written back even on a trap: the interpreter's memory at the
+                // trap point is observable, and the tick placement is identical
+                // on both substrates, so the mutation point is too.
+                let _ = writeln!(
+                    o,
+                    "        for (uint so = 0u; so < {sl}u; so++) {{\n\
+                     \x20           stout[{state_cum}u * n_inputs + idx * {sl}u + so] = c.state[so];\n\
+                     \x20       }}"
+                );
+            }
+            let _ = writeln!(o, "        break; }}");
         }
         let _ = writeln!(
             o,

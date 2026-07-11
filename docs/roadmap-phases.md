@@ -436,9 +436,15 @@ feeding a branch guarding stores through a thread-reference param inverts the
 branch in non-inlined functions — bisected to a 10-line repro and dodged
 structurally (noinline div helpers; cell functions pinned noinline so the
 shipped configuration is the validated one). 245 integer value cells clean;
-455 state cells await typed-state readback, f32 is E4. *Owed next:* the
-library-launch fixed cost, `Body::Msl` + family-hash attestation (E6),
-typed-state readback, CUDA before H3.
+f32 is E4. **Typed-state readback landed the same day**: state cells (the
+library's two-thirds) run with per-thread state windows and adversarial
+random state, values + status + steps + final state bytes bit-exact — 496 of
+496, taking GPU coverage to 741 of 746 cells; the battery immediately caught
+two day-old sliding-window cells writing through an unmasked state index
+(filed, skip-listed — the GPU's typed window traps what the interpreter's
+open 64 KiB absorbs). *Owed next:* the library-launch fixed cost,
+`Body::Msl` + family-hash attestation (E6), the OOW bounds fix, CUDA
+before H3.
 
 ---
 

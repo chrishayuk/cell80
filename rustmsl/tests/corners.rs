@@ -328,3 +328,139 @@ fn runaway_loop_is_a_fuel_trap_on_both_sides() {
         &[[1, 0, 0], [65535, 0, 0]],
     );
 }
+
+// ── typed state: the `impl State { fn run(&mut self) }` window ────────────
+
+/// Lower an impl-state snippet, run every (input triple, state block) on a
+/// fresh interpreter (state planted at 0xB000) and once as one GPU batch with
+/// per-thread state, and assert sextets AND final state bytes agree.
+fn check_state(src: &str, entry: &str, state_len: usize, inputs: &[[u16; 3]], seed: u64) {
+    let file: syn::File =
+        syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
+    let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
+        .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
+    let consts = lowered.const_data();
+    let module = rustmsl::compile_library(&[rustmsl::LibraryCell {
+        funcs: &lowered.funcs,
+        consts: &consts,
+        entry,
+        state_len,
+    }])
+    .unwrap_or_else(|e| panic!("msl compile failed: {e}\nsrc: {src}"));
+    let gpu = GpuBatch::new(&module)
+        .unwrap_or_else(|e| panic!("gpu pipeline failed: {e}\nmsl:\n{}", module.source));
+
+    // Random initial state blocks — any bit pattern is a valid scalar field.
+    let mut rng = Rng(seed);
+    let mut state_in = vec![0u8; state_len * inputs.len()];
+    for b in state_in.iter_mut() {
+        *b = rng.next() as u8;
+    }
+    let (got, state_out) = gpu.run_with_state(inputs, &state_in).expect("gpu run");
+
+    let n_args = module.cells[0].params;
+    for (i, (args, gpu_out)) in inputs.iter().zip(&got).enumerate() {
+        let mut interp = Interp::new(
+            &lowered.funcs,
+            consts.iter().map(|(n, b)| (n.as_str(), b.as_slice())),
+            Target::Cell.descriptor(),
+        );
+        interp.plant(
+            rustmsl::STATE_BASE,
+            &state_in[i * state_len..(i + 1) * state_len],
+        );
+        // args: [self = STATE_BASE, extras from the input triple].
+        let mut call: Vec<u16> = vec![rustmsl::STATE_BASE];
+        call.extend_from_slice(&args[..n_args.saturating_sub(1)]);
+        let res = interp.run(entry, &call);
+        let want = interp_quad(res);
+        let want_steps = u32::try_from(interp.steps()).expect("steps fit u32");
+        let got_quad = [gpu_out[0], gpu_out[1], gpu_out[2], gpu_out[3]];
+        assert_eq!(
+            got_quad, want,
+            "case {i}: args {args:?} — gpu {got_quad:?} != interpreter {want:?}\nsrc: {src}"
+        );
+        assert_eq!(steps_of(gpu_out), want_steps, "case {i}: steps\nsrc: {src}");
+        let sb = rustmsl::STATE_BASE as usize;
+        let want_state = &interp.mem[sb..sb + state_len];
+        assert_eq!(
+            &state_out[i * state_len..(i + 1) * state_len],
+            want_state,
+            "case {i}: final state bytes\nsrc: {src}"
+        );
+    }
+}
+
+#[test]
+fn state_field_roundtrip_and_mutation() {
+    // Two u16 fields: one read, one written — the StateCell shape.
+    check_state(
+        "struct S { x: u16, score: u16 }\n\
+         impl S { fn run(&mut self) -> u16 { self.score = self.x * 2u16 + self.score; self.score } }",
+        "S::run",
+        4,
+        &sweep(0x5eed_0020, 2000),
+        0x57a7_0001,
+    );
+}
+
+#[test]
+fn state_dependent_control_flow() {
+    // A state machine step: branches on a state field, mutates two others.
+    check_state(
+        "struct Cb { st: u16, fails: u16, thresh: u16 }\n\
+         impl Cb { fn run(&mut self) -> u16 {\n\
+             if self.st == 0u16 { self.fails = self.fails + 1u16; if self.fails >= self.thresh { self.st = 1u16; } }\n\
+             else { self.st = 0u16; self.fails = 0u16; }\n\
+             self.st } }",
+        "Cb::run",
+        6,
+        &sweep(0x5eed_0021, 2000),
+        0x57a7_0002,
+    );
+}
+
+#[test]
+fn state_loop_over_array_field() {
+    // An array state field walked by a loop — the sliding-window shape.
+    check_state(
+        "struct W { buf: [u16; 8], n: u16 }\n\
+         impl W { fn run(&mut self) -> u16 {\n\
+             let mut s = 0u16;\n\
+             for i in 0..8u16 { s = s + self.buf[i]; }\n\
+             self.n = self.n + 1u16;\n\
+             s } }",
+        "W::run",
+        18,
+        &sweep(0x5eed_0022, 1500),
+        0x57a7_0003,
+    );
+}
+
+#[test]
+fn state_u32_field_and_extra_arg() {
+    // A wide (u32) state field plus a scalar argument after &mut self.
+    check_state(
+        "struct Acc { total: u32 }\n\
+         impl Acc { fn run(&mut self, x: u16) -> u16 {\n\
+             self.total = self.total + (x as u32);\n\
+             (self.total >> 16u32) as u16 } }",
+        "Acc::run",
+        4,
+        &sweep(0x5eed_0023, 2000),
+        0x57a7_0004,
+    );
+}
+
+#[test]
+fn state_div_trap_leaves_partial_state_identically() {
+    // A trap mid-mutation: the state bytes at the trap point must match too.
+    check_state(
+        "struct D { a: u16, b: u16 }\n\
+         impl D { fn run(&mut self) -> u16 { self.a = self.a + 1u16; let q = 1000u16 / self.b; self.b = q; q } }",
+        "D::run",
+        4,
+        &sweep(0x5eed_0024, 2000),
+        0x57a7_0005,
+    );
+}

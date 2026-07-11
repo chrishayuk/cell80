@@ -29,7 +29,13 @@ The codegen is platform-independent text emission and builds everywhere; the
 executor (`GpuBatch`) exists behind `cfg(target_os = "macos")` and compiles
 kernels with fast-math off.
 
+State cells run with per-thread typed-state windows at `STATE_BASE`: initial
+state in via `GpuBatch::run_with_state`, final state bytes out (written back
+even on a trap — the mutation point is tick-identical to the interpreter's),
+compared bit-for-bit alongside values, status, and steps.
+
 Measured (M3 Max, end-to-end, metering on): 3.7×10⁸ evals/s one-cell peak;
-245 library cells × 10⁶ inputs bit-exact on values, status, and steps. Still
+741 of 746 library cells bit-exact on values, status, steps, and state (245
+value + 496 state; the remainder is f32/E4 plus two filed OOW defects). Still
 owed per docs/14-model-native-cells-spec.md: the library-launch fixed cost,
-typed-state readback (state cells), the f32 kernel bank (E4), CUDA.
+`Body::Msl` cartridge integration, the f32 kernel bank (E4), CUDA.
