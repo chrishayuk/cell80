@@ -36,6 +36,19 @@ def _cmd_retrieval(args) -> int:
     return 0
 
 
+def _cmd_gen_examples(args) -> int:
+    from .examples_gen import write_sidecar
+
+    path, stats = write_sidecar(dataset=args.dataset, out=args.out, library_dir=args.library)
+    print(
+        f"wrote {path} — equipped {stats.equipped} case(s), "
+        f"{stats.with_expect} using expect-form, "
+        f"{stats.ambiguous} with residual co_match; unequipped: "
+        f"{json.dumps(stats.unequipped, sort_keys=True)}"
+    )
+    return 0
+
+
 def _cmd_adoption(args) -> int:
     from .adoption import run_adoption
     from .report import render_adoption
@@ -194,9 +207,25 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("retrieval", help="deterministic retrieval-precision eval")
     r.add_argument("--dataset", default="retrieval")
     r.add_argument("--k", type=int, default=5, help="top-k window (default 5)")
+    r.add_argument(
+        "--examples",
+        default=None,
+        help="example sidecar (e.g. retrieval-examples): run the fused "
+        "search_with_examples path on equipped cases and report the "
+        "plain-vs-equipped split (WS-F/F2)",
+    )
     r.add_argument("--json", action="store_true")
     r.add_argument("--fail-under", type=float, default=None, help="exit 1 if P@1 below this")
     r.set_defaults(func=_cmd_retrieval)
+
+    g = sub.add_parser(
+        "gen-examples",
+        help="generate the example-equipped retrieval sidecar (deterministic; "
+        "re-running must be diff-clean)",
+    )
+    g.add_argument("--dataset", default="retrieval")
+    g.add_argument("--out", default=None, help="output path (default datasets/retrieval-examples.jsonl)")
+    g.set_defaults(func=_cmd_gen_examples)
 
     a = sub.add_parser("adoption", help="LLM adoption eval (OpenAI-compatible / Ollama)")
     a.add_argument("--dataset", default="tasks")
