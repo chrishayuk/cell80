@@ -365,3 +365,22 @@ fn f32_trans_banked_is_bit_invisible() {
         }
     }
 }
+
+/// The explicit bit reinterprets (`f32_from_bits`/`f32_to_bits`): zero-cost,
+/// loud-by-name, round-trip exact — the `u32[N]`-of-f32-bits envelope's reader.
+#[test]
+fn f32_bit_reinterprets_round_trip() {
+    let src = r#"
+fn f() -> u16 {
+    let mut bad = 0u16;
+    let x = f32_from_bits(0x40490FDBu32);
+    if x > 3.1415929f32 { bad = bad + 1u16; }
+    if x < 3.1415925f32 { bad = bad + 1u16; }
+    if f32_to_bits(x) != 0x40490FDBu32 { bad = bad + 1u16; }
+    let y = f32_from_bits(f32_to_bits(2.5f32) + 0u32);
+    if y != 2.5f32 { bad = bad + 1u16; }
+    bad
+}
+"#;
+    assert_eq!(run_program_pruned(src, "f"), 0);
+}

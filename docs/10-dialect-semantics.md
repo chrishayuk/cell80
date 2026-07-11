@@ -343,7 +343,11 @@ prediction that the barrel was "the obvious cost lever" is recorded as measured-
 
 **The F1 surface** (all oracle-banked like F0): conversions
 `int_to_f32`/`q16_to_f32`/`f32_to_int_trunc`/`f32_to_q16` — *typed builtins*, the only
-sanctioned int↔f32 crossings (`as` stays rejected); the `f32_to_*` pair halts typed
+sanctioned VALUE int↔f32 crossings (`as` stays rejected). Alongside them (2026-07-11):
+`f32_from_bits`/`f32_to_bits` — the explicit, **zero-cost bit reinterprets** (Rust's
+`f32::from_bits`/`to_bits` shape; no kernel runs, only the representation tag
+changes), which exist for the `u32[N]`-array-of-f32-bits envelope the Excel
+financial cells use for cash-flow inputs (the dialect has no `[f32; N]` fields); the `f32_to_*` pair halts typed
 `0xFF08 float_domain` on NaN/out-of-range, deliberate boundary behaviour rather than
 rustc's saturating cast (the family's one documented rustc divergence). The rounding
 family `.floor()`/`.ceil()`/`.trunc()`/`.round()` (`round` = Rust's half-away-from-zero,

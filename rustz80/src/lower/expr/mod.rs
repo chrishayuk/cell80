@@ -407,6 +407,33 @@ pub(crate) fn lower_expr(expr: &syn::Expr, ctx: &mut Ctx) -> Result<(Expr, Width
                 });
                 return Ok((Expr::Call(name, vec![e]), Width::DWord));
             }
+            // The explicit bit reinterprets (Rust's `f32::from_bits`/`to_bits`
+            // shape): **zero-cost** — the value IS the bits, only the
+            // representation tag changes, no kernel runs. The one legal int↔f32
+            // crossing besides the F1 value-conversion kernels, and it is loud by
+            // name. Exists for the `u32[N]`-array-of-f32-bits envelope (the
+            // dialect has no `[f32; N]` fields): a cell walks the array and
+            // reinterprets each element explicitly.
+            if let "f32_from_bits" | "f32_to_bits" = name.as_str() {
+                if lowered.len() != 1 {
+                    return Err(format!("`{name}` takes exactly one argument"));
+                }
+                let (e, w) = lowered.into_iter().next().unwrap();
+                if name == "f32_from_bits" {
+                    if w == Width::F32 {
+                        return Err("`f32_from_bits` takes raw u32 bits — this value is \
+                             already f32"
+                            .into());
+                    }
+                    return Ok((coerce32(e, w), Width::F32));
+                }
+                if w != Width::F32 {
+                    return Err("`f32_to_bits` takes an f32 — this value is already an \
+                         integer bit pattern"
+                        .into());
+                }
+                return Ok((e, Width::DWord));
+            }
             // A known plain fn: the call boundary is typed (docs 10 §Calls) — a wide
             // first slot takes (or widens to) a u32; a wide value in a 16-bit slot
             // stays an error; the return width comes from the signature.

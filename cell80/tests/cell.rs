@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("747 cells"));
+    assert!(listing.contains("range_check") && listing.contains("756 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("747 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("756 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 747, "got: {out}");
+    assert_eq!(cells.len(), 756, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -984,13 +984,19 @@ fn cli_index_gate_over_the_real_library() {
     // different name. 745 admitted, 0 refused.
     // 745→747: the F2 transcendental proof pair (excel_nper, excel_pduration) — the
     // excel-financial pack's first .ln() cells, same day as the F2 kernels landed.
+    // 747→756: the ex-host_only wave (NPV, IRR, MIRR, FVSCHEDULE, XNPV, DURATION,
+    // PRICE, ODDFPRICE, ODDLPRICE) — array-input envelopes + transcendentals, both
+    // walls down. The wave also widened DEFAULT_PROBES with [2,0,1] (the
+    // frequency-gated finance separator): without it every same-shape bond cell
+    // escalated on every probe and the gate false-refused the LANDED
+    // excel_oddlyield as a duplicate of the new excel_oddlprice.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("747 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("756 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

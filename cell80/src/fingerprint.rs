@@ -58,6 +58,17 @@ pub const DEFAULT_PROBES: &[[u16; 3]] = &[
     [7, 0, 0],
     [12, 3, 4],
     [9000, 2500, 40],
+    // Frequency-gated finance separator (found by the odd-coupon pricing pair,
+    // 2026-07-11): every earlier row fails `frequency ∈ {1,2,4}` or the
+    // `a_over_e + dsc_over_e <= 1` fraction domain, so ALL bond cells sharing a
+    // shape class escalated on every probe — all-None fingerprints, agreement
+    // 1.0, and the gate refused the landed `excel_oddlyield` as a "duplicate" of
+    // the new `excel_oddlprice` (price vs yield!). `[2, 0, 1]` is a valid
+    // frequency + a zero + a unit fraction: cells whose domains admit it run and
+    // separate; adding probes is monotonically safe (agreement only decreases,
+    // and a true duplicate stays 1.0 on every probe) — the same root-cause fix
+    // as signed-deltas' negative-i16 row.
+    [2, 0, 1],
 ];
 
 /// A cell's behavioural fingerprint: one entry per probe — for a value cell the

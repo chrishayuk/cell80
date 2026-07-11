@@ -148,14 +148,33 @@ essentially every `bonds_and_securities` candidate at once.
 **This is the single highest-leverage prerequisite in the whole map.** 21 of 35
 candidates (60%), plus `TBILLPRICE`'s lighter touch, are gated on it.
 
-## The 12 `host_only` — was: none reachable; now (2026-07-11): both walls fell
+## The 12 `host_only` — was: none reachable; now (2026-07-11): 11 shipped, 1 priced out
 
-`NPER`, `PDURATION` — **shipped** (the F2 transcendental proof pair, above).
-`IRR`, `MIRR`, `NPV`, `FVSCHEDULE` (array-input only) · `DURATION` (array-input,
-compounded by day-count) · `ODDFPRICE`, `ODDLPRICE`, `PRICE` (transcendentals
-shipped; day-count composition still to author) · `XIRR`, `XNPV` (array + ln,
-both now available) — all **expressible, unauthored**: the remaining 10 are an
-authoring wave with its own eval tax, not a capability gap.
+Same-day close-out of the wave: `NPER`, `PDURATION` (the F2 proof pair), then
+`NPV`, `FVSCHEDULE`, `IRR`, `MIRR`, `XNPV`, `DURATION`, `PRICE`, `ODDFPRICE`,
+`ODDLPRICE` — **all shipped**. Conventions the wave set:
+
+- **Cash-flow arrays** ride `u32[N]` state fields carrying f32 bit patterns (the
+  dialect has no `[f32; N]`); the host writes `f32::to_bits` per element and the
+  cell reinterprets with the new zero-cost `f32_from_bits` builtin. Envelope sizes
+  are **cycle-budget-priced, per cell**: NPV/FVSCHEDULE 16, MIRR 12, IRR 8 (each
+  secant walk re-walks the array), XNPV 4 (each flow pays a full `fexp`).
+- **Iteration is walk-priced**: IRR runs a bounded secant (5 walks ≤ 6 flows / 4 at
+  7–8, convergence checked on the iterate *before* paying the next walk);
+  DURATION abandoned the per-period walk for the **geometric closed form**
+  (O(log N) via square-and-multiply — any realistic schedule fits, where
+  mduration's landed per-period loop tops out under ~20 periods at the default
+  budget).
+- **`XIRR` is the one that stays out — priced, not killed**: each XNPV evaluation
+  costs ~1 full `fexp` per flow (~330K T), and a secant needs 4–6 evaluations —
+  ≥ 4M T-states at even 3–4 flows against the 2M default budget. It becomes
+  buildable if (a) hosts pass a raised budget through the MCP surface, or (b) a
+  cheaper owned `fexp` lands. Recorded here so nobody re-derives the dead end.
+- The wave also exposed and fixed a **gate blind spot**: every same-shape
+  frequency-gated bond cell escalated on every probe (no probe carried a valid
+  frequency), so the gate false-refused the landed `excel_oddlyield` as a
+  "duplicate" of the new `excel_oddlprice` — fixed at the root by widening
+  `DEFAULT_PROBES` with `[2, 0, 1]` (the signed-deltas precedent).
 
 Every one of these has a real fixed-arity variant worth naming even though it
 doesn't match Excel's actual signature: `irr_3`/`npv_4`-style cells over a small
@@ -208,11 +227,12 @@ unrelated corpus-wide TF-IDF noise, 3 real finance-vocabulary collisions
 regressions); the other two are reported, not chased further, since the aggregate
 gate is net positive and further tag-chasing has its own regression risk.
 
-**What's left of the original 55**: `NPER` and `PDURATION` shipped 2026-07-11 when
-the F2 transcendentals landed; the other 10 former-`host_only` functions (`IRR`,
-`MIRR`, `NPV`, `FVSCHEDULE`, `DURATION`, `ODDFPRICE`, `ODDLPRICE`, `PRICE`, `XIRR`,
-`XNPV`) stopped being *blocked* the same day (array-state harness + transcendentals
-both landed) and are now an ordinary authoring wave — see the updated walls above.
+**What's left of the original 55**: the whole former-`host_only` twelve resolved
+2026-07-11 — `NPER`/`PDURATION` with the F2 kernels, then `NPV`, `FVSCHEDULE`,
+`IRR`, `MIRR`, `XNPV`, `DURATION`, `PRICE`, `ODDFPRICE`, `ODDLPRICE` in the
+ex-host_only wave the same day. Only `XIRR` remains, and it is *priced out of the
+default cycle budget*, not blocked on a capability (the arithmetic is in the
+host_only section above).
 
 ## How this gates authoring
 

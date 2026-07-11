@@ -1675,3 +1675,30 @@
 {"id": "excel_pduration-direct-1", "query": "excel pduration periods for an investment to reach a value", "expected": "excel_pduration", "category": "direct"}
 {"id": "excel_pduration-para-1", "query": "years needed for a deposit to grow to a target at a fixed rate", "expected": "excel_pduration", "category": "paraphrase"}
 {"id": "excel_pduration-adv-1", "query": "lump-sum growth time, no payment stream involved", "expected": "excel_pduration", "category": "adversarial"}
+{"id": "excel_npv-direct-1", "query": "excel npv net present value of cash flows", "expected": "excel_npv", "category": "direct"}
+{"id": "excel_npv-para-1", "query": "discount a series of future payments back to today at one rate", "expected": "excel_npv", "category": "paraphrase"}
+{"id": "excel_npv-adv-1", "query": "present value of a whole cash-flow list, not a single lump sum", "expected": "excel_npv", "category": "adversarial"}
+{"id": "excel_irr-direct-1", "query": "excel irr rate where the npv of a cash flow stream is zero", "expected": "excel_irr", "category": "direct"}
+{"id": "excel_irr-para-1", "query": "what return does this investment's cash flow sequence actually earn", "expected": "excel_irr", "category": "paraphrase"}
+{"id": "excel_irr-adv-1", "query": "solve the discount rate out of the flows themselves, no reinvestment rate given", "expected": "excel_irr", "category": "adversarial"}
+{"id": "excel_mirr-direct-1", "query": "excel mirr modified internal rate of return", "expected": "excel_mirr", "category": "direct"}
+{"id": "excel_mirr-para-1", "query": "project return when borrowing and reinvestment happen at different rates", "expected": "excel_mirr", "category": "paraphrase"}
+{"id": "excel_mirr-adv-1", "query": "irr fixed so gains reinvest at a realistic rate, not at the irr itself", "expected": "excel_mirr", "category": "adversarial"}
+{"id": "excel_xnpv-direct-1", "query": "excel xnpv net present value at irregular dates", "expected": "excel_xnpv", "category": "direct"}
+{"id": "excel_xnpv-para-1", "query": "discount payments that arrive on scattered actual dates, not fixed periods", "expected": "excel_xnpv", "category": "paraphrase"}
+{"id": "excel_xnpv-adv-1", "query": "npv with day-precise timing rather than whole-period steps", "expected": "excel_xnpv", "category": "adversarial"}
+{"id": "excel_fvschedule-direct-1", "query": "excel fvschedule future value with variable rates", "expected": "excel_fvschedule", "category": "direct"}
+{"id": "excel_fvschedule-para-1", "query": "grow a deposit through a different interest rate each year", "expected": "excel_fvschedule", "category": "paraphrase"}
+{"id": "excel_fvschedule-adv-1", "query": "compounding through a rate schedule, not one constant rate", "expected": "excel_fvschedule", "category": "adversarial"}
+{"id": "excel_duration-direct-1", "query": "excel duration weighted average time to a bond's cash flows in years", "expected": "excel_duration", "category": "direct"}
+{"id": "excel_duration-para-1", "query": "how long until a bond effectively pays you back", "expected": "excel_duration", "category": "paraphrase"}
+{"id": "excel_duration-adv-1", "query": "the undivided macaulay figure, not the modified duration", "expected": "excel_duration", "category": "adversarial"}
+{"id": "excel_price-direct-1", "query": "excel price of a coupon bond", "expected": "excel_price", "category": "direct"}
+{"id": "excel_price-para-1", "query": "what a regular coupon security should cost per 100 face given its yield", "expected": "excel_price", "category": "paraphrase"}
+{"id": "excel_price-adv-1", "query": "bond price with a fractional first discount period, regular schedule", "expected": "excel_price", "category": "adversarial"}
+{"id": "excel_oddfprice-direct-1", "query": "excel oddfprice odd first coupon period price", "expected": "excel_oddfprice", "category": "direct"}
+{"id": "excel_oddfprice-para-1", "query": "price a bond whose first coupon covers a short stub period", "expected": "excel_oddfprice", "category": "paraphrase"}
+{"id": "excel_oddfprice-adv-1", "query": "odd short FIRST period pricing, not the odd last period case", "expected": "excel_oddfprice", "category": "adversarial"}
+{"id": "excel_oddlprice-direct-1", "query": "excel oddlprice closed form price odd last period", "expected": "excel_oddlprice", "category": "direct"}
+{"id": "excel_oddlprice-para-1", "query": "price a security maturing inside its final irregular coupon stretch", "expected": "excel_oddlprice", "category": "paraphrase"}
+{"id": "excel_oddlprice-adv-1", "query": "pricing with the rate GIVEN for the odd tail, not solving the yield out of it", "expected": "excel_oddlprice", "category": "adversarial"}

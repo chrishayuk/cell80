@@ -1517,3 +1517,28 @@ remaining 10 ex-`host_only` Excel financials (`IRR`/`NPV`/`XIRR`/... —
 numbers: F2 bank residency (family ≈ 6 KB vs ~5 KB bank headroom; a rebank
 invalidates every banked artifact), `fln1p` (the small-rate `ln(1+r)` accuracy gap
 both proof cells document), full Payne–Hanek reduction (the |x| ≤ 8192 trig wall).
+
+### The ex-host_only Excel financial wave (747 → 756, 2026-07-11)
+
+Both walls having fallen the same day, the twelve `host_only` functions closed out:
+`excel_npv`, `excel_fvschedule`, `excel_irr`, `excel_mirr`, `excel_xnpv`,
+`excel_duration`, `excel_price`, `excel_oddfprice`, `excel_oddlprice` (9 cells,
+joining the morning's `excel_nper`/`excel_pduration`); **`XIRR` alone stays out,
+priced not killed** — a secant over per-flow `fexp` evaluations costs ≥ 4M T against
+the 2M default budget at any useful flow count (the map records the arithmetic).
+Conventions set by the wave: cash-flow arrays as `u32[N]`-of-f32-bits envelopes read
+by the new zero-cost `f32_from_bits`/`f32_to_bits` reinterpret builtins; envelope
+sizes cycle-budget-priced per cell (16/12/8/4 — each test asserts its worst case
+fits 2M); iteration is walk-priced (IRR's secant checks convergence on the iterate
+before paying the next array walk; DURATION uses the geometric closed form,
+O(log N) where mduration's landed walk tops out under ~20 periods). Banked negative
+worth remembering: the gate **false-refused the landed `excel_oddlyield`** as a
+duplicate of the new `excel_oddlprice` — every same-shape frequency-gated bond cell
+escalated on all probes (none carried a valid frequency), all-None fingerprints
+agree at 1.0. Fixed at the root by widening `DEFAULT_PROBES` with `[2, 0, 1]`
+(valid frequency + zero + unit fraction — the signed-deltas negative-i16
+precedent); adding probes is monotonically safe (agreement only decreases; true
+duplicates stay 1.0 everywhere). Gate: 756 admitted, 0 refused; all nine #1 on
+their direct queries before their rows were written (three needed sharper direct
+phrasings to beat their own siblings — mirr/mduration/oddfyield vocabulary
+overlap is real).

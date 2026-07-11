@@ -4338,3 +4338,434 @@ fn excel_pduration_matches_test_cases() {
         assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06), "{bad:?}");
     }
 }
+
+// ── the array-input + transcendental wave (2026-07-11, the 10 ex-host_only) ──
+// Driven through CellHost::run_state_values (the `.cell` v11 array lane): f32
+// scalars and f32-bit array elements ride as raw bit patterns, day offsets as
+// plain ints. Every case runs at DEFAULT_CYCLES — the envelopes were sized to
+// the budget, and these tests are the proof.
+
+fn run_fin(
+    id: &str,
+    fields: &[(&str, cell80::FieldValue)],
+) -> (
+    cell80::Report,
+    std::collections::HashMap<String, cell80::FieldValue>,
+) {
+    let src = crate::common::cell_src(id);
+    let entry = src
+        .lines()
+        .find_map(|l| l.strip_prefix("//! entry:"))
+        .expect("entry header")
+        .trim()
+        .to_string();
+    let cart = cell80::Cartridge::compile(
+        &src,
+        cell80::CellConfig::permissive(),
+        cell80::CartridgeOpts {
+            id: Some(id.into()),
+            entry: Some(entry),
+            kernel_bank: true,
+            ..Default::default()
+        },
+    )
+    .unwrap_or_else(|e| panic!("compile {id}: {e}"));
+    let mut host = cell80::CellHost::new();
+    host.add(cart);
+    let h = host.load(id).unwrap();
+    let named: Vec<(String, cell80::FieldValue)> = fields
+        .iter()
+        .map(|(n, v)| (n.to_string(), v.clone()))
+        .collect();
+    let (rep, state) = host
+        .run_state_values(h, &named, 2_000_000)
+        .unwrap_or_else(|e| panic!("run {id}: {e}"));
+    (rep, state.into_iter().collect())
+}
+
+fn fbits(v: f64) -> cell80::FieldValue {
+    cell80::FieldValue::Scalar((v as f32).to_bits() as u64)
+}
+fn farr(vs: &[f64]) -> cell80::FieldValue {
+    cell80::FieldValue::Array(vs.iter().map(|v| (*v as f32).to_bits() as u64).collect())
+}
+fn scalar(v: u64) -> cell80::FieldValue {
+    cell80::FieldValue::Scalar(v)
+}
+fn out_f32(state: &std::collections::HashMap<String, cell80::FieldValue>, name: &str) -> f64 {
+    match state[name] {
+        cell80::FieldValue::Scalar(v) => f32::from_bits(v as u32) as f64,
+        _ => panic!("{name} is not a scalar"),
+    }
+}
+fn assert_close(got: f64, want: f64, what: &str) {
+    let tol = (want.abs() * 1e-3_f64).max(1e-3);
+    assert!((got - want).abs() < tol, "{what}: got {got} want {want}");
+}
+
+#[test]
+fn excel_npv_matches_test_cases() {
+    // Excel's own doc example: NPV(10%, -10000, 3000, 4200, 6800) = 1188.44.
+    let (rep, st) = run_fin(
+        "excel_npv",
+        &[
+            ("rate", fbits(0.10)),
+            ("values", farr(&[-10000.0, 3000.0, 4200.0, 6800.0])),
+            ("count", scalar(4)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(rep.cycles <= 2_000_000);
+    assert_close(out_f32(&st, "npv"), 1188.4434, "npv");
+    // Domain: count 0 and rate == -1 are Excel's errors, typed.
+    let (rep, _) = run_fin("excel_npv", &[("rate", fbits(0.1)), ("count", scalar(0))]);
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+    let (rep, _) = run_fin(
+        "excel_npv",
+        &[
+            ("rate", fbits(-1.0)),
+            ("values", farr(&[1.0])),
+            ("count", scalar(1)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn excel_fvschedule_matches_test_cases() {
+    // Excel's own doc example: FVSCHEDULE(1, {0.09, 0.11, 0.1}) = 1.3309.
+    let (rep, st) = run_fin(
+        "excel_fvschedule",
+        &[
+            ("principal", fbits(1.0)),
+            ("schedule", farr(&[0.09, 0.11, 0.10])),
+            ("count", scalar(3)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert_close(out_f32(&st, "fv"), 1.33089, "fvschedule");
+    // Empty schedule returns the principal unchanged (Excel's behaviour).
+    let (rep, st) = run_fin(
+        "excel_fvschedule",
+        &[("principal", fbits(250.0)), ("count", scalar(0))],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_close(out_f32(&st, "fv"), 250.0, "empty schedule");
+}
+
+#[test]
+fn excel_irr_matches_test_cases() {
+    // Excel's own doc example: IRR({-70000, 12000, 15000, 18000, 21000, 26000})
+    // = 8.66% (guess omitted -> 0.1, the cell's own 0.0-means-omitted rule).
+    let (rep, st) = run_fin(
+        "excel_irr",
+        &[
+            (
+                "values",
+                farr(&[-70000.0, 12000.0, 15000.0, 18000.0, 21000.0, 26000.0]),
+            ),
+            ("count", scalar(6)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 2_000_000,
+        "IRR blew the budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "irr"), 0.086631, "irr");
+    // A shorter stream with a negative IRR. The true root of this 4-flow
+    // stream is r = -0.182137 (host-verifiable: NPV there is ~0 in f64).
+    let (rep, st) = run_fin(
+        "excel_irr",
+        &[
+            ("values", farr(&[-70000.0, 12000.0, 15000.0, 18000.0])),
+            ("count", scalar(4)),
+            ("guess", fbits(-0.1)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert_close(out_f32(&st, "irr"), -0.182137, "irr negative");
+    // Domain, typed: too few flows.
+    let (rep, _) = run_fin(
+        "excel_irr",
+        &[("values", farr(&[-1.0])), ("count", scalar(1))],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn excel_mirr_matches_test_cases() {
+    // Excel's own doc example: MIRR({-120000, 39000, 30000, 21000, 37000, 46000},
+    // 10%, 12%) = 12.61%.
+    let (rep, st) = run_fin(
+        "excel_mirr",
+        &[
+            (
+                "values",
+                farr(&[-120000.0, 39000.0, 30000.0, 21000.0, 37000.0, 46000.0]),
+            ),
+            ("count", scalar(6)),
+            ("finance_rate", fbits(0.10)),
+            ("reinvest_rate", fbits(0.12)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 2_000_000,
+        "MIRR blew the budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "mirr"), 0.126094, "mirr");
+    // All-positive stream: Excel's #DIV/0!, typed.
+    let (rep, _) = run_fin(
+        "excel_mirr",
+        &[
+            ("values", farr(&[100.0, 200.0])),
+            ("count", scalar(2)),
+            ("finance_rate", fbits(0.1)),
+            ("reinvest_rate", fbits(0.1)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn excel_xnpv_matches_test_cases() {
+    // Host-f64 mirror oracle (Excel's 5-flow doc example exceeds the 4-slot
+    // envelope): first four flows of it, day offsets from the first date.
+    let values = [-10000.0_f64, 2750.0, 4250.0, 3250.0];
+    let days = [0u64, 60, 303, 411];
+    let rate = 0.09_f64;
+    let want: f64 = values
+        .iter()
+        .zip(days.iter())
+        .map(|(v, d)| (*v as f32) as f64 * (1.0 + rate).powf(-(*d as f64) / 365.0))
+        .sum();
+    let (rep, st) = run_fin(
+        "excel_xnpv",
+        &[
+            ("rate", fbits(rate)),
+            ("values", farr(&values)),
+            ("days", cell80::FieldValue::Array(days.to_vec())),
+            ("count", scalar(4)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 2_000_000,
+        "XNPV blew the budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "xnpv"), want, "xnpv");
+    // rate <= -1 is out of ln's domain — Excel's #NUM!, typed.
+    let (rep, _) = run_fin(
+        "excel_xnpv",
+        &[
+            ("rate", fbits(-1.0)),
+            ("values", farr(&[1.0])),
+            ("days", cell80::FieldValue::Array(vec![0])),
+            ("count", scalar(1)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn excel_duration_matches_test_cases() {
+    // Whole-period mirror oracle in f64 (Excel's published 10.9782 for this bond
+    // folds in basis-1 fractional-period adjustments this cell's declared
+    // whole-period scope excludes — mduration's own scope note; the whole-period
+    // Macaulay is ~10.956): 30 years of semiannual coupons, 8% coupon / 9% yield.
+    let want = {
+        let (c, x, n) = (4.0_f64, 1.0_f64 / 1.045, 60);
+        let (mut price, mut wp, mut df) = (0.0_f64, 0.0_f64, 1.0_f64);
+        for k in 1..=n {
+            df *= x;
+            let cf = if k == n { c + 100.0 } else { c };
+            price += cf * df;
+            wp += k as f64 * cf * df;
+        }
+        wp / (price * 2.0)
+    };
+    let (rep, st) = run_fin(
+        "excel_duration",
+        &[
+            ("num_periods", scalar(60)),
+            ("coupon", fbits(0.08)),
+            ("yld", fbits(0.09)),
+            ("frequency", scalar(2)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert_close(out_f32(&st, "duration"), want, "duration");
+    // And the sibling identity: MDURATION = DURATION / (1 + yld/freq) — at
+    // N=6, inside the LANDED mduration loop's own budget reach (its per-period
+    // int_to_f32+fdiv walk costs ~100K/period, topping out under 20 periods at
+    // the default budget; this cell's closed-form O(log N) prices N=60 above).
+    let (rep2, st2) = run_fin(
+        "excel_mduration",
+        &[
+            ("num_periods", scalar(6)),
+            ("coupon", fbits(0.08)),
+            ("yld", fbits(0.09)),
+            ("frequency", scalar(2)),
+        ],
+    );
+    assert_eq!(rep2.halt, cell80::Halt::Returned, "mduration: {rep2:?}");
+    let (_, st20) = run_fin(
+        "excel_duration",
+        &[
+            ("num_periods", scalar(6)),
+            ("coupon", fbits(0.08)),
+            ("yld", fbits(0.09)),
+            ("frequency", scalar(2)),
+        ],
+    );
+    assert_close(
+        out_f32(&st2, "mduration"),
+        out_f32(&st20, "duration") / 1.045,
+        "duration/mduration identity",
+    );
+}
+
+#[test]
+fn excel_price_matches_test_cases() {
+    // Excel's own doc example: PRICE(2/15/2008, 11/15/2017, 5.75%, 6.50%, 100,
+    // 2, 0) = 94.63436 — upstream day-count resolution gives N=20 semiannual
+    // periods, DSC/E = 0.5, A/E = 0.5 under 30/360.
+    let (rep, st) = run_fin(
+        "excel_price",
+        &[
+            ("rate", fbits(0.0575)),
+            ("yld", fbits(0.065)),
+            ("redemption", fbits(100.0)),
+            ("frequency", scalar(2)),
+            ("num_periods", scalar(20)),
+            ("dsc_over_e", fbits(0.5)),
+            ("a_over_e", fbits(0.5)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 2_000_000,
+        "PRICE blew the budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "price"), 94.63436, "price");
+}
+
+#[test]
+fn excel_oddlprice_matches_test_cases() {
+    // Mirror oracle in f64 (the formula IS the contract — the algebraic inverse
+    // of the landed excel_oddlyield), then the round-trip: the priced bond fed
+    // back through oddlyield must recover the yield.
+    let (c, a, dsc, red, yld) = (
+        1.875_f64,
+        0.12222222_f64,
+        0.71111111_f64,
+        100.0_f64,
+        0.0405_f64,
+    );
+    let want = (red + c * (a + dsc)) / (1.0 + (yld / 2.0) * dsc) - c * a;
+    let (rep, st) = run_fin(
+        "excel_oddlprice",
+        &[
+            ("rate", fbits(0.0375)),
+            ("yld", fbits(yld)),
+            ("redemption", fbits(red)),
+            ("frequency", scalar(2)),
+            ("a_over_e", fbits(a)),
+            ("dsc_over_e", fbits(dsc)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    let price = out_f32(&st, "price");
+    assert_close(price, want, "oddlprice");
+    let (rep2, st2) = run_fin(
+        "excel_oddlyield",
+        &[
+            ("rate", fbits(0.0375)),
+            ("pr", fbits(price)),
+            ("redemption", fbits(red)),
+            ("frequency", scalar(2)),
+            ("a_over_e", fbits(a)),
+            ("dsc_over_e", fbits(dsc)),
+        ],
+    );
+    assert_eq!(rep2.halt, cell80::Halt::Returned, "{rep2:?}");
+    assert_close(
+        out_f32(&st2, "oddlyield"),
+        yld,
+        "oddlprice/oddlyield round-trip",
+    );
+}
+
+#[test]
+fn excel_oddfprice_matches_test_cases() {
+    // Mirror oracle in f64 over the same formula, plus a consistency pin: with a
+    // FULL first coupon (dfc/e = 1) and no accrual, ODDFPRICE degenerates to
+    // PRICE's regular schedule exactly.
+    let (rate, yld, red, n) = (0.0575_f64, 0.065_f64, 100.0_f64, 20u16);
+    let (dfc, dsc, a) = (0.65_f64, 0.5_f64, 0.35_f64);
+    let c = 100.0 * rate / 2.0;
+    let base: f64 = 1.0 + yld / 2.0;
+    let mut want = 0.0_f64;
+    for k in 1..=n {
+        let coupon = if k == 1 { c * dfc } else { c };
+        let redemption = if k == n { red } else { 0.0 };
+        want += (coupon + redemption) * base.powf(-((k - 1) as f64 + dsc));
+    }
+    want -= c * a;
+    let (rep, st) = run_fin(
+        "excel_oddfprice",
+        &[
+            ("rate", fbits(rate)),
+            ("yld", fbits(yld)),
+            ("redemption", fbits(red)),
+            ("frequency", scalar(2)),
+            ("num_periods", scalar(n as u64)),
+            ("dfc_over_e", fbits(dfc)),
+            ("dsc_over_e", fbits(dsc)),
+            ("a_over_e", fbits(a)),
+        ],
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 2_000_000,
+        "ODDFPRICE blew the budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "price"), want, "oddfprice");
+
+    let (_, st_full) = run_fin(
+        "excel_oddfprice",
+        &[
+            ("rate", fbits(rate)),
+            ("yld", fbits(yld)),
+            ("redemption", fbits(red)),
+            ("frequency", scalar(2)),
+            ("num_periods", scalar(20)),
+            ("dfc_over_e", fbits(1.0)),
+            ("dsc_over_e", fbits(0.5)),
+            ("a_over_e", fbits(0.5)),
+        ],
+    );
+    let (_, st_price) = run_fin(
+        "excel_price",
+        &[
+            ("rate", fbits(rate)),
+            ("yld", fbits(yld)),
+            ("redemption", fbits(red)),
+            ("frequency", scalar(2)),
+            ("num_periods", scalar(20)),
+            ("dsc_over_e", fbits(0.5)),
+            ("a_over_e", fbits(0.5)),
+        ],
+    );
+    assert_close(
+        out_f32(&st_full, "price"),
+        out_f32(&st_price, "price"),
+        "oddfprice(dfc=1) == price",
+    );
+}
