@@ -386,6 +386,30 @@ certificates.
 
 ---
 
+## Phase 6 — Model-native cells (spec: [14-model-native-cells-spec.md](14-model-native-cells-spec.md), draft v0.1)
+
+The model provides judgment; the cells provide guarantees; the interface between
+them gets fast enough to sit inside the model's own thought. Five workstreams over
+the seams Phase 5 built: a **GPU target family** (WS-E — Metal first as the dev
+spike, CUDA sequenced immediately before it's needed for training rewards, WGSL as
+the browser demo body; one IR, the interpreter as oracle, bit-exactness gated per
+target and between targets), **retrieval by execution** (WS-F — the fingerprint
+probe set becomes the routing key space; the falsifiable F2 gate — probe-equipped
+paraphrase P@1 ≥ 0.80 vs the 0.389 text baseline — is deliberately load-bearing:
+the cheapest place to kill the thesis before training spend), **native wiring**
+(WS-G — decode-time calls under constrained hash-vocabulary decoding, verified
+numeric spans, and the Lazarus-pattern residual-stream injection), **trained
+invocation** (WS-H — Toolformer-style self-labelling against an exact oracle, SFT
+with hash-bound tool identities, then RLVR with cell reward organs and a
+bitwise-reproducible training run owed), and the **circuit prosthetic** (WS-I —
+ablate Gemma's localised arithmetic circuit, transplant a cell in its place;
+either outcome is a finding). A structural note promoted from its design work:
+**IR steps become the canonical family cost** (Q2), with T-states/cycles/wall-time
+as per-target descriptor refinements. Notation: this spec's WS-E..I are scoped to
+doc 14 (doc 13's WS-A..E are Phase 5's).
+
+---
+
 ## Explicit non-goals (in the README)
 
 - **Strings, floats-by-default, I/O, network** — that's the escalation path (3.2), not
@@ -417,7 +441,9 @@ admission gate) are shipped; 2.3 (the scale curve) is the remaining open item, g
 behind 2.2 by design since growing to 1K cells before ingest gating would manufacture
 the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
-the next dialect expansion, as required. Phase 5 (multi-target) opened 2026-07-10;
+the next dialect expansion, as required. Phase 6 (model-native cells, doc 14) is
+drafted with its own falsification ladder — the F2 routing gate precedes any
+training spend. Phase 5 (multi-target) opened 2026-07-10;
 WS-A shipped whole in two days, WS-B's compiler is live in the battery behind a
 fuzz battery and a CI-required independent emission adversary, and WS-E's identity
 half (v10 target id + family hash) is in the artifact — the remaining critical path

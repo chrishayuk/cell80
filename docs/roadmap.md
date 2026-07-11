@@ -3,8 +3,9 @@
 > **Execution plan:** [roadmap-phases.md](roadmap-phases.md) sequences the work as
 > phased gates (0: determinism contract ✓ → 1: LLM-facing compiler → 2: retrieval →
 > 3: trust → 4: codegen stage 2 → 5: multi-target, the cell-family —
-> [13-multi-target-spec.md](13-multi-target-spec.md)), with a DoD per item and the
-> end-state narrative. This file stays the ledger of what's *built*.
+> [13-multi-target-spec.md](13-multi-target-spec.md) → 6: model-native cells —
+> [14-model-native-cells-spec.md](14-model-native-cells-spec.md)), with a DoD per
+> item and the end-state narrative. This file stays the ledger of what's *built*.
 
 cell80 is the deterministic **executable-tool-capsule** layer extracted from
 [`chuk-speccy`](https://github.com/chrishayuk/chuk-speccy): a Z80 CPU core (`z80`), a
@@ -303,7 +304,7 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — 500 cells across 30+ families (2026-07-11).**
+6. **Grow the standard cell library — 653 cells across 30+ families (2026-07-11).**
    `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
    number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
    scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
