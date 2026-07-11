@@ -15,23 +15,32 @@
 //!   table can't smuggle a looser contract.
 //!
 //! Measured (2026-07-11): fexp max 1 ulp, fln max 1 ulp, fpow max 40 ulp over
-//! |y·ln x| ≤ 60 — bounds declared as measured+1. The consuming cells' manifests
-//! carry the same numbers in `//! accuracy:` headers.
+//! |y·ln x| ≤ 60; fsin/fcos max ABSOLUTE error 2⁻²⁴ over |x| ≤ 8192 (near trig
+//! zeros at large |x|, Cody–Waite reduction error is a fixed absolute quantity,
+//! so relative ULP diverges there for every non-Payne-Hanek f32 trig — the
+//! honest bound is absolute); fatan2 max 2 ulp. Bounds declared from
+//! measurement; the consuming cells' manifests carry the same numbers in
+//! `//! accuracy:` headers.
 
 use crate::harness::{run_program_banked, run_program_pruned};
 
 const GOLDEN: &str = include_str!("../data/f32_trans_golden.json");
 
+enum Bound {
+    Ulp(u32),
+    Abs(f64),
+}
+
 struct Bank {
     name: &'static str,
-    bound: u32,
+    bound: Bound,
     /// `(args, sim_bits, true_bits)` — 1 or 2 args.
     cases: Vec<(Vec<u32>, u32, u32)>,
 }
 
 fn load() -> Vec<Bank> {
     let v: serde_json::Value = serde_json::from_str(GOLDEN).expect("golden json parses");
-    ["fexp", "fln", "fpow"]
+    ["fexp", "fln", "fpow", "fsin", "fcos", "fatan2"]
         .iter()
         .map(|&name| {
             let b = &v[name];
@@ -50,13 +59,17 @@ fn load() -> Vec<Bank> {
                     (args.to_vec(), tail[0], tail[1])
                 })
                 .collect();
-            Bank {
-                name,
-                bound: b["bound"].as_u64().unwrap() as u32,
-                cases,
-            }
+            let bound = match b["bound_kind"].as_str().unwrap() {
+                "ulp" => Bound::Ulp(b["bound"].as_u64().unwrap() as u32),
+                _ => Bound::Abs(b["bound"].as_f64().unwrap()),
+            };
+            Bank { name, bound, cases }
         })
         .collect()
+}
+
+fn bank<'a>(banks: &'a [Bank], name: &str) -> &'a Bank {
+    banks.iter().find(|b| b.name == name).unwrap()
 }
 
 fn ord32(x: u32) -> u32 {
@@ -120,50 +133,90 @@ fn run_sim_bank(name: &str, cases: &[(Vec<u32>, u32, u32)]) {
 #[test]
 fn fexp_matches_simulation_on_all_targets() {
     let banks = load();
-    let b = &banks[0];
+    let b = bank(&banks, "fexp");
     run_sim_bank(b.name, &b.cases);
 }
 
 #[test]
 fn fln_matches_simulation_on_all_targets() {
     let banks = load();
-    let b = &banks[1];
+    let b = bank(&banks, "fln");
     run_sim_bank(b.name, &b.cases);
 }
 
 #[test]
 fn fpow_matches_simulation_on_all_targets() {
     let banks = load();
-    let b = &banks[2];
+    let b = bank(&banks, "fpow");
+    run_sim_bank(b.name, &b.cases);
+}
+
+#[test]
+fn fsin_matches_simulation_on_all_targets() {
+    let banks = load();
+    let b = bank(&banks, "fsin");
+    run_sim_bank(b.name, &b.cases);
+}
+
+#[test]
+fn fcos_matches_simulation_on_all_targets() {
+    let banks = load();
+    let b = bank(&banks, "fcos");
+    run_sim_bank(b.name, &b.cases);
+}
+
+#[test]
+fn fatan2_matches_simulation_on_all_targets() {
+    let banks = load();
+    let b = bank(&banks, "fatan2");
     run_sim_bank(b.name, &b.cases);
 }
 
 /// The accuracy contract: every golden case's simulation (== kernel, by the bank
-/// tests above) sits within the declared ULP bound of the correctly-rounded
-/// truth. Recomputed here so the JSON can't claim a bound its own rows violate.
+/// tests above) sits within the declared bound of the correctly-rounded truth —
+/// ULP for exp/ln/pow/atan2, absolute error for sin/cos (see the module doc).
+/// Recomputed here so the JSON can't claim a bound its own rows violate.
 #[test]
 fn golden_ulp_claims_hold() {
     for b in load() {
-        let mut max = 0u32;
-        for (args, sim, truth) in &b.cases {
-            let d = ulp_dist(*sim, *truth);
-            assert!(
-                d <= b.bound,
-                "{}({args:08X?}): sim 0x{sim:08X} is {d} ulp from truth 0x{truth:08X} \
-                 (declared bound {})",
-                b.name,
-                b.bound
-            );
-            max = max.max(d);
+        match b.bound {
+            Bound::Ulp(bound) => {
+                let mut max = 0u32;
+                for (args, sim, truth) in &b.cases {
+                    let d = ulp_dist(*sim, *truth);
+                    assert!(
+                        d <= bound,
+                        "{}({args:08X?}): sim 0x{sim:08X} is {d} ulp from truth \
+                         0x{truth:08X} (declared bound {bound})",
+                        b.name
+                    );
+                    max = max.max(d);
+                }
+                // The bound is measured+1 — a table regenerated with a better
+                // kernel must tighten it, and one that got worse must fail here,
+                // not silently relax.
+                assert!(
+                    max + 1 == bound || max == bound,
+                    "{}: bound {bound} is not measured({max})+1 — regenerate the table",
+                    b.name
+                );
+            }
+            Bound::Abs(bound) => {
+                for (args, sim, truth) in &b.cases {
+                    let (fs, ft) = (f32::from_bits(*sim), f32::from_bits(*truth));
+                    if fs.is_nan() && ft.is_nan() {
+                        continue;
+                    }
+                    let d = (fs as f64 - ft as f64).abs();
+                    assert!(
+                        d <= bound,
+                        "{}({args:08X?}): sim 0x{sim:08X} is {d:e} from truth \
+                         0x{truth:08X} (declared abs bound {bound:e})",
+                        b.name
+                    );
+                }
+            }
         }
-        // The bound is measured+1 — a table regenerated with a better kernel must
-        // tighten it, and one that got worse must fail here, not silently relax.
-        assert!(
-            max + 1 == b.bound || max == b.bound,
-            "{}: bound {} is not measured({max})+1 — regenerate the table",
-            b.name,
-            b.bound
-        );
     }
 }
 
@@ -207,6 +260,32 @@ fn f32_trans_special_pins() {
         (format!("fpow({TWO}u32, {INF}u32)"), INF),
         (format!("fpow({HALF}u32, {INF}u32)"), 0),
         (format!("fpow({TWO}u32, {NINF}u32)"), 0),
+        // fsin/fcos: ±0 pins, NaN/±Inf → NaN (IEEE), and the declared-domain wall
+        // (|x| > 8192 → NaN, deterministic — never a silently-degraded value)
+        (format!("fsin(0u32)"), 0),
+        (format!("fsin(2147483648u32)"), 0x8000_0000), // sin(-0) = -0
+        (format!("fsin({INF}u32)"), NAN),
+        (format!("fsin({NAN}u32)"), NAN),
+        (format!("fsin(0x46000001u32)"), NAN), // just past the domain wall
+        (format!("fcos(0u32)"), ONE),
+        (format!("fcos(2147483648u32)"), ONE),
+        (format!("fcos({NINF}u32)"), NAN),
+        (format!("fcos({NAN}u32)"), NAN),
+        (format!("fcos(0xC6000001u32)"), NAN),
+        // fatan2: the IEEE special-value table (signs matter everywhere)
+        (format!("fatan2(0u32, {ONE}u32)"), 0),
+        (format!("fatan2(2147483648u32, {ONE}u32)"), 0x8000_0000),
+        (format!("fatan2(0u32, {NEG_TWO}u32)"), 0x4049_0FDB), // +pi
+        (format!("fatan2(2147483648u32, {NEG_TWO}u32)"), 0xC049_0FDB), // -pi
+        (format!("fatan2({ONE}u32, 0u32)"), 0x3FC9_0FDB), // +pi/2
+        (format!("fatan2(0xBF800000u32, 0u32)"), 0xBFC9_0FDB), // -pi/2
+        (format!("fatan2({INF}u32, {INF}u32)"), 0x3F49_0FDB), // +pi/4
+        (format!("fatan2({INF}u32, {NINF}u32)"), 0x4016_CBE4), // +3pi/4
+        (format!("fatan2(0xFF800000u32, {NINF}u32)"), 0xC016_CBE4), // -3pi/4
+        (format!("fatan2({ONE}u32, {INF}u32)"), 0),
+        (format!("fatan2({ONE}u32, {NINF}u32)"), 0x4049_0FDB),
+        (format!("fatan2({NAN}u32, {ONE}u32)"), NAN),
+        (format!("fatan2({ONE}u32, {ONE}u32)"), 0x3F49_0FDB), // exactly pi/4
     ];
     for (expr, want) in pins {
         let src = format!(

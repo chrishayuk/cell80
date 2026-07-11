@@ -856,6 +856,207 @@ fn fln(x: u32) -> u32 {
     result
 }
 
+fn fsin(x: u32) -> u32 {
+    let mag = x & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if mag >= 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag > 0x46000000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag == 0u32 {
+        result = x;
+        done = 1u32;
+    }
+    if done == 0u32 {
+        let nf = fround(fmul(x, 0x3F22F983u32));
+        let nmag = nf & 0x7FFFFFFFu32;
+        let mut nv = 0u32;
+        if nmag != 0u32 {
+            let mut m24 = (nmag & 0x7FFFFFu32) | 0x800000u32;
+            let mut k = 150u32 - (nmag >> 23u32);
+            while k != 0u32 {
+                m24 = m24 >> 1u32;
+                k = k - 1u32;
+            }
+            nv = m24;
+        }
+        let mut q = nv & 3u32;
+        if (nf >> 31u32) == 1u32 && q != 0u32 {
+            q = 4u32 - q;
+        }
+        let t1 = fmul(nf, 0x3FC90000u32);
+        let mut r = fsub(x, t1);
+        let t2 = fmul(nf, 0x39FDA000u32);
+        r = fsub(r, t2);
+        let t3 = fmul(nf, 0x33A22169u32);
+        r = fsub(r, t3);
+        let z = fmul(r, r);
+        let mut v = 0u32;
+        if q == 0u32 || q == 2u32 {
+            let mut p = 0xB94CA1F9u32;
+            p = fadd(fmul(p, z), 0x3C08839Eu32);
+            p = fadd(fmul(p, z), 0xBE2AAAA3u32);
+            let rz = fmul(r, z);
+            v = fadd(fmul(rz, p), r);
+        } else {
+            let mut p = 0x37CCF5CEu32;
+            p = fadd(fmul(p, z), 0xBAB6061Au32);
+            p = fadd(fmul(p, z), 0x3D2AAAA5u32);
+            let zz = fmul(z, z);
+            let a1 = fmul(zz, p);
+            let a2 = fmul(z, 0xBF000000u32);
+            let t = fadd(a1, a2);
+            v = fadd(t, 0x3F800000u32);
+        }
+        if q >= 2u32 {
+            v = v ^ 0x80000000u32;
+        }
+        result = v;
+    }
+    result
+}
+
+fn fcos(x: u32) -> u32 {
+    let mag = x & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if mag >= 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag > 0x46000000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag == 0u32 {
+        result = 0x3F800000u32;
+        done = 1u32;
+    }
+    if done == 0u32 {
+        let nf = fround(fmul(x, 0x3F22F983u32));
+        let nmag = nf & 0x7FFFFFFFu32;
+        let mut nv = 0u32;
+        if nmag != 0u32 {
+            let mut m24 = (nmag & 0x7FFFFFu32) | 0x800000u32;
+            let mut k = 150u32 - (nmag >> 23u32);
+            while k != 0u32 {
+                m24 = m24 >> 1u32;
+                k = k - 1u32;
+            }
+            nv = m24;
+        }
+        let mut q = nv & 3u32;
+        if (nf >> 31u32) == 1u32 && q != 0u32 {
+            q = 4u32 - q;
+        }
+        let t1 = fmul(nf, 0x3FC90000u32);
+        let mut r = fsub(x, t1);
+        let t2 = fmul(nf, 0x39FDA000u32);
+        r = fsub(r, t2);
+        let t3 = fmul(nf, 0x33A22169u32);
+        r = fsub(r, t3);
+        let z = fmul(r, r);
+        let mut v = 0u32;
+        if q == 0u32 || q == 2u32 {
+            let mut p = 0x37CCF5CEu32;
+            p = fadd(fmul(p, z), 0xBAB6061Au32);
+            p = fadd(fmul(p, z), 0x3D2AAAA5u32);
+            let zz = fmul(z, z);
+            let a1 = fmul(zz, p);
+            let a2 = fmul(z, 0xBF000000u32);
+            let t = fadd(a1, a2);
+            v = fadd(t, 0x3F800000u32);
+        } else {
+            let mut p = 0xB94CA1F9u32;
+            p = fadd(fmul(p, z), 0x3C08839Eu32);
+            p = fadd(fmul(p, z), 0xBE2AAAA3u32);
+            let rz = fmul(r, z);
+            v = fadd(fmul(rz, p), r);
+        }
+        if q == 1u32 || q == 2u32 {
+            v = v ^ 0x80000000u32;
+        }
+        result = v;
+    }
+    result
+}
+
+fn fatan2(y: u32, x: u32) -> u32 {
+    let ymag = y & 0x7FFFFFFFu32;
+    let xmag = x & 0x7FFFFFFFu32;
+    let ys = y >> 31u32;
+    let xs = x >> 31u32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if ymag > 0x7F800000u32 || xmag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if ymag == 0u32 {
+        result = ys << 31u32;
+        if xs == 1u32 {
+            result = 0x40490FDBu32 | (ys << 31u32);
+        }
+        done = 1u32;
+    } else if xmag == 0u32 {
+        result = 0x3FC90FDBu32 | (ys << 31u32);
+        done = 1u32;
+    } else if ymag == 0x7F800000u32 && xmag == 0x7F800000u32 {
+        result = 0x3F490FDBu32;
+        if xs == 1u32 {
+            result = 0x4016CBE4u32;
+        }
+        result = result | (ys << 31u32);
+        done = 1u32;
+    } else if ymag == 0x7F800000u32 {
+        result = 0x3FC90FDBu32 | (ys << 31u32);
+        done = 1u32;
+    } else if xmag == 0x7F800000u32 {
+        result = ys << 31u32;
+        if xs == 1u32 {
+            result = 0x40490FDBu32 | (ys << 31u32);
+        }
+        done = 1u32;
+    }
+    if done == 0u32 {
+        let mut num = ymag;
+        let mut den = xmag;
+        let mut inv = 0u32;
+        if ymag > xmag {
+            num = xmag;
+            den = ymag;
+            inv = 1u32;
+        }
+        let t = fdiv(num, den);
+        let mut w = t;
+        let mut bias = 0u32;
+        if t > 0x3ED413CDu32 {
+            let tm1 = fsub(w, 0x3F800000u32);
+            let tp1 = fadd(w, 0x3F800000u32);
+            w = fdiv(tm1, tp1);
+            bias = 1u32;
+        }
+        let z = fmul(w, w);
+        let mut p = 0x3DA4F0D1u32;
+        p = fadd(fmul(p, z), 0xBE0E1B85u32);
+        p = fadd(fmul(p, z), 0x3E4C925Fu32);
+        p = fadd(fmul(p, z), 0xBEAAAA2Au32);
+        let wz = fmul(w, z);
+        let mut base = fadd(fmul(wz, p), w);
+        if bias == 1u32 {
+            base = fadd(base, 0x3F490FDBu32);
+        }
+        if inv == 1u32 {
+            base = fsub(0x3FC90FDBu32, base);
+        }
+        if xs == 1u32 {
+            base = fsub(0x40490FDBu32, base);
+        }
+        result = base | (ys << 31u32);
+    }
+    result
+}
+
 fn fpow(a: u32, b: u32) -> u32 {
     let amag = a & 0x7FFFFFFFu32;
     let bmag = b & 0x7FFFFFFFu32;
@@ -933,6 +1134,18 @@ pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
             "f32_shr_jam",
             "f32_pack",
         ],
+    ),
+    (
+        "fsin",
+        &["fround", "fmul", "fsub", "fadd", "f32_shr_jam", "f32_pack"],
+    ),
+    (
+        "fcos",
+        &["fround", "fmul", "fsub", "fadd", "f32_shr_jam", "f32_pack"],
+    ),
+    (
+        "fatan2",
+        &["fdiv", "fmul", "fsub", "fadd", "f32_shr_jam", "f32_pack"],
     ),
 ];
 

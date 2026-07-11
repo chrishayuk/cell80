@@ -105,7 +105,7 @@ fn f32_kernel_cost_envelope() {
     let base_src = "fn run() -> u16 { let x = 42u32; (x >> 16u32) as u16 }";
     let mut runner = Runner::compile(base_src).unwrap();
     let base = runner.run(None, &[], BUDGET).unwrap();
-    let table: [(&str, String, u64); 12] = [
+    let table: [(&str, String, u64); 15] = [
         ("fadd", format!("fadd({pi}u32, {e}u32)"), 14_000),
         ("fsub", format!("fsub({pi}u32, {e}u32)"), 16_000),
         ("fmul", format!("fmul({pi}u32, {e}u32)"), 15_000),
@@ -127,6 +127,13 @@ fn f32_kernel_cost_envelope() {
         ("fexp", format!("fexp({e}u32)"), 380_000),
         ("fln", format!("fln({pi}u32)"), 430_000),
         ("fpow", format!("fpow({pi}u32, {e}u32)"), 800_000),
+        // Trig slice (same day): estimates fsin/fcos ≈ 200K, fatan2 ≈ 250K —
+        // measured 227,891 / 255,483 / 255,825 T (within 28%). Ceilings at
+        // measured +27%. fatan2's unbanked image is 10,110 B — like fpow, a
+        // sandboxed atan2 cell banks or doesn't fit.
+        ("fsin", format!("fsin({e}u32)"), 290_000),
+        ("fcos", format!("fcos({e}u32)"), 325_000),
+        ("fatan2", format!("fatan2({e}u32, {pi}u32)"), 325_000),
     ];
     // The typed conversions drive through the typed surface (their args/returns are
     // f32-typed by interception); `.is_finite()` is inline bit-compares, ~noise.

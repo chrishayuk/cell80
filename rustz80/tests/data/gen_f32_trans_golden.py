@@ -28,7 +28,7 @@ import math
 import pathlib
 
 import numpy as np
-from mpmath import mp, mpf, exp as mexp, log as mlog
+from mpmath import mp, mpf, exp as mexp, log as mlog, sin as msin, cos as mcos, atan2 as matan2
 
 mp.prec = 96
 RNG = np.random.RandomState(0x5EED_F2)
@@ -45,6 +45,12 @@ LOG_P = [0x3D9021BB, 0xBDEBD1B8, 0x3DEF251A, 0xBDFE5D4F, 0x3E11E9BF,
          0xBE2AAE50, 0x3E4CCEAC, 0xBE7FFFFC, 0x3EAAAAAA]
 LOG_Q1, LOG_Q2 = 0xB95E8083, 0x3F318000
 EXP_HI, EXP_LO = 0x42B17218, 0x42CFF1B5  # |x| magnitudes of the clamp thresholds
+TWO_OPI, SIN_DOM = 0x3F22F983, 0x46000000  # 2/pi; |x| <= 8192, the declared trig domain
+PIO2_1, PIO2_2, PIO2_3 = 0x3FC90000, 0x39FDA000, 0x33A22169
+SIN_C = [0xB94CA1F9, 0x3C08839E, 0xBE2AAAA3]
+COS_C = [0x37CCF5CE, 0xBAB6061A, 0x3D2AAAA5]
+ATAN_C = [0x3DA4F0D1, 0xBE0E1B85, 0x3E4C925F, 0xBEAAAA2A]
+TAN_PI8, PIO4, PIO2, PI_B, PI34 = 0x3ED413CD, 0x3F490FDB, 0x3FC90FDB, 0x40490FDB, 0x4016CBE4
 
 
 def bits(x: np.float32) -> int:
@@ -184,6 +190,104 @@ def sim_fpow(ab: int, bb: int) -> int:
         return sim_fexp(bits(F32(f32(bb) * f32(sim_fln(ab)))))
 
 
+def _sincos_core(xb: int, want_sin: bool) -> int:
+    with np.errstate(all="ignore"):
+        x = f32(xb)
+        nf = rust_round(F32(x * f32(TWO_OPI)))
+        nmag = bits(nf) & 0x7FFFFFFF
+        nv = 0
+        if nmag != 0:
+            nv = ((nmag & 0x7FFFFF) | 0x800000) >> (150 - (nmag >> 23))
+        q = nv & 3
+        if bits(nf) >> 31 == 1 and q != 0:
+            q = 4 - q
+        r = F32(x - F32(nf * f32(PIO2_1)))
+        r = F32(r - F32(nf * f32(PIO2_2)))
+        r = F32(r - F32(nf * f32(PIO2_3)))
+        z = F32(r * r)
+
+        def sin_poly():
+            p = f32(SIN_C[0])
+            for c in SIN_C[1:]:
+                p = F32(F32(p * z) + f32(c))
+            return F32(F32(F32(r * z) * p) + r)
+
+        def cos_poly():
+            p = f32(COS_C[0])
+            for c in COS_C[1:]:
+                p = F32(F32(p * z) + f32(c))
+            t = F32(F32(F32(z * z) * p) + F32(z * f32(0xBF000000)))
+            return F32(t + f32(0x3F800000))
+
+        if want_sin:
+            v = sin_poly() if q in (0, 2) else cos_poly()
+            vb = bits(v)
+            if q >= 2:
+                vb ^= 0x80000000
+        else:
+            v = cos_poly() if q in (0, 2) else sin_poly()
+            vb = bits(v)
+            if q in (1, 2):
+                vb ^= 0x80000000
+        return vb
+
+
+def sim_fsin(xb: int) -> int:
+    mag = xb & 0x7FFFFFFF
+    if mag >= 0x7F800000 or mag > SIN_DOM:
+        return QNAN
+    if mag == 0:
+        return xb
+    return _sincos_core(xb, True)
+
+
+def sim_fcos(xb: int) -> int:
+    mag = xb & 0x7FFFFFFF
+    if mag >= 0x7F800000 or mag > SIN_DOM:
+        return QNAN
+    if mag == 0:
+        return ONE
+    return _sincos_core(xb, False)
+
+
+def sim_fatan2(yb: int, xb: int) -> int:
+    ymag, xmag = yb & 0x7FFFFFFF, xb & 0x7FFFFFFF
+    ys, xs = yb >> 31, xb >> 31
+    if ymag > 0x7F800000 or xmag > 0x7F800000:
+        return QNAN
+    if ymag == 0:
+        return (PI_B | (ys << 31)) if xs == 1 else ys << 31
+    if xmag == 0:
+        return PIO2 | (ys << 31)
+    if ymag == 0x7F800000 and xmag == 0x7F800000:
+        return (PI34 if xs == 1 else PIO4) | (ys << 31)
+    if ymag == 0x7F800000:
+        return PIO2 | (ys << 31)
+    if xmag == 0x7F800000:
+        return (PI_B | (ys << 31)) if xs == 1 else ys << 31
+    with np.errstate(all="ignore"):
+        num, den, inv = ymag, xmag, False
+        if ymag > xmag:
+            num, den, inv = xmag, ymag, True
+        t = F32(f32(num) / f32(den))
+        w, bias = t, False
+        if bits(t) > TAN_PI8:
+            w = F32(F32(t - f32(ONE)) / F32(t + f32(ONE)))
+            bias = True
+        z = F32(w * w)
+        p = f32(ATAN_C[0])
+        for c in ATAN_C[1:]:
+            p = F32(F32(p * z) + f32(c))
+        base = F32(F32(F32(w * z) * p) + w)
+        if bias:
+            base = F32(base + f32(PIO4))
+        if inv:
+            base = F32(f32(PIO2) - base)
+        if xs == 1:
+            base = F32(f32(PI_B) - base)
+        return bits(base) | (ys << 31)
+
+
 # ── ground truth per case ─────────────────────────────────────────────────────
 
 
@@ -215,6 +319,25 @@ def true_fpow(ab: int, bb: int) -> int:
     # Rust specials table, not the golden bank.
     a, b = mpf(float(f32(ab))), mpf(float(f32(bb)))
     return round_f32(mexp(b * mlog(a)))
+
+
+def true_fsin(xb: int) -> int:
+    # Outside the declared |x| <= 8192 domain the CONTRACT is NaN (a deliberate
+    # wall, pinned in the Rust specials table too) — the mathematical sin is not
+    # the reference there, the declared behaviour is.
+    if (xb & 0x7FFFFFFF) > SIN_DOM:
+        return QNAN
+    return round_f32(msin(mpf(float(f32(xb)))))
+
+
+def true_fcos(xb: int) -> int:
+    if (xb & 0x7FFFFFFF) > SIN_DOM:
+        return QNAN
+    return round_f32(mcos(mpf(float(f32(xb)))))
+
+
+def true_fatan2(yb: int, xb: int) -> int:
+    return round_f32(matan2(mpf(float(f32(yb))), mpf(float(f32(xb)))))
 
 
 # ── the sampled banks ─────────────────────────────────────────────────────────
@@ -300,6 +423,53 @@ def pow_inputs() -> list[tuple[int, int]]:
     return sorted(set(ps))
 
 
+def sincos_inputs() -> list[int]:
+    xs = set()
+    ln2 = math.log(2)
+    _ = ln2
+    # quadrant boundaries and their fround tie pre-images: x near (k + 0.5) * pi/2
+    for k in (-5215, -1000, -100, -11, -3, -2, -1, 0, 1, 2, 3, 11, 100, 1000, 5215):
+        base = f32_from_value((k + 0.5) * math.pi / 2)
+        near = f32_from_value(k * math.pi / 2)
+        for d in (-2, -1, 0, 1, 2):
+            for b in (base, near):  # near: sin/cos zero/±1 crossings, cancellation zone
+                v = b + d
+                if 0 <= v <= 0xFFFFFFFF:
+                    xs.add(v)
+    # tiny |x| (sin x ~ x regime) and subnormals
+    xs |= {0x00000001, 0x007FFFFF, 0x33800000, 0xB3800000, 0x3F800000}
+    for v in np.concatenate([
+        RNG.uniform(-8192, 8192, 300),
+        RNG.uniform(-6.5, 6.5, 250),
+        np.exp(RNG.uniform(np.log(1e-20), 0, 100)),
+    ]):
+        xs.add(f32_from_value(float(v)))
+    # the domain wall itself
+    xs.add(SIN_DOM)
+    return sorted(xs)
+
+
+def atan2_inputs() -> list[tuple[int, int]]:
+    ps = set()
+    # all four quadrants, axis-adjacent slivers, and the tan(pi/8) fold boundary
+    for _ in range(400):
+        y = float(RNG.uniform(-100, 100))
+        x = float(RNG.uniform(-100, 100))
+        if y != 0.0 and x != 0.0:
+            ps.add((f32_from_value(y), f32_from_value(x)))
+    for _ in range(100):
+        m = float(np.exp(RNG.uniform(np.log(1e-6), np.log(1e6))))
+        ps.add((f32_from_value(m * 0.4142135), f32_from_value(m)))  # near the fold
+        ps.add((f32_from_value(m), f32_from_value(m)))  # exactly pi/4 rays
+    for _ in range(60):
+        big = float(np.exp(RNG.uniform(np.log(1e3), np.log(1e30))))
+        tiny = float(np.exp(RNG.uniform(np.log(1e-30), np.log(1e-3))))
+        ps.add((f32_from_value(tiny), f32_from_value(big)))
+        ps.add((f32_from_value(big), f32_from_value(tiny)))
+        ps.add((f32_from_value(-tiny), f32_from_value(-big)))
+    return sorted(ps)
+
+
 def ulp_dist(a: int, b: int) -> int:
     def ord32(x: int) -> int:
         return (x | 0x80000000) if x >> 31 == 0 else 0x80000000 - (x & 0x7FFFFFFF)
@@ -309,24 +479,52 @@ def ulp_dist(a: int, b: int) -> int:
     return abs(ord32(a) - ord32(b))
 
 
+def abs_err(a: int, b: int) -> float:
+    """|f32(a) − f32(b)| exactly, in double (both f32 values are double-exact)."""
+    fa, fb = float(f32(a)), float(f32(b))
+    if math.isnan(fa) and math.isnan(fb):
+        return 0.0
+    return abs(fa - fb)
+
+
 def build():
-    out = {}
-    for name, inputs, sim, true in (
-        ("fexp", [(x,) for x in exp_inputs()], sim_fexp, true_fexp),
-        ("fln", [(x,) for x in ln_inputs()], sim_fln, true_fln),
-        ("fpow", pow_inputs(), sim_fpow, true_fpow),
+    # sin/cos carry an ABSOLUTE error bound, not ULP: near their zeros at large
+    # |x|, Cody–Waite reduction error is a fixed absolute quantity (~ulp of the
+    # n·π/2 products), so relative ULP diverges there for EVERY non-Payne-Hanek
+    # f32 trig — the honest contract is |err| ≤ bound over the declared domain.
+    for name, inputs, sim, true, kind in (
+        ("fexp", [(x,) for x in exp_inputs()], sim_fexp, true_fexp, "ulp"),
+        ("fln", [(x,) for x in ln_inputs()], sim_fln, true_fln, "ulp"),
+        ("fpow", pow_inputs(), sim_fpow, true_fpow, "ulp"),
+        ("fsin", [(x,) for x in sincos_inputs()], sim_fsin, true_fsin, "abs"),
+        ("fcos", [(x,) for x in sincos_inputs()], sim_fcos, true_fcos, "abs"),
+        ("fatan2", atan2_inputs(), sim_fatan2, true_fatan2, "ulp"),
     ):
-        cases, max_ulp = [], 0
+        cases = []
+        max_ulp, max_abs = 0, 0.0
         for args in inputs:
             s, t = sim(*args), true(*args)
-            d = ulp_dist(s, t)
-            max_ulp = max(max_ulp, d)
+            if kind == "ulp":
+                max_ulp = max(max_ulp, ulp_dist(s, t))
+            else:
+                max_abs = max(max_abs, abs_err(s, t))
             cases.append(list(args) + [s, t])
-        out[name] = {"bound": max_ulp + 1, "measured_max_ulp": max_ulp, "cases": cases}
-        print(f"{name}: {len(cases)} cases, measured max ulp {max_ulp} -> bound {max_ulp + 1}")
+        if kind == "ulp":
+            entry = {"bound_kind": "ulp", "bound": max_ulp + 1,
+                     "measured_max_ulp": max_ulp, "cases": cases}
+            print(f"{name}: {len(cases)} cases, measured max ulp {max_ulp} -> bound {max_ulp + 1}")
+        else:
+            bound = max_abs * 1.25
+            entry = {"bound_kind": "abs", "bound": bound,
+                     "measured_max_abs": max_abs, "cases": cases}
+            print(f"{name}: {len(cases)} cases, measured max abs err {max_abs:.3e} -> bound {bound:.3e}")
+        BANKS[name] = entry
     path = pathlib.Path(__file__).with_name("f32_trans_golden.json")
-    path.write_text(json.dumps(out, separators=(",", ":")) + "\n")
+    path.write_text(json.dumps(BANKS, separators=(",", ":")) + "\n")
     print(f"wrote {path}")
+
+
+BANKS: dict = {}
 
 
 if __name__ == "__main__":

@@ -20,7 +20,8 @@ pub(crate) fn lower_method_call(
     // `.abs()`, `.copysign(b)`, and the classification trio
     // `.is_nan()`/`.is_finite()`/`.is_subnormal()` (inline compares, no kernel).
     if let "sqrt" | "abs" | "floor" | "ceil" | "trunc" | "round" | "min" | "max" | "copysign"
-    | "is_nan" | "is_finite" | "is_subnormal" | "exp" | "ln" | "powf" = method.as_str()
+    | "is_nan" | "is_finite" | "is_subnormal" | "exp" | "ln" | "powf" | "sin" | "cos"
+    | "atan2" = method.as_str()
     {
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
         if rw != Width::F32 {
@@ -37,6 +38,8 @@ pub(crate) fn lower_method_call(
             "round" => Some("fround"),
             "exp" => Some("fexp"),
             "ln" => Some("fln"),
+            "sin" => Some("fsin"),
+            "cos" => Some("fcos"),
             _ => None,
         };
         if let Some(kernel) = unary_kernel {
@@ -46,11 +49,11 @@ pub(crate) fn lower_method_call(
             ctx.mark_f32(kernel);
             return Ok((Expr::Call(kernel.to_string(), vec![recv]), Width::F32));
         }
-        if method == "min" || method == "max" || method == "powf" {
+        if method == "min" || method == "max" || method == "powf" || method == "atan2" {
             let arg = m
                 .args
                 .first()
-                .ok_or("`.min()`/`.max()`/`.powf()` take one argument")?;
+                .ok_or("`.min()`/`.max()`/`.powf()`/`.atan2()` take one argument")?;
             let (ae, aw) = lower_expr(arg, ctx)?;
             require_f32_pair(rw, aw)?;
             if f32_operand_effects(&recv) && f32_operand_effects(&ae) {
@@ -62,7 +65,8 @@ pub(crate) fn lower_method_call(
             let kernel = match method.as_str() {
                 "min" => "fmin",
                 "max" => "fmax",
-                _ => "fpow",
+                "powf" => "fpow",
+                _ => "fatan2",
             };
             ctx.mark_f32(kernel);
             return Ok((Expr::Call(kernel.to_string(), vec![recv, ae]), Width::F32));
