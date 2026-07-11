@@ -49,32 +49,61 @@ from .library import open_library
 from .tier3 import BATTERY
 
 MAX_EXAMPLES = 3
-# Types an example can drive today (buffer I/O arrives with Phase S3;
-# f32 bit-patterns are not plausibly user-authorable). Signed types are
-# register-encodable — `min_i16` reads the same u16 battery as `min`, which is
-# exactly why they collide and must be in the sibling pool.
+# Types a REGISTER example can drive (value cells; buffer I/O arrives with
+# Phase S3). Signed types are register-encodable — `min_i16` reads the same u16
+# battery as `min`, which is exactly why they collide and must be in the pool.
 _SCALAR_TYPES = {"u8", "u16", "u32", "i8", "i16", "i32"}
+# State cells additionally drive f32 fields (Finance80): cells are deterministic
+# softfloat, so an f32 example matches BIT-EXACTLY — the sidecar carries the bit
+# pattern (u64), while the information content is an ordinary decimal a user
+# would type (rate=0.05); surfaces convert. Value-cell f32 params stay excluded
+# (the register path is u16).
+_STATE_TYPES = _SCALAR_TYPES | {"f32"}
 
 # The state-cell input pool: 0/1-heavy so validity-limited flag fields
 # (`neg_a`/`neg_b` must be 0|1 or the cell escalates) land legal values often,
 # with small distinct magnitudes so arithmetic families actually disagree.
 _STATE_POOL = [3, 0, 7, 1, 9, 0, 4, 1, 12, 0, 100, 1, 2, 0, 5, 1]
+# The f32 field pool: plausible finance-shaped decimals (rates, prices, flags'
+# neighbours), kept small and distinct so families disagree; 0.0 for identity
+# edges. Stored as bits at row-build time.
+_FLOAT_POOL = [0.05, 100.0, 0.5, 1.0, 0.0, 2.0, 10.0, 0.25, 1.5, 3.0]
 
 
-def _state_rows(k: int) -> list[tuple[int, ...]]:
-    """Deterministic candidate input rows for a k-field state cell: rotations of
-    the 0/1-heavy pool, all-zeros/ones, alternating flags, and mag/flag
-    interleavings (the sign-magnitude layout convention)."""
+def _f32_bits(v: float) -> int:
+    import struct
+
+    return struct.unpack("<I", struct.pack("<f", v))[0]
+
+
+def _state_rows(types: list[str]) -> list[tuple[int, ...]]:
+    """Deterministic candidate input rows for a state cell, typed per field:
+    integer fields rotate the 0/1-heavy pool (byte-identical to the pre-f32
+    generator for all-integer layouts), f32 fields rotate the decimal pool as
+    bit patterns."""
+    k = len(types)
+    flt = [i for i, t in enumerate(types) if t == "f32"]
+
+    def val(i: int, j: int) -> int:
+        if types[i] == "f32":
+            # Index by position among the float fields so layouts stay stable.
+            fi = flt.index(i)
+            return _f32_bits(_FLOAT_POOL[(fi + j) % len(_FLOAT_POOL)])
+        return _STATE_POOL[(i + j) % len(_STATE_POOL)]
+
+    def flat(i: int, intval: int, fltval: float) -> int:
+        return _f32_bits(fltval) if types[i] == "f32" else intval
+
     rows: list[tuple[int, ...]] = []
     for j in range(12):
-        rows.append(tuple(_STATE_POOL[(i + j) % len(_STATE_POOL)] for i in range(k)))
-    rows.append(tuple(0 for _ in range(k)))
-    rows.append(tuple(1 for _ in range(k)))
-    rows.append(tuple(i % 2 for i in range(k)))
-    rows.append(tuple((i + 1) % 2 for i in range(k)))
-    rows.append(tuple(9 if i % 2 == 0 else 0 for i in range(k)))
-    rows.append(tuple(4 if i % 2 == 0 else 1 for i in range(k)))
-    rows.append(tuple(2 if i % 2 == 0 else 0 for i in range(k)))
+        rows.append(tuple(val(i, j) for i in range(k)))
+    rows.append(tuple(flat(i, 0, 0.0) for i in range(k)))
+    rows.append(tuple(flat(i, 1, 1.0) for i in range(k)))
+    rows.append(tuple(flat(i, i % 2, 0.5) for i in range(k)))
+    rows.append(tuple(flat(i, (i + 1) % 2, 0.05) for i in range(k)))
+    rows.append(tuple(flat(i, 9 if i % 2 == 0 else 0, 100.0) for i in range(k)))
+    rows.append(tuple(flat(i, 4 if i % 2 == 0 else 1, 2.0) for i in range(k)))
+    rows.append(tuple(flat(i, 2 if i % 2 == 0 else 0, 10.0) for i in range(k)))
     seen: set[tuple[int, ...]] = set()
     out = []
     for r in rows:
@@ -132,9 +161,11 @@ class _Tables:
         state = m.get("state") or []
         params = m.get("params") or []
         if state:
-            if any(ty not in _SCALAR_TYPES for _, ty in state):
+            if any(ty not in _STATE_TYPES for _, ty in state):
                 return None
-            return ("s", tuple(name for name, _ in state))
+            # Same-layout means same names AND types: an f32 `rate` and a u16
+            # `rate` are different example surfaces.
+            return ("s", tuple((name, ty) for name, ty in state))
         if any(ty not in _SCALAR_TYPES for _, ty in params):
             return None
         if len(params) not in BATTERY:
@@ -206,8 +237,9 @@ class _Tables:
         (0 at reset), which is what a user-authored example looks like.
         """
         if key not in self._state_runs:
-            names = list(key[1])
-            rows = _state_rows(len(names))
+            names = [n for n, _ in key[1]]
+            types = [t for _, t in key[1]]
+            rows = _state_rows(types)
             full = [dict(zip(names, r)) for r in rows]
             pass1 = {cid: self._run_state_rows(cid, full) for cid in self.members(key)}
             out_fields = sorted(

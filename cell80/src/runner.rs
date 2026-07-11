@@ -870,6 +870,17 @@ impl Runner {
         self.prog = program.prog.clone();
         self.cfg = program.cfg.clone();
         self.mem[org..org + self.prog.code.len()].copy_from_slice(&self.prog.code);
+        // A banked program needs the resident kernel bank exactly like `Runner::new`
+        // stamps it — a recycled bus may never have carried it (born under a non-bank
+        // cell), and running into zeroed 0xC000 is a cycle-budget runaway, not an
+        // error. The bank lives outside touch-tracking, so stamping is idempotent
+        // and survives per-run resets; a stale bank left for a non-bank successor
+        // is unreachable (sandboxed cells can't address it).
+        if program.uses_kernel_bank() {
+            let bank = rustz80::kernel_bank();
+            let b = rustz80::BANK_ORG as usize;
+            self.mem[b..b + bank.code.len()].copy_from_slice(&bank.code);
+        }
         // Memoized results belong to the *previous* program — drop them (and the
         // counters: stats are per-program, or the hit-rate lies across a pool reuse).
         if let Some(c) = self.cache.as_mut() {

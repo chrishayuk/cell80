@@ -291,6 +291,23 @@ direct floor already covers it and the shading class is documented benign.)
 2. **co_match density is a watched number per batch** — growth manufactures exactly the
    ambiguity class the residue is made of (predicate families, low-arity coincidences).
 
+**First contact: Finance80 Wave 1 (2026-07-11, 653→697 cells, +136 eval rows).** The gate
+worked exactly as registered — the wave landed without a sidecar regeneration and coverage
+fell to 0.91, failing the blocking gate. Fixing forward surfaced two real defects:
+(1) a **host bug** — `Runner::reset_for` (the pool-recycle path) never stamped the resident
+kernel bank, so any `kernel_bank: on` cell recycled onto a bus born under a non-bank cell
+ran into zeroed 0xC000 and died on `cycle_budget`; every warm host (MCP included) was
+affected, found because the generator loads hundreds of cells before the finance group
+(fix + regression test `cell80/tests/pool_bank.rs`); (2) a **generator gap** — f32 state
+fields were excluded as "not user-authorable", but cells are deterministic softfloat, so an
+f32 example matches bit-exactly; the sidecar now carries bit patterns whose information
+content is ordinary decimals (rate=0.05), integer-only layouts byte-identical to before.
+Post-fix at 697 cells: **coverage 0.984, equipped paraphrase 0.88, adversarial 0.93,
+direct 0.95, deployed 0.92** — the f32-dense, deliberately-confusable finance families did
+not dent the fused lane on their first wave. Residual unequipped: 23 rows whose cells'
+validity domains reject the whole probe pool (iterative/date cells) — the active-
+disambiguation / property-example work below is their lever.
+
 **Owed work (registered, in rough order of leverage):**
 - *Agent-authored-example benchmark* — the end-to-end lane (see naming discipline above).
 - *Active disambiguation* — when the router returns a behavioural equivalence class,
