@@ -120,12 +120,13 @@ cell80 makes the unit tiny enough to treat tools like data:
 
 ```console
 $ cell80 search "distance between grid points" cells/
-indexed 395 cells; query `distance between grid points` → 10 match(es):
+indexed 500 cells; query `distance between grid points` → 10 match(es):
   manhattan — Manhattan distance between two grid points (typed state).  [grid, distance, spatial, score, navigation]  (Pts::run() -> u16)
   euclid_sq — Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt). Wide u32 dist field.  [grid, distance, euclidean, squared, spatial, magnitude]  (Pts::run() -> u16)
   manhattan_wide — Manhattan distance between two grid points, into a wide u32 field so it can't silently wrap.  [grid, distance, spatial, wide, u32]  (Pts::run() -> u16)
   chebyshev — Chebyshev (chessboard) distance between two grid points: max(|dx|, |dy|).  [grid, distance, chebyshev, chessboard, spatial]  (Pts::run() -> u16)
-  ...                                                                   (abs_diff and 6 more, lower-ranked)
+  manhattan_i16 — Manhattan distance with signed (i16) coordinates, into a wide u32 field.  [grid, distance, spatial, signed, i16, wide, u32]  (PtsSigned::run() -> u16)
+  ...                                                                   (abs_diff and 5 more, lower-ranked)
 ```
 
 The loop an agent runs: **`search` → `inspect` → `run` → discard** — over a library that may
@@ -417,7 +418,7 @@ cell_compose(
 | **[`z80-tests`](./z80-tests)** | the Z80 conformance harness — SingleStepTests vectors + ZEXDOC. |
 
 The roadmap (`docs/roadmap.md`) tracks the agent eval harness, typed-state I/O over MCP
-(done), the **standard library** (done — **395 cells** across 30+ families incl. the
+(done), the **standard library** (done — **500 cells** across 30+ families incl. the
 math-campaign packs: checked/exact wide arithmetic, fractions, money/bps, units,
 verifier/ranker, sign-magnitude — plus the compiler
 ergonomics that make predicates/bitops one-liners and a **shared-kernel prelude + dead-code

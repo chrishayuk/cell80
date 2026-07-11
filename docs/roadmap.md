@@ -292,7 +292,7 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — 395 cells across 30+ families (2026-07-11).**
+6. **Grow the standard cell library — 500 cells across 30+ families (2026-07-11).**
    `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
    number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
    scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
@@ -322,7 +322,28 @@ strictly by sequence; the library grows by eval need:
    after the fact (gate re-run, a cell-quality spot-check, the codegen-golden diff
    confirmed purely additive) rather than accepted on the workflow's own report — full
    account, including the admission-gate's duplicate-pair-naming quirk this batch surfaced,
-   in `docs/library-growth.md`'s "Systematic family expansion" section.
+   in `docs/library-growth.md`'s "Systematic family expansion" section. That same pass also
+   closed two long-open backlog items by hand (not delegated, since the numerics needed real
+   reasoning): **`cosine_score_approx`** (vector) — blocked for many checkpoints on
+   "sqrt(norm_a\*norm_b) without overflow," solved once `isqrt_u32` (a wide integer sqrt this
+   batch itself added) made the trick work: two u16-bounded norms always fit a u32 product,
+   no overflow ever possible — and **`lerp_i16`** (signed-deltas) — `q_lerp`'s signed sibling,
+   blocked on `b-a` exceeding `i16`'s own range even for valid `i16` endpoints, solved with
+   the sign-magnitude pattern this session proved out (395→397). Q16.16 fixed-point plumbing,
+   the third named backlog item, was checked and confirmed still genuinely blocked (needs a
+   64-bit intermediate the dialect lacks — real compiler work, on WS-C's own roadmap, not
+   forced here). **397→500 (2026-07-11) is round 2 of the same Workflow approach**, 13
+   narrower single/dual-pack clusters (round 1's broad clusters had already taken the easy
+   wins) digging deeper: 126 raw → 111 deduped → 110 verified → gate caught 7 duplicates →
+   **103 landed, 500 admitted / 0 refused**. The dedupe step stalled repeatedly on the first
+   attempt (one agent choking on 126 candidates); fixed by splitting it into two lighter
+   passes and resuming from the cached discovery results rather than losing that work.
+   Deliberately excludes a concurrent session's in-flight cartridge-format (v10) changes
+   sitting uncommitted in the same working tree — not this batch's to own. The retrieval
+   kill-gate was re-checked at both 395 and 500 cells (checkpoints 17-18,
+   `cell-eval/baselines/library-scale-curve.json`): paraphrase is flat and **adversarial is
+   now measurably above the original 114-cell baseline** despite the library growing 4.4×,
+   so growth remains sanctioned.
    **The 209→310 gap is `docs/math-server-map.md`'s mining pass** (`chuk-mcp-math-server`'s
    642 functions classified against the live library) **plus its full harvest, waves 6-14
    (2026-07-07 to 2026-07-09)**: number theory (Möbius/omega/divisor-power-sum/Jordan

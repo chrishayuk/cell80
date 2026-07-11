@@ -724,9 +724,12 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   straightforward 4-candidate generalization, built once the pattern was clearly repeated.
   `tie_break_*` still open, still under-specified — no concrete use case beyond what
   `argmax3`/`choose_best3`/`mode3` already bake in.
-- **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
-  fixed-point sqrt-of-a-product; the 90-cell batch added `dot3`/`norm3_sq`, the 3D siblings
-  of the 2D vector ops, but didn't touch this blocker).
+- **vector — `cosine_score_approx` landed (2026-07-11).** The long-open "overflow-safe
+  sqrt-of-a-product" blocker, closed once `isqrt_u32` existed (the 90-cell batch's own
+  addition): two u16-bounded norms always fit a u32 product with room to spare
+  (`65535*65535 < u32::MAX`), so the missing piece was the wide sqrt kernel, not a design
+  problem. Built by hand, not delegated, and verified against hand-computed cases before
+  landing (`cell80/cells/vector/cosine_score_approx.rs`).
 - **stateful / RNG — first slice landed** (see the pack note above): `lcg_next`,
   `xorshift16`, `counter_step`. `bounded_rand` was checked against `docs/cell-index.md`
   and found to be an exact duplicate of `safe_mod` — not built. (`ema_update`/
@@ -737,11 +740,21 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
 - **signed deltas — first slice landed** (see the pack note above): `sign_i16`, `abs_i16`,
-  `clamp_i16`, `apply_delta_clamped`. `lerp_i16` still open (signed multiply/divide
-  rounding direction and overflow safety not yet worked out — though the 90-cell batch's
-  `negate_i16`/`min_i16`/`max_i16`/`abs_diff_i16` and, separately, `linear_solve_1var`/
-  `linear_eq_holds`'s sign-magnitude pattern make the "not yet worked out" part more
-  tractable than when this was first written).
+  `clamp_i16`, `apply_delta_clamped`; the 90-cell batch added `negate_i16`/`min_i16`/
+  `max_i16`/`abs_diff_i16`. **`lerp_i16` landed (2026-07-11)** — the "signed multiply/divide
+  rounding direction and overflow safety not yet worked out" blocker, closed with the
+  sign-magnitude pattern `linear_solve_1var`/`linear_eq_holds` proved out: `b-a` can exceed
+  `i16`'s own representable range even when `a`/`b` are both valid `i16` (e.g. `i16::MAX` to
+  `i16::MIN`), so it's computed via `(magnitude, sign)` throughout, never a native `i16`
+  subtract. Shipped as a 3-arg free function (matching `q_lerp`'s own convention), not a
+  state cell — an early draft over-defaulted to one out of habit, caught and simplified
+  before landing. Built by hand and verified against hand-computed cases, including the
+  `i16::MAX`/`i16::MIN` boundary, before landing (`cell80/cells/signed-deltas/lerp_i16.rs`).
+- **Q16.16 fixed-point plumbing — checked, still genuinely blocked.** Not a design gap this
+  session could close: a Q16.16 `q_mul` needs a 64-bit intermediate the dialect doesn't
+  have (`docs/10-dialect-semantics.md`). Real compiler-level work, already on the
+  multi-target track's own roadmap (WS-C's Q16.16 stretch, `docs/13-multi-target-spec.md`)
+  — not something to force from the library side.
 - **array-state-field gap, still open (confirmed, not just suspected)** — blocks the whole
   sliding-window family (`simple_moving_average`, `weighted_moving_average`,
   `rolling_variance`, `rolling_std`) and percentile-from-histogram. A hand-authored,
@@ -749,7 +762,7 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   `experiments/sliding-window-state-cells/` pending a real named array/buffer round-trip
   design (the same primitive Phase S3's `bytes[N]`/`str[N]` I/O needs and never built) — see
   `experiments/sliding-window-state-cells-findings.md` for the open design questions. This is
-  a design task, not an authoring one; the 90-cell batch deliberately didn't touch it.
+  a design task, not an authoring one; neither the 90-cell nor the 103-cell batch touched it.
 
 ## Phase 2.3 — growing toward ~1,000 cells
 
@@ -1983,6 +1996,57 @@ reproduced against a clean pre-batch checkout in an isolated worktree and confir
 *already fail there* — caused by the concurrent A5/`cell80-core` + WS-B/RV32 multi-target
 refactor landing in `rustz80/src` during the same window, not by any of the 82 new cells.
 `cargo test -p cell80 --test library`: 160 passed, 0 failed. `cargo fmt --check`: clean.
+
+### Round 2 — narrower clusters, deeper mining (397 → 500, 2026-07-11)
+
+Same pipeline, deliberately narrower discovery clusters this time (13 single/dual-pack
+clusters — `number-theory` alone, `geometry` alone, `verifier-ranker` alone, etc. — instead
+of round 1's 8 broad multi-pack clusters) on the theory that round 1 had already taken the
+easy cross-pack wins, so round 2 needed to dig into individual packs rather than skim many
+at once. Also told explicitly about `isqrt_u32` and the sign-magnitude pattern in case either
+unblocked something else the way they'd just unblocked `cosine_score_approx`/`lerp_i16`.
+
+Pipeline: 13 discovery agents proposed 126 raw candidates → dedupe → 111 candidates → 110
+individually authored and verified (0 failures) → the admission gate caught 7 duplicates,
+backed out cleanly (always the new-side cell, per the established rule — two of the seven
+were the gate naming a *pre-existing* cell as the duplicate again, e.g. `point_in_triangle`
+flagged against pre-existing `segments_intersect_int`, confirming that quirk isn't a one-off).
+**Net: 103 landed, 500 admitted / 0 refused.**
+
+**A process failure, and the fix.** The single dedupe agent stalled repeatedly on the first
+attempt — 126 candidates' worth of JSON plus the full dialect brief was too much for one
+agent to chew through reliably; six retries over several hours, all stalled, before the
+whole workflow gave up. Rather than re-running the (expensive, already-succeeded) discovery
+phase, the run was resumed from its cache with only the dedupe step changed: split into two
+independent, deliberately lightweight passes (no deep source verification, just a fast check
+against `docs/cell-index.md` and a cap), plus a trivial plain-code pass to drop exact-name
+collisions between the two halves. This worked on the first retry. The lesson: a dedupe step
+doesn't need to be exhaustive or careful — the real admission gate downstream is the actual
+safety net (proven twice now), so the dedupe step's only job is to get the candidate count
+down to something an author-phase agent-per-candidate pipeline can chew through, fast.
+
+**A second instance of shared-checkout discipline mattering.** By the time this batch's
+Finalize phase ran, a concurrent session had landed substantial in-flight (uncommitted)
+changes to `cell80/src/cartridge.rs`/`lib.rs` — a "cell-family identity" v10 cartridge
+format, part of the multi-target track's WS-E1 work — which broke compilation (two
+`Manifest { .. }` test literals in `cell80/src/tfidf.rs` were missing the new `target`/
+`family_hash` fields) and broke a second, previously-passing test
+(`tests/cell.rs::pre_v5_cartridges_still_load`, a cartridge byte-layout assumption the v10
+format invalidated). The Finalize agent applied the minimal mechanical fix to unblock its own
+verification (adding the two fields to the test literals) — correct as a local, temporary aid,
+but **not committed**: `cell80/src/{cartridge,lib,tfidf}.rs` and the new `cell80/tests/
+cartridge_v10.rs` all stayed out of this batch's commit, left in the working tree for the
+owning session. Independently confirmed both failures (the already-known `tests/compose.rs`
+one and the new `pre_v5_cartridges_still_load` one) trace to that same in-flight work, not to
+any of the 103 new cells — reproduced directly, not just trusted from the report.
+
+**Retrieval, checked at both landings this round** (`cell-eval/baselines/library-scale-curve.json`
+checkpoints 17-18): at 395 cells, direct 0.8202 / paraphrase 0.3887 / adversarial 0.4167; at
+500 cells, direct 0.8082 / paraphrase 0.3891 / adversarial 0.4444. Against checkpoint 1's
+114-cell baseline (direct 0.94 / paraphrase 0.42 / adversarial 0.39): paraphrase is
+essentially flat, and **adversarial is now measurably above the original baseline** —
+despite the library growing 4.4× over the session. The kill-gate has not tripped once across
+either batch.
 
 ## After authoring: re-run the evals
 

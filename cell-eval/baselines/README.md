@@ -177,6 +177,15 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     checkpoint-16→17 adversarial dip (−8.3 pts, likely the same same-shape-sibling effect
     checkpoint 12 already diagnosed as text-search-unfixable) in `docs/library-growth.md`'s
     "Checkpoint 17" note.
+  - **Checkpoint 18 (`checkpoint-18-workflow-round2`, 500 cells, commit `6ad158a`,
+    2026-07-11) — a second Workflow batch, checked immediately rather than left to drift.**
+    P@1 direct 0.8082 / paraphrase 0.3891 / adversarial 0.4444 (1007 cases). Against
+    checkpoint 17 (395 cells): paraphrase flat, **adversarial recovered the checkpoint-17 dip
+    and then some** (0.4167 → 0.4444, +2.8 pts). Against checkpoint 1's baseline (114
+    cells): paraphrase still essentially flat (0.4247 → 0.3891, −3.6 pts), and
+    **adversarial is now clearly above it** (0.3939 → 0.4444, +5.1 pts) — after the library
+    grew 4.4× over the session. The kill-gate has not tripped across either of the two
+    Workflow batches.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
