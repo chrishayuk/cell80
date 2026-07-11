@@ -339,18 +339,28 @@ the revisions (WS-A re-scoped as a contract rewrite, the reference IR interprete
 first-class deliverable, signed re-specced as *widening* — i16 already shipped, the
 cell-layer workstream WS-E, evaluation order pinned left-to-right, "no hardware floats").
 
-**5.1 WS-A — cell-core + target descriptor (first, ~3 weeks).** Descriptor introduced,
-Z80 ported onto it (Spectrum48/Cell become descriptor instances), width generalisation +
-sign_extend, i32, the reference IR interpreter, `cell-core` extraction.
-*DoD:* rustz80 suite green; `codegen_golden` byte-identical except the single
-pre-registered evaluation-order break (M0 kill criterion + golden-break policy in the
-spec §5).
+**5.1 WS-A — cell-core + target descriptor. ✓ shipped (2026-07-10/11).** Descriptor
+introduced, Z80 ported onto it (Spectrum48/Cell as descriptor instances), the
+reference IR interpreter (A4, a standing battery oracle), evaluation order
+canonicalized (A2a — the one sanctioned golden break: 4/347 programs, −8 bytes),
+`SignExtend` + the width contract (A2b), i32 through the IR (A3,
+interpreter-accepted; Z80 gates signed-32 instructively), and the `cell80-core`
+extraction (A5 — dependency-free; rustz80 consumes behind unchanged paths; CI
+publishes `cell80-z80 → cell80-core → rustz80 → cell80`).
+*DoD held:* suite green throughout; golden byte-identical except A2a's pre-registered
+break, landed as its own reviewed commit.
 
-**5.2 WS-B — RV32 backend + executor (critical path).** RV32I codegen against Sail from
-the first instruction; cycle-accounted executor; rustc-adversary matrix extended; RP2350
-bring-up with the `mcycle` co-sign.
-*DoD:* spec §3 WS-B — the M2 demo: same-source cell on Spectrum and Pico 2, same
-answers, two cycle certificates (Z80 side: Spectrum48 target).
+**5.2 WS-B — RV32 backend + executor (critical path). B1–B3 shipped (2026-07-11).**
+`rustrv32`: the RV32 `Ins` sibling + exact encoder (encoding goldens), the
+cycle-accounted RV32IM executor (RISC-V-exact M semantics, Hazard3-truth misalignment
+faults, provisional cycle table pinned by test), codegen over the shared IR (family
+2-byte slot ABI; native signed-32), and the battery legs: every diff program runs on
+rustc + 2×Z80 + interpreter + RV32, with the RV32 data window byte-identical to the
+interpreter's image. Per-file coverage ≥90%. Demo:
+`cargo run -p rustz80 --example cell_family`.
+*Owed for full 5.2:* the Sail model as the emission adversary (linux-only CI job),
+the determinism-fuzz battery + RV32 peephole suite, and B4 — RP2350 bring-up with the
+`mcycle` co-sign (the M2 demo's silicon half; the software half runs today).
 
 **5.3 WS-C — robo dialect.** Q-format (Q8.8 gate — live machinery today; Q16.16
 stretch), the `bounded` WCET sub-dialect (static cycle bounds — new machinery), sensor
@@ -397,6 +407,7 @@ admission gate) are shipped; 2.3 (the scale curve) is the remaining open item, g
 behind 2.2 by design since growing to 1K cells before ingest gating would manufacture
 the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
-the next dialect expansion, as required. Phase 5 (multi-target) opens 2026-07-10 with
-WS-A: the target descriptor + cell-core, gated by the codegen golden (M0 kill criterion
-in the spec) before any new ISA is touched.
+the next dialect expansion, as required. Phase 5 (multi-target) opened 2026-07-10;
+WS-A shipped whole in two days and WS-B's compiler is live in the battery — the
+remaining critical path to the public M2 demo is hardware (the RP2350 `mcycle`
+co-sign) plus the Sail CI adversary.

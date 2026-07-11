@@ -28,6 +28,29 @@ to prepend a shared-kernel prelude and prune whatever a cell doesn't call. The d
 real Rust* → every program is differential-tested against `rustc` on the emulator
 (`tests/diff.rs`).
 
+**The cell-family (Phase 5 — multi-target, in flight; spec
+[13-multi-target-spec.md](13-multi-target-spec.md)).** WS-A shipped 2026-07-10/11:
+the **target descriptor** (Spectrum48/Cell as instances; codegen forks on the
+descriptor, never the target), the **reference IR interpreter** (a standing oracle in
+the diff battery beside rustc and both Z80 targets), **evaluation order canonicalized
+left-to-right wherever observable** (the one sanctioned golden break: 4/347 programs,
+−8 bytes), the **explicit width-bridge family** (`SignExtend`; `i16 as u32` unfrozen),
+**i32 through the IR** (interpreter-accepted; signed-32 gated out of Z80 codegen with
+an instructive pointer at the backends that have it), and the **`cell80-core`
+extraction** (typed IR + passes + interpreter + descriptors, dependency-free; rustz80
+is backend zero on top). WS-B's compiler shipped (B1–B3): **`rustrv32`** — the RV32
+`Ins` sibling + exact encoder (encoding goldens), the cycle-accounted RV32IM executor
+(RISC-V-exact M semantics, Hazard3-truth misalignment faults, provisional cycle table
+pinned by test), and full codegen over the shared IR (family 2-byte slot ABI in a
+64 KiB window mirroring the interpreter's map; native signed-32). The battery runs
+every program on **five systems** — rustc, 2× Z80, the interpreter, RV32 — and
+`run_to_memory` compares the RV32 window against the interpreter image **byte for
+byte, unmasked**. Per-file coverage ≥90% across both new crates. Demo:
+`cargo run -p rustz80 --example cell_family` (gcd: 6021 on all three bodies — 12,882
+authentic T-states vs 490 provisional RV32 cycles; an i32 deadband runs natively on
+RV32 while backend zero refuses, as pre-registered). Owed: Sail CI adversary,
+rustrv32 fuzz + peephole, the B4 `mcycle` co-sign on silicon.
+
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
   host traps for mul/div/fill/halt; a NOP on real hardware, so it never contaminates

@@ -65,6 +65,43 @@ registry can present it and validate inputs **without re-parsing the source**.
 
 ---
 
+## One cell, many bodies (the cell-family)
+
+The cell contract — content-addressed, capability-manifested, cycle-accounted,
+differentially verified — is not a Z80 claim. Phase 5
+([docs/13-multi-target-spec.md](docs/13-multi-target-spec.md)) extracts the
+target-independent core (**`cell80-core`**: the typed IR and its contract, the IR
+passes, the reference IR interpreter, the target descriptors) and adds the first
+sibling backend: **`rustrv32`**, RV32I(M) for the Hazard3 core in the RP2350 — the
+antweight-robot reflex organ this is deployed toward. One source compiles through the
+shared IR into independent artifacts that must agree, and the diff battery now runs
+every program against **five systems**: release-mode rustc (the oracle), both Z80
+targets, the IR interpreter, and the RV32 executor — with the RV32 data window
+compared **byte for byte** against the interpreter's memory image.
+
+```console
+$ cargo run -p rustz80 --example cell_family
+== one source, three bodies: gcd (u16) ==
+  Z80/Spectrum48   result= 6021   T-states=12882 (authentic)
+  RV32/Hazard3     result= 6021   cycles=490 (provisional table)
+  IR interpreter   result= 6021   (the reference meaning)
+  agreement: all three identical
+
+== the family widens: deadband (i32) ==
+  RV32/Hazard3     result=   11   cycles=301 (signed-32 native)
+  IR interpreter   result=   11
+  Z80/backend-zero refuses, as pre-registered:
+    rustz80: this program uses a signed 32-bit comparison — backend zero doesn't
+    emit signed-32 ops … compile it with the RV32 backend (rustrv32, where they
+    are native) or run it on the reference interpreter
+```
+
+The Z80 T-states are authentic (the cycle-exact core underneath); the RV32 cycle
+table is explicitly provisional until `mcycle` on real RP2350 silicon co-signs it
+(spec §3, B4). Still owed from WS-B: the RISC-V Sail model as the emission adversary
+in CI, the rustrv32 determinism-fuzz battery and peephole suite, and the silicon
+co-sign itself.
+
 ## The vision
 
 Agents constantly need to *run a little code*: score candidates, validate a move, step a
@@ -367,7 +404,9 @@ cell_compose(
 | crate | what it is |
 |-------|------------|
 | **[`cell80-z80`](./z80)** | a cycle-accurate Z80 CPU core (`no_std`-friendly, dependency-free). Import name `z80`. |
-| **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler: `syn` frontend → typed IR → Z80 codegen. Differential-tested against `rustc`. |
+| **[`cell80-core`](./cell80-core)** | the **target-independent compiler core** (Phase 5): the typed IR and its semantic contract, the inline/DCE passes, the reference IR interpreter, and the target descriptors. Dependency-free. |
+| **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler (**backend zero**): `syn` frontend → `cell80-core` IR → Z80 codegen. Differential-tested against `rustc`. |
+| **[`rustrv32`](./rustrv32)** | the **RV32I(M) sibling backend** (Phase 5, WS-B): its own symbolic `Ins` layer + exact encoder, a cycle-accounted RV32IM executor (Hazard3/RP2350-shaped), and codegen over the shared IR — live in the same diff battery. |
 | **[`cell80`](./cell80)** | the **cell micro-VM + tooling** (built on `rustz80`): `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, typed-state I/O, host-routed `CellGraph` composition, and the `cell80` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
@@ -397,6 +436,14 @@ signed `i16` — shipped), retrieval as the product, trust (signed cells, escala
 memoization), and codegen stage 2 (the symbolic `Ins` layer + the measured peephole —
 shipped, −4.3 % corpus code size, plus a later `INC` strength-reduction rule at −497 B more;
 u32 array elements remain).
+**Phase 5 (in flight)** opens the **multi-target cell-family**
+([docs/13-multi-target-spec.md](docs/13-multi-target-spec.md)): WS-A complete
+(target descriptor, reference IR interpreter, canonical evaluation order, the
+explicit width-bridge family with `SignExtend`, i32 through the IR, the
+`cell80-core` extraction), WS-B's compiler live (B1–B3: the RV32 backend in the
+full battery, byte-exact window parity with the interpreter, per-file coverage
+≥90%); owed: the Sail CI adversary, fuzz + peephole for rustrv32, and the RP2350
+`mcycle` co-sign (B4).
 
 ---
 

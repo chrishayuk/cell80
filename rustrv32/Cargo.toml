@@ -10,6 +10,7 @@ rust-version.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
 keywords = ["riscv", "rv32", "compiler", "emulator", "cell80"]
 categories = ["compilers", "emulators"]
 publish = false # joins the publish set when consumable (M2)
