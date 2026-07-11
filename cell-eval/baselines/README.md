@@ -308,8 +308,37 @@ not dent the fused lane on their first wave. Residual unequipped: 23 rows whose 
 validity domains reject the whole probe pool (iterative/date cells) — the active-
 disambiguation / property-example work below is their lever.
 
+**The agent-authored-example benchmark (2026-07-11, `cell-eval authored`) — first
+result: the lane FAILS at 3B, and the failure has a deployable mitigation.**
+The eval runs the deployed loop (request → model authors 1–3 I/O probes, never shown
+the target → fused retrieval) over the schema-free-authorable population (value cells,
+arity 1–3: 474 of 1,445 cases, 32.8% — state cells need the search→inspect→author
+two-step, registered below). granite4.1:3b
+(`authored-granite3b-697cells-2026-07-11.json`): well-formed 0.80 but **valid 0.35**
+(the model cannot compute its own outputs), authored P@1 **0.45** — *worse than plain
+text on direct* (0.51 vs 0.82), because invalid examples actively demote the right
+cell — **false_unique_rate 0.095** (one query in ten confidently pinned to the wrong
+cell), correlated failure 0.52. Read against oracle 0.96 on the same cases: the router
+is fine; **test-authoring correctness is the bottleneck**, exactly as the registration
+anticipated.
+**The junk-guard analysis** (same file's cases, `full-match` = some cell reproduces
+every authored example — a query-time signal needing no ground truth): the guard
+provably never discards valid sets (valid-without-full-match = 0), filters 56% of
+invalid ones, and flips the hard splits positive — guarded paraphrase 0.42→**0.49**,
+adversarial 0.44→**0.52** — while direct still bleeds (0.82→0.72) from the 94
+invalid-but-full-match sets (wrong examples some other cell satisfies). The deployable
+composition drops out: **answer high-text-margin queries from text (the existing
+calibrated tier gate), spend guarded authored examples only on the escalated residue.**
+Equivalence-aware metrics landed with the benchmark: on the oracle eval at 697 cells,
+paraphrase strict 0.880 → **0.911 equivalence-aware** (top hit is a recorded co_match
+sibling — behaviourally right, label-wrong); miss-outside-known-class 8.9%.
+Scaling axis (does validity improve with model capability?): gemma4:e4b run pending —
+same command, banked when complete.
+
 **Owed work (registered, in rough order of leverage):**
-- *Agent-authored-example benchmark* — the end-to-end lane (see naming discipline above).
+- *Schema-aware authoring (two-step lane)* — search → inspect → author field examples
+  for state cells (67% of the eval population is currently outside the schema-free lane).
+- *Margin-gated authored retrieval* — the tier-gate composition above, measured.
 - *Active disambiguation* — when the router returns a behavioural equivalence class,
   execute candidates until they diverge and surface the distinguishing input ("these 4
   agree on your examples; they differ on (3,1) — which output do you want?") instead of

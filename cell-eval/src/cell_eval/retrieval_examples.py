@@ -91,6 +91,31 @@ class RetrievalExamplesReport:
     def categories(self) -> list[str]:
         return sorted({c.category for c in self.cases})
 
+    def equivalence_aware(self, category: str | None = None) -> dict:
+        """P@1 counted two ways over the equipped subset: strict (expected at rank
+        1) and equivalence-aware (rank 1 OR the top hit is a recorded `co_match`
+        sibling — behaviourally indistinguishable from expected under the case's own
+        examples, so "wrong" only in the label, not in behaviour). The gap between
+        them is honest ambiguity; `miss_outside_known_class` is the remainder — the
+        misses that are genuinely wrong (or ambiguous through a channel the sidecar
+        doesn't model, e.g. cross-form register coincidence)."""
+        rows = self._subset(category, True)
+        if not rows:
+            return {"n": 0, "p1": 0.0, "equivalence_aware_p1": 0.0, "miss_outside_known_class": 0.0}
+        strict = sum(1 for c in rows if c.fused_rank == 1)
+        aware = sum(
+            1
+            for c in rows
+            if c.fused_rank == 1
+            or (c.fused_returned and c.fused_returned[0] in c.co_match)
+        )
+        return {
+            "n": len(rows),
+            "p1": round(strict / len(rows), 4),
+            "equivalence_aware_p1": round(aware / len(rows), 4),
+            "miss_outside_known_class": round((len(rows) - aware) / len(rows), 4),
+        }
+
     def regressions(self) -> list[ExamplesCaseResult]:
         """Equipped cases where fusion ranked worse than plain search. The fused
         contract says this is impossible; a non-empty list is a bug report."""
@@ -119,6 +144,7 @@ class RetrievalExamplesReport:
                     "plain_all": self.plain(cat).as_dict(),
                     "plain_equipped": self.plain(cat, True).as_dict(),
                     "fused_equipped": self.fused(cat).as_dict(),
+                    "equivalence": self.equivalence_aware(cat),
                 }
                 for cat in self.categories()
             },

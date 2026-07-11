@@ -65,6 +65,30 @@ def _cmd_gen_examples(args) -> int:
     return 0
 
 
+def _cmd_authored(args) -> int:
+    from .authored import run_authored
+    from .report import render_authored
+
+    try:
+        report = run_authored(
+            dataset=args.dataset,
+            examples=args.examples,
+            library_dir=args.library,
+            model=args.model,
+            k=args.k,
+            max_cases=args.max_cases,
+            category=args.category,
+        )
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval authored: {e}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report.as_dict(), indent=2))
+    else:
+        print(render_authored(report))
+    return 0
+
+
 def _cmd_adoption(args) -> int:
     from .adoption import run_adoption
     from .report import render_adoption
@@ -242,6 +266,21 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--dataset", default="retrieval")
     g.add_argument("--out", default=None, help="output path (default datasets/retrieval-examples.jsonl)")
     g.set_defaults(func=_cmd_gen_examples)
+
+    au = sub.add_parser(
+        "authored",
+        help="agent-authored-example retrieval: model invents 1-3 I/O probes from the "
+        "request, fused retrieval selects — the end-to-end lane (oracle numbers are "
+        "checkpoints 21/22)",
+    )
+    au.add_argument("--dataset", default="retrieval")
+    au.add_argument("--examples", default="retrieval-examples", help="oracle sidecar for the comparison column")
+    au.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
+    au.add_argument("--k", type=int, default=5)
+    au.add_argument("--max-cases", type=int, default=None, help="cap the model calls (population still counted)")
+    au.add_argument("--category", default=None, help="direct|paraphrase|adversarial")
+    au.add_argument("--json", action="store_true")
+    au.set_defaults(func=_cmd_authored)
 
     a = sub.add_parser("adoption", help="LLM adoption eval (OpenAI-compatible / Ollama)")
     a.add_argument("--dataset", default="tasks")

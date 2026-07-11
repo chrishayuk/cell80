@@ -14,6 +14,37 @@ def _agg_line(label: str, a: Aggregate) -> str:
     )
 
 
+def render_authored(report) -> str:
+    """The agent-authored-example lane: authoring quality, the behavioural
+    equivalence classes the probes pin down, and retrieval three ways (plain /
+    oracle-equipped / authored) over the same cases."""
+    d = report.as_dict()
+    lines = [
+        f"authored-examples eval — model={d['model']}  library={d['library']}  k={d['k']}",
+        "",
+        f"population: {d['population']} authorable (value cells, arity 1-3) of "
+        f"{d['total_cases']} cases ({d['population_fraction']:.1%}); "
+        f"{d['overall']['n']} asked",
+        "",
+    ]
+
+    def block(label: str, s: dict) -> list[str]:
+        return [
+            f"  {label}: n={s['n']}  well_formed={s['well_formed']:.2f}  "
+            f"valid={s['valid']:.2f}  false_unique={s['false_unique_rate']:.3f}  "
+            f"ambiguous={s['ambiguity_rate']:.2f}",
+            f"    P@1  plain={s['plain']['precision@1']:.2f}  "
+            f"oracle={s['oracle']['precision@1']:.2f}  "
+            f"authored={s['authored']['precision@1']:.2f}  "
+            f"(correlated failure {s['correlated_failure']:.3f})",
+        ]
+
+    lines += block("OVERALL", d["overall"])
+    for cat, s in d["by_category"].items():
+        lines += [""] + block(cat, s)
+    return "\n".join(lines)
+
+
 def render_retrieval_examples(report) -> str:
     """The plain-vs-fused split (WS-F/F2): per category, text-only P@1 next to the
     example-equipped fused P@1 over the same equipped subset."""
