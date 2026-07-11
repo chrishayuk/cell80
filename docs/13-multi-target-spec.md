@@ -241,14 +241,35 @@ top:
 ### WS-B: RV32 backend + executor (critical path, ~4–5 weeks)
 - B1. RV32I codegen, naive strategy (memory-slot regfile). Emission tests against
   **Sail** from the first instruction.
+  *Slices 1–2 landed 2026-07-11 (`02ef7d0`, `ee4e17f`):* the RV32 `Ins` layer +
+  exact encoder (encoding goldens local; **Sail CI job still owed** — the risk-2
+  budget), and full codegen over the cell80-core IR: the family 2-byte slot ABI in
+  a 64 KiB window mirroring the interpreter's map, mask-at-every-op width
+  discipline, native signed-32 (the ops rustz80 gates), inline `__bits_*` kernels,
+  alignment-safe byte pairs where packed addresses can be odd (the executor faults
+  on misalignment like Hazard3, so the battery proves it).
+- B1a. **Owed:** the Sail adversary as a linux-only CI job; `TARGETS`-style golden
+  coverage for RV32 images; the RV32 peephole suite (its own rules under the
+  shared discipline).
 - B2. RV32 reference executor: RV32IM interpreter, cycle-accounted from the Hazard3
   model **as qualified on RP2350 SRAM** (fetch/load-to-use timing is a platform
   property, not a core property), differentially tested against Sail. Determinism
   fuzzing (rerun / fresh instance / image-roundtrip) — extend `cell_fuzz.rs`'s
   `Snapshot` discipline.
+  *Landed in part 2026-07-11 (`02ef7d0`):* the executor with RISC-V-exact M
+  semantics (div-by-zero all-ones/dividend, MIN/-1 wrap), misalignment faults
+  (Hazard3 truth), determinism fingerprint tests, and an explicitly **provisional**
+  cycle table pinned by test (gcd = 160 cycles, hand-verified) — the numbers await
+  the B4 co-sign. Owed: Sail differential, the full fuzz battery.
 - B3. rustc adversary wiring: extend the single-source `check!` matrix
   (`rustz80/tests/diff/harness.rs` `TARGETS`) — same block under host rustc (oracle),
   Z80 targets, and the RV32 executor.
+  *Landed 2026-07-11 (`ee4e17f`), ahead of schedule:* `check!`/`check_str!`/
+  `check_ir!` each carry an RV32 leg — every battery program agrees across rustc,
+  both Z80 targets, the IR interpreter, and the RV32 executor (195/195), and the
+  signed-32 corpus runs natively on a machine backend for the first time. This
+  exceeds M1's "first gcd-class cell" gate; still owed for full B3: the
+  `run_program*` legs and memory-window comparison against the interpreter.
 - B4. RP2350 bring-up: crt0, linker script enforcing SRAM residency for cells, one
   Hazard3 core active, `mcycle` harness. **Acceptance (the co-sign):** executor cycle
   prediction vs silicon `mcycle` agreement within a documented bound (target: exact for
