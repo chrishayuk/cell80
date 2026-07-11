@@ -1669,3 +1669,9 @@
 {"id": "temperature_trend_step-direct-1", "query": "classify a temperature reading as rising, falling, or steady compared to the previous reading within a noise threshold", "expected": "temperature_trend_step", "category": "direct"}
 {"id": "temperature_trend_step-para-1", "query": "given two consecutive temperature sensor readings and a tolerance band, return whether the temperature trend is climbing, dropping, or holding flat", "expected": "temperature_trend_step", "category": "paraphrase"}
 {"id": "temperature_trend_step-adversarial-1", "query": "three-way temperature trend classification (rising/falling/steady) from a noise threshold band -- not a 0/1 rising-edge signal transition and not a continuous deadband offset-from-center value", "expected": "temperature_trend_step", "category": "adversarial"}
+{"id": "excel_nper-direct-1", "query": "excel nper number of periods for a loan", "expected": "excel_nper", "category": "direct"}
+{"id": "excel_nper-para-1", "query": "how many payments until the loan is paid off", "expected": "excel_nper", "category": "paraphrase"}
+{"id": "excel_nper-adv-1", "query": "solve an annuity for its period count, not its payment or rate", "expected": "excel_nper", "category": "adversarial"}
+{"id": "excel_pduration-direct-1", "query": "excel pduration periods for an investment to reach a value", "expected": "excel_pduration", "category": "direct"}
+{"id": "excel_pduration-para-1", "query": "years needed for a deposit to grow to a target at a fixed rate", "expected": "excel_pduration", "category": "paraphrase"}
+{"id": "excel_pduration-adv-1", "query": "lump-sum growth time, no payment stream involved", "expected": "excel_pduration", "category": "adversarial"}

@@ -53,18 +53,23 @@ gap (day-count conventions) shows up constantly but never alone — it always re
 to `candidate`, not `host_only`, because it's buildable prerequisite work, not a
 missing capability:
 
-1. **Array-state fields** (`CellHost`'s runner zeros a state cell's fields before
-   every `run()` and only round-trips named scalar fields, never arrays —
-   `experiments/sliding-window-state-cells-findings.md`). Blocks any function whose
-   *defining* behaviour is a variable-length input: `IRR`, `MIRR`, `NPV`,
-   `FVSCHEDULE` (array-only), `DURATION` (array, compounded by day-count), `XIRR`,
-   `XNPV` (array + transcendentals, see below).
-2. **Transcendentals** (`sin`/`cos`/`exp`/`ln`/`pow`-with-fractional-exponent — none
-   exist; confirmed by grepping `rustz80/src/softfloat.rs` directly, which has only
-   arithmetic/compare/round/convert kernels). Blocks any function where the unknown
-   sits in the *exponent itself* rather than the polynomial's base: `NPER`,
-   `PDURATION` (transcendentals-only), `ODDFPRICE`, `ODDLPRICE`, `PRICE`
-   (transcendentals + day-count), `XIRR`, `XNPV` (transcendentals + array-state).
+1. **Array-state fields — ~~gap~~ CLOSED (2026-07-11, `.cell` v11)**: `u16[N]`/`u32[N]`
+   state fields round-trip by name (`StateCell::set_array`/`get_array`,
+   `CellHost::run_state_values`; close-out in
+   `experiments/sliding-window-state-cells-findings.md`). The functions it blocked —
+   `IRR`, `MIRR`, `NPV`, `FVSCHEDULE` (array-only), `DURATION` (array, compounded by
+   day-count), `XIRR`, `XNPV` — are now *expressible* and await authoring as their
+   own wave (note the dialect still has no `[f32; N]` fields, so cash-flow arrays
+   arrive as `u32[N]` bit-pattern envelopes or scaled ints; price that when
+   authoring).
+2. **Transcendentals — ~~wall~~ SHIPPED (2026-07-11, F2)**: owned `fexp`/`fln`/`fpow`
+   kernels (`rustz80/src/softfloat.rs`, class approximate — fexp/fln measured ≤ 1 ulp,
+   fpow ≤ 40 ulp over |y·ln x| ≤ 60, vs MPFR golden tables in
+   `rustz80/tests/diff/f32_trans.rs`; trig is the still-unshipped F2 slice). `NPER`
+   and `PDURATION` (transcendentals-only) landed the same day as the proof pair —
+   the pack's first cells through `.ln()`. Still gated: `ODDFPRICE`, `ODDLPRICE`,
+   `PRICE` (need the day-count plumbing composed in), `XIRR`, `XNPV` (need the
+   array-input wave above too).
 3. **Day-count conventions** (30/360 US/European, actual/actual, actual/360,
    actual/365 — `basis` parameter arithmetic). cell80's `calendrical-checksum` pack
    has real calendar primitives (`day_of_week`, `day_of_year`, `days_between`,
@@ -143,13 +148,14 @@ essentially every `bonds_and_securities` candidate at once.
 **This is the single highest-leverage prerequisite in the whole map.** 21 of 35
 candidates (60%), plus `TBILLPRICE`'s lighter touch, are gated on it.
 
-## The 12 `host_only`, none reachable without a dialect/harness change
+## The 12 `host_only` — was: none reachable; now (2026-07-11): both walls fell
 
-`IRR`, `MIRR`, `NPV`, `FVSCHEDULE` (array-state only) · `DURATION` (array-state,
-compounded by day-count) · `NPER`, `PDURATION` (transcendentals only) ·
-`ODDFPRICE`, `ODDLPRICE`, `PRICE` (transcendentals + day-count) · `XIRR`, `XNPV`
-(both gaps at once — confirmed strictly harder than plain `IRR`/`RATE`, not a
-variant of them).
+`NPER`, `PDURATION` — **shipped** (the F2 transcendental proof pair, above).
+`IRR`, `MIRR`, `NPV`, `FVSCHEDULE` (array-input only) · `DURATION` (array-input,
+compounded by day-count) · `ODDFPRICE`, `ODDLPRICE`, `PRICE` (transcendentals
+shipped; day-count composition still to author) · `XIRR`, `XNPV` (array + ln,
+both now available) — all **expressible, unauthored**: the remaining 10 are an
+authoring wave with its own eval tax, not a capability gap.
 
 Every one of these has a real fixed-arity variant worth naming even though it
 doesn't match Excel's actual signature: `irr_3`/`npv_4`-style cells over a small
@@ -202,11 +208,11 @@ unrelated corpus-wide TF-IDF noise, 3 real finance-vocabulary collisions
 regressions); the other two are reported, not chased further, since the aggregate
 gate is net positive and further tag-chasing has its own regression risk.
 
-**What's left of the original 55**: the 12 `host_only` functions (`IRR`, `MIRR`,
-`NPV`, `FVSCHEDULE`, `DURATION`, `NPER`, `PDURATION`, `ODDFPRICE`, `ODDLPRICE`,
-`PRICE`, `XIRR`, `XNPV`) remain genuinely blocked on the array-state-field harness
-gap and/or transcendentals — revisit if either lands, per the same typed-escalation
-pattern the rest of this project uses.
+**What's left of the original 55**: `NPER` and `PDURATION` shipped 2026-07-11 when
+the F2 transcendentals landed; the other 10 former-`host_only` functions (`IRR`,
+`MIRR`, `NPV`, `FVSCHEDULE`, `DURATION`, `ODDFPRICE`, `ODDLPRICE`, `PRICE`, `XIRR`,
+`XNPV`) stopped being *blocked* the same day (array-state harness + transcendentals
+both landed) and are now an ordinary authoring wave — see the updated walls above.
 
 ## How this gates authoring
 

@@ -4159,3 +4159,170 @@ fn excel_rri_matches_test_cases() {
         );
     }
 }
+
+#[test]
+fn excel_nper_matches_test_cases() {
+    // The pack's first transcendental cell (F2 fexp/fln landed 2026-07-11):
+    // NPER's unknown sits in the exponent, so the closed form runs through the
+    // owned fln. Expected values are Excel's own (NPER(0.05,-100,1000) = 14.2067,
+    // the annuity-due variant 13.2536). Tolerance is the pack's semantics-oracle
+    // convention; the authoritative accuracy contract is the kernel harness +
+    // the cell's `accuracy:` header.
+    fn run_banked(fields: &[(&str, f64)]) -> (cell80::Report, f64) {
+        let src = crate::common::cell_src("excel_nper");
+        let entry = "ExcelNper::run";
+        let addrs = cell80::state_field_addrs(&src, entry)
+            .unwrap_or_else(|e| panic!("excel_nper field addrs: {e}"));
+        let float_names: &[&str] = &["rate", "pmt", "pv", "fv"];
+        let sets: Vec<(u16, cell80::Ty, u64)> = fields
+            .iter()
+            .map(|(n, v)| {
+                let (a, t) = addrs
+                    .iter()
+                    .find(|(fname, _, _)| fname == n)
+                    .map(|(_, a, t)| (*a, *t))
+                    .unwrap_or_else(|| panic!("excel_nper: no field `{n}`"));
+                let raw = if float_names.contains(n) {
+                    (*v as f32).to_bits() as u64
+                } else {
+                    *v as u64
+                };
+                (a, t, raw)
+            })
+            .collect();
+        let opts = cell80::CartridgeOpts {
+            entry: Some(entry.to_string()),
+            kernel_bank: true,
+            ..Default::default()
+        };
+        let cart = cell80::Cartridge::compile(&src, cell80::CellConfig::permissive(), opts)
+            .unwrap_or_else(|e| panic!("compile excel_nper (banked): {e}"));
+        let program = cart.z80().unwrap_or_else(|e| panic!("excel_nper z80: {e}"));
+        let mut runner = cell80::Runner::new(program);
+        let report = runner
+            .run_with_inputs(Some(entry), &[cell80::STATE_BASE], &sets, 2_000_000)
+            .unwrap_or_else(|e| panic!("run excel_nper: {e}"));
+        let out = addrs
+            .iter()
+            .find(|(n, _, _)| n == "nper")
+            .map(|(_, a, _)| f32::from_bits(runner.peek_u32(*a)) as f64)
+            .unwrap();
+        (report, out)
+    }
+
+    let cases: &[(&[(&str, f64)], f64)] = &[
+        // Excel NPER(5%, -100, 1000) — the doc's own shape.
+        (&[("rate", 0.05), ("pmt", -100.0), ("pv", 1000.0)], 14.2067),
+        // rate == 0 degenerates to the linear count.
+        (&[("rate", 0.0), ("pmt", -100.0), ("pv", 1000.0)], 10.0),
+        // A target future value joins the stream.
+        (
+            &[("rate", 0.05), ("pmt", -100.0), ("pv", 1000.0), ("fv", 100.0)],
+            15.2067,
+        ),
+        // Annuity-due (type = 1): payments at period start.
+        (
+            &[("rate", 0.05), ("pmt", -100.0), ("pv", 1000.0), ("due", 1.0)],
+            13.2536,
+        ),
+    ];
+    for (i, (fields, want)) in cases.iter().enumerate() {
+        let (report, got) = run_banked(fields);
+        assert_eq!(
+            report.halt,
+            cell80::Halt::Returned,
+            "excel_nper case {i}: {report:?}"
+        );
+        let tol = (want.abs() * 1e-3_f64).max(1e-3);
+        assert!(
+            (got - want).abs() < tol,
+            "excel_nper case {i}: got {got} want {want}"
+        );
+    }
+
+    // Excel's #NUM! domain, typed: an unreachable target (log of a negative)
+    // and the rate == 0, pmt == 0 degenerate both escalate 0xFF06.
+    let (report, _) = run_banked(&[
+        ("rate", 0.05),
+        ("pmt", -100.0),
+        ("pv", 1000.0),
+        ("fv", -3000.0),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (report, _) = run_banked(&[("rate", 0.0), ("pmt", 0.0), ("pv", 1000.0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn excel_pduration_matches_test_cases() {
+    // Excel's own documented examples: PDURATION(2.5%, 2000, 2200) = 3.86,
+    // PDURATION(0.025/12, 1000, 1200) = 87.6 (the monthly-rate case exercises
+    // the small-rate ln(1+r) regime the accuracy header flags).
+    fn run_banked(fields: &[(&str, f64)]) -> (cell80::Report, f64) {
+        let src = crate::common::cell_src("excel_pduration");
+        let entry = "ExcelPduration::run";
+        let addrs = cell80::state_field_addrs(&src, entry)
+            .unwrap_or_else(|e| panic!("excel_pduration field addrs: {e}"));
+        let sets: Vec<(u16, cell80::Ty, u64)> = fields
+            .iter()
+            .map(|(n, v)| {
+                let (a, t) = addrs
+                    .iter()
+                    .find(|(fname, _, _)| fname == n)
+                    .map(|(_, a, t)| (*a, *t))
+                    .unwrap_or_else(|| panic!("excel_pduration: no field `{n}`"));
+                (a, t, (*v as f32).to_bits() as u64)
+            })
+            .collect();
+        let opts = cell80::CartridgeOpts {
+            entry: Some(entry.to_string()),
+            kernel_bank: true,
+            ..Default::default()
+        };
+        let cart = cell80::Cartridge::compile(&src, cell80::CellConfig::permissive(), opts)
+            .unwrap_or_else(|e| panic!("compile excel_pduration (banked): {e}"));
+        let program = cart.z80().unwrap_or_else(|e| panic!("excel_pduration z80: {e}"));
+        let mut runner = cell80::Runner::new(program);
+        let report = runner
+            .run_with_inputs(Some(entry), &[cell80::STATE_BASE], &sets, 2_000_000)
+            .unwrap_or_else(|e| panic!("run excel_pduration: {e}"));
+        let out = addrs
+            .iter()
+            .find(|(n, _, _)| n == "pduration")
+            .map(|(_, a, _)| f32::from_bits(runner.peek_u32(*a)) as f64)
+            .unwrap();
+        (report, out)
+    }
+
+    let cases: &[(&[(&str, f64)], f64)] = &[
+        (&[("rate", 0.025), ("pv", 2000.0), ("fv", 2200.0)], 3.8598),
+        (
+            &[("rate", 0.002083333), ("pv", 1000.0), ("fv", 1200.0)],
+            87.6046,
+        ),
+        (&[("rate", 0.1), ("pv", 100.0), ("fv", 100.0)], 0.0),
+    ];
+    for (i, (fields, want)) in cases.iter().enumerate() {
+        let (report, got) = run_banked(fields);
+        assert_eq!(
+            report.halt,
+            cell80::Halt::Returned,
+            "excel_pduration case {i}: {report:?}"
+        );
+        let tol = (want.abs() * 1e-3_f64).max(1e-3);
+        assert!(
+            (got - want).abs() < tol,
+            "excel_pduration case {i}: got {got} want {want}"
+        );
+    }
+
+    // #NUM! domain, typed: each argument must be strictly positive.
+    for bad in [
+        [("rate", 0.0), ("pv", 100.0), ("fv", 110.0)],
+        [("rate", 0.05), ("pv", -100.0), ("fv", 110.0)],
+        [("rate", 0.05), ("pv", 100.0), ("fv", 0.0)],
+    ] {
+        let (report, _) = run_banked(&bad);
+        assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06), "{bad:?}");
+    }
+}

@@ -37,8 +37,9 @@ pub const ESCALATE_REASONS: [(u16, &str); 9] = [
     // The f32 boundary contract (`finite_result`, amendment §F0.4): a cell whose
     // return would be non-finite escalates instead of answering. IEEE semantics
     // propagate *inside* the cell (oracle fidelity); escalate-not-lie applies at
-    // the boundary. `0xFF02` remains "float capability not yet in dialect"
-    // (transcendentals pre-F2, f64, anything libm-shaped).
+    // the boundary. `0xFF02` remains "float capability not yet in dialect" —
+    // post-F2 that means f64, anything still libm-shaped, and the trig family
+    // until its slice lands (exp/ln/pow are owned kernels now).
     (0xFF07, "float_overflow"),
     (0xFF08, "float_domain"),
 ];
