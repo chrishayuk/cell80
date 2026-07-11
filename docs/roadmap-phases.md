@@ -372,15 +372,20 @@ typing on the escalation-band pattern.
 *DoD:* three MVP robo cells compile `bounded`, static WCET ≤ 50µs each @150MHz in
 manifests, 1kHz HIL loop from synthetic sensor streams.
 
-**5.4 WS-D + WS-E — Thumb-1 sibling; cell-layer multi-target. E1–E2 shipped
-(2026-07-11).** `.cell` v10 carries the **target id** (a host refuses a machine body
+**5.4 WS-D + WS-E — Thumb-1 sibling; cell-layer multi-target. E1–E3(slice 1)
+shipped (2026-07-11).** `.cell` v10 carries the **target id** (a host refuses a machine body
 it can't run — the kernel-bank-pin posture) and the **family hash** (SHA-256 over
 canonical source; sibling-target bodies share it — the formal "one cell, many
 bodies"). The per-target state-address question **resolved for free**: the family
 slot ABI + the shared window map make `state_addrs` window-relative and hence
-target-portable unchanged. *Owed:* E3 — per-body runners behind one host surface
-(the first loadable RV32 cartridge; the E1 gate becomes host-parameterised), then
-Thumb-1 (RP2040) forcing descriptor honesty per the §2.1a ladder.
+target-portable unchanged. **E3 slice 1**: the first loadable RV32 cartridge —
+the per-target `Body` enum (Z80 serialization byte-identical), `compile_rv32` on
+the shared pipeline (canon, caps, prelude, DCE, manifest, family hash), the E1
+gate host-parameterised (typed refusals at each runner's boundary, naming both
+sides), `Rv32Runner` as `Runner`'s sibling, the sibling pair proven end to end.
+*Owed:* E3's remainder — `CellHost` dispatch by body, rv32 typed-state I/O by
+name, kernel-bank parity — then Thumb-1 (RP2040) forcing descriptor honesty per
+the §2.1a ladder.
 *DoD:* three-ISA demo — one family hash, three per-target artifact hashes, three cycle
 certificates.
 
