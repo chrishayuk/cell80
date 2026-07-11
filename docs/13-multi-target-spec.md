@@ -366,6 +366,15 @@ owned it:
   `STATE_BASE = 0xB000`, 2-byte slots, baked into `CellHost::run_state` and the
   register-probe router). Decision deferred to E-design: per-target address tables vs
   a name+type-only manifest with layout resolved per target.
+  *Resolved 2026-07-11 — neither: the existing `state_addrs` are already
+  target-portable.* Two prior decisions compose: the family-wide 2-byte slot ABI
+  (A2b) and the RV32 backend's 64 KiB data window mirroring the interpreter's map
+  (consts `0x8000`, slots `0x9000`, state `0xB000` — proven byte-identical by the
+  unmasked `run_to_memory` comparison). A `state_addrs` entry is a **window-relative
+  u16 address**, and every body honours the same window map, so one manifest drives
+  any body by name at the same addresses. E3's host work needs no manifest change —
+  only per-body runners behind one surface, and the E1 target gate parameterised by
+  which body the host runs.
 - E3. Host/runner generalisation (a `Runner` per executor behind one host surface).
 - **M2 explicitly does *not* wait for WS-E:** the demo runs RV32 through a thin
   `rv32 exec` harness that bypasses `CellHost`. WS-E is what makes the family a
