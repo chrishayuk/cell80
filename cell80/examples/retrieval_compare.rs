@@ -9,13 +9,23 @@
 //! Re-run it as a regression guard before changing the index or the library; the lever for
 //! the still-coin-flip **paraphrase** row is the type-led index, not this.
 //!
+//! A fourth row measures the **fused example path** (WS-F): each dataset case that the
+//! `cell-eval` sidecar (`datasets/retrieval-examples.jsonl`, `cell-eval gen-examples`)
+//! equips with I/O examples runs `CellHost::search_with_examples` — behaviour ranks,
+//! text breaks ties; unequipped cases fall back to the live `CellHost::search`.
+//!
 //! Deterministic, no model. Run: `cargo run --release --example retrieval_compare -p cell80`.
 
-use cell80::{Cartridge, CartridgeOpts, CellConfig, CellIndex, Manifest, TfidfIndex, TypeLedIndex};
+use cell80::{
+    Cartridge, CartridgeOpts, CellConfig, CellHost, CellIndex, FieldExample, Manifest, TfidfIndex,
+    TypeLedIndex,
+};
+use std::cell::RefCell;
 use std::path::PathBuf;
 
-/// A named ranking method: a label and a `query → ranked-cell-ids` function.
-type Method<'a> = (&'a str, &'a dyn Fn(&str) -> Vec<String>);
+/// A named ranking method: a label and a `case → ranked-cell-ids` function (most methods
+/// read only the query; the fused row also needs the case id to find its examples).
+type Method<'a> = (&'a str, &'a dyn Fn(&Row) -> Vec<String>);
 
 /// Parse a library cell's `//!` header (summary / `tags:` / `entry:`) — mirrors the CLI's
 /// `parse_meta` so the manifests here are identical to what `index <dir>` builds.
@@ -83,6 +93,7 @@ fn load_carts() -> Vec<Cartridge> {
 }
 
 struct Row {
+    id: String,
     query: String,
     expected: Vec<String>,
     category: String,
@@ -109,6 +120,7 @@ fn load_dataset() -> Vec<Row> {
             _ => vec![],
         };
         rows.push(Row {
+            id: v["id"].as_str().unwrap_or_default().to_string(),
             query: v["query"].as_str().unwrap_or_default().to_string(),
             expected,
             category: v["category"].as_str().unwrap_or("direct").to_string(),
@@ -128,14 +140,77 @@ fn shape(m: &Manifest) -> String {
     }
 }
 
+/// One sidecar row's examples, in whichever form `gen-examples` emitted.
+enum Examples {
+    Value(Vec<(Vec<u16>, u16)>),
+    Fields(Vec<FieldExample>),
+}
+
+/// Load the example sidecar (`cell-eval gen-examples`) keyed by case id. Missing file →
+/// empty map (the fused row then degenerates to the live search on every case).
+fn load_sidecar() -> std::collections::HashMap<String, Examples> {
+    let p = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../cell-eval/datasets/retrieval-examples.jsonl");
+    let Ok(text) = std::fs::read_to_string(&p) else {
+        eprintln!("no sidecar at {} — fused row runs unequipped", p.display());
+        return Default::default();
+    };
+    let mut out = std::collections::HashMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let v: serde_json::Value = serde_json::from_str(line).expect("bad sidecar row");
+        let id = v["id"].as_str().unwrap_or_default().to_string();
+        let exs = v["examples"].as_array().cloned().unwrap_or_default();
+        let parsed = if v["form"] == "in" {
+            Examples::Value(
+                exs.iter()
+                    .map(|e| {
+                        let args = e["in"]
+                            .as_array()
+                            .map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as u16))
+                            .into_iter()
+                            .flatten()
+                            .collect();
+                        (args, e["out"].as_u64().unwrap_or(0) as u16)
+                    })
+                    .collect(),
+            )
+        } else {
+            let named = |val: &serde_json::Value| -> Vec<(String, u64)> {
+                val.as_object()
+                    .map(|o| {
+                        o.iter()
+                            .map(|(k, x)| (k.clone(), x.as_u64().unwrap_or(0)))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
+            Examples::Fields(
+                exs.iter()
+                    .map(|e| FieldExample {
+                        fields: named(&e["fields"]),
+                        want_result: e["out"].as_u64().map(|x| x as u16),
+                        want_fields: named(&e["expect"]),
+                    })
+                    .collect(),
+            )
+        };
+        out.insert(id, parsed);
+    }
+    out
+}
+
 /// P@1 and hit@5 over the rows in one category, for a ranking fn.
-fn score(rows: &[&Row], rank: &dyn Fn(&str) -> Vec<String>) -> (f32, f32) {
+fn score(rows: &[&Row], rank: &dyn Fn(&Row) -> Vec<String>) -> (f32, f32) {
     if rows.is_empty() {
         return (0.0, 0.0);
     }
     let (mut p1, mut h5) = (0u32, 0u32);
     for r in rows {
-        let top = rank(&r.query);
+        let top = rank(r);
         if top
             .first()
             .is_some_and(|id| r.expected.iter().any(|e| e == id))
@@ -164,13 +239,45 @@ fn main() {
         token.add(m.clone());
     }
     let tfidf = TfidfIndex::build(manifests.clone());
-    let typed = TypeLedIndex::build(carts);
+    let typed = TypeLedIndex::build(carts.clone());
+    let sidecar = load_sidecar();
+    let host = RefCell::new({
+        let mut h = CellHost::new();
+        for c in carts {
+            h.add(c);
+        }
+        h.set_cache(true); // probe runs memoize across the eval
+        h
+    });
 
     let rank = |hits: Vec<&Manifest>| hits.into_iter().map(|m| m.id.clone()).collect::<Vec<_>>();
-    let methods: [Method; 3] = [
-        ("token-overlap", &|q| rank(token.search(q, 5))),
-        ("tf-idf (live)", &|q| rank(tfidf.search(q, 5))),
-        ("type-led", &|q| rank(typed.search(q, 5))),
+    let fused = |r: &Row| -> Vec<String> {
+        let mut h = host.borrow_mut();
+        match sidecar.get(&r.id) {
+            Some(Examples::Value(ex)) => h
+                .search_with_examples(&r.query, ex, 5)
+                .expect("fused search")
+                .into_iter()
+                .map(|m| m.id.clone())
+                .collect(),
+            Some(Examples::Fields(ex)) => h
+                .search_with_field_examples(&r.query, ex, 5)
+                .expect("fused search")
+                .into_iter()
+                .map(|m| m.id.clone())
+                .collect(),
+            None => h
+                .search(&r.query, 5)
+                .into_iter()
+                .map(|m| m.id.clone())
+                .collect(),
+        }
+    };
+    let methods: [Method; 4] = [
+        ("token-overlap", &|r| rank(token.search(&r.query, 5))),
+        ("tf-idf (live)", &|r| rank(tfidf.search(&r.query, 5))),
+        ("type-led", &|r| rank(typed.search(&r.query, 5))),
+        ("fused+examples", &fused),
     ];
 
     let cats = ["direct", "paraphrase", "adversarial"];
@@ -199,7 +306,10 @@ fn main() {
     println!(
         "\n  Read: the paraphrase column is the headline. type-led re-ranks tf-idf by a\n  \
          behavioural predicate signal with a corpus-learned (not hardcoded) query intent —\n  \
-         the lift it adds there is the case for it over plain text."
+         the lift it adds there is the case for it over plain text. fused+examples is the\n  \
+         WS-F path: example-carrying requests rank by behaviour with text as tiebreak\n  \
+         (unequipped cases fall back to the live search) — checkpoint 21 in\n  \
+         cell-eval/baselines/README.md has the committed numbers."
     );
 
     // Why structural re-ranking has limited headroom: of tf-idf's wrong top-1s on the hard

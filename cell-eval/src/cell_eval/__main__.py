@@ -19,8 +19,24 @@ import sys
 
 
 def _cmd_retrieval(args) -> int:
-    from .report import render_retrieval
+    from .report import render_retrieval, render_retrieval_examples
     from .retrieval import run_retrieval
+
+    if args.examples:
+        from .retrieval_examples import run_retrieval_examples
+
+        rep = run_retrieval_examples(
+            dataset=args.dataset, examples=args.examples, library_dir=args.library, k=args.k
+        )
+        if args.json:
+            print(json.dumps(rep.as_dict(), indent=2))
+        else:
+            print(render_retrieval_examples(rep))
+        p1 = rep.deployed().precision_at_1
+        if args.fail_under is not None and p1 < args.fail_under:
+            print(f"\ndeployed P@1 {p1:.3f} < --fail-under {args.fail_under}", file=sys.stderr)
+            return 1
+        return 0
 
     report = run_retrieval(dataset=args.dataset, library_dir=args.library, k=args.k)
     if args.json:

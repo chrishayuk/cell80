@@ -14,6 +14,39 @@ def _agg_line(label: str, a: Aggregate) -> str:
     )
 
 
+def render_retrieval_examples(report) -> str:
+    """The plain-vs-fused split (WS-F/F2): per category, text-only P@1 next to the
+    example-equipped fused P@1 over the same equipped subset."""
+    lines = [
+        f"retrieval eval (example-equipped) — library={report.library}  k={report.k}  "
+        f"sidecar={report.examples_dataset}",
+        "",
+        f"coverage: {report.coverage():.1%} of {len(report.cases)} cases equipped",
+        "",
+        _agg_line("OVERALL plain", report.plain()),
+        _agg_line("OVERALL deployed", report.deployed()),
+        "",
+        "by category (equipped subset, plain vs fused):",
+    ]
+    for cat in report.categories():
+        lines.append(
+            f"  {cat}: coverage {report.coverage(cat):.1%}"
+        )
+        lines.append(_agg_line("  plain", report.plain(cat, True)))
+        lines.append(_agg_line("  fused", report.fused(cat)))
+    regs = report.regressions()
+    if regs:
+        lines += [
+            "",
+            f"REGRESSIONS (fused worse than plain — should be impossible): {len(regs)}",
+        ]
+        for c in regs[:10]:
+            lines.append(
+                f"  [{c.category}] {c.query!r} plain={c.plain_rank} fused={c.fused_rank}"
+            )
+    return "\n".join(lines)
+
+
 def render_retrieval(report) -> str:
     lines = [
         f"retrieval eval — library={report.library}  k={report.k}",

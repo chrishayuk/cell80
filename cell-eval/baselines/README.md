@@ -210,6 +210,23 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     needs the structural lever this project has already named and not yet built
     (behavioural I/O-example routing, or a type-led index that discriminates on structural
     shape).
+  - **Checkpoint 21 (`retrieval-examples-653cells-2026-07-11.json`, 653 cells,
+    2026-07-11) — the structural lever, built and measured: F2 PASSES.** Behavioural
+    I/O-example routing fused into the primary search path (`CellHost::
+    search_with_examples`: behaviour ranks, plain-search order breaks ties, zero-match
+    cells demote instead of dropping) plus a generated example sidecar
+    (`datasets/retrieval-examples.jsonl`, ≤3 plausibly-user-authorable examples per case,
+    98.5% coverage, `co_match` honesty metadata). **Probe-equipped paraphrase P@1 0.859**
+    vs the 0.39 plain baseline on the same 603-row equipped subset — the WS-F F2 gate
+    (≥ 0.80) clears with headroom; adversarial 0.47 → 0.89, direct 0.81 → 0.95, overall
+    deployed 0.90. Zero per-query regressions (guaranteed: expected reproduces its own
+    examples, ties preserve text order — fused rank ≤ plain rank always). The honest
+    residue: 85 paraphrase misses, 45 carrying residual `co_match` — the class examples
+    cannot separate *by construction* (`min(a,b) ≡ median3(a,b,0)` under register
+    zero-fill; predicate families where dozens of cells return 1 on (1,1)); the rest lose
+    the text tiebreak to co-equal matchers outside the modelled sibling pool. Caveat kept
+    in view: this measures example-CARRYING requests — text-only paraphrase (checkpoint
+    20's 0.3866) is unchanged and stays the open problem for text-side levers.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.
