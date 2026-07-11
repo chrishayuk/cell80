@@ -7,10 +7,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (27)
+## Landed (31)
 
 | id | signature | summary |
 |---|---|---|
+| `combined_time2` | `CombinedTime2::run() -> u16` | Combined completion time of two agents working simultaneously, each able to finish a task alone in t1 and t2 time units: t1*t2/(t1+t2), returned as an exact fraction reduced via gcd_u32 -- the classic 'two pipes fill a tank together' parallel-rate word problem, distinct from ratio_split2's additive split and frac_avg2's averaging. |
 | `frac_add` | `FracAdd::run() -> u16` | Add two fractions na/da + nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_add_whole` | `FracAddWhole::run() -> u16` | Add a whole number to a fraction: n/d + whole = (n + whole*d)/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
@@ -26,26 +27,27 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `frac_of_whole` | `FracOfWhole::run() -> u16` | A fraction of a whole number, computed exactly: n/d * whole, escalating if it doesn't divide evenly (a wrong-plan signal — e.g. "3/4 of 20" should be exact for a grade-school word problem) or if the multiply overflows. |
 | `frac_of_whole_ceil` | `FracOfWholeCeil::run() -> u16` | A fraction of a whole number, rounded up: ceil(n/d * whole) — the ceiling sibling of frac_of_whole (escalates if inexact) and frac_of_whole_floor (rounds down, never escalates on inexactness); uses the q+1-if-remainder technique from checked-arithmetic's div_ceil_u32 so a near-u32::MAX product never risks an intermediate overflow. |
 | `frac_of_whole_floor` | `FracOfWholeFloor::run() -> u16` | A fraction of a whole number, rounded down: floor(n/d * whole) — the floor sibling of frac_of_whole (which escalates if the result isn't exact). Never escalates on an inexact split (e.g. "90% of 23" is a real, non-exact GSM8K-style shape, unlike "3/4 of 20"); still escalates if the multiply overflows. |
+| `frac_pow` | `FracPow::run() -> u16` | Raise a fraction n/d to a whole-number power k: (n/d)^k = n^k/d^k, each built by repeated mul_checked_u32 (geometric_nth_checked_u32's technique) rather than a native exponent op, reduced once at the end via gcd_u32. |
 | `frac_reciprocal` | `FracReciprocal::run() -> u16` | Reciprocal of a fraction n/d: swaps to d/n. Escalates (halt 0xFF06, out_of_domain) if n == 0 (a zero fraction has no reciprocal) or d == 0 (not a valid fraction to begin with). |
 | `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via the shared gcd_u32 kernel — a two-u32-param call (first arg rides HL:DE, second rides the stack; docs 10 §Calls), so the Euclidean loop lives once in the prelude instead of inlined in every fraction cell. |
+| `frac_reduce_signed` | `FracReduceSigned::run() -> u16` | Reduce a signed sign-magnitude fraction (mag/den, sign carried separately as neg) to lowest terms via the shared gcd_u32 kernel, canonicalizing neg to 0 whenever the reduced magnitude is 0 -- the signed counterpart of frac_reduce for the (magnitude, neg, denominator) shape linear_regression_slope/intercept, cos_frac_from_sides, and slope_fraction all return unreduced. |
 | `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
 | `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_sub_whole` | `FracSubWhole::run() -> u16` | Subtract a whole number from a fraction: n/d - whole, reduced to lowest terms via the shared gcd_u32 kernel — the frac-minus-whole sibling missing alongside frac_add_whole and frac_sub_from_whole, e.g. 7/2 - 1 = 5/2. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
+| `harmonic_number_fraction` | `HarmonicNumberFraction::run() -> u16` | The nth harmonic number H_n = 1/1 + 1/2 + ... + 1/n as a single exact reduced fraction, accumulated internally via a bounded loop of frac_add-style common-denominator-then-reduce steps (num/den + 1/i -> (num*i+den)/(den*i), then gcd_u32 reduce) -- distinct from frac_add's fixed 2-term sum, this sums an arbitrary run-length sequence of unit fractions in one call. |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
 | `linear_solve_1var` | `LinearSolve1Var::run() -> u16` | Solve a general one-variable linear equation a*x + b = c*x + d for x, returned as an exact signed fraction (num_mag/num_neg over a positive den) in lowest terms via the shared gcd_u32 kernel -- the single-unknown sibling of matrix_solve_2x2's two-unknown Cramer's-rule solve. num = d - b and den = a - c are plain signed subtractions, not products, so this needs sign-magnitude tracking (the dialect has no i32 yet) but no overflow-prone multiply. |
 | `mixed_to_frac` | `MixedToFrac::run() -> u16` | Convert a mixed number (whole + num/den) to a single improper fraction: n = whole*den + num, d = den — the exact inverse of frac_to_mixed. |
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
 
-## Math-server coverage — 3 candidate(s) not yet built
+## Math-server coverage — 1 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
 | name | reason |
 |---|---|
 | `farey_neighbors` | Bounded deterministic search for Farey-sequence neighbors of a fraction, distinct and not covered. |
-| `farey_sequence_length` | Bounded exact computation (1 + sum of euler_totient(k) for k=1..n via an internal loop), genuinely new and not covered. |
-| `harmonic_number_fraction` | Exact-fraction accumulation of 1/1+...+1/n via internal frac_add-style reduction, escalating once the denominator exceeds u32 (around n~25-30) — fits the checked-cell pattern, not covered. |
 

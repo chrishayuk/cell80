@@ -1213,3 +1213,232 @@ fn sum_digit_powers_hand_computed() {
     // 9, p=6: 9^6 = 531441, exceeds u16 -> escalates (halt 0xFF05, needs_wider_math)
     assert_eq!(check(9, 6).1, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn goldbach_conjecture_check_matches_hand_computed_expectations() {
+    // goldbach_conjecture_check: for even n > 2, the smallest prime p with n-p also prime,
+    // searching p ascending from 2 up to n/2 with inline trial-division primality checks.
+    // n=4: only split is 2+2 -> 2.
+    assert_eq!(run_cell("goldbach_conjecture_check", &[4]), 2);
+    // n=6: p=2 -> 6-2=4 not prime; p=3 -> 6-3=3 prime -> 3.
+    assert_eq!(run_cell("goldbach_conjecture_check", &[6]), 3);
+    // n=10: p=2 -> 8 not prime; p=3 -> 7 prime -> 3 (10 = 3+7).
+    assert_eq!(run_cell("goldbach_conjecture_check", &[10]), 3);
+    // n=100: p=2 -> 98 not prime; p=3 -> 97 prime -> 3 (100 = 3+97, the smallest such split).
+    assert_eq!(run_cell("goldbach_conjecture_check", &[100]), 3);
+
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // n odd -> out_of_domain.
+    assert_eq!(
+        free_report("goldbach_conjecture_check", &[7]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+    // n <= 2 -> out_of_domain (n=2 and n=0 both covered).
+    assert_eq!(
+        free_report("goldbach_conjecture_check", &[2]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+    assert_eq!(
+        free_report("goldbach_conjecture_check", &[0]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+}
+
+#[test]
+fn number_to_base_hand_computed() {
+    // number_to_base: convert n to its base-b digit expansion (2 <= base <= 9) and
+    // reassemble those digits, in the same left-to-right order, as a base-10 display
+    // number -- e.g. n=13 in base 2 is binary "1101", reassembled as the decimal
+    // literal 1101 (no reversal, unlike digit_reverse's r = r*base + digit trick).
+    fn check(n: u16, base: u16) -> (u16, cell80::Halt) {
+        let mut r = Runner::compile(&cell_src("number_to_base")).unwrap();
+        let out = r.run(None, &[n, base], DEFAULT_CYCLES).unwrap();
+        (out.result, out.halt)
+    }
+
+    // n=13, base=2: binary digits of 13 are 1101 (8+4+1) -> reassembled decimal 1101.
+    assert_eq!(check(13, 2).0, 1101);
+    // n=0, base=5: no digits looped, result stays 0.
+    assert_eq!(check(0, 5).0, 0);
+    // n=255, base=8: 255 = 3*64 + 7*8 + 7 -> octal "377" -> reassembled decimal 377.
+    assert_eq!(check(255, 8).0, 377);
+    // n=500, base=7: 500 = 1*343 + 3*49 + 1*7 + 3 -> base-7 "1313" -> reassembled 1313.
+    assert_eq!(check(500, 7).0, 1313);
+    // n=65535, base=9: base-9 digits of 65535 are "108806" (65535 = 1*9^5 + 0*9^4 +
+    // 8*9^3 + 8*9^2 + 0*9 + 6) -> reassembled 108806 > 65535 -> escalates (needs_wider_math).
+    assert_eq!(check(65535, 9).1, cell80::Halt::Escalate(0xFF05));
+    // base out of [2,9] range escalates the same way (halt 0xFF05).
+    assert_eq!(check(5, 10).1, cell80::Halt::Escalate(0xFF05));
+    assert_eq!(check(5, 1).1, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn is_composite_matches_hand_computed_cases() {
+    // Hand-computed: composite means n > 1 and not prime (0 and 1 are neither).
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("is_composite", &[0], 0),     // 0 is neither prime nor composite
+        ("is_composite", &[1], 0),     // 1 is neither prime nor composite
+        ("is_composite", &[2], 0),     // 2 is prime, not composite
+        ("is_composite", &[4], 1),     // 4 = 2*2, composite
+        ("is_composite", &[9], 1),     // 9 = 3*3, composite
+        ("is_composite", &[97], 0),    // 97 is prime
+        ("is_composite", &[65535], 1), // 65535 = 3*5*17*257, composite
+        ("is_composite", &[100], 1),   // 100 = 2^2*5^2, composite
+    ];
+    for &(id, args, expected) in cases {
+        assert_eq!(run_cell(id, args), expected, "{id}({args:?})");
+    }
+}
+
+#[test]
+fn is_prime_power_matches_hand_computed_cases() {
+    // is_prime_power: 1 if n (n >= 2) is p^k for a single prime p and k >= 1, else 0.
+    // Finds n's smallest prime factor p by trial division, then strips every factor
+    // of p out of n; if that leaves exactly 1, n was built from p alone.
+    let mut r = Runner::compile(&cell_src("is_prime_power")).unwrap_or_else(|e| panic!("compile: {e}"));
+
+    // n=2: no d with d*d<=2, so p=n=2; 2/2=1 -> prime power (2^1).
+    assert_eq!(r.run(None, &[2], DEFAULT_CYCLES).unwrap().result, 1, "n=2");
+    // n=4: p=2; 4/2=2, 2/2=1 -> 1 (4 = 2^2).
+    assert_eq!(r.run(None, &[4], DEFAULT_CYCLES).unwrap().result, 1, "n=4");
+    // n=6=2*3: p=2; 6/2=3, remainder 3 != 1 -> not a prime power.
+    assert_eq!(r.run(None, &[6], DEFAULT_CYCLES).unwrap().result, 0, "n=6");
+    // n=9: p=3 (2 does not divide 9); 9/3=3, 3/3=1 -> 1 (9 = 3^2).
+    assert_eq!(r.run(None, &[9], DEFAULT_CYCLES).unwrap().result, 1, "n=9");
+    // n=1: below domain (n >= 2 required) -> 0.
+    assert_eq!(r.run(None, &[1], DEFAULT_CYCLES).unwrap().result, 0, "n=1");
+    // n=30=2*3*5: p=2; 30/2=15, remainder 15 != 1 -> not a prime power.
+    assert_eq!(r.run(None, &[30], DEFAULT_CYCLES).unwrap().result, 0, "n=30");
+    // n=17 (prime): no factor found up to sqrt(17), p=n=17; 17/17=1 -> 1 (a prime is p^1).
+    assert_eq!(r.run(None, &[17], DEFAULT_CYCLES).unwrap().result, 1, "n=17");
+}
+
+#[test]
+fn number_theory_euler_totient_u32_wide_sibling() {
+    // euler_totient_u32: the wide (u32-domain) sibling of euler_totient, phi(n) = count of
+    // integers in [1, n] coprime to n. Same prime-factor-strip-and-reduce loop as
+    // euler_totient, with the trial-division cap raised from 256 to 65536 (mirrors
+    // is_prime_u32/isqrt_u32/is_square_u32's cap-raise pattern) so every prime factor up
+    // to sqrt(u32::MAX) is still found. A state cell (n: u32, result: u32) since u32
+    // can't be a free-fn param/return; run() returns a 1u16 status flag (unlike
+    // isqrt_u32's truncated-result return, phi(n) can itself exceed u16 range for large
+    // n), with the actual value read back from the u32 field `result`.
+    fn totient_wide(n: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("euler_totient_u32"), "EulerTotientWide", None)
+            .unwrap_or_else(|e| panic!("bind euler_totient_u32: {e}"));
+        cell.set("n", n).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run euler_totient_u32: {e}"));
+        cell.get("result").unwrap()
+    }
+
+    // phi(1) = 1 by convention.
+    assert_eq!(totient_wide(1), 1);
+    // phi(9) = 9 * (1 - 1/3) = 6 -- parity check against euler_totient(9).
+    assert_eq!(totient_wide(9), 6);
+    // phi(97) = 96 (97 is prime).
+    assert_eq!(totient_wide(97), 96);
+    // phi(65537) = 65536 -- 65537 is the Fermat prime F4 = 2^16 + 1, just past
+    // euler_totient's u16-domain ceiling of 65535.
+    assert_eq!(totient_wide(65_537), 65_536);
+    // phi(100000) = 100000 * (1/2) * (4/5) = 40000, since 100000 = 2^5 * 5^5.
+    assert_eq!(totient_wide(100_000), 40_000);
+    // phi(1048573) = 1048572 -- 1_048_573 is a genuine prime just under 2^20 (the same
+    // constant is_prime_u32's own test uses), exercising trial division out near the
+    // raised cap while staying inside DEFAULT_CYCLES.
+    assert_eq!(totient_wide(1_048_573), 1_048_572);
+
+    // n == 0 escalates (out_of_domain), matching euler_totient's own convention.
+    let mut cell = StateCell::bind(&cell_src("euler_totient_u32"), "EulerTotientWide", None)
+        .unwrap_or_else(|e| panic!("bind euler_totient_u32: {e}"));
+    cell.set("n", 0).unwrap();
+    let report = cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn smallest_prime_factor_u32_matches_hand_computed_values() {
+    // Local helpers: bind the state cell, set n, run with an explicit cycle budget (u32 mod
+    // traps to a software routine on this backend, so large searches need far more than
+    // DEFAULT_CYCLES), and read back the `result` field.
+    fn spf_wide_budget(n: u32, cycles: u64) -> u32 {
+        let mut cell = StateCell::bind(
+            &cell_src("smallest_prime_factor_u32"),
+            "SmallestPrimeFactorWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind smallest_prime_factor_u32: {e}"));
+        cell.set("n", n as u64).unwrap();
+        let report = cell.run(cycles).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1 (n={n})");
+        cell.get("result").unwrap_or_else(|| panic!("no result field")) as u32
+    }
+    fn spf_wide(n: u32) -> u32 {
+        spf_wide_budget(n, DEFAULT_CYCLES)
+    }
+    fn spf_wide_halt(n: u32) -> cell80::Halt {
+        let mut cell = StateCell::bind(
+            &cell_src("smallest_prime_factor_u32"),
+            "SmallestPrimeFactorWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind smallest_prime_factor_u32: {e}"));
+        cell.set("n", n as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().halt
+    }
+
+    // n=2: smallest (and only) prime, returns itself.
+    assert_eq!(spf_wide(2), 2);
+    // n=97: prime, trial division up to floor(sqrt(97))=9 finds no divisor, returns n.
+    assert_eq!(spf_wide(97), 97);
+    // n=1_048_576 = 2^20: smallest prime factor is 2.
+    assert_eq!(spf_wide(1_048_576), 2);
+    // n=65537: a Fermat prime, exceeds u16::MAX so this exercises the u32 width itself; sqrt is
+    // just over 256, so this also needs the raised (65536) trial-division ceiling versus
+    // smallest_prime_factor's u16 cap of 256.
+    assert_eq!(spf_wide(65537), 65537);
+    // n = 65521 * 65519 = 4_292_870_399 (both prime): smallest factor is the smaller prime,
+    // found only after trial division climbs to just under the 65536 ceiling -- exercises the
+    // top of the raised cap's range and needs a much larger cycle budget.
+    assert_eq!(spf_wide_budget(65521u32 * 65519u32, 100_000_000), 65519);
+    // n = 4_294_967_295 = u32::MAX = 3 * 5 * 17 * 257 * 65537 (product of the Fermat primes):
+    // smallest factor is 3, found on the second trial (d=2 fails since n is odd) -- cheap
+    // despite n's size, since the answer is found immediately.
+    assert_eq!(spf_wide(4_294_967_295), 3);
+    // n = 4_294_967_291: the largest prime below 2^32 -- no divisor exists below its sqrt
+    // (~65535.9997), so the loop runs its full course and returns n itself.
+    assert_eq!(spf_wide_budget(4_294_967_291, 100_000_000), 4_294_967_291);
+    // n=1 and n=0: below the n >= 2 domain, both escalate out_of_domain (0xFF06).
+    assert_eq!(spf_wide_halt(1), cell80::Halt::Escalate(0xFF06));
+    assert_eq!(spf_wide_halt(0), cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn verify_farey_sequence_length() {
+    // |F_n| = 1 + sum_{k=1}^{n} phi(k) -- checked u32 state cell, nesting euler_totient's
+    // prime-factor-strip loop inside an outer k=1..n loop. Hand-computed against the
+    // classical Farey-sequence-length values (OEIS A005728: 1, 2, 3, 5, 7, 11, ..., 33, ...).
+    fn step(n: u16) -> u32 {
+        let mut cell = StateCell::bind(
+            &cell_src("farey_sequence_length"),
+            "FareySequenceLength",
+            None,
+        )
+        .unwrap();
+        cell.set("n", n as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("result").unwrap() as u32
+    }
+
+    assert_eq!(step(0), 1); // empty sum: just the "1 +" term
+    assert_eq!(step(1), 2); // 1 + phi(1) = 1 + 1
+    assert_eq!(step(3), 5); // 1 + (1+1+2)
+    assert_eq!(step(5), 11); // 1 + (1+1+2+2+4)
+    assert_eq!(step(10), 33); // 1 + (1+1+2+2+4+2+6+4+6+4), matches OEIS A005728(10)
+}

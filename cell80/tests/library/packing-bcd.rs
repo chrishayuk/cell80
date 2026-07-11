@@ -191,3 +191,226 @@ fn bcd_decode16_matches_defined_behaviour() {
         failures.join("\n")
     );
 }
+
+
+// Verifies bcd16_is_valid checks that all four nibbles of a packed 4-digit BCD u16 are
+// valid decimal digits (0-9) -- the 4-nibble extension of bcd_is_valid's 2-nibble check,
+// mirroring the bcd_encode/bcd_encode16 2-digit/4-digit ladder. Cases hand-computed:
+// all-zero (valid), all-nine max (valid, boundary), a generic valid value, and one
+// invalid case per nibble position (thousands, hundreds, units) to isolate that every
+// nibble is actually checked, not just the first or last.
+#[test]
+fn bcd16_is_valid_matches_defined_behaviour() {
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("bcd16_is_valid", &[0x0000], 1), // all digits zero
+        ("bcd16_is_valid", &[0x9999], 1), // max valid four-digit BCD
+        ("bcd16_is_valid", &[0x1234], 1), // generic valid value
+        ("bcd16_is_valid", &[0xF123], 0), // thousands nibble 0xF > 9
+        ("bcd16_is_valid", &[0x1A23], 0), // hundreds nibble 0xA > 9
+        ("bcd16_is_valid", &[0x123A], 0), // units nibble 0xA > 9
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+// Verifies bcd_add sums two packed 2-digit BCD bytes via per-nibble decimal-carry
+// correction (the Z80 ADD+DAA idiom): each nibble sum over 9 gets +6 corrected, and a
+// carry propagates from the low nibble into the high-nibble sum. Cases hand-computed:
+// a plain add with an internal nibble carry but no overall carry, max+max (overflow of
+// both nibbles), zero+zero, an exact hundred boundary (tests the carry-out flag fires
+// right at 100), and a zero addend (identity-like case).
+#[test]
+fn bcd_add_matches_hand_computed_cases() {
+    fn add(a: u16, b: u16) -> (u16, u16) {
+        let mut cell = StateCell::bind(&cell_src("bcd_add"), "BcdAdd", None)
+            .unwrap_or_else(|e| panic!("bind bcd_add: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        (
+            cell.get("sum").unwrap() as u16,
+            cell.get("carry").unwrap() as u16,
+        )
+    }
+
+    // 45 + 38 = 83 (nibble carry in the low digit, no overall carry)
+    assert_eq!(add(0x45, 0x38), (0x83, 0));
+    // 99 + 99 = 198 -> mod 100 = 98, carry = 1 (max + max)
+    assert_eq!(add(0x99, 0x99), (0x98, 1));
+    // 0 + 0 = 0, no carry
+    assert_eq!(add(0x00, 0x00), (0x00, 0));
+    // 59 + 41 = 100 -> mod 100 = 0, carry = 1 (exact boundary)
+    assert_eq!(add(0x59, 0x41), (0x00, 1));
+    // 12 + 0 = 12, no carry (zero addend)
+    assert_eq!(add(0x12, 0x00), (0x12, 0));
+}
+
+// bcd_sub: subtracts two packed 2-digit BCD bytes (tens in high nibble, units in low
+// nibble) via per-nibble decimal-borrow correction, producing the packed-BCD difference
+// plus a borrow-out flag. Requires `use cell80::{StateCell, DEFAULT_CYCLES};` and
+// `crate::common::cell_src` at the top of this pack test file.
+#[test]
+fn bcd_sub_matches_hand_computed_values() {
+    fn bcd_sub(a: u16, b: u16) -> (u16, u16) {
+        let mut cell = StateCell::bind(&cell_src("bcd_sub"), "BcdSub", None)
+            .unwrap_or_else(|e| panic!("bind bcd_sub: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        let diff = cell.get("diff").unwrap_or_else(|| panic!("no diff field")) as u16;
+        let borrow = cell.get("borrow").unwrap_or_else(|| panic!("no borrow field")) as u16;
+        (diff, borrow)
+    }
+
+    // 59 - 27 = 32, no borrow anywhere (9>=7, 5>=2).
+    assert_eq!(bcd_sub(0x59, 0x27), (0x32, 0));
+    // 50 - 27 = 23: low nibble borrows (0<7 -> 0+10-7=3, carry 1), high absorbs it (5-2-1=2).
+    assert_eq!(bcd_sub(0x50, 0x27), (0x23, 0));
+    // 12 - 34 = -22 -> decimal-borrow wraps to 100-22=78, borrow-out=1.
+    assert_eq!(bcd_sub(0x12, 0x34), (0x78, 1));
+    // 0 - 0 = 0, no borrow.
+    assert_eq!(bcd_sub(0x00, 0x00), (0x00, 0));
+    // 99 - 99 = 0, equal digit-by-digit, no borrow.
+    assert_eq!(bcd_sub(0x99, 0x99), (0x00, 0));
+    // 0 - 1 = -1 -> wraps to 100-1=99, borrow-out=1 (both nibbles borrow through zero).
+    assert_eq!(bcd_sub(0x00, 0x01), (0x99, 1));
+}
+
+// Verifies pack_bytes4 concatenates four byte values into one u32 as
+// (b3 << 24) | (b2 << 16) | (b1 << 8) | b0 -- the 4x8-bit rung above pack_u16_pair's
+// 2x16-bit form, needed because four inputs exceed a free fn's 3-param cap. Cases
+// hand-computed: a generic mixed-byte value, all-zero, all-max (checks no
+// overflow/wrap across the full u32), each single-byte-alone edge that isolates b3's
+// and b1's placement, and out-of-range inputs that must mask cleanly to their low byte.
+#[test]
+fn pack_bytes4_state_cell_matches_defined_behaviour() {
+    fn pack(b3: u16, b2: u16, b1: u16, b0: u16) -> u32 {
+        let mut cell = StateCell::bind(&cell_src("pack_bytes4"), "PackBytes4", None)
+            .unwrap_or_else(|e| panic!("bind pack_bytes4: {e}"));
+        cell.set("b3", b3 as u64).unwrap();
+        cell.set("b2", b2 as u64).unwrap();
+        cell.set("b1", b1 as u64).unwrap();
+        cell.set("b0", b0 as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        cell.get("out").unwrap_or_else(|| panic!("no out field")) as u32
+    }
+
+    assert_eq!(pack(0x12, 0x34, 0x56, 0x78), 0x1234_5678); // generic mixed bytes
+    assert_eq!(pack(0, 0, 0, 0), 0); // all zero
+    assert_eq!(pack(0xFF, 0xFF, 0xFF, 0xFF), 0xFFFF_FFFF); // all max, no overflow/wrap
+    assert_eq!(pack(1, 0, 0, 0), 16_777_216); // b3 alone -> 0x01000000
+    assert_eq!(pack(0, 0, 1, 0), 256); // b1 alone -> 0x00000100
+    assert_eq!(pack(0x1FF, 0, 0, 0x2FF), 0xFF00_00FF); // out-of-range inputs mask cleanly
+}
+
+// unpack_bytes4: the inverse of pack_bytes4 — splits a u32 back into its four constituent
+// bytes (b3 highest .. b0 lowest) via b3 = (in_val >> 24) & 0xFF, b2 = (in_val >> 16) & 0xFF,
+// b1 = (in_val >> 8) & 0xFF, b0 = in_val & 0xFF. Uses `crate::common::cell_src` and
+// `cell80::{StateCell, DEFAULT_CYCLES}`, both already imported at the top of this pack test file.
+#[test]
+fn unpack_bytes4_matches_defined_behaviour() {
+    fn step(in_val: u64) -> (u64, u64, u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("unpack_bytes4"), "UnpackBytes4", None)
+            .unwrap_or_else(|e| panic!("bind unpack_bytes4: {e}"));
+        cell.set("in_val", in_val).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        (
+            cell.get("b3").unwrap(),
+            cell.get("b2").unwrap(),
+            cell.get("b1").unwrap(),
+            cell.get("b0").unwrap(),
+        )
+    }
+
+    // Round-trip corners plus a mixed value, mirroring unpack_u16_pair's own corner-value
+    // test cases (all-zero, generic mixed, all-ones, single-byte-set at each extreme).
+    assert_eq!(step(0), (0, 0, 0, 0));
+    assert_eq!(step(0x12345678), (0x12, 0x34, 0x56, 0x78));
+    assert_eq!(step(0xFFFFFFFF), (0xFF, 0xFF, 0xFF, 0xFF));
+    assert_eq!(step(0x000000FF), (0, 0, 0, 0xFF));
+    assert_eq!(step(0xFF000000), (0xFF, 0, 0, 0));
+}
+
+// Verifies bcd_add16 sums two packed 4-digit BCD u16 values via a 4-nibble decimal-carry
+// chain -- the width sibling of bcd_add's 2-nibble byte form, following the
+// bcd_encode/bcd_encode16 2-digit/4-digit ladder. Cases hand-computed: a generic sum with
+// two internal nibble carries but no carry-out, a full ripple-through-all-four-nibbles
+// wraparound (9999+1=10000 mod 10000=0, carry=1), the zero baseline, a different
+// wraparound combination that also carries out through the top nibble, and a partial
+// ripple that stops cleanly at the hundreds digit (no carry-out).
+#[test]
+fn bcd_add16_matches_defined_behaviour() {
+    fn add16(a: u16, b: u16) -> (u16, u16) {
+        let mut cell = StateCell::bind(&cell_src("bcd_add16"), "BcdAdd16", None)
+            .unwrap_or_else(|e| panic!("bind bcd_add16: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        (
+            cell.get("sum").unwrap() as u16,
+            cell.get("carry").unwrap() as u16,
+        )
+    }
+
+    // 1234 + 5678 = 6912: units 4+8=12>9 -> digit 2 carry 1; tens 3+7+1=11>9 -> digit 1
+    // carry 1; hundreds 2+6+1=9 -> digit 9 carry 0; thousands 1+5+0=6 -> digit 6. No carry-out.
+    assert_eq!(add16(0x1234, 0x5678), (0x6912, 0));
+
+    // 9999 + 1 = 10000 -> wraps mod 10000 to 0, carry out 1: every nibble sum is 9+1(+carry)=10,
+    // rippling all the way through the thousands digit.
+    assert_eq!(add16(0x9999, 0x0001), (0x0000, 1));
+
+    // 0 + 0 = 0, no carry: trivial baseline.
+    assert_eq!(add16(0x0000, 0x0000), (0x0000, 0));
+
+    // 4999 + 5001 = 10000 -> wraps to 0, carry out 1: carry ripples through three nibbles,
+    // then the top nibble sum 4+5+1=10 also decimal-corrects to 0 with carry out.
+    assert_eq!(add16(0x4999, 0x5001), (0x0000, 1));
+
+    // 1099 + 1 = 1100, no carry out: carry ripples through units and tens, then stops
+    // cleanly at the hundreds digit (0+0+1=1, no overflow) -- isolates a partial ripple.
+    assert_eq!(add16(0x1099, 0x0001), (0x1100, 0));
+}
+
+// Verifies bcd_sub16 subtracts two packed 4-digit BCD u16 values via a 4-nibble decimal-borrow
+// chain, mirroring bcd_sub's 2-nibble form one rung wider on the pack's 2-digit/4-digit ladder.
+// Cases hand-computed: a generic no-borrow subtraction, a full borrow-chain propagation across
+// all four digits, the zero-minus-zero identity, a max-minus-small edge with no borrow, and a
+// zero-minus-one wraparound (mod 10000) that forces borrow-out through every nibble.
+#[test]
+fn bcd_sub16_matches_defined_behaviour() {
+    fn sub16(a: u16, b: u16) -> (u16, u16) {
+        let mut cell = StateCell::bind(&cell_src("bcd_sub16"), "BcdSub16", None)
+            .unwrap_or_else(|e| panic!("bind bcd_sub16: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        (
+            cell.get("diff").unwrap() as u16,
+            cell.get("borrow").unwrap() as u16,
+        )
+    }
+
+    assert_eq!(sub16(0x5000, 0x3000), (0x2000, 0)); // 5000 - 3000 = 2000, no borrow
+    assert_eq!(sub16(0x1234, 0x5678), (0x5556, 1)); // 1234 - 5678 = -4444 mod 10000 = 5556, borrow
+    assert_eq!(sub16(0x0000, 0x0000), (0x0000, 0)); // 0 - 0 = 0
+    assert_eq!(sub16(0x9999, 0x0001), (0x9998, 0)); // 9999 - 1 = 9998, no borrow
+    assert_eq!(sub16(0x0000, 0x0001), (0x9999, 1)); // 0 - 1 wraps to 9999, borrow-out
+}

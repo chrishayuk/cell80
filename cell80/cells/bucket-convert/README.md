@@ -7,13 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
 | `bucket3` | `run(x: u16, t1: u16, t2: u16) -> u16` | Bucket x into 0, 1, or 2 by two ascending thresholds: x<t1 → 0, x<t2 → 1, else 2. |
+| `bucket3_i16` | `run(x: i16, t1: i16, t2: i16) -> u16` | Bucket a signed x into 0, 1, or 2 by two ascending signed thresholds via plain i16 comparison: x<t1 → 0, x<t2 → 1, else 2 -- the signed sibling of bucket3 (which only works over u16 and misreads negative deltas as huge unsigned values). |
 | `bucket3_u32` | `Bucket3Wide::run() -> u16` | Bucket x into 0, 1, or 2 by two ascending wide u32 thresholds: x<t1 → 0, x<t2 → 1, else 2 — the wide sibling of bucket3 (which works over u16 and can't classify values beyond 65535, e.g. large counters or byte offsets). |
 | `bucket4` | `Bucket4::run() -> u16` | Bucket x into 0, 1, 2, or 3 by three ascending thresholds: x<t1 -> 0, x<t2 -> 1, x<t3 -> 2, else 3 -- the one-more-threshold arity sibling of bucket3. |
+| `bucket4_u32` | `Bucket4Wide::run() -> u16` | Bucket x into 0, 1, 2, or 3 by three ascending wide u32 thresholds: x<t1 -> 0, x<t2 -> 1, x<t3 -> 2, else 3 -- the wide sibling of bucket4 (which works over u16 and can't classify values beyond 65535). |
 | `byte_to_percent` | `run(b: u16) -> u16` | Convert a 0..255 byte scale to a 0..100 percent: b*100/255. |
+| `byte_to_permille` | `run(b: u16) -> u16` | Convert a 0..255 byte scale to a 0..1000 per-mille scale via the reduced fraction b*200/51 (b*1000/255 in lowest terms, avoiding a b*1000 overflow). |
 | `percent_to_byte` | `run(p: u16) -> u16` | Convert a 0..100 percent to a 0..255 byte scale: p*255/100. |
+| `permille_to_byte` | `run(pm: u16) -> u16` | Convert a 0..1000 per-mille scale to a 0..255 byte scale via the reduced fraction pm*51/200. |
 

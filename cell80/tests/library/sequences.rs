@@ -629,3 +629,277 @@ fn horner_eval_cubic_slice() {
     let (_, report) = step(&[("a", 1_000_000), ("b", 0), ("c", 0), ("d", 0), ("x", 5000)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn arithmetic_first_term_hand_computed_cases() {
+    fn cell_src() -> String {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("cells/sequences/arithmetic_first_term.rs");
+        std::fs::read_to_string(path).unwrap()
+    }
+    fn verify(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(), "ArithmeticFirstTerm", None).unwrap();
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // Case 1: normal recovery — sequence 3,5,7,9,11 (step=2), 5th term is 11.
+    // start = term - step*(n-1) = 11 - 2*4 = 3.
+    let (_, _, cell) = verify(&[("step", 2), ("n", 5), ("term", 11)]);
+    assert_eq!(cell.get("start"), Some(3));
+
+    // Case 2: n=1 branch — the "first term" case is pinned directly: start = term.
+    let (_, _, cell) = verify(&[("step", 2), ("n", 1), ("term", 3)]);
+    assert_eq!(cell.get("start"), Some(3));
+
+    // Case 3: step=0 — a constant sequence, every term equals start regardless of n.
+    // start = 7 - 0*4 = 7.
+    let (_, _, cell) = verify(&[("step", 0), ("n", 5), ("term", 7)]);
+    assert_eq!(cell.get("start"), Some(7));
+
+    // Case 4: n==0 is out of domain (no such term index) — escalates 0xFF06.
+    let (_, report, _) = verify(&[("step", 2), ("n", 0), ("term", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Case 5: offset exceeds term — step*(n-1) = 5*2 = 10 > term(7), so no valid
+    // nonnegative start exists in u32 domain. Escalates 0xFF06.
+    let (_, report, _) = verify(&[("step", 5), ("n", 3), ("term", 7)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Case 6: overflow — step*(n-1) = 4_000_000_000 * 2 overflows u32, so
+    // mul_checked_u32 must halt with 0xFF05 (needs_wider_math) rather than wrap.
+    let (_, report, _) = verify(&[("step", 4_000_000_000), ("n", 3), ("term", 100)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn geometric_first_term_hand_checked() {
+    // Local bind/set/run helper, same shape as this file's other step() closures.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("geometric_first_term"),
+            "GeometricFirstTerm",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind geometric_first_term: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // geometric_first_term: inverse of geometric_nth_checked_u32. Sequence 2,6,18,54
+    // (start=2, ratio=3) -- the 4th term is 54, so recovering start from (ratio=3, n=4,
+    // term=54) should give back 2.
+    let (report, cell) = step(&[("ratio", 3), ("n", 4), ("term", 54)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("start"), Some(2));
+
+    // n=1 means the term IS the first term, regardless of ratio (divisor = ratio^0 = 1).
+    let (report, cell) = step(&[("ratio", 5), ("n", 1), ("term", 7)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("start"), Some(7));
+
+    // n == 0 is out of domain -- same guard geometric_nth_checked_u32 uses.
+    let (report, _) = step(&[("ratio", 2), ("n", 0), ("term", 100)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // ratio=2, n=3 -> divisor = ratio^(n-1) = 4; term=5 is not an exact multiple of 4,
+    // so there's no integer start that fits -- out of domain rather than truncating.
+    let (report, _) = step(&[("ratio", 2), ("n", 3), ("term", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // ratio=100_000, n=3 -> building the divisor (1*100_000, then *100_000 again =
+    // 10_000_000_000) overflows u32 (max ~4.29e9) -> needs_wider_math, same escalation
+    // geometric_nth_checked_u32 raises when a forward term overflows.
+    let (report, _) = step(&[("ratio", 100_000), ("n", 3), ("term", 1)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn series_other_endpoint_hand_computed() {
+    // Recovers the missing arithmetic-series endpoint from term count, sum, and the known
+    // endpoint: other = 2*sum/count - known. Symmetric inverse of series_sum/series_term_count
+    // that neither of those two cells provides (they don't recover a single endpoint).
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("series_other_endpoint"),
+            "SeriesOtherEndpoint",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 3,5,7,9,11 (5 terms, first=3, last=11, sum=35). avg_pair = 2*35/5 = 14.
+    // known=first=3 -> other should recover last=11.
+    let (_, cell) = step(&[("known", 3), ("count", 5), ("sum", 35)]);
+    assert_eq!(cell.get("other"), Some(11));
+
+    // Same series, known=last=11 -> other should recover first=3 (symmetric either direction).
+    let (_, cell) = step(&[("known", 11), ("count", 5), ("sum", 35)]);
+    assert_eq!(cell.get("other"), Some(3));
+
+    // 5+5+5=15 (3 terms, first=last=5). avg_pair = 2*15/3 = 10. known=5 -> other=5.
+    let (_, cell) = step(&[("known", 5), ("count", 3), ("sum", 15)]);
+    assert_eq!(cell.get("other"), Some(5));
+
+    // count==0 -> out_of_domain (0xFF06): no series has zero terms with a nonzero endpoint.
+    let (report, _) = step(&[("known", 5), ("count", 0), ("sum", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // count=3, sum=4: doubled=8, 8 % 3 != 0 -> not evenly divisible -> out_of_domain.
+    let (report, _) = step(&[("known", 1), ("count", 3), ("sum", 4)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // count=5, sum=35: avg_pair=14, known=20 > 14 -> other would go negative -> out_of_domain.
+    let (report, _) = step(&[("known", 20), ("count", 5), ("sum", 35)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // sum=3_000_000_000: doubled=6_000_000_000 overflows u32::MAX -> needs_wider_math (0xFF05).
+    let (report, _) = step(&[("known", 0), ("count", 2), ("sum", 3_000_000_000)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn horner_eval_quartic_slice() {
+    // Evaluates a*x^4 + b*x^3 + c*x^2 + d*x + e via Horner's method, checked at every
+    // multiply-add step; the last case forces an overflow to confirm it escalates
+    // (0xFF05, needs_wider_math) instead of silently wrapping.
+    fn step(fields: &[(&str, u64)]) -> (StateCell, cell80::Report) {
+        let mut cell = StateCell::bind(&cell_src("horner_eval_quartic"), "HornerQuartic", None)
+            .unwrap_or_else(|e| panic!("bind horner_eval_quartic: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (cell, report)
+    }
+
+    // 2x^4 + 3x^3 + 4x^2 + 5x + 6 at x=10 -> 20000 + 3000 + 400 + 50 + 6 = 23456.
+    let (cell, _) = step(&[("a", 2), ("b", 3), ("c", 4), ("d", 5), ("e", 6), ("x", 10)]);
+    assert_eq!(cell.get("result"), Some(23456));
+
+    // x^4 at x=3 (a=1, b=c=d=e=0) -> 81.
+    let (cell, _) = step(&[("a", 1), ("b", 0), ("c", 0), ("d", 0), ("e", 0), ("x", 3)]);
+    assert_eq!(cell.get("result"), Some(81));
+
+    // x=0 collapses the polynomial to its constant term e.
+    let (cell, _) = step(&[("a", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("x", 0)]);
+    assert_eq!(cell.get("result"), Some(5));
+
+    // Overflow at the very first multiply (a*x = 1_000_000 * 5000 = 5e9 > u32::MAX)
+    // must escalate rather than wrap.
+    let (_, report) = step(&[
+        ("a", 1_000_000),
+        ("b", 0),
+        ("c", 0),
+        ("d", 0),
+        ("e", 0),
+        ("x", 5000),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // All-ones coefficients at x=20 -> 160000 + 8000 + 400 + 20 + 1 = 168421.
+    let (cell, _) = step(&[("a", 1), ("b", 1), ("c", 1), ("d", 1), ("e", 1), ("x", 20)]);
+    assert_eq!(cell.get("result"), Some(168421));
+}
+
+#[test]
+fn geometric_series_term_count_matches_hand_computed_values() {
+    // Verifies the inverse of geometric_series_sum: given (a, r, target_sum), recover n.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // a=2, r=3, target_sum=80 -> 2,6,18,54 sums to 80 at n=4.
+    let (report, cell) = step(
+        "geometric_series_term_count",
+        "GeometricSeriesTermCount",
+        &[("a", 2), ("r", 3), ("target_sum", 80)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("n"), Some(4));
+
+    // r == 1 special case: a=5, target_sum=35 -> series sum after n terms is 5*n, so n=7.
+    let (report, cell) = step(
+        "geometric_series_term_count",
+        "GeometricSeriesTermCount",
+        &[("a", 5), ("r", 1), ("target_sum", 35)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("n"), Some(7));
+
+    // a == 0 special case: every term is 0, so target_sum=0 is trivially met at n=0.
+    let (report, cell) = step(
+        "geometric_series_term_count",
+        "GeometricSeriesTermCount",
+        &[("a", 0), ("r", 3), ("target_sum", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("n"), Some(0));
+
+    // Overshoot without ever matching: a=1, r=2 -> partial sums 1,3,7,15,... never hit 10,
+    // so this must escalate out_of_domain rather than return a wrong nearest n.
+    let (report, _cell) = step(
+        "geometric_series_term_count",
+        "GeometricSeriesTermCount",
+        &[("a", 1), ("r", 2), ("target_sum", 10)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Fixed-point stall: a=5, r=0 -> partial sums are 5,5,5,... (only the first term is
+    // nonzero), so a target_sum of 12 can never be reached -- must escalate out_of_domain.
+    let (report, _cell) = step(
+        "geometric_series_term_count",
+        "GeometricSeriesTermCount",
+        &[("a", 5), ("r", 0), ("target_sum", 12)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn collatz_next_hand_computed() {
+    // collatz_next: one raw Collatz step (3n+1 if odd, n/2 if even), distinct from
+    // collatz_stopping_time/collatz_max_value which only ever return a trajectory
+    // summary -- this exposes the bare single-step transform.
+    fn run(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r =
+            cell80::Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // n=1 (odd) -> 3*1+1 = 4.
+    assert_eq!(run("collatz_next", &[1]).result, 4);
+    // n=4 (even) -> 4/2 = 2.
+    assert_eq!(run("collatz_next", &[4]).result, 2);
+    // n=7 (odd) -> 3*7+1 = 22.
+    assert_eq!(run("collatz_next", &[7]).result, 22);
+    // n=21843 (odd, just below the overflow boundary) -> 3*21843+1 = 65530, fits u16.
+    assert_eq!(run("collatz_next", &[21843]).result, 65530);
+
+    // n=0 is out of domain -- escalate.
+    assert_eq!(run("collatz_next", &[0]).halt, cell80::Halt::Escalate(0xFF06));
+
+    // n=21845 (odd) -> 3*21845+1 = 65536, one past u16::MAX -- needs_wider_math escalation.
+    assert_eq!(
+        run("collatz_next", &[21845]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    );
+}

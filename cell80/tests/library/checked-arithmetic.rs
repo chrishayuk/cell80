@@ -621,3 +621,398 @@ fn is_coprime_u32_hand_computed() {
     assert_eq!(r, 0);
     assert_eq!(cell.get("ok"), Some(0));
 }
+
+
+#[test]
+fn min3_u32_matches_hand_computed_cases() {
+    // Checks Min3Wide::run against hand-computed min(min(a,b),c) over several wide u32 cases,
+    // including a three-way tie, a partial tie, and values near u32::MAX to confirm no overflow
+    // or truncation creeps in at the top of the range.
+    fn check(a: u32, b: u32, c: u32) -> u32 {
+        let mut cell = StateCell::bind(&cell_src("min3_u32"), "Min3Wide", None)
+            .unwrap_or_else(|e| panic!("bind min3_u32: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        cell.set("c", c as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        cell.get("result").unwrap() as u32
+    }
+
+    // (a, b, c, expected) -- hand-computed as min(min(a,b),c)
+    let cases: &[(u32, u32, u32, u32)] = &[
+        (5, 3, 8, 3),                                      // b smallest
+        (100, 200, 50, 50),                                // c smallest
+        (0, 0, 0, 0),                                       // all zero
+        (u32::MAX, u32::MAX - 1, u32::MAX, u32::MAX - 1),   // wide values near u32::MAX
+        (7, 7, 7, 7),                                        // three-way tie
+        (10, 20, 10, 10),                                    // a and c tie for smallest
+    ];
+
+    let mut failures = Vec::new();
+    for (a, b, c, exp) in cases {
+        let got = check(*a, *b, *c);
+        if got != *exp {
+            failures.push(format!("min3_u32({a},{b},{c}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+}
+
+// max3_u32: wide (u32) three-way max, exercised past the u16 ceiling and with ties.
+#[test]
+fn max3_u32_wide_three_way_max() {
+    fn step(fields: &[(&str, u64)]) -> cell80::StateCell {
+        let mut cell = StateCell::bind(&cell_src("max3_u32"), "Max3Wide", None)
+            .unwrap_or_else(|e| panic!("bind max3_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        cell
+    }
+
+    // c is the largest, well past u16 range.
+    let cell = step(&[("a", 100_000), ("b", 30_000), ("c", 200_000)]);
+    assert_eq!(cell.get("result"), Some(200_000));
+
+    // a is the largest.
+    let cell = step(&[("a", 500_000), ("b", 400_000), ("c", 300_000)]);
+    assert_eq!(cell.get("result"), Some(500_000));
+
+    // b is the largest.
+    let cell = step(&[("a", 1), ("b", 999_999), ("c", 2)]);
+    assert_eq!(cell.get("result"), Some(999_999));
+
+    // a and c tie for largest.
+    let cell = step(&[("a", 4_000_000_000), ("b", 1), ("c", 4_000_000_000)]);
+    assert_eq!(cell.get("result"), Some(4_000_000_000));
+
+    // boundary at u32::MAX.
+    let cell = step(&[("a", u32::MAX as u64), ("b", (u32::MAX - 1) as u64), ("c", 0)]);
+    assert_eq!(cell.get("result"), Some(u32::MAX as u64));
+}
+
+#[test]
+fn sub4_checked_u32_matches_hand_computed_expectations() {
+    // sub4_checked_u32: a-b-c-d, composing sub_checked_u32 three times -- escalates the
+    // moment any sequential subtract step would go negative, filling the missing arity-4
+    // sibling of sub_checked_u32 (2-arg) / sub3_checked_u32 (3-arg), matching add4_checked_u32.
+    fn step(a: u64, b: u64, c: u64, d: u64) -> (cell80::Report, Option<u64>) {
+        let mut cell = StateCell::bind(&cell_src("sub4_checked_u32"), "Sub4Checked", None)
+            .unwrap_or_else(|e| panic!("bind sub4_checked_u32: {e}"));
+        for (f, v) in [("a", a), ("b", b), ("c", c), ("d", d)] {
+            cell.set(f, v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let diff = cell.get("diff");
+        (report, diff)
+    }
+
+    // Normal case, every step stays nonnegative -> 100-30-20-10 = 40.
+    let (report, diff) = step(100, 30, 20, 10);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(diff, Some(40));
+
+    // First step goes negative (b=20 > a=10) -> escalates immediately, before c or d apply.
+    let (report, _) = step(10, 20, 5, 1);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // First step fine (50-20=30), second step goes negative (c=40 > 30) -> escalates.
+    let (report, _) = step(50, 20, 40, 1);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // First two steps fine (50-20=30, 30-10=20), third step goes negative (d=25 > 20)
+    // -> escalates on the final subtract, proving every sequential step is checked, not
+    // just the first two (mirrors add4_checked_u32's last-step-only overflow case).
+    let (report, _) = step(50, 20, 10, 25);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Wide u32 boundary -> u32::MAX - 1 - 1 - 1 = u32::MAX - 3, no escalation.
+    let (report, diff) = step(u32::MAX as u64, 1, 1, 1);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(diff, Some((u32::MAX - 3) as u64));
+}
+
+#[test]
+fn mul4_checked_u32_matches_defined_behaviour() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // mul4_checked_u32: a*b*c*d, escalating the moment any sequential multiply step
+    // overflows u32 (composes mul_checked_u32 three times: (a*b), *c, *d).
+
+    // Small exact case: comfortably within u32, no escalation.
+    let (_, report, cell) = step(
+        "mul4_checked_u32",
+        "Mul4Checked",
+        &[("a", 2), ("b", 3), ("c", 4), ("d", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("product"), Some(120));
+
+    // Zero case: any zero factor collapses the product to 0 with no overflow risk at
+    // any step, regardless of how large the other factors are.
+    let (_, report, cell) = step(
+        "mul4_checked_u32",
+        "Mul4Checked",
+        &[("a", 0), ("b", 100), ("c", 100), ("d", 100)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("product"), Some(0));
+
+    // Exact boundary: 3*5*17*16_843_009 = u32::MAX exactly (u32::MAX factors as
+    // 3*5*17*257*65537, grouped as 257*65537 = 16_843_009 for the 4th factor). Every
+    // intermediate partial product (15, 255, 4_294_967_295) also stays in range, so no
+    // escalation fires even though the final product lands exactly on the ceiling.
+    let (_, report, cell) = step(
+        "mul4_checked_u32",
+        "Mul4Checked",
+        &[("a", 3), ("b", 5), ("c", 17), ("d", 16_843_009)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("product"), Some(u32::MAX as u64));
+
+    // First-step overflow: a*b alone (100_000 * 100_000 = 10_000_000_000) already
+    // exceeds u32::MAX, so escalation fires immediately regardless of c, d.
+    let (_, report, _) = step(
+        "mul4_checked_u32",
+        "Mul4Checked",
+        &[("a", 100_000), ("b", 100_000), ("c", 1), ("d", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Last-step overflow only: a*b=1_000_000 and (a*b)*c=1_000_000_000 both stay in
+    // range, but the final *d (1_000_000_000 * 5 = 5_000_000_000) pushes past u32::MAX --
+    // escalation fires on the final multiply, proving every sequential step is checked,
+    // not just the first.
+    let (_, report, _) = step(
+        "mul4_checked_u32",
+        "Mul4Checked",
+        &[("a", 1000), ("b", 1000), ("c", 1000), ("d", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn avg3_u32_hand_computed() {
+    // Mirrors the checked-arithmetic pack's existing `step` helper shape (see
+    // cell80/tests/library/checked-arithmetic.rs) using only cell_src/StateCell/DEFAULT_CYCLES
+    // already imported at the top of that file.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // avg3_u32: floor average of three wide u32 values via per-term divide-by-3 plus
+    // remainder correction -- the arity-3 extension avg2_u32 lacks.
+
+    // 1. Exact case, no remainder correction needed: (10+20+30)/3 = 20 exactly.
+    let (_, report, cell) = step("avg3_u32", "Avg3Wide", &[("a", 10), ("b", 20), ("c", 30)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(20));
+
+    // 2. Non-exact average, floors down: (10+10+11)/3 = 31/3 = 10.33 -> floor 10.
+    let (_, _, cell) = step("avg3_u32", "Avg3Wide", &[("a", 10), ("b", 10), ("c", 11)]);
+    assert_eq!(cell.get("result"), Some(10));
+
+    // 3. Remainder-sum edge: each term contributes remainder 2 (2/3 = 0 r2), so the
+    // remainder-correction term itself must floor(6/3) = 2 -- (2+2+2)/3 = 2 exactly.
+    let (_, _, cell) = step("avg3_u32", "Avg3Wide", &[("a", 2), ("b", 2), ("c", 2)]);
+    assert_eq!(cell.get("result"), Some(2));
+
+    // 4. Large values whose sum would overflow u32 (3 * 4_000_000_000 = 12_000_000_000 >
+    // u32::MAX) but the per-term divide-by-3 technique never forms that sum -- each term
+    // floors to 1_333_333_333 r1, remainder-sum 3 contributes floor(3/3) = 1, giving back
+    // exactly 4_000_000_000 (the shared value), proving the overflow-free claim.
+    let (_, report, cell) = step(
+        "avg3_u32",
+        "Avg3Wide",
+        &[("a", 4_000_000_000), ("b", 4_000_000_000), ("c", 4_000_000_000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(4_000_000_000));
+
+    // 5. Triple u32::MAX: divides evenly by 3 (u32::MAX = 3 * 1_431_655_765), so every
+    // per-term remainder is 0 and the average of three maxed-out values is exactly
+    // u32::MAX itself -- again computed without ever summing past u32::MAX.
+    let (_, _, cell) = step(
+        "avg3_u32",
+        "Avg3Wide",
+        &[("a", u32::MAX as u64), ("b", u32::MAX as u64), ("c", u32::MAX as u64)],
+    );
+    assert_eq!(cell.get("result"), Some(u32::MAX as u64));
+}
+
+#[test]
+fn gcd3_u32_matches_hand_computed_gcd_of_gcd() {
+    // gcd3_u32: gcd(gcd(a,b),c) via two chained Euclidean loops, over the wide u32 domain.
+    let step = |fields: &[(&str, u64)]| -> StateCell {
+        let mut cell = StateCell::bind(&cell_src("gcd3_u32"), "Gcd3Wide", None)
+            .unwrap_or_else(|e| panic!("bind gcd3_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    };
+
+    // gcd(48,18)=6, then gcd(6,12)=6.
+    let cell = step(&[("a", 48), ("b", 18), ("c", 12)]);
+    assert_eq!(cell.get("result"), Some(6));
+
+    // gcd(17,13)=1 (distinct primes, coprime), then gcd(1,5)=1.
+    let cell = step(&[("a", 17), ("b", 13), ("c", 5)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // gcd(100_000,75_000)=25_000, then gcd(25_000,50_000)=25_000 -- past the u16 ceiling.
+    let cell = step(&[("a", 100_000), ("b", 75_000), ("c", 50_000)]);
+    assert_eq!(cell.get("result"), Some(25_000));
+
+    // gcd(0,0)=0, then gcd(0,7)=7 -- zero-edge case (gcd(0,n)=n).
+    let cell = step(&[("a", 0), ("b", 0), ("c", 7)]);
+    assert_eq!(cell.get("result"), Some(7));
+}
+
+#[test]
+fn lcm3_u32_matches_defined_behaviour() {
+    // Host-oracle check for lcm3_u32 (state cell Lcm3Checked { a: u32, b: u32, c: u32, result: u32 }):
+    // computes lcm(lcm(a,b),c) by chaining two Euclid-gcd + checked-multiply steps, the same
+    // way lcm_u32 does at arity 2. Zero convention: any input 0 gives result 0 (matches lcm_u32).
+    // Overflow in either chained multiply escalates (Halt::Escalate(0xFF05), needs_wider_math).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // lcm(4,6,8): lcm(4,6)=12, lcm(12,8)=24.
+    let (_, report, cell) = step("lcm3_u32", "Lcm3Checked", &[("a", 4), ("b", 6), ("c", 8)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(24));
+
+    // lcm(3,5,7): pairwise coprime, lcm = product = 105.
+    let (_, report, cell) = step("lcm3_u32", "Lcm3Checked", &[("a", 3), ("b", 5), ("c", 7)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(105));
+
+    // Zero convention: any of a/b/c being 0 yields result 0.
+    let (_, report, cell) = step("lcm3_u32", "Lcm3Checked", &[("a", 0), ("b", 6), ("c", 8)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, report, cell) = step("lcm3_u32", "Lcm3Checked", &[("a", 4), ("b", 6), ("c", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // Overflow escalation: a=4_000_000_000, b=3 are coprime (a mod 3 == 1), so
+    // lcm(a,b) = a*b = 12_000_000_000, which exceeds u32::MAX — the first chained
+    // multiply overflows and the cell escalates before ever combining in c.
+    let (_, report, _) = step(
+        "lcm3_u32",
+        "Lcm3Checked",
+        &[("a", 4_000_000_000), ("b", 3), ("c", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn smag_clamp_matches_hand_computed_cases() {
+    // smag_clamp: clamp a signed (mag_x, neg_x) value into an inclusive signed range
+    // [lo, hi] (each its own (mag, neg) pair, neg 0=nonneg/1=neg per smag_add), using
+    // smag_cmp's sign-then-magnitude ordering. Covers: below lo, above hi, within range,
+    // an inclusive boundary (x == lo exactly), and the out-of-domain escalation.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // x = -8, range [-5, 10] -> -8 < -5, clamp to lo = -5 -> (mag=5, neg=1).
+    let (_, report, cell) = step(
+        "smag_clamp",
+        "SmagClamp",
+        &[
+            ("mag_x", 8), ("neg_x", 1),
+            ("mag_lo", 5), ("neg_lo", 1),
+            ("mag_hi", 10), ("neg_hi", 0),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+
+    // x = 15, range [-5, 10] -> 15 > 10, clamp to hi = 10 -> (mag=10, neg=0).
+    let (_, report, cell) = step(
+        "smag_clamp",
+        "SmagClamp",
+        &[
+            ("mag_x", 15), ("neg_x", 0),
+            ("mag_lo", 5), ("neg_lo", 1),
+            ("mag_hi", 10), ("neg_hi", 0),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(10), Some(0)));
+
+    // x = -3, range [-5, -1] -> within range, unchanged -> (mag=3, neg=1).
+    let (_, report, cell) = step(
+        "smag_clamp",
+        "SmagClamp",
+        &[
+            ("mag_x", 3), ("neg_x", 1),
+            ("mag_lo", 5), ("neg_lo", 1),
+            ("mag_hi", 1), ("neg_hi", 1),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(3), Some(1)));
+
+    // x = -5 exactly equal to lo = -5 (inclusive boundary) -> stays x -> (mag=5, neg=1).
+    let (_, report, cell) = step(
+        "smag_clamp",
+        "SmagClamp",
+        &[
+            ("mag_x", 5), ("neg_x", 1),
+            ("mag_lo", 5), ("neg_lo", 1),
+            ("mag_hi", 10), ("neg_hi", 0),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+
+    // Out-of-domain neg_hi escalates 0xFF06.
+    let (_, report, _) = step(
+        "smag_clamp",
+        "SmagClamp",
+        &[
+            ("mag_x", 3), ("neg_x", 0),
+            ("mag_lo", 1), ("neg_lo", 0),
+            ("mag_hi", 10), ("neg_hi", 7),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

@@ -528,3 +528,264 @@ fn choose_with_repetition_hand_computed() {
     );
     assert_eq!(cell.get("result"), Some(4));
 }
+
+
+// eulerian_number: A(n,k), the number of permutations of n elements with exactly
+// k descents (positions i where perm[i] > perm[i+1]).
+#[test]
+fn eulerian_number_hand_computed() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // A(0,0) = 1 (base case: the single empty permutation has 0 descents).
+    let (_, _, cell) = step("eulerian_number", "EulerianNumber", &[("n", 0), ("k", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // A(3,1) = 4: permutations of {1,2,3} with exactly 1 descent are
+    // 132, 213, 231, 312 (4 of the 6 total; 123 has 0, 321 has 2).
+    let (_, _, cell) = step("eulerian_number", "EulerianNumber", &[("n", 3), ("k", 1)]);
+    assert_eq!(cell.get("result"), Some(4));
+
+    // A(4,2) = 11, from the recurrence A(4,2) = 3*A(3,2) + 2*A(3,1) = 3*1 + 2*4 = 11.
+    let (_, _, cell) = step("eulerian_number", "EulerianNumber", &[("n", 4), ("k", 2)]);
+    assert_eq!(cell.get("result"), Some(11));
+
+    // A(5,3) = 26, from the recurrence A(5,3) = 4*A(4,3) + 2*A(4,2) = 4*1 + 2*11 = 26.
+    let (_, _, cell) = step("eulerian_number", "EulerianNumber", &[("n", 5), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(26));
+
+    // A(3,3) = 0: k >= n has zero permutations at that descent count.
+    let (_, _, cell) = step("eulerian_number", "EulerianNumber", &[("n", 3), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // Domain guard: k >= 24 (the array bound) escalates as out_of_domain.
+    let (_, report, _) = step("eulerian_number", "EulerianNumber", &[("n", 30), ("k", 24)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+// narayana_number: N(n,k), the count of Dyck paths of length 2n with exactly k
+// peaks, computed as C(n,k)*C(n,k-1)/n for 1<=k<=n -- the explicit-k refinement
+// of catalan_number (summing N(n,k) over k recovers catalan_number(n)). Expected
+// values are the standard Narayana triangle rows, hand-verified against the
+// C(n,k)*C(n,k-1)/n formula before being transcribed here.
+#[test]
+fn narayana_number_matches_narayana_triangle_rows() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Row n=1: 1
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 1), ("k", 1)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // Row n=3: 1, 3, 1
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 3), ("k", 1)]);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 3), ("k", 2)]);
+    assert_eq!(cell.get("result"), Some(3));
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 3), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // Row n=4: 1, 6, 6, 1 -- also sums to catalan_number(4) = 14.
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 4), ("k", 2)]);
+    assert_eq!(cell.get("result"), Some(6));
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 4), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(6));
+
+    // Row n=5: 1, 10, 20, 10, 1
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 5), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(20));
+
+    // Out-of-domain k (k < 1 or k > n) returns 0 rather than halting.
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 4), ("k", 0)]);
+    assert_eq!(cell.get("result"), Some(0));
+    let (_, cell) = step("narayana_number", "NarayanaNumber", &[("n", 4), ("k", 5)]);
+    assert_eq!(cell.get("result"), Some(0));
+}
+
+#[test]
+fn verify_lah_number_hand_computed() {
+    // Lah number L(n,k) = C(n-1,k-1) * n!/k!, the count of ways to partition an
+    // n-element set into k nonempty linearly-ordered lists. Expected values below
+    // are hand-computed / cross-checked against the published Lah triangle
+    // (OEIS A105278: row n=4 is 24,36,12,1; row n=5 is 120,240,120,20,1).
+    fn step(n: u64, k: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("lah_number"), "LahNumber", None)
+            .unwrap_or_else(|e| panic!("bind lah_number: {e}"));
+        cell.set("n", n).unwrap();
+        cell.set("k", k).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // L(0,0) = 1 by convention.
+    let (_, cell) = step(0, 0);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // L(1,1) = C(0,0) * 1!/1! = 1.
+    let (_, cell) = step(1, 1);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // L(2,1) = C(1,0) * 2!/1! = 1 * 2 = 2.
+    let (_, cell) = step(2, 1);
+    assert_eq!(cell.get("result"), Some(2));
+
+    // L(4,2) = C(3,1) * 4!/2! = 3 * 12 = 36 (matches published Lah triangle row n=4).
+    let (_, cell) = step(4, 2);
+    assert_eq!(cell.get("result"), Some(36));
+
+    // L(5,3) = C(4,2) * 5!/3! = 6 * 20 = 120 (matches published Lah triangle row n=5).
+    let (_, cell) = step(5, 3);
+    assert_eq!(cell.get("result"), Some(120));
+
+    // k > n returns 0 (not a valid partition).
+    let (_, cell) = step(3, 5);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // k == 0 with n != 0 returns 0 (only L(0,0) is the k=0 exception).
+    let (_, cell) = step(5, 0);
+    assert_eq!(cell.get("result"), Some(0));
+}
+
+#[test]
+fn motzkin_number_matches_hand_computed_sequence() {
+    // MotzkinNumber counts non-crossing chord diagrams: M(0)=M(1)=1, M(2)=2, M(3)=4, M(4)=9, ...
+    // via (k+4)*M(k+2) = (2k+5)*M(k+1) + 3*(k+1)*M(k). Values below are hand-derived by
+    // carrying that recurrence forward: 1,1,2,4,9,21,51,127,323,835,2188.
+    fn step(n: u64) -> StateCell {
+        let mut cell = StateCell::bind(&cell_src("motzkin_number"), "MotzkinNumber", None)
+            .unwrap_or_else(|e| panic!("bind motzkin_number: {e}"));
+        cell.set("n", n).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+
+    // Base cases M(0) = M(1) = 1 by definition, not by the recurrence.
+    assert_eq!(step(0).get("result"), Some(1));
+    assert_eq!(step(1).get("result"), Some(1));
+
+    // First few recurrence-derived terms.
+    assert_eq!(step(2).get("result"), Some(2));
+    assert_eq!(step(4).get("result"), Some(9));
+    assert_eq!(step(6).get("result"), Some(51));
+
+    // Further out, to exercise more recurrence steps and the checked add/mul path.
+    assert_eq!(step(10).get("result"), Some(2188));
+}
+
+#[test]
+fn quadrinomial_coefficient_matches_hand_computed_values() {
+    // Local helpers mirroring this pack's existing StateCell step() pattern.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // n=10, k1=2,k2=3,k3=4, k4=1: 10!/(2!3!4!1!) = 3628800/288 = 12600
+    let (_, _, cell) = step(
+        "quadrinomial_coefficient",
+        "QuadrinomialCoeff",
+        &[("n", 10), ("k1", 2), ("k2", 3), ("k3", 4)],
+    );
+    assert_eq!(cell.get("result"), Some(12600));
+
+    // n=4, k1=k2=k3=k4=1 (even 4-way split of 4 items): 4!/(1!1!1!1!) = 24
+    let (_, _, cell) = step(
+        "quadrinomial_coefficient",
+        "QuadrinomialCoeff",
+        &[("n", 4), ("k1", 1), ("k2", 1), ("k3", 1)],
+    );
+    assert_eq!(cell.get("result"), Some(24));
+
+    // n=6, k1=6,k2=0,k3=0,k4=0: everything dumped in one group, only 1 way
+    let (_, _, cell) = step(
+        "quadrinomial_coefficient",
+        "QuadrinomialCoeff",
+        &[("n", 6), ("k1", 6), ("k2", 0), ("k3", 0)],
+    );
+    assert_eq!(cell.get("result"), Some(1));
+
+    // n=5, k1=3,k2=3,k3=0: k1+k2+k3=6 > n=5, invalid split so result is 0 (not a halt)
+    let (_, _, cell) = step(
+        "quadrinomial_coefficient",
+        "QuadrinomialCoeff",
+        &[("n", 5), ("k1", 3), ("k2", 3), ("k3", 0)],
+    );
+    assert_eq!(cell.get("result"), Some(0));
+
+    // n=8, k1=2,k2=2,k3=2, k4=2 (even 4-way split): C(8,2)*C(6,2)*C(4,2) = 28*15*6 = 2520
+    let (_, _, cell) = step(
+        "quadrinomial_coefficient",
+        "QuadrinomialCoeff",
+        &[("n", 8), ("k1", 2), ("k2", 2), ("k3", 2)],
+    );
+    assert_eq!(cell.get("result"), Some(2520));
+}
+
+#[test]
+fn verify_ordered_partition_k_hand_computed() {
+    // ordered_partition_k: T(n,k) = k*(T(n-1,k-1)+T(n-1,k)), T(0,0)=1, T(n,0)=0 for n>0.
+    // The explicit-k slice of fubini_number: sums to fubini_number(n) over all k, and
+    // equals k! * stirling_second(n,k) -- both cross-checked below.
+    fn step(n: u64, k: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("ordered_partition_k"), "OrderedPartitionK", None)
+            .unwrap_or_else(|e| panic!("bind ordered_partition_k: {e}"));
+        cell.set("n", n).unwrap();
+        cell.set("k", k).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // T(0,0) = 1: the empty set has exactly one ordered sequence of zero blocks.
+    let (_, cell) = step(0, 0);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // T(4,2) = 14, matches k! * S(4,2) = 2! * 7 = 14.
+    let (_, cell) = step(4, 2);
+    assert_eq!(cell.get("result"), Some(14));
+
+    // T(4,3) = 36, matches k! * S(4,3) = 6 * 6 = 36.
+    let (_, cell) = step(4, 3);
+    assert_eq!(cell.get("result"), Some(36));
+
+    // T(5,3) = 150, hand-derived: T(5,3) = 3*(T(4,2)+T(4,3)) = 3*(14+36) = 150.
+    let (_, cell) = step(5, 3);
+    assert_eq!(cell.get("result"), Some(150));
+
+    // n > 0, k = 0: no way to partition a nonempty set into zero blocks.
+    let (_, cell) = step(5, 0);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // k > n: cannot have more nonempty blocks than elements.
+    let (_, cell) = step(2, 5);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // Sum over k=1..5 of T(5,k) must equal fubini_number(5) = 541:
+    // T(5,1)=1, T(5,2)=30, T(5,3)=150, T(5,4)=240, T(5,5)=120 -> sum = 541.
+    let mut sum: u64 = 0;
+    for k in 1..=5u64 {
+        let (_, cell) = step(5, k);
+        sum += cell.get("result").unwrap_or_else(|| panic!("no result"));
+    }
+    assert_eq!(sum, 541);
+}

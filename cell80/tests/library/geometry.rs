@@ -762,3 +762,290 @@ fn point_line_dist_sq_matches_defined_behaviour() {
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+
+#[test]
+fn triangle_inradius_x2_approx_hand_verified() {
+    // triangle_inradius_x2_approx: twice a triangle's inradius, floor(floor(4*Area)/(a+b+c)) --
+    // reuses heron_16a2's exact 16*Area^2 rearrangement and triangle_area_x4_approx's own
+    // inline isqrt loop to recover floor(4*Area), then divides by the perimeter since
+    // 2r = 4*Area/(a+b+c). The pack's first triangle metric that is a length (not an area).
+    // Hand-verified against exact integer Heron arithmetic before shipping.
+    fn step(a: u64, b: u64, c: u64) -> cell80::Report {
+        let mut r = cell80::Runner::compile(&cell_src("triangle_inradius_x2_approx"))
+            .unwrap_or_else(|e| panic!("compile: {e}"));
+        r.run(None, &[a as u16, b as u16, c as u16], DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"))
+    }
+
+    // 3-4-5 right triangle: Area=6, 4*Area=24, perimeter=12, 2r=24/12=2.
+    let report = step(3, 4, 5);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(report.result, 2);
+
+    // 5-5-6 isosceles: 16*Area^2 = 16*6*6*4 = 2304, isqrt=48=4*Area, perimeter=16, 2r=48/16=3.
+    let report = step(5, 5, 6);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(report.result, 3);
+
+    // 6-8-10 (2x 3-4-5 scaled): Area=24, 4*Area=96, perimeter=24, 2r=96/24=4.
+    let report = step(6, 8, 10);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(report.result, 4);
+
+    // 1-1-1 equilateral: 16*Area^2=3, isqrt(3)=1=floor(4*Area), perimeter=3, floor(1/3)=0
+    // (the floor of a genuinely fractional 2r, not a rounding bug).
+    let report = step(1, 1, 1);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(report.result, 0);
+
+    // Not a triangle (1+1<=5): out_of_domain, same convention as heron_16a2.
+    let report = step(1, 1, 5);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Large equilateral triangle: the same overflow inputs heron_16a2/triangle_area_x4_approx
+    // already document -> needs_wider_math.
+    let report = step(30000, 30000, 30000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn point_segment_dist_sq_matches_hand_computed() {
+    // Exact squared distance from a point to the closest point on a FINITE segment,
+    // clamping to an endpoint (den=1) when the perpendicular foot falls outside
+    // [0,1] along the segment, otherwise falling back to point_line_dist_sq's own
+    // cross^2/den fraction. All five expected values are hand-derived below.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, i16)]) -> StateCell {
+        let mut cell = StateCell::bind(
+            &cell_src("point_segment_dist_sq"),
+            "PointSegmentDistSq",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind point_segment_dist_sq: {e}"));
+        for (f, v) in fields {
+            cell.set(f, i16_bits(*v)).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        cell
+    }
+
+    // 1) Segment (0,0)-(4,0), point (2,3): foot of perpendicular at (2,0), inside the
+    // segment. cross = 4*3 - 0*2 = 12, 12^2 = 144; t_den = 4^2 = 16 -- matches
+    // point_line_dist_sq's own num/den for the same inputs (144/16 = 9).
+    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 2), ("py", 3)]);
+    assert_eq!(cell.get("num"), Some(144));
+    assert_eq!(cell.get("den"), Some(16));
+
+    // 2) Same segment, point (-2,3): foot falls before A (t_num = (-2)*4+3*0 = -8 < 0)
+    // -> clamp to (0,0). Squared distance = (-2)^2+3^2 = 13, den forced to 1.
+    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", -2), ("py", 3)]);
+    assert_eq!(cell.get("num"), Some(13));
+    assert_eq!(cell.get("den"), Some(1));
+
+    // 3) Same segment, point (6,3): foot falls beyond B (t_num = 6*4+3*0 = 24 >=
+    // t_den=16) -> clamp to (4,0). Squared distance = (6-4)^2+3^2 = 13, den forced to 1.
+    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 6), ("py", 3)]);
+    assert_eq!(cell.get("num"), Some(13));
+    assert_eq!(cell.get("den"), Some(1));
+
+    // 4) Degenerate segment (5,5)-(5,5), point (8,9): t_den = 0, no halt -- returns the
+    // exact squared distance to the single point (5,5): (8-5)^2+(9-5)^2 = 9+16 = 25.
+    let cell = step(&[("x1", 5), ("y1", 5), ("x2", 5), ("y2", 5), ("px", 8), ("py", 9)]);
+    assert_eq!(cell.get("num"), Some(25));
+    assert_eq!(cell.get("den"), Some(1));
+
+    // 5) Segment (-4,-2)-(4,2) (dx=8,dy=4,t_den=80), point (-2,4): t_num =
+    // (-2-(-4))*8 + (4-(-2))*4 = 2*8+6*4 = 40, strictly between 0 and 80 -> the foot
+    // is inside the segment. cross = dx*dpy - dy*dpx = 8*6 - 4*2 = 40, num = 1600,
+    // den = 80 (1600/80 = 20, matching the Euclidean check: foot = (0,0), squared
+    // distance from (-2,4) is (-2)^2+4^2 = 20).
+    let cell = step(&[("x1", -4), ("y1", -2), ("x2", 4), ("y2", 2), ("px", -2), ("py", 4)]);
+    assert_eq!(cell.get("num"), Some(1600));
+    assert_eq!(cell.get("den"), Some(80));
+}
+
+#[test]
+fn line_intersect_params_frac_matches_defined_behaviour() {
+    // line_intersect_params_frac: exact parametric-fraction intersection of the two infinite
+    // lines through (x1,y1)-(x2,y2) and (x3,y3)-(x4,y4): t=t_num/den is how far along line 1
+    // (P1+t*(P2-P1)), u=u_num/den is how far along line 2, sharing den=cross(d1,d2). Both
+    // numerators and the denominator are left unreduced (no gcd), only sign-normalized so
+    // den is always positive. Hand-verified against the standard direction-vector formula
+    // (t=cross(w,d2)/cross(d1,d2), u=cross(w,d1)/cross(d1,d2), w=P3-P1) before shipping.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, i16)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("line_intersect_params_frac"),
+            "LineIntersectParamsFrac",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind line_intersect_params_frac: {e}"));
+        for (f, v) in fields {
+            cell.set(f, i16_bits(*v)).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Two diagonals (0,0)-(4,4) and (0,4)-(4,0) cross at (2,2): den = 4*-4 - 4*4 = -32 (negative,
+    // so both numerators get sign-flipped to normalize den positive); t_num = u_num = 16, den = 32
+    // (t = u = 1/2, matching the midpoint (2,2)).
+    let (report, cell) = step(&[
+        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 4),
+        ("x3", 0), ("y3", 4), ("x4", 4), ("y4", 0),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("t_num_mag"), Some(16));
+    assert_eq!(cell.get("t_num_neg"), Some(0));
+    assert_eq!(cell.get("u_num_mag"), Some(16));
+    assert_eq!(cell.get("u_num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(32));
+
+    // Parallel lines (0,0)-(2,0) and (0,1)-(2,1) share direction (2,0): den = 2*0 - 0*2 = 0,
+    // so the cell escalates rather than divide by a zero denominator.
+    let (report, _cell) = step(&[
+        ("x1", 0), ("y1", 0), ("x2", 2), ("y2", 0),
+        ("x3", 0), ("y3", 1), ("x4", 2), ("y4", 1),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Negative coordinates and a non-half fraction: (1,1)-(5,3) and (1,5)-(5,1) cross at
+    // (11/3, 7/3). den = 4*-4 - 2*4 = -24 (negative, flip); t_num = u_num = 16, den = 24
+    // (t = u = 2/3).
+    let (report, cell) = step(&[
+        ("x1", 1), ("y1", 1), ("x2", 5), ("y2", 3),
+        ("x3", 1), ("y3", 5), ("x4", 5), ("y4", 1),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("t_num_mag"), Some(16));
+    assert_eq!(cell.get("t_num_neg"), Some(0));
+    assert_eq!(cell.get("u_num_mag"), Some(16));
+    assert_eq!(cell.get("u_num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(24));
+
+    // Horizontal line (0,0)-(4,0) crossed by vertical (2,-2)-(2,2) at (2,0): den = 4*4 - 0*0 =
+    // 16 is already positive (no flip), t_num = u_num = 8 (t = u = 1/2).
+    let (report, cell) = step(&[
+        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0),
+        ("x3", 2), ("y3", -2), ("x4", 2), ("y4", 2),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("t_num_mag"), Some(8));
+    assert_eq!(cell.get("t_num_neg"), Some(0));
+    assert_eq!(cell.get("u_num_mag"), Some(8));
+    assert_eq!(cell.get("u_num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(16));
+
+    // Same horizontal line (0,0)-(4,0), but the second line (2,2)-(2,6) points "away" from the
+    // crossing: u = -1/2 is a legitimate negative parameter on the *infinite* line (the crossing
+    // point (2,0) is still exact), so u_num_neg must come back 1 while t_num stays positive.
+    let (report, cell) = step(&[
+        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0),
+        ("x3", 2), ("y3", 2), ("x4", 2), ("y4", 6),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("t_num_mag"), Some(8));
+    assert_eq!(cell.get("t_num_neg"), Some(0));
+    assert_eq!(cell.get("u_num_mag"), Some(8));
+    assert_eq!(cell.get("u_num_neg"), Some(1));
+    assert_eq!(cell.get("den"), Some(16));
+}
+
+// quad_is_valid: 1 if four side lengths (a,b,c,d) satisfy the quadrilateral
+// inequality (each side strictly less than the sum of the other three), else 0.
+// The polygon-inequality generalization of triangle_is_valid's three-side check.
+#[test]
+fn geometry_pack_quad_is_valid() {
+    fn quad_is_valid(a: u16, b: u16, c: u16, d: u16) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("quad_is_valid"), "QuadIsValid", None)
+            .unwrap_or_else(|e| panic!("bind quad_is_valid: {e}"));
+        cell.set("a", a as u64).unwrap();
+        cell.set("b", b as u64).unwrap();
+        cell.set("c", c as u64).unwrap();
+        cell.set("d", d as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("valid").unwrap() as u16
+    }
+
+    // A normal valid quadrilateral: 3<15, 4<14, 5<13, 6<12 all hold.
+    assert_eq!(quad_is_valid(3, 4, 5, 6), 1);
+    // One side dominates the rest (10 vs 1+1+1=3) -- cannot close -> invalid.
+    assert_eq!(quad_is_valid(1, 1, 1, 10), 0);
+    // Boundary: d exactly equals the sum of the others (3 == 1+1+1); the
+    // inequality is strict, so equality must fail -> invalid.
+    assert_eq!(quad_is_valid(1, 1, 1, 3), 0);
+    // Square-like, all sides equal -> trivially valid.
+    assert_eq!(quad_is_valid(5, 5, 5, 5), 1);
+    // Large sides near u16's top end: any three summed (180000) overflow u16
+    // (wraps to 48928) unless widened to u32 first. Widened correctly, all
+    // four inequalities hold -> valid; a non-widened implementation would
+    // wrongly report invalid here.
+    assert_eq!(quad_is_valid(60000, 60000, 60000, 60000), 1);
+}
+
+#[test]
+fn geom_distance_3d_exact_matches_defined_behaviour() {
+    // geom_distance_3d_exact: true (rooted) 3D Euclidean distance -- the isqrt-closed
+    // sibling of geom_distance_3d, which stays squared. Hand-computed expectations below,
+    // not taken from the compiled cell's own output.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("geom_distance_3d_exact"),
+            "GeomDistance3dExact",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind geom_distance_3d_exact: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // (0,0,0) -> (3,4,0): a 3-4-5 triangle embedded in 3D (dz=0). 9+16+0=25, isqrt(25)=5.
+    let (_, cell) = step(&[
+        ("ax", 0), ("ay", 0), ("az", 0),
+        ("bx", i16_bits(3)), ("by", i16_bits(4)), ("bz", 0),
+    ]);
+    assert_eq!(cell.get("dist"), Some(5));
+
+    // Negative coordinates on the a side, same 3-4-5 magnitude -- confirms the
+    // excess-32768 shift handles signed differences symmetrically.
+    let (_, cell) = step(&[
+        ("ax", i16_bits(-3)), ("ay", i16_bits(-4)), ("az", 0),
+        ("bx", 0), ("by", 0), ("bz", 0),
+    ]);
+    assert_eq!(cell.get("dist"), Some(5));
+
+    // Non-perfect-square case: dx=10,dy=20,dz=40 -> sum=2100; isqrt(2100)=45 since
+    // 45^2=2025 <= 2100 < 2116=46^2 (floors, doesn't round).
+    let (_, cell) = step(&[
+        ("ax", 100), ("ay", 200), ("az", 300),
+        ("bx", 110), ("by", 220), ("bz", 340),
+    ]);
+    assert_eq!(cell.get("dist"), Some(45));
+
+    // Coincident points -> distance 0.
+    let (_, cell) = step(&[
+        ("ax", 0), ("ay", 0), ("az", 0),
+        ("bx", 0), ("by", 0), ("bz", 0),
+    ]);
+    assert_eq!(cell.get("dist"), Some(0));
+
+    // Extreme coordinates: the summed squared distance overflows u32 -- escalates
+    // rather than silently wrapping (the same guard geom_distance_3d documents).
+    let (report, _) = step(&[
+        ("ax", i16_bits(i16::MIN)), ("ay", i16_bits(i16::MIN)), ("az", i16_bits(i16::MIN)),
+        ("bx", i16_bits(i16::MAX)), ("by", i16_bits(i16::MAX)), ("bz", i16_bits(i16::MAX)),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

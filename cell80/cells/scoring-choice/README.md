@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (14)
+## Landed (19)
 
 | id | signature | summary |
 |---|---|---|
@@ -17,9 +17,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `choose_worst2` | `ChooseWorst2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the lowest score (ties -> lowest index, matching choose_best2's convention) — the inverse-comparison sibling of choose_best2, for the common "which of these two costs less" shape. |
 | `choose_worst3` | `ChooseWorst3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the lowest score (ties -> lowest index, matching choose_worst2's convention) — the 3-candidate sibling of choose_worst2, and the lowest-score counterpart of choose_best3. |
 | `choose_worst4` | `ChooseWorst4::run() -> u16` | Pick the value of whichever of four (value, score) candidates has the lowest score (ties -> lowest index, matching choose_worst3's convention) — the 4-candidate sibling of choose_worst3, mirroring choose_best4's structure with '>' flipped to '<'. |
+| `clear_loser3` | `ClearLoser3::run() -> u16` | Returns 1 if there is a decisive loser among three raw candidate scores (the bottom is beaten by the second-lowest by at least margin), else 0 — the low-end mirror of clear_winner3, exploiting that for three values the second-lowest is exactly the median. |
 | `clear_winner3` | `ClearWinner3::run() -> u16` | Returns 1 if there is a decisive winner among three raw candidate scores (top beats the runner-up by at least margin), else 0 — computed directly from a/b/c instead of requiring the caller to pre-identify top and second like is_clear_winner/clear_winner_u32 do, by exploiting that for three values the second-highest is exactly the median. |
 | `clear_winner_u32` | `ClearWinnerWide::run() -> u16` | Returns 1 if the top score beats the second-best by at least margin at wide u32 width, else 0 — including when top < second (a malformed call, treated as no clear winner) — the wide sibling of is_clear_winner (which works over u16 and can't compare scores beyond 65535, e.g. money totals in cents). |
+| `is_clear_loser` | `run(bottom: u16, second_lowest: u16, margin: u16) -> u16` | Returns 1 if the bottom score is beaten by the second-lowest by at least margin (a decisive last place, not a near-tie), else 0 — including when bottom > second_lowest (a malformed call, treated as no clear loser) — the bottom-side counterpart of is_clear_winner/clear_winner3/clear_winner_u32, which all only check for a decisive winner at the top. |
 | `is_clear_winner` | `run(top: u16, second: u16, margin: u16) -> u16` | Returns 1 if the top score beats the second-best by at least margin (a decisive win, not a near-tie), else 0 — including when top < second (a malformed call, treated as no clear winner). |
+| `score_margin3` | `run(a: u16, b: u16, c: u16) -> u16` | The winning margin among three raw candidate scores a,b,c — top minus second-highest (the median of the three) — the raw value clear_winner3 computes internally but only exposes as a threshold boolean. |
+| `weighted_avg2` | `WeightedAvg2::run() -> u16` | Normalized weighted mean of two values with caller-supplied weights: (a*wa + b*wb) / (wa+wb), 0 if wa+wb==0 -- distinct from weighted_sum2, which returns the raw combined score a*wa + b*wb with no normalization by total weight. |
+| `weighted_avg3` | `WeightedAvg3::run() -> u16` | Normalized weighted mean of three inputs with caller-supplied weights: (a*wa + b*wb + c*wc) / (wa+wb+wc), 0 if the weights sum to zero — the normalized sibling of weighted_sum3, which returns the raw a*wa+b*wb+c*wc without dividing by the weight total. |
 | `weighted_sum` | `run(a: u16, b: u16, c: u16) -> u16` | Weighted sum of three inputs with fixed weights 1, 2, 3 (a candidate score). |
 | `weighted_sum2` | `WeightedSum2::run() -> u16` | Weighted sum of two inputs with caller-supplied weights: a*wa + b*wb (also known as score_2factor — the same formula under a different name). Sibling of weighted_sum/weighted_sum_wide (which use fixed weights 1, 2, 3), generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
 | `weighted_sum3` | `WeightedSum3::run() -> u16` | Weighted sum of three inputs with caller-supplied weights: a*wa + b*wb + c*wc. Sibling of weighted_sum/weighted_sum_wide (fixed weights 1, 2, 3) generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |

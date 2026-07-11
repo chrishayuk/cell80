@@ -198,3 +198,145 @@ fn int_to_q8_i16_encodes_signed_and_escalates_outside_i8_range() {
         cell80::Halt::Escalate(0xFF05)
     );
 }
+
+
+#[test]
+fn q_mul_checked_q8_8_multiply_matches_hand_computed_cases() {
+    // q_mul_checked: (a*b)>>8 in Q8.8, but escalates (halt 0xFF05, needs_wider_math) instead
+    // of silently truncating when the scaled product doesn't fit u16 -- q_mul's checked
+    // counterpart (q_mul's own doc comment documents the unguarded shift, no escalation).
+
+    // 1.5 * 2.0 = 3.0 in Q8.8: (384*512)>>8 = 768. No halt.
+    assert_eq!(run_cell("q_mul_checked", &[384, 512]), 768);
+
+    // 1.0 * 1.0 = 1.0: (256*256)>>8 = 256. No halt.
+    assert_eq!(run_cell("q_mul_checked", &[256, 256]), 256);
+
+    // 0 * anything = 0.
+    assert_eq!(run_cell("q_mul_checked", &[0, 12345]), 0);
+
+    // Exact boundary: 65535 * 256 -> 16776960 >> 8 = 65535 == u16::MAX exactly, no halt.
+    assert_eq!(run_cell("q_mul_checked", &[65535, 256]), 65535);
+
+    // One past the boundary: 65535 * 257 -> 16842495 >> 8 = 65790 > 65535 -> escalate.
+    let mut r = cell80::Runner::compile(&cell_src("q_mul_checked")).unwrap();
+    let report = r.run(None, &[65535, 257], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Domain extreme: 65535 * 65535 -> 4294836225 >> 8 = 16776704, far past u16::MAX -> escalate.
+    let mut r = cell80::Runner::compile(&cell_src("q_mul_checked")).unwrap();
+    let report = r.run(None, &[65535, 65535], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn q_div_checked_matches_hand_computed_cases() {
+    // q_div_checked: checked Q8.8 divide, (a<<8)/b at wide u32 width like q_div itself, but
+    // escalates instead of silently truncating when the scaled quotient overflows u16.
+
+    // Normal division, no overflow: 3.0 / 2.0 = 1.5 in Q8.8 -> (768<<8)/512 = 196608/512 = 384.
+    // Same values as q_div's own existing test case.
+    assert_eq!(run_cell("q_div_checked", &[768, 512]), 384);
+
+    // Zero divisor: b == 0 -> 0, matching q_div's own zero-divisor convention (no halt).
+    assert_eq!(run_cell("q_div_checked", &[768, 0]), 0);
+
+    // Boundary that fits exactly: a=65535, b=256 -> (65535<<8)/256 = 16776960/256 = 65535
+    // (u16::MAX exactly) -> no halt.
+    assert_eq!(run_cell("q_div_checked", &[65535, 256]), 65535);
+
+    // Overflow just past the boundary: a=256, b=1 -> (256<<8)/1 = 65536 > 0xFFFF -> halt
+    // (0xFF05, needs_wider_math) instead of silently truncating to 0.
+    let mut r = Runner::compile(&cell_src("q_div_checked")).unwrap();
+    let report = r.run(None, &[256, 1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Overflow further past the boundary: a=65535, b=255 -> (65535<<8)/255 = 16776960/255 =
+    // 65792 > 0xFFFF -> halt.
+    let mut r2 = Runner::compile(&cell_src("q_div_checked")).unwrap();
+    let report2 = r2.run(None, &[65535, 255], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report2.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn q_bilerp_bilinear_interpolation_matches_hand_computed_cases() {
+    // q_bilerp: bilinear interpolation of four Q8.8 corners (q00,q10,q01,q11) by two Q0.8
+    // fractions (tx, ty) -- lerp(lerp(q00,q10,tx), lerp(q01,q11,tx), ty), each 1D step using
+    // q_lerp's own a+/-diff*t>>8 technique inlined three times (top edge, bottom edge, across).
+    fn q_bilerp(q00: u16, q10: u16, q01: u16, q11: u16, tx: u16, ty: u16) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("q_bilerp"), "QBilerp", None).unwrap();
+        cell.set("q00", q00 as u64).unwrap();
+        cell.set("q10", q10 as u64).unwrap();
+        cell.set("q01", q01 as u64).unwrap();
+        cell.set("q11", q11 as u64).unwrap();
+        cell.set("tx", tx as u64).unwrap();
+        cell.set("ty", ty as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("out").unwrap() as u16
+    }
+
+    // Flat in y (q00==q01==0, q10==q11==256), tx=0.5, ty=0.0: both edges lerp to 128,
+    // then ty=0 keeps the 'a' side -> 128.
+    assert_eq!(q_bilerp(0, 256, 0, 256, 128, 0), 128);
+
+    // tx=0 (left edge): top=q00=0, bottom=q01=256; ty=1.0 selects bottom -> 256.
+    assert_eq!(q_bilerp(0, 256, 256, 256, 0, 256), 256);
+
+    // General midpoint: top=lerp(100,200,0.5)=150, bottom=lerp(300,500,0.5)=400,
+    // out=lerp(150,400,0.5)=150+((250*128)>>8)=150+125=275.
+    assert_eq!(q_bilerp(100, 200, 300, 500, 128, 128), 275);
+
+    // Reverse branches (b < a on both edges), tx=0.25, ty=0.75: top=200-25=175,
+    // bottom=500-50=450, out=175+((275*192)>>8)=175+206=381 (52800>>8 truncates to 206).
+    assert_eq!(q_bilerp(200, 100, 500, 300, 64, 192), 381);
+
+    // tx=256 (1.0), ty=256 (1.0): both fractions saturate to the 'b' side -> exactly q11.
+    assert_eq!(q_bilerp(10, 20, 30, 40, 256, 256), 40);
+}
+
+#[test]
+fn q_to_int_i16_signed_q8_8_decode_matches_hand_computed_cases() {
+    // q_to_int_i16: decode a signed Q8.8 value back to a plain integer via arithmetic
+    // (sign-propagating) right shift by 8 -- int_to_q8_i16's missing decode counterpart.
+    // Args/results are passed as raw u16 bit patterns of the underlying i16, per this
+    // pack's existing signed-cell test convention (see q_mul_i16 / q_div_i16 above).
+
+    // 0.0 -> 0
+    assert_eq!(run_cell("q_to_int_i16", &[0]), 0);
+    // 1.0 (256 in Q8.8) -> 1
+    assert_eq!(run_cell("q_to_int_i16", &[256]), 1);
+    // 127.0 (32512 in Q8.8, the int_to_q8_i16 boundary) -> 127
+    assert_eq!(run_cell("q_to_int_i16", &[32512]), 127);
+    // -1.0 in Q8.8 (u16 bits 65536-256=65280) -> -1, as u16 bits 65535 (0xFFFF).
+    // A logical shift (like high_byte) would instead give 65280>>8 = 255 -- wrong.
+    assert_eq!(run_cell("q_to_int_i16", &[65280]), 65535);
+    // i16::MIN (32768 as u16 bits, -32768 in Q8.8 = -128.0 exactly) -> -128, u16 bits 65408
+    assert_eq!(run_cell("q_to_int_i16", &[32768]), 65408);
+    // -300 in Q8.8 (u16 bits 65536-300=65236), not a multiple of 256: must floor toward
+    // -infinity, -300/256 = -1.171875 -> floor is -2, as u16 bits 65534.
+    assert_eq!(run_cell("q_to_int_i16", &[65236]), 65534);
+}
+
+#[test]
+fn q_mul3_triple_q8_8_multiply_matches_hand_computed_cases() {
+    // q_mul3: chains two q_mul-style widen-shift steps -- step1 = (a*b)>>8, then
+    // result = (step1*c)>>8 -- the 3-arg generalization of q_mul, which has no such sibling.
+
+    // 1.0 * 1.0 * 1.0 = 1.0: step1 = (256*256)>>8 = 256; result = (256*256)>>8 = 256.
+    assert_eq!(run_cell("q_mul3", &[256, 256, 256]), 256);
+
+    // 1.5 * 2.0 * 2.0 = 6.0: step1 = (384*512)>>8 = 768 (== q_mul's own 1.5*2.0 case);
+    // result = (768*512)>>8 = 1536 (6.0 in Q8.8).
+    assert_eq!(run_cell("q_mul3", &[384, 512, 512]), 1536);
+
+    // zero propagates through both stages: 0 * 500 * 700 = 0.
+    assert_eq!(run_cell("q_mul3", &[0, 500, 700]), 0);
+
+    // multiplying by 1.0 twice is a passthrough: step1 = (256*300)>>8 = 300;
+    // result = (300*256)>>8 = 300.
+    assert_eq!(run_cell("q_mul3", &[256, 300, 256]), 300);
+
+    // general case, cross-checked against chaining q_mul by hand:
+    // step1 = (200*300)>>8 = 60000>>8 = 234; result = (234*400)>>8 = 93600>>8 = 365.
+    assert_eq!(run_cell("q_mul3", &[200, 300, 400]), 365);
+}

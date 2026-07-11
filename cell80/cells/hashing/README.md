@@ -7,17 +7,23 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (15)
 
 | id | signature | summary |
 |---|---|---|
+| `adler32_step` | `Adler32Step::run() -> u16` | One Adler-32 checksum step over a byte: s1=(s1+byte) mod 65521, s2=(s2+s1) mod 65521, packed as (s2<<16)\|s1 -- two running sums mod a prime, a different checksum family from the crc*_step shift-xor reflected-polynomial line. |
 | `crc16_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-16 (CRC-16/ARC, poly 0xA001 reflected) step over a byte, the crc8_step shift-xor loop widened to the full 16-bit register instead of masking down to 8 bits. |
 | `crc32_step` | `Crc32Step::run() -> u16` | One CRC-32 (CRC-32/ISO-HDLC, poly 0xEDB88320 reflected) step over a byte on a 32-bit accumulator -- the crc8_step/crc16_step shift-xor loop widened one more rung to a full u32 crc field, needing a state cell since the calling convention has no u32 free-fn parameters. |
 | `crc8_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-8 (Dallas/Maxim, poly 0x8C reflected) step over a byte. |
+| `fnv1a32_step` | `Fnv1a32Step::run() -> u16` | One true FNV-1a hash step over a byte on a full 32-bit accumulator using the real FNV-1a constants -- hash = (hash ^ byte) * 16777619 (offset basis conventionally 2166136261) -- the u32-domain sibling of fnv1a_step (which only ever ran at u16 width), needing a state cell since the calling convention has no u32 free-fn parameters. |
 | `fnv1a_step` | `run(hash: u16, byte: u16) -> u16` | One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit). |
 | `hash3` | `run(a: u16, b: u16, c: u16) -> u16` | Deterministic hash mixing three values into one u16, extending hash_pair's own multiply-xor-multiply chain by one more term and prime. |
 | `hash4` | `Hash4::run() -> u16` | Deterministic hash mixing four values into one u16, extending hash3's own multiply-xor-multiply chain by one more term and prime — for hashing four-field records without pre-combining pairs by hand. |
+| `hash5` | `Hash5::run() -> u16` | Deterministic hash mixing five values into one u16, extending hash4's own multiply-xor-multiply chain by one more term and prime -- for hashing five-field records without pre-combining pairs by hand. |
 | `hash_pair` | `run(a: u16, b: u16) -> u16` | Deterministic hash mixing two values into one u16. |
+| `hash_pair32` | `HashPair32::run() -> u16` | Deterministic hash mixing two full 32-bit values into one u16, the u32-domain analogue of hash_pair's own multiply-xor-multiply avalanche chain (widened constants, folded down instead of truncated) for combining two wide keys without pre-hashing either to u16 first. |
+| `hash_pair_sym` | `run(a: u16, b: u16) -> u16` | Order-independent hash of two values (hash_pair_sym(a,b) == hash_pair_sym(b,a) always) by mixing the commutative sum and product of a and b through an avalanche chain, unlike hash_pair's order-sensitive left-to-right multiply-xor fold. |
+| `hash_slide_step` | `HashSlideStep::run() -> u16` | Slide a multiplicative rolling hash window by one byte position: hash' = (hash - old_byte*high_pow) * base + new_byte (base fixed at 257, wrapping u16 throughout) -- the classic Rabin-Karp incremental update, distinct from every other append-only step in this pack (crc*_step/fnv1a_step/hash_pair/hash3/hash4 only ever fold a new value in, none can drop the oldest byte a fixed-width window has slid past). |
 | `mix16` | `run(x: u16) -> u16` | Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value). |
 | `mix32` | `Mix32::run() -> u16` | Avalanche-mix a full 32-bit value into a well-scrambled u16 finalizer hash, using a full-width xor-shift/multiply chain over all 32 input bits (never truncated to u16 first) before folding the result down -- the u32-domain sibling of mix16, for finalizing wide keys like a morton_encode index or a packed pair without discarding half their entropy. |
 

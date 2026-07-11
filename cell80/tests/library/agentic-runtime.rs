@@ -591,3 +591,332 @@ fn jittered_linear_backoff_next_matches_defined_behaviour() {
     // 655_284_465/10000 = 65_528.
     assert_eq!(step(65_530, 100, 65_535, 9999), 65_528);
 }
+
+
+#[test]
+fn agentic_runtime_watchdog_step_matches_defined_behaviour() {
+    // Local helper: bind watchdog_step, set the given fields, run one step, return the cell.
+    fn step_cell(fields: &[(&str, u64)]) -> StateCell {
+        let mut cell = StateCell::bind(&cell_src("watchdog_step"), "WatchdogStep", None)
+            .unwrap_or_else(|e| panic!("bind watchdog_step: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+
+    // Missed heartbeats climb toward timeout without tripping yet.
+    let cell = step_cell(&[("ticks", 0), ("timeout", 3), ("pet", 0), ("tripped", 0)]);
+    assert_eq!(cell.get("ticks"), Some(1));
+    assert_eq!(cell.get("tripped"), Some(0));
+
+    // Reaching timeout exactly sets the sticky trip.
+    let cell = step_cell(&[("ticks", 2), ("timeout", 3), ("pet", 0), ("tripped", 0)]);
+    assert_eq!(cell.get("ticks"), Some(3));
+    assert_eq!(cell.get("tripped"), Some(1));
+
+    // Once at timeout, ticks is floored there (no wraparound) and the trip stays sticky
+    // across further missed heartbeats.
+    let cell = step_cell(&[("ticks", 3), ("timeout", 3), ("pet", 0), ("tripped", 1)]);
+    assert_eq!(cell.get("ticks"), Some(3));
+    assert_eq!(cell.get("tripped"), Some(1));
+
+    // A pet signal always resets ticks to 0 and clears the trip, even mid-alarm.
+    let cell = step_cell(&[("ticks", 3), ("timeout", 3), ("pet", 1), ("tripped", 1)]);
+    assert_eq!(cell.get("ticks"), Some(0));
+    assert_eq!(cell.get("tripped"), Some(0));
+
+    // Edge case: timeout=0 trips immediately even with zero elapsed ticks.
+    let cell = step_cell(&[("ticks", 0), ("timeout", 0), ("pet", 0), ("tripped", 0)]);
+    assert_eq!(cell.get("tripped"), Some(1));
+}
+
+#[test]
+fn circuit_breaker_trials_step_matches_defined_behaviour() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // circuit_breaker_trials_step: like circuit_breaker_step but half-open needs N CONSECUTIVE
+    // successes (any failure resets the tally and drops straight back to open) before closing.
+    let (state, cell) = step(
+        "circuit_breaker_trials_step",
+        "CircuitBreakerTrials",
+        &[
+            ("state", 2),
+            ("fail_count", 3),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 1),
+            ("success_count", 0),
+            ("success_threshold", 2),
+        ],
+    );
+    assert_eq!(state, 2); // 1st of 2 required consecutive successes: stays half-open
+    assert_eq!(cell.get("success_count"), Some(1));
+    let (state, cell) = step(
+        "circuit_breaker_trials_step",
+        "CircuitBreakerTrials",
+        &[
+            ("state", 2),
+            ("fail_count", 3),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 1),
+            ("success_count", 1),
+            ("success_threshold", 2),
+        ],
+    );
+    assert_eq!(state, 0); // 2nd consecutive success closes the breaker
+    assert_eq!(cell.get("fail_count"), Some(0));
+    assert_eq!(cell.get("success_count"), Some(0));
+    let (state, cell) = step(
+        "circuit_breaker_trials_step",
+        "CircuitBreakerTrials",
+        &[
+            ("state", 2),
+            ("fail_count", 3),
+            ("fail_threshold", 3),
+            ("cooldown_elapsed", 0),
+            ("success", 0),
+            ("success_count", 1), // one success already banked
+            ("success_threshold", 2),
+        ],
+    );
+    assert_eq!(state, 1); // a single failure wipes the tally and reopens (not a duplicate of
+    assert_eq!(cell.get("success_count"), Some(0)); // circuit_breaker_step's fixed single-success half-open)
+}
+
+#[test]
+fn toggle_step_flips_on_each_rising_edge_and_holds_between() {
+    // Uses the same cell_src/StateCell pattern as the other agentic-runtime pack tests
+    // (see rising_edge_step_fires_only_on_the_transition_to_one above).
+    fn step(trigger: u64, prev: u64, state: u64) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("toggle_step"), "ToggleStep", None)
+            .unwrap_or_else(|e| panic!("bind toggle_step: {e}"));
+        cell.set("trigger", trigger).unwrap();
+        cell.set("prev", prev).unwrap();
+        cell.set("state", state).unwrap();
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // trigger sequence: 0, 1, 1, 0, 1 -- state starts at 0. Only the two 0->1 transitions
+    // (steps 2 and 5) flip the sticky state; holding high (step 3) or going low (step 4)
+    // leaves it unchanged, unlike rising_edge_step which would only ever report a pulse.
+    let (result, cell) = step(0, 0, 0);
+    assert_eq!(result, 0); // no edge yet, state stays 0
+    let (mut prev, mut state) = (cell.get("prev").unwrap(), cell.get("state").unwrap());
+
+    let (result, cell) = step(1, prev, state);
+    assert_eq!(result, 1); // rising edge -> state flips 0 -> 1
+    prev = cell.get("prev").unwrap();
+    state = cell.get("state").unwrap();
+
+    let (result, cell) = step(1, prev, state);
+    assert_eq!(result, 1); // holding high, not an edge -> state stays 1
+    prev = cell.get("prev").unwrap();
+    state = cell.get("state").unwrap();
+
+    let (result, cell) = step(0, prev, state);
+    assert_eq!(result, 1); // falling, not a rising edge -> state stays 1
+    prev = cell.get("prev").unwrap();
+    state = cell.get("state").unwrap();
+
+    let (result, cell) = step(1, prev, state);
+    assert_eq!(result, 0); // rising edge again -> state flips back 1 -> 0
+    prev = cell.get("prev").unwrap();
+    state = cell.get("state").unwrap();
+    assert_eq!(prev, 1);
+    assert_eq!(state, 0);
+}
+
+#[test]
+fn hysteresis_u32_matches_defined_behaviour() {
+    // hysteresis_u32: wide (u32 value/low/high) sibling of hysteresis -- same Schmitt-trigger
+    // dead-zone latch semantics (turn ON at value>=high, turn OFF at value<=low, else hold prior
+    // state), but exercised with values above u16::MAX to prove the comparisons are genuinely
+    // u32-wide, not a truncated u16 comparison.
+    fn step(value: u64, low: u64, high: u64, state: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("hysteresis_u32"), "HysteresisU32", None)
+            .unwrap_or_else(|e| panic!("bind hysteresis_u32: {e}"));
+        cell.set("value", value).unwrap();
+        cell.set("low", low).unwrap();
+        cell.set("high", high).unwrap();
+        cell.set("state", state).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run hysteresis_u32: {e}"))
+            .result
+    }
+
+    // value=80000 >= high=70000 -> turns ON. 80000 exceeds u16::MAX (65535).
+    assert_eq!(step(80_000, 20_000, 70_000, 0), 1);
+    // value=50000 is in the dead zone (20000 < 50000 < 70000), prior state=1 -> holds ON.
+    assert_eq!(step(50_000, 20_000, 70_000, 1), 1);
+    // value=10000 <= low=20000 -> turns OFF.
+    assert_eq!(step(10_000, 20_000, 70_000, 1), 0);
+    // value=50000 dead zone again, prior state=0 -> holds OFF.
+    assert_eq!(step(50_000, 20_000, 70_000, 0), 0);
+    // value==high exactly (100000 == 100000, above u16::MAX) -> turns ON: boundary is
+    // inclusive (>= high), and the equality itself proves full u32-width comparison.
+    assert_eq!(step(100_000, 5_000, 100_000, 0), 1);
+}
+
+// decorrelated_jitter_backoff_next: range walks off max(current, base), not a fixed ceiling --
+// distinct from jittered_backoff_next/jittered_linear_backoff_next which both scale a
+// deterministic ceiling down to [0, ceiling]. Here the low end is always `base`, and the
+// high end is min(cap, max(current, base) * 3).
+#[test]
+fn decorrelated_jitter_backoff_next_matches_defined_behaviour() {
+    fn step(current: u16, base: u16, cap: u16, rand_bps: u16) -> u16 {
+        let mut cell = StateCell::bind(
+            &cell_src("decorrelated_jitter_backoff_next"),
+            "DecorrelatedJitterBackoff",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("current", current as u64).unwrap();
+        cell.set("base", base as u64).unwrap();
+        cell.set("cap", cap as u64).unwrap();
+        cell.set("rand_bps", rand_bps as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // Bootstrap: current=0, base=10 -> temp=max(0,10)=10, ceiling=min(10*3,1000)=30,
+    // range=30-10=20; rand_bps=5000 (50%) -> 20*5000/10000=10, next=base+10=20.
+    assert_eq!(step(0, 10, 1000, 5000), 20);
+    // rand_bps=0 always collapses to the low end of the range, i.e. exactly `base`,
+    // regardless of how large current or the ceiling is.
+    assert_eq!(step(20, 10, 1000, 0), 10);
+    // Near-max rand_bps=9999: current=5 < base=10, so temp=base=10, ceiling=30, range=20;
+    // 20*9999/10000 = 19 (floor), next=10+19=29 -- proves current below base doesn't shrink
+    // the walk below the base-anchored floor.
+    assert_eq!(step(5, 10, 1000, 9999), 29);
+    // Cap saturation: current=100 -> temp*3=300, but cap=50 clamps the ceiling to 50;
+    // range=50-10=40; rand_bps=5000 -> 40*5000/10000=20, next=10+20=30.
+    assert_eq!(step(100, 10, 50, 5000), 30);
+    // Degenerate cap < base: cap=50 clamps the raw ceiling to 50, which is still below
+    // base=100, so the defensive floor forces ceiling back up to base -- range collapses to
+    // 0 and next is exactly base, never halting or wrapping on the inverted bound.
+    assert_eq!(step(5, 100, 50, 5000), 100);
+}
+
+#[test]
+fn concurrency_gate_step_matches_defined_behaviour() {
+    // Counting-semaphore gate: `release`!=0 always decrements in_flight (floored at 0) and
+    // reports allowed=1; `release`==0 admits (increments in_flight) only while strictly
+    // under max_concurrent, else denies and leaves in_flight untouched.
+    fn step(in_flight: u64, max_concurrent: u64, release: u64) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("concurrency_gate_step"), "ConcurrencyGateStep", None)
+            .unwrap_or_else(|e| panic!("bind concurrency_gate_step: {e}"));
+        cell.set("in_flight", in_flight).unwrap();
+        cell.set("max_concurrent", max_concurrent).unwrap();
+        cell.set("release", release).unwrap();
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // Acquire under the limit (2 < 5): admitted, in_flight increments to 3.
+    let (allowed, cell) = step(2, 5, 0);
+    assert_eq!(allowed, 1);
+    assert_eq!(cell.get("in_flight"), Some(3));
+
+    // Acquire exactly at the limit (5 < 5 is false): denied, in_flight unchanged.
+    let (allowed, cell) = step(5, 5, 0);
+    assert_eq!(allowed, 0);
+    assert_eq!(cell.get("in_flight"), Some(5));
+
+    // Release with in_flight>0: decrements to 2, always reports allowed=1.
+    let (allowed, cell) = step(3, 5, 1);
+    assert_eq!(allowed, 1);
+    assert_eq!(cell.get("in_flight"), Some(2));
+
+    // Release when already at 0: floors at 0 (no underflow), still allowed=1.
+    let (allowed, cell) = step(0, 5, 1);
+    assert_eq!(allowed, 1);
+    assert_eq!(cell.get("in_flight"), Some(0));
+
+    // Acquire against a zero-capacity gate (0 < 0 is false): always denied.
+    let (allowed, cell) = step(0, 0, 0);
+    assert_eq!(allowed, 0);
+    assert_eq!(cell.get("in_flight"), Some(0));
+}
+
+#[test]
+fn sliding_window_counter_step_matches_hand_computed() {
+    // Sliding-window-counter: blends the previous window's count (weighted by how much
+    // of it still overlaps the sliding lookback) with the current window's count, fixing
+    // the boundary-burst gap that a hard fixed-window reset (rate_window_update) allows.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("sliding_window_counter_step"),
+            "SlidingWindowCounterStep",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind sliding_window_counter_step: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Case 1: first-ever call, brand-new window, no prior count -> admitted trivially.
+    let (report, cell) = step(&[
+        ("now", 0), ("window_start", 0), ("window_size", 100),
+        ("prev_count", 0), ("curr_count", 0), ("limit", 5),
+    ]);
+    assert_eq!(report.result, 1);
+    assert_eq!(cell.get("curr_count"), Some(1));
+    assert_eq!(cell.get("prev_count"), Some(0));
+
+    // Case 2: mid-window, no rollover (elapsed 33 < window_size 100). Weighted prev
+    // contribution floors: prev_count(7)*remaining(67)/window_size(100) = 469/100 = 4.
+    // estimate = curr_count(1) + 4 = 5 < limit(10) -> admitted, curr_count -> 2.
+    let (report, cell) = step(&[
+        ("now", 133), ("window_start", 100), ("window_size", 100),
+        ("prev_count", 7), ("curr_count", 1), ("limit", 10),
+    ]);
+    assert_eq!(report.result, 1);
+    assert_eq!(cell.get("curr_count"), Some(2));
+    assert_eq!(cell.get("prev_count"), Some(7)); // untouched, no rollover
+
+    // Case 3: same shape but limit lowered so the weighted estimate (6) is not strictly
+    // under the limit (6 < 6 is false) -> denied, curr_count NOT incremented.
+    // elapsed=50, remaining=50, weighted_prev = 8*50/100 = 4, estimate = 2+4 = 6.
+    let (report, cell) = step(&[
+        ("now", 150), ("window_start", 100), ("window_size", 100),
+        ("prev_count", 8), ("curr_count", 2), ("limit", 6),
+    ]);
+    assert_eq!(report.result, 0);
+    assert_eq!(cell.get("curr_count"), Some(2)); // unchanged, not spent
+
+    // Case 4: rollover fires (elapsed_before 110 >= window_size 100): curr_count(5) is
+    // carried into prev_count, curr_count resets, window_start snaps to now(210).
+    // Immediately after rollover elapsed=0 so remaining=window_size, so the carried
+    // prev_count counts in full: weighted_prev = 5*100/100 = 5, estimate = 0+5 = 5 < 10
+    // -> admitted, curr_count -> 1.
+    let (report, cell) = step(&[
+        ("now", 210), ("window_start", 100), ("window_size", 100),
+        ("prev_count", 99), ("curr_count", 5), ("limit", 10),
+    ]);
+    assert_eq!(report.result, 1);
+    assert_eq!(cell.get("window_start"), Some(210));
+    assert_eq!(cell.get("prev_count"), Some(5));
+    assert_eq!(cell.get("curr_count"), Some(1));
+
+    // Case 5: time moving backward relative to window_start is a caller bug, not a rate
+    // decision -> escalates rather than returning a value.
+    let (report, _cell) = step(&[
+        ("now", 5), ("window_start", 10), ("window_size", 100),
+        ("prev_count", 0), ("curr_count", 0), ("limit", 5),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

@@ -7,19 +7,26 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (11)
+## Landed (18)
 
 | id | signature | summary |
 |---|---|---|
 | `bit_length` | `run(x: u16) -> u16` | Number of bits needed to represent x: index of the highest set bit + 1 (0 for x == 0). |
+| `bit_length_u32` | `BitLengthU32::run() -> u16` | Number of bits needed to represent a full 32-bit value x: index of the highest set bit + 1 (0 for x == 0), widened from bit_length's 16-bit domain -- needs a u32 state field since bit_length's fn run(x: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `high_byte` | `run(x: u16) -> u16` | High byte of x (x >> 8). |
 | `leading_ones` | `run(x: u16) -> u16` | Count of leading (high) one bits in the 16-bit value (16 for x == 0xFFFF). |
 | `leading_zeros` | `run(x: u16) -> u16` | Count of leading (high) zero bits in the 16-bit value (16 for x == 0). |
+| `leading_zeros_u32` | `LeadingZerosU32::run() -> u16` | Count of leading (high) zero bits in a full 32-bit value (32 for x == 0), the u32-width sibling of leading_zeros -- needs a u32 state field since leading_zeros's fn run(x: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `low_byte` | `run(x: u16) -> u16` | Low byte of x (x & 0xFF). |
 | `reverse_bits` | `run(x: u16) -> u16` | Reverse the 16 bits of x (bit 0 <-> bit 15, ...). |
+| `reverse_bits_u32` | `ReverseBitsU32::run() -> u16` | Reverse all 32 bits of x (bit 0 <-> bit 31, ...) -- the u32-width sibling of reverse_bits, needing a state cell since the calling convention has no u32 free-fn parameters; distinct from swap_bytes (byte-order reordering, not bit-level reversal within each bit position). |
 | `rotl16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x left by n (n taken mod 16). |
+| `rotl32` | `Rotl32::run() -> u16` | Rotate the 32 bits of x left by n (n mod 32) -- the u32-width sibling of rotl16, built from a bounded loop of single-bit rotations since this dialect's u32 shifts take only constant-literal amounts, unlike rotl16's single variable-shift expression. |
 | `rotr16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x right by n (n taken mod 16). |
+| `rotr32` | `Rotr32::run() -> u16` | Rotate the 32 bits of x right by n (n taken mod 32) -- the u32-width sibling of rotr16, mirroring rotl32's left rotation; needs a state cell since the calling convention has no u32 free-fn parameters. |
 | `swap_bytes` | `run(x: u16) -> u16` | Swap the high and low bytes of x ((x << 8) \| (x >> 8)). |
+| `swap_bytes_u32` | `SwapBytesU32::run() -> u16` | Reverse the byte order of a full 32-bit value (endian-swap all four bytes: b0 b1 b2 b3 -> b3 b2 b1 b0) -- the u32-width sibling of swap_bytes's 16-bit byte-swap, needing a u32 state field since the calling convention has no u32 free-fn parameters; distinct from reverse_bits_u32 in granularity (whole bytes moved, not individual bits). |
 | `trailing_ones` | `run(x: u16) -> u16` | Count of trailing (low) one-bits in the 16-bit value (16 for x == 0xFFFF). |
 | `trailing_zeros` | `run(x: u16) -> u16` | Count of trailing (low) zero bits in the 16-bit value (16 for x == 0). |
+| `trailing_zeros_u32` | `TrailingZerosU32::run() -> u16` | Count of trailing (low) zero bits in a full 32-bit value (32 for x == 0), widened from trailing_zeros's 16-bit domain -- needs a u32 state field since trailing_zeros's fn run(x: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 

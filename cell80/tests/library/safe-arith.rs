@@ -116,3 +116,102 @@ fn geomean2_matches_hand_computed_floor_sqrt_of_product() {
         failures.join("\n")
     );
 }
+
+
+#[test]
+fn harmonic_mean2_matches_hand_computed_floor_2ab_over_a_plus_b() {
+    // harmonic_mean2(a, b) = floor(2*a*b/(a+b)), the harmonic-mean third leg of the
+    // AM-GM-HM triad alongside avg2 (arithmetic) and geomean2 (geometric). Cases hand-
+    // computed: a+b == 0 (defined as 0), equal inputs (HM(a,a) = a exactly), an exact
+    // ratio, a floor-rounding case, the domain extreme a == b == 65535 (exact), a large
+    // asymmetric pair that exercises the q/r decomposition's overflow-avoidance path,
+    // another exact ratio, and a zero factor.
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("harmonic_mean2", &[0, 0], 0),             // a+b == 0 -> defined as 0
+        ("harmonic_mean2", &[4, 4], 4),              // HM(a,a) = a exactly
+        ("harmonic_mean2", &[4, 12], 6),             // 2*4*12/16 = 96/16 = 6 exactly
+        ("harmonic_mean2", &[1, 2], 1),              // 2*1*2/3 = 4/3 = 1.333.., floors to 1
+        ("harmonic_mean2", &[65535, 65535], 65535),  // domain max, exact
+        ("harmonic_mean2", &[65535, 1], 1),          // large asymmetry: 131070/65536 floors to 1
+        ("harmonic_mean2", &[100, 300], 150),        // 2*100*300/400 = 60000/400 = 150 exactly
+        ("harmonic_mean2", &[0, 5], 0),              // one factor zero -> product zero -> 0
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+#[test]
+fn rms2_matches_hand_computed_floor_sqrt_of_mean_of_squares() {
+    // Checks rms2 (cells/safe-arith/rms2.rs): the quadratic mean floor(sqrt((a*a+b*b)/2)),
+    // the fourth classical Pythagorean mean alongside avg2 (arithmetic) and geomean2
+    // (geometric). a*a and b*b are widened to u32 and combined via add_checked_u32 so an
+    // extreme pair escalates instead of silently wrapping, then the checked sum is
+    // floor-divided by 2 and reduced with the same branch-free bitwise integer-sqrt loop
+    // geomean2/euclid_dist already run inline.
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("rms2", &[3, 4], 3),        // sum=9+16=25, half=12, floor(sqrt(12))=3
+        ("rms2", &[0, 0], 0),        // sum=0, half=0, isqrt(0)=0
+        ("rms2", &[10, 10], 10),     // RMS of two equal values is that value: half=100, isqrt=10
+        ("rms2", &[1, 7], 5),        // sum=1+49=50, half=25, isqrt(25)=5 exactly
+        ("rms2", &[65535, 0], 46340), // half=2147418112; 46340^2<=half<46341^2 -> 46340
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+
+    // Escalation path: a=b=65535 -> a*a+b*b = 8_589_672_450 > u32::MAX (4_294_967_295),
+    // so add_checked_u32 must halt (0xFF05, needs_wider_math) instead of wrapping.
+    let mut r = cell80::Runner::compile(&crate::common::cell_src("rms2")).unwrap();
+    let report = r.run(None, &[65535, 65535], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn mul_div_sat_computes_widened_cross_multiply_divide() {
+    // floor(a*b/c) via a u32 intermediate product; saturates at 65535 if the true
+    // quotient overflows u16, and returns 0 when c == 0 (no divide-by-zero halt).
+    let cases: &[(&[u16], u16)] = &[
+        // Plain case: 10*20/4 = 200/4 = 50, exact, no truncation.
+        (&[10, 20, 4], 50),
+        // Floor truncation: 7*3/2 = 21/2 = 10.5 -> floors to 10.
+        (&[7, 3, 2], 10),
+        // c == 0 guard: returns 0 regardless of a, b.
+        (&[100, 100, 0], 0),
+        // Saturation: 65535*65535 = 4_294_836_225, /1 is far past u16::MAX -> caps at 65535.
+        (&[65535, 65535, 1], 65535),
+        // Wide intermediate product that still lands in-range: 1000*1000 = 1_000_000
+        // (overflows u16 as an intermediate) / 100 = 10_000, which fits u16 fine -- proof
+        // the u32 widening is load-bearing, not just the saturation cap.
+        (&[1000, 1000, 100], 10000),
+    ];
+
+    let mut failures = Vec::new();
+    for (args, exp) in cases {
+        let got = run_cell("mul_div_sat", args);
+        if got != *exp {
+            failures.push(format!("mul_div_sat({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

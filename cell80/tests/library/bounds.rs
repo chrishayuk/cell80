@@ -315,3 +315,236 @@ fn value_at_percent_matches_hand_computed_expectations() {
     // exact inverse of normalize_0_100(50, 0, 200) == 25 -> recovers 50
     assert_eq!(run(0, 200, 25), 50);
 }
+
+
+#[test]
+fn value_at_percent_u32_matches_hand_computed_expectations() {
+    // ValueAtPercentWide: wide (u32) sibling of value_at_percent -- given range [lo, hi]
+    // and percentage pct (clamped to 100 if over), returns lo + (hi-lo)*pct/100 at u32
+    // width (returns lo if hi <= lo). The intermediate multiply (hi-lo)*pct is checked,
+    // so it escalates instead of silently wrapping when the span/pct combination is
+    // wide enough to overflow u32.
+    let step = |lo: u64, hi: u64, pct: u64| -> (u16, cell80::Report, cell80::StateCell) {
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("value_at_percent_u32"),
+            "ValueAtPercentWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("lo", lo).unwrap();
+        cell.set("hi", hi).unwrap();
+        cell.set("pct", pct).unwrap();
+        let report = cell
+            .run(cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
+        let result = report.result;
+        (result, report, cell)
+    };
+
+    // 50% of [0, 200] -> 0 + 200*50/100 = 100
+    let (_, report, cell) = step(0, 200, 50);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(100));
+
+    // offset range: 25% of [100, 300] -> 100 + (300-100)*25/100 = 150
+    let (_, report, cell) = step(100, 300, 25);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(150));
+
+    // pct clamped past 100: 150% of [0, 200] behaves like 100% -> 200
+    let (_, report, cell) = step(0, 200, 150);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(200));
+
+    // degenerate hi < lo -> returns lo unconditionally
+    let (_, report, cell) = step(200, 100, 50);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(200));
+
+    // wide case past the u16/65535 ceiling: 50% of [0, 1_000_000] -> 500_000
+    let (_, report, cell) = step(0, 1_000_000, 50);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(500_000));
+
+    // Overflow escalation: span * pct overflows u32. span = hi - lo = 50_000_000,
+    // pct = 100 (already <= 100) -> num = 50_000_000 * 100 = 5_000_000_000, which is
+    // greater than u32::MAX (4_294_967_295) -> escalates (needs_wider_math).
+    let (_, report, _) = step(0, 50_000_000, 100);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn outside_range_matches_defined_behaviour() {
+    // outside_range: the exact logical complement of between_exclusive -- 1 if x <= lo
+    // or x >= hi (x lies on or beyond either edge of the open interval), else 0.
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("outside_range", &[5, 0, 10], 0),   // strictly inside (0,10) -> not outside
+        ("outside_range", &[0, 0, 10], 1),   // x == lo (boundary excluded from open interval) -> outside
+        ("outside_range", &[10, 0, 10], 1),  // x == hi (boundary excluded from open interval) -> outside
+        ("outside_range", &[15, 0, 10], 1),  // x beyond hi -> outside
+        ("outside_range", &[9, 0, 10], 0),   // x just inside the upper edge -> not outside
+        ("outside_range", &[5, 5, 5], 1),    // degenerate empty interval (lo == hi) -> everything is outside
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+#[test]
+fn outside_range_u32_matches_hand_computed_expectations() {
+    // OutsideRangeWide: wide (u32) sibling of outside_range -- 1 if x is outside the open
+    // interval (lo, hi), i.e. x <= lo || x >= hi, else 0. This is the exact logical
+    // complement of between_exclusive_u32, exercised past the u16/65535 ceiling since
+    // that's the whole point of the wide variant (e.g. money totals in cents).
+    let step = |fields: &[(&str, u64)]| -> u16 {
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("outside_range_u32"),
+            "OutsideRangeWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(cell80::DEFAULT_CYCLES).unwrap().result
+    };
+
+    // strictly inside -> not outside -> 0
+    assert_eq!(step(&[("x", 5), ("lo", 0), ("hi", 10)]), 0);
+    // at the lower bound (x <= lo) -> outside -> 1
+    assert_eq!(step(&[("x", 0), ("lo", 0), ("hi", 10)]), 1);
+    // at the upper bound (x >= hi) -> outside -> 1
+    assert_eq!(step(&[("x", 10), ("lo", 0), ("hi", 10)]), 1);
+    // wide: strictly inside past the u16 ceiling -> 0
+    assert_eq!(step(&[("x", 100_000), ("lo", 50_000), ("hi", 200_000)]), 0);
+    // wide: at the lower bound past the u16 ceiling -> 1
+    assert_eq!(step(&[("x", 50_000), ("lo", 50_000), ("hi", 200_000)]), 1);
+    // wide: strictly inside near u32::MAX -> 0 (exact complement of the matching
+    // between_exclusive_u32 case, which returns 1 for the same inputs)
+    assert_eq!(
+        step(&[
+            ("x", 4_000_000_000),
+            ("lo", 3_000_000_000),
+            ("hi", 4_294_967_295)
+        ]),
+        0
+    );
+    // wide: x >= hi at u32::MAX itself -> 1
+    assert_eq!(
+        step(&[
+            ("x", 4_294_967_295),
+            ("lo", 3_000_000_000),
+            ("hi", 4_294_967_295)
+        ]),
+        1
+    );
+}
+
+#[test]
+fn remap_range_matches_hand_computed_expectations() {
+    // RemapRange: fully general linear remap of x from [in_lo, in_hi] to [out_lo, out_hi].
+    // clamps x into the input range first, then scales: out_lo + (x-in_lo)*(out_hi-out_lo)/(in_hi-in_lo).
+    // Degenerate input range (in_hi <= in_lo) always returns out_lo.
+    fn step(x: u16, in_lo: u16, in_hi: u16, out_lo: u16, out_hi: u16) -> u16 {
+        let mut cell = cell80::StateCell::bind(&crate::common::cell_src("remap_range"), "RemapRange", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x", x as u64).unwrap();
+        cell.set("in_lo", in_lo as u64).unwrap();
+        cell.set("in_hi", in_hi as u64).unwrap();
+        cell.set("out_lo", out_lo as u64).unwrap();
+        cell.set("out_hi", out_hi as u64).unwrap();
+        cell.run(cell80::DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        cell.get("result").unwrap() as u16
+    }
+
+    // Basic doubling scale: x=50 in [0,100] -> [0,200]: (50-0)*(200-0)/(100-0) = 100.
+    assert_eq!(step(50, 0, 100, 0, 200), 100);
+    // Clamp above in_hi: x=150 clamps to 100 first -> (100-0)*(200-0)/(100-0) = 200.
+    assert_eq!(step(150, 0, 100, 0, 200), 200);
+    // Clamp below in_lo: x=5 clamps to in_lo=10 -> numerator is 0 -> result = out_lo = 20.
+    assert_eq!(step(5, 10, 100, 20, 220), 20);
+    // Degenerate input range (in_hi <= in_lo) -> always out_lo, regardless of x.
+    assert_eq!(step(30, 50, 50, 7, 99), 7);
+    // Fully arbitrary two-range remap: x=25 in [0,50] -> [100,200]:
+    // (25-0)*(200-100)/(50-0) = 25*100/50 = 50 -> result = 100+50 = 150.
+    assert_eq!(step(25, 0, 50, 100, 200), 150);
+    // Cross-check against value_at_percent(lo=10,hi=20,pct=50)=15: using [0,100] as the
+    // percent domain for `in` and [10,20] as `out` should reproduce the same answer.
+    assert_eq!(step(50, 0, 100, 10, 20), 15);
+}
+
+#[test]
+fn remap_range_u32_matches_hand_computed_expectations() {
+    // RemapRangeWide: wide (u32) sibling of remap_range -- linearly maps x from
+    // [in_lo, in_hi] into [out_lo, out_hi] (clamping x into the source range first,
+    // falling back to out_lo if in_hi <= in_lo), using mul_checked_u32 for the
+    // intermediate multiply since u32 operands can themselves overflow u32.
+    let step = |fields: &[(&str, u64)]| -> (u64, cell80::Report) {
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("remap_range_u32"),
+            "RemapRangeWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell
+            .run(cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
+        (cell.get("result").unwrap_or(0), report)
+    };
+
+    // Normal case: 50 within [0,100] maps to [0,200] -> midpoint -> 100
+    let (r, rep) = step(&[("x", 50), ("in_lo", 0), ("in_hi", 100), ("out_lo", 0), ("out_hi", 200)]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 100);
+
+    // x below in_lo clamps to in_lo -> maps to out_lo
+    let (r, rep) = step(&[("x", 5), ("in_lo", 10), ("in_hi", 20), ("out_lo", 100), ("out_hi", 200)]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 100);
+
+    // x above in_hi clamps to in_hi -> maps to out_hi
+    let (r, rep) = step(&[("x", 999), ("in_lo", 10), ("in_hi", 20), ("out_lo", 100), ("out_hi", 200)]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 200);
+
+    // Offset ranges: 150 within [100,300] -> (150-100)*(1000-0)/(300-100) = 50000/200 = 250
+    let (r, rep) = step(&[("x", 150), ("in_lo", 100), ("in_hi", 300), ("out_lo", 0), ("out_hi", 1000)]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 250);
+
+    // Degenerate source range (in_hi <= in_lo) -> falls back to out_lo regardless of x
+    let (r, rep) = step(&[("x", 1000), ("in_lo", 50), ("in_hi", 50), ("out_lo", 7), ("out_hi", 99)]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 7);
+
+    // Wide-scale normal case past the u16/65535 ceiling:
+    // 1,500,000 within [1,000,000, 2,000,000] -> (500,000*100)/1,000,000 = 50
+    let (r, rep) = step(&[
+        ("x", 1_500_000),
+        ("in_lo", 1_000_000),
+        ("in_hi", 2_000_000),
+        ("out_lo", 0),
+        ("out_hi", 100),
+    ]);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 50);
+
+    // Overflow escalation: (c - in_lo) * (out_hi - out_lo) overflows u32.
+    // x=3 clamped within [0,10] -> c-in_lo=3; out_hi-out_lo=2,000,000,000;
+    // 3 * 2,000,000,000 = 6,000,000,000 > u32::MAX (4,294,967,295) -> escalate.
+    let (_, rep) = step(&[("x", 3), ("in_lo", 0), ("in_hi", 10), ("out_lo", 0), ("out_hi", 2_000_000_000)]);
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF05));
+}

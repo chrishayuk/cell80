@@ -352,3 +352,175 @@ fn is_odd_u32_wide_odd_predicate() {
     // u32::MAX - 1 = 4_294_967_294 is even -> 0
     assert_eq!(step(4_294_967_294), 0, "u32::MAX - 1 is even");
 }
+
+
+#[test]
+fn is_positive_i16_hand_computed_cases() {
+    // is_positive_i16(x): 1 if x > 0 under true signed i16 ordering, else 0 -- tests
+    // order against the implicit zero that is_gt_i16/is_ge_i16/is_lt_i16/is_le_i16 (all
+    // two-argument) never exercise alone, and is distinct from sign_i16 (returns -1/0/1,
+    // not the 0/1 predicate convention). Negative arguments are passed as their
+    // two's-complement u16 bit pattern, matching this file's other signed-i16 cases.
+    fn i16_bits(v: i16) -> u16 {
+        v as u16
+    }
+
+    let cases: &[(i16, u16)] = &[
+        (5, 1),      // clearly positive -> 1
+        (0, 0),      // zero is NOT strictly positive -> 0
+        (-1, 0),     // -1 bit pattern is 0xFFFF (65535), a large u16 -- must NOT be
+                     // misread as positive -> 0 (proves true signed ordering is used)
+        (-32768, 0), // i16::MIN, very negative -> 0
+        (32767, 1),  // i16::MAX, very positive -> 1
+        (1, 1),      // smallest positive value -> 1
+    ];
+
+    for &(x, expected) in cases {
+        assert_eq!(
+            run_cell("is_positive_i16", &[i16_bits(x)]),
+            expected,
+            "is_positive_i16({x}) should be {expected}"
+        );
+    }
+}
+
+#[test]
+fn is_negative_i16_matches_hand_computed_cases() {
+    // is_negative_i16(x): 1 if x < 0 under true signed ordering, else 0 -- the direct
+    // complement of is_positive_i16. Args/results are read as their two's-complement
+    // u16 bit pattern (-5 <-> 65531), matching signed-deltas' own convention.
+    let cases: &[(u16, u16)] = &[
+        (0, 0),      // x = 0, not negative -> 0
+        (5, 0),      // x = 5, positive -> 0
+        (65535, 1),  // x = -1 (bits 65535), negative -> 1
+        (65531, 1),  // x = -5 (bits 65531), negative -> 1
+        (32768, 1),  // x = i16::MIN (-32768), negative -> 1
+        (32767, 0),  // x = i16::MAX (32767), positive -> 0
+    ];
+
+    let mut failures = Vec::new();
+    for (x, exp) in cases {
+        let got = run_cell("is_negative_i16", &[*x]);
+        if got != *exp {
+            failures.push(format!("is_negative_i16({x}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+}
+
+#[test]
+fn is_nonneg_i16_matches_hand_computed_expectations() {
+    // is_nonneg_i16(x): (x >= 0) as u16 under true signed ordering -- the non-strict
+    // complement of is_positive_i16 (which is strict, x > 0), mirroring the
+    // is_gt_i16/is_ge_i16 strict/non-strict pairing already in this pack. Negative
+    // arguments are passed as their two's-complement u16 bit pattern, matching this
+    // file's other signed-i16 cases. Distinct from verifier-ranker's smag_is_nonneg,
+    // which tests a (magnitude, sign) pair, not a raw i16.
+    fn i16_bits(v: i16) -> u16 {
+        v as u16
+    }
+
+    let cases: &[(i16, u16)] = &[
+        (0, 1),        // zero counts as nonnegative -> 1
+        (5, 1),        // ordinary positive -> 1
+        (-1, 0),       // smallest-magnitude negative -> 0
+        (i16::MAX, 1), // 32767 -> 1
+        (i16::MIN, 0), // -32768 -> 0
+    ];
+
+    for &(x, expected) in cases {
+        assert_eq!(
+            run_cell("is_nonneg_i16", &[i16_bits(x)]),
+            expected,
+            "is_nonneg_i16({x}) should be {expected}"
+        );
+    }
+}
+
+#[test]
+fn is_nonpos_i16_hand_computed_cases() {
+    // is_nonpos_i16(x): (x <= 0) as u16 under true signed ordering -- the non-strict
+    // complement of is_positive_i16, completing the sign-vs-zero family alongside
+    // is_gt_i16/is_ge_i16/is_lt_i16/is_le_i16. Negative arguments are passed/read as
+    // their two's-complement u16 bit pattern, matching this file's other signed-i16 cases.
+    fn i16_bits(v: i16) -> u16 {
+        v as u16
+    }
+
+    let cases: &[(i16, u16)] = &[
+        (0, 1),             // zero counts as non-positive -> 1
+        (5, 0),              // positive -> 0
+        (-5, 1),              // negative -> 1
+        (-1, 1),              // negative -> 1
+        (i16::MAX, 0),       // 32767 <= 0 -> 0
+        (i16::MIN, 1),       // -32768 <= 0 -> 1
+    ];
+    for &(x, expected) in cases {
+        assert_eq!(
+            run_cell("is_nonpos_i16", &[i16_bits(x)]),
+            expected,
+            "is_nonpos_i16({x}) should be {expected}"
+        );
+    }
+}
+
+#[test]
+fn same_sign_i16_hand_computed_cases() {
+    // Compiles and runs the same_sign_i16 free function via the host oracle, checking
+    // (i16_neg(a) == i16_neg(b)) as u16 -- i.e. whether a and b share a sign bucket,
+    // with zero counted nonnegative per the spec.
+    use cell80::{Runner, DEFAULT_CYCLES};
+
+    fn run(a: i16, b: i16) -> u16 {
+        let mut r = Runner::compile(&cell_src("same_sign_i16"))
+            .unwrap_or_else(|e| panic!("compile: {e}"));
+        r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"))
+            .result
+    }
+
+    // 5, 3: both nonnegative -> same bucket -> 1
+    assert_eq!(run(5, 3), 1, "5,3 both nonneg");
+    // -5, -3: both negative -> same bucket -> 1
+    assert_eq!(run(-5, -3), 1, "-5,-3 both neg");
+    // 5, -3: opposite buckets -> 0
+    assert_eq!(run(5, -3), 0, "5,-3 opposite");
+    // 0, -1: zero counts nonnegative, -1 is negative -> opposite buckets -> 0
+    assert_eq!(run(0, -1), 0, "0,-1 opposite (zero is nonneg)");
+    // 0, 0: both nonnegative (zero counted nonnegative) -> same bucket -> 1
+    assert_eq!(run(0, 0), 1, "0,0 both nonneg");
+    // i16::MIN, i16::MAX: opposite buckets -> 0
+    assert_eq!(run(-32768, 32767), 0, "MIN,MAX opposite");
+}
+
+#[test]
+fn diff_sign_i16_hand_computed_cases() {
+    // diff_sign_i16(a, b): 1 if a and b fall in different sign buckets (one >=0, the
+    // other <0), else 0 -- the direct complement of same_sign_i16. Passes i16 args as
+    // their u16 bit pattern to the host oracle, matching this file's other signed-i16
+    // cases (e.g. is_ge_i16_hand_computed_cases).
+    use cell80::{Runner, DEFAULT_CYCLES};
+
+    fn run(a: i16, b: i16) -> u16 {
+        let mut r = Runner::compile(&cell_src("diff_sign_i16"))
+            .unwrap_or_else(|e| panic!("compile: {e}"));
+        r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"))
+            .result
+    }
+
+    // 5, 3: both >= 0 -> same bucket -> 0
+    assert_eq!(run(5, 3), 0, "5,3 same bucket");
+    // -5, 3: a < 0, b >= 0 -> different buckets -> 1
+    assert_eq!(run(-5, 3), 1, "-5,3 different buckets");
+    // 5, -3: a >= 0, b < 0 -> different buckets -> 1
+    assert_eq!(run(5, -3), 1, "5,-3 different buckets");
+    // -5, -3: both < 0 -> same bucket -> 0
+    assert_eq!(run(-5, -3), 0, "-5,-3 same bucket");
+    // 0, -1: 0 counts as >= 0, -1 < 0 -> different buckets -> 1
+    assert_eq!(run(0, -1), 1, "0,-1 different buckets (0 is nonneg)");
+    // 0, 0: both >= 0 -> same bucket -> 0
+    assert_eq!(run(0, 0), 0, "0,0 same bucket");
+    // i16::MIN, i16::MAX: -32768 < 0, 32767 >= 0 -> different buckets -> 1
+    assert_eq!(run(-32768, 32767), 1, "i16::MIN,i16::MAX different buckets");
+}

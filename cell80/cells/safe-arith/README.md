@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (11)
+## Landed (14)
 
 | id | signature | summary |
 |---|---|---|
@@ -15,7 +15,10 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `avg2` | `run(a: u16, b: u16) -> u16` | Average of two values, (a + b) / 2, computed without overflow. |
 | `ceil_div` | `run(a: u16, b: u16) -> u16` | Ceiling division: the smallest k with k*b >= a (0 if b == 0). Rounds up. |
 | `geomean2` | `run(a: u16, b: u16) -> u16` | Integer geometric mean of two u16 values, floor(sqrt(a*b)) -- the mean-family sibling avg2 (arithmetic mean) has none of, computed via the same branch-free bitwise integer-sqrt loop isqrt_u32/cosine_score_approx use, inlined here (cells can't call each other) on the widened u32 product a*b, always safe since two u16-bounded factors' product always fits u32 and the result always fits u16. |
+| `harmonic_mean2` | `run(a: u16, b: u16) -> u16` | Integer harmonic mean of two u16 values, floor(2*a*b/(a+b)), 0 if a+b == 0 -- the third leg of the classical AM-GM-HM triad (avg2, geomean2) that safe-arith was missing, computed as 2*q + floor(2*r/(a+b)) from q = prod/(a+b), r = prod%(a+b) to avoid the 2*a*b overflow the naive doubled-product form risks. |
+| `mul_div_sat` | `run(a: u16, b: u16, c: u16) -> u16` | Saturating cross-multiply-divide: floor(a*b/c) via a widened u32 product, saturated to 65535 on overflow, 0 if c == 0 -- the generic rescale-by-ratio primitive with all three operands free, distinct from percent/permille/ratio_255/scale_percent (which all bake in a fixed denominator) and NOT the same as composing mul_sat then safe_div (mul_sat would saturate the intermediate product before the divide, corrupting the ratio). |
 | `mul_sat` | `run(a: u16, b: u16) -> u16` | Saturating multiply: a * b, capped at 65535 instead of wrapping. |
+| `rms2` | `run(a: u16, b: u16) -> u16` | Integer quadratic mean (root-mean-square) of two u16 values, floor(sqrt((a*a+b*b)/2)) -- the fourth classical Pythagorean mean alongside avg2 (arithmetic) and geomean2 (geometric), missing from safe-arith until now, computed by widening a*a and b*b to u32, combining via the shared add_checked_u32 kernel (escalates only when a*a+b*b itself exceeds u32::MAX), floor-dividing the checked sum by 2, then reducing with the same branch-free bitwise integer-sqrt loop geomean2/euclid_dist already run inline. |
 | `round_div` | `run(a: u16, b: u16) -> u16` | Round-to-nearest integer division a/b, ties rounding up (same tie convention as round_to_multiple); 0 if b == 0. Distinct from the pack's ceil_div (always rounds up) and safe_div (always truncates/floors) -- this rounds to the CLOSEST quotient. |
 | `safe_div` | `run(a: u16, b: u16) -> u16` | Integer divide a / b, returning 0 when b == 0 (no divide-by-zero). |
 | `safe_mod` | `run(a: u16, b: u16) -> u16` | Remainder a % b, returning 0 when b == 0. |

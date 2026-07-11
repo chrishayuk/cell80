@@ -546,3 +546,229 @@ fn argmin4_u32_wide_ceiling_and_ties() {
         1
     );
 }
+
+
+#[test]
+fn max4_u32_matches_hand_computed_cases() {
+    // Wide (u32) sibling of max3_u32 — same nested-compare shape extended one level
+    // deeper, exercised past the u16 ceiling so it's genuinely distinct from max4 itself.
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("max4_u32"), "Max4Wide", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1u16, "run should return the success flag 1");
+        cell.get("result").unwrap()
+    }
+
+    // d is the unique largest, values exceed u16 ceiling.
+    assert_eq!(step(100_000, 200_000, 150_000, 300_000), 300_000);
+    // a is the unique largest.
+    assert_eq!(step(4_000_000_000, 1_000, 2_000, 3_000), 4_000_000_000);
+    // all four equal.
+    assert_eq!(step(70_000, 70_000, 70_000, 70_000), 70_000);
+    // b is the unique largest, exactly u32::MAX.
+    assert_eq!(step(1, 4_294_967_295, 2, 3), 4_294_967_295);
+    // c is the unique largest by a narrow margin over d.
+    assert_eq!(step(500_000, 500_001, 999_999, 999_998), 999_999);
+}
+
+// min4_u32: smallest of four wide u32 values written to a result field -- the arity-4
+// sibling of min3_u32, and the value-returning counterpart of argmin4_u32 (which returns
+// the winning index rather than the value). Exercised past the u16 ceiling.
+#[test]
+fn min4_u32_matches_hand_computed_cases() {
+    fn step(id: &str, strct: &str, a: u64, b: u64, c: u64, d: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1u16, "run should return the success flag 1");
+        cell.get("result").unwrap()
+    }
+
+    // b is the unique smallest, values exceed u16 ceiling.
+    assert_eq!(step("min4_u32", "Min4Wide", 100_000, 50_000, 150_000, 300_000), 50_000);
+    // a is the unique smallest, mixed against a near-u32::MAX value.
+    assert_eq!(step("min4_u32", "Min4Wide", 1_000, 4_000_000_000, 2_000_000, 3_000_000), 1_000);
+    // all four equal.
+    assert_eq!(step("min4_u32", "Min4Wide", 70_000, 70_000, 70_000, 70_000), 70_000);
+    // c is the unique smallest, near u32::MAX otherwise.
+    assert_eq!(
+        step("min4_u32", "Min4Wide", 4_294_967_295, 4_000_000_000, 2, 3_000_000_000),
+        2
+    );
+    // d is the unique smallest by a narrow margin over c; zero present.
+    assert_eq!(step("min4_u32", "Min4Wide", 500_001, 999_999, 500_000, 0), 0);
+}
+
+#[test]
+fn mean4_u32_matches_hand_computed_cases() {
+    // Mean4Wide::run: overflow-safe mean of four wide u32 values via mean4's
+    // div/remainder-recombine trick generalized to u32 (never forms a+b+c+d directly,
+    // so it stays exact even when that sum would overflow u32).
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("mean4_u32"), "Mean4Wide", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1u16, "run should return the success flag 1");
+        cell.get("result").unwrap()
+    }
+
+    // Ordinary values, exactly divisible by 4 -> floor(sum/4) = sum/4 exactly.
+    assert_eq!(step(100_000, 200_000, 150_000, 300_000), 187_500);
+    // All zero.
+    assert_eq!(step(0, 0, 0, 0), 0);
+    // All at u32::MAX -> mean is u32::MAX itself; a naive a+b+c+d would overflow u32
+    // by nearly 3x here, which is exactly what the div/remainder trick avoids.
+    assert_eq!(
+        step(4_294_967_295, 4_294_967_295, 4_294_967_295, 4_294_967_295),
+        4_294_967_295
+    );
+    // Small values with a non-multiple-of-4 sum: true mean 2.5 -> floors to 2.
+    assert_eq!(step(1, 2, 3, 4), 2);
+    // One value at u32::MAX, others tiny: true mean 1_073_741_825.25 -> floors to
+    // 1_073_741_825; the raw sum (4_294_967_301) would overflow u32.
+    assert_eq!(step(4_294_967_295, 1, 2, 3), 1_073_741_825);
+    // Consecutive values past the u16 ceiling: true mean 70_001.5 -> floors to 70_001.
+    assert_eq!(step(70_000, 70_001, 70_002, 70_003), 70_001);
+}
+
+#[test]
+fn median3_u32_wide_ceiling_and_ties() {
+    // median3_u32: wide (u32) sibling of median3, using the same a+b+c-min-max
+    // wrapping-add/wrapping-sub modular trick, exercised past the u16 ceiling.
+    // The trick stays exact even when intermediate wrapping_add sums overflow u32,
+    // because the true median is always one of a/b/c and thus always < 2^32.
+    fn step(a: u64, b: u64, c: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("median3_u32"), "Median3Wide", None)
+            .unwrap_or_else(|e| panic!("bind median3_u32: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("result").unwrap()
+    }
+
+    // Ordinary middle value, all three past the u16 ceiling.
+    assert_eq!(step(100_000, 200_000, 150_000), 150_000);
+    // Wide spread across u32's range; intermediate wrapping_add sums overflow u32
+    // but the modular trick still resolves to the true mid-sized value.
+    assert_eq!(step(4_000_000_000, 1_000, 2_000_000_000), 2_000_000_000);
+    // All three equal -> median is that shared value.
+    assert_eq!(step(500_000, 500_000, 500_000), 500_000);
+    // Spans from 0 to u32::MAX with a midpoint value.
+    assert_eq!(step(0, 4_294_967_295, 2_147_483_648), 2_147_483_648);
+    // Two values tie for the minimum -> median equals that shared low value.
+    assert_eq!(step(100, 100, 300), 100);
+}
+
+#[test]
+fn median4_u32_matches_hand_computed_cases() {
+    // Median4Wide: wide (u32) sibling of median4 — same 4-comparison sorting
+    // network, averaged via the overflow-safe (lo & hi) + ((lo ^ hi) >> 1) trick
+    // (mirrors midrange3/midrange4's use of the same trick, and min4_u32's
+    // relationship to min4).
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("median4_u32"), "Median4Wide", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1u16, "run should return the success flag 1");
+        cell.get("result").unwrap()
+    }
+
+    // Ordinary ascending values: middle two are 20 and 30 -> mean 25.
+    assert_eq!(step(10, 20, 30, 40), 25);
+    // Unsorted input, one value far past the u16 ceiling: sorted order is
+    // 1, 2, 3, 4_000_000_000 -> middle two are 2 and 3 -> mean 2 (floors from 2.5).
+    assert_eq!(step(1, 2, 3, 4_000_000_000), 2);
+    // Unsorted, past u16 ceiling throughout: sorted order is 100_000, 200_000,
+    // 300_000, 400_000 -> middle two are 200_000 and 300_000 -> mean 250_000.
+    assert_eq!(step(300_000, 100_000, 400_000, 200_000), 250_000);
+    // All equal -> median equals that value.
+    assert_eq!(step(5, 5, 5, 5), 5);
+    // Two huge, two tiny: sorted order is 0, 1, 4_294_967_294, 4_294_967_295 ->
+    // middle two are 1 and 4_294_967_294 -> true mean 2_147_483_647.5, floors to
+    // 2_147_483_647; exercises the near-u32::MAX operand path.
+    assert_eq!(step(4_294_967_294, 4_294_967_295, 0, 1), 2_147_483_647);
+    // Both middle order statistics individually exceed 2^31, so their naive sum
+    // (6_300_000_000) would overflow u32 by nearly 1.5x; only the (lo & hi) +
+    // ((lo ^ hi) >> 1) trick keeps this exact. Sorted order is 3_000_000_000,
+    // 3_100_000_000, 3_200_000_000, 3_300_000_000 -> middle two average to
+    // 3_150_000_000.
+    assert_eq!(
+        step(3_000_000_000, 3_300_000_000, 3_100_000_000, 3_200_000_000),
+        3_150_000_000
+    );
+}
+
+// range3_u32: spread of three wide u32 values (max3_u32 - min3_u32), the u32 sibling of
+// range3, exercised past the u16 ceiling. Checked: a plain case, a three-way tie (range 0),
+// a wide case past the u16 ceiling, an all-zero floor, and a near-u32-ceiling case with the
+// max sitting first (min never underflows it, by construction).
+#[test]
+fn range3_u32_hand_computed_cases() {
+    fn step(a: u64, b: u64, c: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("range3_u32"), "Range3Wide", None)
+            .unwrap_or_else(|e| panic!("bind Range3Wide: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run Range3Wide: {e}"));
+        cell.get("result").unwrap()
+    }
+
+    // plain case: max=8 (c), min=2 (b) -> 6
+    assert_eq!(step(5, 2, 8), 6);
+    // three-way tie -> range 0
+    assert_eq!(step(9, 9, 9), 0);
+    // past the u16 ceiling: max=200_000 (b), min=100_000 (a) -> 100_000
+    assert_eq!(step(100_000, 200_000, 150_000), 100_000);
+    // all-zero floor -> 0
+    assert_eq!(step(0, 0, 0), 0);
+    // near the u32 ceiling, min sits second/third -> no underflow, no overflow
+    assert_eq!(step(4_000_000_000, 1, 2), 3_999_999_999);
+}
+
+#[test]
+fn range4_u32_matches_hand_computed_cases() {
+    // Wide (u32) sibling of range3_u32 / range4 — max4_u32 minus min4_u32 written to
+    // `result`, exercised past the u16 ceiling so it's genuinely distinct from range4 itself.
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("range4_u32"), "Range4Wide", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1u16, "run should return the success flag 1");
+        cell.get("result").unwrap()
+    }
+
+    // d is the unique largest, a is the unique smallest, values exceed u16 ceiling.
+    assert_eq!(step(100_000, 200_000, 150_000, 300_000), 200_000);
+    // a is the unique largest (billions range), b is the unique smallest.
+    assert_eq!(step(4_000_000_000, 1_000, 2_000, 3_000), 3_999_999_000);
+    // all four equal -> spread is zero.
+    assert_eq!(step(70_000, 70_000, 70_000, 70_000), 0);
+    // b sits at u32::MAX, a is the unique smallest.
+    assert_eq!(step(1, 4_294_967_295, 2, 3), 4_294_967_294);
+    // c is the unique largest, d is the unique smallest, narrow-margin siblings a/b in between.
+    assert_eq!(step(500_000, 500_001, 999_999, 100), 999_899);
+}

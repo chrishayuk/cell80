@@ -677,3 +677,232 @@ fn clear_winner3_matches_hand_computed_cases() {
         0
     );
 }
+
+
+// weighted_avg2 (scoring-choice): normalized two-input weighted mean, distinct from
+// weighted_sum2 which returns the raw (un-normalized) a*wa + b*wb combined score.
+#[test]
+fn weighted_avg2_matches_hand_computed() {
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // Equal weights -> plain average: (10*1 + 20*1)/(1+1) = 15
+    let (result, _, cell) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 10), ("wa", 1), ("b", 20), ("wb", 1)],
+    );
+    assert_eq!((result, cell.get("sum")), (15, Some(30)));
+
+    // Unequal weights, pulled toward a: (100*3 + 0*1)/(3+1) = 75
+    let (result, _, cell) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 100), ("wa", 3), ("b", 0), ("wb", 1)],
+    );
+    assert_eq!((result, cell.get("sum")), (75, Some(300)));
+
+    // wa+wb == 0 -> guarded, result is 0 regardless of a/b.
+    let (result, _, cell) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 500), ("wa", 0), ("b", 900), ("wb", 0)],
+    );
+    assert_eq!((result, cell.get("sum")), (0, Some(0)));
+
+    // Integer-division truncation (floor, not rounded): (7+8)/2 = 15/2 = 7
+    let (result, _, cell) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 7), ("wa", 1), ("b", 8), ("wb", 1)],
+    );
+    assert_eq!((result, cell.get("sum")), (7, Some(15)));
+
+    // One weight zero -> degenerates to the other value exactly: (42*0+200*5)/5 = 200
+    let (result, _, cell) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 42), ("wa", 0), ("b", 200), ("wb", 5)],
+    );
+    assert_eq!((result, cell.get("sum")), (200, Some(1000)));
+
+    // Both products near u32::MAX: numerator overflow escalates (needs_wider_math),
+    // matching weighted_sum2's convention for the same shape of input.
+    let (_, report, _) = verify(
+        "weighted_avg2",
+        "WeightedAvg2",
+        &[("a", 65535), ("wa", 65535), ("b", 65535), ("wb", 65535)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn weighted_avg3_hand_computed_cases() {
+    // weighted_avg3 = (a*wa + b*wb + c*wc) / (wa+wb+wc), 0 if the weight total is zero.
+    // Normalized sibling of weighted_sum3 (same numerator, but divided by the weight total).
+    fn verify(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("weighted_avg3"), "WeightedAvg3", None)
+            .unwrap_or_else(|e| panic!("bind weighted_avg3: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // Case 1: a=10,wa=1,b=5,wb=2,c=3,wc=4 -> sum=10+10+12=32, denom=7, 32/7=4 (floor).
+    let (result, _, cell) = verify(&[
+        ("a", 10),
+        ("wa", 1),
+        ("b", 5),
+        ("wb", 2),
+        ("c", 3),
+        ("wc", 4),
+    ]);
+    assert_eq!((result, cell.get("sum")), (4, Some(32)));
+
+    // Case 2: equal weights collapse to a plain average of a,b,c.
+    let (result, _, cell) = verify(&[
+        ("a", 10),
+        ("wa", 1),
+        ("b", 20),
+        ("wb", 1),
+        ("c", 30),
+        ("wc", 1),
+    ]);
+    assert_eq!((result, cell.get("sum")), (20, Some(60)));
+
+    // Case 3: all weights zero -> denom==0 is guarded to return 0, not a divide-by-zero halt.
+    let (result, _, cell) = verify(&[
+        ("a", 100),
+        ("wa", 0),
+        ("b", 200),
+        ("wb", 0),
+        ("c", 300),
+        ("wc", 0),
+    ]);
+    assert_eq!((result, cell.get("sum")), (0, Some(0)));
+
+    // Case 4: only b carries weight -> the average collapses exactly to b's value.
+    let (result, _, cell) = verify(&[
+        ("a", 50),
+        ("wa", 0),
+        ("b", 7),
+        ("wb", 5),
+        ("c", 1000),
+        ("wc", 0),
+    ]);
+    assert_eq!((result, cell.get("sum")), (7, Some(35)));
+
+    // Case 5: large weighted sum (65,535,000) that stays exact in the u32 `sum` field and
+    // still fits u16 once divided by the weight total (65535000 / 1002 = 65404, rem 192).
+    let (result, _, cell) = verify(&[
+        ("a", 65535),
+        ("wa", 1000),
+        ("b", 0),
+        ("wb", 1),
+        ("c", 0),
+        ("wc", 1),
+    ]);
+    assert_eq!((result, cell.get("sum")), (65404, Some(65_535_000)));
+
+    // Case 6: overflow — a*wa and b*wb are each near u32::MAX, so the chained
+    // add_checked_u32 must halt with 0xFF05 (needs_wider_math) rather than wrap silently.
+    let (_, report, _) = verify(&[
+        ("a", 65535),
+        ("wa", 65535),
+        ("b", 65535),
+        ("wb", 65535),
+        ("c", 1),
+        ("wc", 1),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn is_clear_loser_bottom_side_margin_check() {
+    // is_clear_loser is the bottom-side mirror of is_clear_winner: 1 if the
+    // second-lowest score beats the bottom score by at least margin, else 0.
+    // bottom > second_lowest is malformed and always reads as "no clear loser".
+    assert_eq!(run_cell("is_clear_loser", &[10, 50, 30]), 1); // gap 40 >= margin 30 -> clear loser
+    assert_eq!(run_cell("is_clear_loser", &[10, 30, 30]), 0); // gap 20 < margin 30 -> not clear
+    assert_eq!(run_cell("is_clear_loser", &[50, 10, 5]), 0); // malformed: bottom > second_lowest
+    assert_eq!(run_cell("is_clear_loser", &[20, 20, 0]), 1); // gap 0 >= margin 0 -> degenerate clear
+    assert_eq!(run_cell("is_clear_loser", &[0, 65535, 65535]), 1); // u16 edge: gap 65535 >= 65535
+    assert_eq!(run_cell("is_clear_loser", &[100, 100, 1]), 0); // gap 0 < margin 1 -> not clear
+}
+
+#[test]
+fn clear_loser3_hand_computed_cases() {
+    fn verify(fields: &[(&str, u64)]) -> u16 {
+        let src = crate::common::cell_src("clear_loser3");
+        let mut cell = cell80::StateCell::bind(&src, "ClearLoser3", None).unwrap();
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(cell80::DEFAULT_CYCLES).unwrap().result
+    }
+
+    // Decisive loser: bottom=5, second_lowest=10 (median of 10,5,20), diff=5 >= margin(3)
+    assert_eq!(
+        verify(&[("score_a", 10), ("score_b", 5), ("score_c", 20), ("margin", 3)]),
+        1
+    );
+    // Not decisive: bottom=8, second_lowest=10, diff=2 < margin(3)
+    assert_eq!(
+        verify(&[("score_a", 10), ("score_b", 8), ("score_c", 20), ("margin", 3)]),
+        0
+    );
+    // All tied: diff=0 >= margin(0) -> decisive (zero-margin ties count)
+    assert_eq!(
+        verify(&[("score_a", 7), ("score_b", 7), ("score_c", 7), ("margin", 0)]),
+        1
+    );
+    // Exact boundary: bottom=1, second_lowest=4, diff=3 >= margin(3)
+    assert_eq!(
+        verify(&[("score_a", 1), ("score_b", 4), ("score_c", 9), ("margin", 3)]),
+        1
+    );
+    // Two lowest tied at 5: second_lowest equals bottom, diff=0 < margin(1)
+    assert_eq!(
+        verify(&[("score_a", 5), ("score_b", 5), ("score_c", 20), ("margin", 1)]),
+        0
+    );
+}
+
+#[test]
+fn score_margin3_matches_hand_computed_cases() {
+    // score_margin3: the raw winning margin among three candidate scores (top minus
+    // the second-highest, which for three values is exactly the median) — the value
+    // clear_winner3 computes internally but only ever exposes as a >=margin boolean.
+    fn step(args: &[u16]) -> u16 {
+        run_cell("score_margin3", args)
+    }
+
+    // top=90, lo=20, second=60 (median) -> margin 30
+    assert_eq!(step(&[90, 60, 20]), 30);
+
+    // all three tied at 50 -> top=second=50 -> margin 0
+    assert_eq!(step(&[50, 50, 50]), 0);
+
+    // top=100, lo=10, second=55 -> margin 45
+    assert_eq!(step(&[10, 100, 55]), 45);
+
+    // two candidates tied at the max (65535,65535,0): top=65535, second=65535 -> margin 0;
+    // also exercises u16 sum overflow (65535+65535+0 wraps past 65535) staying exact
+    // because the internal a+b+c-lo-top computation is modular and second always fits u16
+    assert_eq!(step(&[65535, 65535, 0]), 0);
+
+    // a=1,b=2,c=65535: top=65535, lo=1, second=2 -> margin 65533
+    // exercises overflow in the a+b+c sum before subtracting lo/top
+    assert_eq!(step(&[1, 2, 65535]), 65533);
+}

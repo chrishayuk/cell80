@@ -7,21 +7,27 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (13)
+## Landed (19)
 
 | id | signature | summary |
 |---|---|---|
+| `combined_percent_discount` | `run(pct_a: u16, pct_b: u16) -> u16` | Single equivalent percent discount of applying two successive percent discounts pct_a then pct_b: pct_a + pct_b - pct_a*pct_b/100 (floored at 0), computed in u32 internally -- distinct from discount_percent (which applies one discount to a value) by combining two discount rates into one before any value is touched. |
+| `combined_percent_increase` | `run(pct_a: u16, pct_b: u16) -> u16` | Combine two successive percent increases pct_a then pct_b into one equivalent single percent rate: pct_a + pct_b + pct_a*pct_b/100, computed in u32 internally and saturating at 65535 -- distinct from compound_increase_by_bps, which loops the SAME rate N times, this composes two DIFFERENT rates once in closed form. |
 | `discount_percent` | `run(value: u16, pct: u16) -> u16` | Decrease a value by pct percent: value - value*pct/100 (0 if pct >= 100). |
 | `discount_percent_u32` | `DiscountPercentWide::run() -> u16` | Decrease a wide value by pct percent: value - value*pct/100 (0 if pct >= 100) at u32 width — wide sibling of discount_percent, using a checked multiply for the intermediate product. |
 | `increase_percent` | `run(value: u16, pct: u16) -> u16` | Increase a value by pct percent: value + value*pct/100 (saturating at 65535). |
 | `increase_percent_u32` | `IncreasePercentWide::run() -> u16` | Increase a wide value by pct percent: value + value*pct/100 at u32, escalating (needs_wider_math) on multiply or add overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of increase_percent. |
 | `percent` | `run(part: u16, whole: u16) -> u16` | Percentage of a whole: part*100/whole, in 0..100+ (0 if whole == 0). |
+| `percent_ceil` | `run(part: u16, whole: u16) -> u16` | Ceiling percentage of a whole: the smallest integer percent p such that p*whole/100 >= part, via the q+1-if-remainder technique div_ceil_u32 uses (0 if whole == 0, saturating at 65535) -- the ceiling sibling of percent (which floors part*100/whole). |
+| `percent_change_between` | `PercentChangeBetween::run() -> u16` | Direction-agnostic percent-scale change between two values (before and after, either order): pct_mag = \|after-before\|*100/before (saturating at 65535), pct_neg = 1 if after < before else 0, 0/0 if before == 0 -- the percent pack's own before/after pair, at u16 width and the pack's saturate (not halt) convention, distinct from money-bps's bps_change_between (bps scale, u32, halts on before == 0). |
+| `percent_round` | `run(part: u16, whole: u16) -> u16` | Round-to-nearest percentage of a whole, ties rounding up: round(part*100/whole) via round_div's overflow-safe tie test in u32 (0 if whole == 0, saturating at 65535) -- the rounding-mode sibling of percent, which floors instead. |
 | `percent_u32` | `PercentWide::run() -> u16` | Percentage of a whole at wide u32 width: part*100/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of percent. |
 | `permille` | `run(part: u16, whole: u16) -> u16` | Per-mille (parts per thousand): part*1000/whole (0 if whole == 0). |
 | `permille_u32` | `PermilleWide::run() -> u16` | Per-mille (parts per thousand) at wide u32 width: part*1000/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of permille. |
 | `ratio_255` | `run(part: u16, whole: u16) -> u16` | Ratio scaled to a 0..255 byte fraction: part*255/whole (0 if whole == 0). |
 | `ratio_255_u32` | `Ratio255Wide::run() -> u16` | Ratio scaled to a 0..255 byte fraction at wide u32 width: part*255/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of ratio_255. |
 | `scale_percent` | `run(value: u16, pct: u16) -> u16` | Take pct percent of a value: value*pct/100. |
+| `scale_percent_i16` | `run(value: i16, pct: u16) -> i16` | Take pct percent of a signed value, sign preserved: mag = i16_mag(value)*pct/100, saturated to i16's representable magnitude range (32767 if value is non-negative, 32768 if value is negative) -- the signed sibling of scale_percent (u16-only, no way to take a percentage of a signed quantity), reusing the sign-magnitude technique lerp_i16 already proved safe; distinct from a within_percent_i16 predicate, which would answer yes/no rather than produce a scaled value. |
 | `scale_percent_u32` | `ScalePercentWide::run() -> u16` | Take pct percent of a wide value: value*pct/100 at u32, escalating if the multiply overflows — the wide sibling of scale_percent, and the percent-of core the widened (u32) arithmetic lane resolves to. |
 | `within_percent` | `run(actual: u16, target: u16, pct: u16) -> u16` | Returns 1 if actual is within pct percent of target (\|actual-target\|*100 <= target*pct). |
 

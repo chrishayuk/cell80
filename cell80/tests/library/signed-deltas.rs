@@ -232,3 +232,209 @@ fn apply_delta_clamped_u32_matches_defined_behaviour() {
     ]);
     assert_eq!(cell.get("result"), Some(0));
 }
+
+
+#[test]
+fn min3_i16_matches_defined_behaviour() {
+    // min3_i16(a, b, c): three-way signed minimum, chained i16 comparisons (the signed
+    // sibling of min3 (u16)). Args/results are read as their two's-complement u16 bit
+    // pattern (-5 <-> 65531), matching this file's other signed-deltas cases.
+    let cases: &[((u16, u16, u16), u16)] = &[
+        ((5, 3, 8), 3),                   // all non-negative, plain ordering
+        ((65531, 3, 8), 65531),           // (-5, 3, 8) -> -5, negative beats positives
+        ((65535, 65534, 65533), 65533),   // (-1, -2, -3) -> -3; must NOT fall back to
+                                           // unsigned bit-pattern comparison (which would
+                                           // wrongly rank -1's bits as smallest)
+        ((32768, 0, 65535), 32768),       // (i16::MIN, 0, -1) -> i16::MIN
+        ((7, 7, 7), 7),                   // all equal, tie handling trivially correct
+    ];
+    for &((a, b, c), expected) in cases {
+        assert_eq!(run_cell("min3_i16", &[a, b, c]), expected);
+    }
+}
+
+#[test]
+fn max3_i16_matches_hand_computed_expectations() {
+    // max3_i16(a, b, c): maximum of three signed i16 values under true signed ordering,
+    // the three-operand sibling of max_i16. Negative arguments/results are passed and
+    // read as their two's-complement u16 bit pattern (-5 <-> 65531), the same convention
+    // run_cell's raw-register interface uses throughout this file.
+
+    // All positive, straightforward max.
+    assert_eq!(run_cell("max3_i16", &[5, 3, 9]), 9);
+
+    // All negative: -3 is the largest (closest to zero). -3=65533, -5=65531, -9=65527.
+    assert_eq!(run_cell("max3_i16", &[65531, 65533, 65527]), 65533);
+
+    // Mixed signs: positive wins over negatives. -5=65531, -100=65436.
+    assert_eq!(run_cell("max3_i16", &[65531, 10, 65436]), 10);
+
+    // Boundary values: i16::MAX vs i16::MIN vs 0 -- i16::MAX wins.
+    // i16::MAX=32767, i16::MIN bits=32768.
+    assert_eq!(run_cell("max3_i16", &[32767, 32768, 0]), 32767);
+
+    // Tie: all three equal.
+    assert_eq!(run_cell("max3_i16", &[7, 7, 7]), 7);
+
+    // Zero beats negative. -1=65535.
+    assert_eq!(run_cell("max3_i16", &[65535, 0, 65535]), 0);
+}
+
+#[test]
+fn mul_i16_matches_hand_computed_expectations() {
+    // mul_i16(a, b): checked signed multiplication a * b via sign-magnitude (mag_a*mag_b,
+    // which always fits u32 since each magnitude is at most 32768 and 32768*32768 <
+    // u32::MAX), sign is the XOR of the two input signs -- escalates (needs_wider_math,
+    // halt 0xFF05) if the product's magnitude doesn't fit back in i16. Negative args/results
+    // are passed and read as their two's-complement u16 bit pattern, the convention this
+    // file uses throughout.
+
+    // Both positive: 5 * 3 = 15.
+    assert_eq!(run_cell("mul_i16", &[5, 3]), 15);
+
+    // Mixed sign: -5 * 3 = -15 -> 65521 as u16 bits. -5 -> 65531.
+    assert_eq!(run_cell("mul_i16", &[65531, 3]), 65521);
+
+    // Both negative: -5 * -3 = 15. -5 -> 65531, -3 -> 65533.
+    assert_eq!(run_cell("mul_i16", &[65531, 65533]), 15);
+
+    // Zero short-circuits the sign rule (0 must canonicalize to nonnegative): 0 * -7 = 0.
+    assert_eq!(run_cell("mul_i16", &[0, 65529]), 0);
+
+    // Boundary that fits exactly: i16::MIN (32768 bits) * 1 = i16::MIN (32768 bits).
+    assert_eq!(run_cell("mul_i16", &[32768, 1]), 32768);
+
+    // Overflow: i16::MIN * -1 = 32768, which does not fit in i16 (max positive is 32767)
+    // -> escalates (needs_wider_math). -1 -> 65535 as u16 bits.
+    let mut r = cell80::Runner::compile(&cell_src("mul_i16")).unwrap();
+    let report = r
+        .run(None, &[32768, 65535], cell80::DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn div_i16_matches_hand_computed_expectations() {
+    // div_i16(a, b): plain signed integer division a/b via sign-magnitude, truncating
+    // toward zero -- the unscaled sibling of q_div_i16 (which scales by <<8 for Q8.8).
+    // Args/results are read as their two's-complement u16 bit pattern (-5 <-> 65531),
+    // the same convention this file's other signed-deltas cases use.
+
+    // Both positive: 10 / 3 = 3 (truncated toward zero).
+    assert_eq!(run_cell("div_i16", &[10, 3]), 3);
+
+    // Negative / positive: -10 / 3 = -3 (-3.33 truncates toward zero, not floored to -4).
+    // -10 as u16 bits = 65526, -3 as u16 bits = 65533.
+    assert_eq!(run_cell("div_i16", &[65526, 3]), 65533);
+
+    // Positive / negative: 10 / -3 = -3, same truncation rule.
+    assert_eq!(run_cell("div_i16", &[10, 65533]), 65533);
+
+    // Both negative: -10 / -3 = 3 (signs cancel to positive).
+    assert_eq!(run_cell("div_i16", &[65526, 65533]), 3);
+
+    // Zero divisor: 5 / 0 = 0, matching q_div/q_div_i16's zero-divisor convention.
+    assert_eq!(run_cell("div_i16", &[5, 0]), 0);
+
+    // i16::MIN / 1 = i16::MIN: representable, no escalation. i16::MIN bits = 32768.
+    assert_eq!(run_cell("div_i16", &[32768, 1]), 32768);
+
+    // i16::MIN / -1 must escalate (needs_wider_math): the true quotient 32768 has
+    // no representation in i16, the classic INT_MIN / -1 overflow case.
+    let mut r = cell80::Runner::compile(&cell_src("div_i16")).unwrap();
+    let report = r.run(None, &[32768, 65535], cell80::DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn add3_i16_matches_hand_computed_expectations() {
+    // add3_i16(a, b, c): checked three-way signed add via sign-magnitude, combining
+    // pairwise (a+b, then the running sum + c) -- the three-operand sibling of add_i16,
+    // mirroring add3_checked_u32's arity extension of add_checked_u32. Negative args/
+    // results are passed and read as their two's-complement u16 bit pattern, the
+    // convention this file uses throughout.
+
+    // All positive, ordinary case: 5 + 3 + 2 = 10.
+    assert_eq!(run_cell("add3_i16", &[5, 3, 2]), 10);
+
+    // All negative, ordinary case: -5 + -3 + -2 = -10 (65526 as u16 bits).
+    // -5 -> 65531, -3 -> 65533, -2 -> 65534.
+    assert_eq!(run_cell("add3_i16", &[65531, 65533, 65534]), 65526);
+
+    // Mixed sign, exercises the zero-forcing branch on the intermediate pairwise
+    // combine: 100 + -50 + -50 = 0. -50 -> 65486.
+    assert_eq!(run_cell("add3_i16", &[100, 65486, 65486]), 0);
+
+    // Boundary that fits exactly: 32767 + 1 + -1 = 32767 (i16::MAX). -1 -> 65535.
+    assert_eq!(run_cell("add3_i16", &[32767, 1, 65535]), 32767);
+
+    // Overflow: 32767 + 32767 + 32767 = 98301, which doesn't fit back in i16 ->
+    // escalates (needs_wider_math, halt 0xFF05).
+    let mut r = cell80::Runner::compile(&cell_src("add3_i16")).unwrap();
+    let report = r
+        .run(None, &[32767, 32767, 32767], cell80::DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn apply_delta_clamped_i16_matches_defined_behaviour() {
+    // apply_delta_clamped_i16 (ApplyDeltaClampedI16::run): the signed sibling of
+    // apply_delta_clamped/apply_delta_clamped_u32, both of which hard-assume an
+    // unsigned floor of 0. This one clamps to an explicit signed [lo, hi] (lo may be
+    // negative), and does the value+delta sum entirely in sign-magnitude space so a
+    // sum that overflows i16's own +/-32768 range never needs to be materialized as
+    // an i16 before clamping -- a naive clamp_i16(add_i16(...)) chain would wrap
+    // silently right where this cell is supposed to just settle on lo or hi.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn result_i16(cell: &StateCell) -> i16 {
+        cell.get("result").unwrap() as u16 as i16
+    }
+    fn step(value: i16, delta: i16, lo: i16, hi: i16) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("apply_delta_clamped_i16"),
+            "ApplyDeltaClampedI16",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind apply_delta_clamped_i16: {e}"));
+        cell.set("value", i16_bits(value)).unwrap();
+        cell.set("delta", i16_bits(delta)).unwrap();
+        cell.set("lo", i16_bits(lo)).unwrap();
+        cell.set("hi", i16_bits(hi)).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Plain in-range add, no clamp: 100 + 50 = 150, within [-50, 200].
+    let (report, cell) = step(100, 50, -50, 200);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(result_i16(&cell), 150);
+
+    // Sum overflows i16::MAX (32767 + 1 = 32768, not representable as i16) -- the
+    // clamp must catch this via the mag/neg sum, never materializing 32768 as i16.
+    // Clamped to hi = i16::MAX = 32767.
+    let (_, cell) = step(32767, 1, -32768, 32767);
+    assert_eq!(result_i16(&cell), 32767);
+
+    // Sum underflows i16::MIN (-32768 + -1 = -32769, not representable) -- clamped
+    // to lo = i16::MIN = -32768.
+    let (_, cell) = step(-32768, -1, -32768, 32767);
+    assert_eq!(result_i16(&cell), -32768);
+
+    // Negative value, positive delta, sum exceeds a positive hi:
+    // -100 + 250 = 150, clamped down to hi = 100.
+    let (_, cell) = step(-100, 250, -100, 100);
+    assert_eq!(result_i16(&cell), 100);
+
+    // Negative delta pushes a value below a negative lo:
+    // -20 + -90 = -110, clamped up to lo = -100.
+    let (_, cell) = step(-20, -90, -100, 100);
+    assert_eq!(result_i16(&cell), -100);
+
+    // Exact boundary -- sum lands exactly on lo, passes through unclamped:
+    // -50 + 0 = -50 == lo.
+    let (_, cell) = step(-50, 0, -50, 50);
+    assert_eq!(result_i16(&cell), -50);
+}

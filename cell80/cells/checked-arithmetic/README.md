@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (33)
+## Landed (41)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,19 +16,25 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `add4_checked_u32` | `Add4Checked::run() -> u16` | Checked four-way add at u32: a+b+c+d, escalating the moment any sequential add step overflows — the wide four-term sibling of add3_checked_u32 (composes add_checked_u32 three times), and the compute-side counterpart of parts_sum_to_total4_u32's verify-side check. |
 | `add_checked_u32` | `AddChecked::run() -> u16` | Checked u32 add: escalates (needs_wider_math) instead of silently wrapping if a + b overflows u32. |
 | `avg2_u32` | `Avg2Wide::run() -> u16` | Average of two wide u32 values, (a + b) / 2, computed without overflow — the wide sibling of avg2 (which works over u16). |
+| `avg3_u32` | `Avg3Wide::run() -> u16` | Floor average of three wide u32 values via per-term divide-by-3 plus remainder correction, overflow-free even when a+b+c itself would exceed u32::MAX — the arity-3 extension avg2_u32 lacks (composing avg2_u32 twice gives a differently-weighted, wrong result, unlike add/sub/mul which have honest arity-3 wide siblings). |
 | `clamp_u32` | `ClampWide::run() -> u16` | Clamp a wide u32 value to the inclusive range [lo, hi] — the wide sibling of clamp (which works over u16). |
 | `div_ceil_u32` | `DivCeil::run() -> u16` | Ceiling division of two u32 values: the smallest integer >= a / b. Escalates (needs_wider_math) if b is zero. |
 | `div_exact_u32` | `DivExact::run() -> u16` | Exact u32 division: escalates (needs_wider_math) if b is zero or a doesn't divide evenly by b — a wrong-plan signal for word problems that declared an exact division. |
 | `div_floor_u32` | `DivFloor::run() -> u16` | Floor division of two u32 values: a / b, rounded down. Escalates (needs_wider_math) if b is zero. |
 | `divides_u32` | `DividesWide::run() -> u16` | Returns 1 if a divides b evenly at wide u32 width (b % a == 0, a != 0), else 0 — the wide sibling of divides (which works over u16). |
 | `fits_u16` | `FitsU16::run() -> u16` | Returns 1 if a wide u32 value fits in u16 (<= 65535) without narrowing loss, else 0. |
+| `gcd3_u32` | `Gcd3Wide::run() -> u16` | Greatest common divisor of three wide u32 values via two chained inline Euclidean loops, gcd(gcd(a,b),c) — the wide sibling of gcd_u32, and the arity-3 extension gcd_u32 lacks (mirroring gcd3, which is u16-only and can't represent divisors beyond 65535). |
 | `gcd_u32` | `GcdWide::run() -> u16` | Greatest common divisor of two wide u32 values via an inline Euclidean loop — the wide sibling of gcd (which works over u16 and can't represent divisors beyond 65535). |
 | `is_coprime_u32` | `IsCoprimeWide::run() -> u16` | Returns 1 if two wide u32 values are coprime (their gcd, via the same inline Euclidean loop gcd_u32 runs, equals 1), else 0 — the wide sibling of is_coprime (which works over u16). |
+| `lcm3_u32` | `Lcm3Checked::run() -> u16` | Least common multiple of three wide u32 values via two chained inline gcd-then-checked-multiply steps, lcm(lcm(a,b),c), 0 if any input is 0 — the wide sibling of lcm_u32 at arity 3, mirroring lcm3 (u16-only, can't represent multiples beyond 65535). |
 | `lcm_u32` | `LcmChecked::run() -> u16` | Least common multiple of two wide u32 values via an inline GCD (0 if either is 0), escalating on overflow — unlike lcm (u16, silently wraps on overflow), this is the exact, checked wide sibling. |
+| `max3_u32` | `Max3Wide::run() -> u16` | Largest of three wide u32 values — the exact wide sibling of max3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
 | `max_u32` | `MaxWide::run() -> u16` | Maximum of two wide u32 values — the exact wide sibling of max (which works over u16). |
+| `min3_u32` | `Min3Wide::run() -> u16` | Smallest of three wide u32 values, min_u32(min_u32(a,b),c) — the arity-3 sibling min_u32/max_u32 lack in this pack; distinct from argmin3_u32, which returns the winning index, not the value. |
 | `min_u32` | `MinWide::run() -> u16` | Minimum of two wide u32 values — the exact wide sibling of min (which works over u16). |
 | `mod_u32` | `ModU32::run() -> u16` | Remainder of two u32 values: a % b. Escalates (needs_wider_math) if b is zero. |
 | `mul3_checked_u32` | `Mul3Checked::run() -> u16` | Checked three-way multiply at u32: a*b*c, escalating if either multiply step overflows (e.g. a box volume: length*width*height). |
+| `mul4_checked_u32` | `Mul4Checked::run() -> u16` | Checked four-way multiply at u32: a*b*c*d, escalating the moment any sequential multiply step overflows — the wide four-term sibling of mul3_checked_u32 (composes mul_checked_u32 three times), matching add4_checked_u32's arity. |
 | `mul_add_checked_u32` | `MulAddChecked::run() -> u16` | Checked fused multiply-add at u32: a*b+c, escalating on either the multiply or the add overflowing (e.g. a per-unit price times a quantity, plus a flat fee). |
 | `mul_checked_u32` | `MulChecked::run() -> u16` | Checked u32 multiply: escalates (needs_wider_math) instead of wrapping if a * b overflows u32. |
 | `mul_sub_checked_u32` | `MulSubChecked::run() -> u16` | Checked fused multiply-subtract at u32: a*b-c, escalating if the multiply overflows or c exceeds the product (e.g. a per-unit price times a quantity, minus a flat discount). |
@@ -37,11 +43,13 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `range_check_u32` | `RangeCheckWide::run() -> u16` | Returns 1 if lo <= x <= hi at wide u32 width, else 0 — the wide sibling of range_check (which works over u16). |
 | `round_div_checked_u32` | `RoundDivChecked::run() -> u16` | Round-to-nearest division of two u32 values (ties up): the wide, escalating sibling of round_div. Escalates (needs_wider_math) if b is zero. |
 | `smag_add` | `SmagAdd::run() -> u16` | Sign-magnitude add: combine two signed quantities represented as (magnitude, sign) pairs — neg_a/neg_b are 0 (nonnegative) or 1 (negative), since the dialect has no i32 and this is how the math-campaign renderer tracks signed differences at u32 width (docs/math-campaign-spec.md). Escalates on magnitude overflow. |
+| `smag_clamp` | `SmagClamp::run() -> u16` | Clamp a signed value (mag_x, neg_x) into an inclusive signed range [lo, hi] (each given as its own mag/neg pair), using the same sign-then-magnitude comparison smag_cmp/smag_max already implement -- the sign-magnitude sibling of clamp_u32 (wide but unsigned only) and distinct from apply_delta_clamped_u32 (which clamps an unsigned pool value after a signed delta and cannot represent a negative lower bound). |
 | `smag_cmp` | `SmagCmp::run() -> u16` | Compare two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add): 0 if a < b, 1 if equal, 2 if a > b — the sign-magnitude counterpart of frac_cmp's ordering-code convention. |
 | `smag_div` | `SmagDiv::run() -> u16` | Divide two signed values exactly: magnitudes divide (escalating on a nonzero remainder), sign is same-positive/different-negative (per smag_add). |
 | `smag_max` | `SmagMax::run() -> u16` | The larger of two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add), returned as its own (mag, neg) pair (ties keep a) -- the direct complement of smag_min, and unlike smag_cmp (which only returns a 0/1/2 ordering code) actually produces the winning value. |
 | `smag_mul` | `SmagMul::run() -> u16` | Multiply two signed values: magnitudes multiply (checked for overflow), sign is same-positive/different-negative (per smag_add). |
 | `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
 | `sub3_checked_u32` | `Sub3Checked::run() -> u16` | Checked three-way subtract at u32: a-b-c, escalating if either subtract step would go negative — the exact, wide sibling arity-3 sub, matching add3_checked_u32/mul3_checked_u32. |
+| `sub4_checked_u32` | `Sub4Checked::run() -> u16` | Checked four-way subtract at u32: a-b-c-d, escalating the moment any sequential subtract step goes negative — the wide four-term sibling of sub3_checked_u32 (composes sub_checked_u32 three times), filling the arity-4 gap left open in the sub triad while add_checked_u32 already has both. |
 | `sub_checked_u32` | `SubChecked::run() -> u16` | Checked u32 subtract: escalates (needs_wider_math) instead of wrapping if b > a (the result would be negative). |
 

@@ -7,10 +7,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (23)
+## Landed (29)
 
 | id | signature | summary |
 |---|---|---|
+| `diff_sign_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a and b fall in different sign buckets (one >=0, the other <0), else 0 -- the direct complement of same_sign_i16, rounding out the pack's eq/neq-style complement pair for the signed-sign-bucket case. |
 | `eq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a == b, else 0. |
 | `is_even` | `run(x: u16) -> u16` | Returns 1 if x is even, else 0. |
 | `is_even_u32` | `IsEvenWide::run() -> u16` | Returns 1 if a wide u32 value is even, else 0 — the wide sibling of is_even (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
@@ -26,12 +27,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `is_lt` | `run(a: u16, b: u16) -> u16` | Returns 1 if a < b (strictly less than), else 0. |
 | `is_lt_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a < b under true signed ordering, else 0 -- the signed sibling of is_lt/is_lt_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number (min_i16/max_i16 already flag this and prove native i16 comparison codegens correctly). |
 | `is_lt_u32` | `IsLtWide::run() -> u16` | Returns 1 if a < b (strictly less than) at wide u32 width, else 0 — the wide sibling of is_lt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
+| `is_negative_i16` | `run(x: i16) -> u16` | Returns 1 if x < 0 (strictly negative) under signed i16 ordering, else 0 -- the direct complement of is_positive_i16, rounding out the pack's zero/nonzero-style complement pairs (is_zero/nonzero, is_even/is_odd) for the signed-sign case. |
+| `is_nonneg_i16` | `run(x: i16) -> u16` | Returns 1 if x >= 0 under true signed ordering, else 0 -- the non-strict complement of is_positive_i16 (mirrors the is_gt_i16/is_ge_i16 strict/non-strict pairing) and distinct from verifier-ranker's smag_is_nonneg, which tests a (magnitude, sign) pair rather than a raw i16. |
+| `is_nonpos_i16` | `run(x: i16) -> u16` | Returns 1 if x <= 0 under signed i16 ordering, else 0 -- the non-strict complement of is_positive_i16 (which returns 1 only for x > 0), completing the sign-vs-zero family alongside is_gt_i16/is_ge_i16/is_lt_i16/is_le_i16. |
 | `is_odd` | `run(x: u16) -> u16` | Returns 1 if x is odd, else 0. |
 | `is_odd_u32` | `IsOddWide::run() -> u16` | Returns 1 if a wide u32 value is odd, else 0 — the wide sibling of is_odd (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
+| `is_positive_i16` | `run(x: i16) -> u16` | Returns 1 if x > 0 (strictly positive) under signed i16 ordering, else 0 -- orders against the implicit zero the pack's two-argument is_gt_i16/is_ge_i16/is_lt_i16/is_le_i16 never test alone, and unlike sign_i16 (which returns -1/0/1) this stays on the 0/1 predicate convention. |
 | `is_zero` | `run(x: u16) -> u16` | Returns 1 if x is zero, else 0. |
 | `is_zero_u32` | `IsZeroWide::run() -> u16` | Returns 1 if a wide u32 value is zero, else 0 — the wide sibling of is_zero (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `neq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a != b, else 0. |
 | `neq_u32` | `NeqWide::run() -> u16` | Returns 1 if a != b (not equal) at wide u32 width, else 0 — the wide sibling of neq (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `nonzero` | `run(x: u16) -> u16` | Returns 1 if x is nonzero, else 0. |
 | `nonzero_u32` | `NonzeroWide::run() -> u16` | Returns 1 if x is nonzero at wide u32 width, else 0 — the wide sibling of nonzero (which works over u16 and can't represent values beyond 65535, e.g. money totals in cents). |
+| `same_sign_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a and b fall in the same sign bucket (both >= 0 or both < 0, zero counted nonnegative), else 0 -- the direct callable form of the "neg_a == neg_b" test that is the load-bearing branch inside every sign-magnitude combine in the library (q_mul_i16, q_div_i16, lerp_i16), distinct from sign_i16 (single-value, three-way -1/0/1) and from smag_cmp/smag_eq (state cells comparing pre-decomposed magnitude/sign pairs, not raw i16 inputs). |
 

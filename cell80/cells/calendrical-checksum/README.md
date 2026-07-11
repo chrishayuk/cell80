@@ -7,19 +7,26 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (16)
 
 | id | signature | summary |
 |---|---|---|
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
 | `day_of_year` | `run(year: u16, month: u16, day: u16) -> u16` | Ordinal day-of-year (1-366) for a Gregorian date: sum of days in all preceding months plus day, with a leap-day adjustment for March onward. |
+| `days_between` | `DaysBetween::run() -> u16` | Absolute number of days between two Gregorian dates (order-independent), computed as a Rata-Die-style serial day number for each date subtracted from the other -- day_of_year only gives ordinal position within a single year, nothing else in the pack spans years. |
 | `days_in_month` | `run(month: u16, is_leap: u16) -> u16` | Number of days in a month (1-12; 0 for an invalid month), given a leap-year flag for February. |
+| `ean13_check` | `Ean13Check::run() -> u16` | Validates a full 13-digit EAN-13/UPC-A/ISBN-13 barcode via mod-10 alternating-weight checksum (weight 1 then weight 3 alternating from the rightmost digit) over hi/lo u32 halves (7+6 decimal digits, hi the more significant half) spanning all 13 digits including the check digit -- structurally distinct from luhn_check (mod-10 but doubles every second digit, not triple-weights) and from a mod-11 isbn10-style check, and split differently from ean13_check_digit's 6+6 halves of the 12-digit prefix that cell generates rather than verifies the 13th digit from. |
+| `ean13_check_digit` | `Ean13CheckDigit::run() -> u16` | Computes the 13th EAN-13 check digit from the first 12 digits (split hi/lo, 6 decimal digits each, hi the more significant half): weight-1 digits at odd left-to-right positions (1st, 3rd, ... 11th) plus weight-3 digits at even positions (2nd, 4th, ... 12th), then (10 - sum mod 10) mod 10 -- the generate-side counterpart to ean13_check, needing a u32 state-cell split since 12 digits cannot fit one 16-bit free-fn parameter. |
 | `is_leap_year` | `run(year: u16) -> u16` | Returns 1 if year is a Gregorian leap year, else 0: divisible by 4, except centuries not divisible by 400. |
 | `is_valid_date` | `run(year: u16, month: u16, day: u16) -> u16` | Returns 1 if (year, month, day) is a genuinely valid Gregorian date -- month in 1-12 and day within that month's actual leap-year-aware length -- else 0; distinct from range_check's single static bound. |
 | `is_weekday` | `run(dow: u16) -> u16` | Returns 1 if a day-of-week code (day_of_week's convention: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday) falls Monday through Friday, else 0 -- the direct logical complement of is_weekend. |
 | `is_weekend` | `run(dow: u16) -> u16` | Returns 1 if dow (a day-of-week code as produced by day_of_week: 0=Saturday, 1=Sunday, 2=Monday...6=Friday) is Saturday or Sunday, else 0. |
+| `isbn10_check` | `Isbn10Check::run() -> u16` | Validates a full 10-character ISBN-10 via the mod-11 weighted checksum (weights 10 down to 1 across all ten positions, valid iff the total is divisible by 11): the 9-digit prefix packed as one u32 body plus a separate check value (0-9, or 10 for 'X') -- the full-number verify-only counterpart to luhn_check, for the ISBN-10 scheme instead of Luhn's mod-10. |
+| `isbn10_check_digit` | `Isbn10CheckDigit::run() -> u16` | Computes the ISBN-10 check character (0-9, or 10 meaning 'X') for a 9-digit body -- the generate-side counterpart to isbn10_check, weighting digits 10 down to 2 from the left and reducing mod 11. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
 | `luhn_check_digit` | `run(partial: u16) -> u16` | Computes the Luhn check digit (0-9) to append to partial's digits so the completed number passes luhn_check — the generate-side counterpart to that verify-only cell. |
+| `luhn_check_digit_u32` | `LuhnCheckDigitU32::run() -> u16` | Computes the Luhn check digit (0-9) to append to a partial 13-19 digit number split into hi/lo u32 decimal chunks (the same split luhn_check_u32 uses: lo is fixed at exactly the low 9 digits, hi holds everything above) -- the generate-side counterpart to that verify-only wide cell, mirroring luhn_check_digit at u32 width. |
+| `luhn_check_u32` | `LuhnCheckU32::run() -> u16` | Validates the Luhn checksum over a full 13-19 digit number split into two u32 decimal chunks (hi, lo where lo is fixed at exactly the low 9 digits) -- the wide sibling luhn_check's own docstring names as its gap (a full card number needs a wider input than one u16). |
 
 ## Roadmap — open items
 

@@ -550,3 +550,196 @@ fn frac_is_improper_cases() {
     let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 7), ("d", 0)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+
+#[test]
+fn frac_reduce_signed_matches_defined_behaviour() {
+    // Reduces a sign-magnitude fraction (mag, neg, den) to lowest terms via gcd_u32,
+    // canonicalizing neg to 0 whenever the reduced magnitude is 0 -- the signed
+    // counterpart of frac_reduce for the (mag, neg, den) shape returned unreduced by
+    // linear_regression_slope/intercept, cos_frac_from_sides, and slope_fraction.
+    fn reduce(id: &str, mag: u64, neg: u64, den: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), "FracReduceSigned", None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        cell.set("mag", mag).unwrap();
+        cell.set("neg", neg).unwrap();
+        cell.set("den", den).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 6/8 (positive) -> gcd(6,8)=2 -> 3/4, neg stays 0.
+    let (_, c) = reduce("frac_reduce_signed", 6, 0, 8);
+    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(3), Some(0), Some(4)));
+
+    // -6/8 -> gcd(6,8)=2 -> -3/4, neg stays 1 (nonzero result keeps its sign).
+    let (_, c) = reduce("frac_reduce_signed", 6, 1, 8);
+    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(3), Some(1), Some(4)));
+
+    // -0/5 -> gcd(0,5)=5 -> 0/1, neg canonicalized to 0 even though input neg was 1.
+    let (_, c) = reduce("frac_reduce_signed", 0, 1, 5);
+    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(0), Some(0), Some(1)));
+
+    // -5/1 -> already reduced (gcd=1) -> -5/1 unchanged.
+    let (_, c) = reduce("frac_reduce_signed", 5, 1, 1);
+    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(5), Some(1), Some(1)));
+
+    // 7/3 (coprime, positive) -> unchanged -> 7/3.
+    let (_, c) = reduce("frac_reduce_signed", 7, 0, 3);
+    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(7), Some(0), Some(3)));
+
+    // den == 0 -> escalate out_of_domain.
+    let (report, _) = reduce("frac_reduce_signed", 3, 0, 0);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn combined_time2_matches_hand_computed_cases() {
+    // combined_time2: t1*t2/(t1+t2), the "two agents/pipes working together" combined-rate
+    // fraction, reduced via gcd_u32. Verified against hand-computed exact fractions plus
+    // both escalation paths (zero input, and each of the two checked-arithmetic overflows).
+    fn verify(t1: u64, t2: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("combined_time2"), "CombinedTime2", None)
+            .unwrap_or_else(|e| panic!("bind combined_time2: {e}"));
+        cell.set("t1", t1).unwrap();
+        cell.set("t2", t2).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // t1=4, t2=4 -> 4*4/(4+4) = 16/8 = 2/1 (two equally-fast agents halve the time)
+    let (_, c) = verify(4, 4);
+    assert_eq!((c.get("num"), c.get("den")), (Some(2), Some(1)));
+
+    // t1=2, t2=3 -> 2*3/(2+3) = 6/5 (already lowest terms)
+    let (_, c) = verify(2, 3);
+    assert_eq!((c.get("num"), c.get("den")), (Some(6), Some(5)));
+
+    // t1=1, t2=1 -> 1*1/(1+1) = 1/2
+    let (_, c) = verify(1, 1);
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2)));
+
+    // t1=6, t2=3 -> 6*3/(6+3) = 18/9 = 2/1 (reduces via gcd_u32)
+    let (_, c) = verify(6, 3);
+    assert_eq!((c.get("num"), c.get("den")), (Some(2), Some(1)));
+
+    // t1=0 -> out_of_domain (an agent that never finishes alone has no combined rate)
+    let (report, _) = verify(0, 5);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // t1*t2 overflows u32 (100000*100000 = 10_000_000_000 > u32::MAX) -> needs_wider_math
+    let (report, _) = verify(100_000, 100_000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // t1+t2 overflows u32 (u32::MAX + 1) even though t1*t2 alone would fit -> needs_wider_math
+    let (report, _) = verify(u32::MAX as u64, 1);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn frac_pow_hand_computed_cases() {
+    // Local helper mirroring the pack's StateCell bind/set/run pattern.
+    fn frac_pow(n: u64, d: u64, k: u64) -> (cell80::Report, cell80::StateCell) {
+        let mut cell = cell80::StateCell::bind(&cell_src("frac_pow"), "FracPow", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("n", n).unwrap();
+        cell.set("d", d).unwrap();
+        cell.set("k", k).unwrap();
+        let report = cell.run(cell80::DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // (2/3)^3 = 8/27, already in lowest terms.
+    let (_, c) = frac_pow(2, 3, 3);
+    assert_eq!(c.get("num"), Some(8));
+    assert_eq!(c.get("den"), Some(27));
+
+    // (3/4)^2 = 9/16, already in lowest terms.
+    let (_, c) = frac_pow(3, 4, 2);
+    assert_eq!(c.get("num"), Some(9));
+    assert_eq!(c.get("den"), Some(16));
+
+    // (2/4)^2 = 4/16, reduces to 1/4 via gcd(4,16)=4.
+    let (_, c) = frac_pow(2, 4, 2);
+    assert_eq!(c.get("num"), Some(1));
+    assert_eq!(c.get("den"), Some(4));
+
+    // k == 0 -> 1/1 regardless of n/d.
+    let (_, c) = frac_pow(5, 7, 0);
+    assert_eq!(c.get("num"), Some(1));
+    assert_eq!(c.get("den"), Some(1));
+
+    // n == 0 -> 0^k/d^k = 0, canonicalized to 0/1.
+    let (_, c) = frac_pow(0, 5, 3);
+    assert_eq!(c.get("num"), Some(0));
+    assert_eq!(c.get("den"), Some(1));
+
+    // d == 0 -> escalate out_of_domain.
+    let (report, _) = frac_pow(3, 0, 2);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // 1/3 raised to the 21st: den = 3^21 = 10,460,353,203, which overflows u32::MAX
+    // (4,294,967,295) partway through the loop (3^20 = 3,486,784,401 still fits) ->
+    // escalate needs_wider_math before ever writing num/den.
+    let (report, _) = frac_pow(1, 3, 21);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn harmonic_number_fraction_matches_hand_computation() {
+    // Checks harmonic_number_fraction against the well-known H_n sequence (OEIS A001008/A002805),
+    // hand-traced through the cell's own accumulation recurrence: num/den + 1/i ->
+    // ((num*i + den) / gcd) / ((den*i) / gcd). Also checks the n==0 domain guard and pins the
+    // exact n where the u32 common-denominator multiply first overflows.
+    fn verify(n: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("harmonic_number_fraction"),
+            "HarmonicNumberFraction",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("n", n).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // H_1 = 1/1
+    let (_, c) = verify(1);
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(1)));
+
+    // H_2 = 1 + 1/2 = 3/2
+    let (_, c) = verify(2);
+    assert_eq!((c.get("num"), c.get("den")), (Some(3), Some(2)));
+
+    // H_3 = 3/2 + 1/3 = 9/6 + 2/6 = 11/6
+    let (_, c) = verify(3);
+    assert_eq!((c.get("num"), c.get("den")), (Some(11), Some(6)));
+
+    // H_4 = 11/6 + 1/4 = 44/24 + 6/24 = 50/24 = 25/12
+    let (_, c) = verify(4);
+    assert_eq!((c.get("num"), c.get("den")), (Some(25), Some(12)));
+
+    // H_5 = 25/12 + 1/5 = 125/60 + 12/60 = 137/60 (already lowest terms)
+    let (_, c) = verify(5);
+    assert_eq!((c.get("num"), c.get("den")), (Some(137), Some(60)));
+
+    // H_6 = 137/60 + 1/6 = 147/60 = 49/20 (gcd 3)
+    let (_, c) = verify(6);
+    assert_eq!((c.get("num"), c.get("den")), (Some(49), Some(20)));
+
+    // n == 0 is out of domain
+    let (report, _) = verify(0);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n == 19 is the last value that stays within u32 (hand-traced via the recurrence)
+    let (_, c) = verify(19);
+    assert_eq!(
+        (c.get("num"), c.get("den")),
+        (Some(275295799), Some(77597520))
+    );
+
+    // n == 20 overflows u32 during the i=20 common-denominator multiply: num*i =
+    // 275295799*20 = 5505915980 > u32::MAX
+    let (report, _) = verify(20);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

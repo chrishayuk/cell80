@@ -683,7 +683,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("500 cells"));
+    assert!(listing.contains("range_check") && listing.contains("653 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -747,7 +747,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("500 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("653 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -758,7 +758,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 500, "got: {out}");
+    assert_eq!(cells.len(), 653, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -814,13 +814,19 @@ fn cli_index_gate_over_the_real_library() {
     // 397→500: a 103-cell round 2 batch across number-theory, ranking-stats,
     // verifier-ranker, sequences, predicates, geometry, and 22 other packs — 103
     // admitted, 0 refused (no gate-caught duplicates this round).
+    // 500→653: a 153-cell round 3 batch across bit-encoding, bit-mask, bucket-convert,
+    // calendrical-checksum, checked-arithmetic, combinatorics, distance, fixed-point,
+    // fractions, geometry, hashing, matrix, money-bps, number-theory, packing-bcd,
+    // percent, predicates, ranking-stats, running-stats, safe-arith, scoring-choice,
+    // sequences, signed-deltas, spatial-grid, and agentic-runtime — 153 admitted,
+    // 0 refused (no gate-caught duplicates this round).
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("500 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("653 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (11)
+## Landed (16)
 
 | id | signature | summary |
 |---|---|---|
@@ -15,11 +15,16 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `bps_decrease_between` | `BpsDecreaseBetween::run() -> u16` | Infer the basis-points decrease between two wide values: given before and after (after <= before), the rate = (before - after) * 10000 / before — the inverse of decrease_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_increase_between` | `BpsIncreaseBetween::run() -> u16` | Infer the basis-points increase between two wide values: given before and after (after >= before), the rate = (after - before) * 10000 / before — the inverse of increase_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_of` | `BpsOf::run() -> u16` | Basis points of a wide value: value * bps / 10000 (e.g. 500 bps of 1000 is 50 — 5%). Escalates (needs_wider_math) on multiply overflow. |
+| `bps_rate_over_2_periods` | `BpsRateOver2Periods::run() -> u16` | Recovers the constant per-period bps rate from a value observed before and exactly 2 compounding periods later (before, after, after>=before): r = sqrt(after/before)-1, computed exactly in integer bps via a wide isqrt on (after*10000/before)*10000 -- distinct from bps_increase_between (recovers a rate over exactly 1 period) and compound_increase_by_bps (applies a KNOWN rate for N periods); recovering the rate from a pair spanning MORE than one period needs an Nth root, unbuildable before isqrt_u32 landed. |
 | `cents_mul_qty` | `CentsMulQty::run() -> u16` | Total price in cents (the minor unit of any decimal currency — cents, pence, kopecks, not USD specifically): unit_cents * qty. Escalates (needs_wider_math) on multiply overflow — distinct from mul_u16_u16_to_u32 (that one always fits u32 exactly; this one's unit_cents is already wide and can genuinely overflow). |
+| `combined_bps_decrease` | `run(bps1: u16, bps2: u16) -> u16` | Compose two sequential bps decreases into one equivalent single bps rate: combined = bps1 + bps2 - bps1*bps2/10000, derived from 1-(1-r1)(1-r2) -- stacking two successive markdowns/discounts into one effective discount rate. |
+| `combined_bps_increase` | `run(bps1: u16, bps2: u16) -> u16` | Compose two sequential bps increases into one equivalent single bps rate: combined = bps1 + bps2 + bps1*bps2/10000, derived from (1+r1)(1+r2)-1 -- folding a markup and a separately-stated tax into one effective rate, distinct from compound_increase_by_bps which loops the SAME rate N times rather than composing two different rates. |
 | `compound_decrease_by_bps` | `CompoundDecreaseByBps::run() -> u16` | Apply the same bps decrease rate repeatedly for `periods` iterations (value -= value*bps/10000 each step), covering depreciation/decay compounding — distinct from decrease_by_bps, which only ever applies the discount once. |
 | `compound_increase_by_bps` | `CompoundIncreaseByBps::run() -> u16` | Apply the same bps increase rate repeatedly for `periods` iterations (value += value*bps/10000 each step, e.g. compound interest or repeated markup) -- distinct from increase_by_bps's single application, this loops the same rate N times. |
+| `compound_original_before_increase` | `CompoundOriginalBeforeIncrease::run() -> u16` | Recover the starting value before N periods of compound bps increase, given the final value: loops v = v*10000/(10000+bps) exactly `periods` times -- the precise reverse of compound_increase_by_bps's own forward loop, completing the N-step backward quadrant original_before_bps_increase (single-step only) left open. |
 | `decrease_by_bps` | `DecreaseByBps::run() -> u16` | Decrease a wide value by bps basis points (covers discount: value - value*bps/10000). Escalates if the discount would exceed the value, or on multiply overflow. |
 | `increase_by_bps` | `IncreaseByBps::run() -> u16` | Increase a wide value by bps basis points (covers tax/tip/markup — same formula: value + value*bps/10000). Escalates on multiply or add overflow. |
 | `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
 | `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
+| `whole_from_bps_of` | `WholeFromBpsOf::run() -> u16` | Recover the whole value from a known bps-portion of it: given part (the output of bps_of, i.e. value*bps/10000) and the bps rate, value = part * 10000 / bps. The inverse of bps_of. |
 

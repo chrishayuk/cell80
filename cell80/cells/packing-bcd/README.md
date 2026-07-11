@@ -7,18 +7,25 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (10)
+## Landed (17)
 
 | id | signature | summary |
 |---|---|---|
+| `bcd16_is_valid` | `run(bcd: u16) -> u16` | Predicate: returns 1 if all four nibbles of a packed 4-digit BCD u16 (bcd_decode16/bcd_encode16's format) are valid decimal digits 0-9, else 0 -- the 4-nibble extension of bcd_is_valid, mirroring the bcd_encode/bcd_encode16 2-digit/4-digit ladder. |
+| `bcd_add` | `BcdAdd::run() -> u16` | Add two packed 2-digit BCD bytes via per-nibble decimal-carry correction (the Z80 ADD+DAA idiom): each nibble sum over 9 is corrected by +6, producing the packed-BCD sum mod 100 plus a carry-out flag when the true decimal sum reaches or exceeds 100. |
+| `bcd_add16` | `BcdAdd16::run() -> u16` | Add two packed 4-digit BCD u16 values via a 4-nibble decimal-carry chain (bcd_add's per-nibble ADD+DAA idiom run across all four digit positions instead of two): each nibble sum over 9 is corrected by +6 and its carry ripples into the next nibble, producing the packed-BCD sum mod 10000 plus a carry-out flag when the true decimal sum reaches or exceeds 10000. |
 | `bcd_decode` | `run(bcd: u16) -> u16` | Decode a packed BCD byte (tens in the high nibble, units in the low nibble) back to its binary value. |
 | `bcd_decode16` | `run(bcd: u16) -> u16` | Decode a four-digit packed-BCD u16 (one decimal digit per nibble) back to its binary value (0-9999) -- the inverse of bcd_encode16, mirroring the bcd_encode/bcd_decode pairing convention. |
 | `bcd_encode` | `run(n: u16) -> u16` | Encode a two-digit decimal value (0-99) as packed BCD: tens in the high nibble, units in the low nibble. |
 | `bcd_encode16` | `run(n: u16) -> u16` | Encode a four-digit decimal value (0-9999) as packed BCD across a full u16: thousands, hundreds, tens, units, one decimal digit per nibble -- the 4-nibble extension of bcd_encode's 2-nibble (0-99) form, parallel to how pack_u8's byte ladder extends to pack_u16_pair's word ladder. |
+| `bcd_sub` | `BcdSub::run() -> u16` | Subtract two packed 2-digit BCD bytes (tens in the high nibble, units in the low nibble) via per-nibble decimal-borrow correction, producing the packed-BCD difference plus a borrow-out flag -- bcd_add's reverse-equation counterpart, the direction this pack was missing. |
+| `bcd_sub16` | `BcdSub16::run() -> u16` | Subtracts two packed 4-digit BCD u16 values (one decimal digit per nibble) via a 4-nibble decimal-borrow chain, producing the packed-BCD difference mod 10000 plus a borrow-out flag -- the 4-nibble width extension of bcd_sub's 2-nibble form, completing this pack's 2-digit/4-digit x add/subtract grid. |
 | `nibble_hi` | `run(x: u16) -> u16` | Extract the high nibble of the low byte of x: (x >> 4) & 0xF, the unpacking counterpart pack_nibbles lacks. |
 | `nibble_lo` | `run(x: u16) -> u16` | Low nibble of x (x & 0xF) -- the low-nibble counterpart to nibble_hi, distinct from low_byte's byte-level mask (x & 0xFF). |
+| `pack_bytes4` | `PackBytes4::run() -> u16` | Pack four byte values into one u32: (b3 << 24) \| (b2 << 16) \| (b1 << 8) \| b0 -- the 4x8-bit rung of this pack's concatenation ladder that pack_u16_pair's 2x16-bit form doesn't reach; needs a state cell since four inputs exceed a free fn's 3-param cap. |
 | `pack_nibbles` | `run(hi: u16, lo: u16) -> u16` | Pack two 4-bit nibbles into one byte: (hi << 4) \| lo. Each input masked to its low nibble. |
 | `pack_u16_pair` | `PackU16Pair::run() -> u16` | Pack two u16 halves into one u32: (hi << 16) \| lo — the u32-width generalization of pack_u8's (hi << 8) \| lo, one rung further up the same concatenation ladder than pack_u8/pack_nibbles reach; needs a u32 state field since two full u16s produce 32 bits. |
 | `pack_u8` | `run(hi: u16, lo: u16) -> u16` | Pack two byte values into one u16: (hi << 8) \| lo. Each input masked to its low byte, so out-of-range inputs stay defined. |
+| `unpack_bytes4` | `UnpackBytes4::run() -> u16` | Split a packed u32 back into its four constituent bytes b3..b0 via shifts and masks -- the inverse of pack_bytes4, mirroring the pack_u16_pair/unpack_u16_pair round-trip-pair convention. |
 | `unpack_u16_pair` | `UnpackU16Pair::run() -> u16` | Split a packed u32 back into its high and low u16 halves — the inverse of pack_u16_pair, mirroring the morton_encode/morton_decode round-trip-pair convention. |
 

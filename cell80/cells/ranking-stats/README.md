@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (29)
+## Landed (36)
 
 | id | signature | summary |
 |---|---|---|
@@ -24,19 +24,26 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `max` | `run(a: u16, b: u16) -> u16` | Maximum of two values. |
 | `max3` | `run(a: u16, b: u16, c: u16) -> u16` | Largest of three values. |
 | `max4` | `Max4::run() -> u16` | Largest of four values — the four-operand sibling of max3, nested imax one level deeper. |
+| `max4_u32` | `Max4Wide::run() -> u16` | Largest of four wide u32 values, written to a result field — the four-operand sibling of max3_u32, mirroring max4's relationship to max3 at u16 width. |
 | `mean3` | `run(a: u16, b: u16, c: u16) -> u16` | Mean (average) of three values, computed without overflow. |
 | `mean4` | `Mean4::run() -> u16` | Mean (average) of four values, extending mean3's div/remainder-recombine trick one operand deeper to avoid overflow. |
+| `mean4_u32` | `Mean4Wide::run() -> u16` | Mean (average) of four wide u32 values, written to a result field via mean4's div/remainder-recombine trick generalized to u32 — the wide sibling of mean4 (which works over u16). |
 | `median3` | `run(a: u16, b: u16, c: u16) -> u16` | Median (middle value) of three. |
+| `median3_u32` | `Median3Wide::run() -> u16` | Median (middle value) of three wide u32 values via median3's exact modular-arithmetic trick (a+b+c-min-max using wrapping_add/wrapping_sub) — the wide sibling of median3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
 | `median4` | `Median4::run() -> u16` | Median of four values: average of the two middle order statistics via a 4-comparison sorting network, then averaged overflow-safely with midrange3's (mid_lo & mid_hi) + ((mid_lo ^ mid_hi) >> 1) trick — distinct from mean4 (order-statistic based, not sum-based) and the four-value sibling median3 never had. |
+| `median4_u32` | `Median4Wide::run() -> u16` | Median of four wide u32 values: average of the two middle order statistics via the same sorting network median4 uses, combined with the overflow-safe (lo & hi) + ((lo ^ hi) >> 1) trick at u32 width — the wide sibling of median4, mirroring min4_u32's relationship to min4. |
 | `midrange3` | `run(a: u16, b: u16, c: u16) -> u16` | Midrange of three values: (min + max) / 2. |
 | `midrange4` | `Midrange4::run() -> u16` | Midrange of four values: (min4 + max4) / 2, via the same (lo & hi) + ((lo ^ hi) >> 1) trick midrange3 uses, now over imin/imax nested three deep. |
 | `min` | `run(a: u16, b: u16) -> u16` | Minimum of two values. |
 | `min3` | `run(a: u16, b: u16, c: u16) -> u16` | Smallest of three values. |
 | `min4` | `Min4::run() -> u16` | Smallest of four values — the four-operand sibling of min3 (mirrors sum4's precedent for arity-4 in this pack). |
+| `min4_u32` | `Min4Wide::run() -> u16` | Smallest of four wide u32 values, written to a result field — extends min3_u32's pairwise-min chain one level deeper; the value-returning counterpart of argmin4_u32, which returns the winning index instead of the value. |
 | `mode3` | `run(a: u16, b: u16, c: u16) -> u16` | Mode of three values: the value that repeats (ties/all-distinct → the first, a). |
 | `mode4` | `Mode4::run() -> u16` | Mode of four values: extends mode3's "first value found to repeat" convention one level -- a repeating anywhere in {b,c,d} wins first (covers majority-of-4-in-a and 2-2 ties by priority), then b repeating in {c,d}, then c repeating in d, defaulting to a if all four are distinct. |
 | `range3` | `run(a: u16, b: u16, c: u16) -> u16` | Spread of three values: max − min. |
+| `range3_u32` | `Range3Wide::run() -> u16` | Spread of three wide u32 values: max3_u32 − min3_u32, written to a result field — never underflows since max >= min by construction; the wide sibling of range3, which is u16-only and can't span totals past 65535 (e.g. money in cents). |
 | `range4` | `Range4::run() -> u16` | Spread of four values: max4 − min4 — the four-operand sibling of range3, one level deeper. |
+| `range4_u32` | `Range4Wide::run() -> u16` | Spread of four wide u32 values: max4_u32 − min4_u32, written to a result field — the four-operand sibling of range3_u32, mirroring range4's relationship to range3 at u16 width. |
 | `sum3` | `run(a: u16, b: u16, c: u16) -> u16` | Sum of three values (saturating at 65535). |
 | `sum4` | `Sum4::run() -> u16` | Sum of four values (saturating at 65535) — the four-operand sibling of sum3. |
 | `unanimous3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if all three values are equal, else 0 -- the strict all-agree sibling of majority3's weaker at-least-two-agree threshold. |

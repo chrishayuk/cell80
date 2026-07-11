@@ -1076,3 +1076,309 @@
 {"id": "is_weekend-para-1", "query": "given the numeric weekday output of day_of_week, tell me if that day falls on the weekend", "expected": "is_weekend", "category": "paraphrase"}
 {"id": "is_weekday-direct-1", "query": "day of week code is Monday through Friday weekday predicate", "expected": "is_weekday", "category": "direct"}
 {"id": "is_weekday-para-1", "query": "given the weekday number from day_of_week, tell me if it's a business day and not the weekend", "expected": "is_weekday", "category": "paraphrase"}
+{"id": "watchdog_step-direct-1", "query": "watchdog heartbeat timeout tripped pet signal dead-man's switch", "expected": "watchdog_step", "category": "direct"}
+{"id": "watchdog_step-para-1", "query": "detect that an agent has stopped sending liveness pings and latch an alarm until it checks in again", "expected": "watchdog_step", "category": "paraphrase"}
+{"id": "circuit_breaker_trials_step-direct-1", "query": "circuit breaker half-open state requiring multiple consecutive successes before closing", "expected": "circuit_breaker_trials_step", "category": "direct"}
+{"id": "circuit_breaker_trials_step-para-1", "query": "resilience state machine that needs several successful trial calls in a row, not just one, before trusting a recovering service again", "expected": "circuit_breaker_trials_step", "category": "paraphrase"}
+{"id": "toggle_step-direct-1", "query": "toggle latch that flips a sticky state on every rising edge of a trigger signal, like a T flip-flop", "expected": "toggle_step", "category": "direct"}
+{"id": "toggle_step-para-1", "query": "a bit that flips between on and off each time a signal pulses high, remembering which side it's currently on between calls", "expected": "toggle_step", "category": "paraphrase"}
+{"id": "hysteresis_u32-direct-1", "query": "wide u32 hysteresis with a low and high threshold, dead-zone schmitt-trigger latch", "expected": "hysteresis_u32", "category": "direct"}
+{"id": "hysteresis_u32-para-1", "query": "a schmitt trigger dead-zone latch over 32-bit values that won't truncate at 65535 like the u16 version", "expected": "hysteresis_u32", "category": "paraphrase"}
+{"id": "decorrelated_jitter_backoff_next-direct-1", "query": "decorrelated jitter backoff next randomized value", "expected": "decorrelated_jitter_backoff_next", "category": "direct"}
+{"id": "decorrelated_jitter_backoff_next-para-1", "query": "retry delay that random-walks off the previous randomized wait instead of scaling a fixed exponential ceiling", "expected": "decorrelated_jitter_backoff_next", "category": "paraphrase"}
+{"id": "concurrency_gate_step-direct-1", "query": "counting-semaphore concurrency gate: acquire and release, admit only under max_concurrent, in_flight hold count", "expected": "concurrency_gate_step", "category": "direct"}
+{"id": "concurrency_gate_step-para-1", "query": "bounded concurrency limiter that tracks how many jobs are currently running and blocks new ones once the pool is full, freeing a slot when one finishes", "expected": "concurrency_gate_step", "category": "paraphrase"}
+{"id": "sliding_window_counter_step-direct-1", "query": "sliding window counter rate limiter that carries the previous window's count forward weighted by remaining time to smooth a fixed-window boundary burst", "expected": "sliding_window_counter_step", "category": "direct"}
+{"id": "sliding_window_counter_step-para-1", "query": "rate limit step that blends last period's request count into this period so a burst right at a window edge doesn't slip through", "expected": "sliding_window_counter_step", "category": "paraphrase"}
+{"id": "bit_length_u32-direct-1", "query": "wide sibling of bit_length for a full 32-bit value x, index of highest set bit plus one", "expected": "bit_length_u32", "category": "direct"}
+{"id": "bit_length_u32-para-1", "query": "how many bits do I need to store a u32 number -- the u32 version of bit_length", "expected": "bit_length_u32", "category": "paraphrase"}
+{"id": "leading_zeros_u32-direct-1", "query": "count leading zero bits of a 32-bit value", "expected": "leading_zeros_u32", "category": "direct"}
+{"id": "leading_zeros_u32-para-1", "query": "how many high-order bits are zero before the first set bit in a full 32-bit number", "expected": "leading_zeros_u32", "category": "paraphrase"}
+{"id": "trailing_zeros_u32-direct-1", "query": "count trailing zero bits of a full 32-bit value, ctz on u32", "expected": "trailing_zeros_u32", "category": "direct"}
+{"id": "trailing_zeros_u32-para-1", "query": "how many low-order bits are zero before hitting the first set bit, for a wide 32-bit number", "expected": "trailing_zeros_u32", "category": "paraphrase"}
+{"id": "reverse_bits_u32-direct-1", "query": "reverse all 32 bits of a wide value", "expected": "reverse_bits_u32", "category": "direct"}
+{"id": "reverse_bits_u32-para-1", "query": "mirror the bit pattern of a full 32-bit word end to end", "expected": "reverse_bits_u32", "category": "paraphrase"}
+{"id": "swap_bytes_u32-direct-1", "query": "reverse the byte order of a 32-bit value, endian-swap all four bytes", "expected": "swap_bytes_u32", "category": "direct"}
+{"id": "swap_bytes_u32-para-1", "query": "flip a 32-bit number from little-endian to big-endian by reordering its four bytes", "expected": "swap_bytes_u32", "category": "paraphrase"}
+{"id": "rotl32-direct-1", "query": "rotate a 32-bit value left by n bits, u32 rotate left", "expected": "rotl32", "category": "direct"}
+{"id": "rotl32-para-1", "query": "widen rotl16 to a full 32-bit register, circular left shift on a 4-byte word", "expected": "rotl32", "category": "paraphrase"}
+{"id": "rotr32-direct-1", "query": "rotate a 32-bit value right by n bits, wrapping around", "expected": "rotr32", "category": "direct"}
+{"id": "rotr32-para-1", "query": "circular shift a full 32-bit word downward, bits that fall off the bottom wrap to the top", "expected": "rotr32", "category": "paraphrase"}
+{"id": "lowest_set_bit-direct-1", "query": "isolate the lowest set bit value of x", "expected": "lowest_set_bit", "category": "direct"}
+{"id": "lowest_set_bit-para-1", "query": "extract just the rightmost 1 bit as a number, not its position", "expected": "lowest_set_bit", "category": "paraphrase"}
+{"id": "highest_set_bit-direct-1", "query": "isolate the highest set bit of a 16-bit value, return the top bit's mask value not its index", "expected": "highest_set_bit", "category": "direct"}
+{"id": "highest_set_bit-para-1", "query": "given a number, give me back just its most significant one-bit as a value (e.g. 6 -> 4), zero if the input is zero", "expected": "highest_set_bit", "category": "paraphrase"}
+{"id": "clear_lowest_set_bit-direct-1", "query": "clear the lowest set bit of x, x & (x - 1)", "expected": "clear_lowest_set_bit", "category": "direct"}
+{"id": "clear_lowest_set_bit-para-1", "query": "turn off just the rightmost 1-bit in a 16-bit value, Kernighan's bit-clearing trick", "expected": "clear_lowest_set_bit", "category": "paraphrase"}
+{"id": "mask_overlap_count-direct-1", "query": "count the bits set in both a and b, popcount of a & b", "expected": "mask_overlap_count", "category": "direct"}
+{"id": "mask_overlap_count-para-1", "query": "how many bit positions agree and are on in two 16-bit masks", "expected": "mask_overlap_count", "category": "paraphrase"}
+{"id": "set_bit_u32-direct-1", "query": "set a bit to one at wide 32-bit width", "expected": "set_bit_u32", "category": "direct"}
+{"id": "set_bit_u32-para-1", "query": "turn on a single flag bit, up to bit 31, inside a packed 32-bit word without disturbing the others", "expected": "set_bit_u32", "category": "paraphrase"}
+{"id": "clear_bit_u32-direct-1", "query": "clear a bit in a 32-bit value by bit index, wide version of clear_bit", "expected": "clear_bit_u32", "category": "direct"}
+{"id": "clear_bit_u32-para-1", "query": "how do I unset/disable a single flag bit inside a 32-bit register when the bit position can be anywhere from 0 to 31", "expected": "clear_bit_u32", "category": "paraphrase"}
+{"id": "toggle_bit_u32-direct-1", "query": "toggle or flip a single bit at wide 32-bit width", "expected": "toggle_bit_u32", "category": "direct"}
+{"id": "toggle_bit_u32-para-1", "query": "invert one flag bit, up to bit 31, inside a packed 32-bit value without touching the rest", "expected": "toggle_bit_u32", "category": "paraphrase"}
+{"id": "hamming_distance32-direct-1", "query": "hamming distance between two 32-bit values, popcount of a xor b in u32", "expected": "hamming_distance32", "category": "direct"}
+{"id": "hamming_distance32-para-1", "query": "how many bit positions differ between two wide 32-bit numbers", "expected": "hamming_distance32", "category": "paraphrase"}
+{"id": "value_at_percent_u32-direct-1", "query": "wide u32 value at percent of a range, lo + (hi-lo)*pct/100, escalating on overflow past 65535", "expected": "value_at_percent_u32", "category": "direct"}
+{"id": "value_at_percent_u32-para-1", "query": "given a u32 min and max that don't fit in 16 bits, find the value that's a given percentage of the way between them", "expected": "value_at_percent_u32", "category": "paraphrase"}
+{"id": "outside_range-direct-1", "query": "is x outside the open interval lo hi, the complement of between_exclusive", "expected": "outside_range", "category": "direct"}
+{"id": "outside_range-para-1", "query": "check whether a value falls on or past either edge of a range instead of strictly inside it", "expected": "outside_range", "category": "paraphrase"}
+{"id": "outside_range_u32-direct-1", "query": "wide u32 version of outside_range: is x outside the interval (lo, hi), x <= lo or x >= hi", "expected": "outside_range_u32", "category": "direct"}
+{"id": "outside_range_u32-para-1", "query": "check whether a large 32-bit value falls beyond a given lower/upper bound pair, not strictly between them", "expected": "outside_range_u32", "category": "paraphrase"}
+{"id": "remap_range-direct-1", "query": "remap a value from one range to another arbitrary range, clamped", "expected": "remap_range", "category": "direct"}
+{"id": "remap_range-para-1", "query": "rescale a sensor reading from its raw min/max into a different arbitrary output min/max, clamping out-of-range inputs first", "expected": "remap_range", "category": "paraphrase"}
+{"id": "remap_range_u32-direct-1", "query": "wide u32 remap x from in_lo in_hi range to out_lo out_hi range with checked multiply", "expected": "remap_range_u32", "category": "direct"}
+{"id": "remap_range_u32-para-1", "query": "rescale a value past the 65535 ceiling from one arbitrary numeric range into another, overflow-safe", "expected": "remap_range_u32", "category": "paraphrase"}
+{"id": "bucket4_u32-direct-1", "query": "bucket x into 0 1 2 or 3 by three ascending wide u32 thresholds", "expected": "bucket4_u32", "category": "direct"}
+{"id": "bucket4_u32-para-1", "query": "classify a large 32-bit counter into four tiers using three cutoff values beyond the 16-bit range", "expected": "bucket4_u32", "category": "paraphrase"}
+{"id": "bucket3_i16-direct-1", "query": "bucket a signed value into three tiers by two ascending signed thresholds", "expected": "bucket3_i16", "category": "direct"}
+{"id": "bucket3_i16-para-1", "query": "classify a negative or positive temperature delta into low, medium, or high band against two cutoffs", "expected": "bucket3_i16", "category": "paraphrase"}
+{"id": "byte_to_permille-direct-1", "query": "convert a byte 0..255 to per-mille 0..1000 scale", "expected": "byte_to_permille", "category": "direct"}
+{"id": "byte_to_permille-para-1", "query": "turn an 8-bit value into parts-per-thousand instead of percent", "expected": "byte_to_permille", "category": "paraphrase"}
+{"id": "permille_to_byte-direct-1", "query": "convert permille to byte scale 0..1000 to 0..255", "expected": "permille_to_byte", "category": "direct"}
+{"id": "permille_to_byte-para-1", "query": "turn a per-mille (parts-per-thousand) fraction into an 8-bit byte value", "expected": "permille_to_byte", "category": "paraphrase"}
+{"id": "luhn_check_u32-direct-1", "query": "Luhn checksum validation for a full 13-19 digit card number split into hi/lo u32 chunks", "expected": "luhn_check_u32", "category": "direct"}
+{"id": "luhn_check_u32-para-1", "query": "check whether a long credit-card-length number passes the mod-10 doubling checksum when it's too wide for a single 16-bit input", "expected": "luhn_check_u32", "category": "paraphrase"}
+{"id": "luhn_check_digit_u32-direct-1", "query": "compute the Luhn check digit for a wide 18-19 digit number split into hi/lo u32 halves", "expected": "luhn_check_digit_u32", "category": "direct"}
+{"id": "luhn_check_digit_u32-para-1", "query": "what digit completes this long card-like number, given as two 32-bit chunks, so it passes the mod-10 Luhn checksum", "expected": "luhn_check_digit_u32", "category": "paraphrase"}
+{"id": "isbn10_check-direct-1", "query": "validate ISBN-10 check digit with mod-11 weighted sum", "expected": "isbn10_check", "category": "direct"}
+{"id": "isbn10_check-para-1", "query": "check whether a 10-digit book number's final digit makes the whole code checksum-consistent", "expected": "isbn10_check", "category": "paraphrase"}
+{"id": "isbn10_check_digit-direct-1", "query": "compute the ISBN-10 check digit for a 9-digit book number body", "expected": "isbn10_check_digit", "category": "direct"}
+{"id": "isbn10_check_digit-para-1", "query": "given the first nine digits of a book's ISBN, work out the correct final check character to append, including the X case", "expected": "isbn10_check_digit", "category": "paraphrase"}
+{"id": "ean13_check-direct-1", "query": "validate a 13-digit EAN-13/UPC-A/ISBN-13 barcode checksum", "expected": "ean13_check", "category": "direct"}
+{"id": "ean13_check-para-1", "query": "does this full product barcode number's last digit make it a legitimate scannable code", "expected": "ean13_check", "category": "paraphrase"}
+{"id": "ean13_check_digit-direct-1", "query": "compute the EAN-13 check digit from the first 12 digits, split as hi/lo halves", "expected": "ean13_check_digit", "category": "direct"}
+{"id": "ean13_check_digit-para-1", "query": "given the first dozen digits of a product barcode as two 6-digit halves, what's the 13th digit that makes it scan valid", "expected": "ean13_check_digit", "category": "paraphrase"}
+{"id": "days_between-direct-1", "query": "absolute number of days between two Gregorian dates", "expected": "days_between", "category": "direct"}
+{"id": "days_between-para-1", "query": "how many days elapsed between one calendar date and another, possibly years apart", "expected": "days_between", "category": "paraphrase"}
+{"id": "min3_u32-direct-1", "query": "smallest of three wide u32 values min3_u32", "expected": "min3_u32", "category": "direct"}
+{"id": "min3_u32-para-1", "query": "which of these three large 32-bit counters has the lowest value", "expected": "min3_u32", "category": "paraphrase"}
+{"id": "max3_u32-direct-1", "query": "largest of three wide u32 values, max3 beyond 65535", "expected": "max3_u32", "category": "direct"}
+{"id": "max3_u32-para-1", "query": "find the biggest of three big 32-bit numbers that could exceed 16-bit range", "expected": "max3_u32", "category": "paraphrase"}
+{"id": "sub4_checked_u32-direct-1", "query": "subtract four large numbers exactly at u32, catching overflow instead of wrapping if any subtract step goes negative", "expected": "sub4_checked_u32", "category": "direct"}
+{"id": "sub4_checked_u32-para-1", "query": "running a value down through three deductions and flagging it if the balance would ever dip below zero", "expected": "sub4_checked_u32", "category": "paraphrase"}
+{"id": "mul4_checked_u32-direct-1", "query": "checked four-way multiply u32 a*b*c*d escalate on overflow", "expected": "mul4_checked_u32", "category": "direct"}
+{"id": "mul4_checked_u32-para-1", "query": "multiply four u32 quantities together and halt instead of silently wrapping if any intermediate product exceeds the wide range", "expected": "mul4_checked_u32", "category": "paraphrase"}
+{"id": "avg3_u32-direct-1", "query": "the floor average of three large numbers without overflow", "expected": "avg3_u32", "category": "direct"}
+{"id": "avg3_u32-para-1", "query": "combine three big readings into their midpoint value safely", "expected": "avg3_u32", "category": "paraphrase"}
+{"id": "gcd3_u32-direct-1", "query": "gcd of three wide u32 values, gcd(gcd(a,b),c)", "expected": "gcd3_u32", "category": "direct"}
+{"id": "gcd3_u32-para-1", "query": "greatest common divisor across three 32-bit numbers at once, not just a pair", "expected": "gcd3_u32", "category": "paraphrase"}
+{"id": "lcm3_u32-direct-1", "query": "wide checked least common multiple of three u32 values, escalates on overflow", "expected": "lcm3_u32", "category": "direct"}
+{"id": "lcm3_u32-para-1", "query": "arity-3 version of the exact u32 lcm cell \u2014 combine three numbers' smallest common multiple without silently wrapping past 32 bits", "expected": "lcm3_u32", "category": "paraphrase"}
+{"id": "smag_clamp-direct-1", "query": "clamp a signed sign-magnitude value mag_x neg_x into an inclusive range with lo and hi given as their own mag/neg pairs", "expected": "smag_clamp", "category": "direct"}
+{"id": "smag_clamp-para-1", "query": "bound a negative-capable wide number between a floor and ceiling that can themselves be negative, without using i32", "expected": "smag_clamp", "category": "paraphrase"}
+{"id": "eulerian_number-direct-1", "query": "Eulerian number A(n,k): count permutations of n elements with exactly k descents", "expected": "eulerian_number", "category": "direct"}
+{"id": "eulerian_number-para-1", "query": "how many orderings of n items have exactly k spots where the next item is smaller than the current one", "expected": "eulerian_number", "category": "paraphrase"}
+{"id": "narayana_number-direct-1", "query": "Narayana number N(n,k) counting Dyck paths of length 2n with exactly k peaks", "expected": "narayana_number", "category": "direct"}
+{"id": "narayana_number-para-1", "query": "explicit-k refinement of the Catalan number that sums back to catalan_number(n) over k", "expected": "narayana_number", "category": "paraphrase"}
+{"id": "lah_number-direct-1", "query": "Lah number L(n,k), partition an n-element set into k nonempty linearly-ordered lists", "expected": "lah_number", "category": "direct"}
+{"id": "lah_number-para-1", "query": "how many ways to split n items into k non-empty groups where the order of items within each group matters but the groups themselves have no order", "expected": "lah_number", "category": "paraphrase"}
+{"id": "motzkin_number-direct-1", "query": "the nth Motzkin number, counting non-crossing chords among n points on a circle", "expected": "motzkin_number", "category": "direct"}
+{"id": "motzkin_number-para-1", "query": "how many ways can you draw chords between points on a circle so none of them cross", "expected": "motzkin_number", "category": "paraphrase"}
+{"id": "quadrinomial_coefficient-direct-1", "query": "the quadrinomial coefficient, n! / (k1! * k2! * k3! * k4!), ways to split n labeled items into four labeled groups", "expected": "quadrinomial_coefficient", "category": "direct"}
+{"id": "quadrinomial_coefficient-para-1", "query": "generalize trinomial_coefficient one step further: how many ways to divide n people into four named squads of given sizes", "expected": "quadrinomial_coefficient", "category": "paraphrase"}
+{"id": "ordered_partition_k-direct-1", "query": "count the ways to partition an n-element set into an ordered sequence of exactly k nonempty blocks", "expected": "ordered_partition_k", "category": "direct"}
+{"id": "ordered_partition_k-para-1", "query": "given a set size and a target number of groups, how many distinct orderings of nonempty subsets split it into exactly that many groups", "expected": "ordered_partition_k", "category": "paraphrase"}
+{"id": "euclid_sq_i16-direct-1", "query": "squared euclidean distance between two signed i16 grid points, dx*dx + dy*dy no sqrt, wide u32 dist field", "expected": "euclid_sq_i16", "category": "direct"}
+{"id": "euclid_sq_i16-para-1", "query": "sum of squared coordinate deltas for two points that can have negative x/y, without taking a square root", "expected": "euclid_sq_i16", "category": "paraphrase"}
+{"id": "euclid_dist_i16-direct-1", "query": "true euclidean distance between two signed i16 grid points, sqrt of dx*dx + dy*dy", "expected": "euclid_dist_i16", "category": "direct"}
+{"id": "euclid_dist_i16-para-1", "query": "straight-line distance between two points that can have negative coordinates, not the squared version", "expected": "euclid_dist_i16", "category": "paraphrase"}
+{"id": "manhattan_path3-direct-1", "query": "manhattan distance across three consecutive grid points p1 to p2 to p3, summed path distance", "expected": "manhattan_path3", "category": "direct"}
+{"id": "manhattan_path3-para-1", "query": "total grid-walking distance if you visit a waypoint before your final destination, two-leg taxicab route length", "expected": "manhattan_path3", "category": "paraphrase"}
+{"id": "euclid_dist_path3-direct-1", "query": "total true Euclidean distance across three waypoints, summing the straight-line distance of each of the two segments with its own square root", "expected": "euclid_dist_path3", "category": "direct"}
+{"id": "euclid_dist_path3-para-1", "query": "real-world straight-line length of a two-leg route through three points, not the squared-distance version and not the Manhattan version", "expected": "euclid_dist_path3", "category": "paraphrase"}
+{"id": "chebyshev_path3-direct-1", "query": "total Chebyshev king-move path cost across three consecutive grid points, summed into a wide u32 dist field", "expected": "chebyshev_path3", "category": "direct"}
+{"id": "chebyshev_path3-para-1", "query": "chessboard-distance cost of a two-hop route through three waypoints, wide enough not to overflow when both legs are near-maximal", "expected": "chebyshev_path3", "category": "paraphrase"}
+{"id": "q_mul_checked-direct-1", "query": "checked Q8.8 fixed-point multiply that escalates instead of silently truncating on overflow", "expected": "q_mul_checked", "category": "direct"}
+{"id": "q_mul_checked-para-1", "query": "a multiply-two-fixed-point-numbers cell that halts instead of wrapping when the product is too big to fit", "expected": "q_mul_checked", "category": "paraphrase"}
+{"id": "q_div_checked-direct-1", "query": "checked Q8.8 fixed-point divide that escalates instead of silently truncating on quotient overflow", "expected": "q_div_checked", "category": "direct"}
+{"id": "q_div_checked-para-1", "query": "safe version of q_div that halts with needs_wider_math instead of wrapping when the shifted result doesn't fit in 16 bits", "expected": "q_div_checked", "category": "paraphrase"}
+{"id": "q_bilerp-direct-1", "query": "bilinear interpolation of four Q8.8 corner values by tx and ty Q0.8 fractions", "expected": "q_bilerp", "category": "direct"}
+{"id": "q_bilerp-para-1", "query": "interpolate a value across a 2D grid cell from its four corner samples given fractional x and y position", "expected": "q_bilerp", "category": "paraphrase"}
+{"id": "q_to_int_i16-direct-1", "query": "decode a signed Q8.8 fixed-point value back into a plain signed integer, arithmetic right shift by 8", "expected": "q_to_int_i16", "category": "direct"}
+{"id": "q_to_int_i16-para-1", "query": "given a signed fixed-point number, how do I get the whole-number part back out, correctly rounding negative values toward negative infinity instead of toward zero", "expected": "q_to_int_i16", "category": "paraphrase"}
+{"id": "q_mul3-direct-1", "query": "Q8.8 fixed-point triple multiply chaining two multiply-shift steps for three inputs", "expected": "q_mul3", "category": "direct"}
+{"id": "q_mul3-para-1", "query": "multiply three Q8.8 fixed-point fractions together in one call", "expected": "q_mul3", "category": "paraphrase"}
+{"id": "frac_reduce_signed-direct-1", "query": "reduce a signed sign-magnitude fraction to lowest terms", "expected": "frac_reduce_signed", "category": "direct"}
+{"id": "frac_reduce_signed-para-1", "query": "simplify a fraction that carries its sign separately from the magnitude, like the ones the regression slope and cosine cells return", "expected": "frac_reduce_signed", "category": "paraphrase"}
+{"id": "combined_time2-direct-1", "query": "combined completion time of two agents working together, t1*t2/(t1+t2) as an exact reduced fraction", "expected": "combined_time2", "category": "direct"}
+{"id": "combined_time2-para-1", "query": "two pipes filling a tank together at different individual rates, how long until it's full, exact fraction answer", "expected": "combined_time2", "category": "paraphrase"}
+{"id": "frac_pow-direct-1", "query": "raise a fraction n/d to a whole-number power k, computing n^k/d^k reduced to lowest terms", "expected": "frac_pow", "category": "direct"}
+{"id": "frac_pow-para-1", "query": "how do I exponentiate a fraction by an integer power without a native pow op, getting an exact reduced result", "expected": "frac_pow", "category": "paraphrase"}
+{"id": "harmonic_number_fraction-direct-1", "query": "nth harmonic number H_n as an exact reduced fraction, sum of 1/1 + 1/2 + ... + 1/n", "expected": "harmonic_number_fraction", "category": "direct"}
+{"id": "harmonic_number_fraction-para-1", "query": "add up the reciprocals of 1 through n and give me the precise fraction, not a decimal approximation", "expected": "harmonic_number_fraction", "category": "paraphrase"}
+{"id": "triangle_inradius_x2_approx-direct-1", "query": "twice the inradius of a triangle from integer sides a b c", "expected": "triangle_inradius_x2_approx", "category": "direct"}
+{"id": "triangle_inradius_x2_approx-para-1", "query": "given the three side lengths of a triangle, find the diameter of the circle that fits exactly inside it", "expected": "triangle_inradius_x2_approx", "category": "paraphrase"}
+{"id": "point_segment_dist_sq-direct-1", "query": "squared distance from a point to the closest point on a finite line segment, clamped to the endpoints", "expected": "point_segment_dist_sq", "category": "direct"}
+{"id": "point_segment_dist_sq-para-1", "query": "how far is this point from the nearest spot on a bounded line between two endpoints, not the infinite line through them", "expected": "point_segment_dist_sq", "category": "paraphrase"}
+{"id": "line_intersect_params_frac-direct-1", "query": "parametric fraction t and u where two infinite lines through four points intersect, shared denominator cross of direction vectors", "expected": "line_intersect_params_frac", "category": "direct"}
+{"id": "line_intersect_params_frac-para-1", "query": "how far along each of two lines they cross, as an exact unreduced fraction, without computing the actual intersection coordinates", "expected": "line_intersect_params_frac", "category": "paraphrase"}
+{"id": "quad_is_valid-direct-1", "query": "valid quadrilateral from four side lengths, each side less than the sum of the other three", "expected": "quad_is_valid", "category": "direct"}
+{"id": "quad_is_valid-para-1", "query": "check whether four given edge lengths can actually be folded up into a closed non-degenerate four-sided shape", "expected": "quad_is_valid", "category": "paraphrase"}
+{"id": "geom_distance_3d_exact-direct-1", "query": "true non-squared Euclidean distance between two 3D points isqrt of dx^2+dy^2+dz^2", "expected": "geom_distance_3d_exact", "category": "direct"}
+{"id": "geom_distance_3d_exact-para-1", "query": "real straight-line distance in 3D between two coordinates, not the squared version", "expected": "geom_distance_3d_exact", "category": "paraphrase"}
+{"id": "fnv1a32_step-direct-1", "query": "FNV-1a hash step over a byte using a full 32-bit accumulator with the real FNV-1a prime and offset basis", "expected": "fnv1a32_step", "category": "direct"}
+{"id": "fnv1a32_step-para-1", "query": "wide 32-bit rolling hash update state cell that folds one input byte into an existing checksum using multiply-by-prime after xor", "expected": "fnv1a32_step", "category": "paraphrase"}
+{"id": "hash5-direct-1", "query": "hash five values together", "expected": "hash5", "category": "direct"}
+{"id": "hash5-para-1", "query": "combine a, b, c, d, and e into one fingerprint", "expected": "hash5", "category": "paraphrase"}
+{"id": "hash_pair32-direct-1", "query": "hash mixing two 32-bit values into one u16", "expected": "hash_pair32", "category": "direct"}
+{"id": "hash_pair32-para-1", "query": "combine a pair of wide u32 keys into a single scrambled 16-bit fingerprint", "expected": "hash_pair32", "category": "paraphrase"}
+{"id": "adler32_step-direct-1", "query": "Adler-32 checksum step: update s1 and s2 running sums mod 65521 over one byte", "expected": "adler32_step", "category": "direct"}
+{"id": "adler32_step-para-1", "query": "rolling two-sum checksum accumulator used by zlib, one byte at a time, wraps around a prime modulus", "expected": "adler32_step", "category": "paraphrase"}
+{"id": "hash_pair_sym-direct-1", "query": "order-independent hash of two values, same result regardless of argument order", "expected": "hash_pair_sym", "category": "direct"}
+{"id": "hash_pair_sym-para-1", "query": "fingerprint an unordered pair, like an undirected graph edge, so swapping a and b gives the same hash", "expected": "hash_pair_sym", "category": "paraphrase"}
+{"id": "hash_slide_step-direct-1", "query": "rolling hash slide window drop oldest byte add newest byte multiplicative base 257 Rabin-Karp incremental update", "expected": "hash_slide_step", "category": "direct"}
+{"id": "hash_slide_step-para-1", "query": "how do I update a fixed-size substring hash when the window shifts forward by one character instead of recomputing from scratch", "expected": "hash_slide_step", "category": "paraphrase"}
+{"id": "matrix_apply_2x2-direct-1", "query": "apply a 2x2 matrix to a 2D vector, forward linear transform (a*x + b*y, c*x + d*y)", "expected": "matrix_apply_2x2", "category": "direct"}
+{"id": "matrix_apply_2x2-para-1", "query": "how do I transform a point through a 2-by-2 coefficient matrix to get its new coordinates", "expected": "matrix_apply_2x2", "category": "paraphrase"}
+{"id": "matrix_mul_2x2-direct-1", "query": "multiply two 2x2 matrices together", "expected": "matrix_mul_2x2", "category": "direct"}
+{"id": "matrix_mul_2x2-para-1", "query": "compose two linear transforms by multiplying their 2 by 2 matrices to get the combined transform matrix", "expected": "matrix_mul_2x2", "category": "paraphrase"}
+{"id": "matrix_trace_2x2-direct-1", "query": "trace of a 2x2 matrix, sum of the diagonal a + d, sign-magnitude", "expected": "matrix_trace_2x2", "category": "direct"}
+{"id": "matrix_trace_2x2-para-1", "query": "given the two diagonal entries of a 2-by-2 matrix, what's the other coefficient of its characteristic polynomial besides the determinant", "expected": "matrix_trace_2x2", "category": "paraphrase"}
+{"id": "matrix_real_eigenvalues_2x2-direct-1", "query": "does a 2x2 matrix have two real eigenvalues, via the characteristic-polynomial discriminant trace^2 - 4*det", "expected": "matrix_real_eigenvalues_2x2", "category": "direct"}
+{"id": "matrix_real_eigenvalues_2x2-para-1", "query": "check whether a 2 by 2 matrix's eigenvalues are real numbers or a complex-conjugate pair", "expected": "matrix_real_eigenvalues_2x2", "category": "paraphrase"}
+{"id": "matrix_frobenius_norm_sq_2x2-direct-1", "query": "squared frobenius norm of a 2x2 matrix a*a + b*b + c*c + d*d", "expected": "matrix_frobenius_norm_sq_2x2", "category": "direct"}
+{"id": "matrix_frobenius_norm_sq_2x2-para-1", "query": "sum the squares of all four entries of a 2x2 matrix into one scalar, like treating the matrix as a flat 4-vector's squared length", "expected": "matrix_frobenius_norm_sq_2x2", "category": "paraphrase"}
+{"id": "whole_from_bps_of-direct-1", "query": "recover the whole value from a bps portion, the inverse of bps_of given part and bps", "expected": "whole_from_bps_of", "category": "direct"}
+{"id": "whole_from_bps_of-para-1", "query": "I know 5% of some amount equals 50, what is the original total amount given the percentage rate", "expected": "whole_from_bps_of", "category": "paraphrase"}
+{"id": "compound_original_before_increase-direct-1", "query": "recover the original value before N periods of compound bps increase, reversing compound_increase_by_bps's loop", "expected": "compound_original_before_increase", "category": "direct"}
+{"id": "compound_original_before_increase-para-1", "query": "given a value after several rounds of the same percentage markup applied back to back, work backward to find what it started as", "expected": "compound_original_before_increase", "category": "paraphrase"}
+{"id": "bps_rate_over_2_periods-direct-1", "query": "recover the per-period basis points rate from a before and after value observed exactly 2 compounding periods apart", "expected": "bps_rate_over_2_periods", "category": "direct"}
+{"id": "bps_rate_over_2_periods-para-1", "query": "given a starting amount and its value two compounding cycles later, work out the constant interest rate per cycle in bps (square root of the growth ratio)", "expected": "bps_rate_over_2_periods", "category": "paraphrase"}
+{"id": "combined_bps_increase-direct-1", "query": "compose two sequential bps increases into one equivalent rate", "expected": "combined_bps_increase", "category": "direct"}
+{"id": "combined_bps_increase-para-1", "query": "fold a markup and a separately-stated tax into a single effective basis-point rate", "expected": "combined_bps_increase", "category": "paraphrase"}
+{"id": "combined_bps_decrease-direct-1", "query": "compose two sequential bps decreases into one equivalent combined discount rate", "expected": "combined_bps_decrease", "category": "direct"}
+{"id": "combined_bps_decrease-para-1", "query": "stack two markdowns applied one after another into a single effective percentage-off rate", "expected": "combined_bps_decrease", "category": "paraphrase"}
+{"id": "goldbach_conjecture_check-direct-1", "query": "smallest prime p such that n minus p is also prime, a Goldbach conjecture witness search", "expected": "goldbach_conjecture_check", "category": "direct"}
+{"id": "goldbach_conjecture_check-para-1", "query": "split an even number into two primes and give me the smaller one of the pair", "expected": "goldbach_conjecture_check", "category": "paraphrase"}
+{"id": "number_to_base-direct-1", "query": "convert n to its base-b digit expansion and reassemble the digits as a base-10 display number", "expected": "number_to_base", "category": "direct"}
+{"id": "number_to_base-para-1", "query": "write a number in another radix, then read that digit string back as if it were plain decimal", "expected": "number_to_base", "category": "paraphrase"}
+{"id": "is_composite-direct-1", "query": "is 1 if n is composite else 0 predicate", "expected": "is_composite", "category": "direct"}
+{"id": "is_composite-para-1", "query": "check whether a number is not prime and greater than one", "expected": "is_composite", "category": "paraphrase"}
+{"id": "is_prime_power-direct-1", "query": "is n a prime power p^k for some prime p and exponent k", "expected": "is_prime_power", "category": "direct"}
+{"id": "is_prime_power-para-1", "query": "check whether a number is built from a single repeated prime factor only", "expected": "is_prime_power", "category": "paraphrase"}
+{"id": "euler_totient_u32-direct-1", "query": "euler's totient phi(n) at wide 32-bit width", "expected": "euler_totient_u32", "category": "direct"}
+{"id": "euler_totient_u32-para-1", "query": "count numbers coprime to n but n is bigger than 65535, doesn't fit in u16", "expected": "euler_totient_u32", "category": "paraphrase"}
+{"id": "smallest_prime_factor_u32-direct-1", "query": "the smallest prime factor of n at wide u32 width", "expected": "smallest_prime_factor_u32", "category": "direct"}
+{"id": "smallest_prime_factor_u32-para-1", "query": "give me a witness factor, not just yes/no, for whether this large 32-bit value is prime", "expected": "smallest_prime_factor_u32", "category": "paraphrase"}
+{"id": "farey_sequence_length-direct-1", "query": "length of the Farey sequence of order n, checked sum of Euler's totient phi(k) for k=1..n", "expected": "farey_sequence_length", "category": "direct"}
+{"id": "farey_sequence_length-para-1", "query": "how many distinct reduced fractions between 0 and 1 have a denominator up to n", "expected": "farey_sequence_length", "category": "paraphrase"}
+{"id": "bcd16_is_valid-direct-1", "query": "check if a packed 4-digit BCD u16 has all valid decimal nibbles 0-9", "expected": "bcd16_is_valid", "category": "direct"}
+{"id": "bcd16_is_valid-para-1", "query": "is this 16-bit binary-coded-decimal value made of four legal digits, or does some nibble hold a bad hex value above 9", "expected": "bcd16_is_valid", "category": "paraphrase"}
+{"id": "bcd_add-direct-1", "query": "add two packed BCD bytes with decimal carry correction, Z80 ADD plus DAA idiom, sum mod 100 and carry out", "expected": "bcd_add", "category": "direct"}
+{"id": "bcd_add-para-1", "query": "how do I add two 2-digit decimal numbers stored one digit per nibble and know if the result rolled over past 99", "expected": "bcd_add", "category": "paraphrase"}
+{"id": "bcd_sub-direct-1", "query": "subtract two packed BCD bytes with decimal borrow correction and a borrow-out flag", "expected": "bcd_sub", "category": "direct"}
+{"id": "bcd_sub-para-1", "query": "how do I do decimal subtraction on two BCD-encoded bytes and know if it underflowed", "expected": "bcd_sub", "category": "paraphrase"}
+{"id": "pack_bytes4-direct-1", "query": "pack four byte values into one u32 (b3 << 24) | (b2 << 16) | (b1 << 8) | b0", "expected": "pack_bytes4", "category": "direct"}
+{"id": "pack_bytes4-para-1", "query": "combine four separate 8-bit fields into a single 32-bit word, most significant byte first", "expected": "pack_bytes4", "category": "paraphrase"}
+{"id": "unpack_bytes4-direct-1", "query": "split a packed u32 back into its four bytes b3 b2 b1 b0 via shifts and masks", "expected": "unpack_bytes4", "category": "direct"}
+{"id": "unpack_bytes4-para-1", "query": "how do I unpack a 32-bit value into its four individual byte components, high byte first", "expected": "unpack_bytes4", "category": "paraphrase"}
+{"id": "bcd_add16-direct-1", "query": "add two packed 4-digit BCD values with decimal carry, producing the BCD sum and a carry-out flag", "expected": "bcd_add16", "category": "direct"}
+{"id": "bcd_add16-para-1", "query": "sum two 4-digit binary-coded-decimal words digit by digit, handling per-nibble overflow correction and reporting whether the total spilled past 9999", "expected": "bcd_add16", "category": "paraphrase"}
+{"id": "bcd_sub16-direct-1", "query": "subtract two packed 4-digit BCD u16 values with a borrow-out flag", "expected": "bcd_sub16", "category": "direct"}
+{"id": "bcd_sub16-para-1", "query": "how do I subtract two 4-digit decimal numbers packed as nibbles in a 16-bit word and detect underflow", "expected": "bcd_sub16", "category": "paraphrase"}
+{"id": "percent_change_between-direct-1", "query": "percent change between before and after values, sign-magnitude percent delta", "expected": "percent_change_between", "category": "direct"}
+{"id": "percent_change_between-para-1", "query": "how much did this value rise or fall in percentage terms, given an old and new reading, without knowing in advance which direction it moved", "expected": "percent_change_between", "category": "paraphrase"}
+{"id": "percent_round-direct-1", "query": "round part*100/whole to the nearest percent, ties rounding up", "expected": "percent_round", "category": "direct"}
+{"id": "percent_round-para-1", "query": "what percentage is this, rounded to the closest whole percent instead of always truncating down", "expected": "percent_round", "category": "paraphrase"}
+{"id": "percent_ceil-direct-1", "query": "smallest integer percent p such that p*whole/100 is at least part, ceiling percentage of a whole", "expected": "percent_ceil", "category": "direct"}
+{"id": "percent_ceil-para-1", "query": "what percent do I need to round up to so that the percentage covers the part, without undershooting", "expected": "percent_ceil", "category": "paraphrase"}
+{"id": "scale_percent_i16-direct-1", "query": "take pct percent of a signed i16 value, sign preserved", "expected": "scale_percent_i16", "category": "direct"}
+{"id": "scale_percent_i16-para-1", "query": "scale a negative-or-positive number by a percentage without losing its sign", "expected": "scale_percent_i16", "category": "paraphrase"}
+{"id": "combined_percent_increase-direct-1", "query": "combine two successive percent increases into one equivalent rate", "expected": "combined_percent_increase", "category": "direct"}
+{"id": "combined_percent_increase-para-1", "query": "if I apply a 10% markup then a 20% surcharge on top, what single percentage has the same overall effect", "expected": "combined_percent_increase", "category": "paraphrase"}
+{"id": "combined_percent_discount-direct-1", "query": "single equivalent percent discount for two successive discounts pct_a then pct_b", "expected": "combined_percent_discount", "category": "direct"}
+{"id": "combined_percent_discount-para-1", "query": "what one flat markdown rate is the same as stacking two discount percentages back to back", "expected": "combined_percent_discount", "category": "paraphrase"}
+{"id": "is_positive_i16-direct-1", "query": "is 1 if x > 0 strictly positive under signed i16 ordering else 0", "expected": "is_positive_i16", "category": "direct"}
+{"id": "is_positive_i16-para-1", "query": "predicate that checks whether a signed 16-bit value is greater than zero", "expected": "is_positive_i16", "category": "paraphrase"}
+{"id": "is_negative_i16-direct-1", "query": "is 1 if x < 0 under signed i16 ordering, strictly negative, else 0", "expected": "is_negative_i16", "category": "direct"}
+{"id": "is_negative_i16-para-1", "query": "check whether a signed 16-bit number is below zero", "expected": "is_negative_i16", "category": "paraphrase"}
+{"id": "is_nonneg_i16-direct-1", "query": "is_nonneg_i16 predicate: returns 1 if x >= 0 under signed i16 ordering, else 0", "expected": "is_nonneg_i16", "category": "direct"}
+{"id": "is_nonneg_i16-para-1", "query": "how do I check if a signed 16-bit value is zero or positive (not negative) as a 0/1 flag", "expected": "is_nonneg_i16", "category": "paraphrase"}
+{"id": "is_nonpos_i16-direct-1", "query": "predicate returns 1 if x is non-positive (x <= 0) under signed i16 ordering", "expected": "is_nonpos_i16", "category": "direct"}
+{"id": "is_nonpos_i16-para-1", "query": "check whether a signed 16-bit value is zero or negative", "expected": "is_nonpos_i16", "category": "paraphrase"}
+{"id": "same_sign_i16-direct-1", "query": "predicate that checks if a and b are the same sign bucket, both nonnegative or both negative, for i16 values", "expected": "same_sign_i16", "category": "direct"}
+{"id": "same_sign_i16-para-1", "query": "callable test for whether two signed 16-bit numbers agree in polarity before combining them with sign-magnitude arithmetic", "expected": "same_sign_i16", "category": "paraphrase"}
+{"id": "diff_sign_i16-direct-1", "query": "predicate returning 1 if a and b are in different sign buckets, one nonnegative and the other negative, else 0", "expected": "diff_sign_i16", "category": "direct"}
+{"id": "diff_sign_i16-para-1", "query": "check whether two signed 16-bit numbers straddle zero -- one is positive-or-zero and the other is negative", "expected": "diff_sign_i16", "category": "paraphrase"}
+{"id": "max4_u32-direct-1", "query": "largest of four wide u32 values", "expected": "max4_u32", "category": "direct"}
+{"id": "max4_u32-para-1", "query": "pick the biggest of four 32-bit numbers that could each exceed 65535", "expected": "max4_u32", "category": "paraphrase"}
+{"id": "min4_u32-direct-1", "query": "smallest of four values at wide 32-bit width, written to a result field", "expected": "min4_u32", "category": "direct"}
+{"id": "min4_u32-para-1", "query": "which of four large money totals in cents is the lowest, giving back the value itself not its slot", "expected": "min4_u32", "category": "paraphrase"}
+{"id": "mean4_u32-direct-1", "query": "overflow-safe mean of four large wide 32-bit values", "expected": "mean4_u32", "category": "direct"}
+{"id": "mean4_u32-para-1", "query": "average four big readings together without the sum overflowing 32 bits", "expected": "mean4_u32", "category": "paraphrase"}
+{"id": "median3_u32-direct-1", "query": "median of three wide u32 values using wrapping add and sub", "expected": "median3_u32", "category": "direct"}
+{"id": "median3_u32-para-1", "query": "middle value among three large 32-bit numbers, past the u16 ceiling", "expected": "median3_u32", "category": "paraphrase"}
+{"id": "median4_u32-direct-1", "query": "median of four wide u32 values using the sorting network and overflow-safe averaging trick", "expected": "median4_u32", "category": "direct"}
+{"id": "median4_u32-para-1", "query": "find the middle-average of four large 32-bit numbers without overflowing during the add", "expected": "median4_u32", "category": "paraphrase"}
+{"id": "range3_u32-direct-1", "query": "spread of three wide u32 values, max3_u32 minus min3_u32, past the u16 ceiling", "expected": "range3_u32", "category": "direct"}
+{"id": "range3_u32-para-1", "query": "range across three large 32-bit numbers when the values might exceed 65535", "expected": "range3_u32", "category": "paraphrase"}
+{"id": "range4_u32-direct-1", "query": "spread of four wide u32 values, max4_u32 minus min4_u32", "expected": "range4_u32", "category": "direct"}
+{"id": "range4_u32-para-1", "query": "how far apart are the largest and smallest of four 32-bit numbers that might exceed 65535", "expected": "range4_u32", "category": "paraphrase"}
+{"id": "accumulate_step_i16-direct-1", "query": "running signed sum and count over a stream of i16 values via sign-magnitude, checked on overflow", "expected": "accumulate_step_i16", "category": "direct"}
+{"id": "accumulate_step_i16-para-1", "query": "accumulate a stream of positive and negative numbers into a total that won't silently wrap, and track how many values were seen", "expected": "accumulate_step_i16", "category": "paraphrase"}
+{"id": "running_correlation_sums_step-direct-1", "query": "running accumulation of sum_x, sum_y, sum_xy, sum_x2, sum_y2 and count from a stream of (x,y) pairs for correlation and linear regression", "expected": "running_correlation_sums_step", "category": "direct"}
+{"id": "running_correlation_sums_step-para-1", "query": "I'm feeding (x,y) samples one at a time and need to keep a running tally of all the sums that Pearson correlation and least-squares slope/intercept need later, without re-scanning the raw data", "expected": "running_correlation_sums_step", "category": "paraphrase"}
+{"id": "running_mad_step-direct-1", "query": "running mean absolute deviation over a stream, accumulate sum of absolute deviations from the running mean each call", "expected": "running_mad_step", "category": "direct"}
+{"id": "running_mad_step-para-1", "query": "track how far each new value sits from the current running average, in absolute terms, as a dispersion measure alongside variance and stddev", "expected": "running_mad_step", "category": "paraphrase"}
+{"id": "rising_streak_step-direct-1", "query": "consecutive-increase streak counter over a stream, resets when the value is not strictly greater than the previous one", "expected": "rising_streak_step", "category": "direct"}
+{"id": "rising_streak_step-para-1", "query": "how many readings in a row have each been bigger than the one right before it, restarting the count whenever a value fails to beat its predecessor", "expected": "rising_streak_step", "category": "paraphrase"}
+{"id": "falling_streak_step-direct-1", "query": "count a consecutive streak of strictly decreasing values in a stream", "expected": "falling_streak_step", "category": "direct"}
+{"id": "falling_streak_step-para-1", "query": "how many readings in a row have each been lower than the one right before it", "expected": "falling_streak_step", "category": "paraphrase"}
+{"id": "running_covariance_step_i16-direct-1", "query": "running covariance sign-magnitude i16 sum_x sum_y sum_xy signed stream accumulation state cell", "expected": "running_covariance_step_i16", "category": "direct"}
+{"id": "running_covariance_step_i16-para-1", "query": "how do I accumulate the raw sums for covariance when x and y can go negative, not just non-negative counts", "expected": "running_covariance_step_i16", "category": "paraphrase"}
+{"id": "harmonic_mean2-direct-1", "query": "integer harmonic mean of two u16 values", "expected": "harmonic_mean2", "category": "direct"}
+{"id": "harmonic_mean2-para-1", "query": "given two counts, compute 2 divided by the sum of their reciprocals, rounded down to an integer", "expected": "harmonic_mean2", "category": "paraphrase"}
+{"id": "rms2-direct-1", "query": "integer quadratic mean root-mean-square of two u16 values", "expected": "rms2", "category": "direct"}
+{"id": "rms2-para-1", "query": "RMS-style average that emphasizes larger of two magnitudes, like avg2 and geomean2 but for the quadratic Pythagorean mean", "expected": "rms2", "category": "paraphrase"}
+{"id": "mul_div_sat-direct-1", "query": "saturating cross-multiply-divide floor(a*b/c) with a widened u32 intermediate product", "expected": "mul_div_sat", "category": "direct"}
+{"id": "mul_div_sat-para-1", "query": "rescale a value by an arbitrary ratio a/b applied to c, without the intermediate product overflowing before the divide", "expected": "mul_div_sat", "category": "paraphrase"}
+{"id": "weighted_avg2-direct-1", "query": "normalized weighted mean of two values with caller-supplied weights, divide the weighted sum by total weight", "expected": "weighted_avg2", "category": "direct"}
+{"id": "weighted_avg2-para-1", "query": "blend two scores into one average where each side has its own importance weight, not just the raw combined total", "expected": "weighted_avg2", "category": "paraphrase"}
+{"id": "weighted_avg3-direct-1", "query": "weighted average of three values with caller-supplied weights, normalized by the total weight", "expected": "weighted_avg3", "category": "direct"}
+{"id": "weighted_avg3-para-1", "query": "combine three scores into one number using per-item importance factors, dividing out the total importance so the result stays on the same scale as the inputs", "expected": "weighted_avg3", "category": "paraphrase"}
+{"id": "is_clear_loser-direct-1", "query": "is the bottom score a clear loser, beaten by the second-lowest by some margin", "expected": "is_clear_loser", "category": "direct"}
+{"id": "is_clear_loser-para-1", "query": "did this candidate finish decisively in last place or was it basically tied with the next-worst one", "expected": "is_clear_loser", "category": "paraphrase"}
+{"id": "clear_loser3-direct-1", "query": "decisive loser among three raw candidate scores with margin", "expected": "clear_loser3", "category": "direct"}
+{"id": "clear_loser3-para-1", "query": "check if the worst of three scores is clearly beaten by the runner-up from the bottom by a threshold", "expected": "clear_loser3", "category": "paraphrase"}
+{"id": "score_margin3-direct-1", "query": "winning margin between top and second-highest score among three candidates", "expected": "score_margin3", "category": "direct"}
+{"id": "score_margin3-para-1", "query": "how much did the best of three raw scores beat the runner-up by", "expected": "score_margin3", "category": "paraphrase"}
+{"id": "arithmetic_first_term-direct-1", "query": "recover the starting value of an arithmetic sequence given the common difference, term index, and that term's value", "expected": "arithmetic_first_term", "category": "direct"}
+{"id": "arithmetic_first_term-para-1", "query": "an arithmetic progression's nth entry and step size are known -- work backward to find what the sequence began at", "expected": "arithmetic_first_term", "category": "paraphrase"}
+{"id": "geometric_first_term-direct-1", "query": "Given a geometric sequence's ratio, term index n, and the value of that term, recover the starting value (first term) of the sequence", "expected": "geometric_first_term", "category": "direct"}
+{"id": "geometric_first_term-para-1", "query": "I know the common ratio, which position a term is at, and its value \u2014 work backwards to find what the sequence started at", "expected": "geometric_first_term", "category": "paraphrase"}
+{"id": "series_other_endpoint-direct-1", "query": "recover the missing endpoint of an arithmetic series from its term count and sum", "expected": "series_other_endpoint", "category": "direct"}
+{"id": "series_other_endpoint-para-1", "query": "I know how many terms an arithmetic sequence has, what they add up to, and one of first or last -- how do I get the other end", "expected": "series_other_endpoint", "category": "paraphrase"}
+{"id": "horner_eval_quartic-direct-1", "query": "evaluate a quartic (degree-4) polynomial a*x^4 + b*x^3 + c*x^2 + d*x + e using Horner's method, checked for u32 overflow", "expected": "horner_eval_quartic", "category": "direct"}
+{"id": "horner_eval_quartic-para-1", "query": "compute the value of a degree-4 polynomial with integer coefficients at a given point, halting instead of wrapping if any intermediate result gets too big", "expected": "horner_eval_quartic", "category": "paraphrase"}
+{"id": "geometric_series_term_count-direct-1", "query": "geometric series: given first term, ratio, and target sum, recover the term count n needed to exactly reach it", "expected": "geometric_series_term_count", "category": "direct"}
+{"id": "geometric_series_term_count-para-1", "query": "how many periods of compounding growth does it take to accumulate to a specific total, given the starting amount and growth ratio", "expected": "geometric_series_term_count", "category": "paraphrase"}
+{"id": "collatz_next-direct-1", "query": "apply one Collatz 3n+1 step to n and return the next value in the hailstone sequence", "expected": "collatz_next", "category": "direct"}
+{"id": "collatz_next-para-1", "query": "given a number, do a single halve-or-triple-plus-one hailstone iteration and give me just that one result, not the whole trajectory", "expected": "collatz_next", "category": "paraphrase"}
+{"id": "min3_i16-direct-1", "query": "minimum of three signed i16 values under true signed ordering", "expected": "min3_i16", "category": "direct"}
+{"id": "min3_i16-para-1", "query": "smallest of three signed 16-bit numbers, negatives sorted correctly not by raw bit pattern", "expected": "min3_i16", "category": "paraphrase"}
+{"id": "max3_i16-direct-1", "query": "maximum of three signed 16-bit values under true signed ordering", "expected": "max3_i16", "category": "direct"}
+{"id": "max3_i16-para-1", "query": "pick the largest of three i16 numbers accounting for negative values correctly", "expected": "max3_i16", "category": "paraphrase"}
+{"id": "mul_i16-direct-1", "query": "checked signed multiplication of two i16 values via sign-magnitude, escalating if a * b doesn't fit back in i16", "expected": "mul_i16", "category": "direct"}
+{"id": "mul_i16-para-1", "query": "multiply two plain signed 16-bit integers and flag overflow instead of silently wrapping, unlike the Q8.8-scaled multiply", "expected": "mul_i16", "category": "paraphrase"}
+{"id": "div_i16-direct-1", "query": "plain signed integer divide of two i16 values via sign-magnitude, truncating toward zero", "expected": "div_i16", "category": "direct"}
+{"id": "div_i16-para-1", "query": "divide two signed whole numbers and round the quotient toward zero, no fixed-point scaling", "expected": "div_i16", "category": "paraphrase"}
+{"id": "add3_i16-direct-1", "query": "checked three-way signed add of three i16 values via sign-magnitude, escalating if a+b+c doesn't fit back in i16", "expected": "add3_i16", "category": "direct"}
+{"id": "add3_i16-para-1", "query": "sum three signed 16-bit numbers together and flag overflow instead of silently wrapping when the total doesn't fit", "expected": "add3_i16", "category": "paraphrase"}
+{"id": "apply_delta_clamped_i16-direct-1", "query": "apply a signed delta to a signed value and clamp to an explicit signed range [lo, hi] where lo can be negative", "expected": "apply_delta_clamped_i16", "category": "direct"}
+{"id": "apply_delta_clamped_i16-para-1", "query": "adjust a value up or down by an amount but keep it inside a fixed signed floor and ceiling, both of which can go below zero, without overflowing when the raw sum would exceed the signed range", "expected": "apply_delta_clamped_i16", "category": "paraphrase"}
+{"id": "grid_index_u32-direct-1", "query": "wide checked flat array index for a grid: y*width+x with y in the u32 domain, escalating instead of wrapping", "expected": "grid_index_u32", "category": "direct"}
+{"id": "grid_index_u32-para-1", "query": "encode x,y grid coordinates into a flattened array offset when the row count is too big for 16 bits, without silently overflowing", "expected": "grid_index_u32", "category": "paraphrase"}
+{"id": "point_aabb_dist_sq-direct-1", "query": "squared distance from a point to the nearest point on an axis-aligned box, clamp into the box then square the offset", "expected": "point_aabb_dist_sq", "category": "direct"}
+{"id": "point_aabb_dist_sq-para-1", "query": "how close is this point to a rectangle for quad-tree nearest-neighbor pruning, zero if the point is already inside the box", "expected": "point_aabb_dist_sq", "category": "paraphrase"}
+{"id": "aabb_from_points-direct-1", "query": "normalize two corner points into a well-formed AABB with x, y, width, height", "expected": "aabb_from_points", "category": "direct"}
+{"id": "aabb_from_points-para-1", "query": "turn a drag-select rectangle's two arbitrary dragged corners into a proper bounding box", "expected": "aabb_from_points", "category": "paraphrase"}
+{"id": "aabb_expand-direct-1", "query": "inflate an AABB by a uniform margin on all four sides", "expected": "aabb_expand", "category": "direct"}
+{"id": "aabb_expand-para-1", "query": "pad a bounding box outward by a fixed amount for broad-phase collision slop", "expected": "aabb_expand", "category": "paraphrase"}
+{"id": "aabb_center-direct-1", "query": "center point of an AABB, cx cy from x y w h", "expected": "aabb_center", "category": "direct"}
+{"id": "aabb_center-para-1", "query": "derive a single representative point (the midpoint) from one bounding box, for quad-tree splitting or spatial hash keys", "expected": "aabb_center", "category": "paraphrase"}
+{"id": "morton_encode_3d-direct-1", "query": "3D Morton Z-order encode interleave x y z coordinates into one code", "expected": "morton_encode_3d", "category": "direct"}
+{"id": "morton_encode_3d-para-1", "query": "how do I compute an octree voxel spatial key from three integer coordinates", "expected": "morton_encode_3d", "category": "paraphrase"}
+{"id": "morton_decode_3d-direct-1", "query": "morton decode 3d, split a 30-bit code back into its interleaved x, y, z 10-bit coordinates", "expected": "morton_decode_3d", "category": "direct"}
+{"id": "morton_decode_3d-para-1", "query": "given a voxel/octree Z-order index, recover the original three integer axis coordinates it was built from", "expected": "morton_decode_3d", "category": "paraphrase"}

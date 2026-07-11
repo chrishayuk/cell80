@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (19)
+## Landed (27)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,18 +16,26 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `bit_is_set_u32` | `BitIsSetU32::run() -> u16` | Returns 1 if bit number `bit` (0-31) of a 32-bit value x is set, else 0: (x >> bit) & 1, widened from bit_is_set's 16-bit domain -- needs a u32 state field since bit_is_set's fn run(x: u16, bit: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `bit_not` | `run(x: u16) -> u16` | Bitwise complement of all 16 bits: x ^ 0xFFFF (unary NOT, the dialect's `!` is logical-not only). |
 | `clear_bit` | `run(x: u16, bit: u16) -> u16` | Clear bit number `bit` of x to 0. |
+| `clear_bit_u32` | `ClearBitU32::run() -> u16` | Clear bit number `bit` (0-31) of a 32-bit value x to 0, the u32-width sibling of clear_bit -- needs a u32 state field since clear_bit's fn run(x: u16, bit: u16) cannot accept a 32-bit input under the 16-bit calling convention; splits x into hi/lo 16-bit halves (each split off by a constant shift) and clears within whichever half holds the target bit using a runtime-indexed 16-bit shift, the same technique bit_is_set_u32 uses to read a bit. |
+| `clear_lowest_set_bit` | `run(x: u16) -> u16` | Clears the lowest set bit of x via x & (x - 1u16), Kernighan's classic bit-clearing trick (the mask-value counterpart to lowest_set_bit's isolation, distinct from mask_clear/clear_bit which need an explicit bit index or mask). |
 | `hamming_distance16` | `run(a: u16, b: u16) -> u16` | Hamming distance between two 16-bit values: the count of bit positions where a and b differ, popcount(a ^ b). |
+| `hamming_distance32` | `HammingDistance32::run() -> u16` | Hamming distance between two 32-bit values: the count of bit positions where a and b differ, popcount(a ^ b) computed directly in u32 -- the wide sibling of hamming_distance16, needing u32 state fields since a and b cannot pass as fn run params under the 16-bit calling convention. |
+| `highest_set_bit` | `run(x: u16) -> u16` | Isolates the value of the highest set bit of x via smear-then-subtract (OR x down into all lower bits, then subtract half the result); 0 when x == 0. |
+| `lowest_set_bit` | `run(x: u16) -> u16` | Isolates the value of the lowest set bit of x via x & (0 - x); 0 when x == 0 (the classic two's-complement isolation trick, distinct from every existing op that names a bit index or only returns a count). |
 | `mask_clear` | `run(x: u16, mask: u16) -> u16` | Clear every bit of `mask` from x: x & (mask ^ 0xFFFF), the mask-level generalization of clear_bit (AND-NOT / andn). |
 | `mask_has_all` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ALL bits of mask set: (x & mask) == mask. |
 | `mask_has_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ANY bit of mask set: (x & mask) != 0. |
 | `mask_has_none` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has NONE of mask's bits set: (x & mask) == 0, else 0 -- the exact logical complement of mask_has_any. |
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_missing_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x is missing at least one bit of mask: (x & mask) != mask -- the exact logical complement of mask_has_all. |
+| `mask_overlap_count` | `run(a: u16, b: u16) -> u16` | Count of bit positions where a and b are both set: popcount(a & b) -- distinct from mask_intersection (returns the mask itself, not a scalar count) and hamming_distance16 (counts bits that differ, not bits that agree-and-are-set). |
 | `mask_union` | `run(a: u16, b: u16) -> u16` | Union of two bit masks: a \| b (every bit set in either). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 | `parity` | `run(x: u16) -> u16` | Parity: 1 if the number of set bits is odd, else 0. |
 | `popcount` | `run(x: u16) -> u16` | Population count: the number of set bits in a 16-bit value. |
 | `popcount_u32` | `PopcountU32::run() -> u16` | Population count of a full 32-bit value: the number of set bits in x, widened from popcount's 16-bit domain -- needs a u32 state field since popcount's fn run(x: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `set_bit` | `run(x: u16, bit: u16) -> u16` | Set bit number `bit` of x to 1. |
+| `set_bit_u32` | `SetBitU32::run() -> u16` | Set bit number `bit` (0-31) of a 32-bit value x to 1, widened from set_bit's 16-bit domain via a hi/lo u16-half split with constant-shift OR -- needs a u32 state field since set_bit's fn run(x: u16, bit: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `toggle_bit` | `run(x: u16, bit: u16) -> u16` | Toggle (flip) bit number `bit` of x. |
+| `toggle_bit_u32` | `ToggleBitU32::run() -> u16` | Toggle (flip) bit number `bit` (0-31) of a 32-bit value x, the u32-width sibling of toggle_bit -- needs a u32 state field since toggle_bit's fn run(x: u16, bit: u16) cannot accept a 32-bit input under the 16-bit calling convention; splits x into hi/lo 16-bit halves (each split off by a constant shift) and XORs the target bit within whichever half holds it using a runtime-indexed 16-bit shift, the same technique set_bit_u32 and clear_bit_u32 use. |
 
