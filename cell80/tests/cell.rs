@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("697 cells"));
+    assert!(listing.contains("range_check") && listing.contains("718 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("697 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("718 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 697, "got: {out}");
+    assert_eq!(cells.len(), 718, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -944,13 +944,25 @@ fn cli_index_gate_over_the_real_library() {
     // algebraically identical to INTRATE's formula under a renaming, vocabulary
     // folded into excel_intrate's tags per the no-duplicates rule). 697 admitted,
     // 0 refused.
+    // 697→718: three new packs authored in one batch — excel-datetime (12 landed,
+    // Excel Date&Time functions), control-systems (5 landed), numerical-primitives
+    // (4 landed) — 22 authored, 21 survived verification. One back-out:
+    // excel_edate (fingerprint-agreed with the existing day-count pack's
+    // date_add_months at 1.00 — a genuine duplicate this time, not a probe-bank
+    // false positive: excel_edate's own doc comment says it's "the identical
+    // month-stepping/EOM-clamp technique as date_add_months... reproduced
+    // verbatim under Excel's own name" — vocabulary folded into
+    // date_add_months's tags per the no-duplicates rule). pid_step needed
+    // `//! kernel_bank: on` for size (8908 bytes unbanked, over the 8192-byte
+    // sandboxed cap), the same class of fix excel_rri and 22 other
+    // excel-financial cells needed in the prior wave. 718 admitted, 0 refused.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("697 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("718 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

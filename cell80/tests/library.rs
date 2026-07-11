@@ -23,10 +23,14 @@ mod calendrical_checksum;
 mod checked_arithmetic;
 #[path = "library/combinatorics.rs"]
 mod combinatorics;
+#[path = "library/control-systems.rs"]
+mod control_systems;
 #[path = "library/day-count.rs"]
 mod day_count;
 #[path = "library/distance.rs"]
 mod distance;
+#[path = "library/excel-datetime.rs"]
+mod excel_datetime;
 #[path = "library/excel-financial.rs"]
 mod excel_financial;
 #[path = "library/fixed-point.rs"]
@@ -43,6 +47,8 @@ mod matrix;
 mod money_bps;
 #[path = "library/number-theory.rs"]
 mod number_theory;
+#[path = "library/numerical-primitives.rs"]
+mod numerical_primitives;
 #[path = "library/packing-bcd.rs"]
 mod packing_bcd;
 #[path = "library/percent.rs"]

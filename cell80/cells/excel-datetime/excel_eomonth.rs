@@ -1,25 +1,25 @@
-//! Steps a Gregorian (year, month, day) forward or backward by a whole number of months (direction 0=forward/add, 1=backward/subtract, magnitude months: u16), clamping the result day to the target month's real length in one direct jump (e.g. Jan 31 stepped forward 1 month lands on Feb 28/29, never Mar 3, and Jan 31 stepped forward 2 months lands squarely on Mar 31 with no intermediate Feb clamp) -- the shared foundation the whole Excel COUP* family (COUPNCD, COUPPCD, COUPDAYBS, COUPDAYS, COUPDAYSNC, COUPNUM) walks backward over in (12/frequency)-month increments, distinct from days_between (spans whole days, not months) and is_valid_date (checks a given date, doesn't derive a new one).
-//! tags: calendar, date, month, add-months, edate, excel, excel-edate, spreadsheet, step, shift, end-of-month, clamp, gregorian, coupon, day-count, prerequisite
-//! entry: DateAddMonths::run
+//! Last day of the month that is `months` whole months before/after start_date (Excel EOMONTH(start_date, months)): steps the month using date_add_months' own index-stepping (direction+magnitude, same sign-magnitude convention), but instead of clamping the original day-of-month into the target month like date_add_months itself does, always returns that target month's LAST day via days_in_month's leap-aware table -- the day-of-month of start_date never affects the result, so it is deliberately not a field here.
+//! tags: excel, eomonth, end-of-month, last-day-of-month, final-day, calendar, date, month, add-months, edate, step, shift, leap-aware, gregorian
+//! entry: ExcelEomonth::run
 //! limits: escalates (halt 0xFF06, out_of_domain) if month is outside 1-12, or if stepping backward would take the date before year 0; escalates (halt 0xFF05, needs_wider_math) if stepping forward would take the year past 65535
-struct DateAddMonths {
+struct ExcelEomonth {
     year: u16,
     month: u16,
-    day: u16,
     months: u16,
     direction: u16,
     new_year: u16,
     new_month: u16,
     new_day: u16,
 }
-impl DateAddMonths {
+impl ExcelEomonth {
     fn run(&mut self) -> u16 {
         if self.month < 1u16 || self.month > 12u16 {
             halt(0xFF06u16);
         }
 
         // Zero-based absolute month index counted from epoch year 0: idx = year*12 + (month-1).
-        // Widened to u32 since year (up to 65535) * 12 already exceeds u16.
+        // Widened to u32 since year (up to 65535) * 12 already exceeds u16 -- same as
+        // date_add_months' own indexing (cell80/cells/day-count/date_add_months.rs), inlined.
         let idx = (self.year as u32) * 12u32 + (self.month as u32 - 1u32);
         let step = self.months as u32;
 
@@ -50,7 +50,8 @@ impl DateAddMonths {
         let is_leap = (by4 && (!by100 || by400)) as u16;
 
         // days_in_month's own table (cell80/cells/calendrical-checksum/days_in_month.rs),
-        // inlined for the same reason.
+        // inlined for the same reason. Unlike date_add_months, the result IS this max_day
+        // directly -- there is no original day-of-month to clamp against.
         let base = match new_month {
             1u16 => 31u16, 2u16 => 28u16, 3u16 => 31u16, 4u16 => 30u16,
             5u16 => 31u16, 6u16 => 30u16, 7u16 => 31u16, 8u16 => 31u16,
@@ -59,11 +60,9 @@ impl DateAddMonths {
         };
         let max_day = if new_month == 2u16 && is_leap != 0u16 { 29u16 } else { base };
 
-        let clamped_day = if self.day > max_day { max_day } else { self.day };
-
         self.new_year = new_year;
         self.new_month = new_month;
-        self.new_day = clamped_day;
+        self.new_day = max_day;
         1u16
     }
 }
