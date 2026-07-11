@@ -68,8 +68,31 @@ class CellLibrary:
                 self.host.add_cell(f.read_bytes())
 
     # ── discover ────────────────────────────────────────────────────────────
-    def search(self, query: str, limit: int = 10) -> list[dict]:
-        return list(self.host.search(query, limit))
+    def search(
+        self, query: str, limit: int = 10, examples: list[dict] | None = None
+    ) -> list[dict]:
+        """Rank by text relevance; with `examples`, fuse BEHAVIOUR into the ranking:
+        cells reproducing the most examples first, plain-search order breaking ties —
+        the same-shape-sibling separator (min vs max share every word; ([3,7], 3)
+        separates them). Example forms match cell_route_by_example, plus `expect`:
+        {in: [ints], out: int} for value cells; {fields: {name: int}, out: int,
+        expect: {name: int}} for state cells — `expect` matches post-run fields, the
+        separator for status-flag cells whose return is constant. Empty/None
+        examples: plain text search, unchanged."""
+        if not examples:
+            return list(self.host.search(query, limit))
+        if "fields" in examples[0]:
+            triples = [
+                (
+                    dict(e["fields"]),
+                    int(e["out"]) if "out" in e else None,
+                    dict(e.get("expect", {})),
+                )
+                for e in examples
+            ]
+            return list(self.host.search_with_field_examples(query, triples, limit))
+        pairs = [(list(e["in"]), int(e["out"])) for e in examples]
+        return list(self.host.search_with_examples(query, pairs, limit))
 
     def route(self, examples: list[tuple[list[int], int]], limit: int = 10) -> list[dict]:
         """Discover by behaviour: rank cells by how many (inputs, expected_output)

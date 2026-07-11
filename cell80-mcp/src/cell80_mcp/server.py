@@ -41,10 +41,21 @@ def build_server() -> ChukMCPServer:
         read_only_hint=True,
         description="Search the cell library by relevance; returns brief manifests "
         "(id, summary, tags, signature). Inspect/run only the few you pick — the library "
-        "may hold far more cells than belong in context.",
+        "may hold far more cells than belong in context. Optionally attach input→output "
+        "`examples` (same forms as cell_route_by_example, plus {..., expect: {field: int}} "
+        "to match post-run state fields) to fuse behaviour into the ranking — use this "
+        "when confusable cells share a description: it tells min from max where text "
+        "can't, without dropping text-relevant results.",
     )
-    def cell_search(query: str, limit: int = 10) -> dict:
-        return {"results": lib.search(query, limit)}
+    def cell_search(query: str, limit: int = 10, examples: list[dict] | None = None) -> dict:
+        try:
+            return {"results": lib.search(query, limit, examples)}
+        except (KeyError, TypeError, ValueError):
+            return {
+                "error": "each example needs {in: [ints], out: int} or "
+                "{fields: {name: int}, out: int, expect: {name: int}} (out/expect optional, "
+                "at least one required)"
+            }
 
     @mcp.tool(
         read_only_hint=True,

@@ -198,3 +198,39 @@ def test_route_by_field_examples_drives_state_cells():
     ids = [r["id"] for r in routed["results"]]
     assert "chebyshev" in ids and "manhattan" not in ids, ids
     assert "error" in h["cell_route_by_example"]([{"fields": "bad"}])
+
+
+def test_cell_search_fuses_examples_into_the_ranking():
+    # The fused path (WS-F): examples pull the behavioural match to the top where
+    # text alone can't separate same-shape siblings; no examples = plain search.
+    h = _handlers()
+    plain = h["cell_search"]("pick one of two numbers", 10)["results"]
+    # Three examples, one above the i16 range: small positives can't separate `min`
+    # from `min_i16` (identical behaviour there) — 40000 reads as negative in i16,
+    # so only the unsigned cell survives all three.
+    fused = h["cell_search"](
+        "pick one of two numbers",
+        10,
+        [{"in": [3, 7], "out": 3}, {"in": [9, 4], "out": 4}, {"in": [40000, 7], "out": 7}],
+    )["results"]
+    assert fused[0]["id"] == "min", [r["id"] for r in fused[:3]]
+    # Same tool, mirrored behaviour → the sibling.
+    fused = h["cell_search"](
+        "pick one of two numbers",
+        10,
+        [{"in": [3, 7], "out": 7}, {"in": [9, 4], "out": 9}, {"in": [40000, 7], "out": 40000}],
+    )["results"]
+    assert fused[0]["id"] == "max", [r["id"] for r in fused[:3]]
+    # No/empty examples: byte-identical to plain search.
+    assert h["cell_search"]("pick one of two numbers", 10, [])["results"] == plain
+    # State-cell form with `expect`: post-run fields separate status-flag siblings —
+    # smag_add and smag_sub both return 1; only mag/neg differ. |9| + (-|4|) = 5.
+    ex = {
+        "fields": {"mag_a": 9, "neg_a": 0, "mag_b": 4, "neg_b": 1},
+        "out": 1,
+        "expect": {"mag": 5, "neg": 0},
+    }
+    fused = h["cell_search"]("combine two signed magnitudes", 10, [ex])["results"]
+    assert fused[0]["id"] == "smag_add", [r["id"] for r in fused[:3]]
+    # Malformed examples are reported as data, not raised.
+    assert "error" in h["cell_search"]("anything", 5, [{"bad": 1}])

@@ -7,7 +7,10 @@
 // pyo3's `?` ergonomics convert `PyErr -> PyErr` at each `?`, which clippy flags as a
 // useless conversion (the sibling `zxspec_py` carries the same noise); silence it here.
 #![allow(clippy::useless_conversion)]
-use cell80::{Cartridge, CartridgeOpts, CellConfig, CellGraph, CellHost as RsHost, Halt, Manifest};
+use cell80::{
+    Cartridge, CartridgeOpts, CellConfig, CellGraph, CellHost as RsHost, FieldExample, Halt,
+    Manifest,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -35,6 +38,14 @@ fn set_halt(d: &Bound<'_, PyDict>, h: Halt) -> PyResult<()> {
     }
     Ok(())
 }
+
+/// The Python-side shape of one state-cell example for `search_with_field_examples`:
+/// `(input fields, expected result or None, expected post-run fields)`.
+type PyFieldExample = (
+    std::collections::HashMap<String, u64>,
+    Option<u16>,
+    std::collections::HashMap<String, u64>,
+);
 
 /// A brief manifest (what `search` returns — enough to choose a cell).
 fn brief<'py>(py: Python<'py>, m: &Manifest) -> PyResult<Bound<'py, PyDict>> {
@@ -185,6 +196,61 @@ impl CellHost {
             .collect();
         let list = PyList::empty_bound(py);
         for m in self.host.route_by_field_examples(&examples, limit) {
+            list.append(brief(py, m)?)?;
+        }
+        Ok(list)
+    }
+
+    /// **Fused discovery** — `search` and behaviour in one ranking: cells ordered by how
+    /// many `(inputs, expected_output)` examples they reproduce, plain-`search` order
+    /// breaking ties among behavioural equals. Zero-match cells are demoted to the text
+    /// order, never dropped; empty `examples` is plain `search` verbatim. The same-shape
+    /// sibling separator: text can't tell `min` from `max`, `([3,7], 3)` can.
+    #[pyo3(signature = (query, examples, limit=10))]
+    fn search_with_examples<'py>(
+        &mut self,
+        py: Python<'py>,
+        query: &str,
+        examples: Vec<(Vec<u16>, u16)>,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let hits = self
+            .host
+            .search_with_examples(query, &examples, limit)
+            .map_err(PyValueError::new_err)?;
+        let list = PyList::empty_bound(py);
+        for m in hits {
+            list.append(brief(py, m)?)?;
+        }
+        Ok(list)
+    }
+
+    /// [`search_with_examples`](Self::search_with_examples) for **state cells**: each
+    /// example is `({field: value}, expected_result_or_None, {field: expected_value})` —
+    /// the third slot matches **post-run** fields, the separator for status-flag cells
+    /// (`smag_add`/`smag_sub` both return 1; only their `mag`/`neg` differ).
+    #[pyo3(signature = (query, examples, limit=10))]
+    fn search_with_field_examples<'py>(
+        &mut self,
+        py: Python<'py>,
+        query: &str,
+        examples: Vec<PyFieldExample>,
+        limit: usize,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let examples: Vec<FieldExample> = examples
+            .into_iter()
+            .map(|(fields, want_result, want_fields)| FieldExample {
+                fields: fields.into_iter().collect(),
+                want_result,
+                want_fields: want_fields.into_iter().collect(),
+            })
+            .collect();
+        let hits = self
+            .host
+            .search_with_field_examples(query, &examples, limit)
+            .map_err(PyValueError::new_err)?;
+        let list = PyList::empty_bound(py);
+        for m in hits {
             list.append(brief(py, m)?)?;
         }
         Ok(list)
