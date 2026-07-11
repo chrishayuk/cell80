@@ -7,6 +7,11 @@
 //! raw bit patterns (`to_bits`/`from_bits`, the physics/softfloat packs' own convention)
 //! and compare with a small epsilon tolerance rather than bit-exactness, since these
 //! expected values are hand-derived arithmetic, not a host-rustc oracle.
+//
+// Mechanically generated scaffolds: single-type cells degenerate to `match name
+// { _ => .. }` and every case table shares one tuple shape — style lints the
+// generator would re-trip next wave are allowed rather than hand-patched.
+#![allow(clippy::match_single_binding, clippy::type_complexity)]
 
 #[test]
 fn excel_fv_matches_test_cases() {
