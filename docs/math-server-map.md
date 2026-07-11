@@ -7,7 +7,7 @@ anything"). Machine-readable form: [`cell80/data/math_server_catalog_map.json`](
 *Update (2026-07-07): the first slice of the 77 candidates has been authored — the
 number-theory family (`mobius_function`, `little_omega`, `big_omega`,
 `divisor_power_sum`, `jordan_totient`, `carmichael_lambda`), see
-`docs/library-growth.md`'s "Wave 6" note. This snapshot's `candidate` rows for those
+`docs/library-growth-log.md`'s "Wave 6" note. This snapshot's `candidate` rows for those
 six are now stale (they're `covered`); the JSON itself is left as-authored evidence
 of the mining pass rather than hand-edited — re-check against the live
 `docs/cell-index.md` before authoring anything from the remaining ~71 candidates, per
@@ -15,7 +15,7 @@ this doc's own "How this gates authoring" section below.*
 
 *Update (2026-07-07, Wave 7): the figurate-numbers slice landed as four cells —
 `polygonal_number`, `is_polygonal_number`, `centered_polygonal_number`,
-`square_pyramidal_number` — see `docs/library-growth.md`'s "Wave 7" note. This
+`square_pyramidal_number` — see `docs/library-growth-log.md`'s "Wave 7" note. This
 snapshot's `pentagonal_number`/`is_pentagonal_number`/`star_number` candidate rows
 are now stale for a subtler reason than an exact-name match: they're `covered` by
 **generalization**, not by a same-named cell — `polygonal_number(5, n)` is
@@ -27,7 +27,7 @@ gap in the library; verify against `docs/cell-index.md` before treating any
 generated "not yet built" entry as ground truth.*
 
 *Update (2026-07-07, Wave 8): the recursive-sequences slice landed as two cells —
-`lucas_u_v`, `tribonacci_number` — see `docs/library-growth.md`'s "Wave 8" note.
+`lucas_u_v`, `tribonacci_number` — see `docs/library-growth-log.md`'s "Wave 8" note.
 Same generalization-blind-spot pattern as Wave 7: `pell_number` and
 `pell_lucas_number` are now `covered` by `lucas_u_v(2, 1, n)`'s U and V outputs
 respectively, but the pack README generator's exact-name matcher still lists both
@@ -39,33 +39,33 @@ cells (`digital_root`, `persistent_digital_root`, `is_palindromic_number`,
 
 *Update (2026-07-07, Wave 9): the modular/classic-number-theory slice landed as five
 cells — `extended_gcd`, `jacobi_symbol`, `order_modulo`, `is_quadratic_residue`,
-`discrete_log_naive` — see `docs/library-growth.md`'s "Wave 9" note. All five matched
+`discrete_log_naive` — see `docs/library-growth-log.md`'s "Wave 9" note. All five matched
 by exact name; no generalization-blind-spot rows to flag this time.*
 
 *Update (2026-07-08, Wave 10): the combinatorial-numbers slice landed as four cells —
 `bell_number`, `stirling_first`, `stirling_second`, `is_catalan_number` — see
-`docs/library-growth.md`'s "Wave 10" note. All four matched by exact name. First wave
+`docs/library-growth-log.md`'s "Wave 10" note. All four matched by exact name. First wave
 to use a local array in the dialect (verified standalone before designing around it).*
 
 *Update (2026-07-08, Wave 11): the geometry/vector integer subset's first slice landed
 as three cells — `geom_distance_3d`, `vectors_parallel`, `cross_product` — see
-`docs/library-growth.md`'s "Wave 11" note. All three matched by exact name.
+`docs/library-growth-log.md`'s "Wave 11" note. All three matched by exact name.
 `triple_scalar_product`/`triple_vector_product` (this map's remaining vector
 candidates) were deliberately deferred to a follow-up wave for complexity/risk
 reasons, not built and not forgotten.*
 
 *Update (2026-07-08, Wave 12): `triple_scalar_product` and `triple_vector_product`
-landed — see `docs/library-growth.md`'s "Wave 12" note. Both matched by exact name.
+landed — see `docs/library-growth-log.md`'s "Wave 12" note. Both matched by exact name.
 This closes out every `linear_algebra.vectors` candidate this map named.*
 
 *Update (2026-07-08, Wave 13): `matrix_det_2x2`, `matrix_solve_2x2`, `covariance`,
-`linear_regression_slope` landed — see `docs/library-growth.md`'s "Wave 13" note. All
+`linear_regression_slope` landed — see `docs/library-growth-log.md`'s "Wave 13" note. All
 four matched by exact name. `correlation`/`effect_size_r` (this map's remaining
 `statistics.descriptive`/`statistics.inference` candidates, both Q8.8) deferred to a
 follow-up — the last two candidates from this map's original 77.*
 
 *Update (2026-07-09, Wave 14): `correlation` and `effect_size_r` landed — see
-`docs/library-growth.md`'s "Wave 14" note. Both matched by exact name, both Q8.8
+`docs/library-growth-log.md`'s "Wave 14" note. Both matched by exact name, both Q8.8
 fixed-point via the same scale-before-sqrt precision technique `q_sqrt` itself
 uses. This closes out every `candidate`-classified function this map named —
 **the original 77-candidate list is now fully resolved** (landed, folded into a

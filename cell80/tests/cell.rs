@@ -914,7 +914,7 @@ fn cli_index_gate_over_the_real_library() {
     // 0 refusals.
     // 313→395: a 90-cell Workflow batch (systematic family expansion across 8 pack
     // clusters + chuk-math-gym's remaining arithmetic domain) — 82 net landed after the
-    // gate caught 8 real duplicates; see docs/library-growth.md's "Systematic family
+    // gate caught 8 real duplicates; see docs/library-growth-log.md's "Systematic family
     // expansion" section.
     // 395→397: cosine_score_approx (vector) and lerp_i16 (signed-deltas) — two
     // long-flagged backlog items, both closed by tools/patterns this session added
