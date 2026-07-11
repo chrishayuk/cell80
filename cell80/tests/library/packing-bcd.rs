@@ -133,7 +133,6 @@ fn unpack_u16_pair_matches_defined_behaviour() {
     assert_eq!(step(0xFFFF0000), (0xFFFF, 0));
 }
 
-
 // Verifies bcd_encode16 packs a four-digit decimal value into a full u16 as one BCD digit
 // per nibble (thousands<<12 | hundreds<<8 | tens<<4 | units) -- the 4-nibble extension of
 // bcd_encode's 2-digit/1-byte form. Cases hand-computed: zero, all-nines max, a generic
@@ -142,11 +141,11 @@ fn unpack_u16_pair_matches_defined_behaviour() {
 #[test]
 fn bcd_encode16_matches_defined_behaviour() {
     let cases: &[(&str, &[u16], u16)] = &[
-        ("bcd_encode16", &[0], 0x0000),       // all digits zero
-        ("bcd_encode16", &[9999], 0x9999),    // max four-digit value, no nibble overflow
-        ("bcd_encode16", &[1234], 0x1234),    // generic distinct digits
-        ("bcd_encode16", &[42], 0x0042),      // leading zero digits (thousands, hundreds)
-        ("bcd_encode16", &[8005], 0x8005),    // internal zero digits (hundreds, tens)
+        ("bcd_encode16", &[0], 0x0000),    // all digits zero
+        ("bcd_encode16", &[9999], 0x9999), // max four-digit value, no nibble overflow
+        ("bcd_encode16", &[1234], 0x1234), // generic distinct digits
+        ("bcd_encode16", &[42], 0x0042),   // leading zero digits (thousands, hundreds)
+        ("bcd_encode16", &[8005], 0x8005), // internal zero digits (hundreds, tens)
     ];
 
     let mut failures = Vec::new();

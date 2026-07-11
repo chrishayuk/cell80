@@ -232,7 +232,6 @@ fn running_min_max_step_u32_matches_defined_behaviour() {
     assert_eq!(c2.get("range").unwrap(), 3_999_999_900);
 }
 
-
 #[test]
 fn accumulate_step_u32_matches_defined_behaviour() {
     // Wide/checked sibling of accumulate_step: same running sum+count over a stream, but
@@ -282,8 +281,12 @@ fn running_covariance_step_matches_defined_behaviour() {
     // accumulates count, sum_x, sum_y, sum_xy one (x,y) pair per call (checked/escalating
     // on u32 overflow, matching covariance's own downstream sum consumption).
     fn step(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("running_covariance_step"), "RunningCovariance", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("running_covariance_step"),
+            "RunningCovariance",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }
@@ -350,8 +353,12 @@ fn running_sample_stddev_step_matches_hand_computed_values() {
     // running_stddev_step -- identical running (count, sum, m2) update per value, but
     // variance = m2/(count-1) instead of m2/count, guarded to 0 while count < 2.
     fn step(fields: &[(&str, u64)]) -> (u16, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("running_sample_stddev_step"), "RunningSampleStddev", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("running_sample_stddev_step"),
+            "RunningSampleStddev",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }
@@ -385,7 +392,12 @@ fn running_sample_stddev_step_matches_hand_computed_values() {
         cell1.get("sum").unwrap(),
         cell1.get("m2").unwrap(),
     );
-    let (out2, _cell2) = step(&[("value", 20u64), ("count", count1), ("sum", sum1), ("m2", m2_1)]);
+    let (out2, _cell2) = step(&[
+        ("value", 20u64),
+        ("count", count1),
+        ("sum", sum1),
+        ("m2", m2_1),
+    ]);
     assert_eq!(out2, 7);
 }
 
@@ -399,8 +411,12 @@ fn running_min_max_step_i16_matches_hand_computed_values() {
         (v as u16) as u64
     }
     fn step(fields: &[(&str, u64)]) -> (u16, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("running_min_max_step_i16"), "RunningMinMaxI16", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("running_min_max_step_i16"),
+            "RunningMinMaxI16",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }

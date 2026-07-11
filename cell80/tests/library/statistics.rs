@@ -379,7 +379,6 @@ fn variance_from_sums_matches_hand_computed_expectations() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn std_dev_from_sums_matches_hand_computed_expectations() {
     // std_dev_from_sums: population standard deviation from precomputed sums
@@ -519,8 +518,12 @@ fn sample_covariance_from_sums_matches_hand_computed() {
     // Same host-oracle pattern as the pack's other precomputed-sums cells: bind the
     // state cell, set fields, run, and check the exact signed-fraction outputs.
     fn verify(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("sample_covariance_from_sums"), "SampleCovarianceFromSums", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("sample_covariance_from_sums"),
+            "SampleCovarianceFromSums",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }

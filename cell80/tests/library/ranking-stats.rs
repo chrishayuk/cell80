@@ -209,7 +209,6 @@ fn argmin4_index_of_smallest_of_four_ties_to_lowest_index() {
     assert_eq!(step(2, 9, 2, 9), 0); // tie between a and c (both 2) -> lower index (0) wins
 }
 
-
 // mean4: state cell { a, b, c, d } -> u16, the four-value sibling of mean3. Extends
 // mean3's div/remainder-recombine trick (a/4+b/4+c/4+d/4 + remainders/4) one operand
 // deeper so the sum never has to be computed as a single wide intermediate. Checked:
@@ -396,12 +395,12 @@ fn mode4_hand_computed_cases() {
 #[test]
 fn all_distinct3_pairwise_distinct_matches_hand_computed_cases() {
     let cases: &[(&[u16], u16)] = &[
-        (&[1, 2, 3], 1),      // all pairwise distinct
-        (&[5, 5, 3], 0),      // a == b
-        (&[5, 5, 5], 0),      // all three equal
-        (&[1, 2, 1], 0),      // a == c (non-adjacent duplicate)
-        (&[2, 3, 3], 0),      // b == c
-        (&[0, 65535, 1], 1),  // all distinct, spanning the u16 range
+        (&[1, 2, 3], 1),     // all pairwise distinct
+        (&[5, 5, 3], 0),     // a == b
+        (&[5, 5, 5], 0),     // all three equal
+        (&[1, 2, 1], 0),     // a == c (non-adjacent duplicate)
+        (&[2, 3, 3], 0),     // b == c
+        (&[0, 65535, 1], 1), // all distinct, spanning the u16 range
     ];
 
     let mut failures = Vec::new();
@@ -424,12 +423,12 @@ fn unanimous3_matches_hand_computed_expectations() {
     // weaker at-least-two-agree threshold. Checks: all-equal -> 1, majority-but-not-all -> 0
     // (both a==b-only and a==c-only shapes), all-distinct -> 0, and the 0 / u16::MAX edges.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("unanimous3", &[5, 5, 5], 1),             // all three equal -> unanimous
-        ("unanimous3", &[5, 5, 3], 0),              // majority (a==b) but not unanimous
-        ("unanimous3", &[7, 3, 7], 0),               // a==c but b differs -> not unanimous
-        ("unanimous3", &[1, 2, 3], 0),               // all distinct -> not unanimous
-        ("unanimous3", &[0, 0, 0], 1),               // all-zero edge case, all equal
-        ("unanimous3", &[65535, 65535, 65535], 1),   // max u16 value, all equal
+        ("unanimous3", &[5, 5, 5], 1), // all three equal -> unanimous
+        ("unanimous3", &[5, 5, 3], 0), // majority (a==b) but not unanimous
+        ("unanimous3", &[7, 3, 7], 0), // a==c but b differs -> not unanimous
+        ("unanimous3", &[1, 2, 3], 0), // all distinct -> not unanimous
+        ("unanimous3", &[0, 0, 0], 1), // all-zero edge case, all equal
+        ("unanimous3", &[65535, 65535, 65535], 1), // max u16 value, all equal
     ];
 
     let mut failures = Vec::new();
@@ -491,7 +490,12 @@ fn argmin4_u32_wide_ceiling_and_ties() {
         step(
             "argmin4_u32",
             "Argmin4Wide",
-            &[("a", 100_000), ("b", 200_000), ("c", 150_000), ("d", 50_000)]
+            &[
+                ("a", 100_000),
+                ("b", 200_000),
+                ("c", 150_000),
+                ("d", 50_000)
+            ]
         ),
         3
     );
@@ -500,7 +504,12 @@ fn argmin4_u32_wide_ceiling_and_ties() {
         step(
             "argmin4_u32",
             "Argmin4Wide",
-            &[("a", 300_000), ("b", 100_000), ("c", 200_000), ("d", 250_000)]
+            &[
+                ("a", 300_000),
+                ("b", 100_000),
+                ("c", 200_000),
+                ("d", 250_000)
+            ]
         ),
         1
     );
@@ -509,7 +518,12 @@ fn argmin4_u32_wide_ceiling_and_ties() {
         step(
             "argmin4_u32",
             "Argmin4Wide",
-            &[("a", 100_000), ("b", 100_000), ("c", 100_000), ("d", 100_000)]
+            &[
+                ("a", 100_000),
+                ("b", 100_000),
+                ("c", 100_000),
+                ("d", 100_000)
+            ]
         ),
         0
     );

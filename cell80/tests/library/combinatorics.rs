@@ -351,7 +351,6 @@ fn double_factorial_checked_recurrence_skips_every_other_term() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn partition_number_matches_oeis_a000041_and_escalates_on_overflow() {
     // partition_number: p(n), the integer partition function (order doesn't count,
@@ -403,8 +402,9 @@ fn verify_distinct_partitions_matches_oeis_a000009_and_escalates() {
     // each part size is folded in at most once). Values cross-checked against OEIS
     // A000009 via an independent Python subset-sum DP.
     fn step(n: u64, cycles: u64) -> (cell80::Report, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("distinct_partitions"), "DistinctPartitions", None)
-            .unwrap_or_else(|e| panic!("bind distinct_partitions: {e}"));
+        let mut cell =
+            StateCell::bind(&cell_src("distinct_partitions"), "DistinctPartitions", None)
+                .unwrap_or_else(|e| panic!("bind distinct_partitions: {e}"));
         cell.set("n", n).unwrap();
         let report = cell.run(cycles).unwrap();
         (report, cell)
@@ -480,27 +480,51 @@ fn choose_with_repetition_hand_computed() {
     }
 
     // n=3, k=2: C(3+2-1,2) = C(4,2) = 6. {aa,bb,cc,ab,ac,bc}.
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 3), ("k", 2)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 3), ("k", 2)],
+    );
     assert_eq!(cell.get("result"), Some(6));
 
     // n=1, k=5: C(5,5) = 1. Only one type -> one way (aaaaa).
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 1), ("k", 5)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 1), ("k", 5)],
+    );
     assert_eq!(cell.get("result"), Some(1));
 
     // n=5, k=1: C(5,1) = 5. Choosing 1 item from 5 types -> 5 ways.
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 5), ("k", 1)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 5), ("k", 1)],
+    );
     assert_eq!(cell.get("result"), Some(5));
 
     // n=0, k=0: no types, choosing nothing -> 1 way (the empty selection), special-cased
     // since the naive n+k-1 formula would underflow at n=0.
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 0), ("k", 0)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 0), ("k", 0)],
+    );
     assert_eq!(cell.get("result"), Some(1));
 
     // n=0, k=3: no types but need 3 items -> 0 ways.
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 0), ("k", 3)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 0), ("k", 3)],
+    );
     assert_eq!(cell.get("result"), Some(0));
 
     // n=2, k=3: C(2+3-1,3) = C(4,3) = 4. {aaa,aab,abb,bbb}.
-    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 2), ("k", 3)]);
+    let (_, cell) = step(
+        "choose_with_repetition",
+        "ChooseWithRepetition",
+        &[("n", 2), ("k", 3)],
+    );
     assert_eq!(cell.get("result"), Some(4));
 }

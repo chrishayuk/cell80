@@ -198,7 +198,6 @@ fn increase_percent_u32_matches_defined_behaviour() {
     assert_eq!(cell.get("result"), Some(200));
 }
 
-
 // Checks permille_u32 (PermilleWide) against hand-computed expectations: the u32-width
 // per-mille part*1000/whole (0 if whole == 0), uncapped (no 65535 saturation, unlike the
 // u16 permille original) and escalating (needs_wider_math) if the part*1000 multiply

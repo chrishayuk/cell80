@@ -127,15 +127,14 @@ fn verify_bit_not() {
     assert_eq!(bit_not(0xAAAA), 0x5555);
 }
 
-
 #[test]
 fn bit_is_clear_matches_defined_behaviour() {
     // bit_is_clear(x, bit): 1 iff bit `bit` of x is NOT set, i.e. ((x >> bit) & 1) == 0
     // (the exact logical complement of bit_is_set). Cases hand-computed below.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("bit_is_clear", &[8, 3], 0),      // 8 = 0b1000, bit 3 is set -> not clear -> 0
-        ("bit_is_clear", &[8, 2], 1),      // 8 = 0b1000, bit 2 is 0 -> clear -> 1
-        ("bit_is_clear", &[0, 0], 1),      // 0 has no bits set at all -> bit 0 clear -> 1
+        ("bit_is_clear", &[8, 3], 0), // 8 = 0b1000, bit 3 is set -> not clear -> 0
+        ("bit_is_clear", &[8, 2], 1), // 8 = 0b1000, bit 2 is 0 -> clear -> 1
+        ("bit_is_clear", &[0, 0], 1), // 0 has no bits set at all -> bit 0 clear -> 1
         ("bit_is_clear", &[65535, 15], 0), // all bits set -> bit 15 set -> not clear -> 0
         ("bit_is_clear", &[32767, 15], 1), // 0b0111...1 -> bit 15 is the only unset bit -> clear -> 1
     ];
@@ -222,8 +221,12 @@ fn verify_hamming_distance16() {
 #[test]
 fn popcount_u32_matches_hand_computed_expectations() {
     fn step(x: u64) -> u64 {
-        let mut cell = cell80::StateCell::bind(&crate::common::cell_src("popcount_u32"), "PopcountU32", None)
-            .unwrap_or_else(|e| panic!("bind popcount_u32: {e}"));
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("popcount_u32"),
+            "PopcountU32",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind popcount_u32: {e}"));
         cell.set("x", x).unwrap();
         cell.run(cell80::DEFAULT_CYCLES).unwrap();
         cell.get("out").unwrap_or_else(|| panic!("no out field"))

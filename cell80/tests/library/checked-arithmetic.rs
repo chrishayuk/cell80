@@ -420,7 +420,6 @@ fn smag_max_returns_the_larger_signed_sign_magnitude_value() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
 
-
 // round_div_checked_u32: round-to-nearest division of two u32 values (ties up), the wide,
 // escalating sibling of round_div. Checks a non-tie case, an exact tie (ties up), the
 // overflow-safe tie comparison near u32::MAX (where a naive 2*r >= b would silently wrap),
@@ -438,12 +437,20 @@ fn round_div_checked_u32_matches_hand_computed_cases() {
     }
 
     // 10 / 3 = 3.333... -> rounds down -> 3 (not a tie).
-    let (report, cell) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 10), ("b", 3)]);
+    let (report, cell) = step(
+        "round_div_checked_u32",
+        "RoundDivChecked",
+        &[("a", 10), ("b", 3)],
+    );
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("quotient"), Some(3));
 
     // 7 / 2 = 3.5 -> exact tie -> rounds up -> 4.
-    let (report, cell) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 7), ("b", 2)]);
+    let (report, cell) = step(
+        "round_div_checked_u32",
+        "RoundDivChecked",
+        &[("a", 7), ("b", 2)],
+    );
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("quotient"), Some(4));
 
@@ -459,7 +466,11 @@ fn round_div_checked_u32_matches_hand_computed_cases() {
     assert_eq!(cell.get("quotient"), Some(1));
 
     // b == 0 halts with needs_wider_math (0xFF05).
-    let (report, _) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 10), ("b", 0)]);
+    let (report, _) = step(
+        "round_div_checked_u32",
+        "RoundDivChecked",
+        &[("a", 10), ("b", 0)],
+    );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
@@ -556,12 +567,7 @@ fn add4_checked_u32_matches_defined_behaviour() {
     let (_, report, _) = step(
         "add4_checked_u32",
         "Add4Checked",
-        &[
-            ("a", 4_000_000_000),
-            ("b", 0),
-            ("c", 0),
-            ("d", 294_967_296),
-        ],
+        &[("a", 4_000_000_000), ("b", 0), ("c", 0), ("d", 294_967_296)],
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }

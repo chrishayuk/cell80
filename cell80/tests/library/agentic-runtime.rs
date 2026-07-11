@@ -528,7 +528,6 @@ fn rising_edge_step_fires_only_on_the_transition_to_one() {
     }
 }
 
-
 // falling_edge_step: reports 1 only on the exact step the signal goes 1 -> 0; 0 on hold-low,
 // hold-high, or the rising edge. prev is threaded step-to-step to simulate a live time series,
 // mirroring the rising_edge_step test above but for the opposite transition.

@@ -238,7 +238,6 @@ fn snap_up_u32_matches_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn normalize_0_100_u32_matches_hand_computed_expectations() {
     // NormalizeWide: wide (u32) sibling of normalize_0_100 -- rescales x within [lo, hi]

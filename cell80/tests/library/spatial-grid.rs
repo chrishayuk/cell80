@@ -384,8 +384,14 @@ fn aabb_intersection_matches_hand_computed_expectations() {
     // -> intersection (5,5,5,5), valid=1.
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
-            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 10),
+            ("h1", 10),
+            ("x2", 5),
+            ("y2", 5),
+            ("w2", 10),
+            ("h2", 10),
         ]),
         (5, 5, 5, 5, 1)
     );
@@ -393,8 +399,14 @@ fn aabb_intersection_matches_hand_computed_expectations() {
     // Disjoint boxes (0,0,5,5) and (10,10,5,5) -> right(5) <= left(10) -> not valid.
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
-            ("x2", 10), ("y2", 10), ("w2", 5), ("h2", 5),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 5),
+            ("h1", 5),
+            ("x2", 10),
+            ("y2", 10),
+            ("w2", 5),
+            ("h2", 5),
         ]),
         (0, 0, 0, 0, 0)
     );
@@ -403,8 +415,14 @@ fn aabb_intersection_matches_hand_computed_expectations() {
     // (matches aabb_intersect's edge-touching-doesn't-count convention).
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
-            ("x2", 5), ("y2", 0), ("w2", 5), ("h2", 5),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 5),
+            ("h1", 5),
+            ("x2", 5),
+            ("y2", 0),
+            ("w2", 5),
+            ("h2", 5),
         ]),
         (0, 0, 0, 0, 0)
     );
@@ -412,8 +430,14 @@ fn aabb_intersection_matches_hand_computed_expectations() {
     // Box2 fully inside box1 (0,0,20,20) contains (5,5,5,5) -> intersection equals box2.
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 20), ("h1", 20),
-            ("x2", 5), ("y2", 5), ("w2", 5), ("h2", 5),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 20),
+            ("h1", 20),
+            ("x2", 5),
+            ("y2", 5),
+            ("w2", 5),
+            ("h2", 5),
         ]),
         (5, 5, 5, 5, 1)
     );
@@ -423,8 +447,14 @@ fn aabb_intersection_matches_hand_computed_expectations() {
     // -> intersection (6,3,4,4), valid=1.
     assert_eq!(
         step(&[
-            ("x1", 2), ("y1", 3), ("w1", 8), ("h1", 4),
-            ("x2", 6), ("y2", 1), ("w2", 10), ("h2", 10),
+            ("x1", 2),
+            ("y1", 3),
+            ("w1", 8),
+            ("h1", 4),
+            ("x2", 6),
+            ("y2", 1),
+            ("w2", 10),
+            ("h2", 10),
         ]),
         (6, 3, 4, 4, 1)
     );
@@ -453,8 +483,14 @@ fn aabb_union_matches_defined_behaviour() {
     // Overlapping boxes (0,0,10,10) and (5,5,10,10) -> union spans (0,0) to (15,15).
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
-            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 10),
+            ("h1", 10),
+            ("x2", 5),
+            ("y2", 5),
+            ("w2", 10),
+            ("h2", 10),
         ]),
         (0, 0, 15, 15)
     );
@@ -462,8 +498,14 @@ fn aabb_union_matches_defined_behaviour() {
     // Disjoint boxes (0,0,5,5) and (20,20,5,5) -> union still spans their full extent (0,0,25,25).
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
-            ("x2", 20), ("y2", 20), ("w2", 5), ("h2", 5),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 5),
+            ("h1", 5),
+            ("x2", 20),
+            ("y2", 20),
+            ("w2", 5),
+            ("h2", 5),
         ]),
         (0, 0, 25, 25)
     );
@@ -471,8 +513,14 @@ fn aabb_union_matches_defined_behaviour() {
     // Box2 fully inside box1 -> union collapses to box1 exactly.
     assert_eq!(
         step(&[
-            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
-            ("x2", 2), ("y2", 2), ("w2", 3), ("h2", 3),
+            ("x1", 0),
+            ("y1", 0),
+            ("w1", 10),
+            ("h1", 10),
+            ("x2", 2),
+            ("y2", 2),
+            ("w2", 3),
+            ("h2", 3),
         ]),
         (0, 0, 10, 10)
     );
@@ -481,8 +529,14 @@ fn aabb_union_matches_defined_behaviour() {
     // (box1 wins on the right edge, box2 wins on the bottom edge).
     assert_eq!(
         step(&[
-            ("x1", 3), ("y1", 7), ("w1", 4), ("h1", 2),
-            ("x2", 1), ("y2", 1), ("w2", 2), ("h2", 20),
+            ("x1", 3),
+            ("y1", 7),
+            ("w1", 4),
+            ("h1", 2),
+            ("x2", 1),
+            ("y2", 1),
+            ("w2", 2),
+            ("h2", 20),
         ]),
         (1, 1, 6, 20)
     );
@@ -490,8 +544,14 @@ fn aabb_union_matches_defined_behaviour() {
     // Identical boxes -> union equals the box itself (idempotent).
     assert_eq!(
         step(&[
-            ("x1", 5), ("y1", 5), ("w1", 10), ("h1", 10),
-            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+            ("x1", 5),
+            ("y1", 5),
+            ("w1", 10),
+            ("h1", 10),
+            ("x2", 5),
+            ("y2", 5),
+            ("w2", 10),
+            ("h2", 10),
         ]),
         (5, 5, 10, 10)
     );
@@ -513,20 +573,36 @@ fn grid_coords_u32_matches_defined_behaviour() {
     }
 
     // index=0, width=5 -> x=0%5=0, y=0/5=0 (origin).
-    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 0), ("width", 5)]);
+    let cell = step(
+        "grid_coords_u32",
+        "GridCoordsWide",
+        &[("index", 0), ("width", 5)],
+    );
     assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
 
     // index=7, width=5 -> x=7%5=2, y=7/5=1: mirrors the narrow grid_coords case.
-    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 7), ("width", 5)]);
+    let cell = step(
+        "grid_coords_u32",
+        "GridCoordsWide",
+        &[("index", 7), ("width", 5)],
+    );
     assert_eq!((cell.get("x"), cell.get("y")), (Some(2), Some(1)));
 
     // index=100000, width=300 -> 300*333=99900, remainder 100 -> x=100, y=333.
-    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 100_000), ("width", 300)]);
+    let cell = step(
+        "grid_coords_u32",
+        "GridCoordsWide",
+        &[("index", 100_000), ("width", 300)],
+    );
     assert_eq!((cell.get("x"), cell.get("y")), (Some(100), Some(333)));
 
     // width=0 guard: must return (0, 0) rather than halting on DivByZero (unlike
     // div_floor_u32/mod_u32, which halt on a zero divisor).
-    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 123_456), ("width", 0)]);
+    let cell = step(
+        "grid_coords_u32",
+        "GridCoordsWide",
+        &[("index", 123_456), ("width", 0)],
+    );
     assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
 
     // index=u32::MAX=4294967295, width=65535 -> since 65535*65537 == 65536^2-1 == 4294967295
@@ -539,4 +615,3 @@ fn grid_coords_u32_matches_defined_behaviour() {
     );
     assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(65537)));
 }
-

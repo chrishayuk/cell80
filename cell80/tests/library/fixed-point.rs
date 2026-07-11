@@ -128,7 +128,6 @@ fn q_mul_i16_signed_q8_8_multiply_matches_hand_computed_cases() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn q_div_i16_signed_q8_8_divide_matches_hand_computed_cases() {
     // q_div_i16: signed Q8.8 divide via sign-magnitude (i16_mag/i16_neg decompose each input,

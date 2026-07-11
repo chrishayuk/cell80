@@ -149,7 +149,9 @@ fn sub_i16_matches_hand_computed_expectations() {
     // Overflow: a=i16::MAX (32767), b=i16::MIN (32768 as u16 bits): 32767 - (-32768) = 65535,
     // which doesn't fit in i16 -> escalates (needs_wider_math).
     let mut r = cell80::Runner::compile(&cell_src("sub_i16")).unwrap();
-    let report = r.run(None, &[32767, 32768], cell80::DEFAULT_CYCLES).unwrap();
+    let report = r
+        .run(None, &[32767, 32768], cell80::DEFAULT_CYCLES)
+        .unwrap();
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 

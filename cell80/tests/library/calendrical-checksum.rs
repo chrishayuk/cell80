@@ -129,7 +129,6 @@ fn luhn_check_digit_generates_digit_that_makes_luhn_check_pass() {
     }
 }
 
-
 #[test]
 fn is_weekend_matches_hand_computed_cases() {
     // dow codes per day_of_week: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday,

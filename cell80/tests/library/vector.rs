@@ -317,7 +317,6 @@ fn cosine_score_approx_matches_hand_computed_expectations() {
     assert_eq!(score(0, 0, 1, 1), 0);
 }
 
-
 #[test]
 fn cross2d_state_cell_matches_defined_behaviour() {
     // cross2d: signed scalar 2D cross product ax*by - ay*bx of (ax,ay) and (bx,by),
@@ -335,7 +334,10 @@ fn cross2d_state_cell_matches_defined_behaviour() {
             cell.set(f, v).unwrap();
         }
         cell.run(DEFAULT_CYCLES).unwrap();
-        (cell.get("cross_mag").unwrap(), cell.get("cross_neg").unwrap())
+        (
+            cell.get("cross_mag").unwrap(),
+            cell.get("cross_neg").unwrap(),
+        )
     }
 
     // Unit basis vectors: i x j = +1 (counter-clockwise sense).
@@ -393,9 +395,8 @@ fn vectors_orthogonal_hand_computed_cases() {
         (v as u16) as u64
     }
     fn orthogonal(a: (i16, i16, i16), b: (i16, i16, i16)) -> u16 {
-        let mut cell =
-            StateCell::bind(&cell_src("vectors_orthogonal"), "VectorsOrthogonal", None)
-                .unwrap_or_else(|e| panic!("bind vectors_orthogonal: {e}"));
+        let mut cell = StateCell::bind(&cell_src("vectors_orthogonal"), "VectorsOrthogonal", None)
+            .unwrap_or_else(|e| panic!("bind vectors_orthogonal: {e}"));
         for (f, v) in [
             ("ax", i16_bits(a.0)),
             ("ay", i16_bits(a.1)),

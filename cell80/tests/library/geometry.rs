@@ -542,7 +542,10 @@ fn geom_circle_circumference_approx_matches_hand_computed_values() {
     assert_eq!(run_cell("geom_circle_circumference_approx", &[1]), 6); // 1608 >> 8 = 6
     assert_eq!(run_cell("geom_circle_circumference_approx", &[10]), 62); // 16080 >> 8 = 62
     assert_eq!(run_cell("geom_circle_circumference_approx", &[100]), 628); // 160800 >> 8 = 628
-    assert_eq!(run_cell("geom_circle_circumference_approx", &[10433]), 65532); // last radius before overflow
+    assert_eq!(
+        run_cell("geom_circle_circumference_approx", &[10433]),
+        65532
+    ); // last radius before overflow
 
     // r = 10434 pushes (r*1608)>>8 to 65538, past u16::MAX -- must escalate, not wrap.
     let mut r = cell80::Runner::compile(&cell_src("geom_circle_circumference_approx")).unwrap();
@@ -559,16 +562,24 @@ fn shoelace_area_x2_i16_matches_hand_computed_values() {
         (v as u16) as u64
     }
     fn area_x2(x1: i16, y1: i16, x2: i16, y2: i16, x3: i16, y3: i16) -> u64 {
-        let mut cell = StateCell::bind(&cell_src("shoelace_area_x2_i16"), "ShoelaceAreaX2I16", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell =
+            StateCell::bind(&cell_src("shoelace_area_x2_i16"), "ShoelaceAreaX2I16", None)
+                .unwrap_or_else(|e| panic!("bind: {e}"));
         cell.set("x1", i16_bits(x1)).unwrap();
         cell.set("y1", i16_bits(y1)).unwrap();
         cell.set("x2", i16_bits(x2)).unwrap();
         cell.set("y2", i16_bits(y2)).unwrap();
         cell.set("x3", i16_bits(x3)).unwrap();
         cell.set("y3", i16_bits(y3)).unwrap();
-        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
-        assert_eq!(report.halt, cell80::Halt::Returned, "unexpected halt: {:?}", report.halt);
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
+        assert_eq!(
+            report.halt,
+            cell80::Halt::Returned,
+            "unexpected halt: {:?}",
+            report.halt
+        );
         cell.get("result").unwrap()
     }
 
@@ -632,7 +643,9 @@ fn shoelace_area_x2_quad_i16_matches_defined_behaviour() {
         cell.set("y3", i16_bits(y3)).unwrap();
         cell.set("x4", i16_bits(x4)).unwrap();
         cell.set("y4", i16_bits(y4)).unwrap();
-        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
         (report, cell)
     }
 
@@ -683,34 +696,69 @@ fn point_line_dist_sq_matches_defined_behaviour() {
 
     // Line is the x-axis (0,0)-(4,0), point (2,3): perpendicular distance 3, squared 9 =
     // 144/16 (unreduced: cross = 4*3 - 0*2 = 12, 12^2 = 144; segment len^2 = 4^2 = 16).
-    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 2), ("py", 3)]);
+    let (report, cell) = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("px", 2),
+        ("py", 3),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("num"), Some(144));
     assert_eq!(cell.get("den"), Some(16));
 
     // Line is the y-axis (0,0)-(0,5), point (3,2): perpendicular distance 3, squared 9 =
     // 225/25.
-    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 0), ("y2", 5), ("px", 3), ("py", 2)]);
+    let (report, cell) = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 0),
+        ("y2", 5),
+        ("px", 3),
+        ("py", 2),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("num"), Some(225));
     assert_eq!(cell.get("den"), Some(25));
 
     // Point exactly on the line (0,0)-(4,4): distance 0, so num is 0 even though den (32)
     // is not.
-    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 4), ("px", 2), ("py", 2)]);
+    let (report, cell) = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 4),
+        ("px", 2),
+        ("py", 2),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("num"), Some(0));
     assert_eq!(cell.get("den"), Some(32));
 
     // Negative coordinates: horizontal line y=-5 from (-5,-5) to (5,-5), point (0,0).
     // Distance 5, squared 25 = 2500/100.
-    let (report, cell) = step(&[("x1", -5), ("y1", -5), ("x2", 5), ("y2", -5), ("px", 0), ("py", 0)]);
+    let (report, cell) = step(&[
+        ("x1", -5),
+        ("y1", -5),
+        ("x2", 5),
+        ("y2", -5),
+        ("px", 0),
+        ("py", 0),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("num"), Some(2500));
     assert_eq!(cell.get("den"), Some(100));
 
     // The two line-defining points coincide (7,7)-(7,7): den would be 0, the line is
     // undefined -- must escalate 0xFF06 (out_of_domain) rather than return a bogus fraction.
-    let (report, _) = step(&[("x1", 7), ("y1", 7), ("x2", 7), ("y2", 7), ("px", 10), ("py", 10)]);
+    let (report, _) = step(&[
+        ("x1", 7),
+        ("y1", 7),
+        ("x2", 7),
+        ("y2", 7),
+        ("px", 10),
+        ("py", 10),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }

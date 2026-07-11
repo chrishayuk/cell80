@@ -282,6 +282,8 @@ mod tests {
             scale: None,
             finite_result: true,
             kernel_bank: None,
+            target: crate::Z80_CELL_TARGET.to_string(),
+            family_hash: None,
         };
         let idx = TfidfIndex::build(vec![
             mk(
@@ -330,6 +332,8 @@ mod tests {
             scale: None,
             finite_result: true,
             kernel_bank: None,
+            target: crate::Z80_CELL_TARGET.to_string(),
+            family_hash: None,
         };
         let idx = TfidfIndex::build(vec![mk("a", sig(2, 0)), mk("b", sig(0, 6))]);
 

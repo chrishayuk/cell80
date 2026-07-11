@@ -98,7 +98,6 @@ fn crc16_step_matches_hand_computed_crc16_arc() {
     assert_eq!(crc, 0xBB3D, "\"123456789\" -> {crc:#06x}, expected 0xbb3d");
 }
 
-
 // crc32_step: one CRC-32 (CRC-32/ISO-HDLC, poly 0xEDB88320 reflected) shift-xor step over a
 // byte on a full u32 accumulator -- crc8_step/crc16_step's loop widened one more rung, needing
 // a state cell (crc/out are u32) since u32 cannot be a free-fn parameter under the 16-bit
@@ -121,15 +120,18 @@ fn crc32_step_matches_hand_computed_crc32_iso_hdlc() {
     // CRC-32/ISO-HDLC polynomial 0xEDB88320 (reflected):
     //   c = crc ^ (byte & 0xFF); repeat 8x: c = (c>>1)^0xEDB88320 if (c&1)!=0 else c>>1
     let cases: &[(u32, u16, u32)] = &[
-        (0, 0, 0x00000000),          // zero crc, zero byte -> stays zero
-        (0, 1, 0x77073096),          // classic single-bit-input CRC-32 constant
-        (0xFFFFFFFF, 0, 0x2DFD1072), // all-ones crc, zero byte
+        (0, 0, 0x00000000),             // zero crc, zero byte -> stays zero
+        (0, 1, 0x77073096),             // classic single-bit-input CRC-32 constant
+        (0xFFFFFFFF, 0, 0x2DFD1072),    // all-ones crc, zero byte
         (0x12345678, 0x56, 0xDCC43999), // generic mixed crc + byte
-        (0, 0xFF, 0x2D02EF8D),       // zero crc, all-ones byte
+        (0, 0xFF, 0x2D02EF8D),          // zero crc, all-ones byte
     ];
     for (crc, byte, exp) in cases {
         let got = step(*crc, *byte);
-        assert_eq!(got, *exp, "crc32_step({crc:#010x}, {byte:#04x}) = {got:#010x}, expected {exp:#010x}");
+        assert_eq!(
+            got, *exp,
+            "crc32_step({crc:#010x}, {byte:#04x}) = {got:#010x}, expected {exp:#010x}"
+        );
     }
 
     // Full-message check: "123456789" through crc32_step from crc=0xFFFFFFFF, with the
@@ -141,7 +143,10 @@ fn crc32_step_matches_hand_computed_crc32_iso_hdlc() {
         crc = step(crc, *b as u16);
     }
     crc ^= 0xFFFFFFFF;
-    assert_eq!(crc, 0xCBF43926, "\"123456789\" -> {crc:#010x}, expected 0xcbf43926");
+    assert_eq!(
+        crc, 0xCBF43926,
+        "\"123456789\" -> {crc:#010x}, expected 0xcbf43926"
+    );
 }
 
 // mix32: full-width avalanche finalizer over a u32 (murmur3-style fmix32 chain, then

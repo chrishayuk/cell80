@@ -901,7 +901,6 @@ fn solve_linear_diophantine_hand_computed_cases() {
     assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(4), Some(0))); // y = 4
 }
 
-
 #[test]
 fn number_theory_is_pronic_number_oblong_via_4n_plus_1_square() {
     // is_pronic_number: n = k*(k+1) for some k >= 0 (0, 2, 6, 12, 20, 30, ...), checked via
@@ -926,7 +925,10 @@ fn number_theory_is_pronic_number_oblong_via_4n_plus_1_square() {
     for n in [0u16, 1, 2, 3, 6, 12, 20, 30, 42, 56, 65280, 65535] {
         let expected = is_pronic(n as u64) as u16;
         let got = run_cell("is_pronic_number", &[n]);
-        assert_eq!(got, expected, "is_pronic_number({n}) expected {expected}, got {got}");
+        assert_eq!(
+            got, expected,
+            "is_pronic_number({n}) expected {expected}, got {got}"
+        );
     }
 }
 
@@ -996,7 +998,9 @@ fn number_theory_wilson_factorial_mod() {
     // distinct from pow_mod (exponentiation, not a factorial) and wilson_theorem_check
     // (which fixes k = n-1 and compares to n-1) -- this is the general (k, m) utility.
     fn factorial_mod(n: u64, m: u64) -> u64 {
-        if m == 0 { return 0; }
+        if m == 0 {
+            return 0;
+        }
         let mut r = 1u64 % m;
         let mut i = 1u64;
         while i <= n {
@@ -1010,7 +1014,10 @@ fn number_theory_wilson_factorial_mod() {
     assert_eq!(run_cell("wilson_factorial_mod", &[0, 5]), 1);
     // 6! mod 7 = 720 mod 7 = 6 -- Wilson's theorem instance ((p-1)! == p-1 mod p, p=7 prime).
     assert_eq!(run_cell("wilson_factorial_mod", &[6, 7]), 6);
-    assert_eq!(run_cell("wilson_factorial_mod", &[6, 7]), factorial_mod(6, 7) as u16);
+    assert_eq!(
+        run_cell("wilson_factorial_mod", &[6, 7]),
+        factorial_mod(6, 7) as u16
+    );
     // 10! mod 6 = 0, since 6 = 2*3 and both factors already appear by i=3 (6 | 10!).
     assert_eq!(run_cell("wilson_factorial_mod", &[10, 6]), 0);
     // m == 0 guard: always 0 regardless of k, matching pow_mod's own m == 0 convention.
@@ -1018,7 +1025,10 @@ fn number_theory_wilson_factorial_mod() {
     // 10! mod 65521 (65521 is prime, the largest prime below 65536): 3628800 mod 65521 = 25145 --
     // exercises the u32-width running product past pow_mod's own m <= 256 domain.
     assert_eq!(run_cell("wilson_factorial_mod", &[10, 65521]), 25145);
-    assert_eq!(run_cell("wilson_factorial_mod", &[10, 65521]), factorial_mod(10, 65521) as u16);
+    assert_eq!(
+        run_cell("wilson_factorial_mod", &[10, 65521]),
+        factorial_mod(10, 65521) as u16
+    );
     // 4! mod 4 = 0 -- boundary case k == m, the modulus itself appears as the final factor.
     assert_eq!(run_cell("wilson_factorial_mod", &[4, 4]), 0);
 }

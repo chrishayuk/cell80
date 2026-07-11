@@ -452,8 +452,8 @@ fn kaprekar_stopping_time_slice() {
     // 6174 itself is 0 steps; repdigits (all four zero-padded digits equal) never
     // converge and escalate, as does any n outside the 4-digit domain.
     fn run(id: &str, args: &[u16]) -> cell80::Report {
-        let mut r = cell80::Runner::compile(&cell_src(id))
-            .unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        let mut r =
+            cell80::Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
         r.run(None, args, DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run {id}: {e}"))
     }
@@ -467,12 +467,24 @@ fn kaprekar_stopping_time_slice() {
     assert_eq!(run("kaprekar_stopping_time", &[2111]).result, 5);
 
     // Repdigits (all 4 zero-padded digits identical) never converge -- escalate.
-    assert_eq!(run("kaprekar_stopping_time", &[0]).halt, cell80::Halt::Escalate(0xFF06));
-    assert_eq!(run("kaprekar_stopping_time", &[1111]).halt, cell80::Halt::Escalate(0xFF06));
-    assert_eq!(run("kaprekar_stopping_time", &[9999]).halt, cell80::Halt::Escalate(0xFF06));
+    assert_eq!(
+        run("kaprekar_stopping_time", &[0]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+    assert_eq!(
+        run("kaprekar_stopping_time", &[1111]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
+    assert_eq!(
+        run("kaprekar_stopping_time", &[9999]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
 
     // Out of the 4-digit domain entirely.
-    assert_eq!(run("kaprekar_stopping_time", &[10000]).halt, cell80::Halt::Escalate(0xFF06));
+    assert_eq!(
+        run("kaprekar_stopping_time", &[10000]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
 }
 
 #[test]

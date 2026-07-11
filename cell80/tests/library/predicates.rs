@@ -195,7 +195,6 @@ fn nonzero_u32_wide_predicate() {
     assert_eq!(step(&[("x", 4_294_967_295)]), 1);
 }
 
-
 #[test]
 fn is_lt_i16_matches_hand_computed_expectations() {
     // is_lt_i16(a, b): 1 if a < b under true signed ordering, else 0 -- the signed
@@ -228,14 +227,16 @@ fn is_gt_i16_signed_ordering_matches_hand_computed_expectations() {
     // and is_gt_u32, and the direct complement of is_lt_i16. Exercises the case where a naive
     // unsigned bit-comparison would give the wrong answer (mixed-sign inputs), plus the ties
     // and extremes any comparison predicate needs.
-    fn i16_bits(v: i16) -> u16 { v as u16 }
+    fn i16_bits(v: i16) -> u16 {
+        v as u16
+    }
 
     let cases: &[(i16, i16, u16)] = &[
-        (5, 3, 1),          // both positive, a > b -> true
-        (3, 5, 0),          // both positive, a < b -> false
-        (-5, -3, 0),        // both negative: -5 > -3 is false
-        (1, -1, 1),         // mixed sign: 1 > -1 -> true (unsigned bit-compare would wrongly say 1 > 65535 is false)
-        (42, 42, 0),        // equal values -> false
+        (5, 3, 1),               // both positive, a > b -> true
+        (3, 5, 0),               // both positive, a < b -> false
+        (-5, -3, 0),             // both negative: -5 > -3 is false
+        (1, -1, 1), // mixed sign: 1 > -1 -> true (unsigned bit-compare would wrongly say 1 > 65535 is false)
+        (42, 42, 0), // equal values -> false
         (i16::MAX, i16::MIN, 1), // extremes: 32767 > -32768 -> true
     ];
     for &(a, b, expected) in cases {
@@ -278,7 +279,8 @@ fn is_ge_i16_hand_computed_cases() {
     use cell80::{Runner, DEFAULT_CYCLES};
 
     fn run(a: i16, b: i16) -> u16 {
-        let mut r = Runner::compile(&cell_src("is_ge_i16")).unwrap_or_else(|e| panic!("compile: {e}"));
+        let mut r =
+            Runner::compile(&cell_src("is_ge_i16")).unwrap_or_else(|e| panic!("compile: {e}"));
         r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run: {e}"))
             .result

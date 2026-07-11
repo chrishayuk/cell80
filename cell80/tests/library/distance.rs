@@ -72,7 +72,6 @@ fn manhattan_wide_matches_hand_computed_expectations() {
     assert_eq!(dist(0, 0, 65535, 65535), (65535, 131070));
 }
 
-
 #[test]
 fn euclid_dist_matches_hand_computed_expectations() {
     // Checks euclid_dist (cells/distance/euclid_dist.rs): true (non-squared) Euclidean

@@ -684,7 +684,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
         step(
             "smag_add_equals",
             "SmagAddEquals",
-            &[("mag_a", 5), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0), ("mag_c", 8), ("neg_c", 0)]
+            &[
+                ("mag_a", 5),
+                ("neg_a", 0),
+                ("mag_b", 3),
+                ("neg_b", 0),
+                ("mag_c", 8),
+                ("neg_c", 0)
+            ]
         )
         .0,
         1
@@ -694,7 +701,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
         step(
             "smag_add_equals",
             "SmagAddEquals",
-            &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 1), ("mag_c", 8), ("neg_c", 0)]
+            &[
+                ("mag_a", 5),
+                ("neg_a", 1),
+                ("mag_b", 3),
+                ("neg_b", 1),
+                ("mag_c", 8),
+                ("neg_c", 0)
+            ]
         )
         .0,
         0
@@ -704,7 +718,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
         step(
             "smag_add_equals",
             "SmagAddEquals",
-            &[("mag_a", 10), ("neg_a", 0), ("mag_b", 4), ("neg_b", 1), ("mag_c", 6), ("neg_c", 0)]
+            &[
+                ("mag_a", 10),
+                ("neg_a", 0),
+                ("mag_b", 4),
+                ("neg_b", 1),
+                ("mag_c", 6),
+                ("neg_c", 0)
+            ]
         )
         .0,
         1
@@ -714,7 +735,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
         step(
             "smag_add_equals",
             "SmagAddEquals",
-            &[("mag_a", 4), ("neg_a", 0), ("mag_b", 10), ("neg_b", 1), ("mag_c", 6), ("neg_c", 1)]
+            &[
+                ("mag_a", 4),
+                ("neg_a", 0),
+                ("mag_b", 10),
+                ("neg_b", 1),
+                ("mag_c", 6),
+                ("neg_c", 1)
+            ]
         )
         .0,
         1
@@ -725,7 +753,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
         step(
             "smag_add_equals",
             "SmagAddEquals",
-            &[("mag_a", 7), ("neg_a", 0), ("mag_b", 7), ("neg_b", 1), ("mag_c", 0), ("neg_c", 1)]
+            &[
+                ("mag_a", 7),
+                ("neg_a", 0),
+                ("mag_b", 7),
+                ("neg_b", 1),
+                ("mag_c", 0),
+                ("neg_c", 1)
+            ]
         )
         .0,
         1
@@ -735,7 +770,14 @@ fn smag_add_equals_recomputes_the_combine_and_canonicalizes_zero() {
     let (ok, halt) = step(
         "smag_add_equals",
         "SmagAddEquals",
-        &[("mag_a", 4_294_967_295), ("neg_a", 0), ("mag_b", 1), ("neg_b", 0), ("mag_c", 0), ("neg_c", 0)],
+        &[
+            ("mag_a", 4_294_967_295),
+            ("neg_a", 0),
+            ("mag_b", 1),
+            ("neg_b", 0),
+            ("mag_c", 0),
+            ("neg_c", 0),
+        ],
     );
     assert_eq!((ok, halt), (0, cell80::Halt::Returned));
 }
@@ -762,9 +804,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 5), ("neg_a", 0),
-            ("mag_b", 3), ("neg_b", 0),
-            ("mag_c", 15), ("neg_c", 0),
+            ("mag_a", 5),
+            ("neg_a", 0),
+            ("mag_b", 3),
+            ("neg_b", 0),
+            ("mag_c", 15),
+            ("neg_c", 0),
         ],
     );
     assert_eq!((ok, halt), (1, cell80::Halt::Returned));
@@ -774,9 +819,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 5), ("neg_a", 0),
-            ("mag_b", 3), ("neg_b", 0),
-            ("mag_c", 15), ("neg_c", 1),
+            ("mag_a", 5),
+            ("neg_a", 0),
+            ("mag_b", 3),
+            ("neg_b", 0),
+            ("mag_c", 15),
+            ("neg_c", 1),
         ],
     );
     assert_eq!(ok, 0);
@@ -786,9 +834,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 5), ("neg_a", 1),
-            ("mag_b", 3), ("neg_b", 0),
-            ("mag_c", 15), ("neg_c", 1),
+            ("mag_a", 5),
+            ("neg_a", 1),
+            ("mag_b", 3),
+            ("neg_b", 0),
+            ("mag_c", 15),
+            ("neg_c", 1),
         ],
     );
     assert_eq!(ok, 1);
@@ -800,9 +851,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 0), ("neg_a", 1),
-            ("mag_b", 100), ("neg_b", 0),
-            ("mag_c", 0), ("neg_c", 1),
+            ("mag_a", 0),
+            ("neg_a", 1),
+            ("mag_b", 100),
+            ("neg_b", 0),
+            ("mag_c", 0),
+            ("neg_c", 1),
         ],
     );
     assert_eq!(ok, 1);
@@ -812,9 +866,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 6), ("neg_a", 0),
-            ("mag_b", 7), ("neg_b", 1),
-            ("mag_c", 41), ("neg_c", 1),
+            ("mag_a", 6),
+            ("neg_a", 0),
+            ("mag_b", 7),
+            ("neg_b", 1),
+            ("mag_c", 41),
+            ("neg_c", 1),
         ],
     );
     assert_eq!(ok, 0);
@@ -827,9 +884,12 @@ fn smag_mul_equals_matches_hand_computed_expectations() {
         "smag_mul_equals",
         "SmagMulEquals",
         &[
-            ("mag_a", 4_294_967_295), ("neg_a", 0),
-            ("mag_b", 2), ("neg_b", 0),
-            ("mag_c", 4_294_967_294), ("neg_c", 0),
+            ("mag_a", 4_294_967_295),
+            ("neg_a", 0),
+            ("mag_b", 2),
+            ("neg_b", 0),
+            ("mag_c", 4_294_967_294),
+            ("neg_c", 0),
         ],
     );
     assert_eq!((ok, halt), (0, cell80::Halt::Returned));
@@ -1077,11 +1137,7 @@ fn isqrt_equals_u32_matches_hand_computed_expectations() {
     assert_eq!(ok, 0);
 
     // n = 0 -> isqrt(0) = 0. claim r=0 -> match.
-    let (ok, _) = verify(
-        "isqrt_equals_u32",
-        "IsqrtEqualsWide",
-        &[("n", 0), ("r", 0)],
-    );
+    let (ok, _) = verify("isqrt_equals_u32", "IsqrtEqualsWide", &[("n", 0), ("r", 0)]);
     assert_eq!(ok, 1);
 
     // n = u32::MAX = 4_294_967_295. 65535*65535 = 4_294_836_225 <= n, and
@@ -1101,4 +1157,3 @@ fn isqrt_equals_u32_matches_hand_computed_expectations() {
     );
     assert_eq!(ok, 0);
 }
-

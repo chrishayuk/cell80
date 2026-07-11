@@ -67,7 +67,6 @@ fn first_wave_safe_arith_cells_match_defined_behaviour() {
     );
 }
 
-
 #[test]
 fn round_div_rounds_to_nearest_quotient_with_ties_up() {
     // round_div(a, b): nearest-integer division, ties rounding UP (matching

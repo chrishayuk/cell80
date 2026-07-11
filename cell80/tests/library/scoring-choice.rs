@@ -463,7 +463,6 @@ fn choose_best4_matches_defined_behaviour() {
     );
 }
 
-
 #[test]
 fn choose_worst4_matches_hand_computed_cases() {
     // choose_worst4: lowest score wins (ties -> lowest index), the 4-candidate
@@ -483,10 +482,14 @@ fn choose_worst4_matches_hand_computed_cases() {
             "choose_worst4",
             "ChooseWorst4",
             &[
-                ("val_a", 100), ("score_a", 5),
-                ("val_b", 200), ("score_b", 9),
-                ("val_c", 300), ("score_c", 7),
-                ("val_d", 400), ("score_d", 6),
+                ("val_a", 100),
+                ("score_a", 5),
+                ("val_b", 200),
+                ("score_b", 9),
+                ("val_c", 300),
+                ("score_c", 7),
+                ("val_d", 400),
+                ("score_d", 6),
             ]
         ),
         100
@@ -498,10 +501,14 @@ fn choose_worst4_matches_hand_computed_cases() {
             "choose_worst4",
             "ChooseWorst4",
             &[
-                ("val_a", 100), ("score_a", 9),
-                ("val_b", 200), ("score_b", 9),
-                ("val_c", 300), ("score_c", 9),
-                ("val_d", 400), ("score_d", 9),
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 9),
+                ("val_c", 300),
+                ("score_c", 9),
+                ("val_d", 400),
+                ("score_d", 9),
             ]
         ),
         100
@@ -513,10 +520,14 @@ fn choose_worst4_matches_hand_computed_cases() {
             "choose_worst4",
             "ChooseWorst4",
             &[
-                ("val_a", 100), ("score_a", 9),
-                ("val_b", 200), ("score_b", 7),
-                ("val_c", 300), ("score_c", 1),
-                ("val_d", 400), ("score_d", 4),
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 7),
+                ("val_c", 300),
+                ("score_c", 1),
+                ("val_d", 400),
+                ("score_d", 4),
             ]
         ),
         300
@@ -528,10 +539,14 @@ fn choose_worst4_matches_hand_computed_cases() {
             "choose_worst4",
             "ChooseWorst4",
             &[
-                ("val_a", 100), ("score_a", 9),
-                ("val_b", 200), ("score_b", 7),
-                ("val_c", 300), ("score_c", 5),
-                ("val_d", 400), ("score_d", 0),
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 7),
+                ("val_c", 300),
+                ("score_c", 5),
+                ("val_d", 400),
+                ("score_d", 0),
             ]
         ),
         400
@@ -543,10 +558,14 @@ fn choose_worst4_matches_hand_computed_cases() {
             "choose_worst4",
             "ChooseWorst4",
             &[
-                ("val_a", 100), ("score_a", 9),
-                ("val_b", 200), ("score_b", 3),
-                ("val_c", 300), ("score_c", 3),
-                ("val_d", 400), ("score_d", 3),
+                ("val_a", 100),
+                ("score_a", 9),
+                ("val_b", 200),
+                ("score_b", 3),
+                ("val_c", 300),
+                ("score_c", 3),
+                ("val_d", 400),
+                ("score_d", 3),
             ]
         ),
         200
@@ -573,7 +592,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 90), ("score_b", 60), ("score_c", 20), ("margin", 30)]
+            &[
+                ("score_a", 90),
+                ("score_b", 60),
+                ("score_c", 20),
+                ("margin", 30)
+            ]
         ),
         1
     );
@@ -583,7 +607,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 70), ("score_b", 60), ("score_c", 65), ("margin", 20)]
+            &[
+                ("score_a", 70),
+                ("score_b", 60),
+                ("score_c", 65),
+                ("margin", 20)
+            ]
         ),
         0
     );
@@ -593,7 +622,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 90), ("score_b", 90), ("score_c", 20), ("margin", 5)]
+            &[
+                ("score_a", 90),
+                ("score_b", 90),
+                ("score_c", 20),
+                ("margin", 5)
+            ]
         ),
         0
     );
@@ -603,7 +637,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 50), ("score_b", 50), ("score_c", 50), ("margin", 0)]
+            &[
+                ("score_a", 50),
+                ("score_b", 50),
+                ("score_c", 50),
+                ("margin", 0)
+            ]
         ),
         1
     );
@@ -613,7 +652,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 10), ("score_b", 20), ("score_c", 100), ("margin", 80)]
+            &[
+                ("score_a", 10),
+                ("score_b", 20),
+                ("score_c", 100),
+                ("margin", 80)
+            ]
         ),
         1
     );
@@ -623,7 +667,12 @@ fn clear_winner3_matches_hand_computed_cases() {
         step(
             "clear_winner3",
             "ClearWinner3",
-            &[("score_a", 10), ("score_b", 20), ("score_c", 100), ("margin", 81)]
+            &[
+                ("score_a", 10),
+                ("score_b", 20),
+                ("score_c", 100),
+                ("margin", 81)
+            ]
         ),
         0
     );

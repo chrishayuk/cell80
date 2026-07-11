@@ -68,7 +68,6 @@ fn bucket3_u32_matches_defined_behaviour() {
     assert_eq!((result, out), (2, 2));
 }
 
-
 #[test]
 fn bucket4_matches_defined_behaviour() {
     // bucket4: the one-more-threshold arity sibling of bucket3 -- x<t1 -> 0, x<t2 -> 1,

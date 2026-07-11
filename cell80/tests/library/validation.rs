@@ -59,7 +59,6 @@ fn in_range_open_closed_matches_half_open_hi_inclusive_semantics() {
     }
 }
 
-
 #[test]
 fn in_range_closed_open_u32_matches_wide_half_open_semantics() {
     // InRangeClosedOpenWide(x, lo, hi) = 1 iff lo <= x < hi at u32 width — the wide sibling
@@ -79,12 +78,12 @@ fn in_range_closed_open_u32_matches_wide_half_open_semantics() {
     }
 
     let cases: &[(u32, u32, u32, u16)] = &[
-        (5, 0, 10, 1),                                 // interior value -> in range
-        (0, 0, 10, 1),                                 // at lo: included because lo is closed
-        (10, 0, 10, 0),                                // at hi: excluded because hi is open
-        (5, 5, 5, 0),                                  // empty range (lo == hi) -> nothing fits
-        (100_000, 50_000, 200_000, 1),                 // interior, past the u16 ceiling
-        (u32::MAX, 0, u32::MAX, 0),                    // x == hi == u32::MAX, hi is open -> 0
+        (5, 0, 10, 1),                 // interior value -> in range
+        (0, 0, 10, 1),                 // at lo: included because lo is closed
+        (10, 0, 10, 0),                // at hi: excluded because hi is open
+        (5, 5, 5, 0),                  // empty range (lo == hi) -> nothing fits
+        (100_000, 50_000, 200_000, 1), // interior, past the u16 ceiling
+        (u32::MAX, 0, u32::MAX, 0),    // x == hi == u32::MAX, hi is open -> 0
     ];
     for (x, lo, hi, expected) in cases.iter().copied() {
         let got = step(x, lo, hi);

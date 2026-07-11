@@ -158,12 +158,15 @@ fn bps_change_between_matches_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn compound_increase_by_bps_matches_defined_behaviour() {
     fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("compound_increase_by_bps"), "CompoundIncreaseByBps", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("compound_increase_by_bps"),
+            "CompoundIncreaseByBps",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }
@@ -204,8 +207,12 @@ fn compound_decrease_by_bps_matches_hand_computed_expectations() {
     // (the opposite-direction sibling): compounds the same bps discount rate over
     // `periods` iterations, escalating if any step's discount would exceed the running value.
     fn step(value: u64, bps: u64, periods: u64) -> (cell80::Report, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("compound_decrease_by_bps"), "CompoundDecreaseByBps", None)
-            .unwrap_or_else(|e| panic!("bind compound_decrease_by_bps: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("compound_decrease_by_bps"),
+            "CompoundDecreaseByBps",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind compound_decrease_by_bps: {e}"));
         cell.set("value", value).unwrap();
         cell.set("bps", bps).unwrap();
         cell.set("periods", periods).unwrap();
