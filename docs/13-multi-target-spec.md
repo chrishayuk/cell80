@@ -268,8 +268,12 @@ top:
   `check_ir!` each carry an RV32 leg — every battery program agrees across rustc,
   both Z80 targets, the IR interpreter, and the RV32 executor (195/195), and the
   signed-32 corpus runs natively on a machine backend for the first time. This
-  exceeds M1's "first gcd-class cell" gate; still owed for full B3: the
-  `run_program*` legs and memory-window comparison against the interpreter.
+  exceeds M1's "first gcd-class cell" gate. *Completed 2026-07-11 (`09fc6eb`):*
+  the `run_program*`/`run_program_regs`/`run_program_pruned` legs landed
+  (`Lowered::const_data()` carries the pool), and `run_to_memory` compares the
+  RV32 data window against the reference interpreter's image **byte for byte,
+  unmasked** — one memory map, no execution substrate inside either. Per-file
+  coverage ≥90% across both new crates.
 - B4. RP2350 bring-up: crt0, linker script enforcing SRAM residency for cells, one
   Hazard3 core active, `mcycle` harness. **Acceptance (the co-sign):** executor cycle
   prediction vs silicon `mcycle` agreement within a documented bound (target: exact for

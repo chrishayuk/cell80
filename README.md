@@ -151,15 +151,16 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval **on the 209-cell snapshot** (`cargo run --release --example
-retrieval_compare -p cell80`, re-verified against the shipped binary; the library has
-since grown to 221 — these numbers are the latest published checkpoint of the scale
-curve): the default index is
+Retrieval **on the 395-cell library** (checkpoint 17, 797 cases — the latest published
+point on the scale curve; `docs/library-growth.md` carries the full history): the
+default index is
 **TF-IDF** (word + char-3-gram cosine), with a small complexity-based tie-break — **direct
-P@1 0.82, paraphrase 0.36, adversarial 0.50**. A **type-led** re-rank (`CellHost::search`,
-the CLI, `cell80-py`, and `cell80-mcp` all route through it as of 2026-07-05) scores the
-same on this library — **82 / 36 / 50, identically tied with plain TF-IDF** — an honest,
-not-a-regression result: the residual misses are *same-shape siblings* (`min`/`min_u32`,
+P@1 0.82, paraphrase 0.39, adversarial 0.42**. Against the 114-cell baseline the library
+has grown 3.5× with paraphrase essentially flat and adversarial still *above* it (+2.3
+pts) — the registered kill-gate does not trip — but adversarial fell ~8 pts from the
+209-cell checkpoint as the library filled with deliberately similar family members
+(`min`/`min_u32`, width/signedness siblings). That residual is *same-shape siblings*
+(`min`/`min_u32`,
 the sign-magnitude family `smag_add`/`smag_sub`/`smag_mul`/`smag_div`/`smag_cmp`) that a
 predicate/transformer signal can't separate, since both sides of each pair are
 non-predicates. The lever for those is **behavioural I/O-example routing**

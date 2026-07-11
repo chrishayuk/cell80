@@ -4,9 +4,9 @@
 //! M-extension instruction, laid little-endian.
 //!
 //! Encodings follow the RISC-V unprivileged spec exactly (R/I/S/B/U/J formats);
-//! the encoding goldens in `tests/encodings.rs` pin known-good words, and the
-//! **Sail model stands as the emission adversary in CI** (linux-only job — spec
-//! §6 risk 2; the goldens are the local, always-on check).
+//! the encoding goldens in `tests/encodings.rs` pin known-good words. **Still
+//! owed:** the Sail model as the emission adversary (a linux-only CI job — spec
+//! §6 risk 2); the goldens are the local, always-on check until it lands.
 
 /// An RV32 integer register, by ABI name. `X0` reads zero and swallows writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
