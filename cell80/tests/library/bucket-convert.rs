@@ -67,3 +67,42 @@ fn bucket3_u32_matches_defined_behaviour() {
     let (result, out) = step(4_000_000_000, 200_000, 300_000);
     assert_eq!((result, out), (2, 2));
 }
+
+
+#[test]
+fn bucket4_matches_defined_behaviour() {
+    // bucket4: the one-more-threshold arity sibling of bucket3 -- x<t1 -> 0, x<t2 -> 1,
+    // x<t3 -> 2, else 3 (>= is inclusive on the upper side, matching bucket3's convention).
+    // Requires a state cell purely for arg count (4 params: x + 3 thresholds).
+    fn step(x: u16, t1: u16, t2: u16, t3: u16) -> (u16, u16) {
+        let mut cell =
+            cell80::StateCell::bind(&crate::common::cell_src("bucket4"), "Bucket4", None)
+                .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x", x as u64).unwrap();
+        cell.set("t1", t1 as u64).unwrap();
+        cell.set("t2", t2 as u64).unwrap();
+        cell.set("t3", t3 as u64).unwrap();
+        let report = cell.run(cell80::DEFAULT_CYCLES).unwrap();
+        (report.result, cell.get("out").unwrap() as u16)
+    }
+
+    // Below t1 -> bucket 0.
+    let (result, out) = step(5, 10, 20, 30);
+    assert_eq!((result, out), (0, 0));
+
+    // Exactly at t1 (inclusive boundary, x>=t1) -> bucket 1.
+    let (result, out) = step(10, 10, 20, 30);
+    assert_eq!((result, out), (1, 1));
+
+    // Strictly between t2 and t3 -> bucket 2.
+    let (result, out) = step(25, 10, 20, 30);
+    assert_eq!((result, out), (2, 2));
+
+    // Exactly at t3 (inclusive boundary, x>=t3) -> bucket 3.
+    let (result, out) = step(30, 10, 20, 30);
+    assert_eq!((result, out), (3, 3));
+
+    // Well past all thresholds (u16::MAX) -> bucket 3.
+    let (result, out) = step(65535, 10, 20, 30);
+    assert_eq!((result, out), (3, 3));
+}

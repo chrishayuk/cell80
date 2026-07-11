@@ -378,3 +378,185 @@ fn variance_from_sums_matches_hand_computed_expectations() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn std_dev_from_sums_matches_hand_computed_expectations() {
+    // std_dev_from_sums: population standard deviation from precomputed sums
+    // (n, sum_x, sum_x2), stddev = floor(sqrt((n*sum_x2 - sum_x^2)/n^2)) -- the
+    // sqrt-taking completion of variance_from_sums's own num/den fraction. Every
+    // expected value below was hand-computed against the definition before running.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // x = [1,2,3,4,5] -> n=5, sum_x=15, sum_x2=55.
+    // variance = (5*55 - 15^2)/5^2 = (275-225)/25 = 50/25 = 2 exactly.
+    // stddev = floor(sqrt(2)) = 1.
+    let (_, cell) = step(
+        "std_dev_from_sums",
+        "StdDevFromSums",
+        &[("n", 5), ("sum_x", 15), ("sum_x2", 55)],
+    );
+    assert_eq!(cell.get("stddev"), Some(1));
+
+    // x = [2,4,4,4,5,5,7,9] -> n=8, sum_x=40, sum_x2=232.
+    // variance = (8*232 - 40^2)/8^2 = (1856-1600)/64 = 256/64 = 4 exactly.
+    // stddev = floor(sqrt(4)) = 2.
+    let (_, cell) = step(
+        "std_dev_from_sums",
+        "StdDevFromSums",
+        &[("n", 8), ("sum_x", 40), ("sum_x2", 232)],
+    );
+    assert_eq!(cell.get("stddev"), Some(2));
+
+    // x = [1,2,3] -> n=3, sum_x=6, sum_x2=14.
+    // variance = (3*14 - 6^2)/3^2 = 6/9 -> truncates to 0 under integer division
+    // (matches variance_from_sums's own num=6, den=9 case) -> stddev = floor(sqrt(0)) = 0.
+    let (_, cell) = step(
+        "std_dev_from_sums",
+        "StdDevFromSums",
+        &[("n", 3), ("sum_x", 6), ("sum_x2", 14)],
+    );
+    assert_eq!(cell.get("stddev"), Some(0));
+
+    // n == 0 -> escalate out_of_domain, same guard as variance_from_sums.
+    let (report, _) = step(
+        "std_dev_from_sums",
+        "StdDevFromSums",
+        &[("n", 0), ("sum_x", 0), ("sum_x2", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Inconsistent sums (n=1, sum_x=5, sum_x2=1): n*sum_x2 (=1) < sum_x^2 (=25) is
+    // impossible for a real dataset -> escalate needs_wider_math rather than silently
+    // underflow, same as variance_from_sums's own corrupted-input case.
+    let (report, _) = step(
+        "std_dev_from_sums",
+        "StdDevFromSums",
+        &[("n", 1), ("sum_x", 5), ("sum_x2", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn sample_variance_from_sums_matches_hand_computed_expectations() {
+    // sample_variance_from_sums: unbiased (Bessel-corrected) sample variance from
+    // precomputed sums (n, sum_x, sum_x2), var = (n*sum_x2 - sum_x^2)/(n*(n-1)) as
+    // an exact fraction num/den. Every expected fraction below was hand-computed
+    // against the definition before running.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // x = [1,2,3] -> n=3, sum_x=6, sum_x2=14.
+    // num = 3*14 - 6^2 = 42-36 = 6; den = 3*2 = 6; sample var = 6/6 = 1.
+    let (_, cell) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 3), ("sum_x", 6), ("sum_x2", 14)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(6), Some(6)));
+
+    // x = [2,2,2] -> no spread -> n=3, sum_x=6, sum_x2=12. num=0, den=6.
+    let (_, cell) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 3), ("sum_x", 6), ("sum_x2", 12)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(0), Some(6)));
+
+    // x = [1,2,3,4,5] -> n=5, sum_x=15, sum_x2=55.
+    // num = 5*55 - 225 = 50; den = 5*4 = 20; sample var = 50/20 = 2.5.
+    let (_, cell) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 5), ("sum_x", 15), ("sum_x2", 55)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(50), Some(20)));
+
+    // n == 1 -> sample variance undefined with fewer than two observations.
+    let (report, _) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 1), ("sum_x", 5), ("sum_x2", 25)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n == 0 -> escalate out_of_domain.
+    let (report, _) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 0), ("sum_x", 0), ("sum_x2", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Inconsistent sums (n=2, sum_x=10, sum_x2=1) -- n*sum_x2 < sum_x^2 is
+    // mathematically impossible for a real dataset, so this signals corrupted
+    // input and must escalate needs_wider_math rather than silently underflow.
+    let (report, _) = step(
+        "sample_variance_from_sums",
+        "SampleVarianceFromSums",
+        &[("n", 2), ("sum_x", 10), ("sum_x2", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn sample_covariance_from_sums_matches_hand_computed() {
+    // Same host-oracle pattern as the pack's other precomputed-sums cells: bind the
+    // state cell, set fields, run, and check the exact signed-fraction outputs.
+    fn verify(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("sample_covariance_from_sums"), "SampleCovarianceFromSums", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // x=[1,2,3], y=[2,4,6] (y=2x, perfectly correlated). n=3, sum_x=6, sum_y=12, sum_xy=28.
+    // cov = (3*28 - 6*12) / (3*2) = (84-72)/6 = 12/6 = 2 (vs. population's 12/9 = 4/3 --
+    // the n/(n-1) Bessel correction scales it up by 3/2).
+    let (_, c) = verify(&[("n", 3), ("sum_x", 6), ("sum_y", 12), ("sum_xy", 28)]);
+    assert_eq!(
+        (c.get("num_mag"), c.get("num_neg"), c.get("den")),
+        (Some(12), Some(0), Some(6))
+    );
+
+    // Inversely related: x=[1,2,3], y=[6,4,2] -- sum_xy=1*6+2*4+3*2=20.
+    // cov = (3*20 - 6*12)/6 = (60-72)/6 => negative, so num_neg flips to 1.
+    let (_, c) = verify(&[("n", 3), ("sum_x", 6), ("sum_y", 12), ("sum_xy", 20)]);
+    assert_eq!(
+        (c.get("num_mag"), c.get("num_neg"), c.get("den")),
+        (Some(12), Some(1), Some(6))
+    );
+
+    // Minimal valid n=2: x=[1,2], y=[1,2] -- sum_x=3, sum_y=3, sum_xy=5.
+    // cov = (2*5 - 3*3) / (2*1) = 1/2.
+    let (_, c) = verify(&[("n", 2), ("sum_x", 3), ("sum_y", 3), ("sum_xy", 5)]);
+    assert_eq!(
+        (c.get("num_mag"), c.get("num_neg"), c.get("den")),
+        (Some(1), Some(0), Some(2))
+    );
+
+    // n < 2 is undefined for a sample covariance (Bessel's n-1 denominator) --
+    // escalates out_of_domain regardless of the other sums.
+    let (report, _) = verify(&[("n", 1), ("sum_x", 5), ("sum_y", 5), ("sum_xy", 25)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+    let (report, _) = verify(&[("n", 0), ("sum_x", 0), ("sum_y", 0), ("sum_xy", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

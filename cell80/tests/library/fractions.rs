@@ -473,3 +473,80 @@ fn frac_sub_whole_matches_hand_computed() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn frac_div_whole_matches_hand_computed() {
+    // Divide a fraction by a whole number, staying a fraction: (n/d)/k = n/(d*k), reduced via gcd_u32.
+    fn verify(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("frac_div_whole"), "FracDivWhole", None)
+            .unwrap_or_else(|e| panic!("bind frac_div_whole: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // (2/3) / 4 = 2/12 = 1/6
+    let (_, c) = verify(&[("n", 2), ("d", 3), ("k", 4)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(6)));
+
+    // (6/4) / 3 = 6/12 = 1/2 (reduces through both n and d*k)
+    let (_, c) = verify(&[("n", 6), ("d", 4), ("k", 3)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2)));
+
+    // (5/3) / 2 = 5/6 (already lowest terms)
+    let (_, c) = verify(&[("n", 5), ("d", 3), ("k", 2)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(5), Some(6)));
+
+    // n == 0 short-circuits to 0/1 regardless of d, k
+    let (_, c) = verify(&[("n", 0), ("d", 5), ("k", 3)]);
+    assert_eq!((c.get("num"), c.get("den")), (Some(0), Some(1)));
+
+    // d == 0 halts out_of_domain
+    let (report, _) = verify(&[("n", 1), ("d", 0), ("k", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // k == 0 halts out_of_domain
+    let (report, _) = verify(&[("n", 1), ("d", 2), ("k", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // d * k overflows u32 (3_000_000_000 * 2 > u32::MAX) halts needs_wider_math
+    let (report, _) = verify(&[("n", 1), ("d", 3_000_000_000), ("k", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn frac_is_improper_cases() {
+    // Host-oracle check for frac_is_improper: the explicit complement of frac_is_proper
+    // (n >= d rather than n < d), same escalation on zero denominator.
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 3/4 : n < d -> proper, not improper -> 0
+    let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 3), ("d", 4)]);
+    assert_eq!(report.result, 0);
+
+    // 4/4 : n == d, exactly one whole -> improper -> 1
+    let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 4), ("d", 4)]);
+    assert_eq!(report.result, 1);
+
+    // 5/4 : n > d -> improper -> 1
+    let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 5), ("d", 4)]);
+    assert_eq!(report.result, 1);
+
+    // 0/5 : n < d -> proper, not improper -> 0
+    let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 0), ("d", 5)]);
+    assert_eq!(report.result, 0);
+
+    // 7/0 : zero denominator -> escalate out_of_domain, same halt code as frac_is_proper
+    let (report, _) = verify("frac_is_improper", "FracIsImproper", &[("n", 7), ("d", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

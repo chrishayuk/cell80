@@ -197,3 +197,91 @@ fn increase_percent_u32_matches_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("result"), Some(200));
 }
+
+
+// Checks permille_u32 (PermilleWide) against hand-computed expectations: the u32-width
+// per-mille part*1000/whole (0 if whole == 0), uncapped (no 65535 saturation, unlike the
+// u16 permille original) and escalating (needs_wider_math) if the part*1000 multiply
+// overflows u32 rather than silently wrapping.
+#[test]
+fn permille_u32_wide_sibling_matches_defined_behaviour() {
+    fn step(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("permille_u32"), "PermilleWide", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // 1) 25/200 -> part*1000/whole = 25000/200 = 125 (basic exact division)
+    let (_, report, cell) = step(&[("part", 25), ("whole", 200)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(125));
+
+    // 2) 1/4 -> 1000/4 = 250, matches the u16 permille sibling's own case on shared domain
+    let (_, report, cell) = step(&[("part", 1), ("whole", 4)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(250));
+
+    // 3) whole == 0 guards to 0, same convention as the u16 original
+    let (_, report, cell) = step(&[("part", 5), ("whole", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // 4) part=700000, whole=1000 -> 700000, well past u16::MAX (65535) -- proves this is
+    // uncapped rather than saturating like the u16 sibling would.
+    let (_, report, cell) = step(&[("part", 700_000), ("whole", 1000)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(700_000));
+
+    // 5) part*1000 overflowing u32 (4294967295*1000 > u32::MAX) escalates rather than
+    // wrapping around.
+    let (_, report, _) = step(&[("part", 4294967295), ("whole", 3)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn ratio_255_u32_matches_defined_behaviour() {
+    // Wide sibling of ratio_255: part*255/whole at u32 width, uncapped (no 65535
+    // saturation, unlike the u16 original) and escalating (needs_wider_math) if the
+    // part*255 multiply overflows u32 rather than silently wrapping.
+    fn step(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("ratio_255_u32"), "Ratio255Wide", None)
+            .unwrap_or_else(|e| panic!("bind ratio_255_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // 1) part=1, whole=2 -> 1*255/2 = 127 (matches ratio_255's u16 case)
+    let (_, report, cell) = step(&[("part", 1), ("whole", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(127));
+
+    // 2) part=1, whole=1 -> 1*255/1 = 255 (full ratio)
+    let (_, report, cell) = step(&[("part", 1), ("whole", 1)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(255));
+
+    // 3) whole == 0 guards to 0, same convention as the u16 original
+    let (_, report, cell) = step(&[("part", 5), ("whole", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // 4) part=700000, whole=1000 -> 700000*255/1000 = 178500, well past u16::MAX
+    // (65535) -- proves this is uncapped rather than saturating like the u16 sibling.
+    let (_, report, cell) = step(&[("part", 700000), ("whole", 1000)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(178500));
+
+    // 5) part*255 overflowing u32 (4294967295*255 > u32::MAX) escalates rather
+    // than wrapping around.
+    let (_, report, _) = step(&[("part", 4294967295), ("whole", 3)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

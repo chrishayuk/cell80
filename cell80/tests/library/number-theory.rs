@@ -900,3 +900,306 @@ fn solve_linear_diophantine_hand_computed_cases() {
     assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(2), Some(1))); // x = -2
     assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(4), Some(0))); // y = 4
 }
+
+
+#[test]
+fn number_theory_is_pronic_number_oblong_via_4n_plus_1_square() {
+    // is_pronic_number: n = k*(k+1) for some k >= 0 (0, 2, 6, 12, 20, 30, ...), checked via
+    // the 4n+1-is-a-perfect-square equivalence, using the same branch-free bitwise
+    // integer-sqrt loop isqrt_u32/cosine_score_approx use, inlined as a u32 local since
+    // cells can't call each other.
+    fn is_pronic(n: u64) -> bool {
+        // Host-side oracle: find k with k*(k+1) == n by walking k up from 0.
+        let mut k: u64 = 0;
+        loop {
+            let v = k * (k + 1);
+            if v == n {
+                break true;
+            }
+            if v > n {
+                break false;
+            }
+            k += 1;
+        }
+    }
+
+    for n in [0u16, 1, 2, 3, 6, 12, 20, 30, 42, 56, 65280, 65535] {
+        let expected = is_pronic(n as u64) as u16;
+        let got = run_cell("is_pronic_number", &[n]);
+        assert_eq!(got, expected, "is_pronic_number({n}) expected {expected}, got {got}");
+    }
+}
+
+#[test]
+fn number_theory_sum_of_two_squares() {
+    // sum_of_two_squares: predicate -- does n == a^2 + b^2 for some a,b >= 0?
+    // n=0: 0 = 0^2 + 0^2 -> 1
+    assert_eq!(run_cell("sum_of_two_squares", &[0]), 1);
+    // n=3: only squares <= 3 are 0 and 1; neither 3-0=3 nor 3-1=2 is a perfect square -> 0
+    assert_eq!(run_cell("sum_of_two_squares", &[3]), 0);
+    // n=25: 0^2 + 5^2 = 25 -> 1
+    assert_eq!(run_cell("sum_of_two_squares", &[25]), 1);
+    // n=50: 1^2 + 7^2 = 50 -> 1
+    assert_eq!(run_cell("sum_of_two_squares", &[50]), 1);
+    // n=2023 = 7 * 17^2; the prime 7 (== 4k+3) divides n to an odd power, so by the
+    // sum-of-two-squares theorem n is not expressible -> 0
+    assert_eq!(run_cell("sum_of_two_squares", &[2023]), 0);
+    // n=65535 (u16::MAX) = 3 * 5 * 17 * 257; the prime 3 (== 4k+3) divides to an odd
+    // power -> not expressible; also exercises the top of the u16 domain -> 0
+    assert_eq!(run_cell("sum_of_two_squares", &[65535]), 0);
+}
+
+#[test]
+fn verify_is_carmichael_number() {
+    // 561 = 3 * 11 * 17, the smallest Carmichael number. n-1 = 560; (3-1)=2 | 560,
+    // (11-1)=10 | 560, (17-1)=16 | 560 (560 / 16 = 35). Korselt holds -> 1.
+    assert_eq!(run_cell("is_carmichael_number", &[561]), 1);
+    // 1105 = 5 * 13 * 17, the 2nd Carmichael number. n-1 = 1104; 4 | 1104 (276),
+    // 12 | 1104 (92), 16 | 1104 (69). Korselt holds -> 1.
+    assert_eq!(run_cell("is_carmichael_number", &[1105]), 1);
+    // 15 = 3 * 5, squarefree and composite but NOT Carmichael: n-1 = 14, and
+    // (5-1)=4 does not divide 14 -> Korselt fails -> 0.
+    assert_eq!(run_cell("is_carmichael_number", &[15]), 0);
+    // 4 = 2^2 is not squarefree (fails the squareful check before Korselt is even tried) -> 0.
+    assert_eq!(run_cell("is_carmichael_number", &[4]), 0);
+    // 13 is prime, not composite (only one distinct prime factor: itself) -> 0.
+    assert_eq!(run_cell("is_carmichael_number", &[13]), 0);
+}
+
+#[test]
+fn wilson_theorem_check_hand_computed_cases() {
+    // Wilson's theorem: n is prime iff (n-1)! == -1 (mod n), i.e. (n-1)! mod n == n-1.
+    // Every expected value below is a hand-computed factorial-mod-n, not taken from the
+    // compiled cell's own output.
+    // n = 2: 1! = 1, 1 mod 2 = 1 = n-1 -> prime (1).
+    assert_eq!(run_cell("wilson_theorem_check", &[2]), 1);
+    // n = 3: 2! = 2, 2 mod 3 = 2 = n-1 -> prime (1).
+    assert_eq!(run_cell("wilson_theorem_check", &[3]), 1);
+    // n = 4: 3! = 6, 6 mod 4 = 2, n-1 = 3, 2 != 3 -> composite (0).
+    assert_eq!(run_cell("wilson_theorem_check", &[4]), 0);
+    // n = 5: 4! = 24, 24 mod 5 = 4 = n-1 -> prime (1).
+    assert_eq!(run_cell("wilson_theorem_check", &[5]), 1);
+    // n = 7: 6! = 720, 720 mod 7 = 6 = n-1 -> prime (1).
+    assert_eq!(run_cell("wilson_theorem_check", &[7]), 1);
+    // n = 9: 8! = 40320, divisible by 9 (3*6 appear as factors) so 40320 mod 9 = 0,
+    // which != n-1 = 8 -> composite (0).
+    assert_eq!(run_cell("wilson_theorem_check", &[9]), 0);
+    // n = 1: below the n >= 2 domain, returns 0 (matches is_prime's convention for n < 2).
+    assert_eq!(run_cell("wilson_theorem_check", &[1]), 0);
+    // n = 0: below the n >= 2 domain, returns 0.
+    assert_eq!(run_cell("wilson_theorem_check", &[0]), 0);
+}
+
+#[test]
+fn number_theory_wilson_factorial_mod() {
+    // wilson_factorial_mod: k! mod m as a running product at u32 width per step,
+    // distinct from pow_mod (exponentiation, not a factorial) and wilson_theorem_check
+    // (which fixes k = n-1 and compares to n-1) -- this is the general (k, m) utility.
+    fn factorial_mod(n: u64, m: u64) -> u64 {
+        if m == 0 { return 0; }
+        let mut r = 1u64 % m;
+        let mut i = 1u64;
+        while i <= n {
+            r = (r * (i % m)) % m;
+            i += 1;
+        }
+        r
+    }
+
+    // 0! mod 5 = 1.
+    assert_eq!(run_cell("wilson_factorial_mod", &[0, 5]), 1);
+    // 6! mod 7 = 720 mod 7 = 6 -- Wilson's theorem instance ((p-1)! == p-1 mod p, p=7 prime).
+    assert_eq!(run_cell("wilson_factorial_mod", &[6, 7]), 6);
+    assert_eq!(run_cell("wilson_factorial_mod", &[6, 7]), factorial_mod(6, 7) as u16);
+    // 10! mod 6 = 0, since 6 = 2*3 and both factors already appear by i=3 (6 | 10!).
+    assert_eq!(run_cell("wilson_factorial_mod", &[10, 6]), 0);
+    // m == 0 guard: always 0 regardless of k, matching pow_mod's own m == 0 convention.
+    assert_eq!(run_cell("wilson_factorial_mod", &[5, 0]), 0);
+    // 10! mod 65521 (65521 is prime, the largest prime below 65536): 3628800 mod 65521 = 25145 --
+    // exercises the u32-width running product past pow_mod's own m <= 256 domain.
+    assert_eq!(run_cell("wilson_factorial_mod", &[10, 65521]), 25145);
+    assert_eq!(run_cell("wilson_factorial_mod", &[10, 65521]), factorial_mod(10, 65521) as u16);
+    // 4! mod 4 = 0 -- boundary case k == m, the modulus itself appears as the final factor.
+    assert_eq!(run_cell("wilson_factorial_mod", &[4, 4]), 0);
+}
+
+#[test]
+fn number_theory_is_pow2_u32_wide_sibling() {
+    // is_pow2_u32: the wide (u32-domain) sibling of is_pow2, same x != 0 && (x & (x-1)) == 0
+    // bit trick as is_pow2 but at u32 width -- mirrors is_prime/is_prime_u32's and
+    // is_square/is_square_u32's same-pack wide-sibling shape. A state cell (x: u32, result: u16)
+    // since u32 can't be a free-fn param/return; the && short-circuits so x - 1u32 is never
+    // evaluated when x == 0 (which would otherwise underflow).
+    fn is_pow2_wide(x: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("is_pow2_u32"), "IsPow2Wide", None)
+            .unwrap_or_else(|e| panic!("bind is_pow2_u32: {e}"));
+        cell.set("x", x).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run is_pow2_u32: {e}"));
+        cell.get("result").unwrap()
+    }
+
+    assert_eq!(is_pow2_wide(0), 0); // 0 is not a power of two
+    assert_eq!(is_pow2_wide(1), 1); // 2^0
+    assert_eq!(is_pow2_wide(2), 1); // 2^1
+    assert_eq!(is_pow2_wide(3), 0); // not a power of two
+    assert_eq!(is_pow2_wide(65536), 1); // 2^16, beyond is_pow2's u16 ceiling (65535)
+    assert_eq!(is_pow2_wide(2_147_483_648), 1); // 2^31, the largest power of two fitting u32
+    assert_eq!(is_pow2_wide(4_294_967_295), 0); // u32::MAX = 2^32 - 1, not a power of two
+    assert_eq!(is_pow2_wide(100_000), 0); // between 65536 and 131072, not a power of two
+}
+
+#[test]
+fn number_theory_next_pow2_u32_wide_sibling() {
+    // next_pow2_u32: the wide (u32-domain) sibling of next_pow2, smallest power of two >= n.
+    // Mirrors is_pow2/is_pow2_u32's same-pack wide-sibling shape: a state cell
+    // (n: u32, result: u32) since u32 can't be a free-fn param/return. run() returns
+    // a status flag (1u16); the u32 field `result` carries the actual answer.
+    fn next_pow2_wide(n: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("next_pow2_u32"), "NextPow2Wide", None)
+            .unwrap_or_else(|e| panic!("bind next_pow2_u32: {e}"));
+        cell.set("n", n).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run next_pow2_u32: {e}"));
+        cell.get("result").unwrap()
+    }
+
+    // next_pow2_u32(0) = 1, matching next_pow2's own zero convention.
+    assert_eq!(next_pow2_wide(0), 1);
+    // 1 is already a power of two.
+    assert_eq!(next_pow2_wide(1), 1);
+    // 5 rounds up to 8 (2^2=4 < 5 <= 8=2^3), matching next_pow2's own small-input behaviour.
+    assert_eq!(next_pow2_wide(5), 8);
+    // 65536 == 2^16, beyond next_pow2's u16 ceiling (65535) -- exact power stays itself.
+    assert_eq!(next_pow2_wide(65536), 65536);
+    // 2147483648 == 2^31, the largest power of two that fits in u32 -- stays itself.
+    assert_eq!(next_pow2_wide(2_147_483_648), 2_147_483_648);
+    // 2147483649 == 2^31 + 1: the next power of two would be 2^32, which overflows u32,
+    // so the cell reports 0 (matching next_pow2's own past-ceiling convention).
+    assert_eq!(next_pow2_wide(2_147_483_649), 0);
+    // u32::MAX also overflows past the next power of two.
+    assert_eq!(next_pow2_wide(4_294_967_295), 0);
+}
+
+// magic_constants: M(n) = n*(n^2+1)/2, the row/column/diagonal sum for an n x n magic
+// square filled with 1..n^2. Cubic growth means it escalates (0xFF05) well before n
+// reaches u16::MAX; n=51 is the first value that overflows the u16 result.
+#[test]
+fn magic_constants_closed_form() {
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // n=1: M(1) = 1*2/2 = 1 (trivial 1x1 square).
+    assert_eq!(run_cell("magic_constants", &[1]), 1);
+    // n=3: M(3) = 3*10/2 = 15 (the classic Lo Shu 3x3 square).
+    assert_eq!(run_cell("magic_constants", &[3]), 15);
+    // n=4: M(4) = 4*17/2 = 34 (Durer's 4x4 magic square).
+    assert_eq!(run_cell("magic_constants", &[4]), 34);
+    // n=5: M(5) = 5*26/2 = 65.
+    assert_eq!(run_cell("magic_constants", &[5]), 65);
+    // n=50: M(50) = 50*2501/2 = 62525, still <= 65535, no halt.
+    assert_eq!(run_cell("magic_constants", &[50]), 62525);
+    // n=51: M(51) = 51*2602/2 = 66351, exceeds 65535 -> escalates.
+    assert_eq!(
+        free_report("magic_constants", &[51]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    );
+}
+
+#[test]
+fn number_theory_digit_sort_asc() {
+    // digit_sort_asc: reassemble n's decimal digits sorted ascending (smallest digit most
+    // significant); a sorted-in leading zero just contributes a value-0 place, so it drops
+    // naturally on reconstruction. Distinct from digit_reverse (positional reverse, not a sort).
+    assert_eq!(run_cell("digit_sort_asc", &[4213]), 1234); // digits 4,2,1,3 -> 1,2,3,4
+    assert_eq!(run_cell("digit_sort_asc", &[120]), 12); // digits 1,2,0 -> 0,1,2 -> leading zero drops
+    assert_eq!(run_cell("digit_sort_asc", &[0]), 0); // single digit 0
+    assert_eq!(run_cell("digit_sort_asc", &[7]), 7); // single digit passes through unchanged
+    assert_eq!(run_cell("digit_sort_asc", &[1000]), 1); // digits 1,0,0,0 -> 0,0,0,1 -> leading zeros drop
+    assert_eq!(run_cell("digit_sort_asc", &[65535]), 35556); // digits 6,5,5,3,5 -> 3,5,5,5,6
+}
+
+#[test]
+fn digit_sort_desc_matches_hand_computed_cases() {
+    // digit_sort_desc: reassemble n's decimal digits sorted descending (largest digit
+    // most significant). Same extraction/local-array/bubble-sort technique as
+    // digit_sort_asc, comparison direction flipped. Escalates (0xFF05) when
+    // rearranging digits pushes the value past u16::MAX (e.g. 59999 -> 99995).
+
+    // 4213 -> digits {4,2,1,3} sorted descending -> 4321 (spec example).
+    assert_eq!(run_cell("digit_sort_desc", &[4213]), 4321);
+    // 0 has no digits to extract; result is 0.
+    assert_eq!(run_cell("digit_sort_desc", &[0]), 0);
+    // Single digit is a no-op.
+    assert_eq!(run_cell("digit_sort_desc", &[7]), 7);
+    // 40 -> digits {4,0} already descending -> 40 (unchanged).
+    assert_eq!(run_cell("digit_sort_desc", &[40]), 40);
+    // 1999 -> digits {1,9,9,9} sorted descending -> 9991.
+    assert_eq!(run_cell("digit_sort_desc", &[1999]), 9991);
+
+    // 59999 -> digits {5,9,9,9,9} sorted descending -> 99995, which exceeds u16::MAX,
+    // so the cell must escalate rather than silently wrap.
+    let src = cell_src("digit_sort_desc");
+    let mut r = Runner::compile(&src).unwrap();
+    let report = r.run(None, &[59999], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn verify_num_digits_base_generalizes_num_digits_to_arbitrary_base() {
+    // num_digits_base(n, base): divide-until-zero digit count at an arbitrary base
+    // (base >= 2), generalizing the decimal-only num_digits the same way
+    // is_palindromic_number generalized palindrome-checking with a base parameter.
+    fn cell_src(id: &str) -> String {
+        let cells_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells");
+        let p = cell80::find_cell_file(&cells_dir, id).unwrap_or_else(|e| panic!("{e}"));
+        std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
+    }
+    fn run_cell(id: &str, args: &[u16]) -> u16 {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+            .result
+    }
+
+    // 0 has 1 digit regardless of base, matching num_digits's convention.
+    assert_eq!(run_cell("num_digits_base", &[0, 10]), 1);
+    // 255 = 0xFF -> 2 hex digits; 255 = 0b11111111 -> 8 binary digits.
+    assert_eq!(run_cell("num_digits_base", &[255, 16]), 2);
+    assert_eq!(run_cell("num_digits_base", &[255, 2]), 8);
+    // 8 written in base 8 is "10" -> 2 digits.
+    assert_eq!(run_cell("num_digits_base", &[8, 8]), 2);
+    // 65535 = 2^16 - 1 is sixteen 1-bits in binary.
+    assert_eq!(run_cell("num_digits_base", &[65535, 2]), 16);
+
+    // base < 2 escalates (halt 0xFF06, out_of_domain).
+    let mut r = Runner::compile(&cell_src("num_digits_base")).unwrap();
+    let report = r.run(None, &[42, 1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn sum_digit_powers_hand_computed() {
+    // sum_digit_powers: sum of each decimal digit of n raised to power p, sum(digit_i^p).
+    // Generalizes digit_sum (p=1) with an explicit exponent, using a u32 running
+    // accumulator with an overflow guard on both the per-digit term and the running sum.
+    fn check(n: u16, p: u16) -> (u16, cell80::Halt) {
+        let mut r = Runner::compile(&cell_src("sum_digit_powers")).unwrap();
+        let out = r.run(None, &[n, p], DEFAULT_CYCLES).unwrap();
+        (out.result, out.halt)
+    }
+
+    // 123, p=2: 1^2 + 2^2 + 3^2 = 1 + 4 + 9 = 14
+    assert_eq!(check(123, 2).0, 14);
+    // 0, p=5: no digits looped, sum stays 0 (matches digit_sum's convention for n=0)
+    assert_eq!(check(0, 5).0, 0);
+    // 9, p=0: single digit 9, 9^0 = 1 (0^0=1 convention, matches pow_small.rs)
+    assert_eq!(check(9, 0).0, 1);
+    // 99, p=3: 9^3 + 9^3 = 729 + 729 = 1458
+    assert_eq!(check(99, 3).0, 1458);
+    // 9, p=6: 9^6 = 531441, exceeds u16 -> escalates (halt 0xFF05, needs_wider_math)
+    assert_eq!(check(9, 6).1, cell80::Halt::Escalate(0xFF05));
+}

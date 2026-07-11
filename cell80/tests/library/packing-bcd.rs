@@ -132,3 +132,63 @@ fn unpack_u16_pair_matches_defined_behaviour() {
     assert_eq!(step(0x0000FFFF), (0, 0xFFFF));
     assert_eq!(step(0xFFFF0000), (0xFFFF, 0));
 }
+
+
+// Verifies bcd_encode16 packs a four-digit decimal value into a full u16 as one BCD digit
+// per nibble (thousands<<12 | hundreds<<8 | tens<<4 | units) -- the 4-nibble extension of
+// bcd_encode's 2-digit/1-byte form. Cases hand-computed: zero, all-nines max, a generic
+// mixed-digit value, a small value with leading zero digits, and a value with an internal
+// zero digit (tests that the zero digit's nibble stays cleanly zero, not skipped).
+#[test]
+fn bcd_encode16_matches_defined_behaviour() {
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("bcd_encode16", &[0], 0x0000),       // all digits zero
+        ("bcd_encode16", &[9999], 0x9999),    // max four-digit value, no nibble overflow
+        ("bcd_encode16", &[1234], 0x1234),    // generic distinct digits
+        ("bcd_encode16", &[42], 0x0042),      // leading zero digits (thousands, hundreds)
+        ("bcd_encode16", &[8005], 0x8005),    // internal zero digits (hundreds, tens)
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got:#06x}, expected {exp:#06x}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+// Verifies bcd_decode16 unpacks a 4-nibble packed-BCD u16 back to its binary value:
+// each nibble is a decimal digit weighted by its place (1000/100/10/1), summed.
+// This is the inverse of bcd_encode16, the 4-digit extension of the existing
+// bcd_encode/bcd_decode 2-digit pair. Cases hand-computed: all-zero, all-nine (max
+// valid 4-digit BCD 9999), a generic mixed-digit value, an internal leading-zero
+// digit (isolates each nibble's place value), and a single low digit.
+#[test]
+fn bcd_decode16_matches_defined_behaviour() {
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("bcd_decode16", &[0x0000], 0),
+        ("bcd_decode16", &[0x9999], 9999),
+        ("bcd_decode16", &[0x1234], 1234),
+        ("bcd_decode16", &[0x0507], 507),
+        ("bcd_decode16", &[0x0001], 1),
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}

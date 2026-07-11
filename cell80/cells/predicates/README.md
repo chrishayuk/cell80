@@ -7,21 +7,27 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (17)
+## Landed (23)
 
 | id | signature | summary |
 |---|---|---|
 | `eq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a == b, else 0. |
 | `is_even` | `run(x: u16) -> u16` | Returns 1 if x is even, else 0. |
+| `is_even_u32` | `IsEvenWide::run() -> u16` | Returns 1 if a wide u32 value is even, else 0 — the wide sibling of is_even (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `is_ge` | `run(a: u16, b: u16) -> u16` | Returns 1 if a >= b (at least), else 0. |
+| `is_ge_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a >= b (at least) under true signed ordering, else 0 -- the non-strict sibling of is_gt_i16/is_lt_i16 and the signed counterpart of is_ge, which bit-reinterprets negative values as large positives and so orders them wrong. |
 | `is_ge_u32` | `IsGeWide::run() -> u16` | Returns 1 if a >= b (at least) at wide u32 width, else 0 — the wide sibling of is_ge (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_gt` | `run(a: u16, b: u16) -> u16` | Returns 1 if a > b (strictly greater than), else 0. |
+| `is_gt_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a > b under true signed ordering (-1 > -32768), else 0 -- the direct complement of is_lt_i16 and the signed sibling of is_gt (u16) and is_gt_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
 | `is_gt_u32` | `IsGtWide::run() -> u16` | Returns 1 if a > b (strictly greater than) at wide u32 width, else 0 — the wide sibling of is_gt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_le` | `run(a: u16, b: u16) -> u16` | Returns 1 if a <= b (at most), else 0. |
+| `is_le_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a <= b (at most) under true signed ordering, else 0 -- the non-strict sibling of is_lt_i16/is_gt_i16 and the signed counterpart of is_le, which bit-reinterprets negative values as large positives and so orders them wrong. |
 | `is_le_u32` | `IsLeWide::run() -> u16` | Returns 1 if a <= b (at most) at wide u32 width, else 0 — the wide sibling of is_le (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_lt` | `run(a: u16, b: u16) -> u16` | Returns 1 if a < b (strictly less than), else 0. |
+| `is_lt_i16` | `run(a: i16, b: i16) -> u16` | Returns 1 if a < b under true signed ordering, else 0 -- the signed sibling of is_lt/is_lt_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number (min_i16/max_i16 already flag this and prove native i16 comparison codegens correctly). |
 | `is_lt_u32` | `IsLtWide::run() -> u16` | Returns 1 if a < b (strictly less than) at wide u32 width, else 0 — the wide sibling of is_lt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_odd` | `run(x: u16) -> u16` | Returns 1 if x is odd, else 0. |
+| `is_odd_u32` | `IsOddWide::run() -> u16` | Returns 1 if a wide u32 value is odd, else 0 — the wide sibling of is_odd (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `is_zero` | `run(x: u16) -> u16` | Returns 1 if x is zero, else 0. |
 | `is_zero_u32` | `IsZeroWide::run() -> u16` | Returns 1 if a wide u32 value is zero, else 0 — the wide sibling of is_zero (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `neq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a != b, else 0. |

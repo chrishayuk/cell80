@@ -7,12 +7,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (7)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
 | `int_to_q8` | `run(x: u16) -> u16` | Convert a plain unsigned integer into Q8.8 fixed-point representation (x << 8) -- the encode step every other fixed-point cell (q_mul, q_div, q_lerp, q_sigmoid, q_sqrt) assumes has already happened to its inputs. |
+| `int_to_q8_i16` | `run(x: i16) -> i16` | Convert a plain signed integer into Q8.8 fixed-point representation (x << 8) -- the signed counterpart of int_to_q8 (which only accepts unsigned u16 and cannot represent negatives), needed as the encode step for this pack's already-signed cells (q_sigmoid, q_mul_i16, q_div_i16, clamp_i16) since none of them currently has one of their own. |
 | `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
+| `q_div_i16` | `run(a: i16, b: i16) -> i16` | Signed Q8.8 fixed-point divide of two i16 values via sign-magnitude: decompose each into (magnitude, sign) with i16_mag/i16_neg, divide magnitudes as (mag_a << 8) / mag_b at wide u32 width (mirroring q_div's own (a<<8)/b), sign is the XOR of the two input signs -- q_div's signed counterpart, since q_div only accepts unsigned u16 while q_sigmoid already established a signed i16 domain in this pack. |
 | `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
 | `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
 | `q_mul_i16` | `run(a: i16, b: i16) -> i16` | Signed Q8.8 fixed-point multiply of two i16 values via sign-magnitude: decompose each into (magnitude, sign) with i16_mag/i16_neg, multiply magnitudes and shift right 8 (mirroring q_mul's own (a*b)>>8 at wide width), sign is the XOR of the two input signs -- q_mul's signed counterpart, since q_mul only accepts unsigned u16 while q_sigmoid already established a signed i16 domain in this pack. |

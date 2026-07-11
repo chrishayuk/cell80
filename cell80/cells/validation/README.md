@@ -7,11 +7,13 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (3)
+## Landed (5)
 
 | id | signature | summary |
 |---|---|---|
 | `in_range_closed_open` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x < hi (half-open interval: closed at lo, open at hi), else 0 — the scalar 1D counterpart of point_in_rect's per-axis half-open test, distinct from range_check (fully closed) and between_exclusive (fully open). |
+| `in_range_closed_open_u32` | `InRangeClosedOpenWide::run() -> u16` | Returns 1 if lo <= x < hi (half-open interval: closed at lo, open at hi) at wide u32 width, else 0 — the wide sibling of in_range_closed_open (which works over u16). |
 | `in_range_open_closed` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo < x <= hi (half-open interval: open at lo, closed at hi), else 0 — completes the interval family with range_check (fully closed), between_exclusive (fully open), and in_range_closed_open (closed at lo, open at hi). |
+| `in_range_open_closed_u32` | `InRangeOpenClosedWide::run() -> u16` | Returns 1 if lo < x <= hi at wide u32 width, else 0 — the wide sibling of in_range_open_closed (which works over u16). |
 | `range_check` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x <= hi, else 0. |
 

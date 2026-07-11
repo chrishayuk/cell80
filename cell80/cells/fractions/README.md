@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (25)
+## Landed (27)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,7 +16,9 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `frac_avg2` | `FracAvg2::run() -> u16` | Average of two fractions na/da and nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_cmp` | `FracCmp::run() -> u16` | Compare two fractions na/da vs nb/db via cross-multiplication (works on unreduced fractions, e.g. 1/2 vs 2/4): 0 if less, 1 if equal, 2 if greater. |
 | `frac_div` | `FracDiv::run() -> u16` | Divide two fractions (na/da) / (nb/db) = (na*db)/(da*nb), reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_div_whole` | `FracDivWhole::run() -> u16` | Divide a fraction by a whole number, staying a fraction: (n/d) / k = n/(d*k), reduced to lowest terms via the shared gcd_u32 kernel — the missing divide-direction sibling of frac_scale (which multiplies by a whole). |
 | `frac_eq` | `FracEq::run() -> u16` | Returns 1 if two fractions na/da and nb/db are equal, else 0 — via cross-multiplication, so unreduced-but-equivalent fractions (e.g. 1/2 vs 2/4) still compare equal without needing to reduce first. |
+| `frac_is_improper` | `FracIsImproper::run() -> u16` | Returns 1 if a fraction n/d is improper (n >= d, i.e. one whole or more), else 0 — the explicit complement of frac_is_proper. Escalates (halt 0xFF06, out_of_domain) if d == 0. |
 | `frac_is_proper` | `FracIsProper::run() -> u16` | Returns 1 if a fraction n/d is proper (n < d, i.e. less than one whole), else 0. Escalates (halt 0xFF06, out_of_domain) if d == 0. |
 | `frac_max` | `FracMax::run() -> u16` | The larger of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
 | `frac_min` | `FracMin::run() -> u16` | The smaller of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |

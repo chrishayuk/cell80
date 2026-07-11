@@ -7,12 +7,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (8)
+## Landed (10)
 
 | id | signature | summary |
 |---|---|---|
 | `bcd_decode` | `run(bcd: u16) -> u16` | Decode a packed BCD byte (tens in the high nibble, units in the low nibble) back to its binary value. |
+| `bcd_decode16` | `run(bcd: u16) -> u16` | Decode a four-digit packed-BCD u16 (one decimal digit per nibble) back to its binary value (0-9999) -- the inverse of bcd_encode16, mirroring the bcd_encode/bcd_decode pairing convention. |
 | `bcd_encode` | `run(n: u16) -> u16` | Encode a two-digit decimal value (0-99) as packed BCD: tens in the high nibble, units in the low nibble. |
+| `bcd_encode16` | `run(n: u16) -> u16` | Encode a four-digit decimal value (0-9999) as packed BCD across a full u16: thousands, hundreds, tens, units, one decimal digit per nibble -- the 4-nibble extension of bcd_encode's 2-nibble (0-99) form, parallel to how pack_u8's byte ladder extends to pack_u16_pair's word ladder. |
 | `nibble_hi` | `run(x: u16) -> u16` | Extract the high nibble of the low byte of x: (x >> 4) & 0xF, the unpacking counterpart pack_nibbles lacks. |
 | `nibble_lo` | `run(x: u16) -> u16` | Low nibble of x (x & 0xF) -- the low-nibble counterpart to nibble_hi, distinct from low_byte's byte-level mask (x & 0xFF). |
 | `pack_nibbles` | `run(hi: u16, lo: u16) -> u16` | Pack two 4-bit nibbles into one byte: (hi << 4) \| lo. Each input masked to its low nibble. |

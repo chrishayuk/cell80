@@ -462,3 +462,169 @@ fn choose_best4_matches_defined_behaviour() {
         20
     );
 }
+
+
+#[test]
+fn choose_worst4_matches_hand_computed_cases() {
+    // choose_worst4: lowest score wins (ties -> lowest index), the 4-candidate
+    // sibling of choose_worst3 and the lowest-score counterpart of choose_best4.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // score_a=5 is lowest among 5,9,7,6 -> val_a=100
+    assert_eq!(
+        step(
+            "choose_worst4",
+            "ChooseWorst4",
+            &[
+                ("val_a", 100), ("score_a", 5),
+                ("val_b", 200), ("score_b", 9),
+                ("val_c", 300), ("score_c", 7),
+                ("val_d", 400), ("score_d", 6),
+            ]
+        ),
+        100
+    );
+
+    // all tie at score 9 -> lowest index (a) -> val_a=100
+    assert_eq!(
+        step(
+            "choose_worst4",
+            "ChooseWorst4",
+            &[
+                ("val_a", 100), ("score_a", 9),
+                ("val_b", 200), ("score_b", 9),
+                ("val_c", 300), ("score_c", 9),
+                ("val_d", 400), ("score_d", 9),
+            ]
+        ),
+        100
+    );
+
+    // score_c=1 is lowest among 9,7,1,4 -> val_c=300
+    assert_eq!(
+        step(
+            "choose_worst4",
+            "ChooseWorst4",
+            &[
+                ("val_a", 100), ("score_a", 9),
+                ("val_b", 200), ("score_b", 7),
+                ("val_c", 300), ("score_c", 1),
+                ("val_d", 400), ("score_d", 4),
+            ]
+        ),
+        300
+    );
+
+    // score_d=0 is lowest among 9,7,5,0 -> val_d=400
+    assert_eq!(
+        step(
+            "choose_worst4",
+            "ChooseWorst4",
+            &[
+                ("val_a", 100), ("score_a", 9),
+                ("val_b", 200), ("score_b", 7),
+                ("val_c", 300), ("score_c", 5),
+                ("val_d", 400), ("score_d", 0),
+            ]
+        ),
+        400
+    );
+
+    // b, c, d tie at lowest score 3, a is higher -> lowest index among tied (b) wins -> val_b=200
+    assert_eq!(
+        step(
+            "choose_worst4",
+            "ChooseWorst4",
+            &[
+                ("val_a", 100), ("score_a", 9),
+                ("val_b", 200), ("score_b", 3),
+                ("val_c", 300), ("score_c", 3),
+                ("val_d", 400), ("score_d", 3),
+            ]
+        ),
+        200
+    );
+}
+
+#[test]
+fn clear_winner3_matches_hand_computed_cases() {
+    // clear_winner3: decides decisiveness directly from three raw candidate scores by
+    // exploiting that, for three values, the second-highest equals the median
+    // (top = max(max(a,b),c), second = median3(a,b,c)); distinct from is_clear_winner /
+    // clear_winner_u32, which require the caller to have already picked top/second.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // top=90, second(median)=60, diff=30 >= margin 30 -> decisive (1)
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 90), ("score_b", 60), ("score_c", 20), ("margin", 30)]
+        ),
+        1
+    );
+
+    // top=70, second=65, diff=5 < margin 20 -> not decisive (0)
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 70), ("score_b", 60), ("score_c", 65), ("margin", 20)]
+        ),
+        0
+    );
+
+    // a and b tie at the top (90,90,20): the median IS the tied value (90), so diff=0 -> not decisive
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 90), ("score_b", 90), ("score_c", 20), ("margin", 5)]
+        ),
+        0
+    );
+
+    // all three equal (50,50,50): top=second=50, diff=0 >= margin 0 -> decisive (1)
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 50), ("score_b", 50), ("score_c", 50), ("margin", 0)]
+        ),
+        1
+    );
+
+    // c is the clear top (10,20,100): diff=80 >= margin 80, exact boundary -> decisive (1)
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 10), ("score_b", 20), ("score_c", 100), ("margin", 80)]
+        ),
+        1
+    );
+
+    // same candidates, margin one more than the diff -> not decisive (0)
+    assert_eq!(
+        step(
+            "clear_winner3",
+            "ClearWinner3",
+            &[("score_a", 10), ("score_b", 20), ("score_c", 100), ("margin", 81)]
+        ),
+        0
+    );
+}

@@ -350,3 +350,157 @@ fn double_factorial_checked_recurrence_skips_every_other_term() {
     let (_, report, _) = step("double_factorial", "DoubleFactorial", &[("n", 22)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn partition_number_matches_oeis_a000041_and_escalates_on_overflow() {
+    // partition_number: p(n), the integer partition function (order doesn't count,
+    // parts may repeat) -- OEIS A000041. Distinct from bell_number/fubini_number/
+    // stirling_second, which all count SET partitions, not integer partitions.
+    // Values cross-checked against the published A000041 sequence (and, for the
+    // overflow boundary, independently against the pentagonal number theorem
+    // recurrence, not against this cell's own DP).
+    fn step(n: u64, cycles: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("partition_number"), "PartitionNumber", None)
+            .unwrap_or_else(|e| panic!("bind partition_number: {e}"));
+        cell.set("n", n).unwrap();
+        let report = cell.run(cycles).unwrap();
+        (report, cell)
+    }
+
+    let (_, cell) = step(0, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(1)); // p(0) = 1, the empty sum, by convention
+    let (_, cell) = step(4, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(5)); // 4, 3+1, 2+2, 2+1+1, 1+1+1+1
+    let (_, cell) = step(5, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(7));
+    let (_, cell) = step(10, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(42));
+    let (_, cell) = step(20, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(627));
+
+    // p(127) = 3_913_864_295, the last value that fits u32::MAX. The O(n^2) DP needs
+    // more than DEFAULT_CYCLES at this n (same shape as square_pyramidal_number's
+    // documented cycle-budget note) -- budget explicitly, per the cell's own doc note.
+    let (report, cell) = step(127, 50_000_000);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(3_913_864_295));
+
+    // p(128) = 4_351_078_600 overflows u32::MAX -- must escalate, never silently wrap.
+    let (report, _) = step(128, 50_000_000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // n = 150 is out of the array bound (n must be < 150).
+    let (report, _) = step(150, 50_000_000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn verify_distinct_partitions_matches_oeis_a000009_and_escalates() {
+    // distinct_partitions: Q(n), the number of partitions of n into distinct
+    // (no repeated) parts -- a 0/1 knapsack pass over the same subset-sum DP array
+    // shape partition_number uses (inner loop i runs n down to k, not k up to n, so
+    // each part size is folded in at most once). Values cross-checked against OEIS
+    // A000009 via an independent Python subset-sum DP.
+    fn step(n: u64, cycles: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("distinct_partitions"), "DistinctPartitions", None)
+            .unwrap_or_else(|e| panic!("bind distinct_partitions: {e}"));
+        cell.set("n", n).unwrap();
+        let report = cell.run(cycles).unwrap();
+        (report, cell)
+    }
+
+    let (_, cell) = step(0, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(1)); // Q(0) = 1, the empty sum by convention
+
+    let (_, cell) = step(4, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(2)); // {4}, {3,1}
+
+    let (_, cell) = step(7, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(5)); // {7},{6,1},{5,2},{4,3},{4,2,1}
+
+    let (_, cell) = step(20, DEFAULT_CYCLES);
+    assert_eq!(cell.get("result"), Some(64)); // OEIS A000009
+
+    // Reaching the overflow point needs more iterations than DEFAULT_CYCLES affords
+    // for this pack's checked-arithmetic-call-per-iteration cost (the same reason
+    // square_pyramidal_number's test budgets a larger cycle count explicitly). n=255
+    // (just under the array bound) hits its own dp[n] overflow early, at k=54 per an
+    // independent Python subset-sum DP -- well inside a 20,000,000-cycle budget.
+    let (report, _) = step(255, 20_000_000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // n = 256 is out of the array bound (n must be < 256); this halt fires before
+    // any loop work runs, so it is cheap even under DEFAULT_CYCLES.
+    let (report, _) = step(256, DEFAULT_CYCLES);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn verify_trinomial_coefficient() {
+    // trinomial_coefficient: n!/(k1!*k2!*k3!) with k3=n-k1-k2, the number of ways to
+    // split n labeled items into 3 labeled groups, computed as choose(n,k1)*choose(n-k1,k2).
+    fn step(fields: &[(&str, u64)]) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("trinomial_coefficient"), "TrinomialCoeff", None)
+            .unwrap_or_else(|e| panic!("bind trinomial_coefficient: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run trinomial_coefficient: {e}"));
+        cell.get("result").unwrap_or_else(|| panic!("no result"))
+    }
+
+    // n=5,k1=2,k2=2,k3=1: 5!/(2!2!1!) = 120/4 = 30. choose(5,2)=10, choose(3,2)=3, 10*3=30.
+    assert_eq!(step(&[("n", 5), ("k1", 2), ("k2", 2)]), 30);
+    // n=6,k1=0,k2=0,k3=6: 6!/(0!0!6!) = 1, the all-in-one-group case.
+    assert_eq!(step(&[("n", 6), ("k1", 0), ("k2", 0)]), 1);
+    // n=4,k1=1,k2=1,k3=2: 4!/(1!1!2!) = 24/2 = 12. choose(4,1)=4, choose(3,1)=3, 4*3=12.
+    assert_eq!(step(&[("n", 4), ("k1", 1), ("k2", 1)]), 12);
+    // n=10,k1=3,k2=3,k3=4: 10!/(3!3!4!) = 3628800/864 = 4200. choose(10,3)=120, choose(7,3)=35.
+    assert_eq!(step(&[("n", 10), ("k1", 3), ("k2", 3)]), 4200);
+    // k1+k2 > n is out of domain: returns 0, not an escalation.
+    assert_eq!(step(&[("n", 3), ("k1", 2), ("k2", 2)]), 0);
+    // n=0,k1=0,k2=0,k3=0: the empty split, vacuously 1 way.
+    assert_eq!(step(&[("n", 0), ("k1", 0), ("k2", 0)]), 1);
+}
+
+#[test]
+fn choose_with_repetition_hand_computed() {
+    // Hand-computed multiset-coefficient cases: C(n+k-1, k), the count of ways to choose
+    // k items from n types when repeats are allowed (stars-and-bars).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // n=3, k=2: C(3+2-1,2) = C(4,2) = 6. {aa,bb,cc,ab,ac,bc}.
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 3), ("k", 2)]);
+    assert_eq!(cell.get("result"), Some(6));
+
+    // n=1, k=5: C(5,5) = 1. Only one type -> one way (aaaaa).
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 1), ("k", 5)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // n=5, k=1: C(5,1) = 5. Choosing 1 item from 5 types -> 5 ways.
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 5), ("k", 1)]);
+    assert_eq!(cell.get("result"), Some(5));
+
+    // n=0, k=0: no types, choosing nothing -> 1 way (the empty selection), special-cased
+    // since the naive n+k-1 formula would underflow at n=0.
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 0), ("k", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // n=0, k=3: no types but need 3 items -> 0 ways.
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 0), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // n=2, k=3: C(2+3-1,3) = C(4,3) = 4. {aaa,aab,abb,bbb}.
+    let (_, cell) = step("choose_with_repetition", "ChooseWithRepetition", &[("n", 2), ("k", 3)]);
+    assert_eq!(cell.get("result"), Some(4));
+}

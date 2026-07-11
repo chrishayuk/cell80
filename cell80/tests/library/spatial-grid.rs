@@ -355,3 +355,188 @@ fn aabb_contains_matches_defined_behaviour() {
         0
     );
 }
+
+// aabb_intersection: the actual overlapping rectangle (ix,iy,iw,ih) of two AABBs, plus a
+// valid flag (0 when they don't truly overlap) -- contrasts with aabb_intersect's plain
+// 0/1 verdict by returning the intersection region itself. Cases hand-computed via
+// left=max(x1,x2), top=max(y1,y2), right=min(x1+w1,x2+w2), bottom=min(y1+h1,y2+h2);
+// valid=(right>left)&&(bottom>top); when invalid, ix/iy/iw/ih are all 0.
+#[test]
+fn aabb_intersection_matches_hand_computed_expectations() {
+    fn step(fields: &[(&str, u64)]) -> (u64, u64, u64, u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("aabb_intersection"), "AabbIntersection", None)
+            .unwrap_or_else(|e| panic!("bind aabb_intersection: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        (
+            cell.get("ix").unwrap(),
+            cell.get("iy").unwrap(),
+            cell.get("iw").unwrap(),
+            cell.get("ih").unwrap(),
+            cell.get("valid").unwrap(),
+        )
+    }
+
+    // Overlapping boxes (0,0,10,10) [0,10)x[0,10) and (5,5,10,10) [5,15)x[5,15)
+    // -> left=max(0,5)=5, top=max(0,5)=5, right=min(10,15)=10, bottom=min(10,15)=10
+    // -> intersection (5,5,5,5), valid=1.
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
+            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+        ]),
+        (5, 5, 5, 5, 1)
+    );
+
+    // Disjoint boxes (0,0,5,5) and (10,10,5,5) -> right(5) <= left(10) -> not valid.
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
+            ("x2", 10), ("y2", 10), ("w2", 5), ("h2", 5),
+        ]),
+        (0, 0, 0, 0, 0)
+    );
+
+    // Edge-touching boxes (0,0,5,5) and (5,0,5,5) -> right(5) > left(5) is false -> not valid
+    // (matches aabb_intersect's edge-touching-doesn't-count convention).
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
+            ("x2", 5), ("y2", 0), ("w2", 5), ("h2", 5),
+        ]),
+        (0, 0, 0, 0, 0)
+    );
+
+    // Box2 fully inside box1 (0,0,20,20) contains (5,5,5,5) -> intersection equals box2.
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 20), ("h1", 20),
+            ("x2", 5), ("y2", 5), ("w2", 5), ("h2", 5),
+        ]),
+        (5, 5, 5, 5, 1)
+    );
+
+    // Asymmetric partial overlap (2,3,8,4) [2,10)x[3,7) and (6,1,10,10) [6,16)x[1,11)
+    // -> left=max(2,6)=6, top=max(3,1)=3, right=min(10,16)=10, bottom=min(7,11)=7
+    // -> intersection (6,3,4,4), valid=1.
+    assert_eq!(
+        step(&[
+            ("x1", 2), ("y1", 3), ("w1", 8), ("h1", 4),
+            ("x2", 6), ("y2", 1), ("w2", 10), ("h2", 10),
+        ]),
+        (6, 3, 4, 4, 1)
+    );
+}
+
+// aabb_union (spatial-grid): the smallest AABB that contains both input boxes -- always
+// defined (unlike aabb_intersect's overlap test), the merge/bounding counterpart to
+// aabb_intersect's overlap predicate and aabb_contains' containment predicate.
+#[test]
+fn aabb_union_matches_defined_behaviour() {
+    fn step(fields: &[(&str, u64)]) -> (u64, u64, u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("aabb_union"), "AabbUnion", None)
+            .unwrap_or_else(|e| panic!("bind aabb_union: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        (
+            cell.get("ux").unwrap(),
+            cell.get("uy").unwrap(),
+            cell.get("uw").unwrap(),
+            cell.get("uh").unwrap(),
+        )
+    }
+
+    // Overlapping boxes (0,0,10,10) and (5,5,10,10) -> union spans (0,0) to (15,15).
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
+            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+        ]),
+        (0, 0, 15, 15)
+    );
+
+    // Disjoint boxes (0,0,5,5) and (20,20,5,5) -> union still spans their full extent (0,0,25,25).
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 5), ("h1", 5),
+            ("x2", 20), ("y2", 20), ("w2", 5), ("h2", 5),
+        ]),
+        (0, 0, 25, 25)
+    );
+
+    // Box2 fully inside box1 -> union collapses to box1 exactly.
+    assert_eq!(
+        step(&[
+            ("x1", 0), ("y1", 0), ("w1", 10), ("h1", 10),
+            ("x2", 2), ("y2", 2), ("w2", 3), ("h2", 3),
+        ]),
+        (0, 0, 10, 10)
+    );
+
+    // Asymmetric boxes: mins and maxes come from different boxes on each axis
+    // (box1 wins on the right edge, box2 wins on the bottom edge).
+    assert_eq!(
+        step(&[
+            ("x1", 3), ("y1", 7), ("w1", 4), ("h1", 2),
+            ("x2", 1), ("y2", 1), ("w2", 2), ("h2", 20),
+        ]),
+        (1, 1, 6, 20)
+    );
+
+    // Identical boxes -> union equals the box itself (idempotent).
+    assert_eq!(
+        step(&[
+            ("x1", 5), ("y1", 5), ("w1", 10), ("h1", 10),
+            ("x2", 5), ("y2", 5), ("w2", 10), ("h2", 10),
+        ]),
+        (5, 5, 10, 10)
+    );
+}
+
+// grid_coords_u32 (spatial-grid): wide sibling of grid_coords over a u32 index/y pair —
+// checks the divmod inverse relationship, a case where y exceeds u16 range (exercising the
+// "wide" field), and the width==0 guard returning (0,0) instead of halting on DivByZero.
+#[test]
+fn grid_coords_u32_matches_defined_behaviour() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> StateCell {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell
+    }
+
+    // index=0, width=5 -> x=0%5=0, y=0/5=0 (origin).
+    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 0), ("width", 5)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
+
+    // index=7, width=5 -> x=7%5=2, y=7/5=1: mirrors the narrow grid_coords case.
+    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 7), ("width", 5)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(2), Some(1)));
+
+    // index=100000, width=300 -> 300*333=99900, remainder 100 -> x=100, y=333.
+    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 100_000), ("width", 300)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(100), Some(333)));
+
+    // width=0 guard: must return (0, 0) rather than halting on DivByZero (unlike
+    // div_floor_u32/mod_u32, which halt on a zero divisor).
+    let cell = step("grid_coords_u32", "GridCoordsWide", &[("index", 123_456), ("width", 0)]);
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(0)));
+
+    // index=u32::MAX=4294967295, width=65535 -> since 65535*65537 == 65536^2-1 == 4294967295
+    // exactly, x=0, y=65537 -- a y value that overflows u16, exercising the genuinely "wide"
+    // y field (this is exactly what distinguishes this cell from plain grid_coords).
+    let cell = step(
+        "grid_coords_u32",
+        "GridCoordsWide",
+        &[("index", 4_294_967_295), ("width", 65535)],
+    );
+    assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(65537)));
+}
+

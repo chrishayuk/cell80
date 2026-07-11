@@ -7,13 +7,16 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
 | `abs_diff` | `run(a: u16, b: u16) -> u16` | Absolute difference \|a - b\| between two values. |
 | `chebyshev` | `Pts::run() -> u16` | Chebyshev (chessboard) distance between two grid points: max(\|dx\|, \|dy\|). |
+| `chebyshev_i16` | `PtsSigned::run() -> u16` | Chebyshev (chessboard) distance between two grid points with signed (i16) coordinates: max(\|dx\|, \|dy\|), each coordinate difference computed via an excess-32768 shift feeding the shared iabs_diff kernel (the manhattan_i16 technique), then the shared imax kernel -- the signed sibling chebyshev lacks, since its u16-only fields can't take an origin-centered coordinate at all; distinct from manhattan_i16 by taking the max rather than the sum, so its dist field stays a plain u16 (no widening needed, since max of two u16 values never exceeds either input). |
+| `euclid_dist` | `Pts::run() -> u16` | True (non-squared) Euclidean distance between two grid points: isqrt(dx*dx + dy*dy) -- the sqrt-closed sibling of euclid_sq, whose own docstring gives "(no sqrt)" as its reason for staying squared, a blocker isqrt_u32's wide integer sqrt now removes the same way it unblocked cosine_score_approx. dx*dx and dy*dy are combined via the shared add_checked_u32 kernel so an extreme dx/dy pair escalates instead of silently wrapping, then reduced with the same branch-free bitwise integer-sqrt loop isqrt_u32/q_sqrt/cosine_score_approx run inline. |
 | `euclid_sq` | `Pts::run() -> u16` | Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt). Wide u32 dist field. |
 | `manhattan` | `Pts::run() -> u16` | Manhattan distance between two grid points (typed state). |
+| `manhattan_i16` | `PtsSigned::run() -> u16` | Manhattan distance between two grid points with signed (i16) coordinates: dx + dy into a wide u32 dist field, each coordinate difference computed via an excess-32768 shift feeding the shared iabs_diff kernel (the geom_distance_3d/orientation2d/slope_fraction technique) -- the signed sibling manhattan/manhattan_wide/chebyshev/euclid_sq lack, since their u16-only fields can't take an origin-centered coordinate at all. |
 | `manhattan_wide` | `Pts::run() -> u16` | Manhattan distance between two grid points: dx + dy, into a wide u32 dist field so two extreme-apart u16 coordinates can't silently wrap past u16 the way manhattan's u16 dist field can. |
 

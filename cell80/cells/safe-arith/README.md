@@ -7,14 +7,16 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (11)
 
 | id | signature | summary |
 |---|---|---|
 | `add_sat` | `run(a: u16, b: u16) -> u16` | Saturating add: a + b, capped at 65535 instead of wrapping. |
 | `avg2` | `run(a: u16, b: u16) -> u16` | Average of two values, (a + b) / 2, computed without overflow. |
 | `ceil_div` | `run(a: u16, b: u16) -> u16` | Ceiling division: the smallest k with k*b >= a (0 if b == 0). Rounds up. |
+| `geomean2` | `run(a: u16, b: u16) -> u16` | Integer geometric mean of two u16 values, floor(sqrt(a*b)) -- the mean-family sibling avg2 (arithmetic mean) has none of, computed via the same branch-free bitwise integer-sqrt loop isqrt_u32/cosine_score_approx use, inlined here (cells can't call each other) on the widened u32 product a*b, always safe since two u16-bounded factors' product always fits u32 and the result always fits u16. |
 | `mul_sat` | `run(a: u16, b: u16) -> u16` | Saturating multiply: a * b, capped at 65535 instead of wrapping. |
+| `round_div` | `run(a: u16, b: u16) -> u16` | Round-to-nearest integer division a/b, ties rounding up (same tie convention as round_to_multiple); 0 if b == 0. Distinct from the pack's ceil_div (always rounds up) and safe_div (always truncates/floors) -- this rounds to the CLOSEST quotient. |
 | `safe_div` | `run(a: u16, b: u16) -> u16` | Integer divide a / b, returning 0 when b == 0 (no divide-by-zero). |
 | `safe_mod` | `run(a: u16, b: u16) -> u16` | Remainder a % b, returning 0 when b == 0. |
 | `square` | `run(n: u16) -> u16` | Saturating square: n * n, capped at 65535. |

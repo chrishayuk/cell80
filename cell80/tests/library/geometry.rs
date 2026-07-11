@@ -440,3 +440,277 @@ fn slope_fraction_two_point_slope_matches_defined_behaviour() {
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn triangle_area_x4_approx_hand_verified() {
+    // triangle_area_x4_approx: floor(4*Area) of a triangle with integer sides (a, b, c) --
+    // inlines heron_16a2's own valid-triangle check + 16*Area^2 formula, then extracts a
+    // real magnitude via isqrt_u32's branch-free bitwise sqrt loop, since
+    // isqrt(16*Area^2) = floor(4*Area). Hand-verified against exact integer Heron
+    // arithmetic (not floating-point) before shipping.
+    fn step(a: u64, b: u64, c: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("triangle_area_x4_approx"),
+            "TriangleAreaX4Approx",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind triangle_area_x4_approx: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 3-4-5 right triangle: area = 6, floor(4*6) = 24. 16*Area^2 = 576 = 24^2 exactly.
+    let (report, cell) = step(3, 4, 5);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("area_x4"), Some(24));
+    assert_eq!(report.result, 24);
+
+    // Equilateral side 2: 16*Area^2 = 48 (matches heron_16a2's own test case). isqrt(48) = 6
+    // (6^2=36 <= 48 < 49=7^2), i.e. floor(4*sqrt(3)) = floor(6.928..) = 6.
+    let (report, cell) = step(2, 2, 2);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("area_x4"), Some(6));
+    assert_eq!(report.result, 6);
+
+    // Equilateral side 10: s1=30, s2=s3=s4=10 -> 16*Area^2 = 300*100 = 30000.
+    // isqrt(30000) = 173 (173^2=29929 <= 30000 < 30276=174^2).
+    let (report, cell) = step(10, 10, 10);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("area_x4"), Some(173));
+    assert_eq!(report.result, 173);
+
+    // 5-12-13 right triangle: area = 30, floor(4*30) = 120. 16*Area^2 = 14400 = 120^2 exactly.
+    let (report, cell) = step(5, 12, 13);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("area_x4"), Some(120));
+    assert_eq!(report.result, 120);
+
+    // Not a triangle (1 + 1 <= 5): out_of_domain, same convention as heron_16a2.
+    let (report, _) = step(1, 1, 5);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Large equilateral triangle: the final factor-pair product overflows u32 (the same
+    // inputs heron_16a2's own overflow test uses).
+    let (report, _) = step(30000, 30000, 30000);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn geom_circle_area_approx_matches_defined_behaviour() {
+    // geom_circle_area_approx: Floor(pi*r^2) via Q8.8 fixed pi (804/256 = 3.140625).
+    // area = (r*r * 804) >> 8, both multiplies checked -- escalates (0xFF05) once
+    // r*r*804 would overflow u32 (r*r itself never overflows u32 for any u16 r,
+    // since 65535^2 fits comfortably under u32::MAX).
+    fn step(r: u64) -> (cell80::Report, cell80::StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("geom_circle_area_approx"),
+            "GeomCircleAreaApprox",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("r", r).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // r=1 -> 1*804 = 804, 804>>8 = 3 (pi*1 = 3.14159...)
+    let (_, cell) = step(1);
+    assert_eq!(cell.get("area"), Some(3));
+    // r=5 -> 25*804 = 20100, 20100>>8 = 78 (pi*25 = 78.5398...)
+    let (_, cell) = step(5);
+    assert_eq!(cell.get("area"), Some(78));
+    // r=10 -> 100*804 = 80400, 80400>>8 = 314 (pi*100 = 314.159...)
+    let (_, cell) = step(10);
+    assert_eq!(cell.get("area"), Some(314));
+    // r=2312 -> r*r = 5,345,344 (fits u32), *804 = 4,297,656,576 > u32::MAX
+    // -> escalates (halt 0xFF05, needs_wider_math)
+    let (report, _) = step(2312);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn geom_circle_circumference_approx_matches_hand_computed_values() {
+    // geom_circle_circumference_approx: floor(2*pi*r) via the pack's Q8.8 fixed-point pi
+    // constant (804/256), computed as (r*1608)>>8 -- the non-squaring sibling of
+    // geom_circle_area_approx's r^2 formula. Small r values line up closely with the true
+    // circumference (slightly under, since 804/256 = 3.140625 is a hair below real pi);
+    // r >= 10434 pushes the shifted result past u16::MAX and must escalate, not truncate.
+    assert_eq!(run_cell("geom_circle_circumference_approx", &[0]), 0);
+    assert_eq!(run_cell("geom_circle_circumference_approx", &[1]), 6); // 1608 >> 8 = 6
+    assert_eq!(run_cell("geom_circle_circumference_approx", &[10]), 62); // 16080 >> 8 = 62
+    assert_eq!(run_cell("geom_circle_circumference_approx", &[100]), 628); // 160800 >> 8 = 628
+    assert_eq!(run_cell("geom_circle_circumference_approx", &[10433]), 65532); // last radius before overflow
+
+    // r = 10434 pushes (r*1608)>>8 to 65538, past u16::MAX -- must escalate, not wrap.
+    let mut r = cell80::Runner::compile(&cell_src("geom_circle_circumference_approx")).unwrap();
+    let report = r.run(None, &[10434], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn shoelace_area_x2_i16_matches_hand_computed_values() {
+    // shoelace_area_x2_i16: twice a triangle's area over the full signed i16 plane (the
+    // signed sibling of shoelace_area_x2, which is unsigned-only). Every term is a signed
+    // coordinate times a signed y-difference, combined via sign-magnitude tracking.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn area_x2(x1: i16, y1: i16, x2: i16, y2: i16, x3: i16, y3: i16) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("shoelace_area_x2_i16"), "ShoelaceAreaX2I16", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x1", i16_bits(x1)).unwrap();
+        cell.set("y1", i16_bits(y1)).unwrap();
+        cell.set("x2", i16_bits(x2)).unwrap();
+        cell.set("y2", i16_bits(y2)).unwrap();
+        cell.set("x3", i16_bits(x3)).unwrap();
+        cell.set("y3", i16_bits(y3)).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        assert_eq!(report.halt, cell80::Halt::Returned, "unexpected halt: {:?}", report.halt);
+        cell.get("result").unwrap()
+    }
+
+    // 1) Right triangle, all-nonnegative coords (parity check against shoelace_area_x2's
+    //    own unsigned test): legs 4 and 3, area 6, x2 = 12.
+    assert_eq!(area_x2(0, 0, 4, 0, 0, 3), 12);
+    // 2) Same triangle, reversed winding order: |.| is winding-independent, still 12.
+    assert_eq!(area_x2(0, 0, 0, 3, 4, 0), 12);
+    // 3) Degenerate triangle (all three vertices coincide): area 0.
+    assert_eq!(area_x2(1, 1, 1, 1, 1, 1), 0);
+    // 4) Straddling all four quadrant signs: (-2,-2),(2,-2),(2,2) is a right triangle
+    //    with legs 4 and 4 -> area 8, x2 = 16.
+    assert_eq!(area_x2(-2, -2, 2, -2, 2, 2), 16);
+    // 5) General negative/positive mix, hand-solved via the raw shoelace sum:
+    //    x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) = -5*(-4-6) + 2*(6-3) + 6*(3-(-4))
+    //    = 50 + 6 + 42 = 98.
+    assert_eq!(area_x2(-5, 3, 2, -4, 6, 6), 98);
+    // 6) Extreme-magnitude stress test (i16::MIN/MAX corners), still within u32 -- no
+    //    overflow halt expected. y2-y3=65535, y3-y1=0, y1-y2=-65535, so:
+    //    term1 = 32767*65535 = 2_147_385_345, term2 = 0,
+    //    term3 = (-32768)*(-65535) = 32768*65535 = 2_147_450_880,
+    //    sum = 4_294_836_225 (< u32::MAX = 4_294_967_295).
+    assert_eq!(
+        area_x2(32767, -32768, 32767, 32767, -32768, -32768),
+        4_294_836_225
+    );
+}
+
+#[test]
+fn shoelace_area_x2_quad_i16_matches_defined_behaviour() {
+    // shoelace_area_x2_quad_i16: same shoelace formula as shoelace_area_x2_quad but over
+    // signed i16 vertices, tracked internally as sign-magnitude pairs. Hand-computed cases
+    // below cover an all-positive square, a square straddling the origin (negative coords
+    // on both axes), a degenerate (coincident-vertex) quad, a rectangle spanning the sign
+    // boundary, and a magnitude-overflow escalation at the extremes of i16's range.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn shoelace(
+        x1: i16,
+        y1: i16,
+        x2: i16,
+        y2: i16,
+        x3: i16,
+        y3: i16,
+        x4: i16,
+        y4: i16,
+    ) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("shoelace_area_x2_quad_i16"),
+            "ShoelaceAreaX2QuadI16",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x1", i16_bits(x1)).unwrap();
+        cell.set("y1", i16_bits(y1)).unwrap();
+        cell.set("x2", i16_bits(x2)).unwrap();
+        cell.set("y2", i16_bits(y2)).unwrap();
+        cell.set("x3", i16_bits(x3)).unwrap();
+        cell.set("y3", i16_bits(y3)).unwrap();
+        cell.set("x4", i16_bits(x4)).unwrap();
+        cell.set("y4", i16_bits(y4)).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        (report, cell)
+    }
+
+    // 2x2 square at the origin, all-positive coords -> area 4, x2 = 8.
+    let (report, cell) = shoelace(0, 0, 2, 0, 2, 2, 0, 2);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(8));
+
+    // 4x4 square straddling the origin (-2,-2)..(2,2) -> area 16, x2 = 32.
+    let (report, cell) = shoelace(-2, -2, 2, -2, 2, 2, -2, 2);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(32));
+
+    // Degenerate quadrilateral, all four vertices coincide at a negative point -> 0.
+    let (report, cell) = shoelace(-5, -5, -5, -5, -5, -5, -5, -5);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // 7x3 rectangle spanning the sign boundary on both axes -> area 21, x2 = 42.
+    let (report, cell) = shoelace(-3, 1, 4, 1, 4, -2, -3, -2);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(42));
+
+    // Extreme i16 coordinates: the sign-magnitude running sum overflows u32 -> escalate.
+    let (report, _cell) = shoelace(-32768, -32768, -32768, 32767, 32767, 32767, 0, -32768);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn point_line_dist_sq_matches_defined_behaviour() {
+    // point_line_dist_sq: exact squared perpendicular distance from a point (px,py) to
+    // the infinite line through (x1,y1)-(x2,y2), returned as an unreduced fraction
+    // num/den = cross^2 / (dx^2+dy^2). Hand-verified via the standard point-line distance
+    // formula (perp_dist = |cross| / |segment|, so perp_dist^2 = cross^2 / segment_len_sq)
+    // before shipping.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, i16)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("point_line_dist_sq"), "PointLineDistSq", None)
+            .unwrap_or_else(|e| panic!("bind point_line_dist_sq: {e}"));
+        for (f, v) in fields {
+            cell.set(f, i16_bits(*v)).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Line is the x-axis (0,0)-(4,0), point (2,3): perpendicular distance 3, squared 9 =
+    // 144/16 (unreduced: cross = 4*3 - 0*2 = 12, 12^2 = 144; segment len^2 = 4^2 = 16).
+    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 2), ("py", 3)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("num"), Some(144));
+    assert_eq!(cell.get("den"), Some(16));
+
+    // Line is the y-axis (0,0)-(0,5), point (3,2): perpendicular distance 3, squared 9 =
+    // 225/25.
+    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 0), ("y2", 5), ("px", 3), ("py", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("num"), Some(225));
+    assert_eq!(cell.get("den"), Some(25));
+
+    // Point exactly on the line (0,0)-(4,4): distance 0, so num is 0 even though den (32)
+    // is not.
+    let (report, cell) = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 4), ("px", 2), ("py", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("num"), Some(0));
+    assert_eq!(cell.get("den"), Some(32));
+
+    // Negative coordinates: horizontal line y=-5 from (-5,-5) to (5,-5), point (0,0).
+    // Distance 5, squared 25 = 2500/100.
+    let (report, cell) = step(&[("x1", -5), ("y1", -5), ("x2", 5), ("y2", -5), ("px", 0), ("py", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("num"), Some(2500));
+    assert_eq!(cell.get("den"), Some(100));
+
+    // The two line-defining points coincide (7,7)-(7,7): den would be 0, the line is
+    // undefined -- must escalate 0xFF06 (out_of_domain) rather than return a bogus fraction.
+    let (report, _) = step(&[("x1", 7), ("y1", 7), ("x2", 7), ("y2", 7), ("px", 10), ("py", 10)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

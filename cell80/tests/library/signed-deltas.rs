@@ -4,6 +4,7 @@
 //! `cell_src`/`run_cell` helpers every pack file uses.
 
 use crate::common::{cell_src, run_cell};
+use cell80::{StateCell, DEFAULT_CYCLES};
 
 #[test]
 fn signed_delta_free_fn_cells_match_defined_behaviour() {
@@ -120,4 +121,112 @@ fn lerp_i16_matches_hand_computed_expectations() {
     assert_eq!(run_cell("lerp_i16", &[50, 65486, 256]), 65486); // t=256 -> b exactly
                                                                 // a=i16::MAX, b=i16::MIN: diff magnitude 65535, itself not representable as i16.
     assert_eq!(run_cell("lerp_i16", &[32767, 32768, 128]), 0);
+}
+
+#[test]
+fn sub_i16_matches_hand_computed_expectations() {
+    // sub_i16(a, b): checked signed subtraction a - b, computed via sign-magnitude as
+    // add_i16(a, -b) by flipping b's sign flag before combining -- the sign-preserving
+    // sibling of abs_diff_i16 (which discards the sign). Escalates (needs_wider_math,
+    // halt 0xFF05) if a - b doesn't fit back in i16. Negative args/results are passed and
+    // read as their two's-complement u16 bit pattern, the convention this file uses throughout.
+
+    // Both positive, ordinary case: 5 - 3 = 2.
+    assert_eq!(run_cell("sub_i16", &[5, 3]), 2);
+
+    // Both positive, negative result: 3 - 5 = -2 (65534 as u16 bits).
+    assert_eq!(run_cell("sub_i16", &[3, 5]), 65534);
+
+    // Both negative: -5 - (-3) = -2 (65534). -5 -> 65531, -3 -> 65533.
+    assert_eq!(run_cell("sub_i16", &[65531, 65533]), 65534);
+
+    // Mixed sign: -5 - 3 = -8 (65528). -5 -> 65531.
+    assert_eq!(run_cell("sub_i16", &[65531, 3]), 65528);
+
+    // Boundary that fits exactly: -1 - i16::MAX (32767) = i16::MIN (-32768, 32768 as u16 bits).
+    assert_eq!(run_cell("sub_i16", &[65535, 32767]), 32768);
+
+    // Overflow: a=i16::MAX (32767), b=i16::MIN (32768 as u16 bits): 32767 - (-32768) = 65535,
+    // which doesn't fit in i16 -> escalates (needs_wider_math).
+    let mut r = cell80::Runner::compile(&cell_src("sub_i16")).unwrap();
+    let report = r.run(None, &[32767, 32768], cell80::DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+// apply_delta_clamped_u32 (ApplyDeltaClampedWide::run): the u32-width sibling of
+// apply_delta_clamped, for a resource/health/balance pool too large for u16's 65535
+// ceiling. delta is tracked as (delta_mag: u32, delta_neg: u16 where 0=nonnegative,
+// 1=negative) rather than i16, since state-cell fields can't be i16. Requires
+// `use cell80::{StateCell, DEFAULT_CYCLES};` alongside this pack file's existing
+// `use crate::common::{cell_src, run_cell};` (this is the pack's first state cell).
+#[test]
+fn apply_delta_clamped_u32_matches_defined_behaviour() {
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("apply_delta_clamped_u32"),
+            "ApplyDeltaClampedWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind apply_delta_clamped_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Plain in-range add: 1_000_000 + 500_000, cap 5_000_000 -> 1_500_000.
+    let (report, cell) = step(&[
+        ("value", 1_000_000),
+        ("delta_mag", 500_000),
+        ("delta_neg", 0),
+        ("cap", 5_000_000),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(1_500_000));
+
+    // Add that overshoots cap without wrapping u32 -> clamps to cap.
+    let (_, cell) = step(&[
+        ("value", 4_900_000),
+        ("delta_mag", 200_000),
+        ("delta_neg", 0),
+        ("cap", 5_000_000),
+    ]);
+    assert_eq!(cell.get("result"), Some(5_000_000)); // 5_100_000 clamped down to cap
+
+    // Add that wraps past u32::MAX -> detected via sum < value -> clamps to cap.
+    let (_, cell) = step(&[
+        ("value", (u32::MAX - 5) as u64),
+        ("delta_mag", 10),
+        ("delta_neg", 0),
+        ("cap", u32::MAX as u64),
+    ]);
+    assert_eq!(cell.get("result"), Some(u32::MAX as u64));
+
+    // Plain in-range subtract: 1_000_000 - 300_000 -> 700_000.
+    let (_, cell) = step(&[
+        ("value", 1_000_000),
+        ("delta_mag", 300_000),
+        ("delta_neg", 1),
+        ("cap", 5_000_000),
+    ]);
+    assert_eq!(cell.get("result"), Some(700_000));
+
+    // Subtract that would go negative -> clamps to 0.
+    let (_, cell) = step(&[
+        ("value", 100),
+        ("delta_mag", 500),
+        ("delta_neg", 1),
+        ("cap", 5_000_000),
+    ]);
+    assert_eq!(cell.get("result"), Some(0));
+
+    // Subtract exactly to zero (boundary: mag == value).
+    let (_, cell) = step(&[
+        ("value", 500_000),
+        ("delta_mag", 500_000),
+        ("delta_neg", 1),
+        ("cap", 1_000_000),
+    ]);
+    assert_eq!(cell.get("result"), Some(0));
 }

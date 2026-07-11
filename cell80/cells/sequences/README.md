@@ -7,29 +7,33 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (15)
 
 | id | signature | summary |
 |---|---|---|
+| `arithmetic_common_diff` | `ArithmeticCommonDiff::run() -> u16` | Given an arithmetic sequence's start, the index n of a known term, and that term's value, recover the common difference: step = (term - start) / (n - 1) -- the third and last solvable unknown in start + step*(n-1) = term, completing the missing-sibling triple alongside arithmetic_nth_u32 (solves for term) and arithmetic_term_index (solves for n). |
 | `arithmetic_nth_u32` | `ArithmeticNthWide::run() -> u16` | The nth term of an arithmetic sequence starting at start with common difference step: start + step*(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of arithmetic_series_sum (which only sums the sequence, not a single term). |
 | `arithmetic_series_sum` | `ArithmeticSeriesSum::run() -> u16` | Sum of the first n terms of an arithmetic sequence starting at a with common difference d: n*(2a + (n-1)*d) / 2 — always an exact integer (the product n*(2a+(n-1)*d) is provably always even), checked for overflow at each step. |
 | `arithmetic_term_index` | `ArithmeticTermIndex::run() -> u16` | Given start, step, and a term value from an arithmetic sequence, recover which term number n produced it: n = (term - start)/step + 1 — the missing inverse of arithmetic_nth_u32 (which only goes forward from n to term, never back from a term to its index). |
+| `collatz_max_value` | `CollatzMaxValue::run() -> u16` | The maximum (peak) value reached in the Collatz (3n+1 / n/2) trajectory from n down to 1, bounded by max_steps -- the same walk collatz_stopping_time runs, tracking a running max instead of a step count. |
 | `collatz_stopping_time` | `CollatzStoppingTime::run() -> u16` | The number of Collatz (3n+1 / n/2) steps needed to reach 1 from n, bounded by max_steps -- the "count of iterations, not the sequence" shape persistent_digital_root established for digit-summing, applied to the 3n+1 recurrence. |
 | `consecutive_sum_start` | `ConsecutiveSumStart::run() -> u16` | Given n consecutive integers step apart summing to sum, find the first one: first = (sum - step*n*(n-1)/2) / n. Generalizes the "n consecutive integers" and "n consecutive odd/even integers" shapes into one cell via the step parameter (step=1 for consecutive integers, step=2 for consecutive odd/even). Escalates if the split isn't exact or would go negative — a wrong-plan signal. |
 | `geometric_nth_checked_u32` | `GeometricNthChecked::run() -> u16` | The nth term of a geometric sequence starting at start with ratio ratio: start * ratio^(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of geometric_series_sum (which only sums the sequence, not a single term). Computed by direct iterative multiplication rather than exponentiation, so it escalates exactly when the true term doesn't fit u32, no earlier. |
 | `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
 | `geometric_term_index` | `GeometricTermIndex::run() -> u16` | Given a term value from a geometric sequence starting at start with ratio ratio, recover which 1-indexed term number n produced it -- the exact inverse of geometric_nth_checked_u32, found the same way that cell walks forward (iteratively multiplying, checked at every step) rather than any logarithm, so it escalates the moment growth either overflows or stalls at a fixed point without ever matching. |
+| `horner_eval_cubic` | `HornerCubic::run() -> u16` | Evaluate a fixed-degree-3 polynomial a*x^3 + b*x^2 + c*x + d at a given x via Horner's method (((a*x+b)*x+c)*x+d), checking every multiply and add along the way so it escalates the instant any partial product or sum would overflow u32. |
+| `is_happy_number` | `run(n: u16) -> u16` | Happy-number predicate: repeatedly replace n with the sum of the squares of its decimal digits, returning 1 if this reaches 1, else 0 -- detects the non-happy case by a bounded return to 4, the known entry point of the only other cycle, rather than an unbounded search. Distinct from every other digit predicate in the library (is_repdigit, is_automorphic_number, is_palindromic_number each check an unrelated digit property). |
+| `kaprekar_stopping_time` | `run(n: u16) -> u16` | Number of Kaprekar-routine iterations (sort digits descending minus ascending, repeat) needed for a zero-padded 4-digit n to reach the Kaprekar constant 6174, using a fixed 5-comparator unrolled sorting network on a 4-slot local array rather than digit_sort_asc/digit_sort_desc's variable-length bubble sort over up to 5 digits -- the "count of iterations, not the sequence" framing collatz_stopping_time established, applied to Kaprekar's descending-minus-ascending recurrence instead of 3n+1. |
 | `series_sum` | `SeriesSum::run() -> u16` | Sum of an arithmetic series given its two endpoints and term count instead of (a, d): count*(first + last)/2, multiplying before dividing so odd first+last stays exact — composing via avg2 then multiplying is unsound because avg2 floors the endpoint average before the count ever multiplies it. |
+| `series_term_count` | `SeriesTermCount::run() -> u16` | Given an arithmetic series' two endpoints (first, last) and its total sum, recovers the term count: count = 2*sum/(first+last) -- the missing inverse of series_sum (which only computes the sum, not the count that produced it). |
 
-## Math-server coverage — 10 candidate(s) not yet built
+## Math-server coverage — 8 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
 | name | reason |
 |---|---|
-| `collatz_max_value` | Bounded loop tracking the peak value reached; distinct scalar output, not covered. |
 | `horner_method` | Fixed-small-degree polynomial evaluation with integer coefficients is exact and bounded — genuine gap. Scope to a small fixed degree (e.g. cubic, 4 coefficients) to avoid needing array state fields (the library's still-open 'first array-state cell' design question). |
-| `is_happy_number` | Bounded loop (repeated sum-of-squared-digits, cycle-detect at 4) converging quickly for u16-range n, genuinely new predicate. |
 | `is_narcissistic_number` | Bounded exact check (n == sum of its digits each raised to digit-count power), not trivially composable from existing cells, genuinely new. |
 | `is_pentagonal_number` | Inverse pentagonal-number test (via isqrt on 24x+1) mirrors triangular_inverse_exact's pattern; likely ships as one dual-purpose pentagonal_inverse_exact cell alongside pentagonal_number. |
 | `kaprekar_constant` | Small bounded lookup (the known Kaprekar constant per digit count, e.g. 6174 for 4 digits), not covered. |

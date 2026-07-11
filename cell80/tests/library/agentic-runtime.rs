@@ -527,3 +527,68 @@ fn rising_edge_step_fires_only_on_the_transition_to_one() {
         assert_eq!(prev, input); // prev always tracks the last input after run()
     }
 }
+
+
+// falling_edge_step: reports 1 only on the exact step the signal goes 1 -> 0; 0 on hold-low,
+// hold-high, or the rising edge. prev is threaded step-to-step to simulate a live time series,
+// mirroring the rising_edge_step test above but for the opposite transition.
+#[test]
+fn falling_edge_step_fires_only_on_the_transition_to_zero() {
+    fn step(input: u64, prev: u64) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("falling_edge_step"), "FallingEdge", None)
+            .unwrap_or_else(|e| panic!("bind falling_edge_step: {e}"));
+        cell.set("input", input).unwrap();
+        cell.set("prev", prev).unwrap();
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // signal sequence: 1, 1, 0, 0, 1, 0 -> edges fire only at the two 1->0 transitions.
+    let mut prev = 0u64;
+    let expected = [(1u64, 0u16), (1, 0), (0, 1), (0, 0), (1, 0), (0, 1)];
+    for (input, want_edge) in expected {
+        let (edge, cell) = step(input, prev);
+        assert_eq!(edge, want_edge, "input={input} prev={prev}");
+        prev = cell.get("prev").unwrap();
+        assert_eq!(prev, input); // prev always tracks the last input after run()
+    }
+}
+
+#[test]
+fn jittered_linear_backoff_next_matches_defined_behaviour() {
+    // jittered_linear_backoff_next: capped-additive ceiling (same rule as linear_backoff_next:
+    // min(current+step, cap), starting at step when current is 0), then scaled down into
+    // [0, ceiling] by rand_bps/10000 via a u32 intermediate -- the additive-growth dual of
+    // jittered_backoff_next's exponential-ceiling scaling.
+    fn step(current: u16, step: u16, cap: u16, rand_bps: u16) -> u16 {
+        let mut cell = StateCell::bind(
+            &cell_src("jittered_linear_backoff_next"),
+            "JitteredLinearBackoff",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("current", current as u64).unwrap();
+        cell.set("step", step as u64).unwrap();
+        cell.set("cap", cap as u64).unwrap();
+        cell.set("rand_bps", rand_bps as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // Bootstrap: current=0 -> grown=step=50, under cap=1000 -> ceiling=50;
+    // rand_bps=5000 (50%) -> 50*5000/10000 = 25.
+    assert_eq!(step(0, 50, 1000, 5000), 25);
+    // Plain additive growth: current=50, +step=50 -> ceiling=100, under cap=1000;
+    // rand_bps=9999 (near-max) -> 100*9999/10000 = 99.
+    assert_eq!(step(50, 50, 1000, 9999), 99);
+    // Cap saturation: current=980, +step=50 = 1030 > cap=1000 -> ceiling clamps to 1000;
+    // rand_bps=5000 (50%) -> 1000*5000/10000 = 500 (half the ceiling).
+    assert_eq!(step(980, 50, 1000, 5000), 500);
+    // rand_bps=0 always collapses to 0, regardless of how large the ceiling is.
+    assert_eq!(step(100, 50, 1000, 0), 0);
+    // current+step overflows u16 (65530+100=65630 > 65535) so saturating_add clamps to
+    // 65535 before the cap check; ceiling = min(65535, cap=65535) = 65535. rand_bps=9999 ->
+    // 65535*9999 = 655_284_465, which overflows u16 (max 65_535) and would silently wrap if
+    // multiplied at 16-bit width -- proves the u32 intermediate is load-bearing.
+    // 655_284_465/10000 = 65_528.
+    assert_eq!(step(65_530, 100, 65_535, 9999), 65_528);
+}

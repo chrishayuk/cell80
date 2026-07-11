@@ -231,3 +231,219 @@ fn running_min_max_step_u32_matches_defined_behaviour() {
     assert_eq!(c2.get("max").unwrap(), 4_000_000_000);
     assert_eq!(c2.get("range").unwrap(), 3_999_999_900);
 }
+
+
+#[test]
+fn accumulate_step_u32_matches_defined_behaviour() {
+    // Wide/checked sibling of accumulate_step: same running sum+count over a stream, but
+    // u32-domain and escalating (halt 0xFF05) on sum overflow instead of saturating at 65535.
+    fn step(fields: &[(&str, u64)]) -> (u16, cell80::Halt, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("accumulate_step_u32"), "AccumulateU32", None)
+            .unwrap_or_else(|e| panic!("bind accumulate_step_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt, cell)
+    }
+
+    // Stream of u32-range values (well above u16::MAX) accumulating exactly, one call per value.
+    let (mut sum, mut count) = (0u64, 0u64);
+    for (value, expect_sum, expect_count) in [
+        (100_000u64, 100_000u64, 1u64),
+        (200_000, 300_000, 2),
+        (50, 300_050, 3),
+    ] {
+        let (result, halt, cell) = step(&[("value", value), ("sum", sum), ("count", count)]);
+        assert_eq!(result, 1u16);
+        assert_eq!(halt, cell80::Halt::Returned);
+        sum = cell.get("sum").unwrap();
+        count = cell.get("count").unwrap();
+        assert_eq!(sum, expect_sum, "sum mismatch for value={value}");
+        assert_eq!(count, expect_count);
+    }
+
+    // sum at u32::MAX, value=0 -> no overflow, sum unchanged, count still increments.
+    let u32_max: u64 = 0xFFFF_FFFF;
+    let (result, halt, cell) = step(&[("value", 0u64), ("sum", u32_max), ("count", 9)]);
+    assert_eq!(result, 1u16);
+    assert_eq!(halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("sum").unwrap(), u32_max);
+    assert_eq!(cell.get("count").unwrap(), 10);
+
+    // sum at u32::MAX, value=1 -> genuine overflow -> escalate (halt 0xFF05), never a silent wrap.
+    let (_result, halt, _cell) = step(&[("value", 1u64), ("sum", u32_max), ("count", 10)]);
+    assert_eq!(halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn running_covariance_step_matches_defined_behaviour() {
+    // running_covariance_step: bivariate-stream counterpart of running_variance_step --
+    // accumulates count, sum_x, sum_y, sum_xy one (x,y) pair per call (checked/escalating
+    // on u32 overflow, matching covariance's own downstream sum consumption).
+    fn step(fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("running_covariance_step"), "RunningCovariance", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // Stream of (x,y) pairs (2,3), (4,5), (6,1). Hand-computed:
+    //  call1: xy=6;  sum_x=2,  sum_y=3,  sum_xy=6,  count=1
+    //  call2: xy=20; sum_x=6,  sum_y=8,  sum_xy=26, count=2
+    //  call3: xy=6;  sum_x=12, sum_y=9,  sum_xy=32, count=3
+    let (mut count, mut sum_x, mut sum_y, mut sum_xy) = (0u64, 0u64, 0u64, 0u64);
+    let mut results = Vec::new();
+    for (x, y) in [(2u64, 3u64), (4, 5), (6, 1)] {
+        let (out, report, cell) = step(&[
+            ("x", x),
+            ("y", y),
+            ("count", count),
+            ("sum_x", sum_x),
+            ("sum_y", sum_y),
+            ("sum_xy", sum_xy),
+        ]);
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        count = cell.get("count").unwrap();
+        sum_x = cell.get("sum_x").unwrap();
+        sum_y = cell.get("sum_y").unwrap();
+        sum_xy = cell.get("sum_xy").unwrap();
+        results.push(out);
+    }
+    assert_eq!(results, vec![1, 1, 1]);
+    assert_eq!((count, sum_x, sum_y, sum_xy), (3, 12, 9, 32));
+
+    // sum_xy overflow escalation: x=y=65535 -> xy = 65535*65535 = 4294836225 (fits u32,
+    // max 4294967295). Seed sum_xy with 4294836225 already accumulated so this call's
+    // add_checked_u32(sum_xy, xy) needs 4294836225 + 4294836225 = 8589672450, which
+    // overflows u32 -> halt 0xFF05 (needs_wider_math).
+    let (_, report, _) = step(&[
+        ("x", 65535),
+        ("y", 65535),
+        ("count", 1),
+        ("sum_x", 65535),
+        ("sum_y", 65535),
+        ("sum_xy", 4294836225),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // sum_x overflow escalation: seeded sum_x = u32::MAX - 5 = 4294967290; adding x=10
+    // needs 4294967300, which overflows u32 -> halt 0xFF05.
+    let (_, report, _) = step(&[
+        ("x", 10),
+        ("y", 0),
+        ("count", 0),
+        ("sum_x", (u32::MAX - 5) as u64),
+        ("sum_y", 0),
+        ("sum_xy", 0),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn running_sample_stddev_step_matches_hand_computed_values() {
+    // running_sample_stddev_step: Bessel-corrected (n-1 denominator) sibling of
+    // running_stddev_step -- identical running (count, sum, m2) update per value, but
+    // variance = m2/(count-1) instead of m2/count, guarded to 0 while count < 2.
+    fn step(fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("running_sample_stddev_step"), "RunningSampleStddev", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // Stream [10, 20, 30]: m2 trajectory 0, 50, 200 (identical to running_stddev_step's
+    // m2 -- only the divisor differs). Sample variance = m2/(count-1): n/a, 50/1=50,
+    // 200/2=100. floor(sqrt(.)): 0, 7 (7*7=49<=50<64), 10 (exact).
+    let (mut count, mut sum, mut m2) = (0u64, 0u64, 0u64);
+    let mut got = Vec::new();
+    for value in [10u64, 20, 30] {
+        let (out, cell) = step(&[("value", value), ("count", count), ("sum", sum), ("m2", m2)]);
+        count = cell.get("count").unwrap();
+        sum = cell.get("sum").unwrap();
+        m2 = cell.get("m2").unwrap();
+        got.push(out);
+    }
+    assert_eq!(got, vec![0, 7, 10]);
+    assert_eq!((count, sum, m2), (3, 60, 200));
+
+    // Discriminating case vs. the population sibling running_stddev_step: stream [10, 20].
+    // After 2 values m2=50. Population stddev = floor(sqrt(50/2)) = floor(sqrt(25)) = 5,
+    // but sample stddev = floor(sqrt(50/1)) = floor(sqrt(50)) = 7 -- proves the (count-1)
+    // denominator is actually wired in, not a no-op alias of the population version.
+    let (out1, cell1) = step(&[("value", 10u64), ("count", 0), ("sum", 0), ("m2", 0)]);
+    assert_eq!(out1, 0); // count becomes 1, still < 2 -> guarded to 0, not a divide
+    let (count1, sum1, m2_1) = (
+        cell1.get("count").unwrap(),
+        cell1.get("sum").unwrap(),
+        cell1.get("m2").unwrap(),
+    );
+    let (out2, _cell2) = step(&[("value", 20u64), ("count", count1), ("sum", sum1), ("m2", m2_1)]);
+    assert_eq!(out2, 7);
+}
+
+#[test]
+fn running_min_max_step_i16_matches_hand_computed_values() {
+    // running_min_max_step_i16: signed sibling of running_min_max_step -- same seen/min/max
+    // update logic, over i16 values, returning range = max - min via sign-magnitude (the
+    // abs_diff_i16 shape), since max=i16::MAX and min=i16::MIN would overflow i16 by one
+    // before a native subtraction could produce the range.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("running_min_max_step_i16"), "RunningMinMaxI16", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let result = cell.run(DEFAULT_CYCLES).unwrap().result;
+        (result, cell)
+    }
+
+    // Stream 10, -5, 20, i16::MIN, i16::MAX -- hand-computed range after each call:
+    // 0, 15, 25, 32788, 65535 (the last is the extreme case: i16::MAX - i16::MIN = 65535,
+    // exactly u16::MAX, confirming the range always fits in u16).
+    let (mut min, mut max, mut seen) = (i16_bits(0), i16_bits(0), 0u64);
+    let mut got = Vec::new();
+    for value in [10i16, -5, 20, i16::MIN, i16::MAX] {
+        let (range, cell) = step(&[
+            ("value", i16_bits(value)),
+            ("min", min),
+            ("max", max),
+            ("seen", seen),
+        ]);
+        min = cell.get("min").unwrap();
+        max = cell.get("max").unwrap();
+        seen = cell.get("seen").unwrap();
+        got.push(range);
+    }
+    assert_eq!(got, vec![0u16, 15, 25, 32788, 65535]);
+    assert_eq!((min as u16 as i16, max as u16 as i16), (i16::MIN, i16::MAX));
+
+    // All-negative stream -10, -20, -3 -- exercises the same-sign (both negative) branch
+    // of the sign-magnitude range subtract, distinct from the opposite-sign add above.
+    let (mut min2, mut max2, mut seen2) = (i16_bits(0), i16_bits(0), 0u64);
+    let mut got2 = Vec::new();
+    for value in [-10i16, -20, -3] {
+        let (range, cell) = step(&[
+            ("value", i16_bits(value)),
+            ("min", min2),
+            ("max", max2),
+            ("seen", seen2),
+        ]);
+        min2 = cell.get("min").unwrap();
+        max2 = cell.get("max").unwrap();
+        seen2 = cell.get("seen").unwrap();
+        got2.push(range);
+    }
+    assert_eq!(got2, vec![0u16, 10, 17]);
+    assert_eq!((min2 as u16 as i16, max2 as u16 as i16), (-20, -3));
+}

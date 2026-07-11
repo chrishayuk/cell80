@@ -66,3 +66,54 @@ fn first_wave_safe_arith_cells_match_defined_behaviour() {
         failures.join("\n")
     );
 }
+
+
+#[test]
+fn round_div_rounds_to_nearest_quotient_with_ties_up() {
+    // round_div(a, b): nearest-integer division, ties rounding UP (matching
+    // round_to_multiple's tie convention), 0 when b == 0. Implemented as
+    // q = a/b, r = a%b, round up iff r >= b-r -- never a+b/2, so it can't
+    // overflow even at the u16 domain extreme.
+    let cases: &[(u16, u16, u16)] = &[
+        (17, 5, 3),        // 17/5 = 3.4  -> rounds down to 3
+        (18, 5, 4),        // 18/5 = 3.6  -> rounds up to 4
+        (6, 4, 2),         // 6/4 = 1.5   exact tie -> ties round UP to 2
+        (5, 0, 0),         // divide by zero guarded -> 0
+        (0, 7, 0),         // 0/7 = 0
+        (65535, 2, 32768), // 65535/2 = 32767.5 tie -> rounds up to 32768, no overflow
+    ];
+    for (a, b, exp) in cases {
+        let got = run_cell("round_div", &[*a, *b]);
+        assert_eq!(got, *exp, "round_div({a}, {b}) = {got}, expected {exp}");
+    }
+}
+
+#[test]
+fn geomean2_matches_hand_computed_floor_sqrt_of_product() {
+    // geomean2(a, b) = floor(sqrt(a*b)), the geometric-mean sibling avg2 (arithmetic
+    // mean) has no counterpart for. Cases hand-computed: two perfect squares (36, 60
+    // rounds down non-exactly), a zero factor, and the domain extreme where a == b ==
+    // 65535 so a*b is the largest u32 product a u16 pair can produce and its root is
+    // exactly representable back in u16.
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("geomean2", &[0, 0], 0),             // sqrt(0) = 0
+        ("geomean2", &[4, 9], 6),             // sqrt(36) = 6 exactly
+        ("geomean2", &[3, 5], 3),             // sqrt(15) = 3.872..., floors to 3
+        ("geomean2", &[6, 10], 7),            // sqrt(60) = 7.746..., floors to 7
+        ("geomean2", &[65535, 65535], 65535), // sqrt(65535^2) = 65535 exactly
+        ("geomean2", &[100, 0], 0),           // one factor zero -> product zero -> 0
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}

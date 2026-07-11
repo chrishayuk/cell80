@@ -127,3 +127,75 @@ fn q_mul_i16_signed_q8_8_multiply_matches_hand_computed_cases() {
     let report = r.run(None, &[32767, 32767], DEFAULT_CYCLES).unwrap();
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn q_div_i16_signed_q8_8_divide_matches_hand_computed_cases() {
+    // q_div_i16: signed Q8.8 divide via sign-magnitude (i16_mag/i16_neg decompose each input,
+    // magnitudes combine as (mag_a << 8) / mag_b at wide u32 width mirroring q_div's own
+    // (a<<8)/b, sign is the XOR of the input signs) -- q_div's signed counterpart, since q_div
+    // is unsigned-only.
+
+    // Both positive: 10 / 4 in raw Q8.8 form -> (10<<8)/4 = 2560/4 = 640.
+    assert_eq!(run_cell("q_div_i16", &[10, 4]), 640);
+
+    // Negative / positive: -10 / 4 -> magnitude 640, sign negative -> -640 (64896 as u16 bits).
+    // -10 as u16 bits: 65536-10 = 65526.
+    assert_eq!(run_cell("q_div_i16", &[65526, 4]), 64896);
+
+    // Positive / negative: 10 / -4 -> magnitude 640, sign negative -> -640 (64896).
+    // -4 as u16 bits: 65536-4 = 65532.
+    assert_eq!(run_cell("q_div_i16", &[10, 65532]), 64896);
+
+    // Negative / negative: -10 / -4 -> signs cancel -> +640.
+    assert_eq!(run_cell("q_div_i16", &[65526, 65532]), 640);
+
+    // Zero divisor: b == 0 -> 0, matching q_div's own zero-divisor convention (no halt).
+    assert_eq!(run_cell("q_div_i16", &[100, 0]), 0);
+
+    // Boundary that fits exactly: 32767 / 256 -> (32767<<8)/256 = 32767 (i16::MAX), no halt.
+    assert_eq!(run_cell("q_div_i16", &[32767, 256]), 32767);
+
+    // Overflow: a=20000, b=1 -> scaled magnitude 20000<<8 = 5,120,000, far past the
+    // post-shift i16 limit (32767 positive / 32768 negative) -> escalates instead of
+    // silently truncating.
+    let mut r = Runner::compile(&cell_src("q_div_i16")).unwrap();
+    let report = r.run(None, &[20000, 1], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+// int_to_q8_i16: signed counterpart of int_to_q8 -- encodes x into Q8.8 via x << 8 for x in
+// [-128, 127], escalating (halt 0xFF05, needs_wider_math) outside that range since Q8.8's 8
+// signed integer bits can't hold a larger whole-number part without losing high bits. This is
+// the missing encode step for the pack's signed cells (q_sigmoid, q_mul_i16, q_div_i16,
+// clamp_i16), mirroring how int_to_q8 already serves the unsigned ones.
+#[test]
+fn int_to_q8_i16_encodes_signed_and_escalates_outside_i8_range() {
+    fn report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // 0 -> 0.0
+    assert_eq!(run_cell("int_to_q8_i16", &[0]), 0);
+    // 1 -> 1.0 = 256
+    assert_eq!(run_cell("int_to_q8_i16", &[1]), 256);
+    // boundary high: 127 -> 127 << 8 = 32512, still fits in i16
+    assert_eq!(run_cell("int_to_q8_i16", &[127]), 32512);
+    // -1 -> -256, as u16 bit pattern: 65536-256 = 65280
+    assert_eq!(run_cell("int_to_q8_i16", &[65535]), 65280);
+    // boundary low: -128 -> -32768 exactly (i16::MIN), as u16 bit pattern: 65536-32768 = 32768.
+    // input -128 as u16 bits is 65536-128 = 65408.
+    assert_eq!(run_cell("int_to_q8_i16", &[65408]), 32768);
+
+    // Escalation: just past either boundary must halt 0xFF05 rather than silently wrap.
+    assert_eq!(
+        report("int_to_q8_i16", &[128]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    ); // 128 is out of range high
+    assert_eq!(
+        report("int_to_q8_i16", &[65407]).halt, // -129 as u16 bits: 65536-129 = 65407
+        cell80::Halt::Escalate(0xFF05)
+    );
+}

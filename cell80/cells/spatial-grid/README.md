@@ -7,14 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (12)
 
 | id | signature | summary |
 |---|---|---|
 | `aabb_contains` | `AabbContains::run() -> u16` | Returns 1 if AABB (x2,y2,w2,h2) is fully contained within AABB (x1,y1,w1,h1) — all four edges inside — else 0. |
 | `aabb_intersect` | `AabbIntersect::run() -> u16` | Returns 1 if two axis-aligned bounding boxes (x1,y1,w1,h1) and (x2,y2,w2,h2) overlap (edge-touching doesn't count), else 0. |
+| `aabb_intersection` | `AabbIntersection::run() -> u16` | The actual overlapping rectangle (ix,iy,iw,ih) of two AABBs (x1,y1,w1,h1) and (x2,y2,w2,h2), plus a valid flag (0 when they don't truly overlap) -- unlike aabb_intersect's plain 0/1 verdict, this returns the intersection region itself. |
+| `aabb_union` | `AabbUnion::run() -> u16` | The smallest AABB (ux,uy,uw,uh) containing both input AABBs (x1,y1,w1,h1) and (x2,y2,w2,h2) -- always defined, no overlap required, unlike aabb_intersect/aabb_contains which only test a relationship between two boxes. |
 | `bresenham_step` | `BresenhamStep::run() -> u16` | Bresenham line-drawing, one step: given the fixed line parameters (dx, dy — the absolute deltas between the endpoints) and the running error term (as a sign-magnitude pair, since state fields can't be i16 — err can go negative), reports whether this step advances x, y, or both (step_x/step_y, 0 or 1) and updates the error term. The caller applies step_x/step_y to its own x/y using its own known step directions (sx, sy) — tracking dx/dy/err here and x/y/sx/sy on the caller's side avoids needing four more sign-magnitude field pairs for quantities the error-term math never actually needs to know the sign of. Verified against a full reference line generator across 2,000 random line segments (coordinates up to +/-500) before shipping. |
 | `grid_coords` | `GridCoords::run() -> u16` | Inverse of grid_index: recovers the (x, y) grid coordinates from a flat array index and the grid's row width via x = index % width, y = index / width; guards width == 0 explicitly, returning (0, 0) instead of letting the divide/mod halt on DivByZero. |
+| `grid_coords_u32` | `GridCoordsWide::run() -> u16` | Wide sibling of grid_coords: recovers (x, y) from a wide u32 flat array index and a u16 row width via x = index % width, y = index / width; guards width == 0 explicitly, returning (0, 0) instead of letting the divide/mod halt (unlike the generic div_floor_u32/mod_u32, which halt on a zero divisor). |
 | `grid_index` | `run(x: u16, y: u16, width: u16) -> u16` | Flat array index of a grid cell (x, y) in a grid of the given row width: y * width + x. |
 | `morton_decode` | `MortonDecode::run() -> u16` | Morton (Z-order curve) decode: the inverse of morton_encode — split a u32 spatial index back into its two interleaved u16 coordinates via the same branch-free bit-compaction trick (constant shift amounts, no dynamic-shift loop). |
 | `morton_encode` | `MortonEncode::run() -> u16` | Morton (Z-order curve) encode: interleave the bits of two u16 coordinates into one u32 spatial index (x's bits at even positions, y's at odd), so a single integer sorts nearby 2D points near each other — a common spatial-indexing key. The classic branch-free "magic numbers" bit-spread (constant shift amounts, no dynamic-shift loop): needs a u32 state field since interleaving two full u16s produces 32 bits, more than either input's own width. |

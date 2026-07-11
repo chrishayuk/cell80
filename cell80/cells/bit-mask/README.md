@@ -7,22 +7,27 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (14)
+## Landed (19)
 
 | id | signature | summary |
 |---|---|---|
+| `bit_is_clear` | `run(x: u16, bit: u16) -> u16` | Returns 1 if bit number `bit` of x is NOT set, else 0: ((x >> bit) & 1u16) == 0u16 -- the exact logical complement of bit_is_set. |
 | `bit_is_set` | `run(x: u16, bit: u16) -> u16` | Returns 1 if bit number `bit` of x is set, else 0. |
+| `bit_is_set_u32` | `BitIsSetU32::run() -> u16` | Returns 1 if bit number `bit` (0-31) of a 32-bit value x is set, else 0: (x >> bit) & 1, widened from bit_is_set's 16-bit domain -- needs a u32 state field since bit_is_set's fn run(x: u16, bit: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `bit_not` | `run(x: u16) -> u16` | Bitwise complement of all 16 bits: x ^ 0xFFFF (unary NOT, the dialect's `!` is logical-not only). |
 | `clear_bit` | `run(x: u16, bit: u16) -> u16` | Clear bit number `bit` of x to 0. |
+| `hamming_distance16` | `run(a: u16, b: u16) -> u16` | Hamming distance between two 16-bit values: the count of bit positions where a and b differ, popcount(a ^ b). |
 | `mask_clear` | `run(x: u16, mask: u16) -> u16` | Clear every bit of `mask` from x: x & (mask ^ 0xFFFF), the mask-level generalization of clear_bit (AND-NOT / andn). |
 | `mask_has_all` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ALL bits of mask set: (x & mask) == mask. |
 | `mask_has_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ANY bit of mask set: (x & mask) != 0. |
 | `mask_has_none` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has NONE of mask's bits set: (x & mask) == 0, else 0 -- the exact logical complement of mask_has_any. |
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
+| `mask_missing_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x is missing at least one bit of mask: (x & mask) != mask -- the exact logical complement of mask_has_all. |
 | `mask_union` | `run(a: u16, b: u16) -> u16` | Union of two bit masks: a \| b (every bit set in either). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
 | `parity` | `run(x: u16) -> u16` | Parity: 1 if the number of set bits is odd, else 0. |
 | `popcount` | `run(x: u16) -> u16` | Population count: the number of set bits in a 16-bit value. |
+| `popcount_u32` | `PopcountU32::run() -> u16` | Population count of a full 32-bit value: the number of set bits in x, widened from popcount's 16-bit domain -- needs a u32 state field since popcount's fn run(x: u16) cannot accept a 32-bit input under the 16-bit calling convention. |
 | `set_bit` | `run(x: u16, bit: u16) -> u16` | Set bit number `bit` of x to 1. |
 | `toggle_bit` | `run(x: u16, bit: u16) -> u16` | Toggle (flip) bit number `bit` of x. |
 

@@ -237,3 +237,82 @@ fn snap_up_u32_matches_defined_behaviour() {
     let (_, report, _) = step(&[("x", 4_294_967_291), ("step", 100_000)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn normalize_0_100_u32_matches_hand_computed_expectations() {
+    // NormalizeWide: wide (u32) sibling of normalize_0_100 -- rescales x within [lo, hi]
+    // to a 0..100 percentage, clamping x to [lo, hi] first (0 if hi <= lo). The
+    // intermediate multiply (clamped x - lo) * 100 is checked, so it escalates instead
+    // of silently wrapping when lo/hi span a wide enough range.
+    let step = |x: u64, lo: u64, hi: u64| -> (u64, cell80::Report) {
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("normalize_0_100_u32"),
+            "NormalizeWide",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x", x).unwrap();
+        cell.set("lo", lo).unwrap();
+        cell.set("hi", hi).unwrap();
+        let report = cell
+            .run(cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
+        (cell.get("result").unwrap_or(0), report)
+    };
+
+    // In-range: 50 within [0, 200] -> 25%.
+    let (r, rep) = step(50, 0, 200);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 25);
+
+    // Above hi clamps to hi first: 300 clamped to 200, within [0, 200] -> 100%.
+    let (r, rep) = step(300, 0, 200);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 100);
+
+    // Degenerate range hi <= lo -> 0 regardless of x.
+    let (r, rep) = step(5, 10, 10);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 0);
+
+    // Wide case past the u16/65535 ceiling: 100_000 within [0, 200_000] -> 50%.
+    let (r, rep) = step(100_000, 0, 200_000);
+    assert_eq!(rep.halt, cell80::Halt::Returned);
+    assert_eq!(r, 50);
+
+    // Overflow escalation: (c - lo) * 100 overflows u32. x = hi = 50_000_000, lo = 0
+    // -> c - lo = 50_000_000; 50_000_000 * 100 = 5_000_000_000 > u32::MAX
+    // (4_294_967_295) -> escalates (needs_wider_math).
+    let (_, rep) = step(50_000_000, 0, 50_000_000);
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn value_at_percent_matches_hand_computed_expectations() {
+    // Local helper: compile+run the bounds/value_at_percent free function on (lo, hi, pct).
+    let run = |lo: u16, hi: u16, pct: u16| -> u16 {
+        let mut r = cell80::Runner::compile(&crate::common::cell_src("value_at_percent"))
+            .unwrap_or_else(|e| panic!("compile: {e}"));
+        r.run(None, &[lo, hi, pct], cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"))
+            .result
+    };
+
+    // 0% of [0,200] -> lo = 0
+    assert_eq!(run(0, 200, 0), 0);
+    // 50% of [0,200] -> 0 + 200*50/100 = 100
+    assert_eq!(run(0, 200, 50), 100);
+    // 100% of [0,200] -> hi = 200
+    assert_eq!(run(0, 200, 100), 200);
+    // pct clamped past 100: 150% of [0,200] behaves like 100% -> 200
+    assert_eq!(run(0, 200, 150), 200);
+    // offset range: 25% of [100,300] -> 100 + (300-100)*25/100 = 150
+    assert_eq!(run(100, 300, 25), 150);
+    // degenerate hi == lo -> returns lo unconditionally
+    assert_eq!(run(50, 50, 50), 50);
+    // degenerate hi < lo -> returns lo
+    assert_eq!(run(200, 100, 50), 200);
+    // exact inverse of normalize_0_100(50, 0, 200) == 25 -> recovers 50
+    assert_eq!(run(0, 200, 25), 50);
+}

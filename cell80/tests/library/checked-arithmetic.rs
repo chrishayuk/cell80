@@ -419,3 +419,199 @@ fn smag_max_returns_the_larger_signed_sign_magnitude_value() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+
+// round_div_checked_u32: round-to-nearest division of two u32 values (ties up), the wide,
+// escalating sibling of round_div. Checks a non-tie case, an exact tie (ties up), the
+// overflow-safe tie comparison near u32::MAX (where a naive 2*r >= b would silently wrap),
+// and the b == 0 escalation path.
+#[test]
+fn round_div_checked_u32_matches_hand_computed_cases() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 10 / 3 = 3.333... -> rounds down -> 3 (not a tie).
+    let (report, cell) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 10), ("b", 3)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("quotient"), Some(3));
+
+    // 7 / 2 = 3.5 -> exact tie -> rounds up -> 4.
+    let (report, cell) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 7), ("b", 2)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("quotient"), Some(4));
+
+    // Overflow-safe comparison: a=2_500_000_000, b=4_000_000_000, r/b = 0.625 >= 0.5 so this
+    // rounds up to 1. A naive `2*r >= b` comparison would silently wrap (2*2_500_000_000
+    // exceeds u32::MAX); the `r >= b - r` form used here never overflows.
+    let (report, cell) = step(
+        "round_div_checked_u32",
+        "RoundDivChecked",
+        &[("a", 2_500_000_000), ("b", 4_000_000_000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("quotient"), Some(1));
+
+    // b == 0 halts with needs_wider_math (0xFF05).
+    let (report, _) = step("round_div_checked_u32", "RoundDivChecked", &[("a", 10), ("b", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn sub3_checked_u32_matches_hand_computed_expectations() {
+    // sub3_checked_u32: a-b-c, composing sub_checked_u32 twice — escalates the moment either
+    // step would go negative, filling the missing arity-3 sibling of sub_checked_u32 (2-arg).
+    fn step(a: u64, b: u64, c: u64) -> (cell80::Report, Option<u64>) {
+        let mut cell = StateCell::bind(&cell_src("sub3_checked_u32"), "Sub3Checked", None)
+            .unwrap_or_else(|e| panic!("bind sub3_checked_u32: {e}"));
+        for (f, v) in [("a", a), ("b", b), ("c", c)] {
+            cell.set(f, v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let diff = cell.get("diff");
+        (report, diff)
+    }
+
+    // Normal case, both steps stay nonnegative -> 100 - 30 - 20 = 50.
+    let (report, diff) = step(100, 30, 20);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(diff, Some(50));
+
+    // First step goes negative (b > a: 20 > 10) -> escalates before c is even applied.
+    let (report, _) = step(10, 20, 5);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // First step fine (50 - 20 = 30) but second step goes negative (c=40 > 30) -> escalates.
+    let (report, _) = step(50, 20, 40);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Exact zero result at every step -> 25 - 25 - 0 = 0, no escalation.
+    let (report, diff) = step(25, 25, 0);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(diff, Some(0));
+
+    // Wide u32 values near the top of the range -> u32::MAX - 1 - 1 = u32::MAX - 2.
+    let (report, diff) = step(u32::MAX as u64, 1, 1);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(diff, Some((u32::MAX - 2) as u64));
+}
+
+#[test]
+fn add4_checked_u32_matches_defined_behaviour() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // add4_checked_u32: a+b+c+d, escalating the moment any sequential add step overflows u32
+    // (composes add_checked_u32 three times: (a+b), +c, +d).
+
+    // Exact case: comfortably within u32, no escalation.
+    let (_, report, cell) = step(
+        "add4_checked_u32",
+        "Add4Checked",
+        &[("a", 1), ("b", 2), ("c", 3), ("d", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("sum"), Some(10));
+
+    // Exact boundary: sums to precisely u32::MAX, and every intermediate partial sum
+    // (2e9, 3e9, u32::MAX) also stays in range, so no escalation fires.
+    let (_, report, cell) = step(
+        "add4_checked_u32",
+        "Add4Checked",
+        &[
+            ("a", 1_000_000_000),
+            ("b", 1_000_000_000),
+            ("c", 1_000_000_000),
+            ("d", 1_294_967_295),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("sum"), Some(u32::MAX as u64));
+
+    // First-step overflow: a+b alone already exceeds u32::MAX.
+    let (_, report, _) = step(
+        "add4_checked_u32",
+        "Add4Checked",
+        &[("a", u32::MAX as u64), ("b", 1), ("c", 0), ("d", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Last-step overflow only: a+b+c stays in range (4_000_000_000), but adding d
+    // pushes one past u32::MAX (4_294_967_296) -- escalation fires on the final add, not
+    // an earlier one, proving every sequential step is checked, not just the first.
+    let (_, report, _) = step(
+        "add4_checked_u32",
+        "Add4Checked",
+        &[
+            ("a", 4_000_000_000),
+            ("b", 0),
+            ("c", 0),
+            ("d", 294_967_296),
+        ],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn is_coprime_u32_hand_computed() {
+    // Host-oracle check for is_coprime_u32 (state cell IsCoprimeWide { a: u32, b: u32, ok: u16 }):
+    // recomputes gcd(a, b) via the same inline Euclidean loop gcd_u32 uses, and asserts
+    // ok/result is 1 iff that gcd is exactly 1 (coprime), else 0.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, cell)
+    }
+
+    // gcd(48, 18) = 6 -> not coprime
+    let (r, cell) = step("is_coprime_u32", "IsCoprimeWide", &[("a", 48), ("b", 18)]);
+    assert_eq!(r, 0);
+    assert_eq!(cell.get("ok"), Some(0));
+
+    // gcd(17, 13) = 1 (distinct primes) -> coprime
+    let (r, cell) = step("is_coprime_u32", "IsCoprimeWide", &[("a", 17), ("b", 13)]);
+    assert_eq!(r, 1);
+    assert_eq!(cell.get("ok"), Some(1));
+
+    // gcd(9, 28) = 1 (9 = 3^2, 28 = 2^2 * 7, no shared factor) -> coprime
+    let (r, cell) = step("is_coprime_u32", "IsCoprimeWide", &[("a", 9), ("b", 28)]);
+    assert_eq!(r, 1);
+    assert_eq!(cell.get("ok"), Some(1));
+
+    // gcd(0, 5) = 5 -> not coprime (gcd(0, n) = n)
+    let (r, cell) = step("is_coprime_u32", "IsCoprimeWide", &[("a", 0), ("b", 5)]);
+    assert_eq!(r, 0);
+    assert_eq!(cell.get("ok"), Some(0));
+
+    // gcd(1, 100) = 1 -> coprime (1 is coprime with everything)
+    let (r, cell) = step("is_coprime_u32", "IsCoprimeWide", &[("a", 1), ("b", 100)]);
+    assert_eq!(r, 1);
+    assert_eq!(cell.get("ok"), Some(1));
+
+    // gcd(100000, 100000) = 100000 -> not coprime (equal, non-1 values)
+    let (r, cell) = step(
+        "is_coprime_u32",
+        "IsCoprimeWide",
+        &[("a", 100_000), ("b", 100_000)],
+    );
+    assert_eq!(r, 0);
+    assert_eq!(cell.get("ok"), Some(0));
+}

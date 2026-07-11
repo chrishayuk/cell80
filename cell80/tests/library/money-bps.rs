@@ -157,3 +157,85 @@ fn bps_change_between_matches_defined_behaviour() {
     let (report, _) = step(&[("before", 1), ("after", 500000)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+
+#[test]
+fn compound_increase_by_bps_matches_defined_behaviour() {
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("compound_increase_by_bps"), "CompoundIncreaseByBps", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 10% growth compounded for 3 periods: 1000 -> 1100 -> 1210 -> 1331 (like increase_by_bps
+    // applied three times in a row, but looped internally rather than called three times).
+    let (_, cell) = step(&[("value", 1000), ("bps", 1000), ("periods", 3)]);
+    assert_eq!(cell.get("result"), Some(1331));
+
+    // periods = 0 is a no-op: the while-loop body never runs, value passes through unchanged.
+    let (_, cell) = step(&[("value", 500), ("bps", 250), ("periods", 0)]);
+    assert_eq!(cell.get("result"), Some(500));
+
+    // bps = 10000 (100% growth) doubles every period: 1 -> 2 -> 4 -> 8 -> 16.
+    let (_, cell) = step(&[("value", 1), ("bps", 10000), ("periods", 4)]);
+    assert_eq!(cell.get("result"), Some(16));
+
+    // Multiply overflow: value * bps itself exceeds u32::MAX on the first iteration.
+    let (report, _) = step(&[("value", 4_000_000_000), ("bps", 5000), ("periods", 1)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Add-only overflow: value=4294967290, bps=1 keeps the multiply (product=4294967290)
+    // safely inside u32, but value+delta=4295396786 overflows u32::MAX -- proves the checked
+    // add, not just the checked multiply, is load-bearing every iteration.
+    let (report, _) = step(&[("value", 4_294_967_290), ("bps", 1), ("periods", 1)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn compound_decrease_by_bps_matches_hand_computed_expectations() {
+    use crate::common::cell_src;
+    use cell80::{StateCell, DEFAULT_CYCLES};
+
+    // Checked against decrease_by_bps (single application) and compound_increase_by_bps
+    // (the opposite-direction sibling): compounds the same bps discount rate over
+    // `periods` iterations, escalating if any step's discount would exceed the running value.
+    fn step(value: u64, bps: u64, periods: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("compound_decrease_by_bps"), "CompoundDecreaseByBps", None)
+            .unwrap_or_else(|e| panic!("bind compound_decrease_by_bps: {e}"));
+        cell.set("value", value).unwrap();
+        cell.set("bps", bps).unwrap();
+        cell.set("periods", periods).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // value=1000, bps=1000 (10%), periods=3: 1000 -100=900; 900 -90=810; 810 -81=729.
+    let (_, cell) = step(1000, 1000, 3);
+    assert_eq!(cell.get("result"), Some(729));
+
+    // periods=0 is the identity: result == value unchanged.
+    let (_, cell) = step(12345, 250, 0);
+    assert_eq!(cell.get("result"), Some(12345));
+
+    // periods=1 matches a single decrease_by_bps application: 2000 - (2000*750/10000=150) = 1850.
+    let (_, cell) = step(2000, 750, 1);
+    assert_eq!(cell.get("result"), Some(1850));
+
+    // bps > 10000 (would decrease past zero): value=1, bps=20000 ->
+    // product=20000, delta=floor(20000/10000)=2, 2 > 1 -> halt 0xFF05.
+    let (report, _) = step(1, 20000, 1);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Multiply overflow inside a step: value=900_000_000, bps=10000 ->
+    // product = 9_000_000_000_000, far past u32::MAX -> mul_checked_u32 halts 0xFF05.
+    let (report, _) = step(900_000_000, 10000, 1);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // Two periods at 25%: 800 -200=600; 600 -150=450.
+    let (_, cell) = step(800, 2500, 2);
+    assert_eq!(cell.get("result"), Some(450));
+}

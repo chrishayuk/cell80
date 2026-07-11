@@ -3,7 +3,7 @@
 //! pack-directory structure; see `cell80/tests/library/common.rs` for the shared
 //! `cell_src`/`run_cell` helpers every pack file uses.
 
-use crate::common::cell_src;
+use crate::common::{cell_src, run_cell};
 use cell80::{StateCell, DEFAULT_CYCLES};
 
 #[test]
@@ -349,5 +349,271 @@ fn collatz_stopping_time_hand_computed() {
         "CollatzStoppingTime",
         &[("n", 4_294_967_295), ("max_steps", 5)],
     );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn collatz_max_value_hand_computed() {
+    // Hand-computed Collatz (3n+1 / n/2) peak values, cross-checked against the
+    // classic textbook trajectories before trusting any compiled output.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // n=1: already at 1, peak is n itself regardless of max_steps.
+    let (_, cell) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 1), ("max_steps", 5)],
+    );
+    assert_eq!(cell.get("max_value"), Some(1));
+
+    // n=7: 7->22->11->34->17->52->26->13->40->20->10->5->16->8->4->2->1 is 16 steps
+    // (classic textbook example); the peak value visited is 52 (reached right after 17).
+    let (_, cell) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 7), ("max_steps", 16)],
+    );
+    assert_eq!(cell.get("max_value"), Some(52));
+
+    // n=6: 6->3->10->5->16->8->4->2->1 (8 steps); peak is 16, distinct from collatz_stopping_time's
+    // scalar output (a count, 8) -- this cell reports the value 16 instead.
+    let (_, cell) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 6), ("max_steps", 8)],
+    );
+    assert_eq!(cell.get("max_value"), Some(16));
+
+    // Same n=7 but bound one short of the true stopping time (15 < 16) escalates
+    // out_of_domain rather than silently truncating or lying about the peak.
+    let (report, _) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 7), ("max_steps", 15)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n=0 is out of domain (Collatz undefined at 0).
+    let (report, _) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 0), ("max_steps", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n = u32::MAX (odd): 3n+1 overflows u32 on the very first step -> needs_wider_math,
+    // not a silent wraparound.
+    let (report, _) = step(
+        "collatz_max_value",
+        "CollatzMaxValue",
+        &[("n", 4_294_967_295), ("max_steps", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn sequences_is_happy_number() {
+    // is_happy_number: repeated sum-of-squared-digits, 1 = reaches 1 (happy), 0 = enters the
+    // known non-happy cycle (detected by a bounded return to 4, its entry point).
+    // n=0 is a special-cased fixed point (digit-square-sum of 0 is 0 forever) -- not happy.
+    assert_eq!(run_cell("is_happy_number", &[0]), 0);
+    // n=1: trivially happy (already 1).
+    assert_eq!(run_cell("is_happy_number", &[1]), 1);
+    // n=2: 2 -> 4 -> ... enters the cycle at 4 -- not happy.
+    assert_eq!(run_cell("is_happy_number", &[2]), 0);
+    // n=4: the cycle's entry point itself -- not happy by definition.
+    assert_eq!(run_cell("is_happy_number", &[4]), 0);
+    // n=7: 7 -> 49 -> 97 -> 130 -> 10 -> 1 -- happy.
+    assert_eq!(run_cell("is_happy_number", &[7]), 1);
+    // n=19: 19 -> 82 -> 68 -> 100 -> 1 -- happy.
+    assert_eq!(run_cell("is_happy_number", &[19]), 1);
+    // n=65535 (max u16 input): 65535 -> 120 -> 5 -> 25 -> 29 -> 85 -> 89 -> 145 -> 42 -> 20 -> 4 -- not happy.
+    assert_eq!(run_cell("is_happy_number", &[65535]), 0);
+}
+
+#[test]
+fn kaprekar_stopping_time_slice() {
+    // kaprekar_stopping_time: steps of Kaprekar's routine (sort digits desc minus asc,
+    // repeat) for a zero-padded 4-digit n to reach 6174. Hand-computed traces:
+    //   1    -> "0001"->999(1)->8991(2)->8082(3)->8532(4)->6174(5)            = 5
+    //   3524 -> 3524->3087(1)->8352(2)->6174(3)                               = 3
+    //   999  -> "0999"->8991(1)->8082(2)->8532(3)->6174(4)                    = 4
+    //   1234 -> 1234->3087(1)->8352(2)->6174(3)                               = 3
+    //   5000 -> 5000->4995(1)->5355(2)->1998(3)->8082(4)->8532(5)->6174(6)    = 6
+    //   2111 -> 2111->999(1)->8991(2)->8082(3)->8532(4)->6174(5)              = 5
+    // 6174 itself is 0 steps; repdigits (all four zero-padded digits equal) never
+    // converge and escalate, as does any n outside the 4-digit domain.
+    fn run(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = cell80::Runner::compile(&cell_src(id))
+            .unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    assert_eq!(run("kaprekar_stopping_time", &[6174]).result, 0);
+    assert_eq!(run("kaprekar_stopping_time", &[1]).result, 5);
+    assert_eq!(run("kaprekar_stopping_time", &[3524]).result, 3);
+    assert_eq!(run("kaprekar_stopping_time", &[999]).result, 4);
+    assert_eq!(run("kaprekar_stopping_time", &[1234]).result, 3);
+    assert_eq!(run("kaprekar_stopping_time", &[5000]).result, 6);
+    assert_eq!(run("kaprekar_stopping_time", &[2111]).result, 5);
+
+    // Repdigits (all 4 zero-padded digits identical) never converge -- escalate.
+    assert_eq!(run("kaprekar_stopping_time", &[0]).halt, cell80::Halt::Escalate(0xFF06));
+    assert_eq!(run("kaprekar_stopping_time", &[1111]).halt, cell80::Halt::Escalate(0xFF06));
+    assert_eq!(run("kaprekar_stopping_time", &[9999]).halt, cell80::Halt::Escalate(0xFF06));
+
+    // Out of the 4-digit domain entirely.
+    assert_eq!(run("kaprekar_stopping_time", &[10000]).halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn series_term_count_hand_computed() {
+    // Recovers the missing term count from an arithmetic series' endpoints and sum,
+    // the exact inverse of series_sum's count*(first+last)/2 formula.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 3,5,7,9,11 (5 terms, first=3, last=11) sums to 35; count = 2*35/(3+11) = 70/14 = 5.
+    let (_, cell) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 3), ("last", 11), ("sum", 35)],
+    );
+    assert_eq!(cell.get("count"), Some(5));
+
+    // 5+5+5=15 (3 terms, first=last=5); count = 2*15/(5+5) = 30/10 = 3.
+    let (_, cell) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 5), ("last", 5), ("sum", 15)],
+    );
+    assert_eq!(cell.get("count"), Some(3));
+
+    // sum=0 with nonzero endpoints -> count=0 (zero terms contribute nothing).
+    let (_, cell) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 5), ("last", 7), ("sum", 0)],
+    );
+    assert_eq!(cell.get("count"), Some(0));
+
+    // first+last==0 (first=last=0) but sum!=0 -> no count can produce a nonzero sum -> out_of_domain.
+    let (report, _) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 0), ("last", 0), ("sum", 5)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // first=1, last=2, sum=4: endpoint_sum=3, doubled=8, 8 % 3 != 0 -> not evenly divisible -> out_of_domain.
+    let (report, _) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 1), ("last", 2), ("sum", 4)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // first=1, last=1, sum=3_000_000_000: endpoint_sum=2, doubled=6_000_000_000 overflows u32::MAX -> needs_wider_math.
+    let (report, _) = step(
+        "series_term_count",
+        "SeriesTermCount",
+        &[("first", 1), ("last", 1), ("sum", 3_000_000_000)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn arithmetic_common_diff_recovers_step_sequences_slice() {
+    // arithmetic_common_diff is the third solvable unknown in start + step*(n-1) = term:
+    // given start, the 1-indexed term position n, and that term's value, recover step.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("arithmetic_common_diff"),
+            "ArithmeticCommonDiff",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind arithmetic_common_diff: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Same sequence as arithmetic_nth_u32/arithmetic_term_index tests: 3,5,7,9,11
+    // (start=3, n=5, term=11). gap = 11-3 = 8, nm1 = 5-1 = 4, step = 8/4 = 2.
+    let (_, cell) = step(&[("start", 3), ("n", 5), ("term", 11)]);
+    assert_eq!(cell.get("step"), Some(2));
+
+    // Larger non-trivial case: start=100, n=17, term=500.
+    // gap = 500-100 = 400, nm1 = 17-1 = 16, step = 400/16 = 25.
+    let (_, cell) = step(&[("start", 100), ("n", 17), ("term", 500)]);
+    assert_eq!(cell.get("step"), Some(25));
+
+    // n == 1: only the first term is pinned down; term == start -> step reported as 0
+    // (unconstrained by a single point, so the canonical value is reported, not a
+    // divide-by-zero halt).
+    let (_, cell) = step(&[("start", 3), ("n", 1), ("term", 3)]);
+    assert_eq!(cell.get("step"), Some(0));
+
+    // term < start can never happen reading forward from start -> out_of_domain.
+    let (report, _) = step(&[("start", 10), ("n", 3), ("term", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // gap not an exact multiple of (n-1): start=3, n=3, term=4 -> gap=1, nm1=2, 1%2 != 0.
+    let (report, _) = step(&[("start", 3), ("n", 3), ("term", 4)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n == 1 but term != start is impossible (the first term IS start) -> out_of_domain.
+    let (report, _) = step(&[("start", 5), ("n", 1), ("term", 6)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn horner_eval_cubic_slice() {
+    // Evaluates a*x^3 + b*x^2 + c*x + d via Horner's method, checked at every
+    // multiply-add step; the last case forces an overflow to confirm it escalates
+    // (0xFF05, needs_wider_math) instead of silently wrapping.
+    fn step(fields: &[(&str, u64)]) -> (StateCell, cell80::Report) {
+        let mut cell = StateCell::bind(&cell_src("horner_eval_cubic"), "HornerCubic", None)
+            .unwrap_or_else(|e| panic!("bind horner_eval_cubic: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (cell, report)
+    }
+
+    // 2x^3 + 3x^2 + 4x + 5 at x=10 -> 2000 + 300 + 40 + 5 = 2345.
+    let (cell, _) = step(&[("a", 2), ("b", 3), ("c", 4), ("d", 5), ("x", 10)]);
+    assert_eq!(cell.get("result"), Some(2345));
+
+    // x^3 at x=3 (a=1, b=c=d=0) -> 27.
+    let (cell, _) = step(&[("a", 1), ("b", 0), ("c", 0), ("d", 0), ("x", 3)]);
+    assert_eq!(cell.get("result"), Some(27));
+
+    // x=0 collapses the polynomial to its constant term d.
+    let (cell, _) = step(&[("a", 1), ("b", 2), ("c", 3), ("d", 4), ("x", 0)]);
+    assert_eq!(cell.get("result"), Some(4));
+
+    // Overflow at the very first multiply (a*x = 1_000_000 * 5000 = 5e9 > u32::MAX)
+    // must escalate rather than wrap.
+    let (_, report) = step(&[("a", 1_000_000), ("b", 0), ("c", 0), ("d", 0), ("x", 5000)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }

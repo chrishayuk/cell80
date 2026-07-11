@@ -194,3 +194,159 @@ fn nonzero_u32_wide_predicate() {
     // x = 4_294_967_295 -> 1 (u32 max, upper bound of the wide field)
     assert_eq!(step(&[("x", 4_294_967_295)]), 1);
 }
+
+
+#[test]
+fn is_lt_i16_matches_hand_computed_expectations() {
+    // is_lt_i16(a, b): 1 if a < b under true signed ordering, else 0 -- the signed
+    // sibling of is_lt/is_lt_u32. Args/results are read as their two's-complement u16
+    // bit pattern (-5 <-> 65531), matching signed-deltas' own convention.
+
+    // Both positive: 3 < 5 -> 1.
+    assert_eq!(run_cell("is_lt_i16", &[3, 5]), 1);
+
+    // Both positive, false case: 5 < 3 -> 0.
+    assert_eq!(run_cell("is_lt_i16", &[5, 3]), 0);
+
+    // Mixed sign, the case a naive u16 bit-pattern compare gets backwards:
+    // -1 (bits 65535) < 0 -> true signed ordering says 1, unsigned bit-compare would say 0.
+    assert_eq!(run_cell("is_lt_i16", &[65535, 0]), 1);
+
+    // Both negative: -5 (65531) < -3 (65533) -> 1 (true signed ordering).
+    assert_eq!(run_cell("is_lt_i16", &[65531, 65533]), 1);
+
+    // Equal values: 7 < 7 -> 0.
+    assert_eq!(run_cell("is_lt_i16", &[7, 7]), 0);
+
+    // Extremes: i16::MIN (32768) < i16::MAX (32767) -> 1.
+    assert_eq!(run_cell("is_lt_i16", &[32768, 32767]), 1);
+}
+
+#[test]
+fn is_gt_i16_signed_ordering_matches_hand_computed_expectations() {
+    // is_gt_i16: (a > b) as u16 under TRUE signed ordering -- the signed sibling of is_gt (u16)
+    // and is_gt_u32, and the direct complement of is_lt_i16. Exercises the case where a naive
+    // unsigned bit-comparison would give the wrong answer (mixed-sign inputs), plus the ties
+    // and extremes any comparison predicate needs.
+    fn i16_bits(v: i16) -> u16 { v as u16 }
+
+    let cases: &[(i16, i16, u16)] = &[
+        (5, 3, 1),          // both positive, a > b -> true
+        (3, 5, 0),          // both positive, a < b -> false
+        (-5, -3, 0),        // both negative: -5 > -3 is false
+        (1, -1, 1),         // mixed sign: 1 > -1 -> true (unsigned bit-compare would wrongly say 1 > 65535 is false)
+        (42, 42, 0),        // equal values -> false
+        (i16::MAX, i16::MIN, 1), // extremes: 32767 > -32768 -> true
+    ];
+    for &(a, b, expected) in cases {
+        assert_eq!(
+            run_cell("is_gt_i16", &[i16_bits(a), i16_bits(b)]),
+            expected,
+            "is_gt_i16({a}, {b}) should be {expected}"
+        );
+    }
+}
+
+#[test]
+fn is_le_i16_matches_hand_computed_expectations() {
+    // is_le_i16(a, b): non-strict signed <= sibling of is_lt_i16/is_gt_i16/is_ge_i16, and
+    // the signed counterpart of is_le, which bit-reinterprets negative values as large
+    // positives and so orders them wrong. Negative arguments are passed/read as their
+    // two's-complement u16 bit pattern, matching this file's other signed-i16 cases.
+
+    // a=5, b=3: 5 <= 3 is false -> 0.
+    assert_eq!(run_cell("is_le_i16", &[5, 3]), 0);
+    // a=3, b=5: 3 <= 5 is true -> 1.
+    assert_eq!(run_cell("is_le_i16", &[3, 5]), 1);
+    // a=5, b=5: equal, <= is inclusive -> 1.
+    assert_eq!(run_cell("is_le_i16", &[5, 5]), 1);
+    // a=-5 (65531), b=-3 (65533): -5 <= -3 is true -> 1.
+    assert_eq!(run_cell("is_le_i16", &[65531, 65533]), 1);
+    // a=-1 (65535), b=0: -1 <= 0 is true -> 1. Unsigned bit-pattern compare would say
+    // 65535 <= 0 is false -- this is exactly the case that proves signed ordering is used.
+    assert_eq!(run_cell("is_le_i16", &[65535, 0]), 1);
+    // a=1, b=-1 (65535): 1 <= -1 is false -> 0.
+    assert_eq!(run_cell("is_le_i16", &[1, 65535]), 0);
+    // a=i16::MIN (32768 bits, -32768), b=i16::MAX (32767 bits, 32767): -32768 <= 32767 -> 1.
+    assert_eq!(run_cell("is_le_i16", &[32768, 32767]), 1);
+}
+
+#[test]
+fn is_ge_i16_hand_computed_cases() {
+    // Compiles and runs the is_ge_i16 free function via the host oracle, checking
+    // (a >= b) as u16 under true signed ordering for i16 inputs.
+    use cell80::{Runner, DEFAULT_CYCLES};
+
+    fn run(a: i16, b: i16) -> u16 {
+        let mut r = Runner::compile(&cell_src("is_ge_i16")).unwrap_or_else(|e| panic!("compile: {e}"));
+        r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"))
+            .result
+    }
+
+    // 5 >= 3 -> true (positive, strictly greater) -> 1
+    assert_eq!(run(5, 3), 1, "5 >= 3");
+    // 3 >= 5 -> false (positive, strictly less) -> 0
+    assert_eq!(run(3, 5), 0, "3 >= 5");
+    // -1 >= -1 -> true (equal negatives) -> 1
+    assert_eq!(run(-1, -1), 1, "-1 >= -1");
+    // -5 >= -3 -> false: -5 is the smaller (more negative) value under true signed
+    // ordering, even though its raw bit pattern (0xFFFB) is numerically larger than
+    // -3's (0xFFFD) -- this is exactly the bug is_ge (unsigned) would get wrong.
+    assert_eq!(run(-5, -3), 0, "-5 >= -3");
+    // i16::MAX >= i16::MIN -> true (largest vs smallest representable values)
+    assert_eq!(run(32767, -32768), 1, "i16::MAX >= i16::MIN");
+}
+
+// is_even_u32 (IsEvenWide): wide-width parity check, exercised past the u16 ceiling —
+// money-cents totals and other wide balances routinely exceed 65535, and is_even
+// (which is u16-only) can't safely check those without truncation risk first.
+#[test]
+fn is_even_u32_wide_parity_predicate() {
+    fn step(x: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("is_even_u32"), "IsEvenWide", None)
+            .unwrap_or_else(|e| panic!("bind is_even_u32: {e}"));
+        cell.set("x", x).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // x = 0 -> 1 (zero is even)
+    assert_eq!(step(0), 1, "0 is even");
+    // x = 1 -> 0 (smallest odd value)
+    assert_eq!(step(1), 0, "1 is odd");
+    // x = 65_536 -> 1 (just past the u16 ceiling, still even; only representable because the field is u32)
+    assert_eq!(step(65_536), 1, "65536 is even");
+    // x = 65_537 -> 0 (just past the u16 ceiling, odd)
+    assert_eq!(step(65_537), 0, "65537 is odd");
+    // x = 4_294_967_294 -> 1 (u32::MAX - 1, even, upper bound of the wide field minus one)
+    assert_eq!(step(4_294_967_294), 1, "u32::MAX - 1 is even");
+    // x = 4_294_967_295 -> 0 (u32::MAX is odd)
+    assert_eq!(step(4_294_967_295), 0, "u32::MAX is odd");
+}
+
+// is_odd_u32 (IsOddWide): wide-width odd/parity check, exercised past the u16 ceiling —
+// money-cents totals and other wide balances routinely exceed 65535, and is_odd (which
+// is u16-only) can't safely check those without truncation risk first. Direct complement
+// of is_zero_u32/nonzero_u32's pairing pattern, here completing is_even_u32's pair.
+#[test]
+fn is_odd_u32_wide_odd_predicate() {
+    fn step(x: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("is_odd_u32"), "IsOddWide", None)
+            .unwrap_or_else(|e| panic!("bind is_odd_u32: {e}"));
+        cell.set("x", x).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // 0 is even -> 0
+    assert_eq!(step(0), 0, "0 is even");
+    // 1 is odd -> 1
+    assert_eq!(step(1), 1, "1 is odd");
+    // 65_536 is just past u16 ceiling and even (65536 / 2 = 32768 exactly) -> 0
+    assert_eq!(step(65_536), 0, "65536 is even");
+    // 100_001 is a money-cents-scale odd balance -> 1
+    assert_eq!(step(100_001), 1, "100001 is odd");
+    // u32::MAX = 4_294_967_295 is odd -> 1
+    assert_eq!(step(4_294_967_295), 1, "u32::MAX is odd");
+    // u32::MAX - 1 = 4_294_967_294 is even -> 0
+    assert_eq!(step(4_294_967_294), 0, "u32::MAX - 1 is even");
+}

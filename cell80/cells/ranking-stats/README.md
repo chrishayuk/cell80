@@ -7,28 +7,37 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (20)
+## Landed (29)
 
 | id | signature | summary |
 |---|---|---|
+| `all_distinct3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if a, b, c are pairwise distinct (a != b && a != c && b != c), else 0 -- the exact logical complement of majority3 ('at least two of three are equal'). |
 | `argmax3` | `run(a: u16, b: u16, c: u16) -> u16` | Index (0, 1, or 2) of the largest of three values; ties → lowest index. |
 | `argmax3_u32` | `Argmax3Wide::run() -> u16` | Index (0, 1, or 2) of the largest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmax3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
 | `argmax4` | `Argmax4::run() -> u16` | Index (0, 1, 2, or 3) of the largest of four values; ties -> lowest index — the four-value sibling of argmax3, extending its if-chain one level deeper (distinct from max4/choose_best4, which return the value, not which slot holds it). |
+| `argmax4_u32` | `Argmax4Wide::run() -> u16` | Index (0, 1, 2, or 3) of the largest of four u32 values; ties -> lowest index — the wide sibling of argmax4, extending argmax3_u32's if-chain one level deeper exactly as argmax4 extends argmax3's. |
 | `argmin3` | `run(a: u16, b: u16, c: u16) -> u16` | Index (0, 1, or 2) of the smallest of three values; ties → lowest index. |
 | `argmin3_u32` | `Argmin3Wide::run() -> u16` | Index (0, 1, or 2) of the smallest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmin3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
 | `argmin4` | `Argmin4::run() -> u16` | Index (0, 1, 2, or 3) of the smallest of four values; ties -> lowest index — the four-value sibling of argmin3, extending its if-chain one level deeper (returns the winning slot, not the value, completing the argmax4/argmin4 pair). |
+| `argmin4_u32` | `Argmin4Wide::run() -> u16` | Index (0, 1, 2, or 3) of the smallest of four values at wide u32 width; ties -> lowest index — the wide sibling of argmin4, mirroring argmin3_u32's structure one level deeper. |
 | `majority3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if at least two of three values are equal, else 0. |
 | `max` | `run(a: u16, b: u16) -> u16` | Maximum of two values. |
 | `max3` | `run(a: u16, b: u16, c: u16) -> u16` | Largest of three values. |
 | `max4` | `Max4::run() -> u16` | Largest of four values — the four-operand sibling of max3, nested imax one level deeper. |
 | `mean3` | `run(a: u16, b: u16, c: u16) -> u16` | Mean (average) of three values, computed without overflow. |
+| `mean4` | `Mean4::run() -> u16` | Mean (average) of four values, extending mean3's div/remainder-recombine trick one operand deeper to avoid overflow. |
 | `median3` | `run(a: u16, b: u16, c: u16) -> u16` | Median (middle value) of three. |
+| `median4` | `Median4::run() -> u16` | Median of four values: average of the two middle order statistics via a 4-comparison sorting network, then averaged overflow-safely with midrange3's (mid_lo & mid_hi) + ((mid_lo ^ mid_hi) >> 1) trick — distinct from mean4 (order-statistic based, not sum-based) and the four-value sibling median3 never had. |
 | `midrange3` | `run(a: u16, b: u16, c: u16) -> u16` | Midrange of three values: (min + max) / 2. |
+| `midrange4` | `Midrange4::run() -> u16` | Midrange of four values: (min4 + max4) / 2, via the same (lo & hi) + ((lo ^ hi) >> 1) trick midrange3 uses, now over imin/imax nested three deep. |
 | `min` | `run(a: u16, b: u16) -> u16` | Minimum of two values. |
 | `min3` | `run(a: u16, b: u16, c: u16) -> u16` | Smallest of three values. |
 | `min4` | `Min4::run() -> u16` | Smallest of four values — the four-operand sibling of min3 (mirrors sum4's precedent for arity-4 in this pack). |
 | `mode3` | `run(a: u16, b: u16, c: u16) -> u16` | Mode of three values: the value that repeats (ties/all-distinct → the first, a). |
+| `mode4` | `Mode4::run() -> u16` | Mode of four values: extends mode3's "first value found to repeat" convention one level -- a repeating anywhere in {b,c,d} wins first (covers majority-of-4-in-a and 2-2 ties by priority), then b repeating in {c,d}, then c repeating in d, defaulting to a if all four are distinct. |
 | `range3` | `run(a: u16, b: u16, c: u16) -> u16` | Spread of three values: max − min. |
+| `range4` | `Range4::run() -> u16` | Spread of four values: max4 − min4 — the four-operand sibling of range3, one level deeper. |
 | `sum3` | `run(a: u16, b: u16, c: u16) -> u16` | Sum of three values (saturating at 65535). |
 | `sum4` | `Sum4::run() -> u16` | Sum of four values (saturating at 65535) — the four-operand sibling of sum3. |
+| `unanimous3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if all three values are equal, else 0 -- the strict all-agree sibling of majority3's weaker at-least-two-agree threshold. |
 

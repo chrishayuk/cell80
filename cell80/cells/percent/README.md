@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (11)
+## Landed (13)
 
 | id | signature | summary |
 |---|---|---|
@@ -18,7 +18,9 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `percent` | `run(part: u16, whole: u16) -> u16` | Percentage of a whole: part*100/whole, in 0..100+ (0 if whole == 0). |
 | `percent_u32` | `PercentWide::run() -> u16` | Percentage of a whole at wide u32 width: part*100/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of percent. |
 | `permille` | `run(part: u16, whole: u16) -> u16` | Per-mille (parts per thousand): part*1000/whole (0 if whole == 0). |
+| `permille_u32` | `PermilleWide::run() -> u16` | Per-mille (parts per thousand) at wide u32 width: part*1000/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of permille. |
 | `ratio_255` | `run(part: u16, whole: u16) -> u16` | Ratio scaled to a 0..255 byte fraction: part*255/whole (0 if whole == 0). |
+| `ratio_255_u32` | `Ratio255Wide::run() -> u16` | Ratio scaled to a 0..255 byte fraction at wide u32 width: part*255/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of ratio_255. |
 | `scale_percent` | `run(value: u16, pct: u16) -> u16` | Take pct percent of a value: value*pct/100. |
 | `scale_percent_u32` | `ScalePercentWide::run() -> u16` | Take pct percent of a wide value: value*pct/100 at u32, escalating if the multiply overflows — the wide sibling of scale_percent, and the percent-of core the widened (u32) arithmetic lane resolves to. |
 | `within_percent` | `run(actual: u16, target: u16, pct: u16) -> u16` | Returns 1 if actual is within pct percent of target (\|actual-target\|*100 <= target*pct). |

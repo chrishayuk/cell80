@@ -316,3 +316,108 @@ fn cosine_score_approx_matches_hand_computed_expectations() {
     // Zero-magnitude input vector: guarded to 0, never a divide-by-zero panic.
     assert_eq!(score(0, 0, 1, 1), 0);
 }
+
+
+#[test]
+fn cross2d_state_cell_matches_defined_behaviour() {
+    // cross2d: signed scalar 2D cross product ax*by - ay*bx of (ax,ay) and (bx,by),
+    // returned as an exact (cross_mag, cross_neg) pair (neg 0=nonnegative, 1=negative) --
+    // the same combining-subtract technique cross_product uses for one component, but
+    // simplified since ax/ay/bx/by are plain u16 magnitudes (no i16 sign-tracking on inputs).
+    fn cross2d(a: (u16, u16), b: (u16, u16)) -> (u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("cross2d"), "Cross2d", None).unwrap();
+        for (f, v) in [
+            ("ax", a.0 as u64),
+            ("ay", a.1 as u64),
+            ("bx", b.0 as u64),
+            ("by", b.1 as u64),
+        ] {
+            cell.set(f, v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        (cell.get("cross_mag").unwrap(), cell.get("cross_neg").unwrap())
+    }
+
+    // Unit basis vectors: i x j = +1 (counter-clockwise sense).
+    assert_eq!(cross2d((1, 0), (0, 1)), (1, 0));
+    // Swapped order flips the sign: j x i = -1.
+    assert_eq!(cross2d((0, 1), (1, 0)), (1, 1));
+    // Known case: (2,3) x (5,6) = 2*6 - 3*5 = -3 -> mag 3, neg 1.
+    assert_eq!(cross2d((2, 3), (5, 6)), (3, 1));
+    // Collinear vectors: cross is exactly zero, forced to neg 0.
+    assert_eq!(cross2d((2, 4), (1, 2)), (0, 0));
+    // Near the u16 boundary: 65535*65535 fits exactly in u32 with room to spare.
+    assert_eq!(cross2d((65535, 0), (0, 65535)), (4294836225, 0));
+}
+
+#[test]
+fn vec3_length_matches_hand_computed_cases() {
+    // vec3_length: floor(sqrt(x*x + y*y + z*z)) for a signed 3D vector -- the sqrt sibling
+    // of norm3_sq, closed by isqrt_u32's wide integer sqrt. Reuses norm3_sq's exact
+    // i16_mag/mul_checked_u32/add_checked_u32 chain to build mag_sq internally, then runs
+    // isqrt_u32's branch-free bitwise loop on it before returning the u16 length.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn length(x: i16, y: i16, z: i16) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("vec3_length"), "Vec3Length", None).unwrap();
+        cell.set("x", i16_bits(x)).unwrap();
+        cell.set("y", i16_bits(y)).unwrap();
+        cell.set("z", i16_bits(z)).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // (3,4,0): 9+16+0=25, sqrt(25)=5 exactly.
+    assert_eq!(length(3, 4, 0), 5);
+    // (0,0,0): the zero vector.
+    assert_eq!(length(0, 0, 0), 0);
+    // (2,3,6): 4+9+36=49, sqrt(49)=7 exactly -- the classic 2-3-6-7 Pythagorean quadruple.
+    assert_eq!(length(2, 3, 6), 7);
+    // (1,1,1): mag_sq=3, sqrt(3)=1.732..., floor = 1 -- confirms truncation, not rounding.
+    assert_eq!(length(1, 1, 1), 1);
+    // (-1,-2,2): mixed sign, mag_sq = 1+4+4=9, sqrt(9)=3 exactly.
+    assert_eq!(length(-1, -2, 2), 3);
+    // Extreme: (i16::MIN, i16::MIN, i16::MIN). mag_sq = 3 * 32768^2 = 3,221,225,472,
+    // comfortably inside u32 range (never trips the checked-add/mul overflow halt).
+    // 56755^2 = 3,221,130,025 <= mag_sq < 56756^2 = 3,221,243,536, so floor sqrt = 56755.
+    assert_eq!(length(-32768, -32768, -32768), 56755);
+}
+
+#[test]
+fn vectors_orthogonal_hand_computed_cases() {
+    // vectors_orthogonal: dot3(a,b) == 0, reusing dot3's sign-magnitude product/sum
+    // chain internally and testing the final magnitude for zero. Distinct from
+    // vectors_parallel (cross-product-zero); most pairs are neither. Cross-checked by
+    // hand: dot = ax*bx + ay*by + az*bz.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn orthogonal(a: (i16, i16, i16), b: (i16, i16, i16)) -> u16 {
+        let mut cell =
+            StateCell::bind(&cell_src("vectors_orthogonal"), "VectorsOrthogonal", None)
+                .unwrap_or_else(|e| panic!("bind vectors_orthogonal: {e}"));
+        for (f, v) in [
+            ("ax", i16_bits(a.0)),
+            ("ay", i16_bits(a.1)),
+            ("az", i16_bits(a.2)),
+            ("bx", i16_bits(b.0)),
+            ("by", i16_bits(b.1)),
+            ("bz", i16_bits(b.2)),
+        ] {
+            cell.set(f, v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("result").unwrap() as u16
+    }
+
+    // (1,0,0).(0,1,0) = 0 -- basis vectors, orthogonal.
+    assert_eq!(orthogonal((1, 0, 0), (0, 1, 0)), 1);
+    // (1,2,3).(2,-1,0) = 2 - 2 + 0 = 0 -- non-axis-aligned orthogonal pair.
+    assert_eq!(orthogonal((1, 2, 3), (2, -1, 0)), 1);
+    // (3,4,5).(6,8,10) = 18+32+50 = 100 -- parallel (scalar multiple), not orthogonal.
+    assert_eq!(orthogonal((3, 4, 5), (6, 8, 10)), 0);
+    // (3,-1,2).(1,4,-2) = 3-4-4 = -5 -- neither parallel nor orthogonal.
+    assert_eq!(orthogonal((3, -1, 2), (1, 4, -2)), 0);
+    // (0,0,0).(5,-3,7) = 0 -- the zero vector is trivially orthogonal to anything.
+    assert_eq!(orthogonal((0, 0, 0), (5, -3, 7)), 1);
+}

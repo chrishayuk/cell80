@@ -128,3 +128,59 @@ fn luhn_check_digit_generates_digit_that_makes_luhn_check_pass() {
         );
     }
 }
+
+
+#[test]
+fn is_weekend_matches_hand_computed_cases() {
+    // dow codes per day_of_week: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday,
+    // 5=Thursday, 6=Friday. is_weekend should return 1 only for the two weekend codes
+    // (0, 1) and 0 for every weekday code, composing directly with day_of_week's output.
+    let cases: &[(u16, u16)] = &[
+        (0, 1), // Saturday -> weekend
+        (1, 1), // Sunday -> weekend
+        (2, 0), // Monday -> not weekend
+        (4, 0), // Wednesday -> not weekend
+        (6, 0), // Friday -> not weekend
+    ];
+
+    let mut failures = Vec::new();
+    for (dow, exp) in cases {
+        let got = run_cell("is_weekend", &[*dow]);
+        if got != *exp {
+            failures.push(format!("is_weekend({dow}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+#[test]
+fn is_weekday_matches_hand_computed_cases() {
+    // day_of_week's convention: 0=Saturday, 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday,
+    // 5=Thursday, 6=Friday. is_weekday is 1 for codes 2..=6 (Monday-Friday), else 0 -- the
+    // direct logical complement of is_weekend.
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("is_weekday", &[0], 0), // Saturday: weekend
+        ("is_weekday", &[1], 0), // Sunday: weekend
+        ("is_weekday", &[2], 1), // Monday: lower boundary of weekday range, inclusive
+        ("is_weekday", &[4], 1), // Wednesday: mid-range
+        ("is_weekday", &[6], 1), // Friday: upper boundary of weekday range, inclusive
+        ("is_weekday", &[7], 0), // not a legal day_of_week code; must not spuriously pass
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}

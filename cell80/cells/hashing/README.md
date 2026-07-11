@@ -7,14 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (6)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
 | `crc16_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-16 (CRC-16/ARC, poly 0xA001 reflected) step over a byte, the crc8_step shift-xor loop widened to the full 16-bit register instead of masking down to 8 bits. |
+| `crc32_step` | `Crc32Step::run() -> u16` | One CRC-32 (CRC-32/ISO-HDLC, poly 0xEDB88320 reflected) step over a byte on a 32-bit accumulator -- the crc8_step/crc16_step shift-xor loop widened one more rung to a full u32 crc field, needing a state cell since the calling convention has no u32 free-fn parameters. |
 | `crc8_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-8 (Dallas/Maxim, poly 0x8C reflected) step over a byte. |
 | `fnv1a_step` | `run(hash: u16, byte: u16) -> u16` | One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit). |
 | `hash3` | `run(a: u16, b: u16, c: u16) -> u16` | Deterministic hash mixing three values into one u16, extending hash_pair's own multiply-xor-multiply chain by one more term and prime. |
+| `hash4` | `Hash4::run() -> u16` | Deterministic hash mixing four values into one u16, extending hash3's own multiply-xor-multiply chain by one more term and prime — for hashing four-field records without pre-combining pairs by hand. |
 | `hash_pair` | `run(a: u16, b: u16) -> u16` | Deterministic hash mixing two values into one u16. |
 | `mix16` | `run(x: u16) -> u16` | Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value). |
+| `mix32` | `Mix32::run() -> u16` | Avalanche-mix a full 32-bit value into a well-scrambled u16 finalizer hash, using a full-width xor-shift/multiply chain over all 32 input bits (never truncated to u16 first) before folding the result down -- the u32-domain sibling of mix16, for finalizing wide keys like a morton_encode index or a packed pair without discarding half their entropy. |
 

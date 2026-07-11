@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (13)
+## Landed (15)
 
 | id | signature | summary |
 |---|---|---|
@@ -17,8 +17,10 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `debounce_step` | `Debounce::run() -> u16` | Debounce a noisy 0/1 signal: only confirms a change to `input` once it's held for `threshold` consecutive steps; output is the last confirmed-stable value. |
 | `difficulty_zone_step` | `DifficultyZoneStep::run() -> u16` | Difficulty-zone advance/stay/retreat decision from an accuracy tally against a target-accuracy band (target_pct +/- tolerance_pct), gated by a minimum sample count. Exact via cross-multiplication (correct*100 vs total*(target+-tolerance)) rather than dividing, so no float accuracy ratio is ever computed. Distinct from hysteresis (a raw single-value 2-state latch with no sample-size gate): this is a 3-way ratio decision over an explicit sample count. |
 | `epsilon_greedy_pick3` | `EpsilonGreedyPick3::run() -> u16` | Epsilon-greedy selection: returns alt_idx (explore) if rand_bps < epsilon_bps, else best_idx (exploit) — composes with the already-shipped lcg_next/xorshift16 (for rand_bps, via safe_mod against 10000) and epsilon_bps as a basis-points exploration rate (e.g. 1000 = 10% exploration). |
+| `falling_edge_step` | `FallingEdge::run() -> u16` | Falling-edge detector: reports 1 only on the exact step a 0/1 signal transitions from 1 to 0, 0 otherwise — the mirror-image counterpart of rising_edge_step's 0->1 test. |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
 | `jittered_backoff_next` | `JitteredBackoff::run() -> u16` | Full-jitter backoff: computes backoff_next's own capped-exponential ceiling, then scales it down by a caller-supplied rand_bps (0-9999 basis points) via a u32 intermediate, returning a randomized value in [0, ceiling] instead of backoff_next's fixed climb. |
+| `jittered_linear_backoff_next` | `JitteredLinearBackoff::run() -> u16` | Full-jitter additive backoff: computes linear_backoff_next's own capped-additive ceiling (min(current+step, cap), starting at step when current is 0), then scales it down by a caller-supplied rand_bps (0-9999 basis points) via a u32 intermediate, the same way jittered_backoff_next scales backoff_next's exponential ceiling. |
 | `linear_backoff_next` | `LinearBackoff::run() -> u16` | Additive-growth backoff step: next = min(current + step, cap), starting at `step` when current is 0 — the arithmetic-growth dual of backoff_next's capped-exponential growth (doubling vs. adding a fixed step each call). |
 | `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |
 | `rising_edge_step` | `RisingEdge::run() -> u16` | Rising-edge detector: reports 1 only on the exact step a 0/1 signal transitions from 0 to 1, 0 otherwise — an edge (transition) test, distinct from hysteresis (dead-zone latch), debounce_step (N-consecutive confirmation), streak_step (consecutive-run counter), and cooldown_step (decrement timer). |
