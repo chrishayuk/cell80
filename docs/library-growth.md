@@ -35,7 +35,9 @@ sessions, that hand-verified line numbers are more trustworthy than guessed GFM 
   - Round 2 — narrower clusters, deeper mining (397 → 500) — line 2000
   - Round 3 — deepest yet, kill-gate trips (653 cells) — line 2051
   - Behavioural routing in the search path — checkpoint 21 (F2 passed) — line 2120
-- After authoring: re-run the evals — line 2158
+  - Finance80 Wave 1 — Excel financial functions (653 → 697) — line 2189
+  - Wave 2 — Excel Date&Time, control-systems, numerical-primitives (697 → 718) — line 2223
+- After authoring: re-run the evals — line 2262
 
 **For the current cell count and per-pack list, don't trust any number in this file's own
 prose (including this TOC's line numbers drifting as the file grows) — check
@@ -2183,6 +2185,79 @@ recorded `co_match` ambiguity, the rest lose the text tiebreak to co-equal match
 the modelled sibling pool. And the standing caveat, kept in view: this measures
 **example-carrying** requests; text-only paraphrase is exactly where checkpoint 20 left it
 (0.3866), still the open problem for text-side levers.
+
+### Finance80 Wave 1 — Excel financial functions (653 → 697, 2026-07-11)
+
+Coverage-mapped Microsoft's 55 dedicated Excel financial functions against the library first
+(`docs/excel-financial-map.md`, mirroring `docs/real-valued-cells-spec.md` Part 2's "build
+before authoring anything" discipline against a new catalogue) — classified by 55 parallel
+agents into covered/composable-skip/composable-author/candidate/host_only/out_of_scope
+(`docs/coverage-map-taxonomy-amendment.md`'s refined taxonomy, which this wave motivated:
+`composable` splits into `composable-skip` and `composable-author`, since a
+compatibility-namespace pack's retrieval value comes partly from matching a recognized
+external name). Result: 0 covered, 1 composable-skip, 7 composable-author, 35 candidate,
+12 host_only.
+
+Authored and mechanically verified all 42 non-host_only functions plus a new 6-cell
+day-count-convention prerequisite pack (30/360 US/EU, actual/actual, actual/360, actual/365,
+plus `date_add_months` — the shared month-stepping-with-EOM-clamping foundation the whole
+Excel `COUP*` bond family needs). 44 of 48 survived verification + the admission gate; 4
+backed out (3 admission-gate probe-coincidences confirmed as false positives but backed out
+anyway per the standing rule, 1 real duplicate — `excel_yielddisc` folded into
+`excel_intrate`, Excel's own known algebraic identity). Retrieval kill-gate not tripped: all
+three splits improved despite the pack's dense shared vocabulary (payment/interest/
+principal/rate/period).
+
+Two new packs: `day-count` (5 cells) and `excel-financial` (39 cells, `excel_`-prefixed for
+retrieval recognizability over the plain-verb collision risk a compatibility namespace
+invites). Full detail, including every backed-out cell's reasoning and the specific repairs
+made during verification (`excel_nominal`'s Newton loop needed binary exponentiation to fit
+the cycle budget; 23 cells needed `kernel_bank: on` to fit the real sandboxed size cap), is
+in `docs/excel-financial-map.md`'s "Update" section.
+
+**Still host_only (12)**: `IRR`, `MIRR`, `NPV`, `FVSCHEDULE`, `DURATION`, `NPER`,
+`PDURATION`, `ODDFPRICE`, `ODDLPRICE`, `PRICE`, `XIRR`, `XNPV` — blocked on the
+array-state-field harness gap and/or transcendentals, both permanent dialect walls until
+one lands.
+
+### Wave 2 — Excel Date&Time, control-systems, numerical-primitives (697 → 718, 2026-07-11)
+
+Extended the Excel-compatibility surface into Date & Time functions (Microsoft's
+25-function reference), reusing Finance80's freshly-built day-count infrastructure
+directly: `EOMONTH`, `DAYS360`, `DAYS`, `DATEDIF`, `WEEKDAY`, `WEEKNUM`, `ISOWEEKNUM`,
+`YEARFRAC`, `NETWORKDAYS`(+`.INTL`), `WORKDAY`(+`.INTL`) — 12 cells landed in a new
+`excel-datetime` pack. `NOW`/`TODAY` (non-deterministic — a direct conflict with the whole
+determinism guarantee), `DATE`/`YEAR`/`MONTH`/`DAY` (Excel's serial-date-number
+representation, which cell80 deliberately never uses — every date cell here is
+`(year, month, day)` fields directly), and `HOUR`/`MINUTE`/`SECOND`/`TIME`/`TIMEVALUE`
+(time-of-day granularity, no representation built yet) stay out of scope. The
+holidays-array argument on `NETWORKDAYS`/`WORKDAY` stays host_only, the same
+array-state-field gap Finance80's `IRR`/`NPV` hit.
+
+Two organic packs landed alongside it, not tied to any external catalogue:
+`control-systems` (5 cells — `pid_step`, `pid_step_antiwindup`, `slew_rate_limiter_step`,
+`deadband`, `bang_bang_controller` — the library's first PID/motion-control primitives,
+distinct from `agentic-runtime`'s existing hysteresis/debounce/rate-limiters) and
+`numerical-primitives` (4 cells — `nth_root_f32`, `catmull_rom_f32`, `bezier_cubic_f32`,
+`matrix_solve_3x3`). `nth_root_f32` is a real dedup, not a fresh capability: `excel_db`/
+`excel_nominal`/`excel_rri` (Wave 1) each independently hand-rolled the identical
+Newton-Raphson Nth-root loop inline; this extracts the one general, parameterized version.
+**Registered here as a banked negative worth remembering**: a truly generic root-finder or
+ODE integrator (Newton/bisection/Euler/RK4 taking an arbitrary caller-supplied function) is
+not buildable in this dialect at all — no closures, permanently, the same wall that bans
+calculus — so `numerical-primitives` stays scoped to fixed-shape formulas, never a general
+solver library.
+
+21 of 22 authored cells survived; 1 backed out (`excel_edate`, a true behavioural duplicate
+of the existing `date_add_months` — its own doc comment admitted as much — folded into
+`date_add_months`' tags instead of shipping twice). Retrieval kill-gate not tripped,
+flat-to-improved on the 718-cell corpus.
+
+**Deferred**: the array-state-field harness fix (would unblock the 12 remaining Excel
+financial `host_only` functions above AND the long-blocked Signal80 windowed-filter family)
+was explicitly not attempted this round — `cell80-core/src/interp.rs` and
+`cell80/src/host.rs`, the files it would need to touch, were sitting uncommitted mid-edit
+from a concurrent session's GPU/rustmsl work at the time. Revisit once that settles.
 
 ## After authoring: re-run the evals
 
