@@ -95,9 +95,30 @@ by construction (`min(a,b) ≡ median3(a,b,0)` under register zero-fill).
 0.39 text baseline** — the roadmap's F2 gate (≥ 0.80) passed; adversarial 0.47 → 0.89,
 direct 0.81 → 0.95, zero per-query regressions (guaranteed: the expected cell reproduces
 its own examples and ties preserve text order, so fused rank ≤ plain rank always).
-`tests/test_retrieval_examples.py` holds the hard floor plus a ≥0.90 coverage guard.
-Read honestly: this measures **example-carrying** requests; text-only paraphrase is
-unchanged and stays the open problem above.
+Checkpoint 22 added the declared-arity tie-break (paraphrase 0.879 → 0.88+ as the
+library grew). `tests/test_retrieval_examples.py` holds the registered growth-gate
+floors plus a ≥0.95 coverage guard.
+Read honestly: these are **oracle-equipped** numbers — examples derived from the
+expected cell; they measure the router's discrimination capacity, not the deployed
+authoring loop (next section).
+
+## Agent-authored examples (the deployed loop)
+
+```bash
+cell-eval authored --model gemma4:e4b            # request → model authors probes → fused retrieval
+cell-eval authored --model granite4.1:3b --json  # per-case artifact (validity, equivalence class, ranks)
+```
+
+The model sees only the request (and the intended arity — caller-side intent), invents
+1–3 input→output examples, and fused retrieval selects. Measured 2026-07-11 over the
+schema-free population (value cells arity 1–3, 474 cases): **authoring correctness is
+the bottleneck and it scales** — granite-3b authors valid examples 35% of the time and
+raw authored retrieval is net-harmful; gemma-e4b reaches 56% valid, and with the
+**junk guard** (only trust example sets some cell fully reproduces — provably never
+discards valid sets) guarded-authored **strictly dominates plain text on every split**
+(overall 0.738 vs 0.631; paraphrase 0.631 vs 0.424; adversarial 0.741 vs 0.444).
+Full findings, the false-unique failure mode, and the deployed guard→fused contract:
+[`docs/15-authored-examples-findings.md`](../docs/15-authored-examples-findings.md).
 
 ## Adoption eval (LLM agent — OpenAI-compatible, Ollama by default)
 
