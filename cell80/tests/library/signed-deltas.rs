@@ -107,3 +107,17 @@ fn max_i16_matches_hand_computed_expectations() {
     assert_eq!(run_cell("max_i16", &[42, 42]), 42); // tie
     assert_eq!(run_cell("max_i16", &[32768, 32767]), 32767); // i16::MIN vs i16::MAX -> MAX wins
 }
+
+#[test]
+fn lerp_i16_matches_hand_computed_expectations() {
+    // q_lerp's signed sibling, the long-open "overflow safety not yet worked out"
+    // blocker: b - a can exceed i16's own representable range even when a and b are
+    // both valid i16 values, so it's computed via sign-magnitude throughout, never a
+    // native i16 subtraction.
+    assert_eq!(run_cell("lerp_i16", &[65526, 10, 128]), 0); // a=-10, b=10, t=0.5 -> 0
+    assert_eq!(run_cell("lerp_i16", &[100, 65486, 64]), 63); // a=100, b=-50, t=0.25 -> 63 (truncated toward zero)
+    assert_eq!(run_cell("lerp_i16", &[50, 65486, 0]), 50); // t=0 -> a unchanged
+    assert_eq!(run_cell("lerp_i16", &[50, 65486, 256]), 65486); // t=256 -> b exactly
+                                                                 // a=i16::MAX, b=i16::MIN: diff magnitude 65535, itself not representable as i16.
+    assert_eq!(run_cell("lerp_i16", &[32767, 32768, 128]), 0);
+}

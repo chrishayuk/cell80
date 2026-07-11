@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (395 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (397 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -458,7 +458,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `geometric_term_index` | `GeometricTermIndex::run() -> u16` | Given a term value from a geometric sequence starting at start with ratio ratio, recover which 1-indexed term number n produced it -- the exact inverse of geometric_nth_checked_u32, found the same way that cell walks forward (iteratively multiplying, checked at every step) rather than any logarithm, so it escalates the moment growth either overflows or stalls at a fixed point without ever matching. |
 | `series_sum` | `SeriesSum::run() -> u16` | Sum of an arithmetic series given its two endpoints and term count instead of (a, d): count*(first + last)/2, multiplying before dividing so odd first+last stays exact — composing via avg2 then multiplying is unsound because avg2 floors the endpoint average before the count ever multiplies it. |
 
-## signed-deltas (8)
+## signed-deltas (9)
 
 | id | signature | summary |
 |---|---|---|
@@ -466,6 +466,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `abs_i16` | `run(x: i16) -> u16` | Absolute value of a signed 16-bit value, returned as u16 (correctly handles i16::MIN, whose magnitude 32768 doesn't fit back in i16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
+| `lerp_i16` | `run(a: i16, b: i16, t: u16) -> i16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0) for signed i16 endpoints: a + (b-a)*t/256, the fractional step truncated toward zero -- the signed sibling of q_lerp, computed via sign-magnitude throughout (never native i16 subtraction) since b-a can exceed i16's own representable range even when a and b are both valid i16 values (e.g. a=i16::MAX, b=i16::MIN, diff magnitude 65535). The long-open "overflow safety not yet worked out" blocker, closed by the sign-magnitude pattern this session's linear_solve_1var/linear_eq_holds proved out. |
 | `max_i16` | `run(a: i16, b: i16) -> i16` | Maximum of two signed 16-bit values under true signed ordering (-1 > -32768) -- the direct complement of min_i16 and the signed sibling of max (u16) and max_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
 | `min_i16` | `run(a: i16, b: i16) -> i16` | Minimum of two signed 16-bit values under true signed ordering (-1 < 0) -- the signed sibling of min (u16) and min_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
 | `negate_i16` | `run(x: i16) -> i16` | Arithmetic negation of a signed 16-bit value (-x) -- distinct from abs_i16 (returns an unsigned magnitude, sidestepping the MIN case) and sign_i16 (returns only -1/0/1): this is the only cell that computes -x itself, so it must escalate exactly where a naive negation would silently wrap. |
@@ -532,10 +533,11 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `in_range_open_closed` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo < x <= hi (half-open interval: open at lo, closed at hi), else 0 — completes the interval family with range_check (fully closed), between_exclusive (fully open), and in_range_closed_open (closed at lo, open at hi). |
 | `range_check` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x <= hi, else 0. |
 
-## vector (8)
+## vector (9)
 
 | id | signature | summary |
 |---|---|---|
+| `cosine_score_approx` | `CosineScoreApprox::run() -> u16` | Approximate cosine similarity of two 2D vectors as a Q8.8 score in [0, 256] (1.0 = parallel, 0 = perpendicular): dot / sqrt(norm_a * norm_b), the long-blocked vector-pack candidate closed by isqrt_u32's wide integer sqrt -- norm_a and norm_b are each at most u16::MAX, so their u32 product (up to 65535*65535) always fits u32 with room to spare, sidestepping the sqrt-of-a-product overflow this cell was parked behind. Same modest-magnitude domain as dot2/norm2_sq (plain u16 arithmetic, silently wraps past that domain, not a new limitation). |
 | `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `dot3` | `Dot3::run() -> u16` | Dot product of two signed 3D vectors (ax,ay,az).(bx,by,bz) = ax*bx + ay*by + az*bz, tracked as a (magnitude, sign) pair since the pack's 3D vectors are i16 throughout -- dot2 has no 3D sibling (it is 2D and unsigned) and triple_scalar_product computes a plain signed dot as an internal stage but never exposes it standalone. |

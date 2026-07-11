@@ -290,3 +290,29 @@ fn norm3_sq_matches_hand_computed_cases() {
     // wraps or spuriously halts for any legal i16 input.
     assert_eq!(run(32767, 32767, 32767), 3_221_028_867);
 }
+
+#[test]
+fn cosine_score_approx_matches_hand_computed_expectations() {
+    // The long-blocked vector-pack candidate, closed once isqrt_u32 existed: norm_a and
+    // norm_b are each at most u16::MAX, so their u32 product always fits u32 (65535*65535
+    // = 4,294,836,225 < u32::MAX), sidestepping the sqrt-of-a-product overflow this cell
+    // was parked behind for many checkpoints.
+    fn score(ax: u16, ay: u16, bx: u16, by: u16) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("cosine_score_approx"), "CosineScoreApprox", None)
+            .unwrap();
+        cell.set("ax", ax as u64).unwrap();
+        cell.set("ay", ay as u64).unwrap();
+        cell.set("bx", bx as u64).unwrap();
+        cell.set("by", by as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // (3,4) vs (4,3): dot=24, norm_a=norm_b=25, cos = 24/25 = 0.96 -> 245/256 (floor).
+    assert_eq!(score(3, 4, 4, 3), 245);
+    // Parallel vectors: cosine exactly 1.0 -> Q8.8 256.
+    assert_eq!(score(1, 0, 1, 0), 256);
+    // Perpendicular vectors: dot = 0 -> score 0.
+    assert_eq!(score(1, 0, 0, 1), 0);
+    // Zero-magnitude input vector: guarded to 0, never a divide-by-zero panic.
+    assert_eq!(score(0, 0, 1, 1), 0);
+}

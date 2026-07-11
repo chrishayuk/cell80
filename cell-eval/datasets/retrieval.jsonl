@@ -866,3 +866,7 @@
 {"id": "is_valid_date-para-1", "query": "check whether a calendar date actually exists, accounting for month length and leap years", "expected": "is_valid_date", "category": "paraphrase"}
 {"id": "luhn_check_digit-direct-1", "query": "compute the Luhn check digit to append to a partial number", "expected": "luhn_check_digit", "category": "direct"}
 {"id": "luhn_check_digit-para-1", "query": "given a card number missing its last digit, what digit makes it pass the mod-10 doubling checksum", "expected": "luhn_check_digit", "category": "paraphrase"}
+{"id": "cosine_score_approx-direct-1", "query": "approximate cosine similarity between two 2D vectors", "expected": "cosine_score_approx", "category": "direct"}
+{"id": "cosine_score_approx-para-1", "query": "how aligned in direction are these two vectors, as a fixed-point score from 0 to 1", "expected": "cosine_score_approx", "category": "paraphrase"}
+{"id": "lerp_i16-direct-1", "query": "linear interpolation between two signed values by a Q8.8 fraction", "expected": "lerp_i16", "category": "direct"}
+{"id": "lerp_i16-para-1", "query": "blend between a negative and positive number partway, signed lerp", "expected": "lerp_i16", "category": "paraphrase"}

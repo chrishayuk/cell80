@@ -683,7 +683,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("395 cells"));
+    assert!(listing.contains("range_check") && listing.contains("397 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -747,7 +747,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("395 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("397 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -758,7 +758,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 395, "got: {out}");
+    assert_eq!(cells.len(), 397, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -803,13 +803,21 @@ fn cli_index_gate_over_the_real_library() {
     // (fractions), linear_eq_holds (verifier-ranker), and difficulty_zone_step
     // (agentic-runtime, a new curriculum/difficulty domain) — all state cells, still
     // 0 refusals.
+    // 313→395: a 90-cell Workflow batch (systematic family expansion across 8 pack
+    // clusters + chuk-math-gym's remaining arithmetic domain) — 82 net landed after the
+    // gate caught 8 real duplicates; see docs/library-growth.md's "Systematic family
+    // expansion" section.
+    // 395→397: cosine_score_approx (vector) and lerp_i16 (signed-deltas) — two
+    // long-flagged backlog items, both closed by tools/patterns this session added
+    // (isqrt_u32's wide integer sqrt; the sign-magnitude technique proven on
+    // linear_solve_1var/linear_eq_holds), not previously buildable.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("395 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("397 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

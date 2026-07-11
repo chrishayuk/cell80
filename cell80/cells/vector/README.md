@@ -7,10 +7,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (8)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
+| `cosine_score_approx` | `CosineScoreApprox::run() -> u16` | Approximate cosine similarity of two 2D vectors as a Q8.8 score in [0, 256] (1.0 = parallel, 0 = perpendicular): dot / sqrt(norm_a * norm_b), the long-blocked vector-pack candidate closed by isqrt_u32's wide integer sqrt -- norm_a and norm_b are each at most u16::MAX, so their u32 product (up to 65535*65535) always fits u32 with room to spare, sidestepping the sqrt-of-a-product overflow this cell was parked behind. Same modest-magnitude domain as dot2/norm2_sq (plain u16 arithmetic, silently wraps past that domain, not a new limitation). |
 | `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
 | `dot3` | `Dot3::run() -> u16` | Dot product of two signed 3D vectors (ax,ay,az).(bx,by,bz) = ax*bx + ay*by + az*bz, tracked as a (magnitude, sign) pair since the pack's 3D vectors are i16 throughout -- dot2 has no 3D sibling (it is 2D and unsigned) and triple_scalar_product computes a plain signed dot as an internal stage but never exposes it standalone. |
