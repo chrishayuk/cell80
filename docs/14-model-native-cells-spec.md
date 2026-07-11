@@ -88,6 +88,21 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
+### 2026-07-11 — The step-cost offenders fixed, GPU-audited (step-budget amendment §3a)
+
+**Shipped.** Six of the seven cells carrying ~99.9% of the oracle gate's bill
+rewrote value-identically (closed forms and absorbing-state early exits — the
+`pow_mod` prelude kernel the amendment proposed is withdrawn; the exact-halt
+constraint and the actual cost causes decided differently, see the amendment
+v0.2). The bill: **3.94×10¹² → 5.74×10¹¹ ticks (~7×)**; the blessing run
+drops from ~70 minutes to ~10, and what remains is the honestly-declared
+O(n) tail. Every rewrite was audited **old-vs-new on the GPU** — 300 k inputs
+per cell, values + trap status bit-compared, steps deliberately excluded —
+and the audit caught a real bug in the first attempt (`n > 4` admitting the
+prime 5 into a compositeness shortcut) in seconds, before any test suite
+could. The GPU auditing its own oracle's cost reduction is the
+retrieval-by-execution machinery pointed at the library's maintenance.
+
 ### 2026-07-11 — Typed-state readback: the state cells join the GPU (WS-E follow-up)
 
 **Shipped.** The biggest coverage block lands: state cells

@@ -1,9 +1,61 @@
-# Step-budget amendment — worst-case IR-step discipline for library cells (draft v0.1)
+# Step-budget amendment — worst-case IR-step discipline for library cells (v0.2)
 
-**Status:** proposal · **Depends on:** doc 14 Q2 (IR steps as the canonical
-family cost — operational since the E2 gate meters them bit-exactly on CPU and
-GPU), the `gate_cost_estimate` diagnostic (`cell80/tests/msl_battery.rs`) ·
-**Owner:** the library track (coordinates with whoever owns the affected packs)
+**Status:** §3a fixes landed 2026-07-11 (six of seven cells rewritten
+value-identically, oracle bill 3.94×10¹² → 5.74×10¹¹ ticks, ~7×); the budget
+field + admission enforcement (§2.1–2.2) remain proposed · **Depends on:**
+doc 14 Q2 (IR steps as the canonical family cost — operational since the E2
+gate meters them bit-exactly on CPU and GPU), the `gate_cost_estimate`
+diagnostic (`cell80/tests/msl_battery.rs`) · **Owner:** the library track
+
+**Amendment to the amendment (from doing the work):** §3's `pow_mod` prelude
+kernel is *withdrawn*. The exact-behavior constraint decides differently: a
+cell's halt/escalation conditions are part of its observable behavior
+(`sum_digit_powers` must escalate at exactly the iterative-overflow point),
+and the offenders' true costs came from *unbounded trivial iterations*
+(`base = 1` looping 65 k times multiplying by one, `day_of_year` adding zero
+for months 13…65535), not from missing fast exponentiation. The
+value-identical fixes are closed forms and absorbing-state early exits — and
+skipping the prelude change means unchanged cells keep their oracle
+transcripts. Every rewrite was audited **old-vs-new on the GPU** (300 k
+inputs per cell, values + trap status compared, steps deliberately not): the
+audit caught one real bug in the first attempt (a `n > 4` guard admitting the
+prime 5 into a divisibility shortcut) before any test suite did.
+
+Measured (mean IR steps per random input, 300 k-input GPU audit):
+
+| cell | before | after | fix |
+|---|---|---|---|
+| `day_of_year` | 2,030,979 | 78 (26,038×) | closed-form cumulative months |
+| `pow_small` | 655,238 | 60 (10,920×) | 65535 is absorbing for base ≥ 2; exit on saturate |
+| `sum_digit_powers` | 189,353 | 448 (422×) | digits ≤ 1 need no loop; digits ≥ 2 escalate within 32 multiplies |
+| `wilson_theorem_check` | 492,004 | 69,093 (7×) | zero-product exit + composite-by-2/3/5 shortcut (Wilson: composite n > 5 ⇒ 0) |
+| `wilson_factorial_mod` | 120,298 | 66,403 (1.8×) | k ≥ m answers 0 outright (m divides k!) |
+| `is_quadratic_residue` | 655,245 | 361,853 (1.8×) | square symmetry halves the scan; first witness exits |
+| `order_modulo` | ~51,000 | unchanged | inherently order-of-a; declared cost (doc already says so) |
+
+The remaining heavies (`is_quadratic_residue`, `order_modulo`,
+`wilson_factorial_mod`, prime-input `wilson_theorem_check`) are *honestly*
+O(n)-ish by their own doc comments — the declared-budget cases §2 exists for.
+
+**The Z80 finding (why this is a defect class, not a tuning pass).** On the
+shipping micro-VM at the default 2M-cycle budget, the old cells didn't run
+slow on adversarial inputs — they **refused**: `day_of_year(2024, 65535, 1)`
+old = `halt: cycle_budget` at 2,000,015 cycles (never completed) vs new =
+`returned 367` in 1,829 cycles; `pow_small(3, 65535)` old = `cycle_budget`
+vs new = `returned 65535` in 6,012 cycles. The interpreter and GPU (100M
+fuel) accepted inputs the Z80 budget-refused — a cross-target divergence at
+real budgets, invisible until the GPU cost-map pointed at exactly these
+cells. A worst-case step ceiling at admission (§2.2) would have caught every
+one of these before landing.
+
+**Worst-case survey after the fixes** (512-sample GPU probe; the budget
+column §2.1 should hold): the whole library fits under ~12k worst-case steps
+except six declared-cost cells — `wilson_factorial_mod` (worst 1.71M),
+`wilson_theorem_check` (1.35M, prime inputs), `order_modulo` (1.19M),
+`is_quadratic_residue` (852k), `triangular_inverse_exact` (271k — newly
+visible, the next rewrite candidate), `goldbach_conjecture_check` (148k).
+Proposed default ceiling: **2¹⁶ worst-case steps**, grandfathered budgets for
+the declared six.
 
 ## 1. The finding
 

@@ -7,10 +7,17 @@ fn run(n: u16, p: u16) -> u16 {
     while v != 0u16 {
         let digit = v % 10u16;
         let mut term = 1u32;
-        let mut i = 0u16;
-        while i < p {
-            term = mul_checked_u32(term, digit as u32);
-            i = i + 1u16;
+        // 0^p and 1^p need no loop (and can never overflow); a digit >= 2
+        // overflows u32 within 32 checked multiplies, so the loop below is
+        // naturally bounded by the escalation, never by p itself.
+        if digit > 1u16 {
+            let mut i = 0u16;
+            while i < p {
+                term = mul_checked_u32(term, digit as u32);
+                i = i + 1u16;
+            }
+        } else if digit == 0u16 && p > 0u16 {
+            term = 0u32;
         }
         sum = add_checked_u32(sum, term);
         v = v / 10u16;

@@ -756,7 +756,7 @@ fn divergence_probe_gcd() {
 #[ignore = "cost-map diagnostic — run with --nocapture"]
 fn gate_cost_estimate() {
     let lib = eligible_cells();
-    let mut rows: Vec<(String, u64)> = Vec::new(); // (name, mean steps per input)
+    let mut rows: Vec<(String, u64, u64)> = Vec::new(); // (name, mean, worst steps/input)
     for (name, funcs, consts, src_hash) in lib.cells.iter() {
         let Ok(module) = rustmsl::compile(funcs, consts, "run") else {
             continue;
@@ -766,28 +766,29 @@ fn gate_cost_estimate() {
         let gpu = GpuBatch::new(&module).unwrap();
         let got = gpu.run(&inputs).unwrap();
         let total: u64 = got.iter().map(|o| steps_of(o) as u64).sum();
-        rows.push((name.clone(), total / inputs.len() as u64));
+        let worst: u64 = got.iter().map(|o| steps_of(o) as u64).max().unwrap_or(0);
+        rows.push((name.clone(), total / inputs.len() as u64, worst));
     }
-    let grand: u64 = rows.iter().map(|(_, m)| m * 1_000_000).sum();
+    let grand: u64 = rows.iter().map(|(_, m, _)| m * 1_000_000).sum();
     println!(
         "projected gate oracle cost: {:.2e} ticks total",
         grand as f64
     );
     let mut cum = 0u64;
-    for (name, mean) in &rows {
+    for (name, mean, worst) in &rows {
         cum += mean * 1_000_000;
         if *mean > 10_000 {
             println!(
-                "  {name:>28}: {mean:>9} steps/input — cumulative {:5.1}%",
+                "  {name:>28}: mean {mean:>7} worst {worst:>8} — cumulative {:5.1}%",
                 100.0 * cum as f64 / grand as f64
             );
         }
     }
     let mut top: Vec<_> = rows.iter().collect();
-    top.sort_by_key(|(_, m)| std::cmp::Reverse(*m));
-    println!("top 10 heaviest:");
-    for (name, mean) in top.iter().take(10) {
-        println!("  {name:>28}: {mean} steps/input");
+    top.sort_by_key(|(_, _, w)| std::cmp::Reverse(*w));
+    println!("top 12 by WORST case (the step-budget number):");
+    for (name, mean, worst) in top.iter().take(12) {
+        println!("  {name:>28}: worst {worst:>8}  mean {mean}");
     }
 }
 
@@ -1039,4 +1040,77 @@ fn state_cells_battery() {
 #[ignore = "the 10^6-input state gate — run explicitly in release"]
 fn state_gate_one_million() {
     state_battery(1_000_000);
+}
+
+/// The cell-rewrite audit: for each listed cell, the committed implementation
+/// (HEAD) and the working tree's run the same inputs on the GPU; values and
+/// trap status must agree input-for-input (steps may differ — that's usually
+/// the point of a rewrite). Run this BEFORE committing any behaviour-critical
+/// cell rewrite — edit the list to the cells under audit. The GPU makes
+/// auditing even a 2M-steps-per-input implementation affordable (~seconds),
+/// and it caught a real guard bug in the first offender-fix attempt. After
+/// the rewrite commits, HEAD equals the working tree and the audit is
+/// trivially green — the list is per-rewrite, not a regression suite.
+#[test]
+#[ignore = "offender-rewrite differential — run with --nocapture"]
+fn offender_rewrites_are_value_identical() {
+    let offenders = [
+        "cell80/cells/calendrical-checksum/day_of_year.rs",
+        "cell80/cells/number-theory/pow_small.rs",
+        "cell80/cells/number-theory/wilson_theorem_check.rs",
+        "cell80/cells/number-theory/sum_digit_powers.rs",
+        "cell80/cells/number-theory/wilson_factorial_mod.rs",
+        "cell80/cells/number-theory/is_quadratic_residue.rs",
+    ];
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    for rel in offenders {
+        let old_src = String::from_utf8(
+            std::process::Command::new("git")
+                .args(["show", &format!("HEAD:{rel}")])
+                .current_dir(&repo)
+                .output()
+                .expect("git show")
+                .stdout,
+        )
+        .unwrap();
+        let new_src = std::fs::read_to_string(repo.join(rel)).unwrap();
+        let (of, oc, _) = lower_cell(&old_src).unwrap();
+        let (nf, nc, _) = lower_cell(&new_src).unwrap();
+        let old_gpu = GpuBatch::new(&rustmsl::compile(&of, &oc, "run").unwrap()).unwrap();
+        let new_gpu = GpuBatch::new(&rustmsl::compile(&nf, &nc, "run").unwrap()).unwrap();
+        let inputs = gen_inputs(300_000, cell_seed("0123456789abcdef", 0xd1ff));
+        let a = old_gpu.run(&inputs).unwrap();
+        let b = new_gpu.run(&inputs).unwrap();
+        let mut bad = 0usize;
+        for (i, (oa, ob)) in a.iter().zip(&b).enumerate() {
+            if oa[..4] != ob[..4] {
+                bad += 1;
+                if bad <= 5 {
+                    eprintln!(
+                        "{rel}: input {:?} — old {:?} != new {:?}",
+                        inputs[i],
+                        &oa[..4],
+                        &ob[..4]
+                    );
+                }
+            }
+        }
+        let mean_old: u64 = a.iter().map(|o| steps_of(o) as u64).sum::<u64>() / a.len() as u64;
+        let mean_new: u64 = b.iter().map(|o| steps_of(o) as u64).sum::<u64>() / b.len() as u64;
+        println!(
+            "{rel}: {bad} value disagreements over {} inputs — mean steps {} -> {} ({}x)",
+            inputs.len(),
+            mean_old,
+            mean_new,
+            if mean_new > 0 {
+                mean_old / mean_new.max(1)
+            } else {
+                0
+            }
+        );
+        assert_eq!(bad, 0, "{rel}: rewrite is not value-identical");
+    }
 }
