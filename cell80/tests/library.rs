@@ -23,8 +23,12 @@ mod calendrical_checksum;
 mod checked_arithmetic;
 #[path = "library/combinatorics.rs"]
 mod combinatorics;
+#[path = "library/day-count.rs"]
+mod day_count;
 #[path = "library/distance.rs"]
 mod distance;
+#[path = "library/excel-financial.rs"]
+mod excel_financial;
 #[path = "library/fixed-point.rs"]
 mod fixed_point;
 #[path = "library/fractions.rs"]

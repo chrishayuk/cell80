@@ -65,8 +65,21 @@ fn render() -> String {
     for path in cell_paths {
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = fs::read_to_string(&path).unwrap();
-        let prog = CellProgram::compile(&src)
-            .unwrap_or_else(|e| panic!("cell {name} failed to compile: {e}"));
+        // A `//! kernel_bank: on` cell (the resident-bank feature, `docs/09-cell80-abi.md`)
+        // calls into the shared softfloat bank instead of inlining the f32 kernel family —
+        // some (e.g. excel_rri, the Finance80 batch's Nth-root Newton solver) genuinely
+        // can't compile any other way: fully inlining every kernel it touches (sqrt, mul,
+        // div, ...) alongside its own locals overruns the scratch region into STATE_BASE.
+        // Render those through the same banked path `library_cartridge`/the admission gate
+        // use (`cli/meta.rs`), rather than the plain unbanked `CellProgram::compile` every
+        // other cell here uses — otherwise this golden can never include such a cell at all.
+        let prog = if src.contains("//! kernel_bank: on") {
+            CellProgram::compile_with_config_banked(&src, cell80::CellConfig::permissive())
+                .unwrap_or_else(|e| panic!("cell {name} failed to compile (banked): {e}"))
+        } else {
+            CellProgram::compile(&src)
+                .unwrap_or_else(|e| panic!("cell {name} failed to compile: {e}"))
+        };
         render_program(&mut out, &format!("cell/{name}"), prog.program());
     }
 

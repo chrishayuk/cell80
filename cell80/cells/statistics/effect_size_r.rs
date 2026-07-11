@@ -1,5 +1,5 @@
 //! Convert a t-statistic to effect size r: r = t / sqrt(t^2 + df), a Q8.8 fixed-point value always bounded to [-1, 1] (t^2 <= t^2+df, so |t|/sqrt(t^2+df) <= 1 by construction). Computed by scaling t^2+df up by 256 before taking an integer square root (the same precision-preserving order q_sqrt uses -- sqrt first, divide last, loses far less precision than dividing by a truncated integer sqrt directly), then dividing a further-scaled numerator by that root in one step.
-//! tags: statistics, effect-size, t-statistic, hypothesis-test, fixed-point, q8.8, wide, u32, checked, escalate
+//! tags: statistics, effect, effect-size, t-statistic, hypothesis-test, degrees-of-freedom, fixed-point, q8.8, wide, u32, checked, escalate
 //! entry: EffectSizeR::run
 //! scale: 8
 //! limits: escalates (halt 0xFF05, needs_wider_math) if t^2, t^2+df, (t^2+df)*256, or the scaled numerator overflows u32 -- realistic |t| into the low thousands with df into the hundreds of thousands stays well inside this bound

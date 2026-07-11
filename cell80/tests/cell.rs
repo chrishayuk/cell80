@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("653 cells"));
+    assert!(listing.contains("range_check") && listing.contains("697 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("653 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("697 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 653, "got: {out}");
+    assert_eq!(cells.len(), 697, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -929,13 +929,28 @@ fn cli_index_gate_over_the_real_library() {
     // percent, predicates, ranking-stats, running-stats, safe-arith, scoring-choice,
     // sequences, signed-deltas, spatial-grid, and agentic-runtime — 153 admitted,
     // 0 refused (no gate-caught duplicates this round).
+    // 653→697: the Finance80 batch — two new packs, day-count (5 landed) and
+    // excel-financial (39 landed), 48 authored, 44 survived verification. Four
+    // back-outs, all fingerprint-probe-bank collisions the gate flagged as exact
+    // duplicates of an existing or sibling cell (agreement 1.00 on DEFAULT_PROBES):
+    // day_count_30_360_us (vs. the existing days_between — confirmed a real
+    // divergence exists on realistic dates the probe bank doesn't reach, so this is
+    // the same class of false positive as the historical snap_down/round_to_multiple
+    // and luhn_check/is_zero cases, not a true duplicate — backed out per the
+    // standing rule anyway: never force a flagged pair through), excel_coupdaysnc
+    // (vs. its own new sibling excel_coupdays — kept), excel_coupncd (vs. its own
+    // new sibling excel_couppcd — kept), and excel_yielddisc (vs. excel_intrate — a
+    // *genuine* duplicate this time: Excel's own (redemption-pr)/pr*(B/DSM) is
+    // algebraically identical to INTRATE's formula under a renaming, vocabulary
+    // folded into excel_intrate's tags per the no-duplicates rule). 697 admitted,
+    // 0 refused.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("653 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("697 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

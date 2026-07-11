@@ -12,6 +12,35 @@ deterministic integer utilities an agent can retrieve, run, and compose, organiz
 be **broad**: the more genuinely-distinct behaviours sit on the shelf, the more an agent finds
 one instead of writing code. This guide is how to grow it well.*
 
+## Contents
+
+This file is a running log (append-only, dated) as much as a guide — sections near the top
+are the stable rules, everything from "Phase 2.3" onward is a chronological growth history.
+Line numbers, not anchors (the file is long enough, and edited concurrently enough by parallel
+sessions, that hand-verified line numbers are more trustworthy than guessed GFM anchors):
+
+- The shape we're building toward — line 15
+- What a good cell is — line 531
+- Two rules that keep a *large* library strong — line 540
+- Principles (what makes a cell worth adding) — line 562
+  - What the compiler gives you (author cells clean) — line 574
+  - Standardise these semantics — line 584
+- The contribution rule (every new-cell PR) — line 595
+- Packs (organise discovery by family via tags) — line 611
+  - Landed pack notes (historical, through the 163-cell checkpoint) — line 628
+  - Next waves (prioritized — keep them distinct) — line 718
+- Phase 2.3 — growing toward ~1,000 cells (the long wave-by-wave growth history) — line 767
+- Mine the ecosystem first — line 1883
+- Systematic family expansion — the 90-cell workflow batch (313 → 395) — line 1932
+  - Round 2 — narrower clusters, deeper mining (397 → 500) — line 2000
+  - Round 3 — deepest yet, kill-gate trips (653 cells) — line 2051
+  - Behavioural routing in the search path — checkpoint 21 (F2 passed) — line 2120
+- After authoring: re-run the evals — line 2158
+
+**For the current cell count and per-pack list, don't trust any number in this file's own
+prose (including this TOC's line numbers drifting as the file grows) — check
+[`docs/cell-index.md`](cell-index.md), generated fresh from the live library.**
+
 ## The shape we're building toward
 
 ```
