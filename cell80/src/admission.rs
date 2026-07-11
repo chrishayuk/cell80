@@ -186,13 +186,21 @@ enum CellShape {
 }
 
 fn cell_shape(cart: &crate::Cartridge) -> CellShape {
-    let field_tys: Vec<u8> = cart
-        .manifest
-        .state_addrs
-        .iter()
-        .filter(|(_, _, ty)| ty.capacity().is_none())
-        .map(|(_, _, ty)| ty.code())
-        .collect();
+    // The full wire encoding of every drivable field (code; + elem/len for arrays):
+    // scalar-only cells keep exactly their pre-array shape vector (codes alone), a
+    // `u16[8]` and a `u16[4]` cell land in different classes, and an array cell is
+    // never compared against a scalar-only one. Buffers stay out (undrivable until
+    // Phase S3 — they can't contribute to a fingerprint either).
+    let mut field_tys: Vec<u8> = Vec::new();
+    for (_, _, ty) in &cart.manifest.state_addrs {
+        if let Some((elem, len)) = ty.array_dims() {
+            field_tys.push(ty.code());
+            field_tys.push(elem.code());
+            field_tys.extend_from_slice(&len.to_le_bytes());
+        } else if ty.capacity().is_none() {
+            field_tys.push(ty.code());
+        }
+    }
     if field_tys.is_empty() {
         CellShape::Value(cart.manifest.signature.params.len())
     } else {
@@ -517,6 +525,46 @@ mod tests {
         assert!(matches!(
             &report.refused[0].1[0],
             RefusalReason::BehaviouralDuplicate { of, .. } if of == "manhattan"
+        ));
+    }
+
+    #[test]
+    fn array_state_cells_admit_dedupe_and_class_by_length() {
+        // The v11 array surface through the gate: an array-state cell admits, its
+        // identical-layout copy refuses as a behavioural duplicate, and a
+        // different window LENGTH is a different shape class (the wire encoding
+        // in the shape vector) — never compared, both admit.
+        let dir = scratch_dir("array_state");
+        let sma = |s: &str, n: u8| {
+            format!(
+                "//! Trailing-{n} window sum ({s}).\n//! tags: window\n//! entry: {s}::run\n\
+                 struct {s} {{ value: u16, w: [u16; {n}], head: u16, out: u16 }}\n\
+                 impl {s} {{ fn run(&mut self) -> u16 {{\n\
+                     self.w[self.head as usize] = self.value;\n\
+                     self.head = (self.head + 1u16) % {n}u16;\n\
+                     let mut s = 0u16; let mut i = 0u16;\n\
+                     while i < {n}u16 {{ s = s + self.w[i as usize]; i = i + 1u16; }}\n\
+                     self.out = s; self.out }} }}"
+            )
+        };
+        write_cell(&dir, "wsum4", &sma("Wa", 4));
+        write_cell(&dir, "wsum4_copy", &sma("Wb", 4)); // same layout+behaviour, new names
+        write_cell(&dir, "wsum8", &sma("Wc", 8)); // different length ⇒ different class
+        let retrieval = write_retrieval(
+            &dir,
+            &[
+                ("w4-1", "sum of a trailing window of four", "wsum4", "direct"),
+                ("w4c-1", "rolling four sample total", "wsum4_copy", "direct"),
+                ("w8-1", "sum of a trailing window of eight", "wsum8", "direct"),
+            ],
+        );
+        let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
+        let admitted: Vec<&str> = report.admitted.iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(admitted, ["wsum4", "wsum8"], "refused: {:?}", report.refused);
+        assert_eq!(report.refused.len(), 1);
+        assert!(matches!(
+            &report.refused[0].1[0],
+            RefusalReason::BehaviouralDuplicate { of, .. } if of == "wsum4"
         ));
     }
 

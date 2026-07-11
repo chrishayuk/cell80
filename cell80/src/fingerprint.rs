@@ -88,6 +88,36 @@ fn digest_state(result: u16, fields: &[(String, u64)]) -> u16 {
     d
 }
 
+/// [`digest_state`] over value envelopes: scalars fold exactly as `digest_state`
+/// does (same rotate schedule, so a scalar-only cell's digest is **byte-identical**
+/// to the pre-array arithmetic — admission dupe verdicts must not move); an array
+/// field folds each element in order, the position counter running straight
+/// through, so `[1, 2]` in one field and `1, 2` in two scalar fields still land on
+/// different layouts via the shape class, while identical-layout copy-paste dupes
+/// digest identically.
+fn digest_state_values(result: u16, fields: &[(String, crate::FieldValue)]) -> u16 {
+    let mut d = result;
+    let mut pos = 0u32;
+    let mut fold = |d: &mut u16, v: u64| {
+        let r = (pos * 5 + 3) % 16;
+        *d ^= (v as u16).rotate_left(r);
+        *d ^= ((v >> 16) as u16).rotate_left((r + 7) % 16);
+        *d = d.rotate_left(1);
+        pos += 1;
+    };
+    for (_, fv) in fields {
+        match fv {
+            crate::FieldValue::Scalar(v) => fold(&mut d, *v),
+            crate::FieldValue::Array(vs) => {
+                for v in vs {
+                    fold(&mut d, *v);
+                }
+            }
+        }
+    }
+    d
+}
+
 /// How many convention registers a *tuple* return spreads across (`HL`, `DE`, `BC`): its
 /// element count, capped at the 3-register convention. A scalar return — including `u32`,
 /// whose `HL:DE` pair is one value — is `1`, so its fingerprint stays the primary register
@@ -128,32 +158,45 @@ impl Fingerprint {
     /// Run `cart`'s entry on each probe and record `result`. Value cells take the
     /// probe triple in the convention registers (args beyond the cell's arity land
     /// in unused registers, harmless); **state cells** take it through their named
-    /// scalar fields, assigned cyclically in declaration order (`field i ←
-    /// probe[i % 3]`) — deterministic per layout, so identical-layout duplicates
-    /// (the real dupe risk) fingerprint identically.
+    /// fields, assigned cyclically in declaration order (`field i ← probe[i % 3]`;
+    /// an array field's element `j ← probe[(i + j) % 3]`, the same convention
+    /// extended along the element axis) — deterministic per layout, so
+    /// identical-layout duplicates (the real dupe risk) fingerprint identically.
     pub fn compute(cart: &Cartridge, probes: &[[u16; 3]], budget: u64) -> Self {
         let mut runner = Runner::new(cart.z80().expect("fingerprints probe z80-cell bodies"));
         let entry = cart.manifest.entry.as_str();
         // A tuple-returning free function spreads its payload across HL/DE/BC — digest all
         // the declared registers, not just HL (a scalar declares 1, so it is unchanged).
         let n_ret = ret_reg_count(&cart.manifest.signature.ret);
+        // Drivable fields: scalars and arrays (buffers stay out until Phase S3).
         let state: Vec<(u16, crate::Ty, usize)> = cart
             .manifest
             .state_addrs
             .iter()
-            .filter(|(_, _, ty)| ty.capacity().is_none()) // scalars only
+            .filter(|(_, _, ty)| ty.capacity().is_none() || ty.array_dims().is_some())
             .enumerate()
             .map(|(i, (_, addr, ty))| (*addr, *ty, i))
             .collect();
+        let has_arrays = state.iter().any(|(_, ty, _)| ty.array_dims().is_some());
         let outputs = probes
             .iter()
             .map(|p| {
                 let run = if state.is_empty() {
                     runner.run(Some(entry), p, budget)
                 } else {
-                    let inputs: Vec<(u16, crate::Ty, u64)> = state
-                        .iter()
-                        .map(|(addr, ty, i)| {
+                    let mut inputs: Vec<(u16, crate::Ty, u64)> = Vec::with_capacity(state.len());
+                    for (addr, ty, i) in &state {
+                        if let Some((elem, len)) = ty.array_dims() {
+                            // Element j ← probe[(i + j) % 3]: the cyclic field
+                            // convention extended along the element axis.
+                            for j in 0..len {
+                                inputs.push((
+                                    addr + j * elem.bytes(),
+                                    elem.scalar_ty(),
+                                    p[(*i + j as usize) % 3] as u64,
+                                ));
+                            }
+                        } else {
                             // An f32 field takes the probe as a *float* (3 → 3.0's
                             // bits): the raw small integers are subnormals whose
                             // products all underflow to zero, which made every f32
@@ -165,9 +208,9 @@ impl Fingerprint {
                             } else {
                                 p[i % 3] as u64
                             };
-                            (*addr, *ty, v)
-                        })
-                        .collect();
+                            inputs.push((*addr, *ty, v));
+                        }
+                    }
                     runner.run_with_inputs(Some(entry), &[crate::STATE_BASE], &inputs, budget)
                 };
                 match run {
@@ -178,10 +221,22 @@ impl Fingerprint {
                             .manifest
                             .state_addrs
                             .iter()
-                            .filter(|(_, _, ty)| ty.capacity().is_none())
+                            .filter(|(_, _, ty)| {
+                                ty.capacity().is_none() || ty.array_dims().is_some()
+                            })
                             .cloned()
                             .collect();
-                        Some(digest_state(r.result, &runner.read_named(&reads)))
+                        // Scalar-only cells keep the original digest arithmetic
+                        // byte-for-byte (admission dupe verdicts must not move);
+                        // array cells fold their envelopes through the values path.
+                        if has_arrays {
+                            Some(digest_state_values(
+                                r.result,
+                                &runner.read_named_values(&reads),
+                            ))
+                        } else {
+                            Some(digest_state(r.result, &runner.read_named(&reads)))
+                        }
                     }
                     _ => None,
                 }
@@ -395,6 +450,72 @@ mod tests {
     fn fingerprint_is_deterministic() {
         let c = min_cell();
         assert_eq!(Fingerprint::of(&c), Fingerprint::of(&c));
+    }
+
+    #[test]
+    fn scalar_digest_arithmetic_is_pinned() {
+        // The values-path digest must be BYTE-IDENTICAL to the original scalar
+        // arithmetic on scalar-only envelopes — every existing state-cell
+        // fingerprint (and therefore every admission dupe verdict and examples
+        // sidecar) hangs off this. If either side of this equality moves, that's a
+        // library-wide re-fingerprint event, not a refactor.
+        let cases: [&[u64]; 4] = [
+            &[],
+            &[42],
+            &[0xFFFF_FFFF, 7, 0x1234_5678],
+            &[1, 2, 3, 4, 5, 6, 7, 8],
+        ];
+        for vals in cases {
+            let named: Vec<(String, u64)> =
+                vals.iter().enumerate().map(|(i, v)| (format!("f{i}"), *v)).collect();
+            let enveloped: Vec<(String, crate::FieldValue)> = vals
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (format!("f{i}"), crate::FieldValue::Scalar(*v)))
+                .collect();
+            for result in [0u16, 999, 0xFFFF] {
+                assert_eq!(
+                    digest_state(result, &named),
+                    digest_state_values(result, &enveloped),
+                    "scalar digest arithmetic moved for {vals:?}"
+                );
+            }
+        }
+        // And a concrete hard pin so the shared arithmetic itself can't drift
+        // silently under both paths at once.
+        assert_eq!(digest_state(100, &[("a".into(), 7u64), ("b".into(), 9u64)]), {
+            let mut d = 100u16;
+            d ^= 7u16.rotate_left(3);
+            d = d.rotate_left(1);
+            d ^= 9u16.rotate_left(8);
+            d = d.rotate_left(1);
+            d
+        });
+    }
+
+    #[test]
+    fn array_state_cells_fingerprint_and_distinguish() {
+        // An array-state cell is probeable: elements driven cyclically
+        // (element j ← probe[(i + j) % 3]), the envelope digested whole. A
+        // copy-paste dupe agrees fully; a behaviourally different sibling
+        // (sum vs max over the window) separates.
+        let sum_src = "struct S { w: [u16; 4], out: u16 }
+            impl S { fn run(&mut self) -> u16 {
+                self.out = self.w[0] + self.w[1] + self.w[2] + self.w[3]; self.out } }";
+        let max_src = "struct M { w: [u16; 4], out: u16 }
+            impl M { fn run(&mut self) -> u16 {
+                let mut m = self.w[0];
+                if self.w[1] > m { m = self.w[1]; }
+                if self.w[2] > m { m = self.w[2]; }
+                if self.w[3] > m { m = self.w[3]; }
+                self.out = m; self.out } }";
+        let a = state_cell("wsum", "S::run", sum_src);
+        let b = state_cell("wsum2", "S::run", sum_src);
+        let c = state_cell("wmax", "M::run", max_src);
+        let (fa, fb, fc) = (Fingerprint::of(&a), Fingerprint::of(&b), Fingerprint::of(&c));
+        assert!(fa.outputs.iter().any(Option::is_some), "array cell must probe");
+        assert_eq!(fa.agreement(&fb), 1.0, "identical layout+behaviour ⇒ identical");
+        assert!(fa.agreement(&fc) < 1.0, "sum vs max over the window must separate");
     }
 
     #[test]
