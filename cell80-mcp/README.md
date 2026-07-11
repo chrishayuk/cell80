@@ -25,7 +25,8 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 
 | tool | what it does |
 |------|--------------|
-| `cell_search(query, limit=10)` | rank the library by relevance → brief manifests |
+| `cell_search(query, limit=10, examples=None)` | rank the library by relevance → brief manifests. Optional I/O `examples` fuse **behaviour** into the ranking (behaviour first, text breaks ties) — the same-shape-sibling separator: text can't tell `min` from `max`, `{in:[3,7], out:3}` can. State-cell form adds `expect` for post-run fields |
+| `cell_route_by_example(examples)` | pure behavioural discovery: the cells that actually reproduce `{in:[…], out:n}` / `{fields:{…}, out:n}` on the VM — no text at all |
 | `cell_inspect(id)` | full manifest: typed signature (params/ret/state), abi, hash |
 | `cell_list()` | every cell (brief) |
 | `cell_run(id, args=[])` | run a plain cell with `u16` register args → result + cost + halt |

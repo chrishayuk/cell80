@@ -73,6 +73,32 @@ signature first (`range_check : (x,lo,hi)->bool` *is* a boolean-output, three-bo
 embeddings as the tiebreaker. Re-run this eval to know if a change actually helped — the
 direct row is the regression guard, the paraphrase row is the score to move.
 
+## Example-equipped retrieval (the fused path — WS-F/F2)
+
+Text alone cannot separate *same-shape siblings* (`min`/`max` share every word); an
+I/O example can (`(3,7)→3`). The fused search path ranks by behaviour with the text
+order breaking ties, and this eval measures it:
+
+```bash
+cell-eval gen-examples                                    # regenerate the sidecar (deterministic — diff-clean re-run)
+cell-eval retrieval --examples retrieval-examples         # plain vs fused, side by side
+cell-eval retrieval --examples retrieval-examples --json  # the checkpoint artifact
+```
+
+Sidecar: [`datasets/retrieval-examples.jsonl`](datasets/retrieval-examples.jsonl) — ≤3
+plausibly-user-authorable examples per `retrieval.jsonl` case (keyed by case id;
+`retrieval.jsonl` itself is never edited), greedily selected to eliminate co-matching
+siblings, with the survivors recorded in `co_match` — the class examples *cannot* separate
+by construction (`min(a,b) ≡ median3(a,b,0)` under register zero-fill).
+
+**Checkpoint 21 (653 cells, 98.5% coverage): probe-equipped paraphrase P@1 0.859 vs the
+0.39 text baseline** — the roadmap's F2 gate (≥ 0.80) passed; adversarial 0.47 → 0.89,
+direct 0.81 → 0.95, zero per-query regressions (guaranteed: the expected cell reproduces
+its own examples and ties preserve text order, so fused rank ≤ plain rank always).
+`tests/test_retrieval_examples.py` holds the hard floor plus a ≥0.90 coverage guard.
+Read honestly: this measures **example-carrying** requests; text-only paraphrase is
+unchanged and stays the open problem above.
+
 ## Adoption eval (LLM agent — OpenAI-compatible, Ollama by default)
 
 ```bash

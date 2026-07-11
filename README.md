@@ -176,8 +176,9 @@ changes and prompt changes never get conflated:
 - **composition** — given a task that needs *several* cells, did it **wire them together** (via
   `cell_graph_run`) instead of doing the multi-step arithmetic itself?
 
-Retrieval **on the 395-cell library** (checkpoint 17, 797 cases — the latest published
-point on the scale curve; `docs/library-growth.md` carries the full history): the
+Retrieval **on the 395-cell library** (checkpoint 17, 797 cases; the curve now runs
+through checkpoint 21 at 653 cells — `docs/library-growth.md` carries the full history,
+including the round-3 kill-gate trip and its resolution): the
 default index is
 **TF-IDF** (word + char-3-gram cosine), with a small complexity-based tie-break — **direct
 P@1 0.82, paraphrase 0.39, adversarial 0.42**. Against the 114-cell baseline the library
@@ -193,6 +194,13 @@ non-predicates. The lever for those is **behavioural I/O-example routing**
 what the cell *does*, phrasing- and language-independent. Now also a top-level CLI verb
 (`cell80 route`, see Quick start), and with `--facts` the probes are answered from an imported
 fact file (docs/12) instead of execution — retrieval served from claims, falsifiable by re-running.
+**As of 2026-07-11 that lever is fused into the primary search path** (WS-F/F2, measured at
+653 cells): `search` takes optional I/O examples — behaviour ranks, text order breaks ties,
+zero-match cells demote instead of dropping, so the fused rank is provably never worse than
+plain search. Example-carrying paraphrase queries go **0.39 → 0.859 P@1** (adversarial
+0.47 → 0.89, direct 0.81 → 0.95; `cell-eval retrieval --examples retrieval-examples`,
+checkpoint 21 in `cell-eval/baselines/`, hard CI floor). Text-only paraphrase is unchanged —
+still the open problem for text-side levers.
 Beyond text search: **`cell80 solve`** compiles a candidate math word-problem plan directly
 to a cell and verifies/perturbs it (`docs/math-campaign-spec.md`'s M2) — 127 real, unfiltered,
 consecutive GSM-8K test-set rows hand-extracted and run through it solved **123/123 correctly**
@@ -228,6 +236,13 @@ cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1
 # → min — Minimum of two values.  [3/3]   (flip the outputs and `max` wins instead;
 #   `median3` ties min at [3/3] — with the third register 0, median3(a,b,0) IS min(a,b))
 
+# or FUSE both: search with trailing examples — behaviour ranks, text breaks ties.
+# Same-shape siblings share every word; the examples separate them (WS-F, checkpoint 21).
+cargo run -q -p cell80 --bin cell80 -- search "the smaller of two numbers" cell80/cells 3,7=3 9,4=4
+# state cells route by named field; `out:12` matches POST-RUN fields — the separator for
+# status-flag families (smag_add/smag_sub both return 1; only their mag/neg differ)
+cargo run -q -p cell80 --bin cell80 -- search "combine two magnitudes" cell80/cells mag_a:9,neg_a:0,mag_b:4,neg_b:1=1,mag:5,neg:0
+
 # the same route riding the FACT LIBRARY (docs/12): imported claims answer probes, no execution
 printf 'min 3 7\nmin 10 4\nmin 255 1\n' > /tmp/calls.txt
 cargo run -q -p cell80 --bin cell80 -- facts export cell80/cells --calls /tmp/calls.txt > /tmp/min.facts
@@ -236,7 +251,8 @@ cargo run -q -p cell80 --bin cell80 -- route cell80/cells 3,7=3 10,4=4 255,1=1 -
 ```
 
 CLI verbs: `run` (source) · `compile` (→ `.cell`) · `exec` (a `.cell`) · `inspect` ·
-`index` · `search` · `route` (by I/O examples, optionally answered from a fact file) ·
+`index` · `search` (text relevance; trailing I/O examples fuse behaviour into the ranking) ·
+`route` (by I/O examples, optionally answered from a fact file) ·
 `serve` (a persistent warm session) · `facts` (export / import / verify — the full contract
 lives in [`docs/12-fact-file.md`](./docs/12-fact-file.md): a fact is keyed by the artifact
 hash — which covers the image *and* its capability/halt policy — carries its cycle cost, and
@@ -409,6 +425,8 @@ cell_search("grid distance")     # → a few brief manifests
 # don't know the name, or the words are ambiguous? route by BEHAVIOUR — the cell that
 # reproduces these input→output examples (tells `min` from `max` where text can't):
 cell_route_by_example([{"in": [3, 7], "out": 3}, {"in": [10, 3], "out": 3}])  # → min, not max
+# or fuse both in one call: examples rank first, text relevance breaks ties (WS-F):
+cell_search("the smaller of two numbers", examples=[{"in": [3, 7], "out": 3}])
 cell_inspect("manhattan")        # → Pts::run() -> u16, typed state
 cell_run("gcd", [1071, 462])     # → {result: 21, cycles, trapped_ops, halt}  (warm)
 # state cells drive by NAME — typed fields in, full state out (no raw addresses):
