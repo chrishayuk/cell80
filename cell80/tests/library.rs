@@ -79,6 +79,8 @@ mod spatial_grid;
 mod stateful_rng;
 #[path = "library/statistics.rs"]
 mod statistics;
+#[path = "library/trig.rs"]
+mod trig;
 #[path = "library/units.rs"]
 mod units;
 #[path = "library/validation.rs"]

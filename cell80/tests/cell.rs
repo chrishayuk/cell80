@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("756 cells"));
+    assert!(listing.contains("range_check") && listing.contains("788 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("756 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("788 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 756, "got: {out}");
+    assert_eq!(cells.len(), 788, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -990,13 +990,38 @@ fn cli_index_gate_over_the_real_library() {
     // frequency-gated finance separator): without it every same-shape bond cell
     // escalated on every probe and the gate false-refused the LANDED
     // excel_oddlyield as a duplicate of the new excel_oddlprice.
+    // 756→788: the trig/hyperbolic + XIRR wave (21 cells riding fsin/fcos/fatan2 for
+    // the first time, plus XIRR closing out the last "priced not killed" ex-host_only
+    // function) landed alongside a 12-cell excel-mathstat array-reduction batch
+    // (SUM/AVERAGE/MAX/MIN/MEDIAN/STDEV.P/STDEV.S/VAR.S/LARGE/SMALL/SUMSQ/
+    // COUNTBLANK) in one combined pass. 34 authored, 32 landed. Two back-outs, both
+    // confirmed probe-bank coincidences rather than true duplicates: excel_sumsq
+    // (vs. excel_stdev_p) and excel_var_s (vs. excel_stdev_s) share an identical
+    // `([u32;16], u16, f32)` shape, and `Fingerprint::compute`'s array-probing path
+    // writes DEFAULT_PROBES' small integers straight into the u32 array slots with
+    // no f32-bit reinterpretation (unlike the scalar-field path, which already
+    // special-cases `Ty::F32` for this exact reason) — every probed array element
+    // decodes to a subnormal float, and squaring a subnormal underflows to exactly
+    // 0.0, so any two non-negative squared-deviation-style reductions collapse to
+    // bit-identical results on every probe (agreement 1.00). Verified directly via a
+    // scratch `Fingerprint::of` comparison before accepting the verdict — a real,
+    // named gap in the fingerprint's array support (it would need `ArrayElem`/
+    // `Ty::Array` to carry an f32 sub-kind to fix at the root), not a defect in
+    // either cell's own math (both independently re-verified correct against
+    // hand-computed expected values in `cell80/tests/library/excel-mathstat.rs`).
+    // Backed out anyway per the standing rule: a flagged pair never ships forced
+    // through, confirmed-coincidence or not. Also two cells (`tan_f32`/`cot_f32`:
+    // fsin+fcos; `asin_f32`/`acos_f32`: fsqrt+fatan2) needed a banked-compile test
+    // helper (`crate::common::BankedCell`) since composing two distinct heavy F2
+    // kernels overruns the host-oracle harness's unbanked code+locals ceiling before
+    // `STATE_BASE`, a hard architecture wall independent of the sandboxed byte cap.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("756 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("788 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

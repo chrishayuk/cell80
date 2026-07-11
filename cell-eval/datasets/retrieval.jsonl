@@ -1702,3 +1702,109 @@
 {"id": "excel_oddlprice-direct-1", "query": "excel oddlprice closed form price odd last period", "expected": "excel_oddlprice", "category": "direct"}
 {"id": "excel_oddlprice-para-1", "query": "price a security maturing inside its final irregular coupon stretch", "expected": "excel_oddlprice", "category": "paraphrase"}
 {"id": "excel_oddlprice-adv-1", "query": "pricing with the rate GIVEN for the odd tail, not solving the yield out of it", "expected": "excel_oddlprice", "category": "adversarial"}
+# ── trig (trig/hyperbolic wave, 21 cells riding the F2 fsin/fcos/fatan2/fexp/fln
+# kernels, 2026-07-11/12) ──
+{"id": "sin_f32-direct-1", "query": "sin(x): sine of an angle in radians, IEEE float32", "expected": "sin_f32", "category": "direct"}
+{"id": "sin_f32-para-1", "query": "compute the trigonometric sine of a floating-point angle expressed in radians", "expected": "sin_f32", "category": "paraphrase"}
+{"id": "sin_f32-adversarial-1", "query": "ordinary circular sine of a radian angle -- not the hyperbolic sine (sinh) and not the inverse sine (arcsine/asin)", "expected": "sin_f32", "category": "adversarial"}
+{"id": "cos_f32-direct-1", "query": "cosine of an angle in radians", "expected": "cos_f32", "category": "direct"}
+{"id": "cos_f32-para-1", "query": "cos(x) -- the adjacent-over-hypotenuse trig ratio for a given radian angle", "expected": "cos_f32", "category": "paraphrase"}
+{"id": "cos_f32-adversarial-1", "query": "the trig ratio that equals 1.0 at a zero angle, not the inverse cosine and not the hyperbolic cosine", "expected": "cos_f32", "category": "adversarial"}
+{"id": "tan_f32-direct-1", "query": "tangent of an angle x in radians, tan(x)", "expected": "tan_f32", "category": "direct"}
+{"id": "tan_f32-para-1", "query": "sine divided by cosine of x -- the tan ratio (not cotangent's cos/sin flip)", "expected": "tan_f32", "category": "paraphrase"}
+{"id": "tan_f32-adversarial-1", "query": "the sin(x)/cos(x) ratio that blows up near pi/2 -- not the inverse arctangent of a ratio y/x, and not the hyperbolic tanh(x)", "expected": "tan_f32", "category": "adversarial"}
+{"id": "atan2_f32-direct-1", "query": "atan2(y, x) angle in radians from the positive x-axis to the point (x, y)", "expected": "atan2_f32", "category": "direct"}
+{"id": "atan2_f32-para-1", "query": "two-argument arctangent of the ratio y/x that resolves the correct quadrant using the independent signs of y and x", "expected": "atan2_f32", "category": "paraphrase"}
+{"id": "atan2_f32-adversarial-1", "query": "arctangent of a ratio y over x, quadrant-aware angle-from-coordinates, distinct from the plain single-argument arctan(y/x)", "expected": "atan2_f32", "category": "adversarial"}
+{"id": "atan_f32-direct-1", "query": "arctangent of a single value x alone, principal value in radians", "expected": "atan_f32", "category": "direct"}
+{"id": "atan_f32-para-1", "query": "what angle in radians has this one number as its tangent -- no y/x ratio pair, just one input", "expected": "atan_f32", "category": "paraphrase"}
+{"id": "atan_f32-adversarial-1", "query": "inverse tangent of a lone number, not the two-coordinate arctangent-of-a-ratio version", "expected": "atan_f32", "category": "adversarial"}
+{"id": "asin_f32-direct-1", "query": "arcsine of x, the inverse sine function returning an angle in radians", "expected": "asin_f32", "category": "direct"}
+{"id": "asin_f32-para-1", "query": "angle whose sine equals a given value, principal value between -90 and 90 degrees", "expected": "asin_f32", "category": "paraphrase"}
+{"id": "asin_f32-adversarial-1", "query": "inverse sine built from arctangent and square root with x as the first atan2 argument, not arccosine's swapped atan2(sqrt(1-x*x), x) order", "expected": "asin_f32", "category": "adversarial"}
+{"id": "acos_f32-direct-1", "query": "arccosine of x in radians", "expected": "acos_f32", "category": "direct"}
+{"id": "acos_f32-para-1", "query": "the angle between 0 and pi whose cosine equals x", "expected": "acos_f32", "category": "paraphrase"}
+{"id": "acos_f32-adversarial-1", "query": "inverse cosine (not inverse sine) of a value in [-1,1], returned in the range 0 to pi -- the arccosine, distinct from arcsine's -pi/2 to pi/2 range and from the two-argument atan2 of a raw y/x ratio", "expected": "acos_f32", "category": "adversarial"}
+{"id": "sinh_f32-direct-1", "query": "hyperbolic sine of a number", "expected": "sinh_f32", "category": "direct"}
+{"id": "sinh_f32-para-1", "query": "compute (e^x - e^-x) / 2, the hyperbolic sine", "expected": "sinh_f32", "category": "paraphrase"}
+{"id": "sinh_f32-adversarial-1", "query": "hyperbolic sine -- not the periodic circular sine, and not hyperbolic cosine", "expected": "sinh_f32", "category": "adversarial"}
+{"id": "cosh_f32-direct-1", "query": "hyperbolic cosine of x, cosh(x) = (e^x + e^-x) / 2", "expected": "cosh_f32", "category": "direct"}
+{"id": "cosh_f32-para-1", "query": "half the sum of e to the x and e to the minus x -- the catenary curve (hanging-cable) function", "expected": "cosh_f32", "category": "paraphrase"}
+{"id": "cosh_f32-adversarial-1", "query": "the even hyperbolic exponential combination (e^x + e^-x)/2 -- distinct from hyperbolic sine's odd difference (e^x - e^-x)/2 and from the plain circular cosine .cos()", "expected": "cosh_f32", "category": "adversarial"}
+{"id": "tanh_f32-direct-1", "query": "hyperbolic tangent of a real number x, tanh(x)", "expected": "tanh_f32", "category": "direct"}
+{"id": "tanh_f32-para-1", "query": "the ratio of hyperbolic sine to hyperbolic cosine, saturating between -1 and 1 as the input grows large", "expected": "tanh_f32", "category": "paraphrase"}
+{"id": "tanh_f32-adversarial-1", "query": "the forward S-shaped squashing curve built from e^x, not the inverse logarithmic arctanh form used for Fisher transforms", "expected": "tanh_f32", "category": "adversarial"}
+{"id": "asinh_f32-direct-1", "query": "hyperbolic arcsine of x, asinh(x) = ln(x + sqrt(x^2 + 1))", "expected": "asinh_f32", "category": "direct"}
+{"id": "asinh_f32-para-1", "query": "inverse of the hyperbolic sine function, defined for every real x with no domain restriction", "expected": "asinh_f32", "category": "paraphrase"}
+{"id": "asinh_f32-adversarial-1", "query": "logarithmic closed form for the inverse hyperbolic sine specifically -- not the inverse hyperbolic cosine's x^2 minus 1 form (acosh, x >= 1), and not the bounded ordinary arcsine (asin, [-1,1])", "expected": "asinh_f32", "category": "adversarial"}
+{"id": "acosh_f32-direct-1", "query": "inverse hyperbolic cosine of x, defined for x >= 1", "expected": "acosh_f32", "category": "direct"}
+{"id": "acosh_f32-para-1", "query": "compute acosh(x) as ln(x + sqrt(x*x - 1)) composed from ln and sqrt kernels", "expected": "acosh_f32", "category": "paraphrase"}
+{"id": "acosh_f32-adversarial-1", "query": "given cosh(y) = x, solve for y (the inverse direction, not the forward hyperbolic cosine itself)", "expected": "acosh_f32", "category": "adversarial"}
+{"id": "atanh_f32-direct-1", "query": "atanh(x): inverse hyperbolic tangent of x, arctanh", "expected": "atanh_f32", "category": "direct"}
+{"id": "atanh_f32-para-1", "query": "compute the hyperbolic arctangent as 0.5 times the natural log of (1+x)/(1-x), Fisher z-transformation kernel", "expected": "atanh_f32", "category": "paraphrase"}
+{"id": "atanh_f32-adversarial-1", "query": "inverse hyperbolic tangent atanh, not the forward hyperbolic tangent tanh(x) and not the circular arctangent atan(x)", "expected": "atanh_f32", "category": "adversarial"}
+{"id": "cot_f32-direct-1", "query": "cotangent of an angle in radians, cos(x) divided by sin(x)", "expected": "cot_f32", "category": "direct"}
+{"id": "cot_f32-para-1", "query": "reciprocal of the tangent function -- 1 over tan(x), computed as cosine over sine", "expected": "cot_f32", "category": "paraphrase"}
+{"id": "cot_f32-adversarial-1", "query": "cot(x) trigonometric ratio, distinct from arctangent/ACOT and from TAN's own sin-over-cos reciprocal", "expected": "cot_f32", "category": "adversarial"}
+{"id": "sec_f32-direct-1", "query": "secant of an angle x in radians, sec(x) = 1/cos(x)", "expected": "sec_f32", "category": "direct"}
+{"id": "sec_f32-para-1", "query": "reciprocal of the cosine of an angle, diverging near odd multiples of pi/2", "expected": "sec_f32", "category": "paraphrase"}
+{"id": "sec_f32-adversarial-1", "query": "the trigonometric secant function sec(x) that blows up when cosine is near zero -- not the secant root-finding iteration method (e.g. Excel IRR/RATE's secant search) that shares the same word elsewhere in this library", "expected": "sec_f32", "category": "adversarial"}
+{"id": "csc_f32-direct-1", "query": "cosecant of an angle x in radians", "expected": "csc_f32", "category": "direct"}
+{"id": "csc_f32-para-1", "query": "1 divided by sin(x) -- the reciprocal sine function", "expected": "csc_f32", "category": "paraphrase"}
+{"id": "csc_f32-adversarial-1", "query": "the trig reciprocal with poles at integer multiples of pi (not pi/2 like secant, and not the cos/sin ratio of cotangent) -- specifically 1/sin(x)", "expected": "csc_f32", "category": "adversarial"}
+{"id": "coth_f32-direct-1", "query": "hyperbolic cotangent of x, coth(x)", "expected": "coth_f32", "category": "direct"}
+{"id": "coth_f32-para-1", "query": "reciprocal of the hyperbolic tangent, cosh(x) divided by sinh(x)", "expected": "coth_f32", "category": "paraphrase"}
+{"id": "coth_f32-adversarial-1", "query": "coth(x) near its pole at x = 0 -- the hyperbolic cotangent blows up there, unlike TANH which is 0 at x = 0 and unlike the circular COT whose poles are periodic multiples of pi, not just x = 0", "expected": "coth_f32", "category": "adversarial"}
+{"id": "sech_f32-direct-1", "query": "sech(x), the hyperbolic secant function equal to 1 divided by cosh(x)", "expected": "sech_f32", "category": "direct"}
+{"id": "sech_f32-para-1", "query": "reciprocal of hyperbolic cosine, a bell-shaped function bounded between 0 and 1", "expected": "sech_f32", "category": "paraphrase"}
+{"id": "sech_f32-adversarial-1", "query": "reciprocal cosine value for a hyperbolic-secant soliton pulse profile, not the circular secant of an angle", "expected": "sech_f32", "category": "adversarial"}
+{"id": "csch_f32-direct-1", "query": "hyperbolic cosecant csch(x) = 1/sinh(x), the reciprocal of hyperbolic sine", "expected": "csch_f32", "category": "direct"}
+{"id": "csch_f32-para-1", "query": "reciprocal of sinh(x) for a nonzero real x, one over the hyperbolic sine", "expected": "csch_f32", "category": "paraphrase"}
+{"id": "csch_f32-adversarial-1", "query": "cosecant-hyperbolic function built by dividing 1 by hyperbolic sine (not SINH itself, and not the circular reciprocal-of-cosine SEC or the circular cosecant which divides by fsin)", "expected": "csch_f32", "category": "adversarial"}
+{"id": "acot_f32-direct-1", "query": "ACOT: arccotangent of a number, angle whose cotangent equals x, returned in radians from 0 to pi", "expected": "acot_f32", "category": "direct"}
+{"id": "acot_f32-para-1", "query": "inverse cotangent function -- given a number, find the angle (0 to pi) whose cotangent matches it, with x=0 giving pi/2 exactly", "expected": "acot_f32", "category": "paraphrase"}
+{"id": "acot_f32-adversarial-1", "query": "arctangent of one divided by x (the naive 1/x reciprocal formula for arccotangent), including the x=0 special case", "expected": "acot_f32", "category": "adversarial"}
+{"id": "acoth_f32-direct-1", "query": "inverse hyperbolic cotangent acoth(x), 0.5 * ln((x+1)/(x-1)) for |x| greater than 1", "expected": "acoth_f32", "category": "direct"}
+{"id": "acoth_f32-para-1", "query": "hyperbolic arccotangent of a value whose magnitude exceeds one -- half the natural log of (x+1) over (x-1)", "expected": "acoth_f32", "category": "paraphrase"}
+{"id": "acoth_f32-adversarial-1", "query": "hyperbolic cotangent inverse requiring |x| > 1 outside the unit interval -- not ATANH (which needs |x| < 1 inside it), not the forward COTH, and not the circular ACOT", "expected": "acoth_f32", "category": "adversarial"}
+# ── excel-mathstat: array-reduction batch (SUM/AVERAGE/MAX/MIN/MEDIAN/STDEV.P/
+# STDEV.S/LARGE/SMALL/COUNTBLANK, 2026-07-11/12 — additions to the excel-mathstat
+# banner above; VAR.S/SUMSQ were authored+verified but backed out at the
+# admission-gate step, a probe-bank coincidence against STDEV.S/STDEV.P — see
+# cell80/tests/library/excel-mathstat.rs's own notes on the two) ──
+{"id": "excel_sum-direct-1", "query": "Excel SUM function: add up to 16 numbers into one total", "expected": "excel_sum", "category": "direct"}
+{"id": "excel_sum-para-1", "query": "combine a list of numeric arguments into their grand total", "expected": "excel_sum", "category": "paraphrase"}
+{"id": "excel_sum-adversarial-1", "query": "the total of a list of numbers, not their average or how many there are", "expected": "excel_sum", "category": "adversarial"}
+{"id": "excel_average-direct-1", "query": "Excel AVERAGE function: arithmetic mean of a variable-length list of numbers", "expected": "excel_average", "category": "direct"}
+{"id": "excel_average-para-1", "query": "compute the mean of a list of up to 16 numbers by summing them and dividing by how many there are", "expected": "excel_average", "category": "paraphrase"}
+{"id": "excel_average-adversarial-1", "query": "average of a list of numbers -- not the fixed two/three/four-argument mean helpers avg2/mean3/mean4, and not SUM's raw total or COUNT's tally", "expected": "excel_average", "category": "adversarial"}
+{"id": "excel_max-direct-1", "query": "Excel MAX(number1, number2, ...): the largest value across a list of up to 16 numbers", "expected": "excel_max", "category": "direct"}
+{"id": "excel_max-para-1", "query": "what's the highest value across this whole range of spreadsheet cells, not just two numbers", "expected": "excel_max", "category": "paraphrase"}
+{"id": "excel_max-adversarial-1", "query": "the single biggest value in a list of numbers, not the average, not the sum, and not just the larger of two values", "expected": "excel_max", "category": "adversarial"}
+{"id": "excel_min-direct-1", "query": "Excel MIN function: return the smallest value among a list of up to 16 numbers", "expected": "excel_min", "category": "direct"}
+{"id": "excel_min-para-1", "query": "find the lowest number among several arguments, like Excel's MIN() over a list of values", "expected": "excel_min", "category": "paraphrase"}
+{"id": "excel_min-adversarial-1", "query": "smallest exam score in a list of grades -- not the average score, not the highest score, just the minimum", "expected": "excel_min", "category": "adversarial"}
+{"id": "excel_median-direct-1", "query": "Excel MEDIAN function: median (middle value) of a list of numbers", "expected": "excel_median", "category": "direct"}
+{"id": "excel_median-para-1", "query": "middle value of up to 16 numbers after sorting them, averaging the two middle numbers when the count is even", "expected": "excel_median", "category": "paraphrase"}
+{"id": "excel_median-adversarial-1", "query": "median of a list of numbers, not the arithmetic average -- the middle value after sorting, distinct from AVERAGE's mean and MODE's most common value", "expected": "excel_median", "category": "adversarial"}
+{"id": "excel_stdev_p-direct-1", "query": "STDEV.P population standard deviation of a list of numbers, divide by n not n-1", "expected": "excel_stdev_p", "category": "direct"}
+{"id": "excel_stdev_p-para-1", "query": "compute the population standard deviation across an entire data set (not a sample), squared deviations divided by the count of values", "expected": "excel_stdev_p", "category": "paraphrase"}
+{"id": "excel_stdev_p-adversarial-1", "query": "standard deviation of a whole population of measurements where the denominator is n, distinct from the sample-corrected n-1 version", "expected": "excel_stdev_p", "category": "adversarial"}
+{"id": "excel_stdev_s-direct-1", "query": "sample standard deviation of a list of numbers (Excel STDEV.S, Bessel-corrected, divide by n-1)", "expected": "excel_stdev_s", "category": "direct"}
+{"id": "excel_stdev_s-para-1", "query": "how do I compute STDEV.S, the sample standard deviation with the n-1 degrees-of-freedom correction, over up to 16 numbers", "expected": "excel_stdev_s", "category": "paraphrase"}
+{"id": "excel_stdev_s-adversarial-1", "query": "standard deviation of a SAMPLE subset of data (not the full population STDEV.P divides by n) -- the n-1 corrected version", "expected": "excel_stdev_s", "category": "adversarial"}
+{"id": "excel_large-direct-1", "query": "Excel LARGE function: return the k-th largest value in a list of numbers", "expected": "excel_large", "category": "direct"}
+{"id": "excel_large-para-1", "query": "find the second-biggest or third-biggest number in a set of up to 16 values, ranked from the top down", "expected": "excel_large", "category": "paraphrase"}
+{"id": "excel_large-adversarial-1", "query": "k-th largest value in an array -- distinct from MAX (always the single largest, k fixed at 1) and from SMALL (the k-th SMALLEST, not largest)", "expected": "excel_large", "category": "adversarial"}
+{"id": "excel_small-direct-1", "query": "Excel SMALL function: the k-th smallest value in a list of numbers", "expected": "excel_small", "category": "direct"}
+{"id": "excel_small-para-1", "query": "second smallest value among a set of up to 16 numbers, not just the overall minimum", "expected": "excel_small", "category": "paraphrase"}
+{"id": "excel_small-adversarial-1", "query": "k-th smallest entry in an array, the mirror of LARGE's k-th largest, not MIN's single fixed smallest value", "expected": "excel_small", "category": "adversarial"}
+{"id": "excel_countblank-direct-1", "query": "COUNTBLANK count of blank cells in a range", "expected": "excel_countblank", "category": "direct"}
+{"id": "excel_countblank-para-1", "query": "how many cells in this range have no value at all, not zero, just empty", "expected": "excel_countblank", "category": "paraphrase"}
+{"id": "excel_countblank-adversarial-1", "query": "tally of empty cells in a range -- not COUNT's numeric-cell tally and not COUNTA's any-non-empty-cell tally", "expected": "excel_countblank", "category": "adversarial"}
+# ── excel-financial: XIRR (2026-07-11/12 — addition to the excel-financial banner
+# above; the last ex-host_only-priced function, internal rate of return on
+# irregular dates) ──
+{"id": "excel_xirr-direct-1", "query": "Excel XIRR: internal rate of return for a cash-flow stream on irregular, non-periodic dates", "expected": "excel_xirr", "category": "direct"}
+{"id": "excel_xirr-para-1", "query": "solve for the yield that zeroes a net-present-value schedule when the cash flows land on arbitrary calendar dates instead of even periods", "expected": "excel_xirr", "category": "paraphrase"}
+{"id": "excel_xirr-adversarial-1", "query": "root-find the discount rate for a cash-flow stream using real calendar day offsets and a fractional-year exponent per flow, not whole-period indices (distinct from IRR's period-indexed secant and from XNPV's single non-iterative evaluation at a given rate)", "expected": "excel_xirr", "category": "adversarial"}

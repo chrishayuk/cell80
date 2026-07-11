@@ -4352,6 +4352,22 @@ fn run_fin(
     cell80::Report,
     std::collections::HashMap<String, cell80::FieldValue>,
 ) {
+    run_fin_budget(id, fields, 2_000_000)
+}
+
+/// Like [`run_fin`], but with an explicit cycle budget — for the handful of cells
+/// (this pack's own `excel_yield` documents the same need for its plain-`StateCell`
+/// bisection) whose manifest prices them well above the 2,000,000 default.
+/// `excel_xirr`'s own `//! limits:` header measures a worst case around 6.9-6.94M
+/// T-states and recommends 12,000,000 as verified-sufficient headroom.
+fn run_fin_budget(
+    id: &str,
+    fields: &[(&str, cell80::FieldValue)],
+    budget: u64,
+) -> (
+    cell80::Report,
+    std::collections::HashMap<String, cell80::FieldValue>,
+) {
     let src = crate::common::cell_src(id);
     let entry = src
         .lines()
@@ -4378,7 +4394,7 @@ fn run_fin(
         .map(|(n, v)| (n.to_string(), v.clone()))
         .collect();
     let (rep, state) = host
-        .run_state_values(h, &named, 2_000_000)
+        .run_state_values(h, &named, budget)
         .unwrap_or_else(|e| panic!("run {id}: {e}"));
     (rep, state.into_iter().collect())
 }
@@ -4768,4 +4784,95 @@ fn excel_oddfprice_matches_test_cases() {
         out_f32(&st_price, "price"),
         "oddfprice(dfc=1) == price",
     );
+}
+
+// ── XIRR (2026-07-11/12, the trig/hyperbolic + XIRR wave) ──
+// The one function `docs/excel-financial-map.md` priced-not-killed rather than
+// shipping in the ex-host_only wave: every XIRR evaluation is a full XNPV pass
+// (its own `fln` plus up to 4 `fexp` calls, one per flow), and the bounded
+// secant pays up to 6 such evaluations -- ~9.9M T-states worst case, ~5x the
+// 2,000,000 default. `excel_xirr.rs`'s own `//! limits:` header measures a
+// 4-flow/3-walk case at ~6.9M T-states directly on the emulator and recommends
+// 12,000,000 as verified-sufficient headroom -- used here via `run_fin_budget`
+// exactly like `excel_yield`'s own higher-budget test does for its bisection.
+
+#[test]
+fn excel_xirr_matches_test_cases() {
+    // Exact analytic case (whole-year single period): NPV(r) = -1000 +
+    // 1100/(1+r) = 0 => r = 0.1 exactly.
+    let (rep, st) = run_fin_budget(
+        "excel_xirr",
+        &[
+            ("values", farr(&[-1000.0, 1100.0])),
+            ("days", cell80::FieldValue::Array(vec![0, 365])),
+            ("count", scalar(2)),
+            ("guess", fbits(0.0)),
+        ],
+        12_000_000,
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert!(
+        rep.cycles <= 12_000_000,
+        "XIRR blew the 12M budget: {}",
+        rep.cycles
+    );
+    assert_close(out_f32(&st, "xirr"), 0.1, "xirr 2-flow");
+
+    // Irregular 3-flow schedule. True root (float64 XNPV formula, brentq):
+    // r = 0.12379180595075324.
+    let (rep, st) = run_fin_budget(
+        "excel_xirr",
+        &[
+            ("values", farr(&[-1000.0, 500.0, 600.0])),
+            ("days", cell80::FieldValue::Array(vec![0, 180, 400])),
+            ("count", scalar(3)),
+            ("guess", fbits(0.0)),
+        ],
+        12_000_000,
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert_close(out_f32(&st, "xirr"), 0.12379199, "xirr 3-flow");
+
+    // Full 4-flow envelope. True root (float64, brentq): r = 0.30805549946278044.
+    let (rep, st) = run_fin_budget(
+        "excel_xirr",
+        &[
+            ("values", farr(&[-2000.0, 300.0, 300.0, 2200.0])),
+            ("days", cell80::FieldValue::Array(vec![0, 90, 270, 545])),
+            ("count", scalar(4)),
+            ("guess", fbits(0.0)),
+        ],
+        12_000_000,
+    );
+    assert_eq!(rep.halt, cell80::Halt::Returned, "{rep:?}");
+    assert_close(out_f32(&st, "xirr"), 0.30805546, "xirr 4-flow");
+
+    // Domain, typed: too few flows (count < 2) and too many (count > the
+    // 4-flow envelope) both escalate out_of_domain before any secant walk.
+    let (rep, _) = run_fin_budget(
+        "excel_xirr",
+        &[
+            ("values", farr(&[-1000.0])),
+            ("days", cell80::FieldValue::Array(vec![0])),
+            ("count", scalar(1)),
+            ("guess", fbits(0.0)),
+        ],
+        12_000_000,
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
+
+    // count=5 exceeds the fixed 4-flow envelope (only 4 u32 slots exist in
+    // `values`/`days`), so the escalation fires before any array access is
+    // attempted -- the 4 live slots supplied here are never read.
+    let (rep, _) = run_fin_budget(
+        "excel_xirr",
+        &[
+            ("values", farr(&[-1000.0, 100.0, 100.0, 900.0])),
+            ("days", cell80::FieldValue::Array(vec![0, 90, 270, 365])),
+            ("count", scalar(5)),
+            ("guess", fbits(0.0)),
+        ],
+        12_000_000,
+    );
+    assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF06));
 }

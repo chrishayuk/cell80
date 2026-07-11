@@ -463,3 +463,461 @@ fn excel_degrees_matches_test_cases() {
         );
     }
 }
+
+// -- array-reduction batch (SUM/AVERAGE/MAX/MIN/MEDIAN/STDEV.P/STDEV.S/VAR.S/LARGE/
+// SMALL/SUMSQ/COUNTBLANK) -- mechanically generated the same way as the rest of this
+// file: every `test_cases` entry from the authoring output becomes one comparison,
+// run against the real compiled cell via `StateCell::bind`/`set`/`set_array`/`run`/
+// `get`. Array-state fields (`values: [u32; 16]`, carrying f32 bit patterns) ride
+// `StateCell::set_array` -- see `cell80/src/state.rs` for the exact API -- rather than
+// the scalar `set` every other cell in this file uses. A domain/overflow-escalation
+// case (`halt`/`halt_code` expected_field in the authoring output) asserts
+// `Halt::Escalate(code)` instead of a numeric comparison. Two count=17 cases
+// (`excel_min`, `excel_stdev_p`) supplied 17 raw values in the authoring output for
+// an arity-17 escalation case, but the `[u32; 16]` envelope can only ever hold 16 --
+// `StateCell::set_array` itself rejects anything longer, before the cell even runs --
+// so those two are truncated to the first 16 here; the escalation fires on `count >
+// 16` before any array indexing regardless of what the (never-read) 16 live slots hold.
+
+enum ArrOutcome { Value(f32), Halt(u16) }
+
+#[test]
+fn excel_sum_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[3_f32, 2_f32], 2u16, ArrOutcome::Value(5_f32)),
+        (&[10_f32, 20_f32, 30_f32], 3u16, ArrOutcome::Value(60_f32)),
+        (&[5.5_f32, -2.5_f32, 10_f32, -1_f32], 4u16, ArrOutcome::Value(12_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(42_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 16u16, ArrOutcome::Value(136_f32)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_sum"), "ExcelSum", None)
+            .unwrap_or_else(|e| panic!("bind excel_sum: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_sum case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_sum case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("total").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_sum case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_sum case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_average_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[10_f32, 15_f32, 32_f32], 3u16, ArrOutcome::Value(19_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(42_f32)),
+        (&[1_f32, 2_f32], 2u16, ArrOutcome::Value(1.5_f32)),
+        (&[-5_f32, 5_f32, 10_f32], 3u16, ArrOutcome::Value(3.3333333_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 16u16, ArrOutcome::Value(8.5_f32)),
+        (&[7_f32, 7_f32, 7_f32, 7_f32], 4u16, ArrOutcome::Value(7_f32)),
+        (&[0_f32, 0_f32, 0_f32], 3u16, ArrOutcome::Value(0_f32)),
+        (&[], 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32], 17u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_average"), "ExcelAverage", None)
+            .unwrap_or_else(|e| panic!("bind excel_average: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_average case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_average case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("average").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_average case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_average case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_max_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[3_f32, 8_f32, -1_f32, 8_f32, 2.5_f32], 5u16, ArrOutcome::Value(8_f32)),
+        (&[-5_f32, -12_f32, -3_f32, -100_f32], 4u16, ArrOutcome::Value(-3_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(42_f32)),
+        (&[10_f32, 10_f32, 5_f32], 3u16, ArrOutcome::Value(10_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 16u16, ArrOutcome::Value(16_f32)),
+        (&[99_f32, 1_f32, 2_f32, 3_f32], 4u16, ArrOutcome::Value(99_f32)),
+        (&[1.25_f32, 1.5_f32, 1.125_f32], 3u16, ArrOutcome::Value(1.5_f32)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_max"), "ExcelMax", None)
+            .unwrap_or_else(|e| panic!("bind excel_max: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_max case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_max case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("max").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_max case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_max case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_min_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[5_f32, 3_f32, 9_f32, 1_f32, 7_f32], 5u16, ArrOutcome::Value(1_f32)),
+        (&[-2.5_f32, -8.25_f32, -1_f32], 3u16, ArrOutcome::Value(-8.25_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(42_f32)),
+        (&[16_f32, 15_f32, 14_f32, 13_f32, 12_f32, 11_f32, 10_f32, 9_f32, 8_f32, 7_f32, 6_f32, 5_f32, 4_f32, 3_f32, 2_f32, 1_f32], 16u16, ArrOutcome::Value(1_f32)),
+        (&[], 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, ArrOutcome::Halt(65286)),
+        (&[f32::NAN], 1u16, ArrOutcome::Halt(65288)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_min"), "ExcelMin", None)
+            .unwrap_or_else(|e| panic!("bind excel_min: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_min case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_min case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("min").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_min case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_min case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_median_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[3_f32, 1_f32, 2_f32], 3u16, ArrOutcome::Value(2_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32], 4u16, ArrOutcome::Value(2.5_f32)),
+        (&[7_f32, 7_f32, 1_f32, 3_f32, 9_f32, 2_f32, 5_f32], 7u16, ArrOutcome::Value(5_f32)),
+        (&[-5_f32, 10_f32, 0_f32, -2_f32, 8_f32, -1_f32], 6u16, ArrOutcome::Value(-0.5_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(42_f32)),
+        (&[16_f32, 15_f32, 14_f32, 13_f32, 12_f32, 11_f32, 10_f32, 9_f32, 8_f32, 7_f32, 6_f32, 5_f32, 4_f32, 3_f32, 2_f32, 1_f32], 16u16, ArrOutcome::Value(8.5_f32)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_median"), "ExcelMedian", None)
+            .unwrap_or_else(|e| panic!("bind excel_median: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_median case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_median case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("median").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_median case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_median case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_stdev_p_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[2_f32, 4_f32, 4_f32, 4_f32, 5_f32, 5_f32, 7_f32, 9_f32], 8u16, ArrOutcome::Value(2_f32)),
+        (&[42_f32], 1u16, ArrOutcome::Value(0_f32)),
+        (&[10_f32, 20_f32], 2u16, ArrOutcome::Value(5_f32)),
+        (&[-2_f32, -1_f32, 0_f32, 1_f32, 2_f32], 5u16, ArrOutcome::Value(1.4142135623730951_f32)),
+        (&[7_f32, 7_f32, 7_f32, 7_f32], 4u16, ArrOutcome::Value(0_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 16u16, ArrOutcome::Value(4.609772228646444_f32)),
+        (&[], 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_stdev_p"), "ExcelStdevP", None)
+            .unwrap_or_else(|e| panic!("bind excel_stdev_p: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_stdev_p case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_stdev_p case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("result").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_stdev_p case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_stdev_p case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_stdev_s_matches_test_cases() {
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[2_f32, 4_f32, 4_f32, 4_f32, 5_f32, 5_f32, 7_f32, 9_f32], 8u16, ArrOutcome::Value(2.1380899_f32)),
+        (&[10_f32, 20_f32], 2u16, ArrOutcome::Value(7.0710678_f32)),
+        (&[1_f32, 2_f32, 3_f32], 3u16, ArrOutcome::Value(1_f32)),
+        (&[-2_f32, -1_f32, 0_f32, 1_f32, 2_f32], 5u16, ArrOutcome::Value(1.5811388_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 16u16, ArrOutcome::Value(4.7609523_f32)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_stdev_s"), "ExcelStdevS", None)
+            .unwrap_or_else(|e| panic!("bind excel_stdev_s: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_stdev_s case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_stdev_s case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("result").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_stdev_s case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_stdev_s case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+// excel_var_s was authored, verified, and mechanically tested (all cases above
+// passed against the real compiled cell), but backed out at the admission-gate
+// step: its `(values: [u32;16], count: u16, variance: f32)` shape is identical to
+// excel_stdev_s's, and the fingerprint's array-probing path feeds small raw
+// integers (0..~2500) directly into the u32 array slots with no f32-bit
+// reinterpretation (unlike the scalar-field path, which already special-cases
+// `Ty::F32` for exactly this reason -- see `cell80/src/fingerprint.rs`'s
+// `Fingerprint::compute`). Every probe value is therefore a subnormal float once
+// decoded via `f32_from_bits`, and squaring a subnormal underflows to exactly
+// 0.0 -- so both a sum-of-squared-deviations (variance) and any other
+// non-negative squared-deviation reduction collapse to bit-identical 0.0 on
+// every probe. Confirmed directly (a scratch `Fingerprint::of` comparison):
+// `excel_var_s` and `excel_stdev_s` agree 1.0, not because they're the same
+// operation but because the probe bank can't tell them apart once every input
+// underflows. A genuine probe-bank coincidence, not a true behavioural
+// duplicate -- but the standing rule backs out the new cell on any flagged pair
+// regardless (docs/library-growth.md), the same call already made for
+// `excel_mround` above. Root fix would need `ArrayElem`/`Ty::Array` to carry an
+// f32 sub-kind so the array branch can apply the same `(v as f32).to_bits()`
+// reinterpretation the scalar branch already does -- out of scope here, flagged
+// for a future wave.
+
+#[test]
+fn excel_large_matches_test_cases() {
+    let cases: &[(&[f32], u16, u16, ArrOutcome)] = &[
+        (&[3_f32, 1_f32, 4_f32, 1_f32, 5_f32, 9_f32, 2_f32, 6_f32], 8u16, 1u16, ArrOutcome::Value(9_f32)),
+        (&[3_f32, 1_f32, 4_f32, 1_f32, 5_f32, 9_f32, 2_f32, 6_f32], 8u16, 3u16, ArrOutcome::Value(5_f32)),
+        (&[3_f32, 1_f32, 4_f32, 1_f32, 5_f32, 9_f32, 2_f32, 6_f32], 8u16, 8u16, ArrOutcome::Value(1_f32)),
+        (&[-5_f32, 10_f32, -3_f32, 0_f32], 4u16, 2u16, ArrOutcome::Value(0_f32)),
+        (&[42_f32], 1u16, 1u16, ArrOutcome::Value(42_f32)),
+        (&[7_f32, 7_f32, 7_f32, 2_f32], 4u16, 3u16, ArrOutcome::Value(7_f32)),
+        (&[1_f32, 2_f32, 3_f32], 3u16, 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32], 3u16, 4u16, ArrOutcome::Halt(65286)),
+        (&[], 0u16, 1u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, 1u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, k, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_large"), "ExcelLarge", None)
+            .unwrap_or_else(|e| panic!("bind excel_large: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        cell.set("k", *k as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_large case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_large case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("result").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_large case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_large case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_small_matches_test_cases() {
+    let cases: &[(&[f32], u16, u16, ArrOutcome)] = &[
+        (&[5_f32, 3_f32, 8_f32, 1_f32], 4u16, 1u16, ArrOutcome::Value(1_f32)),
+        (&[5_f32, 3_f32, 8_f32, 1_f32], 4u16, 4u16, ArrOutcome::Value(8_f32)),
+        (&[5_f32, 3_f32, 8_f32, 1_f32], 4u16, 2u16, ArrOutcome::Value(3_f32)),
+        (&[1_f32, 2_f32, 2_f32, 3_f32], 4u16, 2u16, ArrOutcome::Value(2_f32)),
+        (&[1_f32, 2_f32, 2_f32, 3_f32], 4u16, 3u16, ArrOutcome::Value(2_f32)),
+        (&[-5_f32, 2_f32, -1_f32, 0_f32, 7_f32], 5u16, 2u16, ArrOutcome::Value(-1_f32)),
+        (&[42_f32], 1u16, 1u16, ArrOutcome::Value(42_f32)),
+        (&[16_f32, 15_f32, 14_f32, 13_f32, 12_f32, 11_f32, 10_f32, 9_f32, 8_f32, 7_f32, 6_f32, 5_f32, 4_f32, 3_f32, 2_f32, 1_f32], 16u16, 9u16, ArrOutcome::Value(9_f32)),
+        (&[5_f32, 3_f32, 8_f32], 3u16, 0u16, ArrOutcome::Halt(65286)),
+        (&[5_f32, 3_f32, 8_f32], 3u16, 4u16, ArrOutcome::Halt(65286)),
+        (&[], 0u16, 1u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, 1u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, k, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_small"), "ExcelSmall", None)
+            .unwrap_or_else(|e| panic!("bind excel_small: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        cell.set("k", *k as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_small case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_small case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("result").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_small case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_small case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+// excel_sumsq was authored, verified, and mechanically tested (all cases above
+// passed against the real compiled cell), but backed out at the admission-gate
+// step for the identical reason `excel_var_s` was (see that cell's own note
+// above): its `(values: [u32;16], count: u16, sumsq: f32)` shape collides with
+// `excel_stdev_p`'s under the same subnormal-underflow probe-bank gap --
+// confirmed a coincidence (`Fingerprint::of` agreement 1.0 against
+// `excel_stdev_p`), not a true behavioural duplicate, but backed out per the
+// standing rule regardless.
+
+#[test]
+fn excel_countblank_matches_test_cases() {
+    // (blank_mask, count) -> want blanks. Hand-derived (the authoring output
+    // only proposed one trivial all-zero case): bit i of blank_mask is 1 when
+    // range slot i is blank; blanks = popcount(blank_mask & ((1 << count) - 1)).
+    let cases: &[(u16, u16, u16)] = &[
+        (0, 5, 0),                 // no bits set at all -> 0 blanks
+        (0b0000_0000_0001_0110, 5, 3), // bits 1,2,4 set, all within count=5 -> 3
+        (0xFFFF, 3, 3),             // every bit set, only first 3 slots counted -> 3
+        (0b0000_0000_0000_1110, 2, 1), // bits 1,2,3 set; only bit1 is within count=2 -> 1
+        (0xFFFF, 16, 16),           // full 16-slot envelope, every slot blank -> 16
+    ];
+    for (i, (blank_mask, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_countblank"), "ExcelCountBlank", None)
+            .unwrap_or_else(|e| panic!("bind excel_countblank: {e}"));
+        cell.set("blank_mask", *blank_mask as u64).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_countblank case {i}: {e}"));
+        assert_eq!(report.halt, Halt::Returned, "excel_countblank case {i}: {report:?}");
+        assert_eq!(
+            cell.get("blanks"),
+            Some(*want as u64),
+            "excel_countblank case {i}"
+        );
+    }
+
+    // count == 0 and count > 16 both escalate out_of_domain before any counting.
+    let mut cell = StateCell::bind(&cell_src("excel_countblank"), "ExcelCountBlank", None).unwrap();
+    cell.set("blank_mask", 0).unwrap();
+    cell.set("count", 0).unwrap();
+    let report = cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, Halt::Escalate(0xFF06));
+
+    let mut cell = StateCell::bind(&cell_src("excel_countblank"), "ExcelCountBlank", None).unwrap();
+    cell.set("blank_mask", 0xFFFF).unwrap();
+    cell.set("count", 17).unwrap();
+    let report = cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, Halt::Escalate(0xFF06));
+}
