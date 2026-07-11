@@ -287,9 +287,15 @@ top:
   discipline, native signed-32 (the ops rustz80 gates), inline `__bits_*` kernels,
   alignment-safe byte pairs where packed addresses can be odd (the executor faults
   on misalignment like Hazard3, so the battery proves it).
-- B1a. **Owed:** the Sail adversary as a linux-only CI job; `TARGETS`-style golden
-  coverage for RV32 images; the RV32 peephole suite (its own rules under the
-  shared discipline).
+- B1a. *Emission adversary landed 2026-07-11:* **GNU gas** (binutils' RISC-V
+  assembler — a fully independent implementation) re-encodes every instruction
+  shape, immediate edge, and label-resolved displacement, compared byte-for-byte
+  against the encoder (`rustrv32/tests/gas_adversary.rs`; teeth proven by a
+  deliberate funct7 corruption). Linux CI installs the cross binutils and sets
+  the adversary *required* — it can skip locally, never on the gate. **Still
+  owed:** the Sail model (or spike, the risk-2 fallback) as the *execution*
+  adversary — gas checks what bytes mean to an assembler, not what they do; and
+  the RV32 peephole suite (its own rules under the shared discipline).
 - B2. RV32 reference executor: RV32IM interpreter, cycle-accounted from the Hazard3
   model **as qualified on RP2350 SRAM** (fetch/load-to-use timing is a platform
   property, not a core property), differentially tested against Sail. Determinism

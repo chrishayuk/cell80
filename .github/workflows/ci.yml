@@ -34,7 +34,16 @@ jobs:
       # Lint every target — warnings fail the build. `--all-features` covers the cell VM.
       - name: clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # The RV32 emission adversary (docs 13 §6 risk 2): GNU gas independently
+      # re-encodes every instruction shape; without it the rustrv32 encoder is
+      # self-refereed. Linux-only (the binutils cross package), and *required*
+      # there — the test may skip where no assembler exists, never on this leg.
+      - name: rv32 gas adversary toolchain
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf
       - name: test
+        env:
+          RV32_GAS_REQUIRED: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
         run: cargo test --workspace --all-features
       # The comparison benchmark is its own workspace (keeps wasmtime out of the lib build).
       - name: cell-bench builds
