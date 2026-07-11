@@ -87,3 +87,5 @@ mod validation;
 mod vector;
 #[path = "library/verifier-ranker.rs"]
 mod verifier_ranker;
+#[path = "library/weather.rs"]
+mod weather;

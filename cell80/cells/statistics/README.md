@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (10)
 
 | id | signature | summary |
 |---|---|---|
@@ -19,5 +19,6 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `sample_covariance_from_sums` | `SampleCovarianceFromSums::run() -> u16` | Unbiased sample covariance from precomputed sums (n, sum_x, sum_y, sum_xy -- raw-dataset aggregation stays upstream, the Bessel's-correction sibling of covariance's population framing): cov = (n*sum_xy - sum_x*sum_y) / (n*(n-1)), returned as an exact signed fraction (num_mag/den, num_neg 0=nonnegative/1=negative) rather than rounded to an integer. |
 | `sample_variance_from_sums` | `SampleVarianceFromSums::run() -> u16` | Unbiased sample variance from precomputed sums (n, sum_x, sum_x2 -- raw-dataset aggregation stays upstream, the Bessel's-correction sibling of variance_from_sums): var = (n*sum_x2 - sum_x^2) / (n*(n-1)), returned as an exact non-negative fraction (num/den, den = n*(n-1)) rather than rounded to an integer. |
 | `std_dev_from_sums` | `StdDevFromSums::run() -> u16` | Population standard deviation from precomputed sums (n, sum_x, sum_x2 -- the precomputed-sums/batch sibling of running_stddev_step, and the sqrt-taking completion variance_from_sums stops short of): stddev = floor(sqrt((n*sum_x2 - sum_x^2) / n^2)), reusing variance_from_sums's checked num/den derivation then taking the integer square root of the truncated quotient via the same branch-free bitwise loop correlation.rs and effect_size_r.rs already inline for their own sqrt steps. |
+| `steyx` | `Steyx::run() -> u16` | Standard error of the y-estimate for a linear regression from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2, sum_y2 -- the exact six sums correlation.rs already consumes, raw-dataset aggregation stays upstream): steyx = sqrt(SSE/(n-2)) where SSE = Syy - Sxy^2/Sxx, computed here entirely over n-scaled integer quantities (Sxx*n, Syy*n, Sxy*n -- the same numerators linear_regression_slope/intercept already derive) as SSE = (Sxx_n*Syy_n - Sxy_n^2) / (n*Sxx_n), then divided by (n-2) before the truncated quotient's integer square root is taken via the same branch-free bitwise loop correlation.rs and std_dev_from_sums.rs already inline -- distinct from both: correlation stops at a bounded [-1,1] ratio and std_dev_from_sums never touches a second variable y or a degrees-of-freedom correction at all. |
 | `variance_from_sums` | `VarianceFromSums::run() -> u16` | Population variance from precomputed sums (n, sum_x, sum_x2 -- raw-dataset aggregation stays upstream, the univariate counterpart of covariance's bivariate framing): var = (n*sum_x2 - sum_x^2) / n^2, returned as an exact non-negative fraction (num/den, den = n^2) rather than rounded to an integer. |
 

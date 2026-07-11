@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("736 cells"));
+    assert!(listing.contains("range_check") && listing.contains("745 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("736 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("745 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 736, "got: {out}");
+    assert_eq!(cells.len(), 745, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -972,13 +972,23 @@ fn cli_index_gate_over_the_real_library() {
     // MROUND(10,3)=9 vs max(10,3)=10). A probe-bank coincidence, not a true
     // behavioural duplicate, but the standing rule backs out the new cell on any
     // flagged pair regardless. 736 admitted, 0 refused.
+    // 736→740: a concurrent session's running-stats batch (simple_moving_average,
+    // weighted_moving_average, rolling_variance, rolling_std) landed the same day as the
+    // weather batch below — 4 admitted, 0 refused, no interaction with this batch's cells.
+    // 740→745: the weather pack (first cell in a brand-new pack) — heat_index_f32,
+    // wind_chill_f32, dew_point_approx_f32, gust_factor_f32, temperature_trend_step. 6
+    // authored, 5 survived. One back-out: rain_rate_f32, a genuine behavioural duplicate
+    // of gust_factor_f32 (both reduce to `a / b` with a domain guard on the denominator —
+    // agreement 1.00, not a probe-bank coincidence) — kept the already-admitted
+    // gust_factor_f32, dropped rain_rate_f32 rather than shipping duplicate code under a
+    // different name. 745 admitted, 0 refused.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("736 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("745 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
