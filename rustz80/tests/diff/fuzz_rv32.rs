@@ -47,9 +47,6 @@ impl Ty {
             Ty::I32 => "i32",
         }
     }
-    fn signed(self) -> bool {
-        matches!(self, Ty::I16 | Ty::I32)
-    }
     fn wide(self) -> bool {
         matches!(self, Ty::U32 | Ty::I32)
     }
