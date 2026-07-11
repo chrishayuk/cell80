@@ -88,4 +88,40 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
-*(empty — entries land with commits, in the WS-B format: what shipped, what it exceeded, what is owed)*
+### 2026-07-11 — E1 on Metal: `rustmsl` + the library battery (WS-E slice 1)
+
+**Shipped.** `rustmsl`, the MSL sibling of rustz80/rustrv32 over the same
+cell80-core seam: IR→MSL codegen for straight-line integer cells (loop-free;
+`if` allowed) with the interpreter's semantics reproduced arm by arm, a Metal
+batch executor (`GpuBatch`: fast-math off, unified-memory buffers, one thread
+per input triple — the layout E3's one-cell×N-inputs megakernel grows from),
+and two batteries. The **R1 corner battery** (16 cases, ~70k evaluations) pins
+interpreter ≡ GPU on exactly the pre-registered drift corners:
+shift-by-≥-width (literal and runtime counts), i16 arithmetic-shift
+saturation, signed div/rem `MIN/-1` wrapping (select-guarded in the emitted
+MSL — C++ overflows where the IR defines the wrap), byte-width wrap,
+short-circuit evaluation hiding a divide, the width bridges, the bit-method
+kernels, and both trap statuses. The **E1 library battery** compiles every
+straight-line integer value cell in the library — 173 of 657 — and the
+pre-registered gate ran clean: **10⁶ seeded-random inputs per cell
+(1.73×10⁸ evaluations), the full `[r0, r1, r2, status]` quad bit-exact
+against the reference interpreter, zero disagreements** (M3 Max, 266 s
+wall, interpreter-side dominated; CI keeps a 512-input version green per
+push). Traps are per-thread statuses, never poisoned values: divide-by-zero
+and `halt(code)` map to the interpreter's refusals exactly.
+
+**Exceeded.** The E1 plan said "the robo family shapes"; the battery runs the
+entire eligible library. Calls survive on the GPU (helper functions through
+the flat slot file, the caller/callee aliasing order preserved), and the
+window-emulation weakening pre-registered in E1 is concrete and typed: consts
++ slot file are mapped per thread, unmapped reads return the interpreter's
+untouched-memory zero, unmapped writes are a counted trap (`STATUS_OOW`),
+never a silent drop.
+
+**Owed.** State cells (415 of 657) — typed-state readback on the GPU path
+(the `state_addrs` window per thread), with E3's host integration. Loop
+cells (69) are E2, next. Cartridge integration — `Body::Msl`, an MSL target
+id, family-hash attestation of the GPU body (E6) — rides with E3's per-body
+host dispatch. f32 is E4, untouched. No throughput claim yet: E3's megakernel
+layouts own the ≥10⁸ evals/s benchmark, and this slice's executor is
+correctness-shaped (one pipeline per cell, one buffer round-trip per batch).

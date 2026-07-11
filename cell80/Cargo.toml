@@ -38,3 +38,8 @@ name = "cell80"
 [[bench]]
 name = "cell"
 harness = false
+
+# The MSL battery (tests/msl_battery.rs) runs the library's straight-line
+# integer cells on the GPU against the reference interpreter — macOS only.
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+rustmsl = { path = "../rustmsl", version = "0.8.0" }

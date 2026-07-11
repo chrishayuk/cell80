@@ -63,6 +63,20 @@ model / platform; a certified target is the named triple). Owed: WS-E3's per-bod
 host, the Sail/spike execution adversary, the RV32 peephole, the B4 `mcycle`
 co-sign on silicon.
 
+**GPU target family (Phase 6 WS-E, doc 14 — opened with E1 on Metal).**
+**`rustmsl`** — the MSL sibling of rustz80/rustrv32 over the same cell80-core
+seam: IR→MSL codegen for straight-line integer cells (the interpreter's
+semantics arm by arm — width masks, shift-by-≥-width, signed `MIN/-1` div
+wrapping select-guarded past C++ UB, divide-by-zero/`halt` as per-thread trap
+statuses) and a fast-math-off Metal batch executor (`GpuBatch`, one thread per
+input triple, unified-memory buffers). The pre-registered E1 gate ran clean:
+**173 straight-line integer value cells × 10⁶ seeded-random inputs
+(1.73×10⁸ evaluations), the `[r0, r1, r2, status]` quad bit-exact against
+the reference interpreter, zero disagreements** (M3 Max; the R1 corner
+battery pins the drift corners separately). Refusals typed and counted: 69
+loop cells (E2), 415 state cells (typed-state readback, with E3), f32 (E4).
+No throughput claim yet — E3's megakernel layouts own that benchmark.
+
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
   host traps for mul/div/fill/halt; a NOP on real hardware, so it never contaminates

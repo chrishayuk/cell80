@@ -11,7 +11,7 @@ use std::collections::HashMap;
 /// kernel is byte-identical — every kernel here is pruned). Appended *after* the cell source
 /// so a parse error keeps the cell's own line numbers, and call resolution is order-independent
 /// (linked by name).
-pub(super) const CELL_PRELUDE: &str = "\
+pub const CELL_PRELUDE: &str = "\
 fn gcd(a: u16, b: u16) -> u16 { let mut x = a; let mut y = b; while y != 0u16 { let t = x % y; x = y; y = t; } x }\n\
 fn imin(a: u16, b: u16) -> u16 { let mut m = a; if b < a { m = b; } m }\n\
 fn imax(a: u16, b: u16) -> u16 { let mut m = a; if b > a { m = b; } m }\n\

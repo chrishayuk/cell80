@@ -50,7 +50,7 @@ pub use fingerprint::{rank_by_examples, Fingerprint, DEFAULT_PROBES};
 pub use graph::{CellGraph, Feed, GraphRun, NodeTrace, Port};
 pub use host::{CellHost, FieldExample, RouteReport};
 pub use index::CellIndex;
-pub use program::CellProgram;
+pub use program::{CellProgram, CELL_PRELUDE};
 pub use report::{Fast, Halt, Report, Ty, ABI_VERSION, ESCALATE_BASE, ESCALATE_REASONS};
 pub use runner::{run, CellPool, Runner};
 pub use rv32::{Rv32Report, Rv32Runner};

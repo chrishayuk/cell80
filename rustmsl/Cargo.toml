@@ -1,0 +1,29 @@
+# rustmsl (Phase 6 WS-E): the Metal/MSL sibling of rustz80/rustrv32 — IR→MSL
+# codegen for straight-line integer cells (E1) plus a batch GPU executor on
+# macOS. One IR, the reference interpreter as oracle: a GPU result that is not
+# bit-identical to the interpreter is a defect, never a "GPU difference".
+[package]
+name = "rustmsl"
+description = "Metal (MSL) backend for the cell-family: IR→MSL codegen for straight-line integer cells and a batch GPU executor, bit-exact against the cell80-core reference interpreter."
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["metal", "msl", "gpu", "compiler", "cell80"]
+categories = ["compilers"]
+
+[dependencies]
+# The target-independent core: typed IR, passes, the reference IR interpreter.
+cell80-core = { version = "0.8.0", path = "../cell80-core" }
+
+# The GPU runtime leg exists only where Metal does; the codegen (IR→MSL text)
+# builds and is testable everywhere.
+[target.'cfg(target_os = "macos")'.dependencies]
+metal = "0.29"
+
+[dev-dependencies]
+# Lower dialect snippets for the R1 corner battery (interpreter ≡ GPU).
+rustz80 = { version = "0.8.0", path = "../rustz80" }
+syn = { version = "2", features = ["full"] }

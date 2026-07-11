@@ -418,6 +418,20 @@ either outcome is a finding). A structural note promoted from its design work:
 as per-target descriptor refinements. Notation: this spec's WS-E..I are scoped to
 doc 14 (doc 13's WS-A..E are Phase 5's).
 
+**WS-E opened 2026-07-11 — E1 on Metal shipped** (ledger in doc 14 §6):
+`rustmsl`, the MSL sibling backend over the shared IR seam, a fast-math-off
+Metal batch executor (one thread per input triple), the R1 corner battery
+(shift-by-≥-width, signed-shift saturation, `MIN/-1` div wrapping, byte wrap,
+short-circuit-hidden traps — interpreter ≡ GPU on all of it), and the
+pre-registered E1 gate run clean: **173 straight-line integer value cells ×
+10⁶ seeded-random inputs (1.73×10⁸ evaluations), the full `[r0, r1, r2,
+status]` quad bit-exact against the reference interpreter, zero
+disagreements** (M3 Max, 266 s). Refusals are typed and counted, never
+silent: 69 loop cells await E2, 415 state cells await typed-state readback
+with E3's host integration, f32 is E4. *Owed next:* E2, E3's megakernel
+layouts + the throughput benchmark (no evals/s claim exists yet), and
+`Body::Msl` cartridge integration with family-hash attestation (E6).
+
 ---
 
 ## Explicit non-goals (in the README)
@@ -454,7 +468,9 @@ Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed be
 the next dialect expansion, as required. Phase 6 (model-native cells, doc 14) is
 drafted with its own falsification ladder — the F2 routing gate precedes any
 training spend, and passed 2026-07-11 (probe-equipped paraphrase 0.859 vs the
-0.80 bar; checkpoint 21). Phase 5 (multi-target) opened 2026-07-10;
+0.80 bar; checkpoint 21); WS-E opened the same day with E1 on Metal
+(`rustmsl`, 173 cells × 10⁶ inputs bit-exact vs the interpreter).
+Phase 5 (multi-target) opened 2026-07-10;
 WS-A shipped whole in two days, WS-B's compiler is live in the battery behind a
 fuzz battery and a CI-required independent emission adversary, and WS-E's identity
 half (v10 target id + family hash) is in the artifact — the remaining critical path
