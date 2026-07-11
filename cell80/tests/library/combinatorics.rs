@@ -227,3 +227,126 @@ fn combinatorial_numbers_wave10_cells_match_defined_behaviour() {
     let (report, _) = step("stirling_first", "StirlingFirst", &[("n", 30), ("k", 24)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn is_fibonacci_number_membership() {
+    // Fibonacci sequence: F(0)=0, F(1)=1, F(2)=1, F(3)=2, F(4)=3, F(5)=5, F(6)=8,
+    // F(7)=13, F(8)=21, F(9)=34, F(10)=55, ..., F(24)=46368, F(25)=75025 (>u16::MAX).
+    // is_fibonacci_number is the inverse-membership test sibling of fibonacci_checked_u32,
+    // mirroring the catalan_number / is_catalan_number pair already in this pack.
+
+    // 0 is F(0): a Fibonacci number.
+    assert_eq!(run_cell("is_fibonacci_number", &[0]), 1);
+    // 1 is F(1) = F(2): a Fibonacci number (the one duplicate in the sequence).
+    assert_eq!(run_cell("is_fibonacci_number", &[1]), 1);
+    // 4 sits strictly between F(4)=3 and F(5)=5: not a Fibonacci number.
+    assert_eq!(run_cell("is_fibonacci_number", &[4]), 0);
+    // 55 is F(10): a Fibonacci number.
+    assert_eq!(run_cell("is_fibonacci_number", &[55]), 1);
+    // 46368 is F(24), the largest Fibonacci number that fits in u16 (F(25)=75025 overflows).
+    assert_eq!(run_cell("is_fibonacci_number", &[46368]), 1);
+    // 46369, one more than F(24), is not a Fibonacci number.
+    assert_eq!(run_cell("is_fibonacci_number", &[46369]), 0);
+}
+
+#[test]
+fn fubini_number_matches_oeis_a000670_and_escalates_on_overflow() {
+    // fubini_number: a(0)=1, a(n) = sum_{k=1}^{n} C(n,k)*a(n-k) -- OEIS A000670,
+    // the ordered-partition ("ordered Bell") counterpart to bell_number's unordered
+    // count. Values cross-checked against the published A000670 sequence.
+    fn step(n: u64) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("fubini_number"), "FubiniNumber", None)
+            .unwrap_or_else(|e| panic!("bind fubini_number: {e}"));
+        cell.set("n", n).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    let (_, cell) = step(0);
+    assert_eq!(cell.get("result"), Some(1)); // a(0) = 1 by convention
+    let (_, cell) = step(1);
+    assert_eq!(cell.get("result"), Some(1));
+    let (_, cell) = step(3);
+    assert_eq!(cell.get("result"), Some(13)); // 3*3 + 3*1 + 1*1
+    let (_, cell) = step(5);
+    assert_eq!(cell.get("result"), Some(541));
+    let (_, cell) = step(11);
+    assert_eq!(cell.get("result"), Some(1_622_632_573)); // last value that fits u32
+
+    // a(12) = 28_091_567_595 overflows u32::MAX -- must escalate, never silently wrap.
+    let (report, _) = step(12);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // n = 20 is out of the array bound (n must be < 20).
+    let (report, _) = step(20);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn verify_rencontres_number() {
+    // rencontres_number: D(n,k) = C(n,k) * D(n-k), the count of permutations of n
+    // elements with exactly k fixed points. Derangement numbers used below:
+    // D(0)=1, D(1)=0, D(2)=1, D(3)=2, D(4)=9, D(5)=44.
+    fn step(fields: &[(&str, u64)]) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("rencontres_number"), "RencontresNumber", None)
+            .unwrap_or_else(|e| panic!("bind rencontres_number: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run rencontres_number: {e}"));
+        cell.get("result").unwrap_or_else(|| panic!("no result"))
+    }
+
+    // k=0 reproduces derangement_count(4) = 9 exactly, the generalization's base case.
+    assert_eq!(step(&[("n", 4), ("k", 0)]), 9);
+    // D(4,1) = C(4,1)*D(3) = 4*2 = 8.
+    assert_eq!(step(&[("n", 4), ("k", 1)]), 8);
+    // D(4,2) = C(4,2)*D(2) = 6*1 = 6.
+    assert_eq!(step(&[("n", 4), ("k", 2)]), 6);
+    // D(4,4) = C(4,4)*D(0) = 1*1 = 1: every element fixed, the identity permutation.
+    assert_eq!(step(&[("n", 4), ("k", 4)]), 4u64.pow(0) * 1); // = 1
+                                                              // D(5,2) = C(5,2)*D(3) = 10*2 = 20.
+    assert_eq!(step(&[("n", 5), ("k", 2)]), 20);
+    // k > n is out of domain: returns 0, not an escalation.
+    assert_eq!(step(&[("n", 3), ("k", 5)]), 0);
+    // D(0,0) = C(0,0)*D(0) = 1*1 = 1: the empty permutation, vacuously 0 fixed points.
+    assert_eq!(step(&[("n", 0), ("k", 0)]), 1);
+}
+
+#[test]
+fn double_factorial_checked_recurrence_skips_every_other_term() {
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // double_factorial: 0!! = 1 by convention (empty product).
+    let (_, _, cell) = step("double_factorial", "DoubleFactorial", &[("n", 0)]);
+    assert_eq!(cell.get("result"), Some(1));
+
+    // 7!! = 7*5*3*1 = 105 (odd chain, distinct from 7! = 5040).
+    let (_, _, cell) = step("double_factorial", "DoubleFactorial", &[("n", 7)]);
+    assert_eq!(cell.get("result"), Some(105));
+
+    // 10!! = 10*8*6*4*2 = 3840 (even chain).
+    let (_, _, cell) = step("double_factorial", "DoubleFactorial", &[("n", 10)]);
+    assert_eq!(cell.get("result"), Some(3840));
+
+    // 20!! = 3,715,891,200 -- last even n that still fits u32::MAX (4,294,967,295).
+    let (_, _, cell) = step("double_factorial", "DoubleFactorial", &[("n", 20)]);
+    assert_eq!(cell.get("result"), Some(3_715_891_200));
+
+    // 21!! = 13,749,310,575 and 22!! = 81,749,606,400 both overflow u32 -- escalate rather
+    // than silently wrap, the same shape factorial_checked_u32 uses at n >= 13.
+    let (_, report, _) = step("double_factorial", "DoubleFactorial", &[("n", 21)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+    let (_, report, _) = step("double_factorial", "DoubleFactorial", &[("n", 22)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

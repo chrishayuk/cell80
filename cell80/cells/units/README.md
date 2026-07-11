@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (5)
 
 | id | signature | summary |
 |---|---|---|
@@ -15,6 +15,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `unit_cancel_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if dividing a numerator-unit quantity by a denominator-unit quantity is dimensionally defined (same rule table as unit_div), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 | `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, count/time=rate_count_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
 | `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time,8=rate_money_per_time,9=rate_count_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `unit_mul_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if multiplying a numerator-dimension quantity by dimension b is dimensionally defined (same rule table as unit_mul), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 
 ## Roadmap — open items
 

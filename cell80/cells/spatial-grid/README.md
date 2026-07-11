@@ -7,14 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (6)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
+| `aabb_contains` | `AabbContains::run() -> u16` | Returns 1 if AABB (x2,y2,w2,h2) is fully contained within AABB (x1,y1,w1,h1) — all four edges inside — else 0. |
 | `aabb_intersect` | `AabbIntersect::run() -> u16` | Returns 1 if two axis-aligned bounding boxes (x1,y1,w1,h1) and (x2,y2,w2,h2) overlap (edge-touching doesn't count), else 0. |
 | `bresenham_step` | `BresenhamStep::run() -> u16` | Bresenham line-drawing, one step: given the fixed line parameters (dx, dy — the absolute deltas between the endpoints) and the running error term (as a sign-magnitude pair, since state fields can't be i16 — err can go negative), reports whether this step advances x, y, or both (step_x/step_y, 0 or 1) and updates the error term. The caller applies step_x/step_y to its own x/y using its own known step directions (sx, sy) — tracking dx/dy/err here and x/y/sx/sy on the caller's side avoids needing four more sign-magnitude field pairs for quantities the error-term math never actually needs to know the sign of. Verified against a full reference line generator across 2,000 random line segments (coordinates up to +/-500) before shipping. |
+| `grid_coords` | `GridCoords::run() -> u16` | Inverse of grid_index: recovers the (x, y) grid coordinates from a flat array index and the grid's row width via x = index % width, y = index / width; guards width == 0 explicitly, returning (0, 0) instead of letting the divide/mod halt on DivByZero. |
 | `grid_index` | `run(x: u16, y: u16, width: u16) -> u16` | Flat array index of a grid cell (x, y) in a grid of the given row width: y * width + x. |
 | `morton_decode` | `MortonDecode::run() -> u16` | Morton (Z-order curve) decode: the inverse of morton_encode — split a u32 spatial index back into its two interleaved u16 coordinates via the same branch-free bit-compaction trick (constant shift amounts, no dynamic-shift loop). |
 | `morton_encode` | `MortonEncode::run() -> u16` | Morton (Z-order curve) encode: interleave the bits of two u16 coordinates into one u32 spatial index (x's bits at even positions, y's at odd), so a single integer sorts nearby 2D points near each other — a common spatial-indexing key. The classic branch-free "magic numbers" bit-spread (constant shift amounts, no dynamic-shift loop): needs a u32 state field since interleaving two full u16s produces 32 bits, more than either input's own width. |
+| `point_in_circle` | `PointInCircle::run() -> u16` | Returns 1 if point (px, py) lies within or on a circle centered at (cx, cy) with radius r, tested via squared distance (px-cx)^2 + (py-cy)^2 <= r*r -- no sqrt, exact, same u32-widening trick euclid_sq/aabb_intersect rely on. |
 | `point_in_rect` | `PointInRect::run() -> u16` | Returns 1 if point (px, py) is inside rect (rx, ry, rw, rh) — half-open: [rx, rx+rw) x [ry, ry+rh) — else 0. |
 

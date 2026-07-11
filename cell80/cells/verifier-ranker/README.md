@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (20)
+## Landed (24)
 
 | id | signature | summary |
 |---|---|---|
@@ -16,6 +16,8 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 | `diff_equals` | `run(a: u16, b: u16, remainder: u16) -> u16` | Verifies a claimed difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative). |
 | `diff_equals_u32` | `DiffEqualsWide::run() -> u16` | Verifies a claimed wide difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative) — the wide sibling of diff_equals (which works over u16). |
+| `gcd_equals_u32` | `GcdEqualsWide::run() -> u16` | Verifies a claimed wide GCD: recomputes gcd(a, b) via the same inline Euclidean loop gcd_u32 uses and returns 1 if it equals the claimed g, else 0 — the reverse-equation counterpart of gcd_u32 (never halts, always a verdict). |
+| `lcm_equals_u32` | `LcmEqualsWide::run() -> u16` | Verifies a claimed wide LCM: 0 if a==0 or b==0 unless the claimed l is also 0 (matching lcm_u32's zero convention); otherwise recomputes gcd(a, b) inline and forms (a/g) * b via wrapping_mul with the same overflow-detection idiom product_equals_u32 uses, returning 1 if it equals l else 0 — the reverse-equation counterpart of lcm_u32. |
 | `linear_eq_holds` | `LinearEqHolds::run() -> u16` | Verify a candidate x against a general one-variable linear equation a*x + b == c*x + d in one call -- the fused sibling of linear_solve_1var's solve step, exact via sign-magnitude arithmetic (no float tolerance), so a solved x round-trips through this check with zero error instead of an epsilon compare. |
 | `mul_add_equals_u32` | `MulAddEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-add: returns 1 if a * b + c == total, else 0, including when either step overflows u32 — the reverse-equation counterpart of mul_add_checked_u32. |
 | `mul_sub_equals_u32` | `MulSubEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-subtract: returns 1 if a * b - c == total, else 0, including when the multiply overflows u32 or c exceeds the product — the reverse-equation counterpart of mul_sub_checked_u32. |
@@ -25,7 +27,9 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `pow_equals_u32` | `PowEqualsWide::run() -> u16` | Verifies a claimed wide power: returns 1 if base^exp == total, else 0, including when an intermediate multiply overflows u32 — the reverse-equation counterpart of pow_checked_u32. |
 | `product3_equals_u32` | `Product3EqualsWide::run() -> u16` | Verifies a claimed wide three-way product: returns 1 if a * b * c == total, else 0, including when the product overflows u32 (a real overflow just means the claim doesn't hold) — the reverse-equation counterpart of mul3_checked_u32. |
 | `product_equals_u32` | `ProductEquals::run() -> u16` | Verifies a claimed wide product: 1 if a * b == total, else 0 — including when a * b overflows u32 (a real overflow just means the claim doesn't hold, not an escalation; a verifier always returns a verdict). |
+| `quotient_equals_ceil_u32` | `QuotientEqualsCeil::run() -> u16` | Verifies a claimed ceiling-division quotient: 0 if b == 0, else q = a / b, r = a % b, rounded = q + 1 if r != 0 else q, and returns 1 if rounded == quotient, else 0 — the verifier counterpart of div_ceil_u32 (that one computes and escalates on b == 0; this one checks a candidate answer and always returns a verdict). |
 | `quotient_equals_exact_u32` | `QuotientEqualsExact::run() -> u16` | Verifies a claimed exact wide quotient: 1 if b != 0, a divides evenly by b (a % b == 0), and a / b == quotient, else 0 — the verifier counterpart of div_exact_u32 (that one computes and escalates on a remainder; this one checks a candidate answer and always returns a verdict). |
+| `remainder_equals_u32` | `RemainderEqualsU32::run() -> u16` | Verifies a claimed wide remainder: 0 if b == 0, else 1 if a % b == rem, else 0 — the verifier counterpart of mod_u32 (that one computes and escalates on a zero divisor; this one checks a candidate leftover count and always returns a verdict). |
 | `smag_eq` | `SmagEq::run() -> u16` | Verifies whether two signed values (magnitude, sign pairs, per smag_add) are equal, canonicalizing negative-zero to nonnegative first — the sign-magnitude counterpart of frac_eq / answer_eq_u32. |
 | `smag_is_nonneg` | `SmagIsNonneg::run() -> u16` | Constraint check for a signed-magnitude quantity (magnitude, sign pair — neg 0=nonnegative, 1=negative, per smag_add): returns 1 if the value is nonnegative (neg == 0, or magnitude == 0 regardless of the sign flag), else 0. |
 | `sum3_equals_u32` | `Sum3EqualsWide::run() -> u16` | Verifies a claimed wide three-way sum: returns 1 if a + b + c == total, else 0, without escalating on overflow — the reverse-equation counterpart of add3_checked_u32. |

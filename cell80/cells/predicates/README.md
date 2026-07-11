@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (14)
+## Landed (17)
 
 | id | signature | summary |
 |---|---|---|
@@ -23,6 +23,9 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `is_lt_u32` | `IsLtWide::run() -> u16` | Returns 1 if a < b (strictly less than) at wide u32 width, else 0 — the wide sibling of is_lt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_odd` | `run(x: u16) -> u16` | Returns 1 if x is odd, else 0. |
 | `is_zero` | `run(x: u16) -> u16` | Returns 1 if x is zero, else 0. |
+| `is_zero_u32` | `IsZeroWide::run() -> u16` | Returns 1 if a wide u32 value is zero, else 0 — the wide sibling of is_zero (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `neq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a != b, else 0. |
+| `neq_u32` | `NeqWide::run() -> u16` | Returns 1 if a != b (not equal) at wide u32 width, else 0 — the wide sibling of neq (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `nonzero` | `run(x: u16) -> u16` | Returns 1 if x is nonzero, else 0. |
+| `nonzero_u32` | `NonzeroWide::run() -> u16` | Returns 1 if x is nonzero at wide u32 width, else 0 — the wide sibling of nonzero (which works over u16 and can't represent values beyond 65535, e.g. money totals in cents). |
 

@@ -97,3 +97,114 @@ fn first_wave_ranking_stats_cells_match_defined_behaviour() {
         failures.join("\n")
     );
 }
+
+// Checks Max4::run against hand-computed expectations: a plain max, a full tie,
+// the max landing in the middle/first/third position (not just first-or-last),
+// an all-zero floor, and the u16 ceiling value participating twice at different
+// positions, to make sure the imax(imax(imax(a,b),c),d) nesting picks correctly
+// regardless of which operand holds the true maximum.
+#[test]
+fn max4_hand_computed_cases() {
+    fn cell_src() -> String {
+        let cells_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells");
+        let p = cell80::find_cell_file(&cells_dir, "max4").expect("find max4.rs");
+        std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
+    }
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src(), "Max4", None).expect("bind Max4");
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // c is the strict max (8).
+    assert_eq!(step(5, 2, 8, 1), 8);
+    // four-way tie -> the tied value itself.
+    assert_eq!(step(9, 9, 9, 9), 9);
+    // max sits in the middle (b), not first or last.
+    assert_eq!(step(1, 40000, 2, 39999), 40000);
+    // all zero.
+    assert_eq!(step(0, 0, 0, 0), 0);
+    // max is the u16 ceiling, sitting first.
+    assert_eq!(step(65535, 1, 2, 3), 65535);
+    // max is the u16 ceiling, sitting third (not last).
+    assert_eq!(step(1, 2, 65535, 4), 65535);
+}
+
+// min4: smallest of four values, the arity-4 sibling of min3 (same nested-imin pattern
+// one level deeper). Checked: a strict-min case, a four-way tie, min in the middle
+// position, all-zero, and two u16-ceiling-adjacent cases with the min sitting first vs.
+// last, to rule out any off-by-position bug in the nested imin(imin(imin(...))) chain.
+#[test]
+fn min4_matches_nested_imin_pattern() {
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("min4"), "Min4", None)
+            .unwrap_or_else(|e| panic!("bind Min4: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run Min4: {e}"))
+            .result
+    }
+
+    assert_eq!(step(5, 8, 2, 9), 2); // c is the strict min
+    assert_eq!(step(9, 9, 9, 9), 9); // four-way tie -> the tied value itself
+    assert_eq!(step(40000, 1, 40001, 2), 1); // min sits in the middle (b)
+    assert_eq!(step(0, 0, 0, 0), 0); // all zero
+    assert_eq!(step(65535, 65534, 65533, 1), 1); // min sits last, others near u16 ceiling
+    assert_eq!(step(1, 65535, 2, 3), 1); // min sits first, not last
+}
+
+#[test]
+fn argmax4_hand_computed_cases() {
+    // argmax4: index (0-3) of the largest of four values, ties -> lowest index —
+    // extends argmax3's nested if-chain one level deeper to handle a fourth field.
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("argmax4"), "Argmax4", None)
+            .unwrap_or_else(|e| panic!("bind argmax4: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // c is the strict max (8), at index 2.
+    assert_eq!(step(5, 2, 8, 1), 2);
+    // four-way tie -> lowest index wins.
+    assert_eq!(step(9, 9, 9, 9), 0);
+    // strictly increasing -> last index (3) wins.
+    assert_eq!(step(1, 2, 3, 4), 3);
+    // a and c tie for max (100), b and d are smaller -> lowest tied index (0) wins.
+    assert_eq!(step(100, 50, 100, 99), 0);
+    // d alone is the strict max, sitting past a run of equal smaller values.
+    assert_eq!(step(0, 0, 0, 1), 3);
+    // b and d tie for max (10) with c in between smaller -> lowest tied index (1) wins.
+    assert_eq!(step(1, 10, 5, 10), 1);
+}
+
+#[test]
+fn argmin4_index_of_smallest_of_four_ties_to_lowest_index() {
+    // argmin4: state cell { a, b, c, d } -> u16, the four-value sibling of argmin3.
+    // Extends argmin3's if-chain one level deeper; ties resolve to the lowest index.
+    fn step(a: u64, b: u64, c: u64, d: u64) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("argmin4"), "Argmin4", None)
+            .unwrap_or_else(|e| panic!("bind argmin4: {e}"));
+        cell.set("a", a).unwrap();
+        cell.set("b", b).unwrap();
+        cell.set("c", c).unwrap();
+        cell.set("d", d).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    assert_eq!(step(5, 2, 8, 1), 3); // min is d (last slot)
+    assert_eq!(step(5, 2, 8, 3), 1); // min is b (second slot)
+    assert_eq!(step(9, 9, 9, 9), 0); // all equal -> tie resolves to lowest index
+    assert_eq!(step(1, 9, 9, 9), 0); // min is a itself
+    assert_eq!(step(10, 3, 7, 3), 1); // tie between b and d (both 3) -> lower index (1) wins
+    assert_eq!(step(2, 9, 2, 9), 0); // tie between a and c (both 2) -> lower index (0) wins
+}

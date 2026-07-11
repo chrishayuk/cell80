@@ -7,10 +7,11 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (8)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
+| `bps_change_between` | `BpsChangeBetween::run() -> u16` | Direction-agnostic basis-points change between two wide values (before and after, either order): bps_mag = \|after - before\| * 10000 / before, bps_neg = 1 if after < before else 0 — unifies bps_increase_between and bps_decrease_between (each halts if called against its required direction) into one sign-magnitude call for a caller who doesn't already know whether the value rose or fell. |
 | `bps_decrease_between` | `BpsDecreaseBetween::run() -> u16` | Infer the basis-points decrease between two wide values: given before and after (after <= before), the rate = (before - after) * 10000 / before — the inverse of decrease_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_increase_between` | `BpsIncreaseBetween::run() -> u16` | Infer the basis-points increase between two wide values: given before and after (after >= before), the rate = (after - before) * 10000 / before — the inverse of increase_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_of` | `BpsOf::run() -> u16` | Basis points of a wide value: value * bps / 10000 (e.g. 500 bps of 1000 is 50 — 5%). Escalates (needs_wider_math) on multiply overflow. |

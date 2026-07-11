@@ -4,7 +4,7 @@
 //! `cell_src`/`run_cell` helpers every pack file uses.
 
 use crate::common::{cell_src, run_cell};
-use cell80::{StateCell, DEFAULT_CYCLES};
+use cell80::{Runner, StateCell, DEFAULT_CYCLES};
 
 #[test]
 fn library_growth_backlog_fixed_point_slice() {
@@ -75,4 +75,55 @@ fn first_wave_fixed_point_cells_match_defined_behaviour() {
         "cell mismatches:\n{}",
         failures.join("\n")
     );
+}
+
+// int_to_q8: encodes a plain integer into Q8.8 (x << 8); escalates past the 8-bit
+// integer-part ceiling (x > 255) rather than silently truncating the high bits.
+#[test]
+fn int_to_q8_encodes_and_escalates_past_255() {
+    fn report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    assert_eq!(report("int_to_q8", &[0]).result, 0); // 0 -> 0.0
+    assert_eq!(report("int_to_q8", &[1]).result, 256); // 1 -> 1.0
+    assert_eq!(report("int_to_q8", &[4]).result, 1024); // 4 -> 4.0
+    assert_eq!(report("int_to_q8", &[255]).result, 65280); // boundary, still fits
+    assert_eq!(
+        report("int_to_q8", &[256]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    ); // just past the boundary -> needs_wider_math
+    assert_eq!(
+        report("int_to_q8", &[65535]).halt,
+        cell80::Halt::Escalate(0xFF05)
+    );
+}
+
+#[test]
+fn q_mul_i16_signed_q8_8_multiply_matches_hand_computed_cases() {
+    // q_mul_i16: signed Q8.8 multiply via sign-magnitude (i16_mag/i16_neg decompose each input,
+    // magnitudes multiply and shift right 8 mirroring q_mul's own (a*b)>>8, sign is the XOR of
+    // the input signs) -- q_mul's signed counterpart, since q_mul is unsigned-only.
+
+    // 1.5 * 2.0 = 3.0, both positive. Q8.8: 384 * 512, (384*512)>>8 = 768.
+    assert_eq!(run_cell("q_mul_i16", &[384, 512]), 768);
+
+    // -1.5 * 2.0 = -3.0, mixed sign. -1.5 as u16 bits: 65536-384 = 65152; -3.0: 65536-768 = 64768.
+    assert_eq!(run_cell("q_mul_i16", &[65152, 512]), 64768);
+
+    // -1.5 * -2.0 = 3.0, both negative -> positive result. -2.0 as u16 bits: 65536-512 = 65024.
+    assert_eq!(run_cell("q_mul_i16", &[65152, 65024]), 768);
+
+    // 0 * -1.953125 = 0: a zero magnitude with a "negative" XOR sign flag must still collapse to
+    // plain 0 (no -0 in i16). -500 as u16 bits: 65536-500 = 65036.
+    assert_eq!(run_cell("q_mul_i16", &[0, 65036]), 0);
+
+    // Overflow: i16::MAX * i16::MAX (~127.996 * ~127.996 in real terms) multiplies out to a real
+    // product (~16383) with no representation in Q8.8 i16 (max ~127.996) -> escalates
+    // (halt 0xFF05, needs_wider_math) instead of silently truncating.
+    let mut r = cell80::Runner::compile(&cell_src("q_mul_i16")).unwrap();
+    let report = r.run(None, &[32767, 32767], DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }

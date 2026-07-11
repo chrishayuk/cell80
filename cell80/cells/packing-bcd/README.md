@@ -7,12 +7,16 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
 | `bcd_decode` | `run(bcd: u16) -> u16` | Decode a packed BCD byte (tens in the high nibble, units in the low nibble) back to its binary value. |
 | `bcd_encode` | `run(n: u16) -> u16` | Encode a two-digit decimal value (0-99) as packed BCD: tens in the high nibble, units in the low nibble. |
+| `nibble_hi` | `run(x: u16) -> u16` | Extract the high nibble of the low byte of x: (x >> 4) & 0xF, the unpacking counterpart pack_nibbles lacks. |
+| `nibble_lo` | `run(x: u16) -> u16` | Low nibble of x (x & 0xF) -- the low-nibble counterpart to nibble_hi, distinct from low_byte's byte-level mask (x & 0xFF). |
 | `pack_nibbles` | `run(hi: u16, lo: u16) -> u16` | Pack two 4-bit nibbles into one byte: (hi << 4) \| lo. Each input masked to its low nibble. |
+| `pack_u16_pair` | `PackU16Pair::run() -> u16` | Pack two u16 halves into one u32: (hi << 16) \| lo — the u32-width generalization of pack_u8's (hi << 8) \| lo, one rung further up the same concatenation ladder than pack_u8/pack_nibbles reach; needs a u32 state field since two full u16s produce 32 bits. |
 | `pack_u8` | `run(hi: u16, lo: u16) -> u16` | Pack two byte values into one u16: (hi << 8) \| lo. Each input masked to its low byte, so out-of-range inputs stay defined. |
+| `unpack_u16_pair` | `UnpackU16Pair::run() -> u16` | Split a packed u32 back into its high and low u16 halves — the inverse of pack_u16_pair, mirroring the morton_encode/morton_decode round-trip-pair convention. |
 

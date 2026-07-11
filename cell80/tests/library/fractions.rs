@@ -372,3 +372,104 @@ fn linear_solve_1var_matches_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn frac_of_whole_ceil_hand_computed_cases() {
+    // Checks frac_of_whole_ceil: ceil(n/d * whole), never escalating on inexactness
+    // (unlike frac_of_whole), only on d == 0 or an n*whole overflow.
+    fn frac_of_whole_ceil(n: u32, d: u32, whole: u32) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("frac_of_whole_ceil"), "FracOfWholeCeil", None)
+            .unwrap_or_else(|e| panic!("bind frac_of_whole_ceil: {e}"));
+        for (f, v) in [("n", n as u64), ("d", d as u64), ("whole", whole as u64)] {
+            cell.set(f, v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 90/100 of 23 = 20.7 -> ceil 21 (never escalates on inexactness, unlike frac_of_whole).
+    let (report, cell) = frac_of_whole_ceil(90, 100, 23);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(21));
+
+    // 3/4 of 20 = 15 exactly -> ceil of an exact value is itself.
+    let (report, cell) = frac_of_whole_ceil(3, 4, 20);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(15));
+
+    // 1/3 of 10 = 3.33... -> ceil 4.
+    let (report, cell) = frac_of_whole_ceil(1, 3, 10);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("result"), Some(4));
+
+    // zero divisor halts with out_of_domain (0xFF06).
+    let (report, _cell) = frac_of_whole_ceil(1, 0, 5);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n * whole overflows u32 (4_294_967_295 * 2) -> halts needs_wider_math (0xFF05).
+    let (report, _cell) = frac_of_whole_ceil(4_294_967_295, 1, 2);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}
+
+#[test]
+fn frac_sub_whole_matches_hand_computed() {
+    // frac_sub_whole: n/d - whole, reduced to lowest terms; escalates (0xFF05) rather than
+    // go negative, mirroring frac_sub's own escalate-rather-than-go-negative convention.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 7/2 - 1 = 5/2 (already lowest terms)
+    let (_, c) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 7), ("d", 2), ("whole", 1)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(5), Some(2)));
+
+    // 5/2 - 2 = 1/2
+    let (_, c) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 5), ("d", 2), ("whole", 2)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2)));
+
+    // 6/4 - 1 = 2/4 = 1/2 (tests reduction after subtraction, not just before)
+    let (_, c) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 6), ("d", 4), ("whole", 1)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(1), Some(2)));
+
+    // 4/2 - 2 = 0 exactly -> num=0, den=1 (the exact-zero-result path)
+    let (_, c) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 4), ("d", 2), ("whole", 2)],
+    );
+    assert_eq!((c.get("num"), c.get("den")), (Some(0), Some(1)));
+
+    // 1/4 - 1 would be negative (whole*d=4 > n=1) -> escalate 0xFF05, needs_wider_math
+    let (report, _) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 1), ("d", 4), ("whole", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+
+    // d == 0 -> escalate 0xFF06, out_of_domain
+    let (report, _) = step(
+        "frac_sub_whole",
+        "FracSubWhole",
+        &[("n", 1), ("d", 0), ("whole", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

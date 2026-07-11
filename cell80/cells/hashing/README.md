@@ -7,12 +7,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (6)
 
 | id | signature | summary |
 |---|---|---|
+| `crc16_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-16 (CRC-16/ARC, poly 0xA001 reflected) step over a byte, the crc8_step shift-xor loop widened to the full 16-bit register instead of masking down to 8 bits. |
 | `crc8_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-8 (Dallas/Maxim, poly 0x8C reflected) step over a byte. |
 | `fnv1a_step` | `run(hash: u16, byte: u16) -> u16` | One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit). |
+| `hash3` | `run(a: u16, b: u16, c: u16) -> u16` | Deterministic hash mixing three values into one u16, extending hash_pair's own multiply-xor-multiply chain by one more term and prime. |
 | `hash_pair` | `run(a: u16, b: u16) -> u16` | Deterministic hash mixing two values into one u16. |
 | `mix16` | `run(x: u16) -> u16` | Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value). |
 

@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (52)
+## Landed (56)
 
 | id | signature | summary |
 |---|---|---|
@@ -38,11 +38,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `is_quadratic_residue` | `run(x: u16, p: u16) -> u16` | Check whether x is a quadratic residue mod p: does some y in [0, p) satisfy y*y == x (mod p)? Works for any modulus p >= 2, not just primes, via direct search over every residue -- so cost scales with p (like is_prime_u32; budget a larger --cycles for p much beyond a few thousand). |
 | `is_repdigit` | `run(n: u16) -> u16` | Check whether every decimal digit of n is the same digit (e.g. 4444, 555, 22 -- and trivially any single digit 0-9). Distinct from is_palindromic_number: a repdigit is always a palindrome but not vice versa (121 is palindromic, not a repdigit). |
 | `is_square` | `run(n: u16) -> u16` | Returns 1 if n is a perfect square, else 0. |
+| `is_square_u32` | `IsSquareWide::run() -> u16` | Returns 1 if n (u32) is a perfect square, else 0 -- the wide sibling of is_square (which works over u16, up to 65535). Finds the largest r with r*r <= n via an inlined binary search over r in [0, 65535] (the largest r whose square still fits in u32), then compares r*r to n -- the same search isqrt_u32 does internally, inlined here since cells can't call each other; binary search keeps this cheap across the whole u32 domain, unlike a linear scan. |
 | `isqrt` | `run(n: u16) -> u16` | Integer square root: the largest r with r*r <= n. |
+| `isqrt_u32` | `IsqrtWide::run() -> u16` | Integer square root at wide u32 width: the largest r with r*r <= n, for n up to u32::MAX — the wide sibling of isqrt (which is bounded to the u16 domain, n <= 65535). Uses the same branch-free bitwise integer-sqrt loop q_sqrt.rs runs internally on a u32 local, rather than isqrt's linear scan, since a linear scan over the full u32 domain would run tens of thousands of iterations past the default cycle budget. |
 | `jacobi_symbol` | `run(a: u16, n: u16) -> i16` | The Jacobi symbol (a/n) for odd n > 0: 1 if a is a quadratic residue mod every prime factor of n (with multiplicity) an even number of times, -1 for an odd number of times, 0 if gcd(a, n) > 1. Computed by the standard law-of-quadratic-reciprocity reduction, tracking the sign as a parity flip (XOR) rather than a signed accumulator, since every intermediate value stays a plain nonnegative u16. |
 | `jordan_totient` | `JordanTotient::run() -> u16` | Jordan's totient J_k(n): generalizes euler_totient with an exponent k (J_1(n) = phi(n)) -- the product over each prime-power factor p^e of n of p^((e-1)*k) * (p^k - 1). The (e-1)*k exponent is never computed as a scalar product (e up to ~15 times k up to 65535 would overflow u16 before any p^_ term is even reached) -- instead p^((e-1)*k) is built by repeatedly squaring the already-computed p^k value e-1 times, which stays small since e-1 is itself bounded (<= 15 in the u16 domain). |
 | `lcm` | `run(a: u16, b: u16) -> u16` | Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain. |
 | `lcm3` | `run(a: u16, b: u16, c: u16) -> u16` | Least common multiple of three values. |
+| `liouville_function` | `run(n: u16) -> i16` | The Liouville function lambda(n) = (-1)^Omega(n) (n >= 1), tracking the sign as a parity flip (XOR) over big_omega's own prime-factors-with-multiplicity loop -- distinct from mobius_function, which is 0 for any non-squarefree n, whereas lambda is always +-1 and defined for every n. |
 | `little_omega` | `run(n: u16) -> u16` | omega(n): count of distinct prime factors of n (n >= 1; omega(1) = 0 by convention) -- distinct from factor_count (counts divisors, not prime factors) and big_omega (counts prime factors with multiplicity, not distinct primes). |
 | `mobius_function` | `run(n: u16) -> i16` | The Mobius function mu(n): 1 if n = 1, 0 if n has a squared prime factor (not squarefree), else (-1)^omega(n) for squarefree n (n >= 1). |
 | `mod_add_u32` | `ModAddWide::run() -> u16` | Modular addition at wide u32 width: (a + b) mod m — reduces both operands mod m first, so a and b need not already be canonical residues. |
@@ -59,12 +62,13 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `pow_mod_u32` | `PowModWide::run() -> u16` | Modular exponentiation at wide u32 width: (base^exp) mod m — the wide sibling of pow_mod (u16 domain, m <= 256); lifts the modulus ceiling to 65536, wide enough for AIME's "find the remainder mod 1000" finishing move. Returns 0 if m == 0, matching pow_mod's convention. |
 | `pow_small` | `run(base: u16, exp: u16) -> u16` | base raised to exp (saturating at 65535). 0^0 = 1. |
 | `smallest_prime_factor` | `run(n: u16) -> u16` | Smallest prime factor of n (n >= 2) — the least prime p dividing n; returns n itself if n is prime. |
+| `solve_linear_diophantine` | `LinearDiophantine::run() -> u16` | A particular integer solution (x, y) to a*x + b*y = c via the extended Euclidean algorithm: builds gcd(a, b) plus Bezout coefficients x0, y0 with a*x0 + b*y0 == gcd(a, b) (the same chain extended_gcd computes), then scales by c/gcd(a, b) -- escalating when gcd(a, b) does not evenly divide c, i.e. when no integer solution exists for the given target c. |
 | `square_pyramidal_number` | `SquarePyramidal::run() -> u16` | The nth square pyramidal number: 1^2 + 2^2 + ... + n^2 = n*(n+1)*(2n+1)/6, checked — escalates instead of silently wrapping once the running sum would exceed u32::MAX. Computed by iterative summation rather than the closed form, so cost scales with n (like is_prime_u32, budget a larger --cycles for n much beyond a few thousand). |
 | `sum_divisors` | `SumDivisors::run() -> u16` | Sum of the positive divisors of n (n >= 1), including 1 and n itself (sigma(n)) — the sum-valued sibling of factor_count (which counts divisors; this sums them, so it needs a wide result field since sigma(n) routinely exceeds 65535 within the u16 domain). |
 | `triangular` | `run(n: u16) -> u16` | nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361). |
 | `triangular_inverse_exact` | `run(x: u16) -> u16` | Solve n*(n+1)/2 = x for n, the exact inverse of triangular: given a triangular number x, return which n produced it. Escalates if x isn't triangular (a wrong-plan signal, e.g. GSM8K's "how many rows" problems). Domain matches triangular's own (n <= 361, x <= 65341). |
 
-## Math-server coverage — 13 candidate(s) not yet built
+## Math-server coverage — 11 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
@@ -74,10 +78,8 @@ Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 funct
 | `digit_sort` | Distinct bounded operation (sort digits ascending/descending into a small fixed-size buffer, max 5 digits for u16), not covered. |
 | `goldbach_conjecture_check` | Bounded single-value witness search (loop p up to n/2 using is_prime-style checks) for one specific n, matching the 'bounded single check' pattern. |
 | `is_pronic_number` | Inverse-search predicate; feasible via isqrt(4n+1) parity check but chains enough operations (isqrt, arithmetic, compare) to warrant a dedicated small cell rather than a brittle multi-call composition. |
-| `liouville_function` | lambda(n) = (-1)^Omega(n) is a bounded sign-parity function over prime-factor count; no existing cell computes it (big_omega itself doesn't exist yet either, so it isn't reachable via composition). |
 | `magic_constants` | Simple closed-form n*(n^2+1)/2 for an n x n magic square, single arg, not covered by any existing cell. |
 | `number_to_base` | Bounded exact conversion (u16 input needs at most 16 digits in binary), fits a small fixed-size digit-array output rather than a string. |
-| `solve_linear_diophantine` | Bounded exact 3-arg problem (particular solution to ax+by=c via extended Euclid), escalates when gcd doesn't divide c — fits the checked-cell pattern, not currently covered. |
 | `star_number` | Distinct closed-form figurate number (6n(n-1)+1), bounded and exact, not covered. |
 | `sum_digit_powers` | Generalizes digit_sum to arbitrary power per digit; bounded (few digits), 2 args, not directly composable since digit_sum hardcodes power=1. |
 | `sum_of_two_squares` | Bounded search (a from 0 to isqrt(n), checking n-a^2 is a perfect square) is a genuinely new small cell, not directly composable without a loop. |

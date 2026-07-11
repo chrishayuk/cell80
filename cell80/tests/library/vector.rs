@@ -219,3 +219,74 @@ fn wave12_triple_product_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn dot3_hand_computed_cases() {
+    // Dot product of two signed 3D vectors, tracked as (dot_mag, dot_neg). Cross-checked
+    // by hand: sum of the three pairwise products ax*bx + ay*by + az*bz.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn dot3(a: (i16, i16, i16), b: (i16, i16, i16)) -> (u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("dot3"), "Dot3", None).unwrap();
+        for (f, v) in [
+            ("ax", i16_bits(a.0)),
+            ("ay", i16_bits(a.1)),
+            ("az", i16_bits(a.2)),
+            ("bx", i16_bits(b.0)),
+            ("by", i16_bits(b.1)),
+            ("bz", i16_bits(b.2)),
+        ] {
+            cell.set(f, v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap();
+        (cell.get("dot_mag").unwrap(), cell.get("dot_neg").unwrap())
+    }
+
+    // 1*4 + 2*5 + 3*6 = 32, positive.
+    assert_eq!(dot3((1, 2, 3), (4, 5, 6)), (32, 0));
+    // 3*1 + (-1)*4 + 2*(-2) = 3 - 4 - 4 = -5, negative.
+    assert_eq!(dot3((3, -1, 2), (1, 4, -2)), (5, 1));
+    // zero vector dotted with anything is 0, must not carry a spurious sign bit.
+    assert_eq!(dot3((0, 0, 0), (5, -3, 7)), (0, 0));
+    // (-2)*(-5) + (-3)*(-6) + (-4)*(-7) = 10 + 18 + 28 = 56, positive.
+    assert_eq!(dot3((-2, -3, -4), (-5, -6, -7)), (56, 0));
+    // 7*(-7) + (-8)*8 + 9*(-9) = -49 - 64 - 81 = -194, negative.
+    assert_eq!(dot3((7, -8, 9), (-7, 8, -9)), (194, 1));
+    // orthogonal unit basis vectors: dot is exactly zero, sign must be 0 not spuriously 1.
+    assert_eq!(dot3((1, 0, 0), (0, 1, 0)), (0, 0));
+}
+
+#[test]
+fn norm3_sq_matches_hand_computed_cases() {
+    // norm3_sq: signed 3D squared magnitude, widened to u32 (u32 forces a state cell
+    // even though there are only 3 inputs). Since every term is a square, only the
+    // magnitude branch of the sign-magnitude pattern is ever exercised -- no
+    // sign-combining step is needed, unlike cross_product/triple_scalar_product.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn run(x: i16, y: i16, z: i16) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("norm3_sq"), "Norm3Sq", None).unwrap();
+        cell.set("x", i16_bits(x)).unwrap();
+        cell.set("y", i16_bits(y)).unwrap();
+        cell.set("z", i16_bits(z)).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("mag_sq").unwrap()
+    }
+
+    // (3,4,0): 3*3 + 4*4 + 0*0 = 9 + 16 + 0 = 25
+    assert_eq!(run(3, 4, 0), 25);
+    // (-3,-4,12): 9 + 16 + 144 = 169, both negative components square positive
+    assert_eq!(run(-3, -4, 12), 169);
+    // (0,0,0): the zero vector
+    assert_eq!(run(0, 0, 0), 0);
+    // (-5,12,0): 25 + 144 + 0 = 169, mixed sign
+    assert_eq!(run(-5, 12, 0), 169);
+    // (-32768,0,0): i16::MIN alone -- magnitude 32768, squared = 1,073,741,824
+    assert_eq!(run(-32768, 0, 0), 1_073_741_824);
+    // (32767,32767,32767): i16::MAX in all three lanes -- 3 * 32767*32767 =
+    // 3,221,028,867, comfortably inside u32 range, confirming the wide sum never
+    // wraps or spuriously halts for any legal i16 input.
+    assert_eq!(run(32767, 32767, 32767), 3_221_028_867);
+}

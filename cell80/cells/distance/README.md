@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (5)
 
 | id | signature | summary |
 |---|---|---|
@@ -15,4 +15,5 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `chebyshev` | `Pts::run() -> u16` | Chebyshev (chessboard) distance between two grid points: max(\|dx\|, \|dy\|). |
 | `euclid_sq` | `Pts::run() -> u16` | Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt). Wide u32 dist field. |
 | `manhattan` | `Pts::run() -> u16` | Manhattan distance between two grid points (typed state). |
+| `manhattan_wide` | `Pts::run() -> u16` | Manhattan distance between two grid points: dx + dy, into a wide u32 dist field so two extreme-apart u16 coordinates can't silently wrap past u16 the way manhattan's u16 dist field can. |
 

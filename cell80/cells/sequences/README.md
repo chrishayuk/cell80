@@ -7,27 +7,28 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (9)
 
 | id | signature | summary |
 |---|---|---|
 | `arithmetic_nth_u32` | `ArithmeticNthWide::run() -> u16` | The nth term of an arithmetic sequence starting at start with common difference step: start + step*(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of arithmetic_series_sum (which only sums the sequence, not a single term). |
 | `arithmetic_series_sum` | `ArithmeticSeriesSum::run() -> u16` | Sum of the first n terms of an arithmetic sequence starting at a with common difference d: n*(2a + (n-1)*d) / 2 — always an exact integer (the product n*(2a+(n-1)*d) is provably always even), checked for overflow at each step. |
+| `arithmetic_term_index` | `ArithmeticTermIndex::run() -> u16` | Given start, step, and a term value from an arithmetic sequence, recover which term number n produced it: n = (term - start)/step + 1 — the missing inverse of arithmetic_nth_u32 (which only goes forward from n to term, never back from a term to its index). |
+| `collatz_stopping_time` | `CollatzStoppingTime::run() -> u16` | The number of Collatz (3n+1 / n/2) steps needed to reach 1 from n, bounded by max_steps -- the "count of iterations, not the sequence" shape persistent_digital_root established for digit-summing, applied to the 3n+1 recurrence. |
 | `consecutive_sum_start` | `ConsecutiveSumStart::run() -> u16` | Given n consecutive integers step apart summing to sum, find the first one: first = (sum - step*n*(n-1)/2) / n. Generalizes the "n consecutive integers" and "n consecutive odd/even integers" shapes into one cell via the step parameter (step=1 for consecutive integers, step=2 for consecutive odd/even). Escalates if the split isn't exact or would go negative — a wrong-plan signal. |
 | `geometric_nth_checked_u32` | `GeometricNthChecked::run() -> u16` | The nth term of a geometric sequence starting at start with ratio ratio: start * ratio^(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of geometric_series_sum (which only sums the sequence, not a single term). Computed by direct iterative multiplication rather than exponentiation, so it escalates exactly when the true term doesn't fit u32, no earlier. |
 | `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
+| `geometric_term_index` | `GeometricTermIndex::run() -> u16` | Given a term value from a geometric sequence starting at start with ratio ratio, recover which 1-indexed term number n produced it -- the exact inverse of geometric_nth_checked_u32, found the same way that cell walks forward (iteratively multiplying, checked at every step) rather than any logarithm, so it escalates the moment growth either overflows or stalls at a fixed point without ever matching. |
+| `series_sum` | `SeriesSum::run() -> u16` | Sum of an arithmetic series given its two endpoints and term count instead of (a, d): count*(first + last)/2, multiplying before dividing so odd first+last stays exact — composing via avg2 then multiplying is unsound because avg2 floors the endpoint average before the count ever multiplies it. |
 
-## Math-server coverage — 14 candidate(s) not yet built
+## Math-server coverage — 10 candidate(s) not yet built
 
 Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 functions (`docs/math-server-map.md`) that land closest to this pack — **not yet built**, and not authored until re-checked against the live library (a candidate recorded in the map may since be covered).
 
 | name | reason |
 |---|---|
 | `collatz_max_value` | Bounded loop tracking the peak value reached; distinct scalar output, not covered. |
-| `collatz_stopping_time` | Returns just a step count (not the trajectory); for n within u16 range this is a bounded loop well within a cycle budget, fitting the checked/escalate cell pattern, not covered. |
-| `double_factorial` | n!! (double factorial) is a genuinely new bounded recurrence, same checked-overflow shape as factorial_checked_u32; no existing cell computes it. |
 | `horner_method` | Fixed-small-degree polynomial evaluation with integer coefficients is exact and bounded — genuine gap. Scope to a small fixed degree (e.g. cubic, 4 coefficients) to avoid needing array state fields (the library's still-open 'first array-state cell' design question). |
-| `is_fibonacci_number` | Testing whether n is a Fibonacci number (via the classic 5n^2 +/- 4 perfect-square test) is bounded and deterministic, but 5n^2 overflows u16 fast, so it needs its own wide-checked cell rather than a trivial is_square composition. |
 | `is_happy_number` | Bounded loop (repeated sum-of-squared-digits, cycle-detect at 4) converging quickly for u16-range n, genuinely new predicate. |
 | `is_narcissistic_number` | Bounded exact check (n == sum of its digits each raised to digit-count power), not trivially composable from existing cells, genuinely new. |
 | `is_pentagonal_number` | Inverse pentagonal-number test (via isqrt on 24x+1) mirrors triangular_inverse_exact's pattern; likely ships as one dual-purpose pentagonal_inverse_exact cell alongside pentagonal_number. |
@@ -36,5 +37,4 @@ Genuinely new, bounded candidates from mining `chuk-mcp-math-server`'s 642 funct
 | `pell_lucas_number` | Companion Pell-Lucas recurrence; not composable since no Pell cell exists yet in cell80, bounded single-arg loop. |
 | `pell_number` | Distinct 2-term recurrence (P(n)=2P(n-1)+P(n-2)) not composable from Fibonacci, bounded single-arg loop like fibonacci_checked_u32. |
 | `pentagonal_number` | P_n = n(3n-1)/2 is a genuinely new figurate-number formula, same shape as the existing triangular cell; no pentagonal cell exists. |
-| `series_sum` | Same closed-form sum as arithmetic_series_sum but parameterized by endpoints (first,last,count) instead of (a,d,n); composing via avg2-then-multiply is unsound (avg2 floors before the multiply, corrupting odd first+last cases), and deriving d then calling arithmetic_series_sum needs an extra exact-division step, so a dedicated endpoint-based cell is the safe, minimal implementation. |
 

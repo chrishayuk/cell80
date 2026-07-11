@@ -7,14 +7,18 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (6)
+## Landed (10)
 
 | id | signature | summary |
 |---|---|---|
 | `between_exclusive` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo < x < hi (strictly inside, exclusive bounds), else 0. |
+| `between_exclusive_u32` | `BetweenExclusiveWide::run() -> u16` | Returns 1 if lo < x < hi (strictly inside, exclusive bounds) at wide u32 width, else 0 — the wide sibling of between_exclusive (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `clamp` | `run(x: u16, lo: u16, hi: u16) -> u16` | Clamp a value to the inclusive range [lo, hi]. |
 | `normalize_0_100` | `run(x: u16, lo: u16, hi: u16) -> u16` | Rescale x within [lo, hi] to a 0..100 percentage (clamped; 0 if hi <= lo). |
 | `round_to_multiple` | `run(x: u16, step: u16) -> u16` | Round x to the NEAREST multiple of step (ties up; x if step == 0). |
+| `round_to_multiple_u32` | `RoundToMultipleWide::run() -> u16` | Round a wide u32 value x to the NEAREST multiple of step (ties up; x if step == 0) -- the wide sibling of round_to_multiple (which works over u16 and can't represent totals beyond 65535). |
 | `snap_down` | `run(x: u16, step: u16) -> u16` | Round x DOWN to the nearest multiple of step (x if step == 0). Floor to grid. |
+| `snap_down_u32` | `SnapDownWide::run() -> u16` | Round a wide u32 value x DOWN to the nearest multiple of step (x if step == 0) — the wide sibling of snap_down. Floor to grid at u32 width. |
 | `snap_up` | `run(x: u16, step: u16) -> u16` | Round x UP to the nearest multiple of step (x if step == 0). Ceil to grid. |
+| `snap_up_u32` | `SnapUpWide::run() -> u16` | Round a wide u32 value x UP to the nearest multiple of step (x if step == 0 or x == 0), ceiling to grid at u32 width -- the wide sibling of snap_up (which works over u16 and can't grid-snap values beyond 65535, e.g. buffer sizes or byte offsets). |
 

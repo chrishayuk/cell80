@@ -7,13 +7,15 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (7)
 
 | id | signature | summary |
 |---|---|---|
+| `int_to_q8` | `run(x: u16) -> u16` | Convert a plain unsigned integer into Q8.8 fixed-point representation (x << 8) -- the encode step every other fixed-point cell (q_mul, q_div, q_lerp, q_sigmoid, q_sqrt) assumes has already happened to its inputs. |
 | `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
 | `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
 | `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
+| `q_mul_i16` | `run(a: i16, b: i16) -> i16` | Signed Q8.8 fixed-point multiply of two i16 values via sign-magnitude: decompose each into (magnitude, sign) with i16_mag/i16_neg, multiply magnitudes and shift right 8 (mirroring q_mul's own (a*b)>>8 at wide width), sign is the XOR of the two input signs -- q_mul's signed counterpart, since q_mul only accepts unsigned u16 while q_sigmoid already established a signed i16 domain in this pack. |
 | `q_sigmoid` | `run(x: i16) -> u16` | Q8.8 fixed-point "hard sigmoid": a well-known piecewise-linear stand-in for the true sigmoid, clamp(x/4 + 0.5, 0, 1) — exact at x=0, saturating to 0/1 outside roughly [-4, 4], monotonic and cheap everywhere between. Input is signed (Q8.8, negative values meaningful, e.g. -256 = -1.0); output is unsigned Q8.8 in [0, 256] (0.0 to 1.0). q_tanh is deliberately not a separate cell: the same derivation (tanh(x) = 2*sigmoid(2x)-1) reduces to clamp_i16(x, -256, 256) exactly, already covered by that cell's own tags. |
 | `q_sqrt` | `run(x: u16) -> u16` | Q8.8 fixed-point square root: sqrt(x/256)*256, via a branch-free bitwise integer square root on the widened x*256 (u32 only as a local, never a call param/return — the pattern every Q8.8 free function follows). A naive linear-scan integer sqrt was tried first and cost 3.6M cycles at the domain extreme (past the 2,000,000 default); this bitwise version costs under 20,000. |
 

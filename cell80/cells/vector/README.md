@@ -7,13 +7,15 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (6)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
 | `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
+| `dot3` | `Dot3::run() -> u16` | Dot product of two signed 3D vectors (ax,ay,az).(bx,by,bz) = ax*bx + ay*by + az*bz, tracked as a (magnitude, sign) pair since the pack's 3D vectors are i16 throughout -- dot2 has no 3D sibling (it is 2D and unsigned) and triple_scalar_product computes a plain signed dot as an internal stage but never exposes it standalone. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
+| `norm3_sq` | `Norm3Sq::run() -> u16` | Squared magnitude of a signed 3D vector (x, y, z): x*x + y*y + z*z, widened to a u32 field -- the signed-input, 3D sibling of norm2_sq (which is 2D, unsigned, and stays in u16); needs a state cell purely because u32 can't be a free-fn return type even with only 3 inputs. Each component's square is always non-negative, so this tracks magnitude only via i16_mag and never needs the sign-combining step cross_product/triple_scalar_product require for their differences of products. |
 | `triple_scalar_product` | `TripleScalarProduct::run() -> u16` | Triple scalar product a . (b x c) of three 3D vectors -- the signed volume of the parallelepiped they span (zero exactly when the three vectors are coplanar). Computed as cross_product(b, c) followed by a signed dot with a, reusing the same (magnitude, sign) tracking cross_product and vectors_parallel already establish, so no new arithmetic technique is introduced here. |
 | `triple_vector_product` | `TripleVectorProduct::run() -> u16` | Triple vector product a x (b x c) of three 3D vectors, via the BAC-CAB identity a x (b x c) = b*(a.c) - c*(a.b) -- pure dot-products and scalar multiplies, never an actual cross-product computation. Each stage (the two dot products, the two vector scalings, the final vector subtract) is tracked as a (magnitude, sign) pair, the same discipline cross_product/triple_scalar_product use. Genuinely narrower-range than those two: scaling a vector component by a dot product can reach i16's product-of-three-factors territory, so this escalates well before either input vector's own magnitude would suggest trouble. |
 | `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |

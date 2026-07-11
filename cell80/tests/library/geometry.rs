@@ -271,3 +271,169 @@ fn wave11_geom_distance_3d_matches_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
+
+#[test]
+fn orientation2d_matches_defined_behaviour() {
+    // orientation2d: sign of the 2D cross product (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1) for
+    // three points p1->p2->p3 -- -1 clockwise, 0 collinear, 1 counter-clockwise. The four
+    // difference terms are derived from raw i16 coordinates via a sign-magnitude subtract
+    // (a plain i16 subtract could overflow i16's range, e.g. 32767 - (-32768)), then
+    // combined as (magnitude, sign) products the same way matrix_det_2x2/cross_product do.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn orientation(p1: (i16, i16), p2: (i16, i16), p3: (i16, i16)) -> i16 {
+        let mut cell = StateCell::bind(&cell_src("orientation2d"), "Orientation2d", None)
+            .unwrap_or_else(|e| panic!("bind orientation2d: {e}"));
+        cell.set("x1", i16_bits(p1.0)).unwrap();
+        cell.set("y1", i16_bits(p1.1)).unwrap();
+        cell.set("x2", i16_bits(p2.0)).unwrap();
+        cell.set("y2", i16_bits(p2.1)).unwrap();
+        cell.set("x3", i16_bits(p3.0)).unwrap();
+        cell.set("y3", i16_bits(p3.1)).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("sign").map(|b| b as u16 as i16).unwrap()
+    }
+
+    // (0,0)->(1,0)->(0,1): cross = 1*1 - 0*0 = 1 -> counter-clockwise.
+    assert_eq!(orientation((0, 0), (1, 0), (0, 1)), 1);
+    // (0,0)->(0,1)->(1,0): cross = 0*0 - 1*1 = -1 -> clockwise.
+    assert_eq!(orientation((0, 0), (0, 1), (1, 0)), -1);
+    // (0,0)->(1,1)->(2,2): cross = 1*2 - 1*2 = 0 -> collinear.
+    assert_eq!(orientation((0, 0), (1, 1), (2, 2)), 0);
+    // (-5,-5)->(5,-5)->(5,5): dx1=10,dy1=10,dy2=0,dx2=10 -> cross = 100 -> ccw.
+    assert_eq!(orientation((-5, -5), (5, -5), (5, 5)), 1);
+    // Extreme magnitudes stressing the sign-magnitude coordinate-difference subtract:
+    // (-32768,0)->(32767,0)->(0,100): dx1 = 65535, dy1 = 100, dy2 = 0, dx2 = 32768
+    // -> cross = 6553500 -> ccw.
+    assert_eq!(orientation((-32768, 0), (32767, 0), (0, 100)), 1);
+}
+
+#[test]
+fn segments_intersect_int_matches_defined_behaviour() {
+    // segments_intersect_int: the standard four-orientation-sign-test segment-intersection
+    // predicate (including the collinear-overlap edge case). Hand-verified against the
+    // orientation math directly before shipping.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn seg(x1: i16, y1: i16, x2: i16, y2: i16, x3: i16, y3: i16, x4: i16, y4: i16) -> u16 {
+        let mut cell = StateCell::bind(
+            &cell_src("segments_intersect_int"),
+            "SegmentsIntersect",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        cell.set("x1", i16_bits(x1)).unwrap();
+        cell.set("y1", i16_bits(y1)).unwrap();
+        cell.set("x2", i16_bits(x2)).unwrap();
+        cell.set("y2", i16_bits(y2)).unwrap();
+        cell.set("x3", i16_bits(x3)).unwrap();
+        cell.set("y3", i16_bits(y3)).unwrap();
+        cell.set("x4", i16_bits(x4)).unwrap();
+        cell.set("y4", i16_bits(y4)).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
+        assert_eq!(
+            report.halt,
+            cell80::Halt::Returned,
+            "unexpected halt: {:?}",
+            report.halt
+        );
+        cell.get("result").unwrap() as u16
+    }
+
+    // 1) Classic X-crossing: (0,0)-(4,4) and (0,4)-(4,0) cross at (2,2). d1=-16, d2=+16
+    //    (opposite, nonzero); d3=+16, d4=-16 (opposite, nonzero) -> proper hit.
+    assert_eq!(seg(0, 0, 4, 4, 0, 4, 4, 0), 1);
+
+    // 2) Parallel, non-touching: (0,0)-(1,0) and (0,1)-(1,1). d1=d2=-1 (same sign, no
+    //    orientation flip), no orientation is zero -> no intersection.
+    assert_eq!(seg(0, 0, 1, 0, 0, 1, 1, 1), 0);
+
+    // 3) Collinear overlap: (0,0)-(4,0) and (2,0)-(6,0) share [2,4] on the x-axis. d1=d2=0
+    //    and P2=(4,0) falls inside [2,6]x[0,0] -> the collinear on-segment branch fires.
+    assert_eq!(seg(0, 0, 4, 0, 2, 0, 6, 0), 1);
+
+    // 4) Collinear, disjoint: (0,0)-(2,0) and (3,0)-(5,0), same line, no overlap. All four
+    //    orientations are zero but no point falls in the opposite segment's bounding box.
+    assert_eq!(seg(0, 0, 2, 0, 3, 0, 5, 0), 0);
+
+    // 5) Shared endpoint (T-touch): (0,0)-(2,2) and (2,2)-(4,0); P2 == P3 = (2,2), so
+    //    d2 = 0 and P2 trivially lies within P3P4's own bounding box -> touching at an
+    //    endpoint counts as intersecting.
+    assert_eq!(seg(0, 0, 2, 2, 2, 2, 4, 0), 1);
+}
+
+#[test]
+fn slope_fraction_two_point_slope_matches_defined_behaviour() {
+    // slope_fraction: exact (y2-y1)/(x2-x1) between two points as a sign-magnitude
+    // fraction (num_mag, num_neg) over a positive den -- the two-point sibling of
+    // linear_regression_slope's aggregated-sums fit. Neither reduces to lowest terms.
+    fn i16_bits(v: i16) -> u64 {
+        (v as u16) as u64
+    }
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("slope_fraction"), "SlopeFraction", None)
+            .unwrap_or_else(|e| panic!("bind slope_fraction: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // (0,0)->(4,8): slope = 8/4, positive.
+    let (_, cell) = step(&[
+        ("x1", i16_bits(0)),
+        ("y1", i16_bits(0)),
+        ("x2", i16_bits(4)),
+        ("y2", i16_bits(8)),
+    ]);
+    assert_eq!(cell.get("num_mag"), Some(8));
+    assert_eq!(cell.get("num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(4));
+
+    // (0,0)->(4,-8): slope = -8/4, negative numerator, positive den.
+    let (_, cell) = step(&[
+        ("x1", i16_bits(0)),
+        ("y1", i16_bits(0)),
+        ("x2", i16_bits(4)),
+        ("y2", i16_bits(-8)),
+    ]);
+    assert_eq!(cell.get("num_mag"), Some(8));
+    assert_eq!(cell.get("num_neg"), Some(1));
+    assert_eq!(cell.get("den"), Some(4));
+
+    // (5,3)->(2,3): horizontal line with a negative dx; slope 0, sign forced to 0.
+    let (_, cell) = step(&[
+        ("x1", i16_bits(5)),
+        ("y1", i16_bits(3)),
+        ("x2", i16_bits(2)),
+        ("y2", i16_bits(3)),
+    ]);
+    assert_eq!(cell.get("num_mag"), Some(0));
+    assert_eq!(cell.get("num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(3));
+
+    // (2,2)->(-3,-3): both dx and dy negative -> positive slope (5/5, unreduced).
+    let (_, cell) = step(&[
+        ("x1", i16_bits(2)),
+        ("y1", i16_bits(2)),
+        ("x2", i16_bits(-3)),
+        ("y2", i16_bits(-3)),
+    ]);
+    assert_eq!(cell.get("num_mag"), Some(5));
+    assert_eq!(cell.get("num_neg"), Some(0));
+    assert_eq!(cell.get("den"), Some(5));
+
+    // Vertical line (x1 == x2): escalates, undefined slope.
+    let (report, _) = step(&[
+        ("x1", i16_bits(7)),
+        ("y1", i16_bits(1)),
+        ("x2", i16_bits(7)),
+        ("y2", i16_bits(99)),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

@@ -3,7 +3,8 @@
 //! pack-directory structure; see `cell80/tests/library/common.rs` for the shared
 //! `cell_src`/`run_cell` helpers every pack file uses.
 
-use crate::common::run_cell;
+use crate::common::{cell_src, run_cell};
+use cell80::{StateCell, DEFAULT_CYCLES};
 
 #[test]
 fn first_wave_packing_bcd_cells_match_defined_behaviour() {
@@ -29,4 +30,105 @@ fn first_wave_packing_bcd_cells_match_defined_behaviour() {
         "cell mismatches:\n{}",
         failures.join("\n")
     );
+}
+
+#[test]
+fn nibble_hi_matches_defined_behaviour() {
+    // (x >> 4) & 0xF: the high nibble of x's low byte. Hand-computed cases:
+    //  - 0x0000 -> low byte 0x00 -> high nibble 0
+    //  - 0x00A5 -> low byte 0xA5 = 1010_0101 -> high nibble 0xA
+    //  - 0x1234 -> low byte 0x34 = 0011_0100 -> high nibble 0x3 (upper byte of x is irrelevant)
+    //  - 0x12FF -> low byte 0xFF -> high nibble 0xF
+    //  - 0x000F -> low byte 0x0F = 0000_1111 -> high nibble 0
+    let cases: &[(u16, u16)] = &[
+        (0x0000, 0x0),
+        (0x00A5, 0xA),
+        (0x1234, 0x3),
+        (0x12FF, 0xF),
+        (0x000F, 0x0),
+    ];
+    for (x, exp) in cases {
+        let got = run_cell("nibble_hi", &[*x]);
+        assert_eq!(
+            got, *exp,
+            "nibble_hi({x:#06x}) = {got:#x}, expected {exp:#x}"
+        );
+    }
+}
+
+#[test]
+fn nibble_lo_extracts_the_low_4_bits() {
+    // nibble_lo(x) = x & 0xF -- the low-nibble counterpart to nibble_hi, distinct from
+    // low_byte's byte-level (x & 0xFF) mask. Cases hand-computed:
+    //   0x0000 & 0xF = 0x0
+    //   0x1234 & 0xF = 0x4
+    //   0x00FF & 0xF = 0xF (15)
+    //   0x0009 & 0xF = 0x9
+    //   0xABCD & 0xF = 0xD (13)
+    let cases: &[(&str, &[u16], u16)] = &[
+        ("nibble_lo", &[0x0000], 0x0),
+        ("nibble_lo", &[0x1234], 0x4),
+        ("nibble_lo", &[0x00FF], 0xF),
+        ("nibble_lo", &[0x0009], 0x9),
+        ("nibble_lo", &[0xABCD], 0xD),
+    ];
+
+    let mut failures = Vec::new();
+    for (id, args, exp) in cases {
+        let got = run_cell(id, args);
+        if got != *exp {
+            failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
+}
+
+// Verifies pack_u16_pair concatenates two u16 halves into one u32 as (hi << 16) | lo,
+// the u32-width rung above pack_u8's (hi << 8) | lo. Cases hand-computed: a generic
+// mixed-nibble pair, both-zero, both-max (checks no wraparound/overflow), and the two
+// "one half is zero" edges that isolate hi's placement from lo's.
+#[test]
+fn pack_u16_pair_state_cell_matches_defined_behaviour() {
+    fn pack(hi: u16, lo: u16) -> u32 {
+        let mut cell = StateCell::bind(&cell_src("pack_u16_pair"), "PackU16Pair", None)
+            .unwrap_or_else(|e| panic!("bind pack_u16_pair: {e}"));
+        cell.set("hi", hi as u64).unwrap();
+        cell.set("lo", lo as u64).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        cell.get("out").unwrap_or_else(|| panic!("no out field")) as u32
+    }
+
+    assert_eq!(pack(0x1234, 0x5678), 0x1234_5678); // generic mixed halves
+    assert_eq!(pack(0, 0), 0); // both zero
+    assert_eq!(pack(0xFFFF, 0xFFFF), 0xFFFF_FFFF); // both max, no overflow/wrap
+    assert_eq!(pack(1, 0), 65536); // hi=1 alone -> 0x00010000
+    assert_eq!(pack(0, 0xFFFF), 65535); // lo=0xFFFF alone -> 0x0000FFFF
+}
+
+// unpack_u16_pair: the inverse of pack_u16_pair — splits a u32 back into (hi, lo) u16 halves
+// via hi = in_val >> 16, lo = in_val & 0xFFFF. Requires `use cell80::{StateCell, DEFAULT_CYCLES};`
+// and `crate::common::cell_src` at the top of this pack test file (not yet imported there since
+// packing-bcd previously had only free-fn cells).
+#[test]
+fn unpack_u16_pair_matches_defined_behaviour() {
+    fn step(in_val: u64) -> (u64, u64) {
+        let mut cell = StateCell::bind(&cell_src("unpack_u16_pair"), "UnpackU16Pair", None)
+            .unwrap_or_else(|e| panic!("bind unpack_u16_pair: {e}"));
+        cell.set("in_val", in_val).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.result, 1, "status flag should be 1");
+        (cell.get("hi").unwrap(), cell.get("lo").unwrap())
+    }
+
+    // Round-trip corners plus a mixed value, mirroring the morton_encode/morton_decode
+    // corner-value tests already in tests/library/spatial-grid.rs.
+    assert_eq!(step(0), (0, 0));
+    assert_eq!(step(0x12345678), (0x1234, 0x5678));
+    assert_eq!(step(0xFFFFFFFF), (0xFFFF, 0xFFFF));
+    assert_eq!(step(0x0000FFFF), (0, 0xFFFF));
+    assert_eq!(step(0xFFFF0000), (0xFFFF, 0));
 }

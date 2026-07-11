@@ -7,17 +7,19 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (11)
 
 | id | signature | summary |
 |---|---|---|
 | `bit_length` | `run(x: u16) -> u16` | Number of bits needed to represent x: index of the highest set bit + 1 (0 for x == 0). |
 | `high_byte` | `run(x: u16) -> u16` | High byte of x (x >> 8). |
+| `leading_ones` | `run(x: u16) -> u16` | Count of leading (high) one bits in the 16-bit value (16 for x == 0xFFFF). |
 | `leading_zeros` | `run(x: u16) -> u16` | Count of leading (high) zero bits in the 16-bit value (16 for x == 0). |
 | `low_byte` | `run(x: u16) -> u16` | Low byte of x (x & 0xFF). |
 | `reverse_bits` | `run(x: u16) -> u16` | Reverse the 16 bits of x (bit 0 <-> bit 15, ...). |
 | `rotl16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x left by n (n taken mod 16). |
 | `rotr16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x right by n (n taken mod 16). |
 | `swap_bytes` | `run(x: u16) -> u16` | Swap the high and low bytes of x ((x << 8) \| (x >> 8)). |
+| `trailing_ones` | `run(x: u16) -> u16` | Count of trailing (low) one-bits in the 16-bit value (16 for x == 0xFFFF). |
 | `trailing_zeros` | `run(x: u16) -> u16` | Count of trailing (low) zero bits in the 16-bit value (16 for x == 0). |
 

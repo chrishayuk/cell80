@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (13)
 
 | id | signature | summary |
 |---|---|---|
@@ -18,8 +18,12 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `difficulty_zone_step` | `DifficultyZoneStep::run() -> u16` | Difficulty-zone advance/stay/retreat decision from an accuracy tally against a target-accuracy band (target_pct +/- tolerance_pct), gated by a minimum sample count. Exact via cross-multiplication (correct*100 vs total*(target+-tolerance)) rather than dividing, so no float accuracy ratio is ever computed. Distinct from hysteresis (a raw single-value 2-state latch with no sample-size gate): this is a 3-way ratio decision over an explicit sample count. |
 | `epsilon_greedy_pick3` | `EpsilonGreedyPick3::run() -> u16` | Epsilon-greedy selection: returns alt_idx (explore) if rand_bps < epsilon_bps, else best_idx (exploit) — composes with the already-shipped lcg_next/xorshift16 (for rand_bps, via safe_mod against 10000) and epsilon_bps as a basis-points exploration rate (e.g. 1000 = 10% exploration). |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
+| `jittered_backoff_next` | `JitteredBackoff::run() -> u16` | Full-jitter backoff: computes backoff_next's own capped-exponential ceiling, then scales it down by a caller-supplied rand_bps (0-9999 basis points) via a u32 intermediate, returning a randomized value in [0, ceiling] instead of backoff_next's fixed climb. |
+| `linear_backoff_next` | `LinearBackoff::run() -> u16` | Additive-growth backoff step: next = min(current + step, cap), starting at `step` when current is 0 — the arithmetic-growth dual of backoff_next's capped-exponential growth (doubling vs. adding a fixed step each call). |
 | `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |
+| `rising_edge_step` | `RisingEdge::run() -> u16` | Rising-edge detector: reports 1 only on the exact step a 0/1 signal transitions from 0 to 1, 0 otherwise — an edge (transition) test, distinct from hysteresis (dead-zone latch), debounce_step (N-consecutive confirmation), streak_step (consecutive-run counter), and cooldown_step (decrement timer). |
 | `token_bucket_step` | `TokenBucket::run() -> u16` | Token-bucket rate limiter step: refill by `refill`, cap at `capacity`, then try to spend `cost`; 1 if allowed, 0 if not enough tokens (tokens still refill either way). Also a plain retry/spend budget when called with refill=0 and capacity >= tokens: retry_budget_step and budget_spend_step are the same formula under different names, confirmed directly (cell80/tests/library.rs) rather than shipped as separate cells. |
+| `token_bucket_step_u32` | `TokenBucketU32::run() -> u16` | Wide/checked sibling of token_bucket_step: refill u32 `tokens` by `refill` (a checked add, escalating instead of silently wrapping), cap at `capacity`, then try to spend `cost`, setting `allowed` to 1/0 (tokens refill either way) — the wide-sibling convention already established by is_lt/is_lt_u32 and min/min_u32, closing the one asymmetry left after rate_window_update (this pack's other rate limiter) was already built at u32/checked/escalate width. |
 
 ## Roadmap — open items
 

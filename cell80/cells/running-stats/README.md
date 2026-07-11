@@ -7,13 +7,16 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (5)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
 | `accumulate_step` | `Accumulate::run() -> u16` | Running sum + count over a stream of values (sum saturates at 65535). Compose with safe_div(sum, count) for a running mean. |
 | `running_min_max_step` | `RunningMinMax::run() -> u16` | Running min/max tracker over a stream of values: updates min/max (self-initializing on the first call via `seen`), returns the current range (max - min). |
+| `running_min_max_step_u32` | `RunningMinMaxU32::run() -> u16` | Wide sibling of running_min_max_step for a stream of u32 values: updates min/max (self-initializing on the first call via `seen`), stores the current range (max - min) in `range`, returns a 1u16 success flag (caller reads range/min/max back as fields). |
+| `running_stddev_step` | `RunningStddev::run() -> u16` | The sqrt-of-variance sibling of running_variance_step: same running (count, sum, m2) update per value, then variance = m2/count (guarded) and stddev = floor(sqrt(variance)) via the same branch-free bitwise integer square root q_sqrt uses, inlined here for a raw (non-Q8.8-scaled) u32 rather than called across a pack boundary. |
 | `running_variance_step` | `RunningVariance::run() -> u16` | Running (population) variance over a stream of values, one value per call — the checked/exact sibling of accumulate_step (which saturates u16; this escalates on overflow instead, since a corrupted variance is worse than a stopped one). Recomputes the mean fresh from the exact running sum on each side of the update (rather than compounding a previously-truncated running mean, Welford-style) before accumulating the squared-deviation product into m2 — verified to never go negative under integer truncation across thousands of random and adversarial streams. Compose with div_floor_u32(m2, count) for the variance itself. |
+| `streak_best_step` | `StreakBest::run() -> u16` | Consecutive-streak counter that also remembers the longest streak ever seen: increments/resets exactly like streak_step, then updates `best` whenever the current streak exceeds it — the same running-extreme extension running_min_max_step applies to raw values, applied here to the derived streak count itself. |
 | `streak_step` | `Streak::run() -> u16` | Consecutive-streak counter: increments while input is nonzero, resets to 0 the moment input is 0. |
 | `zscore_q8` | `run(value_q8: i16, mean_q8: i16, stddev_q8: i16) -> i16` | Q8.8 fixed-point z-score given an already-computed standard deviation: (value - mean) scaled by 256, divided by stddev — sidesteps the sqrt-of-variance problem cosine_score_approx is still blocked on by taking stddev as an input rather than deriving it. Returns 0 if stddev_q8 <= 0 (the safe_div convention, no divide-by-zero). |
 

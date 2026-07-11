@@ -748,3 +748,155 @@ fn modular_classic_number_theory_wave9_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // not found within the bound
 }
+
+#[test]
+fn number_theory_isqrt_u32_wide_sibling() {
+    // isqrt_u32: the wide (u32-domain) sibling of isqrt, largest r with r*r <= n.
+    // Mirrors is_prime/is_prime_u32's same-pack wide-sibling shape: a state cell
+    // (n: u32, r: u32) since u32 can't be a free-fn param/return. run() returns
+    // the u16-truncated result (always safe here — max r for u32::MAX is 65535,
+    // which fits u16 exactly), and the u32 field `r` carries the same value.
+    fn isqrt_wide(n: u64) -> u64 {
+        let mut cell = StateCell::bind(&cell_src("isqrt_u32"), "IsqrtWide", None)
+            .unwrap_or_else(|e| panic!("bind isqrt_u32: {e}"));
+        cell.set("n", n).unwrap();
+        cell.run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run isqrt_u32: {e}"));
+        cell.get("r").unwrap()
+    }
+
+    assert_eq!(isqrt_wide(0), 0);
+    assert_eq!(isqrt_wide(1), 1);
+    assert_eq!(isqrt_wide(15), 3); // 3*3=9 <= 15 < 16=4*4
+    assert_eq!(isqrt_wide(1_000_000), 1000); // perfect square
+    assert_eq!(isqrt_wide(4_294_967_295), 65535); // u32::MAX: 65535^2 <= n < 65536^2
+    assert_eq!(isqrt_wide(4_294_836_225), 65535); // 65535^2 exactly, near top of domain
+}
+
+#[test]
+fn number_theory_is_square_u32_wide_sibling() {
+    // is_square_u32: matches is_square's own u16-domain answers, then goes past its 65535
+    // ceiling into the full u32 domain. An inlined binary search over r in [0, 65535] finds
+    // the largest r with r*r <= n, then compares r*r to n -- cheap (~17 steps) across the
+    // whole domain, so no larger --cycles budget is ever needed (unlike is_prime_u32's
+    // linear trial division).
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // Small values, matching is_square's own u16-domain behaviour.
+    assert_eq!(step("is_square_u32", "IsSquareWide", &[("n", 0)]).0, 1); // 0*0 == 0
+    assert_eq!(step("is_square_u32", "IsSquareWide", &[("n", 100)]).0, 1); // 10^2
+    assert_eq!(step("is_square_u32", "IsSquareWide", &[("n", 99)]).0, 0); // between 9^2 and 10^2
+
+    // Past u16::MAX -- exercises the width is_square can't reach at all.
+    assert_eq!(step("is_square_u32", "IsSquareWide", &[("n", 65536)]).0, 1); // 256^2
+
+    // The extremes of the u32 domain: the largest perfect square that fits (65535^2), and
+    // u32::MAX itself, which is one short of being a perfect square.
+    assert_eq!(
+        step("is_square_u32", "IsSquareWide", &[("n", 4_294_836_225)]).0,
+        1
+    ); // 65535^2, the largest square representable in u32
+    assert_eq!(
+        step("is_square_u32", "IsSquareWide", &[("n", 4_294_967_295)]).0,
+        0
+    ); // u32::MAX
+}
+
+#[test]
+fn liouville_function_matches_defined_behaviour() {
+    fn free_report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // liouville_function: lambda(n) = (-1)^Omega(n), where Omega counts prime factors with
+    // multiplicity (big_omega's own loop). Unlike mobius_function (0 for any non-squarefree
+    // n), lambda is always +-1 and defined for every n >= 1. 65535 is the u16 bit pattern
+    // for -1i16 (the same convention jacobi_symbol/mobius_function already use).
+    assert_eq!(run_cell("liouville_function", &[1]), 1); // Omega(1) = 0 -> +1
+    assert_eq!(run_cell("liouville_function", &[2]), 65535); // Omega(2) = 1 -> -1
+    assert_eq!(run_cell("liouville_function", &[4]), 1); // 2^2: Omega = 2 -> +1 (mobius(4) = 0)
+    assert_eq!(run_cell("liouville_function", &[12]), 65535); // 2^2*3: Omega = 3 -> -1
+    assert_eq!(run_cell("liouville_function", &[30]), 65535); // 2*3*5: Omega = 3 -> -1
+    assert_eq!(run_cell("liouville_function", &[60]), 1); // 2^2*3*5: Omega = 4 -> +1
+    assert_eq!(
+        free_report("liouville_function", &[0]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    ); // n == 0 is out of domain
+}
+
+#[test]
+fn solve_linear_diophantine_hand_computed_cases() {
+    // Every case below was hand-traced through the dialect's exact iterative extended
+    // Euclidean algorithm (old_r/r, old_s/s, old_t/t with q = old_r / r) and independently
+    // cross-checked with a standalone Python re-implementation of that same iteration
+    // before being transcribed here -- never taken from the compiled cell's own output.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("solve_linear_diophantine"),
+            "LinearDiophantine",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // 3x + 5y = 1: gcd(3,5)=1, divides 1. This algorithm's particular Bezout chain gives
+    // x0=2, y0=-1 (3*2 + 5*(-1) = 6-5 = 1), scale k=1/1=1 -> x=2, y=-1.
+    let (report, cell) = step(&[("a", 3), ("b", 5), ("c", 1)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(2), Some(0))); // x = 2
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(1), Some(1))); // y = -1
+
+    // 6x + 9y = 3: gcd(6,9)=3, divides 3. Bezout chain gives x0=-1, y0=1
+    // (6*(-1) + 9*1 = -6+9 = 3), scale k=3/3=1 -> x=-1, y=1.
+    let (report, cell) = step(&[("a", 6), ("b", 9), ("c", 3)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(1), Some(1))); // x = -1
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(1), Some(0))); // y = 1
+
+    // 4x + 6y = 5: gcd(4,6)=2, does not divide 5 -- no integer solution, escalate.
+    let (report, _cell) = step(&[("a", 4), ("b", 6), ("c", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // 0x + 7y = 14 (a=0 edge case): gcd(0,7)=7, divides 14. Bezout chain gives x0=0, y0=1
+    // (0*0 + 7*1 = 7), scale k=14/7=2 -> x=0, y=2 (0*0 + 7*2 = 14).
+    let (report, cell) = step(&[("a", 0), ("b", 7), ("c", 14)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(0), Some(0))); // x = 0
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(2), Some(0))); // y = 2
+
+    // 0x + 0y = 0 (a=b=0, c=0 edge case): gcd(0,0)=0, and c==0 too -- trivial solution
+    // x=0, y=0 rather than an escalation (0*0 + 0*0 = 0 == c).
+    let (report, cell) = step(&[("a", 0), ("b", 0), ("c", 0)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(0), Some(0)));
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(0), Some(0)));
+
+    // 0x + 0y = 5 (a=b=0, c!=0 edge case): gcd(0,0)=0 cannot divide a nonzero target --
+    // no solution exists, escalate.
+    let (report, _cell) = step(&[("a", 0), ("b", 0), ("c", 5)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // 25x + 15y = 10: gcd(25,15)=5, divides 10. Bezout chain gives x0=-1, y0=2
+    // (25*(-1) + 15*2 = -25+30 = 5), scale k=10/5=2 -> x=-2, y=4
+    // (25*(-2) + 15*4 = -50+60 = 10).
+    let (report, cell) = step(&[("a", 25), ("b", 15), ("c", 10)]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!((cell.get("x_mag"), cell.get("x_neg")), (Some(2), Some(1))); // x = -2
+    assert_eq!((cell.get("y_mag"), cell.get("y_neg")), (Some(4), Some(0))); // y = 4
+}

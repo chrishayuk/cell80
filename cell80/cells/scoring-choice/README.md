@@ -7,18 +7,21 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (9)
+## Landed (12)
 
 | id | signature | summary |
 |---|---|---|
 | `choose_best2` | `ChooseBest2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the highest score (ties -> lowest index, matching choose_best3's convention) — the 2-candidate sibling of choose_best3, for the common case of only two options (e.g. "which of these two candidates has the highest profit"). |
 | `choose_best3` | `ChooseBest3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the highest score (ties → lowest index, matching argmax3's convention) — distinct from argmax3, which assumes the value and the score are the same number. |
+| `choose_best4` | `ChooseBest4::run() -> u16` | Pick the value of whichever of four (value, score) candidates has the highest score (ties -> lowest index, matching choose_best3's convention) — the 4-candidate sibling of choose_best3, for the case of four options (e.g. "which of these four bids scores highest"). |
 | `choose_worst2` | `ChooseWorst2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the lowest score (ties -> lowest index, matching choose_best2's convention) — the inverse-comparison sibling of choose_best2, for the common "which of these two costs less" shape. |
+| `choose_worst3` | `ChooseWorst3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the lowest score (ties -> lowest index, matching choose_worst2's convention) — the 3-candidate sibling of choose_worst2, and the lowest-score counterpart of choose_best3. |
 | `clear_winner_u32` | `ClearWinnerWide::run() -> u16` | Returns 1 if the top score beats the second-best by at least margin at wide u32 width, else 0 — including when top < second (a malformed call, treated as no clear winner) — the wide sibling of is_clear_winner (which works over u16 and can't compare scores beyond 65535, e.g. money totals in cents). |
 | `is_clear_winner` | `run(top: u16, second: u16, margin: u16) -> u16` | Returns 1 if the top score beats the second-best by at least margin (a decisive win, not a near-tie), else 0 — including when top < second (a malformed call, treated as no clear winner). |
 | `weighted_sum` | `run(a: u16, b: u16, c: u16) -> u16` | Weighted sum of three inputs with fixed weights 1, 2, 3 (a candidate score). |
 | `weighted_sum2` | `WeightedSum2::run() -> u16` | Weighted sum of two inputs with caller-supplied weights: a*wa + b*wb (also known as score_2factor — the same formula under a different name). Sibling of weighted_sum/weighted_sum_wide (which use fixed weights 1, 2, 3), generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
 | `weighted_sum3` | `WeightedSum3::run() -> u16` | Weighted sum of three inputs with caller-supplied weights: a*wa + b*wb + c*wc. Sibling of weighted_sum/weighted_sum_wide (fixed weights 1, 2, 3) generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
+| `weighted_sum4` | `WeightedSum4::run() -> u16` | Weighted sum of four inputs with caller-supplied weights: a*wa + b*wb + c*wc + d*wd. Sibling of weighted_sum2/weighted_sum3 (arbitrary weights) extended to a fourth operand, which weighted_sum_wide does not offer (it only widens the fixed-weight 3-operand cell's output, not the operand count or the weights). |
 | `weighted_sum_wide` | `Ws::run() -> u16` | Exact weighted sum with a wide u32 result field: sum = a + 2b + 3c, no u16 wrap (sibling of weighted_sum). |
 
 ## Roadmap — open items

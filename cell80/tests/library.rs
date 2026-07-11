@@ -69,6 +69,8 @@ mod stateful_rng;
 mod statistics;
 #[path = "library/units.rs"]
 mod units;
+#[path = "library/validation.rs"]
+mod validation;
 #[path = "library/vector.rs"]
 mod vector;
 #[path = "library/verifier-ranker.rs"]

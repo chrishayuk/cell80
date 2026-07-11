@@ -114,3 +114,46 @@ fn money_bps_wave2_cells_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06)); // after > before
 }
+
+// Checked against bps_increase_between/bps_decrease_between (each requires a fixed
+// direction and halts on the other); bps_change_between accepts either direction and
+// reports the rate as a sign-magnitude pair instead.
+#[test]
+fn bps_change_between_matches_defined_behaviour() {
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("bps_change_between"), "BpsChangeBetween", None)
+            .unwrap_or_else(|e| panic!("bind: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // Rose: before=200, after=250 -> +25% = 2500 bps, neg=0 (same magnitude
+    // bps_increase_between would report for this pair).
+    let (_, cell) = step(&[("before", 200), ("after", 250)]);
+    assert_eq!(cell.get("bps_mag"), Some(2500));
+    assert_eq!(cell.get("bps_neg"), Some(0));
+
+    // Fell: before=200, after=150 -> -25% = 2500 bps, neg=1 (same magnitude
+    // bps_decrease_between would report for this pair) -- one cell handles both.
+    let (_, cell) = step(&[("before", 200), ("after", 150)]);
+    assert_eq!(cell.get("bps_mag"), Some(2500));
+    assert_eq!(cell.get("bps_neg"), Some(1));
+
+    // No change: mag=0, and neg is forced to 0 rather than left ambiguous.
+    let (_, cell) = step(&[("before", 1000), ("after", 1000)]);
+    assert_eq!(cell.get("bps_mag"), Some(0));
+    assert_eq!(cell.get("bps_neg"), Some(0));
+
+    // before == 0 is out of domain (a base of zero has no defined rate), regardless
+    // of direction.
+    let (report, _) = step(&[("before", 0), ("after", 100)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // A large enough diff overflows the *10000 scale step and escalates rather than
+    // silently wrapping.
+    let (report, _) = step(&[("before", 1), ("after", 500000)]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

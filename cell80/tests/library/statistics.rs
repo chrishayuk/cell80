@@ -237,3 +237,144 @@ fn wave14_q8_statistics_match_defined_behaviour() {
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn linear_regression_intercept_matches_hand_computed_ols_fits() {
+    // Checks linear_regression_intercept against four hand-computed OLS fits and
+    // the two documented halt paths, using the exact five precomputed sums
+    // (n, sum_x, sum_y, sum_xy, sum_x2) linear_regression_slope also consumes.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(
+            &cell_src("linear_regression_intercept"),
+            "LinearRegressionIntercept",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind linear_regression_intercept: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // y=2x over x=[1,2,3] passes through the origin -- n=3, sum_x=6, sum_y=12, sum_xy=28, sum_x2=14.
+    // b = (12*14 - 6*28)/(3*14-36) = (168-168)/6 = 0/6.
+    let (_, cell) = step(&[
+        ("n", 3),
+        ("sum_x", 6),
+        ("sum_y", 12),
+        ("sum_xy", 28),
+        ("sum_x2", 14),
+    ]);
+    assert_eq!(
+        (cell.get("num_mag"), cell.get("num_neg"), cell.get("den")),
+        (Some(0), Some(0), Some(6))
+    );
+
+    // y=2x+1 over x=[1,2,3,4] -- n=4, sum_x=10, sum_y=24, sum_xy=70, sum_x2=30.
+    // b = (24*30 - 10*70)/(4*30-100) = (720-700)/20 = 20/20 = 1.
+    let (_, cell) = step(&[
+        ("n", 4),
+        ("sum_x", 10),
+        ("sum_y", 24),
+        ("sum_xy", 70),
+        ("sum_x2", 30),
+    ]);
+    assert_eq!(
+        (cell.get("num_mag"), cell.get("num_neg"), cell.get("den")),
+        (Some(20), Some(0), Some(20))
+    );
+
+    // y=2x-3 over x=[1..5] gives y=[-1,1,3,5,7] -- n=5, sum_x=15, sum_y=15, sum_xy=65, sum_x2=55.
+    // b = (15*55 - 15*65)/(5*55-225) = (825-975)/50 = -150/50 = -3.
+    let (_, cell) = step(&[
+        ("n", 5),
+        ("sum_x", 15),
+        ("sum_y", 15),
+        ("sum_xy", 65),
+        ("sum_x2", 55),
+    ]);
+    assert_eq!(
+        (cell.get("num_mag"), cell.get("num_neg"), cell.get("den")),
+        (Some(150), Some(1), Some(50))
+    );
+
+    // Vertical line, x=[3,3,3] -- den = 3*27 - 81 = 0, undefined intercept.
+    let (report, _) = step(&[
+        ("n", 3),
+        ("sum_x", 9),
+        ("sum_y", 12),
+        ("sum_xy", 36),
+        ("sum_x2", 27),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // n=0 halts immediately, same as linear_regression_slope's own guard.
+    let (report, _) = step(&[
+        ("n", 0),
+        ("sum_x", 0),
+        ("sum_y", 0),
+        ("sum_xy", 0),
+        ("sum_x2", 0),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
+
+#[test]
+fn variance_from_sums_matches_hand_computed_expectations() {
+    // variance_from_sums: population variance from precomputed sums (n, sum_x, sum_x2),
+    // var = (n*sum_x2 - sum_x^2)/n^2 as an exact fraction num/den. Every expected
+    // fraction below was hand-computed against the definition before running.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // x = [1,2,3] -> n=3, sum_x=6, sum_x2=1+4+9=14.
+    // var = (3*14 - 6^2)/3^2 = (42-36)/9 = 6/9.
+    let (_, cell) = step(
+        "variance_from_sums",
+        "VarianceFromSums",
+        &[("n", 3), ("sum_x", 6), ("sum_x2", 14)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(6), Some(9)));
+
+    // x = [2,2,2] -> no spread -> n=3, sum_x=6, sum_x2=12. var = (36-36)/9 = 0/9.
+    let (_, cell) = step(
+        "variance_from_sums",
+        "VarianceFromSums",
+        &[("n", 3), ("sum_x", 6), ("sum_x2", 12)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(0), Some(9)));
+
+    // x = [1,2,3,4,5] -> n=5, sum_x=15, sum_x2=55. var = (275-225)/25 = 50/25 (=2).
+    let (_, cell) = step(
+        "variance_from_sums",
+        "VarianceFromSums",
+        &[("n", 5), ("sum_x", 15), ("sum_x2", 55)],
+    );
+    assert_eq!((cell.get("num"), cell.get("den")), (Some(50), Some(25)));
+
+    // n == 0 -> escalate out_of_domain.
+    let (report, _) = step(
+        "variance_from_sums",
+        "VarianceFromSums",
+        &[("n", 0), ("sum_x", 0), ("sum_x2", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Inconsistent sums (n=1, sum_x=5, sum_x2=1) -- n*sum_x2 < sum_x^2 is
+    // mathematically impossible for a real dataset, so this signals corrupted
+    // input and must escalate needs_wider_math rather than silently underflow.
+    let (report, _) = step(
+        "variance_from_sums",
+        "VarianceFromSums",
+        &[("n", 1), ("sum_x", 5), ("sum_x2", 1)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
+}

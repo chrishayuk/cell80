@@ -7,11 +7,12 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (3)
+## Landed (4)
 
 | id | signature | summary |
 |---|---|---|
 | `bucket3` | `run(x: u16, t1: u16, t2: u16) -> u16` | Bucket x into 0, 1, or 2 by two ascending thresholds: x<t1 → 0, x<t2 → 1, else 2. |
+| `bucket3_u32` | `Bucket3Wide::run() -> u16` | Bucket x into 0, 1, or 2 by two ascending wide u32 thresholds: x<t1 → 0, x<t2 → 1, else 2 — the wide sibling of bucket3 (which works over u16 and can't classify values beyond 65535, e.g. large counters or byte offsets). |
 | `byte_to_percent` | `run(b: u16) -> u16` | Convert a 0..255 byte scale to a 0..100 percent: b*100/255. |
 | `percent_to_byte` | `run(p: u16) -> u16` | Convert a 0..100 percent to a 0..255 byte scale: p*255/100. |
 

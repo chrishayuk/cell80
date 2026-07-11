@@ -76,3 +76,28 @@ fn units_free_fn_cells_match_defined_behaviour() {
     // than 0xFF05 (needs_wider_math) — a mismatched/unmodeled unit pair isn't a wide-math
     // problem.
 }
+
+#[test]
+fn unit_mul_check_matches_unit_muls_domain_table() {
+    fn report(id: &str, args: &[u16]) -> cell80::Report {
+        let mut r = Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        r.run(None, args, DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run {id}: {e}"))
+    }
+
+    // unit_mul_check: a non-escalating boolean mirror of unit_mul's domain table
+    // (unit_cancel_check already does this for unit_div; unit_mul had no analogous probe).
+    // count*money is defined (0,1)/(1,0) in unit_mul -> money, so the probe returns 1.
+    assert_eq!(report("unit_mul_check", &[0, 1]).result, 1);
+    assert_eq!(report("unit_mul_check", &[1, 0]).result, 1);
+    // distance*distance is defined (3,3) -> area.
+    assert_eq!(report("unit_mul_check", &[3, 3]).result, 1);
+    // rate_money_per_time*time and rate_count_per_time*time are both defined (8,2)/(9,2).
+    assert_eq!(report("unit_mul_check", &[8, 2]).result, 1);
+    assert_eq!(report("unit_mul_check", &[2, 9]).result, 1);
+    // time*time and volume*volume are NOT in unit_mul's table -> probe returns 0, never halts.
+    assert_eq!(report("unit_mul_check", &[2, 2]).result, 0);
+    assert_eq!(report("unit_mul_check", &[5, 5]).result, 0);
+    // Out-of-domain codes (>9) also just return 0 rather than escalating like unit_mul does.
+    assert_eq!(report("unit_mul_check", &[100, 4]).result, 0);
+}

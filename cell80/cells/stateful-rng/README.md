@@ -7,11 +7,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (3)
+## Landed (6)
 
 | id | signature | summary |
 |---|---|---|
 | `counter_step` | `CounterStep::run() -> u16` | Modular counter step: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap — a plain saturating-free incrementer). Useful for round-robin dispatch or a bounded retry index. The caller threads `count` through — re-supply the field each call. |
+| `counter_step_u32` | `CounterStepU32::run() -> u16` | Wide sibling of counter_step for u32 fields: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap, up to the native u32 boundary) — needed once a round-robin/dispatch index must range over a pool larger than counter_step's u16 ceiling of 65535. Returns a 1u16 success flag; caller reads the wrapped `count` back as a field, the same convention as every other wide state cell in the library. |
 | `lcg_next` | `Lcg::run() -> u16` | Linear congruential generator step: seed = seed * 1664525 + 1013904223 (mod 2^32, Numerical Recipes constants), returning the top 16 bits (the higher bits of an LCG are far less patterned than the low bits). The caller threads `seed` through — re-supply the field each call, since state cells don't persist memory across separate runs. |
+| `pingpong_step` | `PingPong::run() -> u16` | Bounded ping-pong index: bounces `pos` between 0 and `limit`, reversing direction at each bound before stepping instead of wrapping to 0 (limit 0 pins pos at 0) — a triangle-wave counter distinct from counter_step's round-robin wrap, useful for an oscillating animation frame or alternating dispatch slot. `dir` 0=increasing, 1=decreasing; the caller threads `pos` and `dir` through — re-supply both fields each call. |
 | `xorshift16` | `Xorshift16::run() -> u16` | 16-bit xorshift generator step (x ^= x<<7; x ^= x>>9; x ^= x<<8) — a distinct pseudo-random recurrence from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
+| `xorshift32` | `Xorshift32::run() -> u16` | 32-bit xorshift generator step (x ^= x<<13; x ^= x>>17; x ^= x<<5, Marsaglia's classic constants) over a full u32 state word, returning the top 16 bits — distinct from xorshift16 (different shifts, a full 32-bit word giving a 2^32-1 period instead of xorshift16's 2^16-1) and from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
 

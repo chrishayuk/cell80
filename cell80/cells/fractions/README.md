@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (23)
+## Landed (25)
 
 | id | signature | summary |
 |---|---|---|
@@ -22,12 +22,14 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `frac_min` | `FracMin::run() -> u16` | The smaller of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
 | `frac_mul` | `FracMul::run() -> u16` | Multiply two fractions na/da * nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_of_whole` | `FracOfWhole::run() -> u16` | A fraction of a whole number, computed exactly: n/d * whole, escalating if it doesn't divide evenly (a wrong-plan signal — e.g. "3/4 of 20" should be exact for a grade-school word problem) or if the multiply overflows. |
+| `frac_of_whole_ceil` | `FracOfWholeCeil::run() -> u16` | A fraction of a whole number, rounded up: ceil(n/d * whole) — the ceiling sibling of frac_of_whole (escalates if inexact) and frac_of_whole_floor (rounds down, never escalates on inexactness); uses the q+1-if-remainder technique from checked-arithmetic's div_ceil_u32 so a near-u32::MAX product never risks an intermediate overflow. |
 | `frac_of_whole_floor` | `FracOfWholeFloor::run() -> u16` | A fraction of a whole number, rounded down: floor(n/d * whole) — the floor sibling of frac_of_whole (which escalates if the result isn't exact). Never escalates on an inexact split (e.g. "90% of 23" is a real, non-exact GSM8K-style shape, unlike "3/4 of 20"); still escalates if the multiply overflows. |
 | `frac_reciprocal` | `FracReciprocal::run() -> u16` | Reciprocal of a fraction n/d: swaps to d/n. Escalates (halt 0xFF06, out_of_domain) if n == 0 (a zero fraction has no reciprocal) or d == 0 (not a valid fraction to begin with). |
 | `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via the shared gcd_u32 kernel — a two-u32-param call (first arg rides HL:DE, second rides the stack; docs 10 §Calls), so the Euclidean loop lives once in the prelude instead of inlined in every fraction cell. |
 | `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
 | `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_sub_whole` | `FracSubWhole::run() -> u16` | Subtract a whole number from a fraction: n/d - whole, reduced to lowest terms via the shared gcd_u32 kernel — the frac-minus-whole sibling missing alongside frac_add_whole and frac_sub_from_whole, e.g. 7/2 - 1 = 5/2. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
 | `linear_solve_1var` | `LinearSolve1Var::run() -> u16` | Solve a general one-variable linear equation a*x + b = c*x + d for x, returned as an exact signed fraction (num_mag/num_neg over a positive den) in lowest terms via the shared gcd_u32 kernel -- the single-unknown sibling of matrix_solve_2x2's two-unknown Cramer's-rule solve. num = d - b and den = a - c are plain signed subtractions, not products, so this needs sign-magnitude tracking (the dialect has no i32 yet) but no overflow-prone multiply. |

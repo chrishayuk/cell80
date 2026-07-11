@@ -7,14 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (11)
+## Landed (14)
 
 | id | signature | summary |
 |---|---|---|
 | `bit_is_set` | `run(x: u16, bit: u16) -> u16` | Returns 1 if bit number `bit` of x is set, else 0. |
+| `bit_not` | `run(x: u16) -> u16` | Bitwise complement of all 16 bits: x ^ 0xFFFF (unary NOT, the dialect's `!` is logical-not only). |
 | `clear_bit` | `run(x: u16, bit: u16) -> u16` | Clear bit number `bit` of x to 0. |
+| `mask_clear` | `run(x: u16, mask: u16) -> u16` | Clear every bit of `mask` from x: x & (mask ^ 0xFFFF), the mask-level generalization of clear_bit (AND-NOT / andn). |
 | `mask_has_all` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ALL bits of mask set: (x & mask) == mask. |
 | `mask_has_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ANY bit of mask set: (x & mask) != 0. |
+| `mask_has_none` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has NONE of mask's bits set: (x & mask) == 0, else 0 -- the exact logical complement of mask_has_any. |
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_union` | `run(a: u16, b: u16) -> u16` | Union of two bit masks: a \| b (every bit set in either). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |

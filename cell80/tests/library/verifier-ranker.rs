@@ -455,3 +455,209 @@ fn linear_eq_holds_matches_defined_behaviour() {
     assert_eq!(holds(1, 0, 2, 3, -2), 0);
     assert_eq!(holds(0, 5, 0, 5, 100), 1); // degenerate identity: any x holds
 }
+
+#[test]
+fn gcd_equals_u32_matches_hand_computed_expectations() {
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Halt) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt)
+    }
+
+    // gcd(48, 18): 48 % 18 = 12; 18 % 12 = 6; 12 % 6 = 0 -> gcd = 6. Claim matches.
+    let (ok, halt) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 48), ("b", 18), ("g", 6)],
+    );
+    assert_eq!((ok, halt), (1, cell80::Halt::Returned));
+
+    // Same a, b but a false claim (5 instead of the true gcd 6) -> 0.
+    let (ok, _) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 48), ("b", 18), ("g", 5)],
+    );
+    assert_eq!(ok, 0);
+
+    // gcd(0, 0): loop never runs (y starts at 0), x stays 0 -> gcd = 0. Claim matches.
+    let (ok, _) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 0), ("b", 0), ("g", 0)],
+    );
+    assert_eq!(ok, 1);
+
+    // gcd(0, 7): one iteration folds x=0,y=7 into x=7,y=0 -> gcd = 7. Claim matches.
+    let (ok, _) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 0), ("b", 7), ("g", 7)],
+    );
+    assert_eq!(ok, 1);
+
+    // Two consecutive u32 integers are always coprime: gcd(u32::MAX, u32::MAX - 1) = 1.
+    // A false claim of 2 on the same inputs must verify to 0, not silently pass.
+    let (ok, _) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 4_294_967_295), ("b", 4_294_967_294), ("g", 1)],
+    );
+    assert_eq!(ok, 1);
+    let (ok, _) = verify(
+        "gcd_equals_u32",
+        "GcdEqualsWide",
+        &[("a", 4_294_967_295), ("b", 4_294_967_294), ("g", 2)],
+    );
+    assert_eq!(ok, 0);
+}
+
+// Verifies lcm_equals_u32: LcmEqualsWide { a, b, l } -> u16, 1 if l is the true wide
+// LCM of a and b, else 0. Covers the normal correct/incorrect cases, the a==0/b==0
+// zero-convention edge cases (matching lcm_u32's own definition that lcm(0, x) = 0),
+// and a genuine u32 overflow in (a/g)*b, which must read as "claim false" (0), not
+// an escalation — a verifier always returns a verdict, never halts.
+#[test]
+fn lcm_equals_u32_hand_computed() {
+    fn run(fields: &[(&str, u64)]) -> u16 {
+        let mut cell = StateCell::bind(&cell_src("lcm_equals_u32"), "LcmEqualsWide", None)
+            .unwrap_or_else(|e| panic!("bind lcm_equals_u32: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        cell.run(DEFAULT_CYCLES).unwrap().result
+    }
+
+    // lcm(4, 6) = 12, claim matches -> 1
+    assert_eq!(run(&[("a", 4), ("b", 6), ("l", 12)]), 1);
+    // lcm(4, 6) = 12, claim is wrong (24) -> 0
+    assert_eq!(run(&[("a", 4), ("b", 6), ("l", 24)]), 0);
+    // a == 0 -> lcm defined as 0 by lcm_u32's convention, claim matches -> 1
+    assert_eq!(run(&[("a", 0), ("b", 5), ("l", 0)]), 1);
+    // a == 0 -> true lcm is 0, but claim says 5 -> 0
+    assert_eq!(run(&[("a", 0), ("b", 5), ("l", 5)]), 0);
+    // both zero -> true lcm is 0, claim matches -> 1
+    assert_eq!(run(&[("a", 0), ("b", 0), ("l", 0)]), 1);
+    // gcd(3_000_000_000, 3_000_000_006) = 6, so a/g * b = 500_000_000 * 3_000_000_006
+    // overflows u32 (true value ~1.5e18); the overflow-detection idiom fires, so the
+    // verifier must return 0 even against the wrapped product value itself.
+    assert_eq!(
+        run(&[
+            ("a", 3_000_000_000),
+            ("b", 3_000_000_006),
+            ("l", 770_072_064), // (500_000_000 * 3_000_000_006) mod 2^32, hand-computed
+        ]),
+        0
+    );
+}
+
+#[test]
+fn quotient_equals_ceil_u32_matches_hand_computed_cases() {
+    // Checks quotient_equals_ceil_u32: the verifier counterpart of div_ceil_u32 — recomputes
+    // ceiling division (q = a/b, bump by 1 if there's a remainder) and compares against a
+    // claimed quotient, distinguishing it from both quotient_equals_floor_u32 and
+    // quotient_equals_exact_u32 on inexact divisions.
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Halt) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt)
+    }
+
+    // 48 / 12 = 4 exactly (r=0), ceil quotient is 4, claimed 4 -> matches -> 1
+    let (ok, _) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 48), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 1);
+
+    // 50 / 12 = 4 remainder 2 (inexact), ceil rounds up to 5, claimed 5 -> matches -> 1
+    // (this is the case where quotient_equals_floor_u32 and quotient_equals_exact_u32
+    // would both say 0 — ceil is genuinely distinct here)
+    let (ok, _) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 50), ("b", 12), ("quotient", 5)],
+    );
+    assert_eq!(ok, 1);
+
+    // 50 / 12 ceil is 5, claimed 4 (the floor value) -> mismatch -> 0
+    let (ok, _) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 50), ("b", 12), ("quotient", 4)],
+    );
+    assert_eq!(ok, 0);
+
+    // b == 0 -> always 0 regardless of claimed quotient
+    let (ok, halt) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 48), ("b", 0), ("quotient", 4)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned));
+
+    // 0 / 5 = 0 exactly, ceil quotient is 0, claimed 0 -> matches -> 1
+    let (ok, _) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 0), ("b", 5), ("quotient", 0)],
+    );
+    assert_eq!(ok, 1);
+
+    // 13 / 12 = 1 remainder 1, ceil rounds up to 2; claimed 1 (off by the round-up) -> mismatch -> 0
+    let (ok, _) = verify(
+        "quotient_equals_ceil_u32",
+        "QuotientEqualsCeil",
+        &[("a", 13), ("b", 12), ("quotient", 1)],
+    );
+    assert_eq!(ok, 0);
+}
+
+#[test]
+fn remainder_equals_u32_matches_defined_behaviour() {
+    fn verify(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Halt) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report.result, report.halt)
+    }
+
+    // remainder_equals_u32 — verifier counterpart of mod_u32 at wide (u32) width: returns 1 if
+    // b != 0 and a % b == rem, else 0 (including b == 0, checked without a divide-by-zero halt).
+    let (ok, halt) = verify(
+        "remainder_equals_u32",
+        "RemainderEqualsU32",
+        &[("a", 50), ("b", 12), ("rem", 2)],
+    );
+    assert_eq!((ok, halt), (1, cell80::Halt::Returned));
+    let (ok, _) = verify(
+        "remainder_equals_u32",
+        "RemainderEqualsU32",
+        &[("a", 50), ("b", 12), ("rem", 0)],
+    );
+    assert_eq!(ok, 0); // true remainder is 2, not 0
+    let (ok, halt) = verify(
+        "remainder_equals_u32",
+        "RemainderEqualsU32",
+        &[("a", 100), ("b", 0), ("rem", 100)],
+    );
+    assert_eq!((ok, halt), (0, cell80::Halt::Returned)); // b == 0 is a false verdict too, never a halt
+    let (ok, _) = verify(
+        "remainder_equals_u32",
+        "RemainderEqualsU32",
+        &[("a", 4_294_967_295), ("b", 10), ("rem", 5)],
+    );
+    assert_eq!(ok, 1); // u32::MAX % 10 == 5 at wide width
+}

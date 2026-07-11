@@ -7,14 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (7)
 
 | id | signature | summary |
 |---|---|---|
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
+| `day_of_year` | `run(year: u16, month: u16, day: u16) -> u16` | Ordinal day-of-year (1-366) for a Gregorian date: sum of days in all preceding months plus day, with a leap-day adjustment for March onward. |
 | `days_in_month` | `run(month: u16, is_leap: u16) -> u16` | Number of days in a month (1-12; 0 for an invalid month), given a leap-year flag for February. |
 | `is_leap_year` | `run(year: u16) -> u16` | Returns 1 if year is a Gregorian leap year, else 0: divisible by 4, except centuries not divisible by 400. |
+| `is_valid_date` | `run(year: u16, month: u16, day: u16) -> u16` | Returns 1 if (year, month, day) is a genuinely valid Gregorian date -- month in 1-12 and day within that month's actual leap-year-aware length -- else 0; distinct from range_check's single static bound. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
+| `luhn_check_digit` | `run(partial: u16) -> u16` | Computes the Luhn check digit (0-9) to append to partial's digits so the completed number passes luhn_check — the generate-side counterpart to that verify-only cell. |
 
 ## Roadmap — open items
 

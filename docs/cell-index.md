@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (313 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (395 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -9,7 +9,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 
 See `docs/library-growth.md` for the packs' purpose, the contribution rule, and the admission gate that enforces "no behavioural duplicates."
 
-## agentic-runtime (9)
+## agentic-runtime (13)
 
 | id | signature | summary |
 |---|---|---|
@@ -20,31 +20,40 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `difficulty_zone_step` | `DifficultyZoneStep::run() -> u16` | Difficulty-zone advance/stay/retreat decision from an accuracy tally against a target-accuracy band (target_pct +/- tolerance_pct), gated by a minimum sample count. Exact via cross-multiplication (correct*100 vs total*(target+-tolerance)) rather than dividing, so no float accuracy ratio is ever computed. Distinct from hysteresis (a raw single-value 2-state latch with no sample-size gate): this is a 3-way ratio decision over an explicit sample count. |
 | `epsilon_greedy_pick3` | `EpsilonGreedyPick3::run() -> u16` | Epsilon-greedy selection: returns alt_idx (explore) if rand_bps < epsilon_bps, else best_idx (exploit) — composes with the already-shipped lcg_next/xorshift16 (for rand_bps, via safe_mod against 10000) and epsilon_bps as a basis-points exploration rate (e.g. 1000 = 10% exploration). |
 | `hysteresis` | `Hysteresis::run() -> u16` | Hysteresis (Schmitt-trigger) state: turns on at value >= high, turns off at value <= low, else holds the prior state (the dead zone between them). |
+| `jittered_backoff_next` | `JitteredBackoff::run() -> u16` | Full-jitter backoff: computes backoff_next's own capped-exponential ceiling, then scales it down by a caller-supplied rand_bps (0-9999 basis points) via a u32 intermediate, returning a randomized value in [0, ceiling] instead of backoff_next's fixed climb. |
+| `linear_backoff_next` | `LinearBackoff::run() -> u16` | Additive-growth backoff step: next = min(current + step, cap), starting at `step` when current is 0 — the arithmetic-growth dual of backoff_next's capped-exponential growth (doubling vs. adding a fixed step each call). |
 | `rate_window_update` | `RateWindowUpdate::run() -> u16` | Fixed-window rate limiter step: given the current time `now`, the running window's start and size, and the count so far, rolls over to a fresh window (starting at `now`) once `now - window_start >= window_size`, then allows the event if `count < limit` (incrementing count) — distinct from token_bucket_step's smooth refill-and-spend model, this is the simpler "N events per window" shape. The caller threads window_start/count through repeated calls, matching backoff_next/token_bucket_step's convention. |
+| `rising_edge_step` | `RisingEdge::run() -> u16` | Rising-edge detector: reports 1 only on the exact step a 0/1 signal transitions from 0 to 1, 0 otherwise — an edge (transition) test, distinct from hysteresis (dead-zone latch), debounce_step (N-consecutive confirmation), streak_step (consecutive-run counter), and cooldown_step (decrement timer). |
 | `token_bucket_step` | `TokenBucket::run() -> u16` | Token-bucket rate limiter step: refill by `refill`, cap at `capacity`, then try to spend `cost`; 1 if allowed, 0 if not enough tokens (tokens still refill either way). Also a plain retry/spend budget when called with refill=0 and capacity >= tokens: retry_budget_step and budget_spend_step are the same formula under different names, confirmed directly (cell80/tests/library.rs) rather than shipped as separate cells. |
+| `token_bucket_step_u32` | `TokenBucketU32::run() -> u16` | Wide/checked sibling of token_bucket_step: refill u32 `tokens` by `refill` (a checked add, escalating instead of silently wrapping), cap at `capacity`, then try to spend `cost`, setting `allowed` to 1/0 (tokens refill either way) — the wide-sibling convention already established by is_lt/is_lt_u32 and min/min_u32, closing the one asymmetry left after rate_window_update (this pack's other rate limiter) was already built at u32/checked/escalate width. |
 
-## bit-encoding (9)
+## bit-encoding (11)
 
 | id | signature | summary |
 |---|---|---|
 | `bit_length` | `run(x: u16) -> u16` | Number of bits needed to represent x: index of the highest set bit + 1 (0 for x == 0). |
 | `high_byte` | `run(x: u16) -> u16` | High byte of x (x >> 8). |
+| `leading_ones` | `run(x: u16) -> u16` | Count of leading (high) one bits in the 16-bit value (16 for x == 0xFFFF). |
 | `leading_zeros` | `run(x: u16) -> u16` | Count of leading (high) zero bits in the 16-bit value (16 for x == 0). |
 | `low_byte` | `run(x: u16) -> u16` | Low byte of x (x & 0xFF). |
 | `reverse_bits` | `run(x: u16) -> u16` | Reverse the 16 bits of x (bit 0 <-> bit 15, ...). |
 | `rotl16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x left by n (n taken mod 16). |
 | `rotr16` | `run(x: u16, n: u16) -> u16` | Rotate the 16 bits of x right by n (n taken mod 16). |
 | `swap_bytes` | `run(x: u16) -> u16` | Swap the high and low bytes of x ((x << 8) \| (x >> 8)). |
+| `trailing_ones` | `run(x: u16) -> u16` | Count of trailing (low) one-bits in the 16-bit value (16 for x == 0xFFFF). |
 | `trailing_zeros` | `run(x: u16) -> u16` | Count of trailing (low) zero bits in the 16-bit value (16 for x == 0). |
 
-## bit-mask (11)
+## bit-mask (14)
 
 | id | signature | summary |
 |---|---|---|
 | `bit_is_set` | `run(x: u16, bit: u16) -> u16` | Returns 1 if bit number `bit` of x is set, else 0. |
+| `bit_not` | `run(x: u16) -> u16` | Bitwise complement of all 16 bits: x ^ 0xFFFF (unary NOT, the dialect's `!` is logical-not only). |
 | `clear_bit` | `run(x: u16, bit: u16) -> u16` | Clear bit number `bit` of x to 0. |
+| `mask_clear` | `run(x: u16, mask: u16) -> u16` | Clear every bit of `mask` from x: x & (mask ^ 0xFFFF), the mask-level generalization of clear_bit (AND-NOT / andn). |
 | `mask_has_all` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ALL bits of mask set: (x & mask) == mask. |
 | `mask_has_any` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has ANY bit of mask set: (x & mask) != 0. |
+| `mask_has_none` | `run(x: u16, mask: u16) -> u16` | Returns 1 if x has NONE of mask's bits set: (x & mask) == 0, else 0 -- the exact logical complement of mask_has_any. |
 | `mask_intersection` | `run(a: u16, b: u16) -> u16` | Intersection of two bit masks: a & b (bits set in both). |
 | `mask_union` | `run(a: u16, b: u16) -> u16` | Union of two bit masks: a \| b (every bit set in either). |
 | `mask_xor` | `run(a: u16, b: u16) -> u16` | Symmetric difference of two bit masks: a ^ b (bits set in exactly one). |
@@ -53,35 +62,43 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `set_bit` | `run(x: u16, bit: u16) -> u16` | Set bit number `bit` of x to 1. |
 | `toggle_bit` | `run(x: u16, bit: u16) -> u16` | Toggle (flip) bit number `bit` of x. |
 
-## bounds (6)
+## bounds (10)
 
 | id | signature | summary |
 |---|---|---|
 | `between_exclusive` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo < x < hi (strictly inside, exclusive bounds), else 0. |
+| `between_exclusive_u32` | `BetweenExclusiveWide::run() -> u16` | Returns 1 if lo < x < hi (strictly inside, exclusive bounds) at wide u32 width, else 0 — the wide sibling of between_exclusive (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `clamp` | `run(x: u16, lo: u16, hi: u16) -> u16` | Clamp a value to the inclusive range [lo, hi]. |
 | `normalize_0_100` | `run(x: u16, lo: u16, hi: u16) -> u16` | Rescale x within [lo, hi] to a 0..100 percentage (clamped; 0 if hi <= lo). |
 | `round_to_multiple` | `run(x: u16, step: u16) -> u16` | Round x to the NEAREST multiple of step (ties up; x if step == 0). |
+| `round_to_multiple_u32` | `RoundToMultipleWide::run() -> u16` | Round a wide u32 value x to the NEAREST multiple of step (ties up; x if step == 0) -- the wide sibling of round_to_multiple (which works over u16 and can't represent totals beyond 65535). |
 | `snap_down` | `run(x: u16, step: u16) -> u16` | Round x DOWN to the nearest multiple of step (x if step == 0). Floor to grid. |
+| `snap_down_u32` | `SnapDownWide::run() -> u16` | Round a wide u32 value x DOWN to the nearest multiple of step (x if step == 0) — the wide sibling of snap_down. Floor to grid at u32 width. |
 | `snap_up` | `run(x: u16, step: u16) -> u16` | Round x UP to the nearest multiple of step (x if step == 0). Ceil to grid. |
+| `snap_up_u32` | `SnapUpWide::run() -> u16` | Round a wide u32 value x UP to the nearest multiple of step (x if step == 0 or x == 0), ceiling to grid at u32 width -- the wide sibling of snap_up (which works over u16 and can't grid-snap values beyond 65535, e.g. buffer sizes or byte offsets). |
 
-## bucket-convert (3)
+## bucket-convert (4)
 
 | id | signature | summary |
 |---|---|---|
 | `bucket3` | `run(x: u16, t1: u16, t2: u16) -> u16` | Bucket x into 0, 1, or 2 by two ascending thresholds: x<t1 → 0, x<t2 → 1, else 2. |
+| `bucket3_u32` | `Bucket3Wide::run() -> u16` | Bucket x into 0, 1, or 2 by two ascending wide u32 thresholds: x<t1 → 0, x<t2 → 1, else 2 — the wide sibling of bucket3 (which works over u16 and can't classify values beyond 65535, e.g. large counters or byte offsets). |
 | `byte_to_percent` | `run(b: u16) -> u16` | Convert a 0..255 byte scale to a 0..100 percent: b*100/255. |
 | `percent_to_byte` | `run(p: u16) -> u16` | Convert a 0..100 percent to a 0..255 byte scale: p*255/100. |
 
-## calendrical-checksum (4)
+## calendrical-checksum (7)
 
 | id | signature | summary |
 |---|---|---|
 | `day_of_week` | `run(year: u16, month: u16, day: u16) -> u16` | Day of week for a Gregorian date via Zeller's congruence: 0=Saturday, 1=Sunday, 2=Monday, ... 6=Friday. |
+| `day_of_year` | `run(year: u16, month: u16, day: u16) -> u16` | Ordinal day-of-year (1-366) for a Gregorian date: sum of days in all preceding months plus day, with a leap-day adjustment for March onward. |
 | `days_in_month` | `run(month: u16, is_leap: u16) -> u16` | Number of days in a month (1-12; 0 for an invalid month), given a leap-year flag for February. |
 | `is_leap_year` | `run(year: u16) -> u16` | Returns 1 if year is a Gregorian leap year, else 0: divisible by 4, except centuries not divisible by 400. |
+| `is_valid_date` | `run(year: u16, month: u16, day: u16) -> u16` | Returns 1 if (year, month, day) is a genuinely valid Gregorian date -- month in 1-12 and day within that month's actual leap-year-aware length -- else 0; distinct from range_check's single static bound. |
 | `luhn_check` | `run(n: u16) -> u16` | Returns 1 if n's decimal digits pass the Luhn checksum (mod 10, doubling every second digit from the right), else 0. |
+| `luhn_check_digit` | `run(partial: u16) -> u16` | Computes the Luhn check digit (0-9) to append to partial's digits so the completed number passes luhn_check — the generate-side counterpart to that verify-only cell. |
 
-## checked-arithmetic (28)
+## checked-arithmetic (29)
 
 | id | signature | summary |
 |---|---|---|
@@ -110,11 +127,12 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `smag_add` | `SmagAdd::run() -> u16` | Sign-magnitude add: combine two signed quantities represented as (magnitude, sign) pairs — neg_a/neg_b are 0 (nonnegative) or 1 (negative), since the dialect has no i32 and this is how the math-campaign renderer tracks signed differences at u32 width (docs/math-campaign-spec.md). Escalates on magnitude overflow. |
 | `smag_cmp` | `SmagCmp::run() -> u16` | Compare two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add): 0 if a < b, 1 if equal, 2 if a > b — the sign-magnitude counterpart of frac_cmp's ordering-code convention. |
 | `smag_div` | `SmagDiv::run() -> u16` | Divide two signed values exactly: magnitudes divide (escalating on a nonzero remainder), sign is same-positive/different-negative (per smag_add). |
+| `smag_max` | `SmagMax::run() -> u16` | The larger of two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add), returned as its own (mag, neg) pair (ties keep a) -- the direct complement of smag_min, and unlike smag_cmp (which only returns a 0/1/2 ordering code) actually produces the winning value. |
 | `smag_mul` | `SmagMul::run() -> u16` | Multiply two signed values: magnitudes multiply (checked for overflow), sign is same-positive/different-negative (per smag_add). |
 | `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
 | `sub_checked_u32` | `SubChecked::run() -> u16` | Checked u32 subtract: escalates (needs_wider_math) instead of wrapping if b > a (the result would be negative). |
 
-## combinatorics (12)
+## combinatorics (16)
 
 | id | signature | summary |
 |---|---|---|
@@ -122,16 +140,20 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `catalan_number` | `CatalanNumber::run() -> u16` | The nth Catalan number (C(0)=1, C(n+1) = C(n)*2*(2n+1)/(n+2) — an exact recurrence, each step's division always lands evenly), checked: escalates on overflow rather than silently wrapping. Note the recurrence's own pre-division intermediate can overflow u32 before the true Catalan number itself would (the same class of limitation choose_u32 documents) — verified safe through C(17); beyond that, escalation is possible even though C(18)/C(19) themselves would still fit u32. |
 | `choose_u32` | `ChooseWide::run() -> u16` | Binomial coefficient "n choose k" (nCr), checked: the count of k-element subsets of an n-element set, via the multiplicative running-division formula (each step's quotient is always exact, but the pre-division product can transiently exceed the final answer, so this escalates somewhat before n choose k itself would overflow u32 — a known limitation of single-pass 32-bit intermediates, not a false claim). Escalates rather than silently wrapping. |
 | `derangement_count` | `DerangementCount::run() -> u16` | The nth derangement number (D(0)=1, D(1)=0, D(n)=(n-1)*(D(n-1)+D(n-2)) — the count of permutations of n items with no fixed point), checked: escalates instead of silently wrapping once D(n) would exceed u32::MAX (n >= 14). Unlike catalan_number's recurrence, this one's intermediate never overflows before the true result itself would (verified) — the multiplier grows linearly (n-1) against a linearly-combined sum, not against an already-exponential value. |
+| `double_factorial` | `DoubleFactorial::run() -> u16` | The double factorial n!! = n*(n-2)*(n-4)*...*(2 or 1) (0!! = 1!! = 1 by convention), checked -- escalates instead of silently wrapping once n!! would exceed u32::MAX, the same checked-recurrence shape factorial_checked_u32 uses but skipping every other term (a genuinely distinct sequence, not reducible to n! by any simple formula for general n). |
 | `factorial_checked_u32` | `FactorialChecked::run() -> u16` | Factorial of n, checked: n! — escalates instead of silently wrapping once n! would exceed u32::MAX (n >= 13, since 13! overflows u32). |
 | `fibonacci_checked_u32` | `FibonacciChecked::run() -> u16` | The nth Fibonacci number (F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)), checked: escalates instead of silently wrapping once F(n) would exceed u32::MAX (n >= 47). |
+| `fubini_number` | `FubiniNumber::run() -> u16` | The nth Fubini (ordered Bell) number: the count of ways to partition an n-element set into an ordered sequence of nonempty blocks (a(0)=1, a(n) = sum_{k=1}^{n} C(n,k)*a(n-k)) -- the ordered counterpart choose_u32/permute_u32 already established one shape over, since bell_number counts unordered partitions and has no ordered sibling. Computed bottom-up into a small fixed-size local array holding a(0..n) (the same in-place-array technique bell_number/stirling_first use), with each step's C(n,k) via the same multiplicative running-division formula choose_u32/stirling_second use. Checked, escalates instead of silently wrapping on overflow. |
 | `is_catalan_number` | `run(x: u16) -> u16` | Check whether x is a Catalan number (1, 1, 2, 5, 14, 42, 132, 429, ...) -- the inverse-membership test, distinct from catalan_number (which computes the nth one directly). Walks the same recurrence catalan_number uses (C(0)=1, C(n+1)=C(n)*2*(2n+1)/(n+2)) upward until it reaches or passes x, bounded by x itself. Never escalates: x is u16-bounded, and C(12) = 208012 already exceeds u16::MAX, so the search always terminates within the u16 domain long before any u32 intermediate could overflow. |
+| `is_fibonacci_number` | `run(x: u16) -> u16` | Check whether x is a Fibonacci number (0, 1, 1, 2, 3, 5, 8, 13, 21, ...) -- the inverse-membership test, distinct from fibonacci_checked_u32 (which computes the nth one directly, indexed by n), mirroring the catalan_number / is_catalan_number sibling pair already in this pack. Walks the same recurrence fibonacci_checked_u32 uses (F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2)) upward until it reaches or passes x, bounded by x itself. Never escalates: x is u16-bounded, and F(25) = 75025 already exceeds u16::MAX, so the search always terminates within ~24 steps long before any u32 intermediate could overflow. |
 | `lucas_u_v` | `LucasUV::run() -> u16` | Generalized Lucas sequence pair U_n/V_n for parameters p, q (both non-negative): U(0)=0, U(1)=1, U(n)=p*U(n-1)+q*U(n-2); V(0)=2, V(1)=p, V(n)=p*V(n-1)+q*V(n-2) -- both share one recurrence structure, so one cell computes them together. p=2,q=1 gives the Pell numbers (U) and companion Pell / Pell-Lucas numbers (V) -- pell_number and pell_lucas_number are not shipped as separate cells for exactly that reason. p=1,q=1 reproduces fibonacci_checked_u32 (U) and the classic Lucas numbers (V); fibonacci_checked_u32 stays its own cell for its own retrieval identity, not folded away, the same precedent triangular/polygonal_number(3,n) already set. |
 | `permute_u32` | `PermuteWide::run() -> u16` | Permutations "n pick k" (nPr): the count of ordered k-element selections from an n-element set, n!/(n-k)! computed directly as a product of k descending terms (never materializing the full factorials). Escalates on overflow rather than silently wrapping. |
+| `rencontres_number` | `RencontresNumber::run() -> u16` | D(n,k): the count of permutations of n elements with exactly k fixed points, via D(n,k) = C(n,k) * D(n-k) — generalizes derangement_count (its own implicit k=0 case) with an explicit fixed-point count, the same way polygonal_number generalized triangular with an explicit side count; inlines the same choose-style multiplicative running-division loop choose_u32 uses and the same D(m)=(m-1)*(D(m-1)+D(m-2)) recurrence derangement_count uses, since cells can't call each other. |
 | `stirling_first` | `StirlingFirst::run() -> u16` | Unsigned Stirling number of the first kind c(n, k): the number of permutations of n elements with exactly k cycles. (The signed convention s(n,k) = (-1)^(n-k) * c(n,k) is not used here -- c(n,k) is always non-negative, avoiding a sign-magnitude return for a cell whose whole job is counting.) Computed via the standard recurrence c(n,k) = (n-1)*c(n-1,k) + c(n-1,k-1), kept in one array and updated in place row by row (the same in-place carry technique bell_number uses, since this recurrence also needs both the just-written and the about-to-be-overwritten value at once). |
 | `stirling_second` | `StirlingSecond::run() -> u16` | Stirling number of the second kind S(n, k): the number of ways to partition an n-element set into exactly k non-empty subsets. Computed via the inclusion-exclusion closed form S(n,k) = (1/k!) * sum_{j=0}^{k} (-1)^(k-j) * C(k,j) * j^n -- the alternating sum tracked as a sign-magnitude pair (no array needed), C(k,j) via the same multiplicative running-division formula choose_u32 uses, then divided exactly by k! at the end. |
 | `tribonacci_number` | `TribonacciChecked::run() -> u16` | The nth Tribonacci number (T(0)=0, T(1)=1, T(2)=1, T(n)=T(n-1)+T(n-2)+T(n-3)), checked: escalates instead of silently wrapping once T(n) would exceed u32::MAX. Distinct from fibonacci_checked_u32's two-term recurrence -- a genuinely different sequence, not reducible to lucas_u_v's two-term p/q family. |
 
-## distance (4)
+## distance (5)
 
 | id | signature | summary |
 |---|---|---|
@@ -139,18 +161,21 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `chebyshev` | `Pts::run() -> u16` | Chebyshev (chessboard) distance between two grid points: max(\|dx\|, \|dy\|). |
 | `euclid_sq` | `Pts::run() -> u16` | Squared Euclidean distance between two grid points: dx*dx + dy*dy (no sqrt). Wide u32 dist field. |
 | `manhattan` | `Pts::run() -> u16` | Manhattan distance between two grid points (typed state). |
+| `manhattan_wide` | `Pts::run() -> u16` | Manhattan distance between two grid points: dx + dy, into a wide u32 dist field so two extreme-apart u16 coordinates can't silently wrap past u16 the way manhattan's u16 dist field can. |
 
-## fixed-point (5)
+## fixed-point (7)
 
 | id | signature | summary |
 |---|---|---|
+| `int_to_q8` | `run(x: u16) -> u16` | Convert a plain unsigned integer into Q8.8 fixed-point representation (x << 8) -- the encode step every other fixed-point cell (q_mul, q_div, q_lerp, q_sigmoid, q_sqrt) assumes has already happened to its inputs. |
 | `q_div` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point divide: (a << 8) / b, returning 0 when b == 0 (no divide-by-zero). |
 | `q_lerp` | `run(a: u16, b: u16, t: u16) -> u16` | Linear interpolation from a to b by t (Q0.8 fraction, 0..256 = 0.0..1.0): a + (b-a)*t/256. Also an EMA step: q_lerp(prev, sample, alpha). |
 | `q_mul` | `run(a: u16, b: u16) -> u16` | Q8.8 fixed-point multiply: (a * b) >> 8, computed wide so the 16.16 intermediate doesn't overflow. |
+| `q_mul_i16` | `run(a: i16, b: i16) -> i16` | Signed Q8.8 fixed-point multiply of two i16 values via sign-magnitude: decompose each into (magnitude, sign) with i16_mag/i16_neg, multiply magnitudes and shift right 8 (mirroring q_mul's own (a*b)>>8 at wide width), sign is the XOR of the two input signs -- q_mul's signed counterpart, since q_mul only accepts unsigned u16 while q_sigmoid already established a signed i16 domain in this pack. |
 | `q_sigmoid` | `run(x: i16) -> u16` | Q8.8 fixed-point "hard sigmoid": a well-known piecewise-linear stand-in for the true sigmoid, clamp(x/4 + 0.5, 0, 1) — exact at x=0, saturating to 0/1 outside roughly [-4, 4], monotonic and cheap everywhere between. Input is signed (Q8.8, negative values meaningful, e.g. -256 = -1.0); output is unsigned Q8.8 in [0, 256] (0.0 to 1.0). q_tanh is deliberately not a separate cell: the same derivation (tanh(x) = 2*sigmoid(2x)-1) reduces to clamp_i16(x, -256, 256) exactly, already covered by that cell's own tags. |
 | `q_sqrt` | `run(x: u16) -> u16` | Q8.8 fixed-point square root: sqrt(x/256)*256, via a branch-free bitwise integer square root on the widened x*256 (u32 only as a local, never a call param/return — the pattern every Q8.8 free function follows). A naive linear-scan integer sqrt was tried first and cost 3.6M cycles at the domain extreme (past the 2,000,000 default); this bitwise version costs under 20,000. |
 
-## fractions (23)
+## fractions (25)
 
 | id | signature | summary |
 |---|---|---|
@@ -165,12 +190,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `frac_min` | `FracMin::run() -> u16` | The smaller of two fractions na/da and nb/db, by cross-multiplication (works on unreduced fractions) — returns its numerator/denominator as given (ties keep na/da). Distinct from frac_cmp, which only returns an ordering code, not the winning fraction itself. |
 | `frac_mul` | `FracMul::run() -> u16` | Multiply two fractions na/da * nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_of_whole` | `FracOfWhole::run() -> u16` | A fraction of a whole number, computed exactly: n/d * whole, escalating if it doesn't divide evenly (a wrong-plan signal — e.g. "3/4 of 20" should be exact for a grade-school word problem) or if the multiply overflows. |
+| `frac_of_whole_ceil` | `FracOfWholeCeil::run() -> u16` | A fraction of a whole number, rounded up: ceil(n/d * whole) — the ceiling sibling of frac_of_whole (escalates if inexact) and frac_of_whole_floor (rounds down, never escalates on inexactness); uses the q+1-if-remainder technique from checked-arithmetic's div_ceil_u32 so a near-u32::MAX product never risks an intermediate overflow. |
 | `frac_of_whole_floor` | `FracOfWholeFloor::run() -> u16` | A fraction of a whole number, rounded down: floor(n/d * whole) — the floor sibling of frac_of_whole (which escalates if the result isn't exact). Never escalates on an inexact split (e.g. "90% of 23" is a real, non-exact GSM8K-style shape, unlike "3/4 of 20"); still escalates if the multiply overflows. |
 | `frac_reciprocal` | `FracReciprocal::run() -> u16` | Reciprocal of a fraction n/d: swaps to d/n. Escalates (halt 0xFF06, out_of_domain) if n == 0 (a zero fraction has no reciprocal) or d == 0 (not a valid fraction to begin with). |
 | `frac_reduce` | `FracReduce::run() -> u16` | Reduce a fraction n/d to lowest terms via the shared gcd_u32 kernel — a two-u32-param call (first arg rides HL:DE, second rides the stack; docs 10 §Calls), so the Euclidean loop lives once in the prelude instead of inlined in every fraction cell. |
 | `frac_scale` | `FracScale::run() -> u16` | Scale a fraction by an integer: (n/d) * k, reduced to lowest terms via the shared gcd_u32 kernel — unlike frac_of_whole (which requires an exact whole-number result), this always stays a fraction. |
 | `frac_sub` | `FracSub::run() -> u16` | Subtract two fractions na/da - nb/db, reduced to lowest terms via the shared gcd_u32 kernel. |
 | `frac_sub_from_whole` | `FracSubFromWhole::run() -> u16` | Subtract a fraction from a whole number: whole - n/d, reduced to lowest terms via the shared gcd_u32 kernel. |
+| `frac_sub_whole` | `FracSubWhole::run() -> u16` | Subtract a whole number from a fraction: n/d - whole, reduced to lowest terms via the shared gcd_u32 kernel — the frac-minus-whole sibling missing alongside frac_add_whole and frac_sub_from_whole, e.g. 7/2 - 1 = 5/2. |
 | `frac_to_mixed` | `FracToMixed::run() -> u16` | Convert an improper fraction n/d to a mixed number: whole + num/den, where the remaining fraction is reduced to lowest terms via the shared gcd_u32 kernel (num=0, den=1 if n divides evenly by d). |
 | `is_integer` | `IsInteger::run() -> u16` | Returns 1 if the wide fraction n/d is a whole number (n divides evenly by d), else 0 — a wrong-plan signal for word problems that expect an exact split. |
 | `linear_solve_1var` | `LinearSolve1Var::run() -> u16` | Solve a general one-variable linear equation a*x + b = c*x + d for x, returned as an exact signed fraction (num_mag/num_neg over a positive den) in lowest terms via the shared gcd_u32 kernel -- the single-unknown sibling of matrix_solve_2x2's two-unknown Cramer's-rule solve. num = d - b and den = a - c are plain signed subtractions, not products, so this needs sign-magnitude tracking (the dialect has no i32 yet) but no overflow-prone multiply. |
@@ -178,23 +205,28 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `ratio_split2` | `RatioSplit2::run() -> u16` | Split a wide total into two parts in a given ratio (ratio_a : ratio_b): part_a = total*ratio_a/(ratio_a+ratio_b), part_b = total - part_a — guaranteed to sum exactly to total (the remainder from integer division always lands on part_b), unlike computing both parts independently. |
 | `ratio_split3` | `RatioSplit3::run() -> u16` | Split a wide total three ways by a given ratio (ratio_a : ratio_b : ratio_c): part_a and part_b get their proportional share by integer division, part_c takes the remainder — guaranteed to sum exactly to total (the direct 3-way sibling of ratio_split2). |
 
-## geometry (6)
+## geometry (9)
 
 | id | signature | summary |
 |---|---|---|
 | `cos_frac_from_sides` | `CosFracFromSides::run() -> u16` | Cosine of the angle opposite side c in a triangle with integer sides (a, b, c), via the law of cosines rearranged to an exact fraction: cos C = (a² + b² − c²) / (2ab) — no square root, no trig, just integer arithmetic. Returned as a sign-magnitude fraction (mag_num, neg_num, den) since the numerator is negative whenever angle C is obtuse; reduced to lowest terms via the shared gcd_u32 kernel. |
 | `geom_distance_3d` | `GeomDistance3d::run() -> u16` | Squared Euclidean distance between two 3D points -- the missing 3D sibling of euclid_sq, which stays squared for the same reason euclid_sq does (no square root in the dialect). Each signed coordinate difference is computed via an excess-32768 shift (mapping i16's range onto u16 losslessly) feeding the shared iabs_diff kernel, so no i16 subtraction ever risks overflowing i16's own range. |
 | `heron_16a2` | `Heron16A2::run() -> u16` | 16 times the squared area of a triangle with integer sides (a, b, c), via Heron's formula rearranged to avoid square roots entirely: 16·Area² = (a+b+c)(−a+b+c)(a−b+c)(a+b−c). Always a non-negative integer for a valid triangle — comparable, summable, and equality-testable without ever taking a root. |
+| `orientation2d` | `Orientation2d::run() -> u16` | Turn direction of three 2D points (x1,y1)->(x2,y2)->(x3,y3), via the sign of the cross product (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1): -1 clockwise, 0 collinear, 1 counter-clockwise -- the turn-direction primitive segments_intersect_int and convex-hull checks build on. Distinct from matrix_det_2x2 (which takes 4 raw coefficients directly): the 4 difference terms here are themselves derived from 6 point coordinates via a sign-magnitude subtract first, since a raw i16 - i16 coordinate difference can overflow i16's own range (e.g. 32767 - (-32768)). |
+| `segments_intersect_int` | `SegmentsIntersect::run() -> u16` | Boolean predicate: do finite segments (x1,y1)-(x2,y2) and (x3,y3)-(x4,y4) properly intersect, via the standard four-orientation-sign-test algorithm (each orientation is a 2D cross-product sign, tracked as an exact sign-magnitude pair since the dialect has no i32) plus the collinear-overlap edge case (a zero orientation checked against the other segment's bounding box) -- distinct from aabb_intersect (rectangle overlap, no segment direction at all) and from geom_line_intersection (solves for the infinite lines' crossing point, an exact fraction, which reduces to matrix_solve_2x2) since this only asks whether the two *finite* segments cross, as a 0/1 verdict, never a coordinate. |
 | `shoelace_area_x2` | `ShoelaceAreaX2::run() -> u16` | Twice the area of a triangle from three integer vertices (x1,y1),(x2,y2),(x3,y3), via the shoelace formula: \|x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)\| — always an integer, unlike the raw area (which is a half-integer for e.g. a right triangle with legs 1 and 1). Coordinates are unsigned; the three (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), since a term or the running sum can go negative before the final absolute value. |
 | `shoelace_area_x2_quad` | `ShoelaceAreaX2Quad::run() -> u16` | Twice the area of a quadrilateral from four integer vertices (x1,y1)..(x4,y4), generalizing shoelace_area_x2's triangle formula to \|x1*(y2-y4) + x2*(y3-y1) + x3*(y4-y2) + x4*(y1-y3)\| — always an integer. Coordinates are unsigned; the four (y-difference)*(x-coordinate) terms are combined as sign-magnitude values inline (no shared smag_* subroutine call — a u32 value still can't cross more than one call boundary), the same pattern shoelace_area_x2 uses, extended to a fourth term. |
+| `slope_fraction` | `SlopeFraction::run() -> u16` | Exact slope (y2-y1)/(x2-x1) between two integer points, returned as a sign-magnitude fraction (num_mag, num_neg) over a positive denominator (den) -- the narrower two-point sibling of linear_regression_slope's aggregated-sums fit: num and den here are plain coordinate-difference magnitudes (an excess-32768-shifted iabs_diff, the geom_distance_3d technique), never reduced to lowest terms since no multiply is involved. |
 | `triangle_is_valid` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if three side lengths (a, b, c) form a valid (non-degenerate) triangle, i.e. each side is strictly less than the sum of the other two, else 0. Sums are widened to u32 internally so a large pair (e.g. two sides near 65535) can't wrap past u16 and silently flip the verdict. |
 
-## hashing (4)
+## hashing (6)
 
 | id | signature | summary |
 |---|---|---|
+| `crc16_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-16 (CRC-16/ARC, poly 0xA001 reflected) step over a byte, the crc8_step shift-xor loop widened to the full 16-bit register instead of masking down to 8 bits. |
 | `crc8_step` | `run(crc: u16, byte: u16) -> u16` | One CRC-8 (Dallas/Maxim, poly 0x8C reflected) step over a byte. |
 | `fnv1a_step` | `run(hash: u16, byte: u16) -> u16` | One FNV-1a-style hash step over a byte: (hash ^ byte) * prime (16-bit). |
+| `hash3` | `run(a: u16, b: u16, c: u16) -> u16` | Deterministic hash mixing three values into one u16, extending hash_pair's own multiply-xor-multiply chain by one more term and prime. |
 | `hash_pair` | `run(a: u16, b: u16) -> u16` | Deterministic hash mixing two values into one u16. |
 | `mix16` | `run(x: u16) -> u16` | Avalanche-mix one u16 into a well-scrambled u16 (a finalizer / hash of one value). |
 
@@ -205,10 +237,11 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `matrix_det_2x2` | `MatrixDet2x2::run() -> u16` | Determinant of a 2x2 matrix [[a, b], [c, d]]: a*d - b*c. Signed result tracked as a (magnitude, sign) pair, the same technique the vector pack's cross_product/triple_scalar_product use -- the "vector floor" exception to the matrix non-goal extends this far and no further (see docs/library-growth.md). |
 | `matrix_solve_2x2` | `MatrixSolve2x2::run() -> u16` | Solve a 2x2 linear system [[a, b], [c, d]] * [x, y] = [e, f] via Cramer's rule, returning x and y as exact signed fractions sharing one positive denominator (det, normalized positive by flipping both numerators' signs if the raw determinant was negative) -- matrix_det_2x2's own formula computes that shared denominator's magnitude and sign before this cell reuses it inline. |
 
-## money-bps (8)
+## money-bps (9)
 
 | id | signature | summary |
 |---|---|---|
+| `bps_change_between` | `BpsChangeBetween::run() -> u16` | Direction-agnostic basis-points change between two wide values (before and after, either order): bps_mag = \|after - before\| * 10000 / before, bps_neg = 1 if after < before else 0 — unifies bps_increase_between and bps_decrease_between (each halts if called against its required direction) into one sign-magnitude call for a caller who doesn't already know whether the value rose or fell. |
 | `bps_decrease_between` | `BpsDecreaseBetween::run() -> u16` | Infer the basis-points decrease between two wide values: given before and after (after <= before), the rate = (before - after) * 10000 / before — the inverse of decrease_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_increase_between` | `BpsIncreaseBetween::run() -> u16` | Infer the basis-points increase between two wide values: given before and after (after >= before), the rate = (after - before) * 10000 / before — the inverse of increase_by_bps (that computes the final value from a rate; this recovers the rate from the two values). |
 | `bps_of` | `BpsOf::run() -> u16` | Basis points of a wide value: value * bps / 10000 (e.g. 500 bps of 1000 is 50 — 5%). Escalates (needs_wider_math) on multiply overflow. |
@@ -218,7 +251,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `original_before_bps_decrease` | `OriginalBeforeDecrease::run() -> u16` | Recover the original value before a bps decrease, given the final value: final * 10000 / (10000 - bps). The inverse of decrease_by_bps. |
 | `original_before_bps_increase` | `OriginalBeforeIncrease::run() -> u16` | Recover the original value before a bps increase, given the final value: final * 10000 / (10000 + bps). The inverse of increase_by_bps. |
 
-## number-theory (52)
+## number-theory (56)
 
 | id | signature | summary |
 |---|---|---|
@@ -249,11 +282,14 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `is_quadratic_residue` | `run(x: u16, p: u16) -> u16` | Check whether x is a quadratic residue mod p: does some y in [0, p) satisfy y*y == x (mod p)? Works for any modulus p >= 2, not just primes, via direct search over every residue -- so cost scales with p (like is_prime_u32; budget a larger --cycles for p much beyond a few thousand). |
 | `is_repdigit` | `run(n: u16) -> u16` | Check whether every decimal digit of n is the same digit (e.g. 4444, 555, 22 -- and trivially any single digit 0-9). Distinct from is_palindromic_number: a repdigit is always a palindrome but not vice versa (121 is palindromic, not a repdigit). |
 | `is_square` | `run(n: u16) -> u16` | Returns 1 if n is a perfect square, else 0. |
+| `is_square_u32` | `IsSquareWide::run() -> u16` | Returns 1 if n (u32) is a perfect square, else 0 -- the wide sibling of is_square (which works over u16, up to 65535). Finds the largest r with r*r <= n via an inlined binary search over r in [0, 65535] (the largest r whose square still fits in u32), then compares r*r to n -- the same search isqrt_u32 does internally, inlined here since cells can't call each other; binary search keeps this cheap across the whole u32 domain, unlike a linear scan. |
 | `isqrt` | `run(n: u16) -> u16` | Integer square root: the largest r with r*r <= n. |
+| `isqrt_u32` | `IsqrtWide::run() -> u16` | Integer square root at wide u32 width: the largest r with r*r <= n, for n up to u32::MAX — the wide sibling of isqrt (which is bounded to the u16 domain, n <= 65535). Uses the same branch-free bitwise integer-sqrt loop q_sqrt.rs runs internally on a u32 local, rather than isqrt's linear scan, since a linear scan over the full u32 domain would run tens of thousands of iterations past the default cycle budget. |
 | `jacobi_symbol` | `run(a: u16, n: u16) -> i16` | The Jacobi symbol (a/n) for odd n > 0: 1 if a is a quadratic residue mod every prime factor of n (with multiplicity) an even number of times, -1 for an odd number of times, 0 if gcd(a, n) > 1. Computed by the standard law-of-quadratic-reciprocity reduction, tracking the sign as a parity flip (XOR) rather than a signed accumulator, since every intermediate value stays a plain nonnegative u16. |
 | `jordan_totient` | `JordanTotient::run() -> u16` | Jordan's totient J_k(n): generalizes euler_totient with an exponent k (J_1(n) = phi(n)) -- the product over each prime-power factor p^e of n of p^((e-1)*k) * (p^k - 1). The (e-1)*k exponent is never computed as a scalar product (e up to ~15 times k up to 65535 would overflow u16 before any p^_ term is even reached) -- instead p^((e-1)*k) is built by repeatedly squaring the already-computed p^k value e-1 times, which stays small since e-1 is itself bounded (<= 15 in the u16 domain). |
 | `lcm` | `run(a: u16, b: u16) -> u16` | Least common multiple of two values (a/gcd*b; 0 if either is 0). u16 domain. |
 | `lcm3` | `run(a: u16, b: u16, c: u16) -> u16` | Least common multiple of three values. |
+| `liouville_function` | `run(n: u16) -> i16` | The Liouville function lambda(n) = (-1)^Omega(n) (n >= 1), tracking the sign as a parity flip (XOR) over big_omega's own prime-factors-with-multiplicity loop -- distinct from mobius_function, which is 0 for any non-squarefree n, whereas lambda is always +-1 and defined for every n. |
 | `little_omega` | `run(n: u16) -> u16` | omega(n): count of distinct prime factors of n (n >= 1; omega(1) = 0 by convention) -- distinct from factor_count (counts divisors, not prime factors) and big_omega (counts prime factors with multiplicity, not distinct primes). |
 | `mobius_function` | `run(n: u16) -> i16` | The Mobius function mu(n): 1 if n = 1, 0 if n has a squared prime factor (not squarefree), else (-1)^omega(n) for squarefree n (n >= 1). |
 | `mod_add_u32` | `ModAddWide::run() -> u16` | Modular addition at wide u32 width: (a + b) mod m — reduces both operands mod m first, so a and b need not already be canonical residues. |
@@ -270,27 +306,35 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `pow_mod_u32` | `PowModWide::run() -> u16` | Modular exponentiation at wide u32 width: (base^exp) mod m — the wide sibling of pow_mod (u16 domain, m <= 256); lifts the modulus ceiling to 65536, wide enough for AIME's "find the remainder mod 1000" finishing move. Returns 0 if m == 0, matching pow_mod's convention. |
 | `pow_small` | `run(base: u16, exp: u16) -> u16` | base raised to exp (saturating at 65535). 0^0 = 1. |
 | `smallest_prime_factor` | `run(n: u16) -> u16` | Smallest prime factor of n (n >= 2) — the least prime p dividing n; returns n itself if n is prime. |
+| `solve_linear_diophantine` | `LinearDiophantine::run() -> u16` | A particular integer solution (x, y) to a*x + b*y = c via the extended Euclidean algorithm: builds gcd(a, b) plus Bezout coefficients x0, y0 with a*x0 + b*y0 == gcd(a, b) (the same chain extended_gcd computes), then scales by c/gcd(a, b) -- escalating when gcd(a, b) does not evenly divide c, i.e. when no integer solution exists for the given target c. |
 | `square_pyramidal_number` | `SquarePyramidal::run() -> u16` | The nth square pyramidal number: 1^2 + 2^2 + ... + n^2 = n*(n+1)*(2n+1)/6, checked — escalates instead of silently wrapping once the running sum would exceed u32::MAX. Computed by iterative summation rather than the closed form, so cost scales with n (like is_prime_u32, budget a larger --cycles for n much beyond a few thousand). |
 | `sum_divisors` | `SumDivisors::run() -> u16` | Sum of the positive divisors of n (n >= 1), including 1 and n itself (sigma(n)) — the sum-valued sibling of factor_count (which counts divisors; this sums them, so it needs a wide result field since sigma(n) routinely exceeds 65535 within the u16 domain). |
 | `triangular` | `run(n: u16) -> u16` | nth triangular number: 1+2+...+n = n*(n+1)/2 (overflow-safe; u16 domain n <= 361). |
 | `triangular_inverse_exact` | `run(x: u16) -> u16` | Solve n*(n+1)/2 = x for n, the exact inverse of triangular: given a triangular number x, return which n produced it. Escalates if x isn't triangular (a wrong-plan signal, e.g. GSM8K's "how many rows" problems). Domain matches triangular's own (n <= 361, x <= 65341). |
 
-## packing-bcd (4)
+## packing-bcd (8)
 
 | id | signature | summary |
 |---|---|---|
 | `bcd_decode` | `run(bcd: u16) -> u16` | Decode a packed BCD byte (tens in the high nibble, units in the low nibble) back to its binary value. |
 | `bcd_encode` | `run(n: u16) -> u16` | Encode a two-digit decimal value (0-99) as packed BCD: tens in the high nibble, units in the low nibble. |
+| `nibble_hi` | `run(x: u16) -> u16` | Extract the high nibble of the low byte of x: (x >> 4) & 0xF, the unpacking counterpart pack_nibbles lacks. |
+| `nibble_lo` | `run(x: u16) -> u16` | Low nibble of x (x & 0xF) -- the low-nibble counterpart to nibble_hi, distinct from low_byte's byte-level mask (x & 0xFF). |
 | `pack_nibbles` | `run(hi: u16, lo: u16) -> u16` | Pack two 4-bit nibbles into one byte: (hi << 4) \| lo. Each input masked to its low nibble. |
+| `pack_u16_pair` | `PackU16Pair::run() -> u16` | Pack two u16 halves into one u32: (hi << 16) \| lo — the u32-width generalization of pack_u8's (hi << 8) \| lo, one rung further up the same concatenation ladder than pack_u8/pack_nibbles reach; needs a u32 state field since two full u16s produce 32 bits. |
 | `pack_u8` | `run(hi: u16, lo: u16) -> u16` | Pack two byte values into one u16: (hi << 8) \| lo. Each input masked to its low byte, so out-of-range inputs stay defined. |
+| `unpack_u16_pair` | `UnpackU16Pair::run() -> u16` | Split a packed u32 back into its high and low u16 halves — the inverse of pack_u16_pair, mirroring the morton_encode/morton_decode round-trip-pair convention. |
 
-## percent (8)
+## percent (11)
 
 | id | signature | summary |
 |---|---|---|
 | `discount_percent` | `run(value: u16, pct: u16) -> u16` | Decrease a value by pct percent: value - value*pct/100 (0 if pct >= 100). |
+| `discount_percent_u32` | `DiscountPercentWide::run() -> u16` | Decrease a wide value by pct percent: value - value*pct/100 (0 if pct >= 100) at u32 width — wide sibling of discount_percent, using a checked multiply for the intermediate product. |
 | `increase_percent` | `run(value: u16, pct: u16) -> u16` | Increase a value by pct percent: value + value*pct/100 (saturating at 65535). |
+| `increase_percent_u32` | `IncreasePercentWide::run() -> u16` | Increase a wide value by pct percent: value + value*pct/100 at u32, escalating (needs_wider_math) on multiply or add overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of increase_percent. |
 | `percent` | `run(part: u16, whole: u16) -> u16` | Percentage of a whole: part*100/whole, in 0..100+ (0 if whole == 0). |
+| `percent_u32` | `PercentWide::run() -> u16` | Percentage of a whole at wide u32 width: part*100/whole (0 if whole == 0), escalating (needs_wider_math) on multiply overflow rather than the u16 sibling's saturate-at-65535 behavior -- the wide sibling of percent. |
 | `permille` | `run(part: u16, whole: u16) -> u16` | Per-mille (parts per thousand): part*1000/whole (0 if whole == 0). |
 | `ratio_255` | `run(part: u16, whole: u16) -> u16` | Ratio scaled to a 0..255 byte fraction: part*255/whole (0 if whole == 0). |
 | `scale_percent` | `run(value: u16, pct: u16) -> u16` | Take pct percent of a value: value*pct/100. |
@@ -309,7 +353,7 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `spring_damper_step_f32` | `SpringDamperStep::run() -> u16` | One semi-implicit-Euler spring-damper step, IEEE binary32: a = -(k*x + c*v)*inv_m, then v' = v + a*dt and x' = x + v'*dt -- inverse mass as input, exactly how a Rapier-style engine stores it (and it keeps the cell division-free); non-finite state escalates instead of exploding the spring silently. |
 | `verlet_step_f32` | `VerletStep::run() -> u16` | One position-Verlet step under constant acceleration, IEEE binary32: x' = x + v*dt + 0.5*a*dt*dt and v' = v + a*dt -- the integrator's arithmetic exactly as a Rapier-style f32 engine computes it, correctly rounded per op; non-finite results escalate instead of corrupting the trajectory. |
 
-## predicates (14)
+## predicates (17)
 
 | id | signature | summary |
 |---|---|---|
@@ -325,37 +369,47 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `is_lt_u32` | `IsLtWide::run() -> u16` | Returns 1 if a < b (strictly less than) at wide u32 width, else 0 — the wide sibling of is_lt (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `is_odd` | `run(x: u16) -> u16` | Returns 1 if x is odd, else 0. |
 | `is_zero` | `run(x: u16) -> u16` | Returns 1 if x is zero, else 0. |
+| `is_zero_u32` | `IsZeroWide::run() -> u16` | Returns 1 if a wide u32 value is zero, else 0 — the wide sibling of is_zero (which works over u16 and can't hold values beyond 65535, e.g. money totals in cents). |
 | `neq` | `run(a: u16, b: u16) -> u16` | Returns 1 if a != b, else 0. |
+| `neq_u32` | `NeqWide::run() -> u16` | Returns 1 if a != b (not equal) at wide u32 width, else 0 — the wide sibling of neq (which works over u16 and can't compare values beyond 65535, e.g. money totals in cents). |
 | `nonzero` | `run(x: u16) -> u16` | Returns 1 if x is nonzero, else 0. |
+| `nonzero_u32` | `NonzeroWide::run() -> u16` | Returns 1 if x is nonzero at wide u32 width, else 0 — the wide sibling of nonzero (which works over u16 and can't represent values beyond 65535, e.g. money totals in cents). |
 
-## ranking-stats (16)
+## ranking-stats (20)
 
 | id | signature | summary |
 |---|---|---|
 | `argmax3` | `run(a: u16, b: u16, c: u16) -> u16` | Index (0, 1, or 2) of the largest of three values; ties → lowest index. |
 | `argmax3_u32` | `Argmax3Wide::run() -> u16` | Index (0, 1, or 2) of the largest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmax3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
+| `argmax4` | `Argmax4::run() -> u16` | Index (0, 1, 2, or 3) of the largest of four values; ties -> lowest index — the four-value sibling of argmax3, extending its if-chain one level deeper (distinct from max4/choose_best4, which return the value, not which slot holds it). |
 | `argmin3` | `run(a: u16, b: u16, c: u16) -> u16` | Index (0, 1, or 2) of the smallest of three values; ties → lowest index. |
 | `argmin3_u32` | `Argmin3Wide::run() -> u16` | Index (0, 1, or 2) of the smallest of three values at wide u32 width; ties -> lowest index — the wide sibling of argmin3 (which works over u16 and can't rank values beyond 65535, e.g. money totals in cents). |
+| `argmin4` | `Argmin4::run() -> u16` | Index (0, 1, 2, or 3) of the smallest of four values; ties -> lowest index — the four-value sibling of argmin3, extending its if-chain one level deeper (returns the winning slot, not the value, completing the argmax4/argmin4 pair). |
 | `majority3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if at least two of three values are equal, else 0. |
 | `max` | `run(a: u16, b: u16) -> u16` | Maximum of two values. |
 | `max3` | `run(a: u16, b: u16, c: u16) -> u16` | Largest of three values. |
+| `max4` | `Max4::run() -> u16` | Largest of four values — the four-operand sibling of max3, nested imax one level deeper. |
 | `mean3` | `run(a: u16, b: u16, c: u16) -> u16` | Mean (average) of three values, computed without overflow. |
 | `median3` | `run(a: u16, b: u16, c: u16) -> u16` | Median (middle value) of three. |
 | `midrange3` | `run(a: u16, b: u16, c: u16) -> u16` | Midrange of three values: (min + max) / 2. |
 | `min` | `run(a: u16, b: u16) -> u16` | Minimum of two values. |
 | `min3` | `run(a: u16, b: u16, c: u16) -> u16` | Smallest of three values. |
+| `min4` | `Min4::run() -> u16` | Smallest of four values — the four-operand sibling of min3 (mirrors sum4's precedent for arity-4 in this pack). |
 | `mode3` | `run(a: u16, b: u16, c: u16) -> u16` | Mode of three values: the value that repeats (ties/all-distinct → the first, a). |
 | `range3` | `run(a: u16, b: u16, c: u16) -> u16` | Spread of three values: max − min. |
 | `sum3` | `run(a: u16, b: u16, c: u16) -> u16` | Sum of three values (saturating at 65535). |
 | `sum4` | `Sum4::run() -> u16` | Sum of four values (saturating at 65535) — the four-operand sibling of sum3. |
 
-## running-stats (5)
+## running-stats (8)
 
 | id | signature | summary |
 |---|---|---|
 | `accumulate_step` | `Accumulate::run() -> u16` | Running sum + count over a stream of values (sum saturates at 65535). Compose with safe_div(sum, count) for a running mean. |
 | `running_min_max_step` | `RunningMinMax::run() -> u16` | Running min/max tracker over a stream of values: updates min/max (self-initializing on the first call via `seen`), returns the current range (max - min). |
+| `running_min_max_step_u32` | `RunningMinMaxU32::run() -> u16` | Wide sibling of running_min_max_step for a stream of u32 values: updates min/max (self-initializing on the first call via `seen`), stores the current range (max - min) in `range`, returns a 1u16 success flag (caller reads range/min/max back as fields). |
+| `running_stddev_step` | `RunningStddev::run() -> u16` | The sqrt-of-variance sibling of running_variance_step: same running (count, sum, m2) update per value, then variance = m2/count (guarded) and stddev = floor(sqrt(variance)) via the same branch-free bitwise integer square root q_sqrt uses, inlined here for a raw (non-Q8.8-scaled) u32 rather than called across a pack boundary. |
 | `running_variance_step` | `RunningVariance::run() -> u16` | Running (population) variance over a stream of values, one value per call — the checked/exact sibling of accumulate_step (which saturates u16; this escalates on overflow instead, since a corrupted variance is worse than a stopped one). Recomputes the mean fresh from the exact running sum on each side of the update (rather than compounding a previously-truncated running mean, Welford-style) before accumulating the squared-deviation product into m2 — verified to never go negative under integer truncation across thousands of random and adversarial streams. Compose with div_floor_u32(m2, count) for the variance itself. |
+| `streak_best_step` | `StreakBest::run() -> u16` | Consecutive-streak counter that also remembers the longest streak ever seen: increments/resets exactly like streak_step, then updates `best` whenever the current streak exceeds it — the same running-extreme extension running_min_max_step applies to raw values, applied here to the derived streak count itself. |
 | `streak_step` | `Streak::run() -> u16` | Consecutive-streak counter: increments while input is nonzero, resets to 0 the moment input is 0. |
 | `zscore_q8` | `run(value_q8: i16, mean_q8: i16, stddev_q8: i16) -> i16` | Q8.8 fixed-point z-score given an already-computed standard deviation: (value - mean) scaled by 256, divided by stddev — sidesteps the sqrt-of-variance problem cosine_score_approx is still blocked on by taking stddev as an input rather than deriving it. Returns 0 if stddev_q8 <= 0 (the safe_div convention, no divide-by-zero). |
 
@@ -373,37 +427,48 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `square_wide` | `Sq::run() -> u16` | Exact square with a wide u32 result field: sq = n*n, no u16 cap (the value cell square saturates). |
 | `sub_sat` | `run(a: u16, b: u16) -> u16` | Saturating subtract: a - b, floored at 0 when b > a. |
 
-## scoring-choice (9)
+## scoring-choice (12)
 
 | id | signature | summary |
 |---|---|---|
 | `choose_best2` | `ChooseBest2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the highest score (ties -> lowest index, matching choose_best3's convention) — the 2-candidate sibling of choose_best3, for the common case of only two options (e.g. "which of these two candidates has the highest profit"). |
 | `choose_best3` | `ChooseBest3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the highest score (ties → lowest index, matching argmax3's convention) — distinct from argmax3, which assumes the value and the score are the same number. |
+| `choose_best4` | `ChooseBest4::run() -> u16` | Pick the value of whichever of four (value, score) candidates has the highest score (ties -> lowest index, matching choose_best3's convention) — the 4-candidate sibling of choose_best3, for the case of four options (e.g. "which of these four bids scores highest"). |
 | `choose_worst2` | `ChooseWorst2::run() -> u16` | Pick the value of whichever of two (value, score) candidates has the lowest score (ties -> lowest index, matching choose_best2's convention) — the inverse-comparison sibling of choose_best2, for the common "which of these two costs less" shape. |
+| `choose_worst3` | `ChooseWorst3::run() -> u16` | Pick the value of whichever of three (value, score) candidates has the lowest score (ties -> lowest index, matching choose_worst2's convention) — the 3-candidate sibling of choose_worst2, and the lowest-score counterpart of choose_best3. |
 | `clear_winner_u32` | `ClearWinnerWide::run() -> u16` | Returns 1 if the top score beats the second-best by at least margin at wide u32 width, else 0 — including when top < second (a malformed call, treated as no clear winner) — the wide sibling of is_clear_winner (which works over u16 and can't compare scores beyond 65535, e.g. money totals in cents). |
 | `is_clear_winner` | `run(top: u16, second: u16, margin: u16) -> u16` | Returns 1 if the top score beats the second-best by at least margin (a decisive win, not a near-tie), else 0 — including when top < second (a malformed call, treated as no clear winner). |
 | `weighted_sum` | `run(a: u16, b: u16, c: u16) -> u16` | Weighted sum of three inputs with fixed weights 1, 2, 3 (a candidate score). |
 | `weighted_sum2` | `WeightedSum2::run() -> u16` | Weighted sum of two inputs with caller-supplied weights: a*wa + b*wb (also known as score_2factor — the same formula under a different name). Sibling of weighted_sum/weighted_sum_wide (which use fixed weights 1, 2, 3), generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
 | `weighted_sum3` | `WeightedSum3::run() -> u16` | Weighted sum of three inputs with caller-supplied weights: a*wa + b*wb + c*wc. Sibling of weighted_sum/weighted_sum_wide (fixed weights 1, 2, 3) generalized to arbitrary weights, so a genuine u32 overflow is possible and escalates instead of silently wrapping. |
+| `weighted_sum4` | `WeightedSum4::run() -> u16` | Weighted sum of four inputs with caller-supplied weights: a*wa + b*wb + c*wc + d*wd. Sibling of weighted_sum2/weighted_sum3 (arbitrary weights) extended to a fourth operand, which weighted_sum_wide does not offer (it only widens the fixed-weight 3-operand cell's output, not the operand count or the weights). |
 | `weighted_sum_wide` | `Ws::run() -> u16` | Exact weighted sum with a wide u32 result field: sum = a + 2b + 3c, no u16 wrap (sibling of weighted_sum). |
 
-## sequences (5)
+## sequences (9)
 
 | id | signature | summary |
 |---|---|---|
 | `arithmetic_nth_u32` | `ArithmeticNthWide::run() -> u16` | The nth term of an arithmetic sequence starting at start with common difference step: start + step*(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of arithmetic_series_sum (which only sums the sequence, not a single term). |
 | `arithmetic_series_sum` | `ArithmeticSeriesSum::run() -> u16` | Sum of the first n terms of an arithmetic sequence starting at a with common difference d: n*(2a + (n-1)*d) / 2 — always an exact integer (the product n*(2a+(n-1)*d) is provably always even), checked for overflow at each step. |
+| `arithmetic_term_index` | `ArithmeticTermIndex::run() -> u16` | Given start, step, and a term value from an arithmetic sequence, recover which term number n produced it: n = (term - start)/step + 1 — the missing inverse of arithmetic_nth_u32 (which only goes forward from n to term, never back from a term to its index). |
+| `collatz_stopping_time` | `CollatzStoppingTime::run() -> u16` | The number of Collatz (3n+1 / n/2) steps needed to reach 1 from n, bounded by max_steps -- the "count of iterations, not the sequence" shape persistent_digital_root established for digit-summing, applied to the 3n+1 recurrence. |
 | `consecutive_sum_start` | `ConsecutiveSumStart::run() -> u16` | Given n consecutive integers step apart summing to sum, find the first one: first = (sum - step*n*(n-1)/2) / n. Generalizes the "n consecutive integers" and "n consecutive odd/even integers" shapes into one cell via the step parameter (step=1 for consecutive integers, step=2 for consecutive odd/even). Escalates if the split isn't exact or would go negative — a wrong-plan signal. |
 | `geometric_nth_checked_u32` | `GeometricNthChecked::run() -> u16` | The nth term of a geometric sequence starting at start with ratio ratio: start * ratio^(n-1), 1-indexed (n=1 is the first term) — the missing nth-term sibling of geometric_series_sum (which only sums the sequence, not a single term). Computed by direct iterative multiplication rather than exponentiation, so it escalates exactly when the true term doesn't fit u32, no earlier. |
 | `geometric_series_sum` | `GeometricSeriesSum::run() -> u16` | Sum of the first n terms of a geometric sequence starting at a with ratio r (a + a*r + a*r^2 + ... + a*r^(n-1)), computed by direct iterative summation rather than the a*(r^n-1)/(r-1) closed form — r^n alone would overflow long before a genuinely unrepresentable sum does, so this escalates exactly when the true sum (or an intermediate term) doesn't fit u32, no earlier. Exact for any r >= 0, not just r > 1. |
+| `geometric_term_index` | `GeometricTermIndex::run() -> u16` | Given a term value from a geometric sequence starting at start with ratio ratio, recover which 1-indexed term number n produced it -- the exact inverse of geometric_nth_checked_u32, found the same way that cell walks forward (iteratively multiplying, checked at every step) rather than any logarithm, so it escalates the moment growth either overflows or stalls at a fixed point without ever matching. |
+| `series_sum` | `SeriesSum::run() -> u16` | Sum of an arithmetic series given its two endpoints and term count instead of (a, d): count*(first + last)/2, multiplying before dividing so odd first+last stays exact — composing via avg2 then multiplying is unsound because avg2 floors the endpoint average before the count ever multiplies it. |
 
-## signed-deltas (4)
+## signed-deltas (8)
 
 | id | signature | summary |
 |---|---|---|
+| `abs_diff_i16` | `run(a: i16, b: i16) -> u16` | Absolute difference \|a - b\| for two signed 16-bit inputs, returned as u16 -- tracked via sign-magnitude subtraction rather than a raw i16 subtract, since a=i16::MAX, b=i16::MIN would overflow i16 by one before abs() could be taken; the signed-input sibling of abs_diff (u16) and abs_diff_u32 (wide). |
 | `abs_i16` | `run(x: i16) -> u16` | Absolute value of a signed 16-bit value, returned as u16 (correctly handles i16::MIN, whose magnitude 32768 doesn't fit back in i16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
+| `max_i16` | `run(a: i16, b: i16) -> i16` | Maximum of two signed 16-bit values under true signed ordering (-1 > -32768) -- the direct complement of min_i16 and the signed sibling of max (u16) and max_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
+| `min_i16` | `run(a: i16, b: i16) -> i16` | Minimum of two signed 16-bit values under true signed ordering (-1 < 0) -- the signed sibling of min (u16) and min_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
+| `negate_i16` | `run(x: i16) -> i16` | Arithmetic negation of a signed 16-bit value (-x) -- distinct from abs_i16 (returns an unsigned magnitude, sidestepping the MIN case) and sign_i16 (returns only -1/0/1): this is the only cell that computes -x itself, so it must escalate exactly where a naive negation would silently wrap. |
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
 
 ## softfloat (2)
@@ -413,35 +478,43 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `lerp_f32` | `LerpF32::run() -> u16` | Linear interpolation a + t*(b - a) in IEEE binary32 — the owned softfloat kernels, correctly rounded per op and bit-identical to rustc f32; t is a plain f32 (not clamped), so t=0 gives a and t=1 gives a + (b - a). |
 | `norm2_f32` | `Norm2F32::run() -> u16` | Euclidean length of a 2-vector in IEEE binary32 — sqrt(x*x + y*y) through the owned softfloat kernels: correctly rounded per op, bit-identical to rustc f32, deterministic on every host (no libm). |
 
-## spatial-grid (6)
+## spatial-grid (9)
 
 | id | signature | summary |
 |---|---|---|
+| `aabb_contains` | `AabbContains::run() -> u16` | Returns 1 if AABB (x2,y2,w2,h2) is fully contained within AABB (x1,y1,w1,h1) — all four edges inside — else 0. |
 | `aabb_intersect` | `AabbIntersect::run() -> u16` | Returns 1 if two axis-aligned bounding boxes (x1,y1,w1,h1) and (x2,y2,w2,h2) overlap (edge-touching doesn't count), else 0. |
 | `bresenham_step` | `BresenhamStep::run() -> u16` | Bresenham line-drawing, one step: given the fixed line parameters (dx, dy — the absolute deltas between the endpoints) and the running error term (as a sign-magnitude pair, since state fields can't be i16 — err can go negative), reports whether this step advances x, y, or both (step_x/step_y, 0 or 1) and updates the error term. The caller applies step_x/step_y to its own x/y using its own known step directions (sx, sy) — tracking dx/dy/err here and x/y/sx/sy on the caller's side avoids needing four more sign-magnitude field pairs for quantities the error-term math never actually needs to know the sign of. Verified against a full reference line generator across 2,000 random line segments (coordinates up to +/-500) before shipping. |
+| `grid_coords` | `GridCoords::run() -> u16` | Inverse of grid_index: recovers the (x, y) grid coordinates from a flat array index and the grid's row width via x = index % width, y = index / width; guards width == 0 explicitly, returning (0, 0) instead of letting the divide/mod halt on DivByZero. |
 | `grid_index` | `run(x: u16, y: u16, width: u16) -> u16` | Flat array index of a grid cell (x, y) in a grid of the given row width: y * width + x. |
 | `morton_decode` | `MortonDecode::run() -> u16` | Morton (Z-order curve) decode: the inverse of morton_encode — split a u32 spatial index back into its two interleaved u16 coordinates via the same branch-free bit-compaction trick (constant shift amounts, no dynamic-shift loop). |
 | `morton_encode` | `MortonEncode::run() -> u16` | Morton (Z-order curve) encode: interleave the bits of two u16 coordinates into one u32 spatial index (x's bits at even positions, y's at odd), so a single integer sorts nearby 2D points near each other — a common spatial-indexing key. The classic branch-free "magic numbers" bit-spread (constant shift amounts, no dynamic-shift loop): needs a u32 state field since interleaving two full u16s produces 32 bits, more than either input's own width. |
+| `point_in_circle` | `PointInCircle::run() -> u16` | Returns 1 if point (px, py) lies within or on a circle centered at (cx, cy) with radius r, tested via squared distance (px-cx)^2 + (py-cy)^2 <= r*r -- no sqrt, exact, same u32-widening trick euclid_sq/aabb_intersect rely on. |
 | `point_in_rect` | `PointInRect::run() -> u16` | Returns 1 if point (px, py) is inside rect (rx, ry, rw, rh) — half-open: [rx, rx+rw) x [ry, ry+rh) — else 0. |
 
-## stateful-rng (3)
+## stateful-rng (6)
 
 | id | signature | summary |
 |---|---|---|
 | `counter_step` | `CounterStep::run() -> u16` | Modular counter step: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap — a plain saturating-free incrementer). Useful for round-robin dispatch or a bounded retry index. The caller threads `count` through — re-supply the field each call. |
+| `counter_step_u32` | `CounterStepU32::run() -> u16` | Wide sibling of counter_step for u32 fields: increments count by 1, wrapping to 0 the moment it would reach `limit` (limit 0 means never wrap, up to the native u32 boundary) — needed once a round-robin/dispatch index must range over a pool larger than counter_step's u16 ceiling of 65535. Returns a 1u16 success flag; caller reads the wrapped `count` back as a field, the same convention as every other wide state cell in the library. |
 | `lcg_next` | `Lcg::run() -> u16` | Linear congruential generator step: seed = seed * 1664525 + 1013904223 (mod 2^32, Numerical Recipes constants), returning the top 16 bits (the higher bits of an LCG are far less patterned than the low bits). The caller threads `seed` through — re-supply the field each call, since state cells don't persist memory across separate runs. |
+| `pingpong_step` | `PingPong::run() -> u16` | Bounded ping-pong index: bounces `pos` between 0 and `limit`, reversing direction at each bound before stepping instead of wrapping to 0 (limit 0 pins pos at 0) — a triangle-wave counter distinct from counter_step's round-robin wrap, useful for an oscillating animation frame or alternating dispatch slot. `dir` 0=increasing, 1=decreasing; the caller threads `pos` and `dir` through — re-supply both fields each call. |
 | `xorshift16` | `Xorshift16::run() -> u16` | 16-bit xorshift generator step (x ^= x<<7; x ^= x>>9; x ^= x<<8) — a distinct pseudo-random recurrence from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
+| `xorshift32` | `Xorshift32::run() -> u16` | 32-bit xorshift generator step (x ^= x<<13; x ^= x>>17; x ^= x<<5, Marsaglia's classic constants) over a full u32 state word, returning the top 16 bits — distinct from xorshift16 (different shifts, a full 32-bit word giving a 2^32-1 period instead of xorshift16's 2^16-1) and from lcg_next (no multiply, pure shift/xor). The caller threads `x` through — re-supply the field each call. A seed of 0 is a fixed point (0 forever); always seed nonzero. |
 
-## statistics (4)
+## statistics (6)
 
 | id | signature | summary |
 |---|---|---|
 | `correlation` | `Correlation::run() -> u16` | Pearson correlation coefficient from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2, sum_y2 -- raw-dataset aggregation stays upstream), returned as a Q8.8 fixed-point value bounded to [-1, 1] by construction (Cauchy-Schwarz). r = (n*sum_xy - sum_x*sum_y) / sqrt((n*sum_x2 - sum_x^2) * (n*sum_y2 - sum_y^2)) -- the numerator signed, the two variance-like factors always non-negative, their product's integer square root taken at a 256x-scaled precision (the same order effect_size_r uses: scale up, sqrt once, divide last). |
 | `covariance` | `Covariance::run() -> u16` | Population covariance from precomputed sums (not a raw dataset -- that aggregation stays upstream, matching running_variance_step's own bivariate framing): cov = (n*sum_xy - sum_x*sum_y) / n^2, returned as an exact signed fraction (num/den, den always positive) rather than rounded to an integer. |
 | `effect_size_r` | `EffectSizeR::run() -> u16` | Convert a t-statistic to effect size r: r = t / sqrt(t^2 + df), a Q8.8 fixed-point value always bounded to [-1, 1] (t^2 <= t^2+df, so \|t\|/sqrt(t^2+df) <= 1 by construction). Computed by scaling t^2+df up by 256 before taking an integer square root (the same precision-preserving order q_sqrt uses -- sqrt first, divide last, loses far less precision than dividing by a truncated integer sqrt directly), then dividing a further-scaled numerator by that root in one step. |
+| `linear_regression_intercept` | `LinearRegressionIntercept::run() -> u16` | Ordinary-least-squares regression intercept from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2 -- the same five sums linear_regression_slope consumes, raw-dataset aggregation stays upstream): b = (sum_y*sum_x2 - sum_x*sum_xy) / (n*sum_x2 - sum_x^2), returned as an exact signed fraction (num_mag/num_neg over den) sharing linear_regression_slope's own denominator (n^2 times the population variance of x) rather than rounded -- the companion constant term no existing cell in this pack derives. |
 | `linear_regression_slope` | `LinearRegressionSlope::run() -> u16` | Ordinary-least-squares regression slope from precomputed sums (n, sum_x, sum_y, sum_xy, sum_x2 -- raw-dataset aggregation stays upstream): slope = (n*sum_xy - sum_x*sum_y) / (n*sum_x2 - sum_x^2), returned as an exact signed fraction rather than rounded. The denominator is n^2 times the population variance of x, which is always non-negative by construction -- zero only when every x value is identical (a vertical "line", no defined slope). |
+| `variance_from_sums` | `VarianceFromSums::run() -> u16` | Population variance from precomputed sums (n, sum_x, sum_x2 -- raw-dataset aggregation stays upstream, the univariate counterpart of covariance's bivariate framing): var = (n*sum_x2 - sum_x^2) / n^2, returned as an exact non-negative fraction (num/den, den = n^2) rather than rounded to an integer. |
 
-## units (4)
+## units (5)
 
 | id | signature | summary |
 |---|---|---|
@@ -449,25 +522,30 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `unit_cancel_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if dividing a numerator-unit quantity by a denominator-unit quantity is dimensionally defined (same rule table as unit_div), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 | `unit_div` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when dividing a numerator quantity by a denominator quantity (e.g. money/count=rate_money_per_count, money/time=rate_money_per_time, count/time=rate_count_per_time, same/same=count) — same codes as unit_mul (docs/library-growth.md). Escalates on any unmodeled pair. |
 | `unit_mul` | `run(a: u16, b: u16) -> u16` | Resulting unit-dimension code when multiplying two typed quantities (e.g. count*money=money, distance*distance=area) — codes: 0=count,1=money,2=time,3=distance,4=area,5=volume,6=rate_money_per_count,7=rate_distance_per_time,8=rate_money_per_time,9=rate_count_per_time (docs/library-growth.md). Escalates on any unmodeled pair. |
+| `unit_mul_check` | `run(a: u16, b: u16) -> u16` | Returns 1 if multiplying a numerator-dimension quantity by dimension b is dimensionally defined (same rule table as unit_mul), else 0 — a non-escalating probe for a caller (e.g. a plan verifier) trying several candidate unit pairs without halting. |
 
-## validation (1)
+## validation (3)
 
 | id | signature | summary |
 |---|---|---|
+| `in_range_closed_open` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x < hi (half-open interval: closed at lo, open at hi), else 0 — the scalar 1D counterpart of point_in_rect's per-axis half-open test, distinct from range_check (fully closed) and between_exclusive (fully open). |
+| `in_range_open_closed` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo < x <= hi (half-open interval: open at lo, closed at hi), else 0 — completes the interval family with range_check (fully closed), between_exclusive (fully open), and in_range_closed_open (closed at lo, open at hi). |
 | `range_check` | `run(x: u16, lo: u16, hi: u16) -> u16` | Returns 1 if lo <= x <= hi, else 0. |
 
-## vector (6)
+## vector (8)
 
 | id | signature | summary |
 |---|---|---|
 | `cross_product` | `CrossProduct::run() -> u16` | Cross product of two 3D vectors: (ay*bz - az*by, az*bx - ax*bz, ax*by - ay*bx). Each signed component is tracked as a (magnitude, sign) pair through the multiply and the combining subtract -- the same technique vectors_parallel uses for its equality checks, extended one step further here since a real signed result (not just a zero/nonzero check) is needed. The result can exceed either input's own magnitude, so it rides wide u32-magnitude output fields rather than being narrowed back to i16. |
 | `dot2` | `Dot2::run() -> u16` | Dot product of two 2D vectors (ax, ay) and (bx, by): ax*bx + ay*by. |
+| `dot3` | `Dot3::run() -> u16` | Dot product of two signed 3D vectors (ax,ay,az).(bx,by,bz) = ax*bx + ay*by + az*bz, tracked as a (magnitude, sign) pair since the pack's 3D vectors are i16 throughout -- dot2 has no 3D sibling (it is 2D and unsigned) and triple_scalar_product computes a plain signed dot as an internal stage but never exposes it standalone. |
 | `norm2_sq` | `run(x: u16, y: u16) -> u16` | Squared magnitude of a 2D vector (x, y): x*x + y*y (no sqrt). |
+| `norm3_sq` | `Norm3Sq::run() -> u16` | Squared magnitude of a signed 3D vector (x, y, z): x*x + y*y + z*z, widened to a u32 field -- the signed-input, 3D sibling of norm2_sq (which is 2D, unsigned, and stays in u16); needs a state cell purely because u32 can't be a free-fn return type even with only 3 inputs. Each component's square is always non-negative, so this tracks magnitude only via i16_mag and never needs the sign-combining step cross_product/triple_scalar_product require for their differences of products. |
 | `triple_scalar_product` | `TripleScalarProduct::run() -> u16` | Triple scalar product a . (b x c) of three 3D vectors -- the signed volume of the parallelepiped they span (zero exactly when the three vectors are coplanar). Computed as cross_product(b, c) followed by a signed dot with a, reusing the same (magnitude, sign) tracking cross_product and vectors_parallel already establish, so no new arithmetic technique is introduced here. |
 | `triple_vector_product` | `TripleVectorProduct::run() -> u16` | Triple vector product a x (b x c) of three 3D vectors, via the BAC-CAB identity a x (b x c) = b*(a.c) - c*(a.b) -- pure dot-products and scalar multiplies, never an actual cross-product computation. Each stage (the two dot products, the two vector scalings, the final vector subtract) is tracked as a (magnitude, sign) pair, the same discipline cross_product/triple_scalar_product use. Genuinely narrower-range than those two: scaling a vector component by a dot product can reach i16's product-of-three-factors territory, so this escalates well before either input vector's own magnitude would suggest trouble. |
 | `vectors_parallel` | `VectorsParallel::run() -> u16` | Check whether two 3D vectors are parallel (or anti-parallel) -- one is a scalar multiple of the other. Computed via three pairwise-product equality checks (same magnitude, same sign, or either magnitude zero) rather than a signed subtract, so no sign-combining step is needed at all. |
 
-## verifier-ranker (20)
+## verifier-ranker (24)
 
 | id | signature | summary |
 |---|---|---|
@@ -476,6 +554,8 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `answer_within_tolerance_u32` | `AnswerWithinToleranceWide::run() -> u16` | Verifies a claimed wide answer is within an absolute tolerance of the true value: returns 1 if \|candidate - actual\| <= tolerance, else 0 — distinct from within_percent (a percentage-based tolerance over u16); this is an absolute margin at wide u32 width. |
 | `diff_equals` | `run(a: u16, b: u16, remainder: u16) -> u16` | Verifies a claimed difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative). |
 | `diff_equals_u32` | `DiffEqualsWide::run() -> u16` | Verifies a claimed wide difference: returns 1 if a >= b and a - b == remainder, else 0 (including when a < b, since an unsigned difference can't be negative) — the wide sibling of diff_equals (which works over u16). |
+| `gcd_equals_u32` | `GcdEqualsWide::run() -> u16` | Verifies a claimed wide GCD: recomputes gcd(a, b) via the same inline Euclidean loop gcd_u32 uses and returns 1 if it equals the claimed g, else 0 — the reverse-equation counterpart of gcd_u32 (never halts, always a verdict). |
+| `lcm_equals_u32` | `LcmEqualsWide::run() -> u16` | Verifies a claimed wide LCM: 0 if a==0 or b==0 unless the claimed l is also 0 (matching lcm_u32's zero convention); otherwise recomputes gcd(a, b) inline and forms (a/g) * b via wrapping_mul with the same overflow-detection idiom product_equals_u32 uses, returning 1 if it equals l else 0 — the reverse-equation counterpart of lcm_u32. |
 | `linear_eq_holds` | `LinearEqHolds::run() -> u16` | Verify a candidate x against a general one-variable linear equation a*x + b == c*x + d in one call -- the fused sibling of linear_solve_1var's solve step, exact via sign-magnitude arithmetic (no float tolerance), so a solved x round-trips through this check with zero error instead of an epsilon compare. |
 | `mul_add_equals_u32` | `MulAddEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-add: returns 1 if a * b + c == total, else 0, including when either step overflows u32 — the reverse-equation counterpart of mul_add_checked_u32. |
 | `mul_sub_equals_u32` | `MulSubEqualsWide::run() -> u16` | Verifies a claimed wide fused multiply-subtract: returns 1 if a * b - c == total, else 0, including when the multiply overflows u32 or c exceeds the product — the reverse-equation counterpart of mul_sub_checked_u32. |
@@ -485,7 +565,9 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `pow_equals_u32` | `PowEqualsWide::run() -> u16` | Verifies a claimed wide power: returns 1 if base^exp == total, else 0, including when an intermediate multiply overflows u32 — the reverse-equation counterpart of pow_checked_u32. |
 | `product3_equals_u32` | `Product3EqualsWide::run() -> u16` | Verifies a claimed wide three-way product: returns 1 if a * b * c == total, else 0, including when the product overflows u32 (a real overflow just means the claim doesn't hold) — the reverse-equation counterpart of mul3_checked_u32. |
 | `product_equals_u32` | `ProductEquals::run() -> u16` | Verifies a claimed wide product: 1 if a * b == total, else 0 — including when a * b overflows u32 (a real overflow just means the claim doesn't hold, not an escalation; a verifier always returns a verdict). |
+| `quotient_equals_ceil_u32` | `QuotientEqualsCeil::run() -> u16` | Verifies a claimed ceiling-division quotient: 0 if b == 0, else q = a / b, r = a % b, rounded = q + 1 if r != 0 else q, and returns 1 if rounded == quotient, else 0 — the verifier counterpart of div_ceil_u32 (that one computes and escalates on b == 0; this one checks a candidate answer and always returns a verdict). |
 | `quotient_equals_exact_u32` | `QuotientEqualsExact::run() -> u16` | Verifies a claimed exact wide quotient: 1 if b != 0, a divides evenly by b (a % b == 0), and a / b == quotient, else 0 — the verifier counterpart of div_exact_u32 (that one computes and escalates on a remainder; this one checks a candidate answer and always returns a verdict). |
+| `remainder_equals_u32` | `RemainderEqualsU32::run() -> u16` | Verifies a claimed wide remainder: 0 if b == 0, else 1 if a % b == rem, else 0 — the verifier counterpart of mod_u32 (that one computes and escalates on a zero divisor; this one checks a candidate leftover count and always returns a verdict). |
 | `smag_eq` | `SmagEq::run() -> u16` | Verifies whether two signed values (magnitude, sign pairs, per smag_add) are equal, canonicalizing negative-zero to nonnegative first — the sign-magnitude counterpart of frac_eq / answer_eq_u32. |
 | `smag_is_nonneg` | `SmagIsNonneg::run() -> u16` | Constraint check for a signed-magnitude quantity (magnitude, sign pair — neg 0=nonnegative, 1=negative, per smag_add): returns 1 if the value is nonnegative (neg == 0, or magnitude == 0 regardless of the sign flag), else 0. |
 | `sum3_equals_u32` | `Sum3EqualsWide::run() -> u16` | Verifies a claimed wide three-way sum: returns 1 if a + b + c == total, else 0, without escalating on overflow — the reverse-equation counterpart of add3_checked_u32. |

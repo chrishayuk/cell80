@@ -7,13 +7,17 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (4)
+## Landed (8)
 
 | id | signature | summary |
 |---|---|---|
+| `abs_diff_i16` | `run(a: i16, b: i16) -> u16` | Absolute difference \|a - b\| for two signed 16-bit inputs, returned as u16 -- tracked via sign-magnitude subtraction rather than a raw i16 subtract, since a=i16::MAX, b=i16::MIN would overflow i16 by one before abs() could be taken; the signed-input sibling of abs_diff (u16) and abs_diff_u32 (wide). |
 | `abs_i16` | `run(x: i16) -> u16` | Absolute value of a signed 16-bit value, returned as u16 (correctly handles i16::MIN, whose magnitude 32768 doesn't fit back in i16). |
 | `apply_delta_clamped` | `run(value: u16, delta: i16, cap: u16) -> u16` | Apply a signed delta to an unsigned value, clamped to [0, cap] — e.g. a health/resource/score adjustment that can't go negative or exceed a cap (a "risk delta" applied safely). |
 | `clamp_i16` | `run(x: i16, lo: i16, hi: i16) -> i16` | Clamp a signed value to the inclusive range [lo, hi] — the signed counterpart of clamp (which only works over u16). Also the exact form of "hard tanh" in Q8.8 fixed point (clamp_i16(x, -256, 256)): tanh_hard(x) = 2*sigmoid_hard(2x)-1 reduces algebraically to clamp(x, -1, 1), so q_tanh was deliberately not shipped as a second cell — same formula, different name, exactly the case the admission gate exists to catch. |
+| `max_i16` | `run(a: i16, b: i16) -> i16` | Maximum of two signed 16-bit values under true signed ordering (-1 > -32768) -- the direct complement of min_i16 and the signed sibling of max (u16) and max_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
+| `min_i16` | `run(a: i16, b: i16) -> i16` | Minimum of two signed 16-bit values under true signed ordering (-1 < 0) -- the signed sibling of min (u16) and min_u32, neither of which orders negative quantities correctly since a negative i16 bit-reinterpreted as unsigned looks like a large positive number. |
+| `negate_i16` | `run(x: i16) -> i16` | Arithmetic negation of a signed 16-bit value (-x) -- distinct from abs_i16 (returns an unsigned magnitude, sidestepping the MIN case) and sign_i16 (returns only -1/0/1): this is the only cell that computes -x itself, so it must escalate exactly where a naive negation would silently wrap. |
 | `sign_i16` | `run(x: i16) -> i16` | Sign of a signed value: 1 if positive, -1 if negative, 0 if zero. |
 
 ## Roadmap — open items

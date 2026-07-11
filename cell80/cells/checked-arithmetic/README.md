@@ -7,7 +7,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
   | python3 cell80/scripts/gen_pack_readmes.py
 ```
 
-## Landed (28)
+## Landed (29)
 
 | id | signature | summary |
 |---|---|---|
@@ -36,6 +36,7 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 | `smag_add` | `SmagAdd::run() -> u16` | Sign-magnitude add: combine two signed quantities represented as (magnitude, sign) pairs — neg_a/neg_b are 0 (nonnegative) or 1 (negative), since the dialect has no i32 and this is how the math-campaign renderer tracks signed differences at u32 width (docs/math-campaign-spec.md). Escalates on magnitude overflow. |
 | `smag_cmp` | `SmagCmp::run() -> u16` | Compare two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add): 0 if a < b, 1 if equal, 2 if a > b — the sign-magnitude counterpart of frac_cmp's ordering-code convention. |
 | `smag_div` | `SmagDiv::run() -> u16` | Divide two signed values exactly: magnitudes divide (escalating on a nonzero remainder), sign is same-positive/different-negative (per smag_add). |
+| `smag_max` | `SmagMax::run() -> u16` | The larger of two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add), returned as its own (mag, neg) pair (ties keep a) -- the direct complement of smag_min, and unlike smag_cmp (which only returns a 0/1/2 ordering code) actually produces the winning value. |
 | `smag_mul` | `SmagMul::run() -> u16` | Multiply two signed values: magnitudes multiply (checked for overflow), sign is same-positive/different-negative (per smag_add). |
 | `smag_sub` | `SmagSub::run() -> u16` | Sign-magnitude subtract: a - b for two signed quantities represented as (magnitude, sign) pairs (neg 0=nonnegative, 1=negative, per smag_add) — computed by flipping b's sign and adding, the same rule table as smag_add. Escalates on magnitude overflow. |
 | `sub_checked_u32` | `SubChecked::run() -> u16` | Checked u32 subtract: escalates (needs_wider_math) instead of wrapping if b > a (the result would be negative). |

@@ -362,3 +362,60 @@ fn math_wave3_checked_arithmetic_slice() {
     // gcd/gcd3 pairing extended to lcm, inlining gcd's shared-kernel prelude call twice
     // since `lcm` itself isn't in `CELL_PRELUDE`).
 }
+
+#[test]
+fn smag_max_returns_the_larger_signed_sign_magnitude_value() {
+    // smag_max: larger of two (magnitude, sign) pairs, neg 0=nonneg/1=neg (per smag_add).
+    // Covers same-sign, opposite-sign, negative-vs-negative (smaller magnitude wins),
+    // a tie (keeps a's pair), and the out-of-domain escalation on a malformed neg field.
+    fn step(id: &str, strct: &str, fields: &[(&str, u64)]) -> (u16, cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        let result = report.result;
+        (result, report, cell)
+    }
+
+    // 5 vs 3 (both nonnegative) -> 5.
+    let (_, _, cell) = step(
+        "smag_max",
+        "SmagMax",
+        &[("mag_a", 5), ("neg_a", 0), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(0)));
+
+    // -5 vs 3 -> 3 (opposite signs, b wins).
+    let (_, _, cell) = step(
+        "smag_max",
+        "SmagMax",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(3), Some(0)));
+
+    // -5 vs -8 -> -5 (both negative: smaller magnitude is the larger value).
+    let (_, _, cell) = step(
+        "smag_max",
+        "SmagMax",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 8), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+
+    // -5 vs -5 (tie) -> keeps a's (mag, neg).
+    let (_, _, cell) = step(
+        "smag_max",
+        "SmagMax",
+        &[("mag_a", 5), ("neg_a", 1), ("mag_b", 5), ("neg_b", 1)],
+    );
+    assert_eq!((cell.get("mag"), cell.get("neg")), (Some(5), Some(1)));
+
+    // Out-of-domain neg_a escalates 0xFF06.
+    let (_, report, _) = step(
+        "smag_max",
+        "SmagMax",
+        &[("mag_a", 5), ("neg_a", 2), ("mag_b", 3), ("neg_b", 0)],
+    );
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}
