@@ -292,7 +292,7 @@ strictly by sequence; the library grows by eval need:
      **CellBus** (publish typed event → route to interested cells → commit).
    *(Reordered ahead of retrieval: a static, host-authored graph needs no retrieval — that's
    for when an agent authors graphs. It rests on item 2's named typed I/O, which is the edge.)*
-6. **Grow the standard cell library — 313 cells across 30+ families (2026-07-10).**
+6. **Grow the standard cell library — 395 cells across 30+ families (2026-07-11).**
    `cell80/cells/`: predicates, safe arithmetic, bounds, percent, ranking/stats, bit/mask,
    number theory, distance, encoding, hashing, bucketing/conversion, packing/BCD, vector,
    scoring/choice, agentic-runtime, running-stats, spatial/grid, stateful/RNG, signed-deltas —
@@ -309,7 +309,20 @@ strictly by sequence; the library grows by eval need:
    hand-authoring: `linear_solve_1var`/`linear_eq_holds`/`difficulty_zone_step`, ported from
    `chuk-math-gym`'s linear-equation and curriculum-scheduling domains after confirming
    `chuk-mcp-math` was already fully mined and `chuk-synthetic-data` negligible
-   (`docs/library-growth.md`'s "Mine the ecosystem first").
+   (`docs/library-growth.md`'s "Mine the ecosystem first"). **313→395 (2026-07-11) is the
+   first library batch run through the `Workflow` tool**: `chuk-math-gym`'s remaining
+   `arithmetic/` domain (closing out ecosystem mining) plus **systematic family
+   expansion** — 8 discovery agents fanned out over pack clusters, finding genuine gaps in
+   existing patterns (missing width/sign/arity siblings, a predicate with no complement)
+   rather than inventing speculative candidates, pulling first from library-growth.md's own
+   "Next waves" backlog. 104 raw candidates → 90 deduped → 90/90 individually
+   authored-and-verified (0 failures) → the real admission gate then caught 8 behavioural
+   duplicates no single candidate's own verify step could see (checked only against the
+   pre-batch library) → **82 landed, 395 admitted / 0 refused**. Independently re-verified
+   after the fact (gate re-run, a cell-quality spot-check, the codegen-golden diff
+   confirmed purely additive) rather than accepted on the workflow's own report — full
+   account, including the admission-gate's duplicate-pair-naming quirk this batch surfaced,
+   in `docs/library-growth.md`'s "Systematic family expansion" section.
    **The 209→310 gap is `docs/math-server-map.md`'s mining pass** (`chuk-mcp-math-server`'s
    642 functions classified against the live library) **plus its full harvest, waves 6-14
    (2026-07-07 to 2026-07-09)**: number theory (Möbius/omega/divisor-power-sum/Jordan

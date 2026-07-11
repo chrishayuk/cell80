@@ -1867,6 +1867,83 @@ rows verified #1 direct via `cell80 search`; codegen golden regenerated, purely 
 error-classification heuristics were surveyed and explicitly ruled out — the former duplicates
 `hysteresis`, the latter relies on float thresholds with no clean exact-integer formalization.
 
+**Update (2026-07-11): `chuk-math`'s remaining `arithmetic/` domain surveyed — closes out
+ecosystem mining.** The one domain not yet checked (`generator.py`/`verifier.py`) was mostly
+already covered by the checked-arithmetic/percent/verifier-ranker packs, same pattern as
+`linear_equations`/`curriculum` above; what little was genuinely new got folded into the
+larger batch below rather than landing separately. All three named ecosystem sources
+(`chuk-math`, `chuk-mcp-math`, `chuk-synthetic-data`) are now fully surveyed — no further
+"mine the ecosystem" work is queued; growth from here is systematic family expansion (below)
+or precipitation via `cell_solve`.
+
+## Systematic family expansion — the 90-cell workflow batch (313 → 395, 2026-07-11)
+
+The first library batch run through the `Workflow` tool rather than by hand: a real test of
+whether the author→verify→admit loop (Phase 2.3, above) generalizes to multi-agent fan-out
+at real scale, not just a 3-cell mining pass. Two sourcing angles, run together as one batch
+since both feed the same pipeline: finishing `chuk-math`'s `arithmetic/` domain (the update
+above), and **systematic family expansion** — 8 discovery agents, each assigned a cluster of
+2-5 related packs, told explicitly *not* to invent speculative ideas but to find gaps in
+patterns that already exist in the library (a family missing a width/sign/arity variant, a
+predicate with no complement, a checked-arithmetic op with no verifier-ranker counterpart) —
+pulling first from this file's own "Next waves" backlog, then from genuine missing siblings
+found by reading `docs/cell-index.md` and each pack's README.
+
+Pipeline: 9 discovery agents proposed 104 raw candidates → one dedupe pass (cross-checked
+against `docs/cell-index.md`, capped at 90) → **90 candidates, each authored and
+independently verified by its own agent** (compile, then 3-5 hand-computed test cases against
+the compiled cell, never the other way around) — **90/90 verified, 0 failures** → one
+integration pass ran the real admission gate over the whole library and **backed out 8
+behavioural duplicates** the individual verify step couldn't see (each agent only sees its own
+candidate against the *pre-batch* library, so agents can't catch each other's near-misses;
+that's what the shared gate is for): `smag_min` (≡ pre-existing `smag_max`'s mirror
+computation), `geom_manhattan_3d` (≡ `geom_distance_3d`), `pythagorean_triple_check`,
+`quotient_equals_floor_u32`, `abs_diff_equals_u32`, `unit_add_check` (≡ pre-existing
+`unit_cancel_check`), `circles_intersect`, `within_percent_u32`. **Net: 82 landed, 395
+admitted / 0 refused.**
+
+**A real admission-gate quirk surfaced at this scale, not visible in smaller batches**: the
+gate's duplicate report names *either* side of a collision pair, not always the new one — 5 of
+the 8 refusals above named the *pre-existing* cell as "the duplicate to remove" (e.g.
+`unit_cancel_check — duplicate of unit_add_check`, where `unit_add_check` was the new cell).
+Backing out the pre-existing member would mean deleting already-shipped, already-tested
+library code purely because of collision-report ordering — clearly wrong. The rule applied:
+**always back out whichever member of the pair is new**, confirmed arithmetically (pre-batch
+313/0 → the raw batch read "395 admitted, 8 refused" (403 total) → removing exactly the 8
+new-side cells landed at 395/0, and the *admitted* count never moved, proving no pre-existing
+cell needed touching). Full account: `batch90-integration-gate` (session memory).
+
+Highlights from the 82: **`segments_intersect_int`** (`geometry`) — the standard
+four-orientation-sign-test algorithm for whether two finite line segments properly intersect
+(plus the collinear-overlap edge case via bounding-box containment), computed exactly via
+sign-magnitude arithmetic throughout since the dialect has no `i32` — a real gap
+`docs/math-server-map.md` had named (`segments_intersect_int`) but never built, closed here.
+**`liouville_function`** (`number-theory`) — λ(n) = (-1)^Ω(n), the always-defined ±1 sibling of
+`mobius_function` (which is 0 for non-squarefree n). Four-way ranking siblings
+(`min4`/`max4`/`argmin4`/`argmax4`, `ranking-stats`) and `choose_best4`/`weighted_sum4`
+(`scoring-choice`) — both packs had been capped at 3 candidates since their first slice,
+exactly the "straightforward generalization when a 4th candidate is actually needed" this
+file's own "Next waves" note had flagged. A new `validation` pack test file
+(`cell80/tests/library/validation.rs`, registered in `library.rs`) — `cell80/cells/validation/`
+existed on disk with cells but no test coverage wired in until this batch touched it.
+
+**One real bug found and fixed, not introduced by this batch**: a pasted-in test for
+`luhn_check_digit` used the case `(7992, 1)`, computing `partial * 10` in `u16` — 79920
+overflows `u16::MAX` (65535), since `luhn_check`/`luhn_check_digit` are deliberately scoped to
+the u16 domain (`docs/library-growth.md`'s calendrical-checksum note, above). Replaced with an
+equivalent non-overflowing case, `(1792, 1)`, verified independently.
+
+**Verification, not just trust**: after the workflow reported completion, its claims were
+independently re-checked rather than accepted at face value — the admission gate was re-run
+directly (395/0 confirmed), a random sample of the 82 new cells was read for quality
+(`segments_intersect_int` above was one), the codegen golden diff was confirmed to contain
+zero removed/changed lines (82 new `program cell/<name>` blocks only), and the one remaining
+`cargo test -p cell80` failure (`tests/compose.rs`, an arity-mismatch error-string format) was
+reproduced against a clean pre-batch checkout in an isolated worktree and confirmed to
+*already fail there* — caused by the concurrent A5/`cell80-core` + WS-B/RV32 multi-target
+refactor landing in `rustz80/src` during the same window, not by any of the 82 new cells.
+`cargo test -p cell80 --test library`: 160 passed, 0 failed. `cargo fmt --check`: clean.
+
 ## After authoring: re-run the evals
 
 Each new **family** is a retrieval test case; each **predicate + transform** pair a composition
