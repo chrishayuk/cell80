@@ -182,12 +182,9 @@ fn pid_step_matches_test_cases() {
         ),
     ];
     for (i, (fields, expected_field, expected_value)) in cases.iter().enumerate() {
-        let mut cell = cell80::StateCell::bind(
-            &crate::common::cell_src("pid_step"),
-            "PidStep",
-            None,
-        )
-        .unwrap_or_else(|e| panic!("bind pid_step: {e}"));
+        let mut cell =
+            cell80::StateCell::bind(&crate::common::cell_src("pid_step"), "PidStep", None)
+                .unwrap_or_else(|e| panic!("bind pid_step: {e}"));
         for (fname, fval) in fields.iter() {
             set_field(&mut cell, fname, *fval);
         }
@@ -200,7 +197,10 @@ fn pid_step_matches_test_cases() {
             "pid_step case {i}: {report:?}"
         );
         let got = get_field(&cell, expected_field);
-        let is_float = matches!(*expected_field, "dt" | "error" | "integral" | "kd" | "ki" | "kp" | "output" | "prev_error");
+        let is_float = matches!(
+            *expected_field,
+            "dt" | "error" | "integral" | "kd" | "ki" | "kp" | "output" | "prev_error"
+        );
         if is_float {
             let tol = (expected_value.abs() * 1e-3_f64).max(1e-3);
             assert!(
@@ -448,7 +448,21 @@ fn pid_step_antiwindup_matches_test_cases() {
             "pid_step_antiwindup case {i}: {report:?}"
         );
         let got = get_field(&cell, expected_field);
-        let is_float = matches!(*expected_field, "dt" | "integral" | "integral_out" | "kd" | "ki" | "kp" | "measurement" | "out_max" | "out_min" | "output" | "prev_error" | "prev_error_out" | "setpoint");
+        let is_float = matches!(
+            *expected_field,
+            "dt" | "integral"
+                | "integral_out"
+                | "kd"
+                | "ki"
+                | "kp"
+                | "measurement"
+                | "out_max"
+                | "out_min"
+                | "output"
+                | "prev_error"
+                | "prev_error_out"
+                | "setpoint"
+        );
         if is_float {
             let tol = (expected_value.abs() * 1e-3_f64).max(1e-3);
             assert!(
@@ -505,9 +519,11 @@ fn deadband_matches_test_cases() {
         (5, 5, 0, 0),
     ];
     for (i, (value, center, band_width, expected)) in cases.iter().enumerate() {
-        let got =
-            run_cell("deadband", &[*value as u16, *center as u16, *band_width]) as i16;
-        assert_eq!(got, *expected, "deadband case {i}: got {got} want {expected}");
+        let got = run_cell("deadband", &[*value as u16, *center as u16, *band_width]) as i16;
+        assert_eq!(
+            got, *expected,
+            "deadband case {i}: got {got} want {expected}"
+        );
     }
 }
 

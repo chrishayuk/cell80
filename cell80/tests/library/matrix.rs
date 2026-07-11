@@ -436,3 +436,102 @@ fn matrix_frobenius_norm_sq_2x2_matches_hand_computed_values() {
     ]);
     assert_eq!(cell.get("result"), Some(300000));
 }
+
+#[test]
+fn matrix_det_3x3_matches_test_cases() {
+    // Excel's MDETERM, landed in the matrix pack (not excel-mathstat) per this wave's
+    // naming convention: matrix_det_3x3 / MatrixDet3x3, matching matrix_det_2x2's own
+    // sibling naming. First-row cofactor expansion, f32 throughout (matrix_solve_3x3's
+    // own tier) -- unlike matrix_solve_3x3, a zero determinant is a legitimate answer,
+    // not an escalation.
+    fn det(m: [f32; 9]) -> f32 {
+        let mut cell = StateCell::bind(&cell_src("matrix_det_3x3"), "MatrixDet3x3", None)
+            .unwrap_or_else(|e| panic!("bind matrix_det_3x3: {e}"));
+        for (f, v) in [
+            "a11", "a12", "a13", "a21", "a22", "a23", "a31", "a32", "a33",
+        ]
+        .iter()
+        .zip(m.iter())
+        {
+            cell.set(f, v.to_bits() as u64).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        f32::from_bits(cell.get("det").unwrap() as u32)
+    }
+    fn approx(got: f32, want: f32) {
+        let tol = (want.abs() * 1e-3).max(1e-3);
+        assert!((got - want).abs() < tol, "got {got} want {want}");
+    }
+
+    // General 3x3, det = -3 (hand-worked via first-row cofactor expansion).
+    approx(det([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0]), -3.0);
+
+    // Identity matrix -> det = 1.
+    approx(det([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]), 1.0);
+
+    // Singular matrix (row 2 = 2 * row 1) -> det = 0 exactly, NOT an escalation.
+    approx(det([1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 7.0, 8.0, 9.0]), 0.0);
+
+    // Negative coefficients, exercising sign flips through the minors and the
+    // middle-term subtraction: det = 4.
+    approx(det([2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0]), 4.0);
+}
+
+#[test]
+fn matrix_inverse_2x2_matches_test_cases() {
+    // MINVERSE: (1/det)*[[d,-b],[-c,a]], all four entries sharing one determinant
+    // division computed once and reused. f32 throughout (matrix_solve_3x3's own tier),
+    // unlike matrix_solve_2x2's exact signed fraction.
+    fn inv(a: f32, b: f32, c: f32, d: f32) -> (f32, f32, f32, f32) {
+        let mut cell = StateCell::bind(&cell_src("matrix_inverse_2x2"), "MatrixInverse2x2", None)
+            .unwrap_or_else(|e| panic!("bind matrix_inverse_2x2: {e}"));
+        cell.set("a", a.to_bits() as u64).unwrap();
+        cell.set("b", b.to_bits() as u64).unwrap();
+        cell.set("c", c.to_bits() as u64).unwrap();
+        cell.set("d", d.to_bits() as u64).unwrap();
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(report.halt, cell80::Halt::Returned);
+        (
+            f32::from_bits(cell.get("inv_a").unwrap() as u32),
+            f32::from_bits(cell.get("inv_b").unwrap() as u32),
+            f32::from_bits(cell.get("inv_c").unwrap() as u32),
+            f32::from_bits(cell.get("inv_d").unwrap() as u32),
+        )
+    }
+    fn approx(got: f32, want: f32) {
+        let tol = (want.abs() * 1e-3).max(1e-3);
+        assert!((got - want).abs() < tol, "got {got} want {want}");
+    }
+
+    // [[4,7],[2,6]]: det=10. inv = [[0.6,-0.7],[-0.2,0.4]].
+    let (ia, ib, ic, id) = inv(4.0, 7.0, 2.0, 6.0);
+    approx(ia, 0.6);
+    approx(ib, -0.7);
+    approx(ic, -0.2);
+    approx(id, 0.4);
+
+    // [[2,0],[0,2]]: det=4. inv = 0.5*I.
+    let (ia, ib, ic, id) = inv(2.0, 0.0, 0.0, 2.0);
+    approx(ia, 0.5);
+    approx(ib, 0.0);
+    approx(ic, 0.0);
+    approx(id, 0.5);
+
+    // [[1,2],[3,4]]: det=-2 (negative determinant, exercising the sign path).
+    let (ia, ib, ic, id) = inv(1.0, 2.0, 3.0, 4.0);
+    approx(ia, -2.0);
+    approx(ib, 1.0);
+    approx(ic, 1.5);
+    approx(id, -0.5);
+
+    // Singular (det=0): must escalate out_of_domain, not return a matrix.
+    let mut cell = StateCell::bind(&cell_src("matrix_inverse_2x2"), "MatrixInverse2x2", None)
+        .unwrap_or_else(|e| panic!("bind matrix_inverse_2x2: {e}"));
+    cell.set("a", 1.0f32.to_bits() as u64).unwrap();
+    cell.set("b", 2.0f32.to_bits() as u64).unwrap();
+    cell.set("c", 2.0f32.to_bits() as u64).unwrap();
+    cell.set("d", 4.0f32.to_bits() as u64).unwrap();
+    let report = cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

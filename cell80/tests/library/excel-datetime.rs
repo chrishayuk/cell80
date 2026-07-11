@@ -426,12 +426,9 @@ fn excel_days_matches_test_cases() {
         ),
     ];
     for (i, (fields, expected_field, expected_value)) in cases.iter().enumerate() {
-        let mut cell = cell80::StateCell::bind(
-            &crate::common::cell_src("excel_days"),
-            "ExcelDays",
-            None,
-        )
-        .unwrap_or_else(|e| panic!("bind excel_days: {e}"));
+        let mut cell =
+            cell80::StateCell::bind(&crate::common::cell_src("excel_days"), "ExcelDays", None)
+                .unwrap_or_else(|e| panic!("bind excel_days: {e}"));
         for (fname, fval) in fields.iter() {
             set_field(&mut cell, fname, *fval);
         }
@@ -1027,47 +1024,27 @@ fn excel_isoweeknum_matches_test_cases() {
     }
     let cases: &[(&[(&str, f64)], &str, f64)] = &[
         (
-            &[
-                ("year", 2026.0),
-                ("month", 7.0),
-                ("day", 11.0),
-            ],
+            &[("year", 2026.0), ("month", 7.0), ("day", 11.0)],
             "week",
             28.0,
         ),
         (
-            &[
-                ("year", 2005.0),
-                ("month", 1.0),
-                ("day", 1.0),
-            ],
+            &[("year", 2005.0), ("month", 1.0), ("day", 1.0)],
             "week",
             53.0,
         ),
         (
-            &[
-                ("year", 2018.0),
-                ("month", 12.0),
-                ("day", 31.0),
-            ],
+            &[("year", 2018.0), ("month", 12.0), ("day", 31.0)],
             "week",
             1.0,
         ),
         (
-            &[
-                ("year", 2026.0),
-                ("month", 1.0),
-                ("day", 1.0),
-            ],
+            &[("year", 2026.0), ("month", 1.0), ("day", 1.0)],
             "week",
             1.0,
         ),
         (
-            &[
-                ("year", 2020.0),
-                ("month", 12.0),
-                ("day", 31.0),
-            ],
+            &[("year", 2020.0), ("month", 12.0), ("day", 31.0)],
             "week",
             53.0,
         ),
@@ -1810,4 +1787,3 @@ fn excel_workday_intl_matches_test_cases() {
         }
     }
 }
-

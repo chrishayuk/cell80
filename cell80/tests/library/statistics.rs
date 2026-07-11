@@ -563,3 +563,89 @@ fn sample_covariance_from_sums_matches_hand_computed() {
     let (report, _) = verify(&[("n", 0), ("sum_x", 0), ("sum_y", 0), ("sum_xy", 0)]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn steyx_matches_test_cases() {
+    // STEYX: standard error of the y-estimate for a linear regression from precomputed
+    // sums, steyx = sqrt(SSE/(n-2)) where SSE = Syy - Sxy^2/Sxx -- the same six sums
+    // correlation.rs already consumes. Every expected value hand-computed against the
+    // exact integer-truncating pipeline the cell itself implements (not the abstract
+    // textbook formula), per the authoring notes.
+    fn step(fields: &[(&str, u64)]) -> (cell80::Report, StateCell) {
+        let mut cell = StateCell::bind(&cell_src("steyx"), "Steyx", None)
+            .unwrap_or_else(|e| panic!("bind steyx: {e}"));
+        for (f, v) in fields {
+            cell.set(f, *v).unwrap();
+        }
+        let report = cell.run(DEFAULT_CYCLES).unwrap();
+        (report, cell)
+    }
+
+    // x=[1,2,3,4], y=[2,4,6,8] (perfect fit, y=2x) -> SSE=0 -> steyx=0.
+    let (report, cell) = step(&[
+        ("n", 4),
+        ("sum_x", 10),
+        ("sum_y", 20),
+        ("sum_xy", 60),
+        ("sum_x2", 30),
+        ("sum_y2", 120),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Returned);
+    assert_eq!(cell.get("steyx"), Some(0));
+
+    // x=[1,2,3,4], y=[1,3,2,5] -> quotient=1 (floor of 1.35), isqrt(1)=1.
+    let (_, cell) = step(&[
+        ("n", 4),
+        ("sum_x", 10),
+        ("sum_y", 11),
+        ("sum_xy", 33),
+        ("sum_x2", 30),
+        ("sum_y2", 39),
+    ]);
+    assert_eq!(cell.get("steyx"), Some(1));
+
+    // x=[1,2,3,4,5], y=[2,3,8,4,6] -> quotient=5, isqrt(5)=2.
+    let (_, cell) = step(&[
+        ("n", 5),
+        ("sum_x", 15),
+        ("sum_y", 23),
+        ("sum_xy", 78),
+        ("sum_x2", 55),
+        ("sum_y2", 129),
+    ]);
+    assert_eq!(cell.get("steyx"), Some(2));
+
+    // x=[1,2,3,4,5], y=[12,7,9,3,1] (negative slope, exercises the p2>p1 branch of
+    // sxy_n_mag) -> quotient=3, isqrt(3)=1.
+    let (_, cell) = step(&[
+        ("n", 5),
+        ("sum_x", 15),
+        ("sum_y", 32),
+        ("sum_xy", 70),
+        ("sum_x2", 55),
+        ("sum_y2", 284),
+    ]);
+    assert_eq!(cell.get("steyx"), Some(1));
+
+    // n <= 2: fewer than 3 points leaves zero/negative degrees of freedom -> escalate.
+    let (report, _) = step(&[
+        ("n", 2),
+        ("sum_x", 3),
+        ("sum_y", 3),
+        ("sum_xy", 5),
+        ("sum_x2", 5),
+        ("sum_y2", 5),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+
+    // Every x identical (Sxx_n == 0) -> undefined regression -> escalate.
+    let (report, _) = step(&[
+        ("n", 3),
+        ("sum_x", 9),
+        ("sum_y", 12),
+        ("sum_xy", 36),
+        ("sum_x2", 27),
+        ("sum_y2", 50),
+    ]);
+    assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
+}

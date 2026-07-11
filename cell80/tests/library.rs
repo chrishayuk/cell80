@@ -33,6 +33,8 @@ mod distance;
 mod excel_datetime;
 #[path = "library/excel-financial.rs"]
 mod excel_financial;
+#[path = "library/excel-mathstat.rs"]
+mod excel_mathstat;
 #[path = "library/fixed-point.rs"]
 mod fixed_point;
 #[path = "library/fractions.rs"]
