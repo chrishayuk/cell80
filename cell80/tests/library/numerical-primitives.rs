@@ -19,7 +19,11 @@
 // Mechanically generated scaffolds: single-type cells degenerate to `match name
 // { _ => .. }` and every case table shares one tuple shape — style lints the
 // generator would re-trip next wave are allowed rather than hand-patched.
-#![allow(clippy::match_single_binding, clippy::type_complexity)]
+#![allow(
+    clippy::match_single_binding,
+    clippy::type_complexity,
+    clippy::approx_constant
+)]
 
 #[test]
 fn bezier_cubic_f32_matches_test_cases() {
@@ -493,7 +497,24 @@ fn matrix_solve_3x3_matches_test_cases() {
             "matrix_solve_3x3 case {i}: {report:?}"
         );
         let got = get_field(&cell, expected_field);
-        let is_float = matches!(*expected_field, "a11" | "a12" | "a13" | "a21" | "a22" | "a23" | "a31" | "a32" | "a33" | "b1" | "b2" | "b3" | "x1" | "x2" | "x3");
+        let is_float = matches!(
+            *expected_field,
+            "a11"
+                | "a12"
+                | "a13"
+                | "a21"
+                | "a22"
+                | "a23"
+                | "a31"
+                | "a32"
+                | "a33"
+                | "b1"
+                | "b2"
+                | "b3"
+                | "x1"
+                | "x2"
+                | "x3"
+        );
         if is_float {
             let tol = (expected_value.abs() * 1e-3_f64).max(1e-3);
             assert!(
@@ -557,7 +578,9 @@ fn nth_root_f32_matches_test_cases() {
         };
         let cart = cell80::Cartridge::compile(&src, cell80::CellConfig::permissive(), opts)
             .unwrap_or_else(|e| panic!("compile nth_root_f32 (banked): {e}"));
-        let program = cart.z80().unwrap_or_else(|e| panic!("nth_root_f32 z80: {e}"));
+        let program = cart
+            .z80()
+            .unwrap_or_else(|e| panic!("nth_root_f32 z80: {e}"));
         let mut runner = cell80::Runner::new(program);
         let report = runner
             .run_with_inputs(Some(entry), &[cell80::STATE_BASE], &sets, 20_000_000)
@@ -592,4 +615,3 @@ fn nth_root_f32_matches_test_cases() {
         );
     }
 }
-
