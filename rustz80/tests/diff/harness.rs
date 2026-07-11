@@ -167,17 +167,28 @@ pub(crate) fn run_str(bytes: &[u8], s: &str) -> u16 {
 /// results come back zero-extended in `a0`. `data` pairs plant into the 64 KiB
 /// window (the interpreter's memory map on a different substrate).
 pub(crate) fn run_rv32(src: &str, entry: &str, args: &[u32], data: &[(u16, &[u8])]) -> u16 {
+    run_rv32_full(src, entry, args, data).0[0] as u16
+}
+
+/// The full RV32 outcome: `[a0, a1, a2]` and the final 64 KiB data window (the
+/// interpreter's memory map on a different substrate — directly comparable).
+pub(crate) fn run_rv32_full(
+    src: &str,
+    entry: &str,
+    args: &[u32],
+    data: &[(u16, &[u8])],
+) -> ([u32; 3], Vec<u8>) {
     let file: syn::File =
         syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
-    let funcs = rustz80::lower_program(&file, &rustz80::PreludeConfig::default())
+    let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
         .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
-    let image = rustrv32::compile(&funcs, &[])
+    let image = rustrv32::compile(&lowered.funcs, &lowered.const_data())
         .unwrap_or_else(|e| panic!("rv32 compile failed: {e}\nsrc: {src}"));
     let entry_off = *image
         .symbols
         .get(entry)
         .unwrap_or_else(|| panic!("rv32: no entry `{entry}`"));
-    let (regs, _cycles, stop, _window) = rustrv32::run_cell(
+    let (regs, _cycles, stop, window) = rustrv32::run_cell(
         &image.code,
         &image.consts,
         entry_off,
@@ -190,7 +201,7 @@ pub(crate) fn run_rv32(src: &str, entry: &str, args: &[u32], data: &[(u16, &[u8]
         rustrv32::Stop::Returned,
         "rv32 run did not return cleanly\nsrc: {src}"
     );
-    regs[0] as u16
+    (regs, window)
 }
 
 /// The IR-interpreter leg of `check_str!`: the same length-prefixed buffer at
@@ -329,6 +340,8 @@ pub(crate) fn run_program(src: &str, entry: &str) -> u16 {
         hl,
         "IR interpreter vs Z80 diverged\nsrc: {src}"
     );
+    let rv = run_rv32(src, entry, &[], &[]);
+    assert_eq!(rv, hl, "RV32 vs Z80 diverged\nsrc: {src}");
     hl
 }
 
@@ -345,6 +358,13 @@ pub(crate) fn run_program_regs(src: &str, entry: &str) -> [u16; 3] {
         assert_eq!(
             *v, regs[i],
             "IR interpreter vs Z80 diverged on result register {i}\nsrc: {src}"
+        );
+    }
+    let (rv, _) = run_rv32_full(src, entry, &[], &[]);
+    for (i, v) in ir.iter().enumerate().take(3) {
+        assert_eq!(
+            rv[i] as u16, *v,
+            "RV32 vs IR interpreter diverged on result register {i}\nsrc: {src}"
         );
     }
     regs
@@ -374,6 +394,8 @@ pub(crate) fn run_program_pruned(src: &str, entry: &str) -> u16 {
         spectrum,
         "IR interpreter vs Z80 diverged\nsrc: {src}"
     );
+    let rv = run_rv32(src, entry, &[], &[]);
+    assert_eq!(rv, spectrum, "RV32 vs Z80 diverged\nsrc: {src}");
     spectrum
 }
 
@@ -420,6 +442,23 @@ pub(crate) fn run_to_memory(src: &str, entry: &str) -> Vec<u8> {
         panic!(
             "IR interpreter vs Z80 memory diverged at {at:#06x} (ir={:#04x} z80={:#04x})\nsrc: {src}",
             ir[at], z80[at]
+        );
+    }
+    // The RV32 data window and the interpreter image share one memory map with no
+    // execution substrate inside either (RV32 code lives outside the window; the
+    // interpreter has none) — they must agree byte for byte, unmasked.
+    let ir_full = rustz80::interp_program_mem(src, entry)
+        .unwrap_or_else(|e| panic!("interp failed: {e}\nsrc: {src}"));
+    let (_, window) = run_rv32_full(src, entry, &[], &[]);
+    if window != ir_full {
+        let at = window
+            .iter()
+            .zip(&ir_full)
+            .position(|(a, b)| a != b)
+            .unwrap();
+        panic!(
+            "RV32 window vs IR interpreter diverged at {at:#06x} (rv32={:#04x} ir={:#04x})\nsrc: {src}",
+            window[at], ir_full[at]
         );
     }
     mem

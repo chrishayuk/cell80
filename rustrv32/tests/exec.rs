@@ -150,3 +150,83 @@ fn faults_are_stops_not_panics() {
     let spin = encode(&[Ins::At(0), Ins::Jal(Reg::X0, 0)]).unwrap();
     assert_eq!(run_fn(&spin, &[], MEM, 100).2, rustrv32::Stop::Fuel);
 }
+
+/// Run raw instruction words (decoder arms the codegen never emits).
+fn run_raw(words: &[u32], args: &[u32]) -> (u32, rustrv32::Stop) {
+    let mut code = Vec::new();
+    for w in words {
+        code.extend_from_slice(&w.to_le_bytes());
+    }
+    let (a0, _, stop) = run_fn(&code, args, MEM, FUEL);
+    (a0, stop)
+}
+
+const RET_W: u32 = 0x0000_8067; // jalr x0, 0(ra)
+
+#[test]
+fn decoder_arms_the_codegen_never_emits() {
+    use rustrv32::Stop;
+    // auipc a0, 0x1 — pc-relative: SRAM_BASE + 0x1000.
+    let (v, stop) = run_raw(&[0x0000_1517, RET_W], &[]);
+    assert_eq!(stop, Stop::Returned);
+    assert_eq!(v, rustrv32::SRAM_BASE + 0x1000);
+    // slti / sltiu / ori / xori immediates.
+    let (v, _) = run_raw(&[0xFFF5_2513, RET_W], &[(-2i32) as u32]); // slti a0,a0,-1
+    assert_eq!(v, 1);
+    let (v, _) = run_raw(&[0xFFF5_3513, RET_W], &[5]); // sltiu a0,a0,-1 (unsigned max)
+    assert_eq!(v, 1);
+    let (v, _) = run_raw(&[0x0F05_6513, RET_W], &[0x01]); // ori a0,a0,0xF0
+    assert_eq!(v, 0xF1);
+    // R-type sll / srl (register amounts).
+    let sll = encode(&[Ins::Op(Alu::Sll, Reg::A0, Reg::A0, Reg::A1), ret()]).unwrap();
+    assert_eq!(run_fn(&sll, &[3, 4], MEM, FUEL).0, 48);
+    let srl = encode(&[Ins::Op(Alu::Srl, Reg::A0, Reg::A0, Reg::A1), ret()]).unwrap();
+    assert_eq!(run_fn(&srl, &[0x8000_0000, 31], MEM, FUEL).0, 1);
+    // mulhsu: signed × unsigned high half.
+    let mulhsu = encode(&[Ins::Op(Alu::Mulhsu, Reg::A0, Reg::A0, Reg::A1), ret()]).unwrap();
+    assert_eq!(
+        run_fn(&mulhsu, &[(-1i32) as u32, 2], MEM, FUEL).0,
+        u32::MAX // (-1 × 2) >> 32 = -1
+    );
+    // ecall stops the run (the executor trap surface).
+    let (v, stop) = run_raw(&[0x0000_0073, RET_W], &[42]);
+    assert_eq!((v, stop), (42, Stop::Ecall));
+}
+
+#[test]
+fn every_fault_class_stops_cleanly() {
+    use rustrv32::Stop;
+    // Misaligned pc: jalr clears bit 0, so bit 1 is the reachable misalignment.
+    let jalr_odd = encode(&[
+        Ins::Lui(Reg::T0, rustrv32::SRAM_BASE >> 12),
+        Ins::Jalr(Reg::X0, Reg::T0, 2),
+    ])
+    .unwrap();
+    assert_eq!(run_fn(&jalr_odd, &[], MEM, FUEL).2, Stop::Fault);
+    // Fetch out of the window.
+    let jalr_oob = encode(&[Ins::Jalr(Reg::X0, Reg::X0, 16)]).unwrap();
+    assert_eq!(run_fn(&jalr_oob, &[], MEM, FUEL).2, Stop::Fault);
+    // Misaligned data: lh/lw/sh/sw at odd (or 2-mod-4) addresses.
+    for ins in [
+        Ins::Load(LoadW::Lh, Reg::A0, Reg::Sp, -3),
+        Ins::Load(LoadW::Lw, Reg::A0, Reg::Sp, -2),
+        Ins::Store(StoreW::Sh, Reg::Sp, Reg::A0, -3),
+        Ins::Store(StoreW::Sw, Reg::Sp, Reg::A0, -2),
+    ] {
+        let code = encode(&[ins, ret()]).unwrap();
+        assert_eq!(run_fn(&code, &[1], MEM, FUEL).2, Stop::Fault, "no fault");
+    }
+    // Illegal encodings: all-zeroes, an unknown LOAD/STORE/BRANCH funct3, an
+    // unknown OP funct7, and ebreak (unassigned SYSTEM word).
+    for word in [
+        0x0000_0000, // opcode 0
+        0x0000_3503, // "ld" (f3=011) — RV64-only
+        0x0000_3023, // "sd" (f3=011) — RV64-only
+        0x0000_2063, // branch f3=010 — unassigned
+        0x0A05_0533, // OP funct7=5 — unassigned
+        0x0010_0073, // ebreak — unassigned here
+    ] {
+        let (_, stop) = run_raw(&[word, RET_W], &[]);
+        assert_eq!(stop, rustrv32::Stop::Fault, "word {word:#010x}");
+    }
+}

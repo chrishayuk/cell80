@@ -208,6 +208,19 @@ pub struct Lowered {
     pub(crate) consts: consts::ConstTable,
 }
 
+impl Lowered {
+    /// The const-data pool as `(name, bytes)` pairs, in layout order — the
+    /// target-neutral projection a sibling backend (rustrv32) lays at its own
+    /// const base. Addresses resolve per target; names and bytes are the contract.
+    pub fn const_data(&self) -> Vec<(String, Vec<u8>)> {
+        self.consts
+            .data
+            .iter()
+            .map(|d| (d.name.clone(), d.bytes.clone()))
+            .collect()
+    }
+}
+
 /// Lower every `fn` in a file to `(name, Func)`, using the file's struct layouts and
 /// the caller's handle-routing config (empty for plain generic compilation).
 ///

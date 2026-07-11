@@ -147,7 +147,8 @@ fn i32_params_returns_and_calls() {
 
 #[test]
 fn signed32_is_gated_out_of_codegen_instructively() {
-    // Ops whose signedness changes the bits: refused with the WS-B pointer.
+    // Ops whose signedness changes the bits: refused, pointing at the backends
+    // that have them.
     for src in [
         "fn f() -> u16 { let x = -5i32; (x < 0i32) as u16 }",
         "fn f() -> u16 { (-7i32 / 2i32) as u16 }",
@@ -156,7 +157,7 @@ fn signed32_is_gated_out_of_codegen_instructively() {
         for target in crate::harness::TARGETS {
             let e = rustz80::compile_fn_for(src, target).unwrap_err();
             assert!(
-                e.contains("reference interpreter") && e.contains("WS-B"),
+                e.contains("reference interpreter") && e.contains("rustrv32"),
                 "gate message drifted: {e}"
             );
         }

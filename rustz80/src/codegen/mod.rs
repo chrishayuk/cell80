@@ -343,9 +343,10 @@ fn find_signed32(funcs: &[(String, Func)]) -> Option<&'static str> {
 pub(crate) fn reject_signed32(funcs: &[(String, Func)]) -> Result<(), String> {
     match find_signed32(funcs) {
         Some(what) => Err(format!(
-            "rustz80: this program uses {what} — i32 compiles to the IR and runs on \
-             the reference interpreter (`interp_*`), but no machine backend emits \
-             signed-32 ops yet (Phase 5 WS-B lands them on RV32)"
+            "rustz80: this program uses {what} — backend zero doesn't emit signed-32 \
+             ops (Z80 flag gymnastics the robo targets don't justify); compile it \
+             with the RV32 backend (rustrv32, where they are native) or run it on \
+             the reference interpreter (`interp_*`)"
         )),
         None => Ok(()),
     }
