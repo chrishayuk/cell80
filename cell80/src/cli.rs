@@ -13,7 +13,8 @@ pub const USAGE: &str = "usage:\n  \
      rustz80-cell keygen <out.key>             (new ed25519 signing key)\n  \
      rustz80-cell sign <file.cell> --key <key> (sign the artifact hash in place)\n  \
      rustz80-cell index <dir> [--gate <retrieval.jsonl>] [--json]  (list, or admit/refuse)\n  \
-     rustz80-cell search <query> <dir>        (rank library cells by relevance)\n  \
+     rustz80-cell search <query> <dir> [<in,..>=<out> | <f:v,..>=<out>[,f:v..] ...]\n  \
+     \x20                                        (rank by relevance; examples fuse behaviour into the ranking)\n  \
      rustz80-cell route <dir> <in,..>=<out> [more examples] [--facts <file.facts>] [--json]\n  \
      \x20                                        (rank cells by BEHAVIOUR; facts answer probes without executing)\n  \
      rustz80-cell serve <dir>                 (persistent stdio session over a warm host)\n  \
@@ -55,6 +56,63 @@ fn parse_examples(toks: &[&str]) -> Result<Vec<(Vec<u16>, u16)>, String> {
                 [out] => Ok((inputs, *out)),
                 _ => Err(format!("bad example `{t}` (one output after `=`)")),
             }
+        })
+        .collect()
+}
+
+/// Parse field-form example tokens for state cells: `"x:3,y:4=7"` (expected return),
+/// `"a:9,b:3=1,out:12"` / `"a:9,b:3=out:12"` (expected post-run fields — the status-flag
+/// sibling separator, [`FieldExample::want_fields`]). LHS is named input fields; RHS is a
+/// comma-separated mix of at most one bare number (the expected return) and `name:val`
+/// pairs (expected post-run field values). At least one expectation is required.
+fn parse_field_examples(toks: &[&str]) -> Result<Vec<crate::FieldExample>, String> {
+    toks.iter()
+        .map(|t| {
+            let (lhs, rhs) = t
+                .split_once('=')
+                .ok_or_else(|| format!("bad example `{t}` (want name:val,..=out)"))?;
+            let fields = lhs
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(|kv| {
+                    let (k, v) = kv
+                        .split_once(':')
+                        .ok_or_else(|| format!("bad field `{kv}` (want name:val)"))?;
+                    let v = v
+                        .parse::<u64>()
+                        .map_err(|_| format!("bad value `{v}` in `{t}`"))?;
+                    Ok((k.trim().to_string(), v))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            let mut want_result = None;
+            let mut want_fields = Vec::new();
+            for item in rhs.split(',').filter(|s| !s.is_empty()) {
+                match item.split_once(':') {
+                    Some((k, v)) => {
+                        let v = v
+                            .parse::<u64>()
+                            .map_err(|_| format!("bad value `{v}` in `{t}`"))?;
+                        want_fields.push((k.trim().to_string(), v));
+                    }
+                    None if want_result.is_some() => {
+                        return Err(format!("bad example `{t}` (one expected return after `=`)"))
+                    }
+                    None => {
+                        want_result =
+                            Some(item.trim().parse::<u16>().map_err(|_| {
+                                format!("bad output `{item}` in `{t}` (want a u16)")
+                            })?)
+                    }
+                }
+            }
+            if want_result.is_none() && want_fields.is_empty() {
+                return Err(format!("bad example `{t}` (nothing expected after `=`)"));
+            }
+            Ok(crate::FieldExample {
+                fields,
+                want_result,
+                want_fields,
+            })
         })
         .collect()
 }
@@ -368,16 +426,40 @@ fn render_reason(r: &crate::RefusalReason) -> String {
     }
 }
 
-/// `search <query> <dir>` — rank the library by relevance to `query`.
+/// `search <query> <dir> [examples…]` — rank the library by relevance to `query`.
+/// Trailing example tokens fuse **behaviour** into the ranking
+/// ([`CellHost::search_with_examples`]): behaviour first, text order breaking ties —
+/// the same-shape-sibling separator. Positional (`3,7=3`) and field
+/// (`a:9,b:3=1,out:12`) forms, not mixed.
 fn cmd_search(args: &[String]) -> Result<String, String> {
     let query = args.first().ok_or(USAGE)?;
     let dir = args.get(1).ok_or("search needs a directory")?;
+    let example_toks: Vec<&str> = args[2..].iter().map(String::as_str).collect();
     // Build a warm host so `search` uses the *same* TF-IDF index path as `serve`/MCP.
-    let host = host_from_dir(dir)?;
-    let hits = host.search(query, 10);
+    let mut host = host_from_dir(dir)?;
+    let n_examples = example_toks.len();
+    // Captured before the fused call: its `&mut` borrow lives as long as `hits`.
+    let n_cells = host.len();
+    let hits = if example_toks.is_empty() {
+        host.search(query, 10)
+    } else {
+        host.set_cache(true); // repeated probe runs memoize
+        let field_form = example_toks.iter().any(|t| t.contains(':'));
+        if field_form {
+            let examples = parse_field_examples(&example_toks)?;
+            host.search_with_field_examples(query, &examples, 10)?
+        } else {
+            let examples = parse_examples(&example_toks)?;
+            host.search_with_examples(query, &examples, 10)?
+        }
+    };
+    let examples_note = if n_examples > 0 {
+        format!(" + {n_examples} example(s)")
+    } else {
+        String::new()
+    };
     let mut out = format!(
-        "indexed {} cells; query `{query}` → {} match(es):\n",
-        host.len(),
+        "indexed {n_cells} cells; query `{query}`{examples_note} → {} match(es):\n",
         hits.len()
     );
     for m in hits {
@@ -416,29 +498,17 @@ fn cmd_route(args: &[String]) -> Result<String, String> {
                 "mixing positional (`3,7=3`) and field (`x:3=6`) examples — pick one form".into(),
             );
         }
-        let examples: Vec<(Vec<(String, u64)>, u16)> = example_toks
-            .iter()
-            .map(|t| {
-                let (lhs, rhs) = t
-                    .split_once('=')
-                    .ok_or_else(|| format!("bad example `{t}` (want name:val,..=out)"))?;
-                let fields = lhs
-                    .split(',')
-                    .filter(|s| !s.is_empty())
-                    .map(|kv| {
-                        let (k, v) = kv
-                            .split_once(':')
-                            .ok_or_else(|| format!("bad field `{kv}` (want name:val)"))?;
-                        let v = v
-                            .parse::<u64>()
-                            .map_err(|_| format!("bad value `{v}` in `{t}`"))?;
-                        Ok((k.trim().to_string(), v))
-                    })
-                    .collect::<Result<Vec<_>, String>>()?;
-                let out = rhs
-                    .parse::<u16>()
-                    .map_err(|_| format!("bad output `{rhs}` in `{t}`"))?;
-                Ok((fields, out))
+        let examples: Vec<(Vec<(String, u64)>, u16)> = parse_field_examples(&example_toks)?
+            .into_iter()
+            .map(|ex| match (ex.want_result, ex.want_fields.is_empty()) {
+                (Some(out), true) => Ok((ex.fields, out)),
+                // `route_by_field_examples` matches on the return only; expected
+                // post-run fields (`=out:12,..`) are a `search` example form.
+                _ => Err(
+                    "route matches the return only (`=out`); expected post-run fields \
+                     (`=out:12,..`) are a `search` example form"
+                        .to_string(),
+                ),
             })
             .collect::<Result<_, String>>()?;
         let host = host_from_dir(dir)?;
@@ -1467,6 +1537,78 @@ mod tests {
         assert_eq!(parse_examples(&["3,7=21"]).unwrap(), vec![(vec![3, 7], 21)]);
         assert!(parse_examples(&["3;7"]).is_err());
         assert!(parse_examples(&["3=x"]).is_err());
+    }
+
+    #[test]
+    fn field_example_parsing_covers_all_expectation_forms() {
+        use crate::FieldExample;
+        // Expected return only — the classic route form.
+        assert_eq!(
+            parse_field_examples(&["x:3,y:4=7"]).unwrap(),
+            vec![FieldExample {
+                fields: vec![("x".into(), 3), ("y".into(), 4)],
+                want_result: Some(7),
+                want_fields: vec![],
+            }]
+        );
+        // Return + expected post-run fields (the status-flag sibling separator),
+        // and the fields-only form.
+        assert_eq!(
+            parse_field_examples(&["a:9,b:3=1,out:12"]).unwrap(),
+            vec![FieldExample {
+                fields: vec![("a".into(), 9), ("b".into(), 3)],
+                want_result: Some(1),
+                want_fields: vec![("out".into(), 12)],
+            }]
+        );
+        assert_eq!(
+            parse_field_examples(&["a:9,b:3=out:12"]).unwrap()[0].want_result,
+            None
+        );
+        // Error shapes: no `=`, bare LHS field, two bare returns, empty RHS.
+        assert!(parse_field_examples(&["x:3,y:4"]).is_err());
+        assert!(parse_field_examples(&["x,y:4=7"]).is_err());
+        assert!(parse_field_examples(&["x:3=1,2"]).is_err());
+        assert!(parse_field_examples(&["x:3="]).is_err());
+    }
+
+    #[test]
+    fn search_verb_fuses_examples_into_the_ranking() {
+        // Hermetic same-shape twins (identical text surface): trailing examples pick
+        // the behavioural match where text alone falls back to id order.
+        let dir = std::env::temp_dir().join(format!("cell80-fused-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("pick_lo.rs"),
+            "//! pick between two numbers\n//! tags: compare, pair\n\
+             fn run(a: u16, b: u16) -> u16 { if a < b { a } else { b } }",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("pick_hi.rs"),
+            "//! pick between two numbers\n//! tags: compare, pair\n\
+             fn run(a: u16, b: u16) -> u16 { if a < b { b } else { a } }",
+        )
+        .unwrap();
+        let dir = dir.to_str().unwrap().to_string();
+        let q = "pick between two numbers".to_string();
+
+        let top_of = |out: String| {
+            out.lines()
+                .nth(1)
+                .unwrap_or_default()
+                .trim_start()
+                .to_string()
+        };
+        // Plain search: identical text, id order — hi first.
+        let out = run_cli(&["search".into(), q.clone(), dir.clone()]).unwrap();
+        assert!(top_of(out).starts_with("pick_hi"));
+        // Examples flip it to the behavioural match.
+        let out = run_cli(&["search".into(), q.clone(), dir.clone(), "3,7=3".into()]).unwrap();
+        assert!(out.contains("+ 1 example(s)"));
+        assert!(top_of(out).starts_with("pick_lo"));
+        // Malformed example errors rather than silently falling back to text.
+        assert!(run_cli(&["search".into(), q, dir, "3,7=1,2".into()]).is_err());
     }
 
     #[test]

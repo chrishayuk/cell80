@@ -38,6 +38,23 @@ pub struct RouteReport {
     pub local: u64,
 }
 
+/// One behavioural example for a **state cell** in the fused search
+/// ([`CellHost::search_with_field_examples`]): named input fields in, an expected
+/// return and/or expected **post-run field values** out. `want_fields` exists because
+/// status-flag state cells put the answer in output fields, not the return — `smag_add`
+/// and `smag_sub` both return `1`; only their post-run `mag`/`neg` differ. An example
+/// matches iff the run returns cleanly, `want_result` (when `Some`) equals the return,
+/// and every `(field, value)` in `want_fields` equals the post-run state.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldExample {
+    /// Named input fields written before the run.
+    pub fields: Vec<(String, u64)>,
+    /// Expected return value, if the caller cares about it.
+    pub want_result: Option<u16>,
+    /// Expected post-run field values (each must match exactly).
+    pub want_fields: Vec<(String, u64)>,
+}
+
 /// A persistent host over a library of cells: discover (`search`/`manifest`), then
 /// `load` → `run` many → `unload`, keeping runners warm between calls.
 #[derive(Default)]
@@ -260,6 +277,134 @@ impl CellHost {
         );
         hits.truncate(limit);
         hits
+    }
+
+    /// **Fused discovery**: text relevance *and* behaviour in one ranking — the primary
+    /// search path for example-carrying requests. The catalog is ordered by how many
+    /// `(inputs, expected_output)` examples each cell reproduces (the same-shape-sibling
+    /// separator text can't provide: `min`/`max` share every word, only `(3,7)→3` tells
+    /// them apart), with the plain [`search`](Self::search) order breaking ties among
+    /// behavioural equals. Zero-match cells are **demoted, not dropped** — examples no
+    /// cell reproduces degrade gracefully to the plain text ranking, and `limit` slots
+    /// stay filled. Empty `examples` returns `search(query, limit)` verbatim.
+    ///
+    /// Order-only, like width routing: [`search_scored`](Self::search_scored)'s calibrated
+    /// tf-idf magnitude (the tier-margin seam, see the field doc on
+    /// [`index`](struct@CellHost)) is never read or rescaled here.
+    ///
+    /// Behavioural pass rides [`route_by_examples_facts`](Self::route_by_examples_facts)
+    /// (warm pooled runners, memo cache, imported facts answer probes without executing) —
+    /// not the fresh-runner `route_by_examples` path.
+    pub fn search_with_examples(
+        &mut self,
+        query: &str,
+        examples: &[(Vec<u16>, u16)],
+        limit: usize,
+    ) -> Result<Vec<&Manifest>, String> {
+        if examples.is_empty() {
+            return Ok(self.search(query, limit));
+        }
+        let text_rank = self.text_rank(query);
+        let n = self.len();
+        let hits: HashMap<String, usize> = self
+            .route_by_examples_facts(examples, n)?
+            .ranked
+            .into_iter()
+            .map(|(hits, id)| (id, hits))
+            .collect();
+        Ok(self.fuse(&text_rank, &hits, limit))
+    }
+
+    /// [`search_with_examples`](Self::search_with_examples) for **state cells**: each
+    /// [`FieldExample`] drives named fields in and matches on the return and/or post-run
+    /// field values (`want_fields` — the status-flag sibling separator). Cells that can't
+    /// take the example (value cells, unknown fields) count as zero matches — a sieve,
+    /// not an error — so a mixed library ranks cleanly. Same fusion contract: behaviour
+    /// first, plain-search order as tiebreak, zero-match cells demoted not dropped,
+    /// empty `examples` falls back to `search(query, limit)`.
+    pub fn search_with_field_examples(
+        &mut self,
+        query: &str,
+        examples: &[FieldExample],
+        limit: usize,
+    ) -> Result<Vec<&Manifest>, String> {
+        if examples.is_empty() {
+            return Ok(self.search(query, limit));
+        }
+        let text_rank = self.text_rank(query);
+        let mut ids: Vec<String> = self.catalog.keys().cloned().collect();
+        ids.sort();
+        let mut hits: HashMap<String, usize> = HashMap::new();
+        for id in ids {
+            let n = self.count_field_example_hits(&id, examples)?;
+            if n > 0 {
+                hits.insert(id, n);
+            }
+        }
+        Ok(self.fuse(&text_rank, &hits, limit))
+    }
+
+    /// Plain-search order over the whole catalog as `id → rank` (0 = best). The text
+    /// half of the fused ranking; inherits width routing from [`search`](Self::search).
+    fn text_rank(&self, query: &str) -> HashMap<String, usize> {
+        self.search(query, self.len())
+            .into_iter()
+            .enumerate()
+            .map(|(rank, m)| (m.id.clone(), rank))
+            .collect()
+    }
+
+    /// The fused ordering: every catalog id sorted by `(examples reproduced desc,
+    /// text rank asc, id asc)`, truncated to `limit`, resolved to manifests. Ids the
+    /// text ranking never surfaced sort after ranked ones (rank `usize::MAX`).
+    fn fuse(
+        &self,
+        text_rank: &HashMap<String, usize>,
+        hits: &HashMap<String, usize>,
+        limit: usize,
+    ) -> Vec<&Manifest> {
+        let mut ids: Vec<&String> = self.catalog.keys().collect();
+        ids.sort_by(|a, b| {
+            let (ha, hb) = (
+                hits.get(*a).copied().unwrap_or(0),
+                hits.get(*b).copied().unwrap_or(0),
+            );
+            let (ta, tb) = (
+                text_rank.get(*a).copied().unwrap_or(usize::MAX),
+                text_rank.get(*b).copied().unwrap_or(usize::MAX),
+            );
+            hb.cmp(&ha).then(ta.cmp(&tb)).then(a.cmp(b))
+        });
+        ids.into_iter()
+            .take(limit)
+            .filter_map(|id| self.catalog.get(id).map(|c| &c.manifest))
+            .collect()
+    }
+
+    /// How many of `examples` the cell `id` reproduces, over a warm pooled load —
+    /// the state-cell counterpart of `route_by_examples_facts`' inner loop. A run
+    /// that errors (value cell, unknown field) or halts abnormally is a non-match.
+    fn count_field_example_hits(
+        &mut self,
+        id: &str,
+        examples: &[FieldExample],
+    ) -> Result<usize, String> {
+        let h = self.load(id)?;
+        let mut hits = 0usize;
+        for ex in examples {
+            if let Ok((fast, state)) = self.run_state_fast(h, &ex.fields, DEFAULT_CYCLES) {
+                let result_ok = ex.want_result.is_none_or(|w| fast.result == w);
+                let fields_ok = ex
+                    .want_fields
+                    .iter()
+                    .all(|(name, want)| state.iter().any(|(n, v)| n == name && v == want));
+                if fast.halt == Halt::Returned && result_ok && fields_ok {
+                    hits += 1;
+                }
+            }
+        }
+        self.unload(h)?;
+        Ok(hits)
     }
 
     /// Inspect a cell's manifest by id (the typed signature, caps, tags, …).

@@ -48,7 +48,7 @@ pub use discover::{discover_cell_files, find_cell_file};
 pub use facts::{Fact, FactFailure, FactInput, ImportPolicy, ImportReport};
 pub use fingerprint::{rank_by_examples, Fingerprint, DEFAULT_PROBES};
 pub use graph::{CellGraph, Feed, GraphRun, NodeTrace, Port};
-pub use host::{CellHost, RouteReport};
+pub use host::{CellHost, FieldExample, RouteReport};
 pub use index::CellIndex;
 pub use program::CellProgram;
 pub use report::{Fast, Halt, Report, Ty, ABI_VERSION, ESCALATE_BASE, ESCALATE_REASONS};

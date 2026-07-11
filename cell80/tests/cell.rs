@@ -578,6 +578,115 @@ fn cell_host_warm_session() {
     assert!(host.unload(999).is_err());
 }
 
+// The fused search path (roadmap WS-F): behaviour ranks, plain-search order breaks ties.
+// Same-shape siblings share every manifest word — only examples separate them.
+#[test]
+fn fused_search_separates_same_shape_siblings() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost, FieldExample};
+    let twin = |id: &str, src: &str| {
+        Cartridge::compile(
+            src,
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some(id.into()),
+                // Deliberately identical text surface: no lexical signal separates them.
+                summary: "pick between two numbers".into(),
+                tags: vec!["compare".into(), "pair".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let mut host = CellHost::new();
+    host.add(twin(
+        "pick_lo",
+        "fn run(a: u16, b: u16) -> u16 { if a < b { a } else { b } }",
+    ));
+    host.add(twin(
+        "pick_hi",
+        "fn run(a: u16, b: u16) -> u16 { if a < b { b } else { a } }",
+    ));
+
+    let q = "pick between two numbers";
+    // Plain search cannot tell them apart (identical text) — ties resolve by id, hi first.
+    let plain: Vec<String> = host.search(q, 5).iter().map(|m| m.id.clone()).collect();
+    assert_eq!(plain, vec!["pick_hi".to_string(), "pick_lo".to_string()]);
+
+    // Behaviour separates: (3,7)→3 and (10,2)→2 only the lo cell reproduces.
+    let fused = host
+        .search_with_examples(q, &[(vec![3, 7], 3), (vec![10, 2], 2)], 5)
+        .unwrap();
+    assert_eq!(fused[0].id, "pick_lo");
+    assert_eq!(fused.len(), 2, "zero-match cells demoted, not dropped");
+    // …and the mirror examples pick the hi cell.
+    let fused = host
+        .search_with_examples(q, &[(vec![3, 7], 7), (vec![10, 2], 10)], 5)
+        .unwrap();
+    assert_eq!(fused[0].id, "pick_hi");
+
+    // Empty examples: plain search verbatim. Garbage examples nothing reproduces:
+    // graceful degradation to the plain order — same ids, same order, slots filled.
+    let ids = |ms: Vec<&cell80::Manifest>| ms.iter().map(|m| m.id.clone()).collect::<Vec<_>>();
+    assert_eq!(ids(host.search_with_examples(q, &[], 5).unwrap()), plain);
+    assert_eq!(
+        ids(host
+            .search_with_examples(q, &[(vec![2, 2], 999)], 5)
+            .unwrap()),
+        plain
+    );
+
+    // Status-flag state cells: both return 1 on every valid run — the answer lives in
+    // the `out` field, so `want_result` alone cannot separate them; `want_fields` can.
+    let flag = |id: &str, op: &str| {
+        Cartridge::compile(
+            &format!(
+                "struct F {{ a: u16, b: u16, out: u16 }}
+                 impl F {{ fn run(&mut self) -> u16 {{ self.out = self.a {op} self.b; 1u16 }} }}"
+            ),
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some(id.into()),
+                entry: Some("F::run".into()),
+                summary: "combine two fields into out".into(),
+                tags: vec!["state".into(), "combine".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let mut host = CellHost::new();
+    host.add(flag("f_add", "+"));
+    host.add(flag("f_sub", "-"));
+
+    let fields = vec![("a".to_string(), 9u64), ("b".to_string(), 3u64)];
+    // Result-only: both match (status flag) → 2-way tie, text/id order decides.
+    let ambiguous = host
+        .search_with_field_examples(
+            "combine two fields",
+            &[FieldExample {
+                fields: fields.clone(),
+                want_result: Some(1),
+                want_fields: vec![],
+            }],
+            5,
+        )
+        .unwrap();
+    assert_eq!(ambiguous.len(), 2);
+    // Expected output field: only the adder writes out=12 for (9,3).
+    let fused = host
+        .search_with_field_examples(
+            "combine two fields",
+            &[FieldExample {
+                fields,
+                want_result: Some(1),
+                want_fields: vec![("out".to_string(), 12)],
+            }],
+            5,
+        )
+        .unwrap();
+    assert_eq!(fused[0].id, "f_add");
+}
+
 #[test]
 fn cli_exec_runs_a_compiled_cartridge() {
     use cell80::{Cartridge, CartridgeOpts, CellConfig};
