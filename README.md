@@ -137,6 +137,16 @@ an unmasked state index — trapped by the GPU's typed window, silently
 absorbed by open interpreter memory, filed. A GPU result that disagrees with
 the interpreter is a defect, never a "GPU difference".
 
+```console
+$ cargo run --release -p cell80 --example gpu_cells
+== one source, one more body: deadband (u16) ==
+  deadband(498,500,10)  GPU=500 steps=20  interpreter=500 steps=20  agree (values AND IR steps)
+== the whole library × a probe set, one megakernel dispatch ==
+  249 cells × 16 probes = 3984 evals in one launch — every cell's behaviour at once
+== a state cell stepping on the GPU (typed state, chained) ==
+  ok=0 → st=1 state=[1, 0, 3, 0, 4, 0]  fail — trips           (interpreter agrees)
+```
+
 ## The vision
 
 Agents constantly need to *run a little code*: score candidates, validate a move, step a
@@ -463,7 +473,7 @@ cell_compose(
 | **[`cell80-core`](./cell80-core)** | the **target-independent compiler core** (Phase 5): the typed IR and its semantic contract, the inline/DCE passes, the reference IR interpreter, and the target descriptors. Dependency-free. |
 | **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler (**backend zero**): `syn` frontend → `cell80-core` IR → Z80 codegen. Differential-tested against `rustc`. |
 | **[`rustrv32`](./rustrv32)** | the **RV32I(M) sibling backend** (Phase 5, WS-B): its own symbolic `Ins` layer + exact encoder, a cycle-accounted RV32IM executor (Hazard3/RP2350-shaped), and codegen over the shared IR — live in the same diff battery. |
-| **[`rustmsl`](./rustmsl)** | the **Metal (MSL) sibling backend** (Phase 6, WS-E): IR→MSL codegen for integer cells (loops included, fuel-metered tick-for-tick) + a batch GPU executor and the library×probes megakernel — bit-exact against the reference interpreter on values *and* IR steps (245 cells × 10⁶ inputs; 3.7×10⁸ evals/s measured). |
+| **[`rustmsl`](./rustmsl)** | the **Metal (MSL) sibling backend** (Phase 6, WS-E): IR→MSL codegen for integer cells (loops included, fuel-metered tick-for-tick; typed state per thread) + a batch GPU executor and the library×probes megakernel — bit-exact against the reference interpreter on values, IR steps, *and* state bytes (741 of 746 cells; 3.7×10⁸ evals/s measured). |
 | **[`cell80`](./cell80)** | the **cell micro-VM + tooling** (built on `rustz80`): `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, typed-state I/O, host-routed `CellGraph` composition, and the `cell80` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
@@ -506,12 +516,14 @@ family slot ABI; the first loadable RV32 cartridge via `compile_rv32` +
 ([docs/14-model-native-cells-spec.md](docs/14-model-native-cells-spec.md) —
 model-native cells: GPU bodies over the same IR seam, retrieval by execution,
 decode-time wiring, trained invocation): the F2 routing gate passed
-(probe-equipped paraphrase P@1 0.859 vs the 0.80 bar) and **E1–E3 landed on
-Metal** — `rustmsl` compiles the library's integer value cells (loops
-included, fuel-metered tick-for-tick) to Metal compute kernels; the
-pre-registered gate ran clean (245 cells × 10⁶ random inputs, values +
-status + IR steps bit-exact) at a measured 3.7×10⁸ evals/s, with the whole
-library runnable against a probe set in one megakernel dispatch.
+(probe-equipped paraphrase P@1 0.859 vs the 0.80 bar) and **E1–E3 plus
+typed-state readback landed on Metal** — `rustmsl` compiles the library's
+integer cells, value *and* state (loops included, fuel-metered
+tick-for-tick, per-thread state windows), to Metal compute kernels; the
+pre-registered gates ran clean (741 of 746 cells, values + status + IR
+steps + state bytes bit-exact) at a measured 3.7×10⁸ evals/s, with the
+whole library runnable against a probe set in one megakernel dispatch and
+oracle transcripts making gate re-runs effectively free.
 Owed from Phase 5: full `CellHost` dispatch by body,
 the Sail/spike execution adversary, the RV32 peephole suite, and the RP2350
 `mcycle` co-sign (B4).
