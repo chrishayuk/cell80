@@ -295,6 +295,12 @@ impl CellHost {
     /// Behavioural pass rides [`route_by_examples_facts`](Self::route_by_examples_facts)
     /// (warm pooled runners, memo cache, imported facts answer probes without executing) —
     /// not the fresh-runner `route_by_examples` path.
+    ///
+    /// **Arity tie-break** (between behaviour and text): among behavioural equals, value
+    /// cells whose declared arity matches the examples' rank first. Register probing
+    /// zero-fills missing args, so `median3(a,b,0) ≡ min(a,b)` on every 2-ary example —
+    /// an artifact of the ABI projection, not real behavioural identity; the manifest
+    /// knows the arity, so the collision dissolves as a ranking rule, not new data.
     pub fn search_with_examples(
         &mut self,
         query: &str,
@@ -312,7 +318,8 @@ impl CellHost {
             .into_iter()
             .map(|(hits, id)| (id, hits))
             .collect();
-        Ok(self.fuse(&text_rank, &hits, limit))
+        let arity = examples.iter().map(|(args, _)| args.len()).max();
+        Ok(self.fuse(&text_rank, &hits, arity, limit))
     }
 
     /// [`search_with_examples`](Self::search_with_examples) for **state cells**: each
@@ -341,7 +348,8 @@ impl CellHost {
                 hits.insert(id, n);
             }
         }
-        Ok(self.fuse(&text_rank, &hits, limit))
+        // No arity axis for field examples: names already constrain the match.
+        Ok(self.fuse(&text_rank, &hits, None, limit))
     }
 
     /// Plain-search order over the whole catalog as `id → rank` (0 = best). The text
@@ -355,14 +363,33 @@ impl CellHost {
     }
 
     /// The fused ordering: every catalog id sorted by `(examples reproduced desc,
-    /// text rank asc, id asc)`, truncated to `limit`, resolved to manifests. Ids the
-    /// text ranking never surfaced sort after ranked ones (rank `usize::MAX`).
+    /// arity mismatch asc, text rank asc, id asc)`, truncated to `limit`, resolved to
+    /// manifests. Ids the text ranking never surfaced sort after ranked ones (rank
+    /// `usize::MAX`). `example_arity` (value-form only) is the tie-break between
+    /// behaviour and text: a value cell whose declared arity equals the examples'
+    /// outranks behavioural equals that only match through register zero-fill (the
+    /// `min`/`median3` class) or coincidental state-cell register hits. The expected
+    /// cell can never lose this tie-break to a co-equal when the examples fit its own
+    /// signature, so the fused-never-worse-than-plain property is preserved.
     fn fuse(
         &self,
         text_rank: &HashMap<String, usize>,
         hits: &HashMap<String, usize>,
+        example_arity: Option<usize>,
         limit: usize,
     ) -> Vec<&Manifest> {
+        let mismatch = |id: &String| -> u8 {
+            let Some(k) = example_arity else { return 0 };
+            match self.catalog.get(id) {
+                Some(c)
+                    if c.manifest.signature.state.is_empty()
+                        && c.manifest.signature.params.len() == k =>
+                {
+                    0
+                }
+                _ => 1,
+            }
+        };
         let mut ids: Vec<&String> = self.catalog.keys().collect();
         ids.sort_by(|a, b| {
             let (ha, hb) = (
@@ -373,7 +400,17 @@ impl CellHost {
                 text_rank.get(*a).copied().unwrap_or(usize::MAX),
                 text_rank.get(*b).copied().unwrap_or(usize::MAX),
             );
-            hb.cmp(&ha).then(ta.cmp(&tb)).then(a.cmp(b))
+            // Arity discriminates only among cells that matched something: the
+            // zero-hit tail must stay pure text order, or garbage examples would
+            // reorder the plain-search fallback.
+            let (ma, mb) = (
+                if ha > 0 { mismatch(a) } else { 0 },
+                if hb > 0 { mismatch(b) } else { 0 },
+            );
+            hb.cmp(&ha)
+                .then(ma.cmp(&mb))
+                .then(ta.cmp(&tb))
+                .then(a.cmp(b))
         });
         ids.into_iter()
             .take(limit)

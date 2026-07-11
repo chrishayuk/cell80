@@ -228,5 +228,80 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     in view: this measures example-CARRYING requests — text-only paraphrase (checkpoint
     20's 0.3866) is unchanged and stays the open problem for text-side levers.
 
+  - **Checkpoint 22 (`retrieval-examples-arity-653cells-2026-07-11.json`, 653 cells,
+    2026-07-11) — the arity tie-break dissolves the zero-fill class.** Checkpoint 21's
+    residue analysis showed `min(a,b) ≡ median3(a,b,0)`-style co-matches are an artifact
+    of register zero-fill, not real behavioural identity — the manifest knows the arity.
+    The fused ranking now breaks behavioural ties by declared-arity match before text
+    (order-only; the zero-hit tail keeps pure text order so garbage examples still
+    degrade to plain search; the expected cell can't lose the tie-break when the
+    examples fit its own signature, so fused-rank ≤ plain-rank still holds — verified,
+    zero regressions). Result: **equipped paraphrase 0.859 → 0.879, adversarial
+    0.89 → 0.92, direct 0.95 → 0.96, deployed overall 0.90 → 0.91**; paraphrase misses
+    85 → 73, of which co_match-attributed 45 → 33. The remaining 33 are behaviourally
+    indistinguishable *at matching arity* (predicate families agreeing on the supplied
+    probes) — the class that needs active disambiguation, not better ranking.
+  - **Naming discipline: checkpoints 21/22 measure ORACLE-EQUIPPED behavioural
+    retrieval** — examples derived from the expected cell by `gen-examples`, i.e. the
+    router's discrimination capacity given correct examples. They do NOT measure whether
+    an agent can author useful probes from a natural-language request; that end-to-end
+    benchmark (request → model-authored examples → fused retrieval, tracking example
+    validity/informativeness/correlated failure) is registered as owed work below. Do
+    not read 0.88/0.91 as "arbitrary text queries are solved."
+
+## Round-4 re-registration (2026-07-11) — the growth gate splits into two lanes
+
+Registered on user decision after checkpoints 19–22. Rationale: the original kill gate
+("does the library stay searchable as it grows?") conflated two lanes that now have
+different answers. The deployed retrieval contract includes optional executable
+behavioural probes on every surface (CLI/MCP/py), so fused retrieval becomes the
+blocking gate; text-only remains a tracked product weakness, watched — not a veto.
+The paper trail is this entry; the change is dated, motivated, and its floors were set
+from pre-registered targets, not fitted to the measurements.
+
+**Blocking growth gate (fused, oracle-equipped)** — enforced in
+`cell-eval/tests/test_retrieval_examples.py`:
+
+    equipped coverage           >= 0.95   (measured 0.985)
+    equipped paraphrase P@1     >= 0.82   (measured 0.879)
+    equipped adversarial P@1    >= 0.82   (measured 0.92)
+    deployed overall P@1        >= 0.88   (measured 0.91)
+    monotone rank regressions    = 0      (fused rank <= plain rank, every equipped case)
+
+**Text-only fallback watch** — reported every checkpoint, two enforced floors:
+
+    text-only direct P@1        >= 0.80   (test_retrieval.py, unchanged)
+    checkpoint-1 cohort ratchet >= 0.4247 (test_retrieval.py::test_checkpoint1_cohort_ratchet)
+    text-only paraphrase/adversarial (full mix): report only
+
+**The dilution analysis that priced the ratchet (2026-07-11):** re-scoring the FIXED
+228-query checkpoint-1 cohort against the 653-cell library: paraphrase **0.4247 → 0.4795**
+(+5.5pt), adversarial **0.3939 → 0.5152** (+12.1pt), direct 0.9426 → 0.8279 (the known
+benign sibling-shading class — `manhattan` behind `manhattan_wide`, etc.). Text-only
+retrieval on fixed queries *improved* through 5.7× growth; the library-wide paraphrase
+decline (0.4247 → 0.3866) is **composition** — new packs deliberately add sibling-dense,
+harder queries — not erosion. Hence a fixed-cohort ratchet at the origin value: it fires
+only on genuine degradation of existing retrievability, and cannot be gamed by the query
+mix. (Direct on the cohort is intentionally not ratcheted separately — the library-wide
+direct floor already covers it and the shading class is documented benign.)
+
+**Round-4 conditions (registered with the resumption):**
+1. **Example-equipped admission** — every admitted cell ships probe examples; the ≥0.95
+   equipped-coverage floor is an admission invariant, not a happy accident.
+2. **co_match density is a watched number per batch** — growth manufactures exactly the
+   ambiguity class the residue is made of (predicate families, low-arity coincidences).
+
+**Owed work (registered, in rough order of leverage):**
+- *Agent-authored-example benchmark* — the end-to-end lane (see naming discipline above).
+- *Active disambiguation* — when the router returns a behavioural equivalence class,
+  execute candidates until they diverge and surface the distinguishing input ("these 4
+  agree on your examples; they differ on (3,1) — which output do you want?") instead of
+  silently picking by text. Product feature on MCP; self-resolvable by the model in WS-H.
+- *Equivalence-aware metrics* — split P@1 into unique-exact / expected-in-equivalence-class /
+  actually-wrong; report ambiguity_rate and false_unique_rate (target 0: never claim a
+  unique answer the examples don't justify).
+- *Scaling checkpoints* at 1,000 / 2,000 / 5,000 cells, each reporting both lanes plus
+  ambiguity-class rate and probe cost.
+
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

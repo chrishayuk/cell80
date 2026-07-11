@@ -48,11 +48,14 @@ def test_fused_with_no_examples_is_plain_search():
 
 
 def test_equipped_coverage_is_not_cherry_picked():
-    # The F2 number is only meaningful if nearly every paraphrase row is equipped —
-    # a gate reached by skipping hard rows would be cherry-picking with extra steps.
+    # The gate numbers are only meaningful if nearly every row is equipped — a gate
+    # reached by skipping hard rows would be cherry-picking with extra steps. 0.95 is
+    # the registered growth-gate floor (baselines/README.md, round-4 re-registration);
+    # measured 0.985 at 653 cells. Example-equipped admission (each admitted cell
+    # ships probe examples) is what keeps this true as the library grows.
     rep = _report()
-    assert rep.coverage("paraphrase") >= 0.90, rep.coverage("paraphrase")
-    assert rep.coverage() >= 0.90, rep.coverage()
+    assert rep.coverage("paraphrase") >= 0.95, rep.coverage("paraphrase")
+    assert rep.coverage() >= 0.95, rep.coverage()
 
 
 def test_fusion_never_ranks_expected_worse_than_plain():
@@ -63,17 +66,22 @@ def test_fusion_never_ranks_expected_worse_than_plain():
     assert not regs, [(c.case_id, c.plain_rank, c.fused_rank) for c in regs[:5]]
 
 
-def test_probe_equipped_paraphrase_gate():
-    # F2 (docs/roadmap-phases.md WS-F): probe-equipped paraphrase P@1 >= 0.80
-    # against the ~0.39 text-only baseline. Measured 2026-07-11 at 653 cells:
-    # 0.859 (plain 0.39 on the same 603-row equipped subset); adversarial
-    # 0.47->0.89, direct 0.81->0.95. Committed report:
-    # cell-eval/baselines/retrieval-examples-653cells-2026-07-11.json.
-    # The floor is the F2 gate value, not the measurement — headroom is real
-    # (the residue is the co_match ambiguity class, e.g. min vs median3, which
-    # examples cannot separate by construction). If this trips: diagnose with
-    # `cell-eval retrieval --examples retrieval-examples`, re-price with
-    # analysis committed to baselines/ — never regenerate examples to pass.
+def test_probe_equipped_gates_govern_library_growth():
+    # The registered growth gate (round-4 re-registration, 2026-07-11 — see
+    # cell-eval/baselines/README.md): fused retrieval over oracle-equipped cases
+    # is the BLOCKING gate for library growth; text-only retrieval is a watched
+    # fallback (its fixed-cohort ratchet lives in the ledger, its direct floor in
+    # test_retrieval.py). Floors are the registered thresholds, not the
+    # measurements — measured at 653 cells (checkpoint 21/22): paraphrase 0.859+,
+    # adversarial 0.89+, deployed overall 0.90+.
+    # The residue is the co_match ambiguity class (behaviourally indistinguishable
+    # candidates); if a floor trips, diagnose with
+    # `cell-eval retrieval --examples retrieval-examples`, re-price with analysis
+    # committed to baselines/ — never regenerate examples to pass.
     rep = _report()
-    fused = rep.fused("paraphrase").precision_at_1
-    assert fused >= 0.80, f"probe-equipped paraphrase P@1 {fused:.4f} < 0.80 (F2 gate)"
+    para = rep.fused("paraphrase").precision_at_1
+    adv = rep.fused("adversarial").precision_at_1
+    overall = rep.deployed().precision_at_1
+    assert para >= 0.82, f"equipped paraphrase P@1 {para:.4f} < 0.82 (growth gate)"
+    assert adv >= 0.82, f"equipped adversarial P@1 {adv:.4f} < 0.82 (growth gate)"
+    assert overall >= 0.88, f"deployed overall P@1 {overall:.4f} < 0.88 (growth gate)"
