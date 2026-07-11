@@ -332,8 +332,25 @@ calibrated tier gate), spend guarded authored examples only on the escalated res
 Equivalence-aware metrics landed with the benchmark: on the oracle eval at 697 cells,
 paraphrase strict 0.880 → **0.911 equivalence-aware** (top hit is a recorded co_match
 sibling — behaviourally right, label-wrong); miss-outside-known-class 8.9%.
-Scaling axis (does validity improve with model capability?): gemma4:e4b run pending —
-same command, banked when complete.
+**The scaling axis answered (gemma4:e4b, same 474 cases,
+`authored-gemma4e4b-2026-07-11.json`): the lane is real and scales with the author.**
+Validity 0.35 → **0.56**, authored P@1 0.45 → **0.61**, false_unique 0.095 → 0.074 —
+and unguarded authored already beats plain on the hard splits (paraphrase 0.53 vs 0.42,
+adversarial 0.70 vs 0.44), losing only where text was already right (direct 0.65 vs
+0.82: the invalid-example tax). **With the junk guard, gemma-authored strictly
+dominates plain text on every split**:
+
+    split         plain   authored   guarded
+    direct        0.815     0.655     0.823
+    paraphrase    0.424     0.530     0.631
+    adversarial   0.444     0.704     0.741
+    overall       0.631     0.606     0.738
+
+Read together: the deployed contract for example-carrying agents is
+**guard(some-cell-reproduces-all) → fused**, a pure win at gemma-class capability and
+harm-limited at granite-class; the oracle gap (0.63 guarded vs 0.94 oracle on
+paraphrase) is all authoring headroom — better probes, self-verification, or the
+active-disambiguation loop, not router work.
 
 **Owed work (registered, in rough order of leverage):**
 - *Schema-aware authoring (two-step lane)* — search → inspect → author field examples
