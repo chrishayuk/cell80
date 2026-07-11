@@ -194,8 +194,7 @@ fn rv32_determinism_fingerprint_fuzz() {
         let entry = image.symbols["run"];
         let first = rustrv32::run_cell(&image.code, &image.consts, entry, &[], &[], 10_000_000);
         for _ in 0..2 {
-            let again =
-                rustrv32::run_cell(&image.code, &image.consts, entry, &[], &[], 10_000_000);
+            let again = rustrv32::run_cell(&image.code, &image.consts, entry, &[], &[], 10_000_000);
             assert_eq!(first.0, again.0, "result registers drifted\nsrc: {src}");
             assert_eq!(first.1, again.1, "cycle count drifted\nsrc: {src}");
             assert_eq!(first.2, again.2, "stop reason drifted\nsrc: {src}");
