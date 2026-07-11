@@ -214,6 +214,15 @@ pub struct FieldLayout {
     /// else — including `slots == 1` scalars, so a `[u8; 1]`/`[u8; 2]` field is never
     /// mistaken for a `u16`.
     pub bytes: Option<u16>,
+    /// `Some(N)` for a word-element scalar array `[u16/bool/i16; N]`: `N` elements,
+    /// one 2-byte slot each. `None` for tuples, nested structs, and `[Cell; N]`
+    /// struct arrays (all also `slots > 1`) — only a true word array is addressable
+    /// as one through the named-state surface.
+    pub word_len: Option<u16>,
+    /// `Some(N)` for a `[u32; N]` field: `N` wide little-endian elements, two slots
+    /// each (`slots == 2N`, `dword == false` — the wide-*elemented* case a scalar
+    /// `u32`'s `dword` deliberately excludes).
+    pub wide_len: Option<u16>,
 }
 
 /// The field layout of a (non-generic) named struct in `src` — `(name, slot offset, slot
@@ -237,6 +246,8 @@ pub fn struct_layout(src: &str, name: &str) -> Result<Vec<FieldLayout>, String> 
             dword: f.width == ir::Width::DWord && f.wide_len.is_none(),
             f32: f.width == ir::Width::F32,
             bytes: f.packed_len.map(|n| n as u16),
+            word_len: f.word_len.map(|n| n as u16),
+            wide_len: f.wide_len.map(|n| n as u16),
         });
         offset += f.slots as u16;
     }

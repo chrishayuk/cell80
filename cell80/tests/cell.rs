@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("718 cells"));
+    assert!(listing.contains("range_check") && listing.contains("736 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("718 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("736 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 718, "got: {out}");
+    assert_eq!(cells.len(), 736, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -956,13 +956,29 @@ fn cli_index_gate_over_the_real_library() {
     // `//! kernel_bank: on` for size (8908 bytes unbanked, over the 8192-byte
     // sandboxed cap), the same class of fix excel_rri and 22 other
     // excel-financial cells needed in the prior wave. 718 admitted, 0 refused.
+    // 718→736: 8 composable-author cells + the 11-cell Excel Math&Trig/Statistical
+    // coverage-map batch (docs/excel-mathstat-map.md), landing a new excel-mathstat
+    // pack (15 cells: CEILING.MATH/.PRECISE, FLOOR.MATH/.PRECISE, ISO.CEILING, EVEN,
+    // ODD, MOD, MROUND, ROUND/ROUNDUP/ROUNDDOWN, SQRT, TRUNC, RADIANS, DEGREES) plus
+    // two matrix-pack extensions (matrix_det_3x3/MDETERM, matrix_inverse_2x2/MINVERSE
+    // — landed under the matrix naming convention, not an excel_ prefix, per the
+    // authoring brief) and one statistics-pack extension (steyx/STEYX). 19 authored,
+    // 18 survived. One back-out: excel_mround — its (u32,u16,u32,u16,u32,u16) field
+    // shape exactly matches checked-arithmetic/smag_max.rs, and the fingerprint probe
+    // bank assigns fields cyclically by declaration order, so `mult_neg`/`neg_b` both
+    // land on `probe[0]`, a value >1 (invalid sign flag) on nearly every probe — both
+    // cells escalate identically almost every time, never reaching a probe where
+    // MROUND's rounding and MAX's comparison would visibly disagree (e.g.
+    // MROUND(10,3)=9 vs max(10,3)=10). A probe-bank coincidence, not a true
+    // behavioural duplicate, but the standing rule backs out the new cell on any
+    // flagged pair regardless. 736 admitted, 0 refused.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("718 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("736 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
@@ -1330,7 +1346,8 @@ fn typed_state_read_back() {
 
 #[test]
 fn struct_layout_offsets() {
-    let src = "struct State { x: u16, y: u16, arr: [u16; 4], total: u32, score: u16 }";
+    let src =
+        "struct State { x: u16, y: u16, arr: [u16; 4], total: u32, wides: [u32; 3], score: u16 }";
     let l = rustz80::struct_layout(src, "State").unwrap();
     assert_eq!(
         l[0],
@@ -1340,13 +1357,25 @@ fn struct_layout_offsets() {
             slots: 1,
             dword: false,
             f32: false,
-            bytes: None
+            bytes: None,
+            word_len: None,
+            wide_len: None
         }
     );
     assert_eq!(l[1].offset, 1); // y
-    assert_eq!((l[2].offset, l[2].slots), (2, 4)); // arr — 4 slots
+    // arr — a true word array: 4 slots, marked word_len so the named-state surface
+    // can address it (a tuple/nested-struct field of the same slot count stays None).
+    assert_eq!((l[2].offset, l[2].slots, l[2].word_len), (2, 4, Some(4)));
     assert_eq!((l[3].offset, l[3].slots, l[3].dword), (6, 2, true)); // total — a wide u32
-    assert_eq!(l[4].offset, 8); // score, after the u32's two slots
+    // wides — wide-elemented, not a wide scalar: dword must NOT fire, wide_len does.
+    assert_eq!(
+        (l[4].offset, l[4].slots, l[4].dword, l[4].wide_len),
+        (8, 6, false, Some(3))
+    );
+    assert_eq!(l[5].offset, 14); // score, after the wide array's six slots
+    // A tuple field has slots > 1 but is NOT a word array — word_len stays None.
+    let t = rustz80::struct_layout("struct T { p: (u16, u16), q: u16 }", "T").unwrap();
+    assert_eq!((t[0].slots, t[0].word_len), (2, None));
     assert!(rustz80::struct_layout(src, "Nope").is_err());
 }
 

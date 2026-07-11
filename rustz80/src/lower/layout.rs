@@ -25,6 +25,11 @@ pub(crate) struct FieldDef {
     /// access through the 32-bit nodes at `field_base + i*4`. (`width` is `DWord`
     /// with `slots = 2N` — distinguished from a scalar `u32`'s `slots = 2` by this.)
     pub(crate) wide_len: Option<usize>,
+    /// `Some(N)` for a word-element scalar array `[u16/bool/i16; N]`: `N` elements,
+    /// one slot each. Set **only** in that arm — tuples, nested structs, and
+    /// `[Cell; N]` struct arrays stay `None`, so the cell layer's named-state surface
+    /// can address true word arrays without ever misreading a compound field as one.
+    pub(crate) word_len: Option<usize>,
     /// `Some(name)` for a **nested struct** field (`sprite: Sprite`): the field
     /// occupies `struct_slots(name)` consecutive slots holding the sub-struct's own
     /// fields, and `struct_ty` names it so `s.sprite.x` can drill in (offsets sum
@@ -118,6 +123,7 @@ fn field_def(
     let name = f.ident.as_ref().unwrap().to_string();
     let mut packed_len = None;
     let mut wide_len = None;
+    let mut word_len = None;
     let mut struct_ty = None;
     let (slots, elem_struct, width) = match &f.ty {
         // A `u32` field: two consecutive slots, little-endian (low word first) — the
@@ -169,7 +175,9 @@ fn field_def(
             (2 * n, None, Width::DWord)
         }
         syn::Type::Array(arr) if is_scalar_array_elem(&arr.elem) => {
-            (array_len(&arr.len, consts)?, None, Width::Word)
+            let n = array_len(&arr.len, consts)?;
+            word_len = Some(n);
+            (n, None, Width::Word)
         }
         // `[Cell; N]` — an array of structs.
         syn::Type::Array(arr) => {
@@ -216,6 +224,7 @@ fn field_def(
         width,
         packed_len,
         wide_len,
+        word_len,
         struct_ty,
     })
 }
