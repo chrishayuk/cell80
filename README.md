@@ -98,9 +98,18 @@ $ cargo run -p rustz80 --example cell_family
 
 The Z80 T-states are authentic (the cycle-exact core underneath); the RV32 cycle
 table is explicitly provisional until `mcycle` on real RP2350 silicon co-signs it
-(spec §3, B4). Still owed from WS-B: the RISC-V Sail model as the emission adversary
-in CI, the rustrv32 determinism-fuzz battery and peephole suite, and the silicon
-co-sign itself.
+(spec §3, B4). The verification net around the new backend: a seeded
+**determinism-fuzz battery** (random width-lattice programs through the whole
+matrix, plus the exact-cycle/window fingerprint on fresh executors), and a
+**GNU-gas emission adversary** — binutils' independent RISC-V assembler re-encodes
+every instruction shape byte-for-byte, required on CI's linux leg, so the encoder
+is never self-refereed. The identity story is formal too: `.cell` **v10** manifests
+carry a **target id** (which machine body the cartridge holds — a host refuses a
+body it can't run) and a **family hash** (SHA-256 over the canonical source, shared
+by sibling-target bodies — what "one cell, many bodies" means as an artifact
+property, not just a demo). Still owed: the Sail/spike *execution* adversary, the
+RV32 peephole suite, the per-body host (WS-E3 — the first loadable RV32 cartridge),
+and the silicon co-sign.
 
 ## The vision
 
@@ -443,10 +452,12 @@ u32 array elements remain).
 ([docs/13-multi-target-spec.md](docs/13-multi-target-spec.md)): WS-A complete
 (target descriptor, reference IR interpreter, canonical evaluation order, the
 explicit width-bridge family with `SignExtend`, i32 through the IR, the
-`cell80-core` extraction), WS-B's compiler live (B1–B3: the RV32 backend in the
-full battery, byte-exact window parity with the interpreter, per-file coverage
-≥90%); owed: the Sail CI adversary, fuzz + peephole for rustrv32, and the RP2350
-`mcycle` co-sign (B4).
+`cell80-core` extraction); WS-B's compiler live and fenced (B1–B3 plus the
+determinism-fuzz battery and the CI-required GNU-gas emission adversary; byte-exact
+window parity with the interpreter; per-file coverage ≥90%); WS-E underway
+(`.cell` v10 target id + family hash landed, the state-layout question resolved by
+the family slot ABI). Owed: WS-E3's per-body host, the Sail/spike execution
+adversary, the RV32 peephole suite, and the RP2350 `mcycle` co-sign (B4).
 
 ---
 

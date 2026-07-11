@@ -6,9 +6,12 @@ cores in the RP2350, as the antweight robot's reflex organ.
 
 - **`ins`** — the RV32 symbolic instruction layer (per-ISA `Ins`, shared
   *discipline* with rustz80's, not shared code) + an exact encoder, pinned by
-  encoding goldens. **Still owed:** the RISC-V Sail model as the emission
-  adversary (a linux-only CI job — spec §6 risk 2); the goldens are the local,
-  always-on check until it lands.
+  encoding goldens **and refereed by an independent implementation**: the GNU-gas
+  emission adversary (`tests/gas_adversary.rs`) re-encodes every instruction
+  shape, immediate edge, and label-resolved displacement byte-for-byte — required
+  on CI's linux leg. **Still owed:** the Sail model (or spike, the risk-2
+  fallback) as the *execution* adversary — gas checks what bytes mean to an
+  assembler, not what they do.
 - **`exec`** — the cycle-accounted RV32IM reference executor: RISC-V-spec-exact
   M semantics (division by zero returns all-ones/dividend, no trap; `MIN/-1`
   wraps), misalignment faults exactly as Hazard3 (no hardware misaligned support),

@@ -358,9 +358,13 @@ faults, provisional cycle table pinned by test), codegen over the shared IR (fam
 rustc + 2×Z80 + interpreter + RV32, with the RV32 data window byte-identical to the
 interpreter's image. Per-file coverage ≥90%. Demo:
 `cargo run -p rustz80 --example cell_family`.
-*Owed for full 5.2:* the Sail model as the emission adversary (linux-only CI job),
-the determinism-fuzz battery + RV32 peephole suite, and B4 — RP2350 bring-up with the
-`mcycle` co-sign (the M2 demo's silicon half; the software half runs today).
+*Since landed:* the **determinism-fuzz battery** (seeded random width-lattice
+programs across the five-system matrix + the exact-cycle/window fingerprint) and the
+**emission adversary** — GNU gas independently re-encodes every instruction shape,
+CI-required on linux (teeth proven by deliberate corruption). *Owed for full 5.2:*
+the Sail/spike *execution* adversary, the RV32 peephole suite, and B4 — RP2350
+bring-up with the `mcycle` co-sign (the M2 demo's silicon half; the software half
+runs today).
 
 **5.3 WS-C — robo dialect.** Q-format (Q8.8 gate — live machinery today; Q16.16
 stretch), the `bounded` WCET sub-dialect (static cycle bounds — new machinery), sensor
@@ -368,9 +372,15 @@ typing on the escalation-band pattern.
 *DoD:* three MVP robo cells compile `bounded`, static WCET ≤ 50µs each @150MHz in
 manifests, 1kHz HIL loop from synthetic sensor streams.
 
-**5.4 WS-D + WS-E — Thumb-1 sibling; cell-layer multi-target.** Thumb-1 forces
-descriptor honesty (Z80 as adversarial third); manifest target id + family hash
-(`.cell` v10), per-target state-address story, host/runner generalisation.
+**5.4 WS-D + WS-E — Thumb-1 sibling; cell-layer multi-target. E1–E2 shipped
+(2026-07-11).** `.cell` v10 carries the **target id** (a host refuses a machine body
+it can't run — the kernel-bank-pin posture) and the **family hash** (SHA-256 over
+canonical source; sibling-target bodies share it — the formal "one cell, many
+bodies"). The per-target state-address question **resolved for free**: the family
+slot ABI + the shared window map make `state_addrs` window-relative and hence
+target-portable unchanged. *Owed:* E3 — per-body runners behind one host surface
+(the first loadable RV32 cartridge; the E1 gate becomes host-parameterised), then
+Thumb-1 (RP2040) forcing descriptor honesty per the §2.1a ladder.
 *DoD:* three-ISA demo — one family hash, three per-target artifact hashes, three cycle
 certificates.
 
@@ -408,6 +418,8 @@ behind 2.2 by design since growing to 1K cells before ingest gating would manufa
 the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
 the next dialect expansion, as required. Phase 5 (multi-target) opened 2026-07-10;
-WS-A shipped whole in two days and WS-B's compiler is live in the battery — the
-remaining critical path to the public M2 demo is hardware (the RP2350 `mcycle`
-co-sign) plus the Sail CI adversary.
+WS-A shipped whole in two days, WS-B's compiler is live in the battery behind a
+fuzz battery and a CI-required independent emission adversary, and WS-E's identity
+half (v10 target id + family hash) is in the artifact — the remaining critical path
+to the public M2 demo is hardware (the RP2350 `mcycle` co-sign), with WS-E3's
+per-body host as the remaining product gap.

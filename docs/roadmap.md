@@ -48,8 +48,19 @@ every program on **five systems** — rustc, 2× Z80, the interpreter, RV32 — 
 byte, unmasked**. Per-file coverage ≥90% across both new crates. Demo:
 `cargo run -p rustz80 --example cell_family` (gcd: 6021 on all three bodies — 12,882
 authentic T-states vs 490 provisional RV32 cycles; an i32 deadband runs natively on
-RV32 while backend zero refuses, as pre-registered). Owed: Sail CI adversary,
-rustrv32 fuzz + peephole, the B4 `mcycle` co-sign on silicon.
+RV32 while backend zero refuses, as pre-registered). Since then: the
+**determinism-fuzz battery** (seeded random width-lattice programs across the whole
+matrix + the exact-cycle/window fingerprint); the **GNU-gas emission adversary**
+(binutils independently re-encodes every instruction shape, CI-required on linux —
+the encoder is never self-refereed; teeth proven by deliberate corruption);
+**`.cell` v10** (WS-E1 — the manifest's target id names the machine body and a host
+refuses one it can't run; the family hash, SHA-256 over canonical source, is what
+"same cell, N bodies" means formally); and **WS-E2 resolved for free** — the family
+slot ABI + the shared window map make `state_addrs` target-portable as-is. The
+descriptor story sharpened into three layers (spec §2.1a: ISA backend / core timing
+model / platform; a certified target is the named triple). Owed: WS-E3's per-body
+host, the Sail/spike execution adversary, the RV32 peephole, the B4 `mcycle`
+co-sign on silicon.
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
