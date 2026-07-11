@@ -428,10 +428,25 @@ fn compose_cli_flag_errors_are_named() {
 
 #[test]
 fn link_budget_exhausts_with_a_named_error_and_battery_needs_handles() {
-    // Thirteen distinct library calls exceed the 12-iteration link budget.
+    // Thirteen distinct library calls exceed the 12-iteration link budget. Every
+    // name must resolve to a 2-arg *function* cell: an arity mismatch (`min3(a, b)`
+    // — the old list) is a typed refusal that escalates *before* the budget runs
+    // out, and which call hits it first shifts with library growth and ranking
+    // tie-breaks — the platform-split flake the 397-cell batch exposed.
     let calls: Vec<String> = [
-        "is_gt", "is_lt", "is_le", "is_ge", "min", "max", "lcm", "safe_div", "safe_mod", "percent",
-        "gcd3", "min3", "divides",
+        "is_gt",
+        "is_lt",
+        "is_le",
+        "is_ge",
+        "min",
+        "max",
+        "lcm",
+        "safe_div",
+        "safe_mod",
+        "percent",
+        "abs_diff",
+        "hash_pair",
+        "divides",
     ]
     .iter()
     .map(|n| format!("{n}(a, b)"))
