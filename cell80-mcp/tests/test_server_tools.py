@@ -3,8 +3,14 @@
 import os
 import pathlib
 
-CELLS = pathlib.Path(__file__).resolve().parents[2] / "cell80" / "cells"
-os.environ.setdefault("CELL_LIBRARY", str(CELLS))
+# The seed library by default, overridable via CELL_LIBRARY (e.g. a committed-cells
+# snapshot while a concurrent session has in-flight cells in the working tree).
+# CELLS must be the dir the library actually loads, or the count assertions drift.
+os.environ.setdefault(
+    "CELL_LIBRARY",
+    str(pathlib.Path(__file__).resolve().parents[2] / "cell80" / "cells"),
+)
+CELLS = pathlib.Path(os.environ["CELL_LIBRARY"])
 
 from cell80_mcp import agent, server  # noqa: E402
 

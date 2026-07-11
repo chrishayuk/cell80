@@ -247,3 +247,116 @@ def test_validate_corpus_catches_the_banked_checks():
     assert any("unknown cell" in p for p in problems)
     assert any("unknown hard negative" in p for p in problems)
     assert any("duplicate query" in p for p in problems)
+
+
+# ── generate_pairs offline (the regeneration loop, no model, no network) ─────────
+
+
+class _FakeEmbedder:
+    """Deterministic char-bucket vectors — enough for a stable confusable map."""
+
+    def __init__(self, model=None):
+        self.name = "fake"
+
+    def encode(self, texts):
+        import numpy as np
+
+        out = []
+        for t in texts:
+            v = np.zeros(16, dtype="float32")
+            for b in t.lower().encode():
+                v[b % 16] += 1.0
+            n = float(np.linalg.norm(v)) or 1.0
+            out.append(v / n)
+        return np.array(out)
+
+
+class _PairgenClient:
+    """A prompt-aware fake: reads the neighbour ids out of the authoring prompt and
+    replies with exactly the counts the validator demands — except for `fail_for`
+    cells, which always get an unparseable reply (the retry-then-fail path)."""
+
+    def __init__(self, n_para, fail_for=()):
+        self.n_para = n_para
+        self.fail_for = set(fail_for)
+        outer = self
+
+        class _C:
+            def create(self, **kw):
+                import json as _json
+                import re
+
+                prompt = kw["messages"][1]["content"]
+                cell = re.search(r"id: (\S+)", prompt).group(1)
+                if cell in outer.fail_for:
+                    return _make_resp("no json here, sorry")
+                neigh = re.findall(r"^  - (\S+):", prompt, re.M)
+                reply = _json.dumps(
+                    {
+                        "paraphrase": [
+                            f"reworded ask {i} for {cell}" for i in range(outer.n_para)
+                        ],
+                        "adversarial": [
+                            {"query": f"{cell} not {n} please", "skirts": n} for n in neigh
+                        ],
+                    }
+                )
+                return _make_resp(reply)
+
+        self.chat = type("Chat", (), {"completions": _C()})()
+
+
+def _make_resp(content):
+    msg = type("M", (), {"content": content})()
+    return type("R", (), {"choices": [type("C", (), {"message": msg})()]})()
+
+
+def test_generate_pairs_offline_end_to_end(tiny_setup, tmp_path, monkeypatch):
+    from cell_eval import tiers
+    from cell_eval.potion import generate_pairs, write_pairs
+
+    monkeypatch.setattr(tiers, "Embedder", _FakeEmbedder)
+    library, _ = tiny_setup
+    rows, stats = generate_pairs(
+        model="fake",
+        library_dir=library,
+        n_para=2,
+        n_adv=2,
+        client=_PairgenClient(n_para=2, fail_for={"fp_ident"}),
+        only_cells=["pick_lo", "f_add", "fp_ident"],
+    )
+    # Two cells authored (2 para + 2 adv + 1 direct each); the failing one retried out.
+    assert stats["cells"] == 3 and stats["failed_cells"] == ["fp_ident"]
+    assert len(rows) == 10 and stats["validation_problems"] == []
+    kinds = {r["cell"]: [x["kind"] for x in rows if x["cell"] == r["cell"]] for r in rows}
+    assert kinds["pick_lo"].count("paraphrase") == 2
+    assert kinds["f_add"].count("adversarial") == 2
+    # Adversarial rows carry the skirted neighbour as the first hard negative.
+    adv = next(r for r in rows if r["kind"] == "adversarial")
+    assert len(r["hard_negatives"] if (r := adv) else []) == 1
+
+    out = tmp_path / "pairs.jsonl"
+    write_pairs(rows, stats, out)
+    text = out.read_text()
+    assert text.startswith("#") and "NEVER add rows from datasets/retrieval.jsonl" in text
+    assert len([l for l in text.splitlines() if l and not l.startswith("#")]) == 10
+
+
+def test_extract_json_and_validate_corpus_edges():
+    from cell_eval.potion import _extract_json, validate_corpus
+
+    assert _extract_json(None) is None
+    assert _extract_json("no braces at all") is None
+    assert _extract_json("{not json}") is None
+    assert _extract_json('prose {"a": {"b": 1}} more prose') == {"a": {"b": 1}}
+
+    rows = [
+        {"cell": "ghost", "query": "q1", "hard_negatives": []},
+        {"cell": "min", "query": "q2", "hard_negatives": ["nope"]},
+        {"cell": "min", "query": "same words", "hard_negatives": []},
+        {"cell": "max", "query": "same  WORDS", "hard_negatives": []},
+    ]
+    problems = validate_corpus(rows, {"min", "max"})
+    assert any("unknown cell" in p for p in problems)
+    assert any("unknown hard negative" in p for p in problems)
+    assert any("duplicate query" in p for p in problems)

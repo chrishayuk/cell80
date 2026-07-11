@@ -230,6 +230,125 @@ fn search_verb_fuses_examples_into_the_ranking() {
 }
 
 #[test]
+fn route_and_search_field_form_through_the_cli() {
+    // Status-flag state twins: both return 1 on every run; only post-run `out`
+    // differs — the field-form surface end to end, including its error shapes.
+    let dir = std::env::temp_dir().join(format!("cell80-fieldform-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let flag = |op: &str| {
+        format!(
+            "//! combine two fields into out\n//! tags: state, combine\n//! entry: F::run\n\
+             struct F {{ a: u16, b: u16, out: u16 }}\n\
+             impl F {{ fn run(&mut self) -> u16 {{ self.out = self.a {op} self.b; 1u16 }} }}"
+        )
+    };
+    std::fs::write(dir.join("f_add.rs"), flag("+")).unwrap();
+    std::fs::write(dir.join("f_sub.rs"), flag("-")).unwrap();
+    let d = dir.to_str().unwrap().to_string();
+
+    // route by named fields: the result-only form matches BOTH twins (status flag).
+    let out = run_cli(&["route".into(), d.clone(), "a:9,b:3=1".into()]).unwrap();
+    assert!(out.contains("f_add") && out.contains("f_sub"), "{out}");
+    // No cell reproduces an impossible expectation.
+    let out = run_cli(&["route".into(), d.clone(), "a:1,b:1=999".into()]).unwrap();
+    assert!(out.contains("no cell"), "{out}");
+    // Error shapes: mixing forms, and the expect-form belongs to `search`.
+    assert!(run_cli(&[
+        "route".into(),
+        d.clone(),
+        "a:9,b:3=1".into(),
+        "3,7=3".into()
+    ])
+    .unwrap_err()
+    .contains("pick one form"));
+    assert!(
+        run_cli(&["route".into(), d.clone(), "a:9,b:3=out:12".into()])
+            .unwrap_err()
+            .contains("`search` example form")
+    );
+    // A facts file caught lying fails the route rather than seeding bad provenance:
+    // export a real claim for f_add(a=9,b=3)→1, tamper the result, import catches it
+    // (one fact → the min-1 verification sample must check it).
+    let calls = dir.join("calls.txt");
+    std::fs::write(&calls, "f_add a=9 b=3\n").unwrap();
+    let facts_text = run_cli(&[
+        "facts".into(),
+        "export".into(),
+        d.clone(),
+        "--calls".into(),
+        calls.to_str().unwrap().into(),
+    ])
+    .unwrap();
+    assert!(facts_text.contains("\"r\":[1,"), "{facts_text}");
+    let bad_facts = dir.join("bad.facts");
+    std::fs::write(&bad_facts, facts_text.replace("\"r\":[1,", "\"r\":[2,")).unwrap();
+    assert!(run_cli(&[
+        "route".into(),
+        d.clone(),
+        "3,7=3".into(),
+        "--facts".into(),
+        bad_facts.to_str().unwrap().into(),
+    ])
+    .is_err());
+
+    // search with a field example: `expect` separates the twins where the
+    // status-flag return can't — the fused path over named state, via the CLI.
+    let out = run_cli(&[
+        "search".into(),
+        "combine two fields".into(),
+        d.clone(),
+        "a:9,b:3=1,out:12".into(),
+    ])
+    .unwrap();
+    let top = out.lines().nth(1).unwrap_or_default().trim_start();
+    assert!(top.starts_with("f_add"), "{out}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn keygen_and_sign_error_shapes() {
+    // keygen to an unwritable path is a clean error (unix-only, like the verb).
+    if cfg!(unix) {
+        assert!(run_cli(&["keygen".into(), "/no/such/dir/x.key".into()]).is_err());
+    }
+    // sign: unknown flag, missing --key, and a wrong-size key are each named.
+    let dir = std::env::temp_dir().join(format!("cell80-signerr-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("c.rs"),
+        "//! add\nfn run(a: u16, b: u16) -> u16 { a + b }",
+    )
+    .unwrap();
+    let cell = dir.join("c.cell");
+    run_cli(&[
+        "compile".into(),
+        dir.join("c.rs").to_str().unwrap().into(),
+        "-o".into(),
+        cell.to_str().unwrap().into(),
+    ])
+    .unwrap();
+    let cell_s: String = cell.to_str().unwrap().into();
+    assert!(run_cli(&["sign".into(), cell_s.clone(), "--bogus".into()])
+        .unwrap_err()
+        .contains("unknown option"));
+    assert!(run_cli(&["sign".into(), cell_s.clone()])
+        .unwrap_err()
+        .contains("--key"));
+    let short_key = dir.join("short.key");
+    std::fs::write(&short_key, [0u8; 5]).unwrap();
+    assert!(run_cli(&[
+        "sign".into(),
+        cell_s,
+        "--key".into(),
+        short_key.to_str().unwrap().into(),
+    ])
+    .unwrap_err()
+    .contains("32 bytes"));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
 fn run_and_exec_flags_end_to_end() {
     // The `run` flag surface: --set/--read/--cycles/--json + the safety flags,
     // then `exec` over a compiled cartridge with the same read-back.

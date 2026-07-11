@@ -84,3 +84,43 @@ def test_extract_source_forms():
     # The last block wins when the model narrates with multiple blocks.
     two = "first\n```rust\nfn a() -> u16 { 1u16 }\n```\nthen\n```rust\nfn b() -> u16 { 2u16 }\n```"
     assert "fn b" in extract_source(two)
+
+
+def test_run_repair_covers_every_per_row_arm(tmp_path):
+    """The four non-happy arms in one scripted pass: a retired row (compiles
+    unrepaired, no model call), an endpoint error, a reply with no code, a repair
+    the compiler still rejects — plus a good fix so the loop ends on success."""
+    broken = "fn run(a: u16, b: u16) -> u16 { let x = if a > b { a }; x }"
+    rows = [
+        # Already compiles → retires before any client call.
+        {
+            "id": "retired",
+            "klass": "none",
+            "src": "fn run(a: u16, b: u16) -> u16 { a + b }",
+            "intent": "sum",
+            "examples": [[[3, 4], 7]],
+        },
+        {"id": "endpoint", "klass": "if_no_else", "src": broken, "intent": "max", "examples": [[[3, 4], 4]]},
+        {"id": "nocode", "klass": "if_no_else", "src": broken, "intent": "max", "examples": [[[3, 4], 4]]},
+        {"id": "stillbad", "klass": "if_no_else", "src": broken, "intent": "max", "examples": [[[3, 4], 4]]},
+        {"id": "good", "klass": "if_no_else", "src": broken, "intent": "max", "examples": [[[3, 4], 4]]},
+    ]
+    ds = tmp_path / "repair-arms.jsonl"
+    ds.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+
+    script = [
+        RuntimeError("connection refused"),  # endpoint
+        _Msg(content="I would fix it like this, in prose only."),  # nocode
+        _Msg(content="```rust\nfn run(a: u16, b: u16) -> u16 { still broken }\n```"),
+        _Msg(content="```rust\nfn run(a: u16, b: u16) -> u16 { if a > b { a } else { b } }\n```"),
+    ]
+    rep = run_repair(dataset=str(ds), model="fake", client=FakeClient(script))
+    notes = {r.id: r.note for r in rep.results}
+    assert "skipped" in notes["retired"]
+    assert "endpoint error" in notes["endpoint"]
+    assert "no code block" in notes["nocode"]
+    assert "still rejected" in notes["stillbad"]
+    good = next(r for r in rep.results if r.id == "good")
+    assert good.compiled and good.correct
+    d = rep.as_dict()
+    assert d["overall"]["n"] == 5 and 0 < d["overall"]["repair_at_1"] < 1
