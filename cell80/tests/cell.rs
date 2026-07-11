@@ -1470,14 +1470,23 @@ fn array_state_named_surface() {
     cell.set("head", 2).unwrap();
     cell.set("value", 7).unwrap();
     cell.run(DEFAULT_CYCLES).unwrap();
-    assert_eq!(cell.get_array("window").unwrap(), vec![7, 7, 7, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        cell.get_array("window").unwrap(),
+        vec![7, 7, 7, 0, 0, 0, 0, 0]
+    );
     assert_eq!(cell.get("avg"), Some(7));
 
     // Error surface: scalar set on an array field, array set on a scalar, overflow,
     // and the scalar get returning None for the array (get_array is the reader).
     assert!(cell.set("window", 1).unwrap_err().contains("set_array"));
-    assert!(cell.set_array("head", &[1]).unwrap_err().contains("not an array"));
-    assert!(cell.set_array("window", &[0; 9]).unwrap_err().contains("won't fit"));
+    assert!(cell
+        .set_array("head", &[1])
+        .unwrap_err()
+        .contains("not an array"));
+    assert!(cell
+        .set_array("window", &[0; 9])
+        .unwrap_err()
+        .contains("won't fit"));
     assert_eq!(cell.get("window"), None);
 }
 
@@ -1532,10 +1541,7 @@ fn array_state_host_values_lane() {
     let (rep2, state2) = host.run_state_values(h, &feed, DEFAULT_CYCLES).unwrap();
     assert_eq!(rep2.result, 15); // (10 + 20) / 2 — the window persisted by name
     let window = state2.iter().find(|(n, _)| n == "window").unwrap();
-    assert_eq!(
-        window.1,
-        FieldValue::Array(vec![10, 20, 0, 0, 0, 0, 0, 0])
-    );
+    assert_eq!(window.1, FieldValue::Array(vec![10, 20, 0, 0, 0, 0, 0, 0]));
 
     // Shape mismatches are named errors, not coercions.
     let bad = host.run_state_values(
@@ -2347,13 +2353,12 @@ fn pre_v5_cartridges_still_load() {
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();
-    // Drop the trailing v5/v7/v8/v9/v10/v11 manifest fields a v4 stream never had:
-    // the empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
-    // finite_result byte (1), the v9 kernel-bank presence byte (1), the v10
+    // Drop the trailing v5/v7/v8/v9/v10 manifest fields a v4 stream never had: the
+    // empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
+    // finite_result byte (1), the v9 kernel-bank presence byte (1), and the v10
     // family identity — the `z80-cell` target string (2-byte len + 8) and the
-    // family-hash presence byte + digest (1 + 32) — and the v11 accuracy
-    // presence byte (1).
-    v4.extend_from_slice(&v5[..manifest_end - 49]);
+    // family-hash presence byte + digest (1 + 32).
+    v4.extend_from_slice(&v5[..manifest_end - 48]);
     v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
     v4[4] = 4; // version byte
     let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path

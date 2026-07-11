@@ -566,7 +566,10 @@ impl CellHost {
         // silently unfed and return a plausible wrong answer — the exact trap the
         // sliding-window experiment pinned down. The memoized read-back is
         // scalar-shaped anyway; array cells take the uncached values lane.
-        if let Some((name, _, ty)) = l.state_addrs.iter().find(|(_, _, t)| t.array_dims().is_some())
+        if let Some((name, _, ty)) = l
+            .state_addrs
+            .iter()
+            .find(|(_, _, t)| t.array_dims().is_some())
         {
             return Err(format!(
                 "cell has array state field `{name}: {ty}` — drive it with \
@@ -608,7 +611,10 @@ impl CellHost {
         // Same loud-failure rule as `run_state_fast`: a scalar-only caller driving
         // an array-state cell would compute over an unfed window — refuse and point
         // at the values lane instead.
-        if let Some((name, _, ty)) = l.state_addrs.iter().find(|(_, _, t)| t.array_dims().is_some())
+        if let Some((name, _, ty)) = l
+            .state_addrs
+            .iter()
+            .find(|(_, _, t)| t.array_dims().is_some())
         {
             return Err(format!(
                 "cell has array state field `{name}: {ty}` — drive it with \
