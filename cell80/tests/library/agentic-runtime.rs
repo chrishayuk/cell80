@@ -523,7 +523,7 @@ fn rising_edge_step_fires_only_on_the_transition_to_one() {
     for (input, want_edge) in expected {
         let (edge, cell) = step(input, prev);
         assert_eq!(edge, want_edge, "input={input} prev={prev}");
-        prev = cell.get("prev").unwrap() as u64;
+        prev = cell.get("prev").unwrap();
         assert_eq!(prev, input); // prev always tracks the last input after run()
     }
 }

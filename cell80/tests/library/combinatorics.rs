@@ -305,8 +305,8 @@ fn verify_rencontres_number() {
     // D(4,2) = C(4,2)*D(2) = 6*1 = 6.
     assert_eq!(step(&[("n", 4), ("k", 2)]), 6);
     // D(4,4) = C(4,4)*D(0) = 1*1 = 1: every element fixed, the identity permutation.
-    assert_eq!(step(&[("n", 4), ("k", 4)]), 4u64.pow(0) * 1); // = 1
-                                                              // D(5,2) = C(5,2)*D(3) = 10*2 = 20.
+    assert_eq!(step(&[("n", 4), ("k", 4)]), 1); // C(4,4)*D(0) = 1*1
+    // D(5,2) = C(5,2)*D(3) = 10*2 = 20.
     assert_eq!(step(&[("n", 5), ("k", 2)]), 20);
     // k > n is out of domain: returns 0, not an escalation.
     assert_eq!(step(&[("n", 3), ("k", 5)]), 0);

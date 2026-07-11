@@ -317,6 +317,9 @@ fn segments_intersect_int_matches_defined_behaviour() {
     fn i16_bits(v: i16) -> u64 {
         (v as u16) as u64
     }
+    // Eight coordinates is the cell's own state shape (two segments) — the
+    // helper mirrors it one-to-one.
+    #[allow(clippy::too_many_arguments)]
     fn seg(x1: i16, y1: i16, x2: i16, y2: i16, x3: i16, y3: i16, x4: i16, y4: i16) -> u16 {
         let mut cell = StateCell::bind(
             &cell_src("segments_intersect_int"),
