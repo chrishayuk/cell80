@@ -34,6 +34,7 @@ mod control_flow;
 mod eval_order;
 mod f32_ops;
 mod functions;
+mod fuzz_rv32;
 mod generics;
 mod inline;
 mod misc;
