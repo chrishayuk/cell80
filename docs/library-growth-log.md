@@ -1472,3 +1472,30 @@ was explicitly not attempted this round — `cell80-core/src/interp.rs` and
 `cell80/src/host.rs`, the files it would need to touch, were sitting uncommitted mid-edit
 from a concurrent session's GPU/rustmsl work at the time. Revisit once that settles.
 
+
+### Sliding-window wave — the array-state surface + its first four cells (2026-07-11)
+
+The deferred note above is closed: the array-state-field harness fix landed as **`.cell`
+v11** (it needed `cell80/src/{state,runner,host,report,cartridge}.rs` — not
+`cell80-core/src/interp.rs`, which the design routed around entirely; the concurrent GPU
+session's files were never touched). `u16[N]`/`u32[N]` state fields are now name-addressed:
+`Ty::Array(elem, len)` (wire code 6 + element sub-code + u16 count, the v6 buffer-code
+posture), `StateCell::set_array`/`get_array`, `CellHost::run_state_values` over a
+`FieldValue::{Scalar, Array}` envelope — and the scalar `run_state`/`run_state_fast` lanes
+**refuse** array-state cells loudly, so the silent-unfed-window wrong answer the experiment
+warned about is structurally unreachable. Admission shape-classes arrays by full wire
+encoding (a `u16[8]` cell and a `u16[4]` cell are never compared); the fingerprint drives
+array elements cyclically (`element j ← probe[(i+j) % 3]`) with the scalar digest
+arithmetic pinned byte-for-byte by a regression test — no existing verdict moved.
+
+Four cells rode the surface in (718 → 722 from this wave's side): `simple_moving_average`
+(promoted **verbatim** from `experiments/sliding-window-state-cells/` — the experiment's
+prediction held: only the round-trip was missing), `weighted_moving_average` (linear 1..8
+recency weights), `rolling_variance` and `rolling_std` (ring walk + the pack's
+escalate-on-overflow and inline-bitwise-sqrt precedents; the windowed-vs-cumulative test
+pins an outlier aging out of the window, which no `running_*` sibling can do). Gate: 740
+admitted, 0 refused (the count includes a concurrent session's in-flight cells); all four
+ranked #1 on their direct queries via `cell80 search` before their rows were written.
+Experiment close-out (design-question resolutions included) in
+`experiments/sliding-window-state-cells-findings.md`; the v11 wire details in
+`cell80/src/cartridge.rs`'s version ledger.

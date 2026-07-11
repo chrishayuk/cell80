@@ -45,5 +45,5 @@ cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
 
 ## Roadmap — open items
 
-`answer_in_options` (checking an answer against an arbitrary-length option list) is deferred — GSM8K is free-response, not multiple-choice, so the motivation is thin, and a real implementation would need an array state field.
+`answer_in_options` (checking an answer against an arbitrary-length option list) is deferred — GSM8K is free-response, not multiple-choice, so the motivation is thin. (The array-state surface it would need exists as of `.cell` v11; the motivation is still the blocker.)
 

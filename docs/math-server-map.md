@@ -198,11 +198,12 @@ aggregation stays upstream): `covariance` (exact, mirrors `running_variance_step
 bivariate case), `linear_regression`'s slope (exact fraction), `correlation` (Q8.8,
 needs `q_sqrt`/`q_div`), `effect_size_r` (Q8.8, two scalar inputs).
 
-**Deferred behind the still-open array-state-cell question** (flagged, not built):
+**~~Deferred behind the array-state-cell question~~ — landed 2026-07-11**:
 `simple_moving_average`, `weighted_moving_average`, `rolling_variance`, `rolling_std`
-— all need a sliding window (remember the last N values), which no cell80 cell has
-ever done. Distinct from the already-shipped `running_variance_step` (cumulative
-over the whole stream, not windowed).
+all shipped in `running-stats` on the `.cell` v11 array-state surface (`u16[N]` state
+fields round-tripping by name — the first cells to remember the last N values).
+Still distinct from `running_variance_step` (cumulative over the whole stream, not
+windowed); the close-out is in `experiments/sliding-window-state-cells-findings.md`.
 
 **One arithmetic-cell precision finding worth flagging on its own**:
 `series_sum(first, last, count)` — the same arithmetic-series sum as the already-shipped

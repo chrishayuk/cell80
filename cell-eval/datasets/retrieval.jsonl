@@ -1641,3 +1641,15 @@
 {"id": "steyx-direct-1", "query": "STEYX standard error of the predicted y value in a linear regression, degrees of freedom n-2", "expected": "steyx", "category": "direct"}
 {"id": "steyx-para-1", "query": "standard error of the estimate for an OLS regression line: sqrt of SSE divided by n minus 2, where SSE = Syy - Sxy^2/Sxx", "expected": "steyx", "category": "paraphrase"}
 {"id": "steyx-adversarial-1", "query": "residual standard deviation around a fitted regression line (not the plain population std_dev_from_sums of y itself -- this one needs the Sxy^2/Sxx cross term removed from Syy first, then an n-2 degrees-of-freedom correction, not an n or n-1 one)", "expected": "steyx", "category": "adversarial"}
+{"id": "simple_moving_average-direct-1", "query": "simple moving average over a trailing window", "expected": "simple_moving_average", "category": "direct"}
+{"id": "simple_moving_average-para-1", "query": "average of the last few readings, old ones dropping off", "expected": "simple_moving_average", "category": "paraphrase"}
+{"id": "simple_moving_average-adv-1", "query": "a windowed mean that forgets, not a running mean that never does", "expected": "simple_moving_average", "category": "adversarial"}
+{"id": "weighted_moving_average-direct-1", "query": "weighted moving average with recency weights", "expected": "weighted_moving_average", "category": "direct"}
+{"id": "weighted_moving_average-para-1", "query": "smooth a stream so newer samples count for more than older ones", "expected": "weighted_moving_average", "category": "paraphrase"}
+{"id": "weighted_moving_average-adv-1", "query": "a recency-weighted window average, not a plain weighted sum of fixed inputs", "expected": "weighted_moving_average", "category": "adversarial"}
+{"id": "rolling_variance-direct-1", "query": "rolling variance over a sliding window", "expected": "rolling_variance", "category": "direct"}
+{"id": "rolling_variance-para-1", "query": "how spread out the last handful of measurements are", "expected": "rolling_variance", "category": "paraphrase"}
+{"id": "rolling_variance-adv-1", "query": "variance where an old spike eventually ages out, not cumulative forever", "expected": "rolling_variance", "category": "adversarial"}
+{"id": "rolling_std-direct-1", "query": "rolling standard deviation over a window", "expected": "rolling_std", "category": "direct"}
+{"id": "rolling_std-para-1", "query": "recent volatility of a signal from its last few samples", "expected": "rolling_std", "category": "paraphrase"}
+{"id": "rolling_std-adv-1", "query": "windowed sigma that recovers after an outlier leaves, not the all-time stddev", "expected": "rolling_std", "category": "adversarial"}

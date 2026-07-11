@@ -115,6 +115,53 @@ fn state_named_roundtrip_fuzz() {
 }
 
 #[test]
+fn array_state_named_roundtrip_fuzz() {
+    // The array sibling of `state_named_roundtrip_fuzz` (`.cell` v11): mixed
+    // `[u16; 4]` / `[u32; 2]` / scalar state over 500 random inputs — set arrays
+    // *by name*, confirm the input half round-trips element-exactly, run, then
+    // check the cell's outputs against a host oracle. Short arrays must zero-fill
+    // their envelope; the wide array must keep full 32-bit elements.
+    let src = "struct A { xs: [u16; 4], ws: [u32; 2], k: u16, sum: u32, mixed: u32 }
+               impl A {
+                   fn run(&mut self) -> u16 {
+                       self.sum = (self.xs[0] as u32) + (self.xs[1] as u32)
+                           + (self.xs[2] as u32) + (self.xs[3] as u32);
+                       self.mixed = self.ws[0] ^ self.ws[1] ^ (self.k as u32);
+                       (self.sum & 0xFFFFu32) as u16
+                   }
+               }";
+    let mut cell = StateCell::bind(src, "A", None).unwrap();
+    let mut rng = Rng(0x0be1_77ab_4451_9d03);
+    for i in 0..500 {
+        let n = 1 + (rng.below(4) as usize); // 1..=4 supplied elements
+        let xs: Vec<u64> = (0..n).map(|_| rng.next() & 0xFFFF).collect();
+        let ws: Vec<u64> = (0..2).map(|_| rng.next() & 0xFFFF_FFFF).collect();
+        let k = rng.next() & 0xFFFF;
+        cell.set_array("xs", &xs).unwrap();
+        cell.set_array("ws", &ws).unwrap();
+        cell.set("k", k).unwrap();
+        cell.run(DEFAULT_CYCLES).unwrap();
+        // Input half: the envelope reads back element-exactly, short arrays
+        // zero-filled (the reset makes unsupplied elements 0 by construction).
+        let mut want_xs = xs.clone();
+        want_xs.resize(4, 0);
+        assert_eq!(cell.get_array("xs"), Some(want_xs.clone()), "iter {i}");
+        assert_eq!(cell.get_array("ws"), Some(ws.clone()), "iter {i}");
+        // Output half vs the host oracle.
+        assert_eq!(
+            cell.get("sum"),
+            Some(want_xs.iter().sum::<u64>()),
+            "sum, iter {i}"
+        );
+        assert_eq!(
+            cell.get("mixed"),
+            Some(ws[0] ^ ws[1] ^ k),
+            "mixed, iter {i}"
+        );
+    }
+}
+
+#[test]
 fn determinism_fuzz() {
     // For random programs × random inputs, the fingerprint `(result, cycles, halt, touched)`
     // must be bit-identical across: (a) re-run on the same Runner, (b) a fresh Runner, (c) a

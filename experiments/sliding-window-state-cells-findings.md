@@ -186,3 +186,31 @@ only the round-trip is missing. `weighted_moving_average`, `rolling_variance`, a
 `rolling_std` (the other math-server-mining candidates in this family,
 `docs/math-server-map.md`) are blocked on the identical gate and should land as a batch right
 behind it.
+
+---
+
+## Close-out (2026-07-11): landed as `.cell` v11
+
+The surface shipped, and the design questions above resolved as follows:
+
+1. **Element width** — one variant: `Ty::Array(ArrayElem, u16)` with `ArrayElem { U16, U32 }`
+   (`u8` stays `Ty::Bytes`, `[f32; N]` doesn't compile in the dialect). `bytes[N]`/`str[N]`
+   byte-I/O remains Phase S3 — the array lane landed first rather than folding into it, but on
+   the same wire pattern (code 6 + element sub-code + u16 count follows v6's code-3/4 + capacity
+   precedent), so S3 rides the identical mechanism when it comes.
+2. **Whole-envelope** — reads return the full declared envelope; a logical length stays the
+   cell's own concern (`count` here). Short `set_array` writes zero-fill the remainder, which the
+   per-run reset makes well-defined.
+3. **Per-field named API** — `StateCell::set_array`/`get_array` and
+   `CellHost::run_state_values` (a `FieldValue::{Scalar, Array}` envelope). The scalar
+   `run_state`/`run_state_fast` lanes now *refuse* array-state cells loudly — the
+   silent-unfed-window wrong answer this document warned about is structurally unreachable.
+
+`simple_moving_average` landed **verbatim** in `cell80/cells/running-stats/` (the prediction
+held: cell logic unchanged, only the round-trip was missing), with `weighted_moving_average`,
+`rolling_variance`, and `rolling_std` as the batch behind it — 740 admitted, 0 refused, all
+four #1 on their direct queries before their rows were written. The probe's assertions live on
+as real tests: the 10-step expectations in `cell80/tests/library/running-stats.rs` (named
+surface) and `cell80/tests/cell.rs::array_state_named_surface`; the raw-triple driving pattern
+it pioneered is now `cell80/tests/cell_fuzz.rs::array_state_named_roundtrip_fuzz`. The
+experiment's cell/probe copies are deleted — the library versions are canonical.

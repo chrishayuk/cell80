@@ -36,24 +36,16 @@ ROADMAP_NOTES = {
         "`vector`'s `cosine_score_approx`."
     ),
     "running-stats": (
-        "Percentile-from-histogram and the sliding-window family (`simple_moving_average`, "
-        "`weighted_moving_average`, `rolling_variance`, `rolling_std`) are blocked on a "
-        "concrete, now-confirmed gap, not just a hunch: every `Runner::run()` zeros the "
-        "bytes the *previous* run touched before applying this run's inputs, so a state "
-        "cell only 'remembers' whatever the host explicitly re-supplies as named scalar "
-        "inputs each call (see `accumulate_step`'s own test re-setting `sum`/`count` every "
-        "iteration) — and the named-field surface (`StateCell`, `CellHost::run_state`) only "
-        "round-trips scalars (`u8`/`u16`/`u32`/`f32`), never array fields. A hand-authored "
-        "`simple_moving_average` (window: [u16; 8] ring buffer) was built and its logic "
-        "verified correct end-to-end via a raw-address round-trip that manually re-feeds "
-        "every element every call — proving the compiler's array-field layout and the "
-        "cell's own logic are both right — but it fails silently past the first call through "
-        "every real driving surface (StateCell/PyO3/MCP), since none of them can write the "
-        "window array back in by name. This is the same primitive Phase S3's byte-buffer "
-        "I/O (`bytes[N]`/`str[N]`) needs and never built either — one round-trip design "
-        "should cover both, not two. See `experiments/sliding-window-state-cells-findings.md` "
-        "for the verified cell source, the probe, and the open design questions for whoever "
-        "builds that surface."
+        "The sliding-window family landed 2026-07-11 (`simple_moving_average`, "
+        "`weighted_moving_average`, `rolling_variance`, `rolling_std`) on the `.cell` v11 "
+        "array-state surface: `u16[N]`/`u32[N]` state fields round-trip by name through "
+        "`StateCell::set_array`/`get_array` and `CellHost::run_state_values` (the scalar "
+        "`run_state` lanes refuse array-state cells loudly rather than running them with an "
+        "unfed window). Still open here: percentile-from-histogram (wants a bucket-count "
+        "array — now expressible, not yet authored) and caller-configurable window lengths "
+        "(every landed window is a fixed 8; a length parameter needs const-generic cells "
+        "or per-length siblings, neither picked yet). History: "
+        "`experiments/sliding-window-state-cells-findings.md`."
     ),
     "vector": (
         "`cosine_score_approx` is blocked on an overflow-safe fixed-point square root of a "
@@ -62,7 +54,8 @@ ROADMAP_NOTES = {
     "verifier-ranker": (
         "`answer_in_options` (checking an answer against an arbitrary-length option list) "
         "is deferred — GSM8K is free-response, not multiple-choice, so the motivation is "
-        "thin, and a real implementation would need an array state field."
+        "thin. (The array-state surface it would need exists as of `.cell` v11; the "
+        "motivation is still the blocker.)"
     ),
     "signed-deltas": (
         "`lerp_i16` (interpolating between two signed values) is deferred — signed "

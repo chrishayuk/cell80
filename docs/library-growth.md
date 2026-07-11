@@ -783,14 +783,17 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
   have (`docs/10-dialect-semantics.md`). Real compiler-level work, already on the
   multi-target track's own roadmap (WS-C's Q16.16 stretch, `docs/13-multi-target-spec.md`)
   — not something to force from the library side.
-- **array-state-field gap, still open (confirmed, not just suspected)** — blocks the whole
-  sliding-window family (`simple_moving_average`, `weighted_moving_average`,
-  `rolling_variance`, `rolling_std`) and percentile-from-histogram. A hand-authored,
-  logic-verified `simple_moving_average` sits unlanded in
-  `experiments/sliding-window-state-cells/` pending a real named array/buffer round-trip
-  design (the same primitive Phase S3's `bytes[N]`/`str[N]` I/O needs and never built) — see
-  `experiments/sliding-window-state-cells-findings.md` for the open design questions. This is
-  a design task, not an authoring one; neither the 90-cell nor the 103-cell batch touched it.
+- **array-state-field gap — CLOSED (2026-07-11, `.cell` v11).** `u16[N]`/`u32[N]` state
+  fields round-trip by name (`StateCell::set_array`/`get_array`,
+  `CellHost::run_state_values`; the scalar `run_state` lanes refuse array-state cells loudly
+  instead of running them with an unfed window), wire code 6 in `state_addrs`, admission
+  shape-classes arrays by element type + length, and the fingerprint drives elements
+  cyclically. The whole sliding-window family landed with it (`simple_moving_average` —
+  promoted verbatim from the experiment — plus `weighted_moving_average`,
+  `rolling_variance`, `rolling_std`; 740 admitted, 0 refused). Design close-out in
+  `experiments/sliding-window-state-cells-findings.md`. Still open nearby:
+  percentile-from-histogram (now expressible, not yet authored) and Phase S3's
+  `bytes[N]`/`str[N]` byte-I/O, which rides the same wire mechanism when it comes.
 
 ## The growth history (moved)
 

@@ -70,6 +70,125 @@ fn running_stats_state_cells_match_defined_behaviour() {
 }
 
 #[test]
+fn sliding_window_cells_match_defined_behaviour() {
+    // The first true sliding-window cells (`.cell` v11 array-state surface): state
+    // persistence is host re-feed as everywhere in this file, the window array now
+    // riding set_array/get_array by name. Each cell is checked against an exact
+    // integer mirror oracle (same truncation, same walk) computed in host Rust.
+
+    // simple_moving_average — the experiment's verified 10-step expectations
+    // (experiments/sliding-window-state-cells-findings.md), now through the named
+    // surface instead of hand-computed raw address triples.
+    let mut sma = StateCell::bind(&cell_src("simple_moving_average"), "SimpleMovingAverage", None)
+        .unwrap_or_else(|e| panic!("bind sma: {e}"));
+    #[rustfmt::skip]
+    let expect = [
+        (10u64, 10u64), (20, 15), (30, 20), (40, 25), (50, 30),
+        (60, 35), (70, 40), (80, 45), (90, 55), (100, 65),
+    ];
+    for (value, want) in expect {
+        let (window, head, count, sum) = (
+            sma.get_array("window").unwrap(),
+            sma.get("head").unwrap(),
+            sma.get("count").unwrap(),
+            sma.get("sum").unwrap(),
+        );
+        sma.set("value", value).unwrap();
+        sma.set_array("window", &window).unwrap();
+        sma.set("head", head).unwrap();
+        sma.set("count", count).unwrap();
+        sma.set("sum", sum).unwrap();
+        let out = sma.run(DEFAULT_CYCLES).unwrap().result;
+        assert_eq!(out as u64, want, "sma(value={value})");
+    }
+
+    // A shared harness for the three ring-walk cells: feed a stream, re-feeding the
+    // full state (window included) each call, returning the per-step results.
+    fn drive(id: &str, strct: &str, scalars: &[&str], stream: &[u64]) -> Vec<u64> {
+        let mut cell = StateCell::bind(&cell_src(id), strct, None)
+            .unwrap_or_else(|e| panic!("bind {id}: {e}"));
+        let mut outs = Vec::new();
+        for &value in stream {
+            let window = cell.get_array("window").unwrap();
+            let prior: Vec<(String, u64)> = scalars
+                .iter()
+                .map(|f| (f.to_string(), cell.get(f).unwrap()))
+                .collect();
+            cell.set("value", value).unwrap();
+            cell.set_array("window", &window).unwrap();
+            for (f, v) in &prior {
+                cell.set(f, *v).unwrap();
+            }
+            let result = cell.run(DEFAULT_CYCLES).unwrap().result as u64;
+            // The observable: the return for wma/std; the wide `var` state field
+            // for rolling_variance (which returns 1, its running sibling's shape).
+            outs.push(match id {
+                "rolling_variance" => cell.get("var").unwrap(),
+                _ => result,
+            });
+        }
+        outs
+    }
+
+    // weighted_moving_average — mirror oracle: linear weights 1..count over the
+    // window oldest→newest, integer division.
+    let stream = [10u64, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    let got = drive(
+        "weighted_moving_average",
+        "WeightedMovingAverage",
+        &["head", "count"],
+        &stream,
+    );
+    let mut ring: Vec<u64> = Vec::new();
+    for (i, &v) in stream.iter().enumerate() {
+        ring.push(v);
+        if ring.len() > 8 {
+            ring.remove(0);
+        }
+        let num: u64 = ring.iter().enumerate().map(|(j, &x)| (j as u64 + 1) * x).sum();
+        let den: u64 = (1..=ring.len() as u64).sum();
+        assert_eq!(got[i], num / den, "wma step {i}");
+    }
+
+    // rolling_variance — mirror oracle: truncated mean, squared-deviation walk,
+    // truncated divide. An old outlier must age out (the windowed-vs-cumulative
+    // distinction that makes this a different cell from running_variance_step).
+    let stream = [100u64, 100, 100, 5000, 100, 100, 100, 100, 100, 100, 100, 100];
+    let got = drive(
+        "rolling_variance",
+        "RollingVariance",
+        &["head", "count", "sum"],
+        &stream,
+    );
+    let mut ring: Vec<u64> = Vec::new();
+    for (i, &v) in stream.iter().enumerate() {
+        ring.push(v);
+        if ring.len() > 8 {
+            ring.remove(0);
+        }
+        let mean = ring.iter().sum::<u64>() / ring.len() as u64;
+        let ssd: u64 = ring.iter().map(|&x| x.abs_diff(mean).pow(2)).sum();
+        assert_eq!(got[i], ssd / ring.len() as u64, "var step {i}");
+    }
+    // The outlier left the window at step 11 (index 11): variance back to zero —
+    // the cumulative sibling can never do this.
+    assert_eq!(got[11], 0, "outlier must age out of the window");
+
+    // rolling_std — floor(sqrt(rolling variance)).
+    let got = drive("rolling_std", "RollingStd", &["head", "count", "sum"], &stream);
+    let mut ring: Vec<u64> = Vec::new();
+    for (i, &v) in stream.iter().enumerate() {
+        ring.push(v);
+        if ring.len() > 8 {
+            ring.remove(0);
+        }
+        let mean = ring.iter().sum::<u64>() / ring.len() as u64;
+        let ssd: u64 = ring.iter().map(|&x| x.abs_diff(mean).pow(2)).sum();
+        assert_eq!(got[i], (ssd / ring.len() as u64).isqrt(), "std step {i}");
+    }
+}
+
+#[test]
 fn wave4_agentic_runtime_reflexes_running_stats_slice() {
     // zscore_q8: 0.25 above the mean with stddev 1.0 -> z = 0.25 (64 in Q8.8); symmetric
     // below the mean; stddev <= 0 -> 0 (the safe_div convention).
