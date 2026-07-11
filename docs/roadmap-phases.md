@@ -401,7 +401,12 @@ the browser demo body; one IR, the interpreter as oracle, bit-exactness gated pe
 target and between targets), **retrieval by execution** (WS-F — the fingerprint
 probe set becomes the routing key space; the falsifiable F2 gate — probe-equipped
 paraphrase P@1 ≥ 0.80 vs the 0.389 text baseline — is deliberately load-bearing:
-the cheapest place to kill the thesis before training spend), **native wiring**
+the cheapest place to kill the thesis before training spend. **F2 PASSED
+2026-07-11: 0.859 at 653 cells** — behavioural examples fused into the primary
+search path (`CellHost::search_with_examples`, behaviour ranks / text breaks
+ties), example sidecar generated at 98.5% coverage, zero per-query regressions;
+checkpoint 21 in `cell-eval/baselines/README.md`, hard CI floor in
+`cell-eval/tests/test_retrieval_examples.py`), **native wiring**
 (WS-G — decode-time calls under constrained hash-vocabulary decoding, verified
 numeric spans, and the Lazarus-pattern residual-stream injection), **trained
 invocation** (WS-H — Toolformer-style self-labelling against an exact oracle, SFT
@@ -448,7 +453,8 @@ the collision problem — now that the gate exists, 2.3 can proceed.
 Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed before
 the next dialect expansion, as required. Phase 6 (model-native cells, doc 14) is
 drafted with its own falsification ladder — the F2 routing gate precedes any
-training spend. Phase 5 (multi-target) opened 2026-07-10;
+training spend, and passed 2026-07-11 (probe-equipped paraphrase 0.859 vs the
+0.80 bar; checkpoint 21). Phase 5 (multi-target) opened 2026-07-10;
 WS-A shipped whole in two days, WS-B's compiler is live in the battery behind a
 fuzz battery and a CI-required independent emission adversary, and WS-E's identity
 half (v10 target id + family hash) is in the artifact — the remaining critical path

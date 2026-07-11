@@ -2117,6 +2117,44 @@ discriminates on structural shape, which the standing finding says today's does 
 Growth resumes from here at the user's discretion, with this tradeoff now recorded rather
 than assumed away.
 
+### Behavioural routing in the search path — checkpoint 21 (2026-07-11, F2 PASSED)
+
+The structural lever named at checkpoint 20, built and measured the same week. Behavioural
+I/O-example routing is no longer a separate verb: `CellHost::search_with_examples` /
+`search_with_field_examples` fuse it into the primary search path — the whole catalog ranks
+by examples reproduced (warm pooled `run_fast`, the `route_by_examples_facts` machinery),
+with the plain-search order breaking ties among behavioural equals. Zero-match cells are
+demoted, never dropped, so garbage examples degrade to text search; and because the expected
+cell reproduces its own examples by construction while ties preserve text order, **the fused
+rank is provably never worse than the plain rank** (verified empirically: zero per-query
+regressions across 1,293 equipped cases). `FieldExample.want_fields` matches post-run state
+fields — the separator the status-flag families need (`smag_add`/`smag_sub` both return 1 on
+every valid input; only their post-run `mag`/`neg` differ). Surfaces: CLI
+`search <query> <dir> [3,7=3 | a:9,b:3=1,out:12 …]`, `cell_search(examples=…)` on MCP,
+`search_with_examples` on the py bindings.
+
+The eval side generates its own examples honestly (`cell-eval gen-examples` →
+`datasets/retrieval-examples.jsonl`, a sidecar keyed by case id — `retrieval.jsonl` itself
+untouched per the canary discipline): ≤3 examples per case from the fixed human-typable
+battery only, greedily selected to eliminate the most co-matching siblings, where the
+sibling pool matches what the fused matcher actually probes (every value cell regardless of
+arity — the VM zero-fills missing registers, so `midrange3` genuinely reproduces `(9,4)→4`
+as `(9,4,0)`). Each row records the survivors in `co_match` — the class examples cannot
+separate *by construction* (`min(a,b) ≡ median3(a,b,0)` on unsigned; predicate families
+where dozens of cells return 1 on `(1,1)`). 1,293/1,313 cases equipped (98.5%), 325 needing
+the expect form, deterministic diff-clean regeneration.
+
+**Checkpoint 21, the F2 measurement (653 cells): probe-equipped paraphrase P@1 0.859** vs
+0.39 plain on the same 603-row equipped subset — the roadmap's falsifiable WS-F gate
+(≥ 0.80 or kill the thesis before training spend) clears with headroom. Adversarial
+0.47 → 0.89, direct 0.81 → 0.95, deployed overall 0.90. Landed as a hard CI floor
+(`cell-eval/tests/test_retrieval_examples.py`) with a ≥ 0.90 coverage guard so the gate
+can't be reached by skipping hard rows. The honest residue: 85 paraphrase misses — 45 are
+recorded `co_match` ambiguity, the rest lose the text tiebreak to co-equal matchers outside
+the modelled sibling pool. And the standing caveat, kept in view: this measures
+**example-carrying** requests; text-only paraphrase is exactly where checkpoint 20 left it
+(0.3866), still the open problem for text-side levers.
+
 ## After authoring: re-run the evals
 
 Each new **family** is a retrieval test case; each **predicate + transform** pair a composition

@@ -237,7 +237,21 @@ strictly by sequence; the library grows by eval need:
    **behaviour**: on `(3,7)→3` only `min` matches, not `max`. So **behavioural I/O-example
    routing** is first-class — `CellHost::route_by_examples`, a `route` serve verb, and the
    **`cell_route_by_example`** MCP tool over `rank_by_examples` (`cell80/src/fingerprint.rs`):
-   phrasing- and language-independent selection grounded in what the cell *does*. **Next** — richer
+   phrasing- and language-independent selection grounded in what the cell *does*.
+   **Fused into the primary search path (2026-07-11, WS-F/F2 PASSED):**
+   `CellHost::search_with_examples` / `search_with_field_examples` rank the whole catalog by
+   examples reproduced with the plain-search order breaking ties — zero-match cells demote
+   instead of dropping, so garbage examples degrade to text search and the fused rank is
+   provably never worse than plain. `FieldExample.want_fields` matches **post-run** state
+   fields, the separator for status-flag families (`smag_add`/`smag_sub` both return 1; only
+   `mag`/`neg` differ). Exposed as CLI `search <query> <dir> [3,7=3 | a:9,b:3=1,out:12 …]`,
+   `cell_search(examples=…)` over the py bindings, with `cell-eval gen-examples` deriving ≤3
+   plausibly-user-authorable discriminating examples per eval case (`co_match` honesty
+   metadata for what examples *cannot* separate — `min(a,b) ≡ median3(a,b,0)` under register
+   zero-fill). Measured at 653 cells (checkpoint 21): **probe-equipped paraphrase P@1 0.859
+   vs the 0.39 text baseline** (gate ≥ 0.80), adversarial 0.47→0.89, direct 0.81→0.95, hard
+   CI floor landed. Text-only paraphrase is unchanged — still the open problem for text-side
+   levers. **Next** — richer
    behavioural fingerprints (output cardinality, monotonicity) and discriminating-probe selection,
    then let the model *learn* to pick probes (where SOMA would schedule, not own).
    **Scoped before building — narrower payoff than it first looks.** Cardinality is cheap (reuses
@@ -370,7 +384,10 @@ strictly by sequence; the library grows by eval need:
    paraphrase recovered to 0.3866 (~25% of the drop), adversarial to 0.5000 (+8.3pt). A
    partial recovery, same honest shape as checkpoint 11 — the dominant remaining cause needs
    the structural lever this project has already named and not yet built (behavioural
-   I/O-example routing, or a type-led index that discriminates on structural shape). Full
+   I/O-example routing, or a type-led index that discriminates on structural shape).
+   **That lever is now built and measured (2026-07-11, checkpoint 21): example-carrying
+   requests reach 0.859 paraphrase P@1 through the fused search path (WS-F/F2 passed — item
+   3 above); text-only paraphrase remains at checkpoint 20's 0.3866.** Full
    account, including a second and larger instance of shared-checkout friction (a concurrent
    `Cartridge::program → Cartridge::body` refactor spanning 7 files, versus round 2's single
    `tfidf.rs`), in `docs/library-growth.md`'s "Round 3" section.
