@@ -464,7 +464,6 @@ fn running_min_max_step_i16_matches_hand_computed_values() {
     assert_eq!((min2 as u16 as i16, max2 as u16 as i16), (-20, -3));
 }
 
-
 #[test]
 fn accumulate_step_i16_matches_hand_computed_values() {
     // accumulate_step_i16: signed sibling of accumulate_step/accumulate_step_u32 -- running
@@ -525,12 +524,33 @@ fn accumulate_step_i16_matches_hand_computed_values() {
 
     // Exact cancellation 7 + (-7) = 0 must force sum_neg back to 0, not leave a "negative
     // zero" -- the same convention linear_solve_1var/lerp_i16 enforce.
-    let (_, h1, c1) = step(&[("value", i16_bits(7)), ("sum_mag", 0), ("sum_neg", 0), ("count", 0)]);
+    let (_, h1, c1) = step(&[
+        ("value", i16_bits(7)),
+        ("sum_mag", 0),
+        ("sum_neg", 0),
+        ("count", 0),
+    ]);
     assert_eq!(h1, cell80::Halt::Returned);
-    let (sm1, sn1, cnt1) = (c1.get("sum_mag").unwrap(), c1.get("sum_neg").unwrap(), c1.get("count").unwrap());
-    let (_, h2, c2) = step(&[("value", i16_bits(-7)), ("sum_mag", sm1), ("sum_neg", sn1), ("count", cnt1)]);
+    let (sm1, sn1, cnt1) = (
+        c1.get("sum_mag").unwrap(),
+        c1.get("sum_neg").unwrap(),
+        c1.get("count").unwrap(),
+    );
+    let (_, h2, c2) = step(&[
+        ("value", i16_bits(-7)),
+        ("sum_mag", sm1),
+        ("sum_neg", sn1),
+        ("count", cnt1),
+    ]);
     assert_eq!(h2, cell80::Halt::Returned);
-    assert_eq!((c2.get("sum_mag").unwrap(), c2.get("sum_neg").unwrap(), c2.get("count").unwrap()), (0, 0, 2));
+    assert_eq!(
+        (
+            c2.get("sum_mag").unwrap(),
+            c2.get("sum_neg").unwrap(),
+            c2.get("count").unwrap()
+        ),
+        (0, 0, 2)
+    );
 
     // i16::MIN (-32768) is the classic negation edge case for a hand-rolled abs(); the
     // wrapping_sub-based i16_mag helper must report magnitude 32768, not overflow.
@@ -543,7 +563,11 @@ fn accumulate_step_i16_matches_hand_computed_values() {
     assert_eq!(r_min, 1u16);
     assert_eq!(h_min, cell80::Halt::Returned);
     assert_eq!(
-        (c_min.get("sum_mag").unwrap(), c_min.get("sum_neg").unwrap(), c_min.get("count").unwrap()),
+        (
+            c_min.get("sum_mag").unwrap(),
+            c_min.get("sum_neg").unwrap(),
+            c_min.get("count").unwrap()
+        ),
         (32768, 1, 1)
     );
 
@@ -617,27 +641,42 @@ fn running_correlation_sums_step_matches_hand_computed_values() {
     // add_checked_u32(sum_x2, x2) needs 4294836225 + 4294836225 = 8589672450, which
     // overflows u32 -> halt 0xFF05 (needs_wider_math).
     let (_, report, _) = step(&[
-        ("x", 65535), ("y", 0), ("count", 1),
-        ("sum_x", 0), ("sum_y", 0), ("sum_xy", 0),
-        ("sum_x2", 4294836225), ("sum_y2", 0),
+        ("x", 65535),
+        ("y", 0),
+        ("count", 1),
+        ("sum_x", 0),
+        ("sum_y", 0),
+        ("sum_xy", 0),
+        ("sum_x2", 4294836225),
+        ("sum_y2", 0),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 
     // sum_y2 overflow escalation: mirror of the above with x/y swapped, proving the y2
     // accumulation is independently guarded (not just an alias of sum_x2's check).
     let (_, report, _) = step(&[
-        ("x", 0), ("y", 65535), ("count", 1),
-        ("sum_x", 0), ("sum_y", 0), ("sum_xy", 0),
-        ("sum_x2", 0), ("sum_y2", 4294836225),
+        ("x", 0),
+        ("y", 65535),
+        ("count", 1),
+        ("sum_x", 0),
+        ("sum_y", 0),
+        ("sum_xy", 0),
+        ("sum_x2", 0),
+        ("sum_y2", 4294836225),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 
     // sum_xy overflow escalation, matching running_covariance_step's own sibling case:
     // x=y=65535 -> xy = 4294836225; seeded sum_xy = 4294836225 -> overflow -> halt 0xFF05.
     let (_, report, _) = step(&[
-        ("x", 65535), ("y", 65535), ("count", 1),
-        ("sum_x", 0), ("sum_y", 0), ("sum_xy", 4294836225),
-        ("sum_x2", 0), ("sum_y2", 0),
+        ("x", 65535),
+        ("y", 65535),
+        ("count", 1),
+        ("sum_x", 0),
+        ("sum_y", 0),
+        ("sum_xy", 4294836225),
+        ("sum_x2", 0),
+        ("sum_y2", 0),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
@@ -748,7 +787,10 @@ fn rising_streak_step_counts_strictly_increasing_runs() {
             ("streak", streak),
             ("seen", seen),
         ]);
-        assert_eq!(out as u64, expect, "value={value} expected={expect} got={out}");
+        assert_eq!(
+            out as u64, expect,
+            "value={value} expected={expect} got={out}"
+        );
         prev = cell.get("prev").unwrap();
         streak = cell.get("streak").unwrap();
         seen = cell.get("seen").unwrap();
@@ -777,7 +819,12 @@ fn falling_streak_step_counts_strictly_decreasing_runs() {
         let (out, cell) = step(
             "falling_streak_step",
             "FallingStreak",
-            &[("value", value), ("prev", prev), ("streak", streak), ("seen", seen)],
+            &[
+                ("value", value),
+                ("prev", prev),
+                ("streak", streak),
+                ("seen", seen),
+            ],
         );
         assert_eq!(out as u64, expect_streak);
         prev = cell.get("prev").unwrap();

@@ -353,7 +353,6 @@ fn is_odd_u32_wide_odd_predicate() {
     assert_eq!(step(4_294_967_294), 0, "u32::MAX - 1 is even");
 }
 
-
 #[test]
 fn is_positive_i16_hand_computed_cases() {
     // is_positive_i16(x): 1 if x > 0 under true signed i16 ordering, else 0 -- tests
@@ -366,10 +365,10 @@ fn is_positive_i16_hand_computed_cases() {
     }
 
     let cases: &[(i16, u16)] = &[
-        (5, 1),      // clearly positive -> 1
-        (0, 0),      // zero is NOT strictly positive -> 0
-        (-1, 0),     // -1 bit pattern is 0xFFFF (65535), a large u16 -- must NOT be
-                     // misread as positive -> 0 (proves true signed ordering is used)
+        (5, 1),  // clearly positive -> 1
+        (0, 0),  // zero is NOT strictly positive -> 0
+        (-1, 0), // -1 bit pattern is 0xFFFF (65535), a large u16 -- must NOT be
+        // misread as positive -> 0 (proves true signed ordering is used)
         (-32768, 0), // i16::MIN, very negative -> 0
         (32767, 1),  // i16::MAX, very positive -> 1
         (1, 1),      // smallest positive value -> 1
@@ -390,12 +389,12 @@ fn is_negative_i16_matches_hand_computed_cases() {
     // complement of is_positive_i16. Args/results are read as their two's-complement
     // u16 bit pattern (-5 <-> 65531), matching signed-deltas' own convention.
     let cases: &[(u16, u16)] = &[
-        (0, 0),      // x = 0, not negative -> 0
-        (5, 0),      // x = 5, positive -> 0
-        (65535, 1),  // x = -1 (bits 65535), negative -> 1
-        (65531, 1),  // x = -5 (bits 65531), negative -> 1
-        (32768, 1),  // x = i16::MIN (-32768), negative -> 1
-        (32767, 0),  // x = i16::MAX (32767), positive -> 0
+        (0, 0),     // x = 0, not negative -> 0
+        (5, 0),     // x = 5, positive -> 0
+        (65535, 1), // x = -1 (bits 65535), negative -> 1
+        (65531, 1), // x = -5 (bits 65531), negative -> 1
+        (32768, 1), // x = i16::MIN (-32768), negative -> 1
+        (32767, 0), // x = i16::MAX (32767), positive -> 0
     ];
 
     let mut failures = Vec::new();
@@ -405,7 +404,11 @@ fn is_negative_i16_matches_hand_computed_cases() {
             failures.push(format!("is_negative_i16({x}) = {got}, expected {exp}"));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -448,12 +451,12 @@ fn is_nonpos_i16_hand_computed_cases() {
     }
 
     let cases: &[(i16, u16)] = &[
-        (0, 1),             // zero counts as non-positive -> 1
-        (5, 0),              // positive -> 0
-        (-5, 1),              // negative -> 1
-        (-1, 1),              // negative -> 1
-        (i16::MAX, 0),       // 32767 <= 0 -> 0
-        (i16::MIN, 1),       // -32768 <= 0 -> 1
+        (0, 1),        // zero counts as non-positive -> 1
+        (5, 0),        // positive -> 0
+        (-5, 1),       // negative -> 1
+        (-1, 1),       // negative -> 1
+        (i16::MAX, 0), // 32767 <= 0 -> 0
+        (i16::MIN, 1), // -32768 <= 0 -> 1
     ];
     for &(x, expected) in cases {
         assert_eq!(
@@ -472,8 +475,8 @@ fn same_sign_i16_hand_computed_cases() {
     use cell80::{Runner, DEFAULT_CYCLES};
 
     fn run(a: i16, b: i16) -> u16 {
-        let mut r = Runner::compile(&cell_src("same_sign_i16"))
-            .unwrap_or_else(|e| panic!("compile: {e}"));
+        let mut r =
+            Runner::compile(&cell_src("same_sign_i16")).unwrap_or_else(|e| panic!("compile: {e}"));
         r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run: {e}"))
             .result
@@ -502,8 +505,8 @@ fn diff_sign_i16_hand_computed_cases() {
     use cell80::{Runner, DEFAULT_CYCLES};
 
     fn run(a: i16, b: i16) -> u16 {
-        let mut r = Runner::compile(&cell_src("diff_sign_i16"))
-            .unwrap_or_else(|e| panic!("compile: {e}"));
+        let mut r =
+            Runner::compile(&cell_src("diff_sign_i16")).unwrap_or_else(|e| panic!("compile: {e}"));
         r.run(None, &[a as u16, b as u16], DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run: {e}"))
             .result

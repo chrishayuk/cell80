@@ -199,7 +199,6 @@ fn int_to_q8_i16_encodes_signed_and_escalates_outside_i8_range() {
     );
 }
 
-
 #[test]
 fn q_mul_checked_q8_8_multiply_matches_hand_computed_cases() {
     // q_mul_checked: (a*b)>>8 in Q8.8, but escalates (halt 0xFF05, needs_wider_math) instead

@@ -247,7 +247,6 @@ fn compound_decrease_by_bps_matches_hand_computed_expectations() {
     assert_eq!(cell.get("result"), Some(450));
 }
 
-
 #[test]
 fn whole_from_bps_of_matches_hand_computed_expectations() {
     // Checked against bps_of (the pack's forward cell: value*bps/10000): recovers the
@@ -420,7 +419,8 @@ fn combined_bps_decrease_matches_hand_computed() {
     // composing two DIFFERENT successive discount rates into one equivalent rate (distinct
     // from compound_decrease_by_bps, which loops the SAME rate N times).
     fn run_cell(id: &str, args: &[u16]) -> u16 {
-        let mut r = cell80::Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        let mut r =
+            cell80::Runner::compile(&cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
         r.run(None, args, cell80::DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run {id}: {e}"))
             .result

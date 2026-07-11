@@ -117,7 +117,6 @@ fn geomean2_matches_hand_computed_floor_sqrt_of_product() {
     );
 }
 
-
 #[test]
 fn harmonic_mean2_matches_hand_computed_floor_2ab_over_a_plus_b() {
     // harmonic_mean2(a, b) = floor(2*a*b/(a+b)), the harmonic-mean third leg of the
@@ -128,13 +127,13 @@ fn harmonic_mean2_matches_hand_computed_floor_2ab_over_a_plus_b() {
     // another exact ratio, and a zero factor.
     let cases: &[(&str, &[u16], u16)] = &[
         ("harmonic_mean2", &[0, 0], 0),             // a+b == 0 -> defined as 0
-        ("harmonic_mean2", &[4, 4], 4),              // HM(a,a) = a exactly
-        ("harmonic_mean2", &[4, 12], 6),             // 2*4*12/16 = 96/16 = 6 exactly
-        ("harmonic_mean2", &[1, 2], 1),              // 2*1*2/3 = 4/3 = 1.333.., floors to 1
-        ("harmonic_mean2", &[65535, 65535], 65535),  // domain max, exact
-        ("harmonic_mean2", &[65535, 1], 1),          // large asymmetry: 131070/65536 floors to 1
-        ("harmonic_mean2", &[100, 300], 150),        // 2*100*300/400 = 60000/400 = 150 exactly
-        ("harmonic_mean2", &[0, 5], 0),              // one factor zero -> product zero -> 0
+        ("harmonic_mean2", &[4, 4], 4),             // HM(a,a) = a exactly
+        ("harmonic_mean2", &[4, 12], 6),            // 2*4*12/16 = 96/16 = 6 exactly
+        ("harmonic_mean2", &[1, 2], 1),             // 2*1*2/3 = 4/3 = 1.333.., floors to 1
+        ("harmonic_mean2", &[65535, 65535], 65535), // domain max, exact
+        ("harmonic_mean2", &[65535, 1], 1),         // large asymmetry: 131070/65536 floors to 1
+        ("harmonic_mean2", &[100, 300], 150),       // 2*100*300/400 = 60000/400 = 150 exactly
+        ("harmonic_mean2", &[0, 5], 0),             // one factor zero -> product zero -> 0
     ];
 
     let mut failures = Vec::new();
@@ -160,10 +159,10 @@ fn rms2_matches_hand_computed_floor_sqrt_of_mean_of_squares() {
     // floor-divided by 2 and reduced with the same branch-free bitwise integer-sqrt loop
     // geomean2/euclid_dist already run inline.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("rms2", &[3, 4], 3),        // sum=9+16=25, half=12, floor(sqrt(12))=3
-        ("rms2", &[0, 0], 0),        // sum=0, half=0, isqrt(0)=0
-        ("rms2", &[10, 10], 10),     // RMS of two equal values is that value: half=100, isqrt=10
-        ("rms2", &[1, 7], 5),        // sum=1+49=50, half=25, isqrt(25)=5 exactly
+        ("rms2", &[3, 4], 3),         // sum=9+16=25, half=12, floor(sqrt(12))=3
+        ("rms2", &[0, 0], 0),         // sum=0, half=0, isqrt(0)=0
+        ("rms2", &[10, 10], 10),      // RMS of two equal values is that value: half=100, isqrt=10
+        ("rms2", &[1, 7], 5),         // sum=1+49=50, half=25, isqrt(25)=5 exactly
         ("rms2", &[65535, 0], 46340), // half=2147418112; 46340^2<=half<46341^2 -> 46340
     ];
 

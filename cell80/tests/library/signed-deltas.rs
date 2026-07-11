@@ -233,20 +233,19 @@ fn apply_delta_clamped_u32_matches_defined_behaviour() {
     assert_eq!(cell.get("result"), Some(0));
 }
 
-
 #[test]
 fn min3_i16_matches_defined_behaviour() {
     // min3_i16(a, b, c): three-way signed minimum, chained i16 comparisons (the signed
     // sibling of min3 (u16)). Args/results are read as their two's-complement u16 bit
     // pattern (-5 <-> 65531), matching this file's other signed-deltas cases.
     let cases: &[((u16, u16, u16), u16)] = &[
-        ((5, 3, 8), 3),                   // all non-negative, plain ordering
-        ((65531, 3, 8), 65531),           // (-5, 3, 8) -> -5, negative beats positives
-        ((65535, 65534, 65533), 65533),   // (-1, -2, -3) -> -3; must NOT fall back to
-                                           // unsigned bit-pattern comparison (which would
-                                           // wrongly rank -1's bits as smallest)
-        ((32768, 0, 65535), 32768),       // (i16::MIN, 0, -1) -> i16::MIN
-        ((7, 7, 7), 7),                   // all equal, tie handling trivially correct
+        ((5, 3, 8), 3),                 // all non-negative, plain ordering
+        ((65531, 3, 8), 65531),         // (-5, 3, 8) -> -5, negative beats positives
+        ((65535, 65534, 65533), 65533), // (-1, -2, -3) -> -3; must NOT fall back to
+        // unsigned bit-pattern comparison (which would
+        // wrongly rank -1's bits as smallest)
+        ((32768, 0, 65535), 32768), // (i16::MIN, 0, -1) -> i16::MIN
+        ((7, 7, 7), 7),             // all equal, tie handling trivially correct
     ];
     for &((a, b, c), expected) in cases {
         assert_eq!(run_cell("min3_i16", &[a, b, c]), expected);
@@ -342,7 +341,9 @@ fn div_i16_matches_hand_computed_expectations() {
     // i16::MIN / -1 must escalate (needs_wider_math): the true quotient 32768 has
     // no representation in i16, the classic INT_MIN / -1 overflow case.
     let mut r = cell80::Runner::compile(&cell_src("div_i16")).unwrap();
-    let report = r.run(None, &[32768, 65535], cell80::DEFAULT_CYCLES).unwrap();
+    let report = r
+        .run(None, &[32768, 65535], cell80::DEFAULT_CYCLES)
+        .unwrap();
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 

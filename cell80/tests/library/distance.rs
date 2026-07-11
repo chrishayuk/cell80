@@ -207,7 +207,6 @@ fn chebyshev_i16_matches_hand_computed_expectations() {
     assert_eq!(dist(-10, -10, -10, -10), 0);
 }
 
-
 #[test]
 fn euclid_sq_i16_matches_hand_computed_expectations() {
     // Checks euclid_sq_i16 (cells/distance/euclid_sq_i16.rs): dx*dx + dy*dy (no sqrt)
@@ -353,9 +352,12 @@ fn manhattan_path3_matches_hand_computed_expectations() {
         let mut cell = StateCell::bind(&cell_src("manhattan_path3"), "Path3", None)
             .unwrap_or_else(|e| panic!("bind manhattan_path3: {e}"));
         for (f, v) in [
-            ("x1", x1), ("y1", y1),
-            ("x2", x2), ("y2", y2),
-            ("x3", x3), ("y3", y3),
+            ("x1", x1),
+            ("y1", y1),
+            ("x2", x2),
+            ("y2", y2),
+            ("x3", x3),
+            ("y3", y3),
         ] {
             cell.set(f, v as u64).unwrap();
         }
@@ -396,11 +398,23 @@ fn euclid_dist_path3_matches_hand_computed_expectations() {
     // inline-isqrt chain a second time (isqrt_u32 is a state cell, so it can't be
     // called as a subroutine across a call boundary -- the chain must be duplicated
     // by hand, exactly as it is inline in euclid_dist itself).
-    fn path3(x1: u16, y1: u16, x2: u16, y2: u16, x3: u16, y3: u16) -> (u16, cell80::Report, StateCell) {
+    fn path3(
+        x1: u16,
+        y1: u16,
+        x2: u16,
+        y2: u16,
+        x3: u16,
+        y3: u16,
+    ) -> (u16, cell80::Report, StateCell) {
         let mut cell = StateCell::bind(&cell_src("euclid_dist_path3"), "Path3", None)
             .unwrap_or_else(|e| panic!("bind euclid_dist_path3: {e}"));
         for (f, v) in [
-            ("x1", x1), ("y1", y1), ("x2", x2), ("y2", y2), ("x3", x3), ("y3", y3),
+            ("x1", x1),
+            ("y1", y1),
+            ("x2", x2),
+            ("y2", y2),
+            ("x3", x3),
+            ("y3", y3),
         ] {
             cell.set(f, v as u64).unwrap();
         }
@@ -457,9 +471,12 @@ fn chebyshev_path3_matches_hand_computed_expectations() {
         let mut cell = StateCell::bind(&cell_src("chebyshev_path3"), "Path3", None)
             .unwrap_or_else(|e| panic!("bind chebyshev_path3: {e}"));
         for (f, v) in [
-            ("x1", x1), ("y1", y1),
-            ("x2", x2), ("y2", y2),
-            ("x3", x3), ("y3", y3),
+            ("x1", x1),
+            ("y1", y1),
+            ("x2", x2),
+            ("y2", y2),
+            ("x3", x3),
+            ("y3", y3),
         ] {
             cell.set(f, v as u64).unwrap();
         }

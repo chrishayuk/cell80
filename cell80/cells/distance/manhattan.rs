@@ -1,5 +1,5 @@
 //! Manhattan distance between two grid points (typed state).
-//! tags: grid, distance, spatial, score, navigation
+//! tags: grid, distance, spatial, score, navigation, taxicab, horizontal, vertical, axis-aligned, city-block
 //! entry: Pts::run
 struct Pts { x1: u16, y1: u16, x2: u16, y2: u16, dist: u16 }
 impl Pts {

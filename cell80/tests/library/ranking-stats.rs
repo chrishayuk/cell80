@@ -547,7 +547,6 @@ fn argmin4_u32_wide_ceiling_and_ties() {
     );
 }
 
-
 #[test]
 fn max4_u32_matches_hand_computed_cases() {
     // Wide (u32) sibling of max3_u32 — same nested-compare shape extended one level
@@ -594,18 +593,44 @@ fn min4_u32_matches_hand_computed_cases() {
     }
 
     // b is the unique smallest, values exceed u16 ceiling.
-    assert_eq!(step("min4_u32", "Min4Wide", 100_000, 50_000, 150_000, 300_000), 50_000);
+    assert_eq!(
+        step("min4_u32", "Min4Wide", 100_000, 50_000, 150_000, 300_000),
+        50_000
+    );
     // a is the unique smallest, mixed against a near-u32::MAX value.
-    assert_eq!(step("min4_u32", "Min4Wide", 1_000, 4_000_000_000, 2_000_000, 3_000_000), 1_000);
+    assert_eq!(
+        step(
+            "min4_u32",
+            "Min4Wide",
+            1_000,
+            4_000_000_000,
+            2_000_000,
+            3_000_000
+        ),
+        1_000
+    );
     // all four equal.
-    assert_eq!(step("min4_u32", "Min4Wide", 70_000, 70_000, 70_000, 70_000), 70_000);
+    assert_eq!(
+        step("min4_u32", "Min4Wide", 70_000, 70_000, 70_000, 70_000),
+        70_000
+    );
     // c is the unique smallest, near u32::MAX otherwise.
     assert_eq!(
-        step("min4_u32", "Min4Wide", 4_294_967_295, 4_000_000_000, 2, 3_000_000_000),
+        step(
+            "min4_u32",
+            "Min4Wide",
+            4_294_967_295,
+            4_000_000_000,
+            2,
+            3_000_000_000
+        ),
         2
     );
     // d is the unique smallest by a narrow margin over c; zero present.
-    assert_eq!(step("min4_u32", "Min4Wide", 500_001, 999_999, 500_000, 0), 0);
+    assert_eq!(
+        step("min4_u32", "Min4Wide", 500_001, 999_999, 500_000, 0),
+        0
+    );
 }
 
 #[test]

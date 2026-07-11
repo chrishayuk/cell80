@@ -126,7 +126,6 @@ fn wave13_matrix_2x2_cells_match_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
 
-
 #[test]
 fn matrix_apply_2x2_matches_defined_behaviour() {
     // matrix_apply_2x2: (rx, ry) = (a*x + b*y, c*x + d*y), each output a sign-magnitude
@@ -189,8 +188,14 @@ fn matrix_mul_2x2_composes_two_2x2_matrices() {
         let mut cell = StateCell::bind(&cell_src("matrix_mul_2x2"), "MatrixMul2x2", None)
             .unwrap_or_else(|e| panic!("bind matrix_mul_2x2: {e}"));
         for (f, v) in [
-            ("a", m.0), ("b", m.1), ("c", m.2), ("d", m.3),
-            ("e", m.4), ("f", m.5), ("g", m.6), ("h", m.7),
+            ("a", m.0),
+            ("b", m.1),
+            ("c", m.2),
+            ("d", m.3),
+            ("e", m.4),
+            ("f", m.5),
+            ("g", m.6),
+            ("h", m.7),
         ] {
             cell.set(f, i16_bits(v)).unwrap();
         }
@@ -200,25 +205,61 @@ fn matrix_mul_2x2_composes_two_2x2_matrices() {
 
     // A=[[1,2],[3,4]], B=[[5,6],[7,8]] -> C=[[19,22],[43,50]] (all positive).
     let cell = mul((1, 2, 3, 4, 5, 6, 7, 8));
-    assert_eq!((cell.get("r11_mag"), cell.get("r11_neg")), (Some(19), Some(0)));
-    assert_eq!((cell.get("r12_mag"), cell.get("r12_neg")), (Some(22), Some(0)));
-    assert_eq!((cell.get("r21_mag"), cell.get("r21_neg")), (Some(43), Some(0)));
-    assert_eq!((cell.get("r22_mag"), cell.get("r22_neg")), (Some(50), Some(0)));
+    assert_eq!(
+        (cell.get("r11_mag"), cell.get("r11_neg")),
+        (Some(19), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r12_mag"), cell.get("r12_neg")),
+        (Some(22), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r21_mag"), cell.get("r21_neg")),
+        (Some(43), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r22_mag"), cell.get("r22_neg")),
+        (Some(50), Some(0))
+    );
 
     // A=[[1,-2],[3,4]], B=[[-5,6],[7,-8]] -> C=[[-19,22],[13,-14]] (mixed signs).
     let cell = mul((1, -2, 3, 4, -5, 6, 7, -8));
-    assert_eq!((cell.get("r11_mag"), cell.get("r11_neg")), (Some(19), Some(1)));
-    assert_eq!((cell.get("r12_mag"), cell.get("r12_neg")), (Some(22), Some(0)));
-    assert_eq!((cell.get("r21_mag"), cell.get("r21_neg")), (Some(13), Some(0)));
-    assert_eq!((cell.get("r22_mag"), cell.get("r22_neg")), (Some(14), Some(1)));
+    assert_eq!(
+        (cell.get("r11_mag"), cell.get("r11_neg")),
+        (Some(19), Some(1))
+    );
+    assert_eq!(
+        (cell.get("r12_mag"), cell.get("r12_neg")),
+        (Some(22), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r21_mag"), cell.get("r21_neg")),
+        (Some(13), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r22_mag"), cell.get("r22_neg")),
+        (Some(14), Some(1))
+    );
 
     // A=[[2,1],[3,4]], B=[[3,5],[-6,2]]: c11 = 2*3 + 1*-6 = 0 exactly (cancellation ->
     // neg must be forced back to 0, not left dangling from whichever operand "lost").
     let cell = mul((2, 1, 3, 4, 3, 5, -6, 2));
-    assert_eq!((cell.get("r11_mag"), cell.get("r11_neg")), (Some(0), Some(0)));
-    assert_eq!((cell.get("r12_mag"), cell.get("r12_neg")), (Some(12), Some(0)));
-    assert_eq!((cell.get("r21_mag"), cell.get("r21_neg")), (Some(15), Some(1)));
-    assert_eq!((cell.get("r22_mag"), cell.get("r22_neg")), (Some(23), Some(0)));
+    assert_eq!(
+        (cell.get("r11_mag"), cell.get("r11_neg")),
+        (Some(0), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r12_mag"), cell.get("r12_neg")),
+        (Some(12), Some(0))
+    );
+    assert_eq!(
+        (cell.get("r21_mag"), cell.get("r21_neg")),
+        (Some(15), Some(1))
+    );
+    assert_eq!(
+        (cell.get("r22_mag"), cell.get("r22_neg")),
+        (Some(23), Some(0))
+    );
 }
 
 #[test]
@@ -249,29 +290,47 @@ fn matrix_trace_2x2_hand_computed_cases() {
 
     // Same-sign positive: 3 + 2 = 5.
     let (_, cell) = trace(3, 2);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(5), Some(0)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(5), Some(0))
+    );
 
     // Same-sign negative: -3 + -5 = -8.
     let (_, cell) = trace(-3, -5);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(8), Some(1)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(8), Some(1))
+    );
 
     // Opposite sign, equal magnitude: 5 + -5 = 0, forced neg=0 (no negative zero).
     let (_, cell) = trace(5, -5);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(0), Some(0)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(0), Some(0))
+    );
 
     // Opposite sign, d's magnitude wins: 4 + -6 = -2.
     let (_, cell) = trace(4, -6);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(2), Some(1)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(2), Some(1))
+    );
 
     // i16::MAX + i16::MAX = 65534, which overflows i16's own representable range
     // (max 32767) -- proves the sign-magnitude widening to u32 is load-bearing.
     let (_, cell) = trace(32767, 32767);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(65534), Some(0)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(65534), Some(0))
+    );
 
     // i16::MIN + i16::MIN: magnitude 32768 + 32768 = 65536, exercises add_checked_u32
     // near the top of i16::MIN's own magnitude.
     let (_, cell) = trace(-32768, -32768);
-    assert_eq!((cell.get("trace_mag"), cell.get("trace_neg")), (Some(65536), Some(1)));
+    assert_eq!(
+        (cell.get("trace_mag"), cell.get("trace_neg")),
+        (Some(65536), Some(1))
+    );
 }
 
 #[test]

@@ -216,7 +216,6 @@ fn hash4_matches_hand_computed_values() {
     );
 }
 
-
 // fnv1a32_step: one true FNV-1a hash step over a byte on a full u32 accumulator, using the
 // real FNV-1a-32 constants (prime 16777619, conventional offset basis 2166136261) --
 // fnv1a_step's u16-only sibling widened to the canonical 32-bit definition. A state cell
@@ -259,7 +258,10 @@ fn fnv1a32_step_matches_hand_computed_fnv1a32() {
     for b in b"foobar" {
         hash = step(hash, *b as u16);
     }
-    assert_eq!(hash, 0xBF9CF968, "\"foobar\" -> {hash:#010x}, expected 0xbf9cf968");
+    assert_eq!(
+        hash, 0xBF9CF968,
+        "\"foobar\" -> {hash:#010x}, expected 0xbf9cf968"
+    );
 }
 
 #[test]
@@ -343,10 +345,16 @@ fn hash_pair32_matches_hand_computed_values() {
     for (a, b, exp) in cases {
         let got = hash_pair32(*a, *b);
         if got != *exp {
-            failures.push(format!("hash_pair32({a:#x},{b:#x}) = {got}, expected {exp}"));
+            failures.push(format!(
+                "hash_pair32({a:#x},{b:#x}) = {got}, expected {exp}"
+            ));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 // adler32_step: one Adler-32 checksum step over a byte (s1=(s1+byte)%65521,
@@ -369,11 +377,11 @@ fn adler32_step_matches_hand_computed_values() {
     // Hand-computed by unpacking s1 = checksum & 0xFFFF, s2 = checksum >> 16, then
     // s1n = (s1+byte) % 65521; s2n = (s2+s1n) % 65521; out = (s2n<<16)|s1n.
     let cases: &[(u32, u16, u32)] = &[
-        (0, 0, 0),                 // zero state, zero byte -> stays zero
-        (1, 0, 0x00010001),        // conventional adler32 init (s1=1,s2=0) stepped over 0
-        (1, 97, 0x00620062),       // init state stepped over 'a' (97): s1=98, s2=98
-        (65520, 5, 0x00040004),    // s1 wraps past the 65521 modulus back down to 4
-        (1, 256, 0x00010001),      // byte masked to & 0xFF -> identical to byte=0
+        (0, 0, 0),              // zero state, zero byte -> stays zero
+        (1, 0, 0x00010001),     // conventional adler32 init (s1=1,s2=0) stepped over 0
+        (1, 97, 0x00620062),    // init state stepped over 'a' (97): s1=98, s2=98
+        (65520, 5, 0x00040004), // s1 wraps past the 65521 modulus back down to 4
+        (1, 256, 0x00010001),   // byte masked to & 0xFF -> identical to byte=0
     ];
     for (checksum, byte, exp) in cases {
         let got = step(*checksum, *byte);
@@ -458,7 +466,9 @@ fn hash_slide_step_matches_hand_computed_values() {
         cell.set("old_byte", old_byte as u64).unwrap();
         cell.set("new_byte", new_byte as u64).unwrap();
         cell.set("high_pow", high_pow as u64).unwrap();
-        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
         assert_eq!(report.halt, cell80::Halt::Returned);
         cell.get("out").unwrap() as u16
     }
@@ -488,5 +498,9 @@ fn hash_slide_step_matches_hand_computed_values() {
             ));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }

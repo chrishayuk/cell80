@@ -551,7 +551,6 @@ fn frac_is_improper_cases() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
 
-
 #[test]
 fn frac_reduce_signed_matches_defined_behaviour() {
     // Reduces a sign-magnitude fraction (mag, neg, den) to lowest terms via gcd_u32,
@@ -570,23 +569,38 @@ fn frac_reduce_signed_matches_defined_behaviour() {
 
     // 6/8 (positive) -> gcd(6,8)=2 -> 3/4, neg stays 0.
     let (_, c) = reduce("frac_reduce_signed", 6, 0, 8);
-    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(3), Some(0), Some(4)));
+    assert_eq!(
+        (c.get("out_mag"), c.get("out_neg"), c.get("out_den")),
+        (Some(3), Some(0), Some(4))
+    );
 
     // -6/8 -> gcd(6,8)=2 -> -3/4, neg stays 1 (nonzero result keeps its sign).
     let (_, c) = reduce("frac_reduce_signed", 6, 1, 8);
-    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(3), Some(1), Some(4)));
+    assert_eq!(
+        (c.get("out_mag"), c.get("out_neg"), c.get("out_den")),
+        (Some(3), Some(1), Some(4))
+    );
 
     // -0/5 -> gcd(0,5)=5 -> 0/1, neg canonicalized to 0 even though input neg was 1.
     let (_, c) = reduce("frac_reduce_signed", 0, 1, 5);
-    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(0), Some(0), Some(1)));
+    assert_eq!(
+        (c.get("out_mag"), c.get("out_neg"), c.get("out_den")),
+        (Some(0), Some(0), Some(1))
+    );
 
     // -5/1 -> already reduced (gcd=1) -> -5/1 unchanged.
     let (_, c) = reduce("frac_reduce_signed", 5, 1, 1);
-    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(5), Some(1), Some(1)));
+    assert_eq!(
+        (c.get("out_mag"), c.get("out_neg"), c.get("out_den")),
+        (Some(5), Some(1), Some(1))
+    );
 
     // 7/3 (coprime, positive) -> unchanged -> 7/3.
     let (_, c) = reduce("frac_reduce_signed", 7, 0, 3);
-    assert_eq!((c.get("out_mag"), c.get("out_neg"), c.get("out_den")), (Some(7), Some(0), Some(3)));
+    assert_eq!(
+        (c.get("out_mag"), c.get("out_neg"), c.get("out_den")),
+        (Some(7), Some(0), Some(3))
+    );
 
     // den == 0 -> escalate out_of_domain.
     let (report, _) = reduce("frac_reduce_signed", 3, 0, 0);

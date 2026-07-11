@@ -763,7 +763,6 @@ fn point_line_dist_sq_matches_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }
 
-
 #[test]
 fn triangle_inradius_x2_approx_hand_verified() {
     // triangle_inradius_x2_approx: twice a triangle's inradius, floor(floor(4*Area)/(a+b+c)) --
@@ -836,25 +835,53 @@ fn point_segment_dist_sq_matches_hand_computed() {
     // 1) Segment (0,0)-(4,0), point (2,3): foot of perpendicular at (2,0), inside the
     // segment. cross = 4*3 - 0*2 = 12, 12^2 = 144; t_den = 4^2 = 16 -- matches
     // point_line_dist_sq's own num/den for the same inputs (144/16 = 9).
-    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 2), ("py", 3)]);
+    let cell = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("px", 2),
+        ("py", 3),
+    ]);
     assert_eq!(cell.get("num"), Some(144));
     assert_eq!(cell.get("den"), Some(16));
 
     // 2) Same segment, point (-2,3): foot falls before A (t_num = (-2)*4+3*0 = -8 < 0)
     // -> clamp to (0,0). Squared distance = (-2)^2+3^2 = 13, den forced to 1.
-    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", -2), ("py", 3)]);
+    let cell = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("px", -2),
+        ("py", 3),
+    ]);
     assert_eq!(cell.get("num"), Some(13));
     assert_eq!(cell.get("den"), Some(1));
 
     // 3) Same segment, point (6,3): foot falls beyond B (t_num = 6*4+3*0 = 24 >=
     // t_den=16) -> clamp to (4,0). Squared distance = (6-4)^2+3^2 = 13, den forced to 1.
-    let cell = step(&[("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0), ("px", 6), ("py", 3)]);
+    let cell = step(&[
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("px", 6),
+        ("py", 3),
+    ]);
     assert_eq!(cell.get("num"), Some(13));
     assert_eq!(cell.get("den"), Some(1));
 
     // 4) Degenerate segment (5,5)-(5,5), point (8,9): t_den = 0, no halt -- returns the
     // exact squared distance to the single point (5,5): (8-5)^2+(9-5)^2 = 9+16 = 25.
-    let cell = step(&[("x1", 5), ("y1", 5), ("x2", 5), ("y2", 5), ("px", 8), ("py", 9)]);
+    let cell = step(&[
+        ("x1", 5),
+        ("y1", 5),
+        ("x2", 5),
+        ("y2", 5),
+        ("px", 8),
+        ("py", 9),
+    ]);
     assert_eq!(cell.get("num"), Some(25));
     assert_eq!(cell.get("den"), Some(1));
 
@@ -863,7 +890,14 @@ fn point_segment_dist_sq_matches_hand_computed() {
     // is inside the segment. cross = dx*dpy - dy*dpx = 8*6 - 4*2 = 40, num = 1600,
     // den = 80 (1600/80 = 20, matching the Euclidean check: foot = (0,0), squared
     // distance from (-2,4) is (-2)^2+4^2 = 20).
-    let cell = step(&[("x1", -4), ("y1", -2), ("x2", 4), ("y2", 2), ("px", -2), ("py", 4)]);
+    let cell = step(&[
+        ("x1", -4),
+        ("y1", -2),
+        ("x2", 4),
+        ("y2", 2),
+        ("px", -2),
+        ("py", 4),
+    ]);
     assert_eq!(cell.get("num"), Some(1600));
     assert_eq!(cell.get("den"), Some(80));
 }
@@ -897,8 +931,14 @@ fn line_intersect_params_frac_matches_defined_behaviour() {
     // so both numerators get sign-flipped to normalize den positive); t_num = u_num = 16, den = 32
     // (t = u = 1/2, matching the midpoint (2,2)).
     let (report, cell) = step(&[
-        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 4),
-        ("x3", 0), ("y3", 4), ("x4", 4), ("y4", 0),
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 4),
+        ("x3", 0),
+        ("y3", 4),
+        ("x4", 4),
+        ("y4", 0),
     ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("t_num_mag"), Some(16));
@@ -910,8 +950,14 @@ fn line_intersect_params_frac_matches_defined_behaviour() {
     // Parallel lines (0,0)-(2,0) and (0,1)-(2,1) share direction (2,0): den = 2*0 - 0*2 = 0,
     // so the cell escalates rather than divide by a zero denominator.
     let (report, _cell) = step(&[
-        ("x1", 0), ("y1", 0), ("x2", 2), ("y2", 0),
-        ("x3", 0), ("y3", 1), ("x4", 2), ("y4", 1),
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 2),
+        ("y2", 0),
+        ("x3", 0),
+        ("y3", 1),
+        ("x4", 2),
+        ("y4", 1),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 
@@ -919,8 +965,14 @@ fn line_intersect_params_frac_matches_defined_behaviour() {
     // (11/3, 7/3). den = 4*-4 - 2*4 = -24 (negative, flip); t_num = u_num = 16, den = 24
     // (t = u = 2/3).
     let (report, cell) = step(&[
-        ("x1", 1), ("y1", 1), ("x2", 5), ("y2", 3),
-        ("x3", 1), ("y3", 5), ("x4", 5), ("y4", 1),
+        ("x1", 1),
+        ("y1", 1),
+        ("x2", 5),
+        ("y2", 3),
+        ("x3", 1),
+        ("y3", 5),
+        ("x4", 5),
+        ("y4", 1),
     ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("t_num_mag"), Some(16));
@@ -932,8 +984,14 @@ fn line_intersect_params_frac_matches_defined_behaviour() {
     // Horizontal line (0,0)-(4,0) crossed by vertical (2,-2)-(2,2) at (2,0): den = 4*4 - 0*0 =
     // 16 is already positive (no flip), t_num = u_num = 8 (t = u = 1/2).
     let (report, cell) = step(&[
-        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0),
-        ("x3", 2), ("y3", -2), ("x4", 2), ("y4", 2),
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("x3", 2),
+        ("y3", -2),
+        ("x4", 2),
+        ("y4", 2),
     ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("t_num_mag"), Some(8));
@@ -946,8 +1004,14 @@ fn line_intersect_params_frac_matches_defined_behaviour() {
     // crossing: u = -1/2 is a legitimate negative parameter on the *infinite* line (the crossing
     // point (2,0) is still exact), so u_num_neg must come back 1 while t_num stays positive.
     let (report, cell) = step(&[
-        ("x1", 0), ("y1", 0), ("x2", 4), ("y2", 0),
-        ("x3", 2), ("y3", 2), ("x4", 2), ("y4", 6),
+        ("x1", 0),
+        ("y1", 0),
+        ("x2", 4),
+        ("y2", 0),
+        ("x3", 2),
+        ("y3", 2),
+        ("x4", 2),
+        ("y4", 6),
     ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("t_num_mag"), Some(8));
@@ -1013,39 +1077,59 @@ fn geom_distance_3d_exact_matches_defined_behaviour() {
 
     // (0,0,0) -> (3,4,0): a 3-4-5 triangle embedded in 3D (dz=0). 9+16+0=25, isqrt(25)=5.
     let (_, cell) = step(&[
-        ("ax", 0), ("ay", 0), ("az", 0),
-        ("bx", i16_bits(3)), ("by", i16_bits(4)), ("bz", 0),
+        ("ax", 0),
+        ("ay", 0),
+        ("az", 0),
+        ("bx", i16_bits(3)),
+        ("by", i16_bits(4)),
+        ("bz", 0),
     ]);
     assert_eq!(cell.get("dist"), Some(5));
 
     // Negative coordinates on the a side, same 3-4-5 magnitude -- confirms the
     // excess-32768 shift handles signed differences symmetrically.
     let (_, cell) = step(&[
-        ("ax", i16_bits(-3)), ("ay", i16_bits(-4)), ("az", 0),
-        ("bx", 0), ("by", 0), ("bz", 0),
+        ("ax", i16_bits(-3)),
+        ("ay", i16_bits(-4)),
+        ("az", 0),
+        ("bx", 0),
+        ("by", 0),
+        ("bz", 0),
     ]);
     assert_eq!(cell.get("dist"), Some(5));
 
     // Non-perfect-square case: dx=10,dy=20,dz=40 -> sum=2100; isqrt(2100)=45 since
     // 45^2=2025 <= 2100 < 2116=46^2 (floors, doesn't round).
     let (_, cell) = step(&[
-        ("ax", 100), ("ay", 200), ("az", 300),
-        ("bx", 110), ("by", 220), ("bz", 340),
+        ("ax", 100),
+        ("ay", 200),
+        ("az", 300),
+        ("bx", 110),
+        ("by", 220),
+        ("bz", 340),
     ]);
     assert_eq!(cell.get("dist"), Some(45));
 
     // Coincident points -> distance 0.
     let (_, cell) = step(&[
-        ("ax", 0), ("ay", 0), ("az", 0),
-        ("bx", 0), ("by", 0), ("bz", 0),
+        ("ax", 0),
+        ("ay", 0),
+        ("az", 0),
+        ("bx", 0),
+        ("by", 0),
+        ("bz", 0),
     ]);
     assert_eq!(cell.get("dist"), Some(0));
 
     // Extreme coordinates: the summed squared distance overflows u32 -- escalates
     // rather than silently wrapping (the same guard geom_distance_3d documents).
     let (report, _) = step(&[
-        ("ax", i16_bits(i16::MIN)), ("ay", i16_bits(i16::MIN)), ("az", i16_bits(i16::MIN)),
-        ("bx", i16_bits(i16::MAX)), ("by", i16_bits(i16::MAX)), ("bz", i16_bits(i16::MAX)),
+        ("ax", i16_bits(i16::MIN)),
+        ("ay", i16_bits(i16::MIN)),
+        ("az", i16_bits(i16::MIN)),
+        ("bx", i16_bits(i16::MAX)),
+        ("by", i16_bits(i16::MAX)),
+        ("bz", i16_bits(i16::MAX)),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }

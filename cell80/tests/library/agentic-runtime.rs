@@ -592,7 +592,6 @@ fn jittered_linear_backoff_next_matches_defined_behaviour() {
     assert_eq!(step(65_530, 100, 65_535, 9999), 65_528);
 }
 
-
 #[test]
 fn agentic_runtime_watchdog_step_matches_defined_behaviour() {
     // Local helper: bind watchdog_step, set the given fields, run one step, return the cell.
@@ -814,8 +813,12 @@ fn concurrency_gate_step_matches_defined_behaviour() {
     // reports allowed=1; `release`==0 admits (increments in_flight) only while strictly
     // under max_concurrent, else denies and leaves in_flight untouched.
     fn step(in_flight: u64, max_concurrent: u64, release: u64) -> (u16, StateCell) {
-        let mut cell = StateCell::bind(&cell_src("concurrency_gate_step"), "ConcurrencyGateStep", None)
-            .unwrap_or_else(|e| panic!("bind concurrency_gate_step: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("concurrency_gate_step"),
+            "ConcurrencyGateStep",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind concurrency_gate_step: {e}"));
         cell.set("in_flight", in_flight).unwrap();
         cell.set("max_concurrent", max_concurrent).unwrap();
         cell.set("release", release).unwrap();
@@ -870,8 +873,12 @@ fn sliding_window_counter_step_matches_hand_computed() {
 
     // Case 1: first-ever call, brand-new window, no prior count -> admitted trivially.
     let (report, cell) = step(&[
-        ("now", 0), ("window_start", 0), ("window_size", 100),
-        ("prev_count", 0), ("curr_count", 0), ("limit", 5),
+        ("now", 0),
+        ("window_start", 0),
+        ("window_size", 100),
+        ("prev_count", 0),
+        ("curr_count", 0),
+        ("limit", 5),
     ]);
     assert_eq!(report.result, 1);
     assert_eq!(cell.get("curr_count"), Some(1));
@@ -881,8 +888,12 @@ fn sliding_window_counter_step_matches_hand_computed() {
     // contribution floors: prev_count(7)*remaining(67)/window_size(100) = 469/100 = 4.
     // estimate = curr_count(1) + 4 = 5 < limit(10) -> admitted, curr_count -> 2.
     let (report, cell) = step(&[
-        ("now", 133), ("window_start", 100), ("window_size", 100),
-        ("prev_count", 7), ("curr_count", 1), ("limit", 10),
+        ("now", 133),
+        ("window_start", 100),
+        ("window_size", 100),
+        ("prev_count", 7),
+        ("curr_count", 1),
+        ("limit", 10),
     ]);
     assert_eq!(report.result, 1);
     assert_eq!(cell.get("curr_count"), Some(2));
@@ -892,8 +903,12 @@ fn sliding_window_counter_step_matches_hand_computed() {
     // under the limit (6 < 6 is false) -> denied, curr_count NOT incremented.
     // elapsed=50, remaining=50, weighted_prev = 8*50/100 = 4, estimate = 2+4 = 6.
     let (report, cell) = step(&[
-        ("now", 150), ("window_start", 100), ("window_size", 100),
-        ("prev_count", 8), ("curr_count", 2), ("limit", 6),
+        ("now", 150),
+        ("window_start", 100),
+        ("window_size", 100),
+        ("prev_count", 8),
+        ("curr_count", 2),
+        ("limit", 6),
     ]);
     assert_eq!(report.result, 0);
     assert_eq!(cell.get("curr_count"), Some(2)); // unchanged, not spent
@@ -904,8 +919,12 @@ fn sliding_window_counter_step_matches_hand_computed() {
     // prev_count counts in full: weighted_prev = 5*100/100 = 5, estimate = 0+5 = 5 < 10
     // -> admitted, curr_count -> 1.
     let (report, cell) = step(&[
-        ("now", 210), ("window_start", 100), ("window_size", 100),
-        ("prev_count", 99), ("curr_count", 5), ("limit", 10),
+        ("now", 210),
+        ("window_start", 100),
+        ("window_size", 100),
+        ("prev_count", 99),
+        ("curr_count", 5),
+        ("limit", 10),
     ]);
     assert_eq!(report.result, 1);
     assert_eq!(cell.get("window_start"), Some(210));
@@ -915,8 +934,12 @@ fn sliding_window_counter_step_matches_hand_computed() {
     // Case 5: time moving backward relative to window_start is a caller bug, not a rate
     // decision -> escalates rather than returning a value.
     let (report, _cell) = step(&[
-        ("now", 5), ("window_start", 10), ("window_size", 100),
-        ("prev_count", 0), ("curr_count", 0), ("limit", 5),
+        ("now", 5),
+        ("window_start", 10),
+        ("window_size", 100),
+        ("prev_count", 0),
+        ("curr_count", 0),
+        ("limit", 5),
     ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));
 }

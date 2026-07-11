@@ -1214,7 +1214,6 @@ fn sum_digit_powers_hand_computed() {
     assert_eq!(check(9, 6).1, cell80::Halt::Escalate(0xFF05));
 }
 
-
 #[test]
 fn goldbach_conjecture_check_matches_hand_computed_expectations() {
     // goldbach_conjecture_check: for even n > 2, the smallest prime p with n-p also prime,
@@ -1301,7 +1300,8 @@ fn is_prime_power_matches_hand_computed_cases() {
     // is_prime_power: 1 if n (n >= 2) is p^k for a single prime p and k >= 1, else 0.
     // Finds n's smallest prime factor p by trial division, then strips every factor
     // of p out of n; if that leaves exactly 1, n was built from p alone.
-    let mut r = Runner::compile(&cell_src("is_prime_power")).unwrap_or_else(|e| panic!("compile: {e}"));
+    let mut r =
+        Runner::compile(&cell_src("is_prime_power")).unwrap_or_else(|e| panic!("compile: {e}"));
 
     // n=2: no d with d*d<=2, so p=n=2; 2/2=1 -> prime power (2^1).
     assert_eq!(r.run(None, &[2], DEFAULT_CYCLES).unwrap().result, 1, "n=2");
@@ -1314,9 +1314,17 @@ fn is_prime_power_matches_hand_computed_cases() {
     // n=1: below domain (n >= 2 required) -> 0.
     assert_eq!(r.run(None, &[1], DEFAULT_CYCLES).unwrap().result, 0, "n=1");
     // n=30=2*3*5: p=2; 30/2=15, remainder 15 != 1 -> not a prime power.
-    assert_eq!(r.run(None, &[30], DEFAULT_CYCLES).unwrap().result, 0, "n=30");
+    assert_eq!(
+        r.run(None, &[30], DEFAULT_CYCLES).unwrap().result,
+        0,
+        "n=30"
+    );
     // n=17 (prime): no factor found up to sqrt(17), p=n=17; 17/17=1 -> 1 (a prime is p^1).
-    assert_eq!(r.run(None, &[17], DEFAULT_CYCLES).unwrap().result, 1, "n=17");
+    assert_eq!(
+        r.run(None, &[17], DEFAULT_CYCLES).unwrap().result,
+        1,
+        "n=17"
+    );
 }
 
 #[test]
@@ -1377,7 +1385,8 @@ fn smallest_prime_factor_u32_matches_hand_computed_values() {
         cell.set("n", n as u64).unwrap();
         let report = cell.run(cycles).unwrap();
         assert_eq!(report.result, 1, "status flag should be 1 (n={n})");
-        cell.get("result").unwrap_or_else(|| panic!("no result field")) as u32
+        cell.get("result")
+            .unwrap_or_else(|| panic!("no result field")) as u32
     }
     fn spf_wide(n: u32) -> u32 {
         spf_wide_budget(n, DEFAULT_CYCLES)

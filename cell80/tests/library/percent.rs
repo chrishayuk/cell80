@@ -285,7 +285,6 @@ fn ratio_255_u32_matches_defined_behaviour() {
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }
 
-
 // percent_change_between: percent-scale sibling of money-bps's bps_change_between, at
 // u16 width using the percent pack's saturate (not halt) convention. Verifies rise,
 // fall, the before==0 -> 0/0 case, saturation at 65535, an over-100% case, and the
@@ -293,8 +292,12 @@ fn ratio_255_u32_matches_defined_behaviour() {
 #[test]
 fn percent_change_between_matches_defined_behaviour() {
     fn step(fields: &[(&str, u64)]) -> StateCell {
-        let mut cell = StateCell::bind(&cell_src("percent_change_between"), "PercentChangeBetween", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &cell_src("percent_change_between"),
+            "PercentChangeBetween",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         for (f, v) in fields {
             cell.set(f, *v).unwrap();
         }
@@ -340,10 +343,10 @@ fn percent_change_between_matches_defined_behaviour() {
 #[test]
 fn percent_round_cases() {
     let cases: &[(&str, &[u16], u16)] = &[
-        ("percent_round", &[0, 100], 0),      // 0*100/100 = 0, no remainder to round
-        ("percent_round", &[1, 3], 33),       // 100/3 = 33.333.. floors to 33 (not a tie)
-        ("percent_round", &[1, 8], 13),       // 100/8 = 12.5 exactly, a genuine tie -> rounds up to 13
-        ("percent_round", &[50, 0], 0),       // whole == 0 guards to 0
+        ("percent_round", &[0, 100], 0), // 0*100/100 = 0, no remainder to round
+        ("percent_round", &[1, 3], 33),  // 100/3 = 33.333.. floors to 33 (not a tie)
+        ("percent_round", &[1, 8], 13),  // 100/8 = 12.5 exactly, a genuine tie -> rounds up to 13
+        ("percent_round", &[50, 0], 0),  // whole == 0 guards to 0
         ("percent_round", &[65535, 1], 65535), // 65535*100 = 6553500, saturates at u16::MAX
     ];
 
@@ -370,12 +373,12 @@ fn percent_ceil_matches_hand_computed_cases() {
     // the whole==0 guard, saturation past 65535, and an exact (no-remainder) case where
     // ceil coincides with floor.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("percent_ceil", &[0, 100], 0),        // part == 0 -> smallest p is 0
-        ("percent_ceil", &[1, 3], 34),         // ceil(100/3) = 34 (33 gives 99/100=0 < 1)
-        ("percent_ceil", &[25, 200], 13),      // ceil(2500/200) = 13 (12 gives 2400/100=24 < 25)
-        ("percent_ceil", &[5, 0], 0),          // whole == 0 -> guarded to 0
-        ("percent_ceil", &[65535, 1], 65535),  // exact result 6553500 saturates to 65535
-        ("percent_ceil", &[700, 1000], 70),    // exact, no remainder: ceil == floor == 70
+        ("percent_ceil", &[0, 100], 0),       // part == 0 -> smallest p is 0
+        ("percent_ceil", &[1, 3], 34),        // ceil(100/3) = 34 (33 gives 99/100=0 < 1)
+        ("percent_ceil", &[25, 200], 13),     // ceil(2500/200) = 13 (12 gives 2400/100=24 < 25)
+        ("percent_ceil", &[5, 0], 0),         // whole == 0 -> guarded to 0
+        ("percent_ceil", &[65535, 1], 65535), // exact result 6553500 saturates to 65535
+        ("percent_ceil", &[700, 1000], 70),   // exact, no remainder: ceil == floor == 70
     ];
 
     let mut failures = Vec::new();
@@ -411,18 +414,27 @@ fn scale_percent_i16_matches_defined_behaviour() {
     assert_eq!(run_cell("scale_percent_i16", &[bits(0), 50]), bits(0));
 
     // 4) Positive saturation: 200% of i16::MAX (32767) would be 65534, saturates to i16::MAX.
-    assert_eq!(run_cell("scale_percent_i16", &[bits(i16::MAX), 200]), bits(i16::MAX));
+    assert_eq!(
+        run_cell("scale_percent_i16", &[bits(i16::MAX), 200]),
+        bits(i16::MAX)
+    );
 
     // 5) Negative saturation: 200% of i16::MIN would need magnitude 65536, saturates to
     //    magnitude 32768 -> i16::MIN exactly (the asymmetric cap is what makes this safe).
-    assert_eq!(run_cell("scale_percent_i16", &[bits(i16::MIN), 200]), bits(i16::MIN));
+    assert_eq!(
+        run_cell("scale_percent_i16", &[bits(i16::MIN), 200]),
+        bits(i16::MIN)
+    );
 
     // 6) Truncation toward zero: 50% of 7 = 3.5 -> 3 (integer division truncates, not rounds).
     assert_eq!(run_cell("scale_percent_i16", &[bits(7), 50]), bits(3));
 
     // 7) Exact 100% boundary on i16::MIN: magnitude hits the cap exactly (32768 == 32768),
     //    so no saturation branch fires, yet the result is still correct and representable.
-    assert_eq!(run_cell("scale_percent_i16", &[bits(i16::MIN), 100]), bits(i16::MIN));
+    assert_eq!(
+        run_cell("scale_percent_i16", &[bits(i16::MIN), 100]),
+        bits(i16::MIN)
+    );
 }
 
 #[test]
@@ -432,7 +444,7 @@ fn combined_percent_increase_matches_defined_behaviour() {
     // computed in u32 internally and saturating at 65535.
     let cases: &[(&str, &[u16], u16)] = &[
         ("combined_percent_increase", &[10, 20], 32), // 10+20+(10*20/100=2)=32
-        ("combined_percent_increase", &[0, 0], 0), // no increase at all
+        ("combined_percent_increase", &[0, 0], 0),    // no increase at all
         ("combined_percent_increase", &[100, 100], 300), // 100+100+(10000/100=100)=300
         ("combined_percent_increase", &[50, 50], 125), // 50+50+(2500/100=25)=125
         ("combined_percent_increase", &[65535, 65535], 65535), // true total 43,079,432 -> saturates
@@ -458,15 +470,20 @@ fn combined_percent_discount_hand_computed() {
     // discount rate: pct_a + pct_b - pct_a*pct_b/100, floored at 0, computed in u32
     // internally so the intermediate product never overflows u16.
     let check = |pct_a: u16, pct_b: u16| -> u16 {
-        let mut r = cell80::Runner::compile(&std::fs::read_to_string(
-            cell80::find_cell_file(
-                &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells"),
-                "combined_percent_discount",
+        let mut r = cell80::Runner::compile(
+            &std::fs::read_to_string(
+                cell80::find_cell_file(
+                    &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cells"),
+                    "combined_percent_discount",
+                )
+                .unwrap(),
             )
             .unwrap(),
-        ).unwrap())
+        )
         .unwrap();
-        r.run(None, &[pct_a, pct_b], cell80::DEFAULT_CYCLES).unwrap().result
+        r.run(None, &[pct_a, pct_b], cell80::DEFAULT_CYCLES)
+            .unwrap()
+            .result
     };
 
     // 20% then 10%: 20+10-20*10/100 = 30-2 = 28 (not a naive 30% -- discounts compound).

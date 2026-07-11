@@ -192,7 +192,6 @@ fn bcd_decode16_matches_defined_behaviour() {
     );
 }
 
-
 // Verifies bcd16_is_valid checks that all four nibbles of a packed 4-digit BCD u16 are
 // valid decimal digits (0-9) -- the 4-nibble extension of bcd_is_valid's 2-nibble check,
 // mirroring the bcd_encode/bcd_encode16 2-digit/4-digit ladder. Cases hand-computed:
@@ -271,7 +270,9 @@ fn bcd_sub_matches_hand_computed_values() {
         let report = cell.run(DEFAULT_CYCLES).unwrap();
         assert_eq!(report.result, 1, "status flag should be 1");
         let diff = cell.get("diff").unwrap_or_else(|| panic!("no diff field")) as u16;
-        let borrow = cell.get("borrow").unwrap_or_else(|| panic!("no borrow field")) as u16;
+        let borrow = cell
+            .get("borrow")
+            .unwrap_or_else(|| panic!("no borrow field")) as u16;
         (diff, borrow)
     }
 

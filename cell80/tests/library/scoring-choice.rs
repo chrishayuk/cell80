@@ -678,7 +678,6 @@ fn clear_winner3_matches_hand_computed_cases() {
     );
 }
 
-
 // weighted_avg2 (scoring-choice): normalized two-input weighted mean, distinct from
 // weighted_sum2 which returns the raw (un-normalized) a*wa + b*wb combined score.
 #[test]
@@ -854,27 +853,52 @@ fn clear_loser3_hand_computed_cases() {
 
     // Decisive loser: bottom=5, second_lowest=10 (median of 10,5,20), diff=5 >= margin(3)
     assert_eq!(
-        verify(&[("score_a", 10), ("score_b", 5), ("score_c", 20), ("margin", 3)]),
+        verify(&[
+            ("score_a", 10),
+            ("score_b", 5),
+            ("score_c", 20),
+            ("margin", 3)
+        ]),
         1
     );
     // Not decisive: bottom=8, second_lowest=10, diff=2 < margin(3)
     assert_eq!(
-        verify(&[("score_a", 10), ("score_b", 8), ("score_c", 20), ("margin", 3)]),
+        verify(&[
+            ("score_a", 10),
+            ("score_b", 8),
+            ("score_c", 20),
+            ("margin", 3)
+        ]),
         0
     );
     // All tied: diff=0 >= margin(0) -> decisive (zero-margin ties count)
     assert_eq!(
-        verify(&[("score_a", 7), ("score_b", 7), ("score_c", 7), ("margin", 0)]),
+        verify(&[
+            ("score_a", 7),
+            ("score_b", 7),
+            ("score_c", 7),
+            ("margin", 0)
+        ]),
         1
     );
     // Exact boundary: bottom=1, second_lowest=4, diff=3 >= margin(3)
     assert_eq!(
-        verify(&[("score_a", 1), ("score_b", 4), ("score_c", 9), ("margin", 3)]),
+        verify(&[
+            ("score_a", 1),
+            ("score_b", 4),
+            ("score_c", 9),
+            ("margin", 3)
+        ]),
         1
     );
     // Two lowest tied at 5: second_lowest equals bottom, diff=0 < margin(1)
     assert_eq!(
-        verify(&[("score_a", 5), ("score_b", 5), ("score_c", 20), ("margin", 1)]),
+        verify(&[
+            ("score_a", 5),
+            ("score_b", 5),
+            ("score_c", 20),
+            ("margin", 1)
+        ]),
         0
     );
 }

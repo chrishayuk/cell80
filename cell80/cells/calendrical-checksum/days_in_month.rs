@@ -1,5 +1,5 @@
 //! Number of days in a month (1-12; 0 for an invalid month), given a leap-year flag for February.
-//! tags: calendar, date, days-in-month, month, gregorian
+//! tags: calendar, date, days-in-month, month, gregorian, length, how-many-days, duration
 //! limits: month must be 1-12 (returns 0 otherwise); is_leap is a 0/1 flag, not a year (compose with is_leap_year)
 fn run(month: u16, is_leap: u16) -> u16 {
     let base = match month {

@@ -622,7 +622,6 @@ fn is_coprime_u32_hand_computed() {
     assert_eq!(cell.get("ok"), Some(0));
 }
 
-
 #[test]
 fn min3_u32_matches_hand_computed_cases() {
     // Checks Min3Wide::run against hand-computed min(min(a,b),c) over several wide u32 cases,
@@ -634,19 +633,21 @@ fn min3_u32_matches_hand_computed_cases() {
         cell.set("a", a as u64).unwrap();
         cell.set("b", b as u64).unwrap();
         cell.set("c", c as u64).unwrap();
-        let report = cell.run(DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
         assert_eq!(report.halt, cell80::Halt::Returned);
         cell.get("result").unwrap() as u32
     }
 
     // (a, b, c, expected) -- hand-computed as min(min(a,b),c)
     let cases: &[(u32, u32, u32, u32)] = &[
-        (5, 3, 8, 3),                                      // b smallest
-        (100, 200, 50, 50),                                // c smallest
-        (0, 0, 0, 0),                                       // all zero
-        (u32::MAX, u32::MAX - 1, u32::MAX, u32::MAX - 1),   // wide values near u32::MAX
-        (7, 7, 7, 7),                                        // three-way tie
-        (10, 20, 10, 10),                                    // a and c tie for smallest
+        (5, 3, 8, 3),                                     // b smallest
+        (100, 200, 50, 50),                               // c smallest
+        (0, 0, 0, 0),                                     // all zero
+        (u32::MAX, u32::MAX - 1, u32::MAX, u32::MAX - 1), // wide values near u32::MAX
+        (7, 7, 7, 7),                                     // three-way tie
+        (10, 20, 10, 10),                                 // a and c tie for smallest
     ];
 
     let mut failures = Vec::new();
@@ -656,7 +657,11 @@ fn min3_u32_matches_hand_computed_cases() {
             failures.push(format!("min3_u32({a},{b},{c}) = {got}, expected {exp}"));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 // max3_u32: wide (u32) three-way max, exercised past the u16 ceiling and with ties.
@@ -690,7 +695,11 @@ fn max3_u32_wide_three_way_max() {
     assert_eq!(cell.get("result"), Some(4_000_000_000));
 
     // boundary at u32::MAX.
-    let cell = step(&[("a", u32::MAX as u64), ("b", (u32::MAX - 1) as u64), ("c", 0)]);
+    let cell = step(&[
+        ("a", u32::MAX as u64),
+        ("b", (u32::MAX - 1) as u64),
+        ("c", 0),
+    ]);
     assert_eq!(cell.get("result"), Some(u32::MAX as u64));
 }
 
@@ -843,7 +852,11 @@ fn avg3_u32_hand_computed() {
     let (_, report, cell) = step(
         "avg3_u32",
         "Avg3Wide",
-        &[("a", 4_000_000_000), ("b", 4_000_000_000), ("c", 4_000_000_000)],
+        &[
+            ("a", 4_000_000_000),
+            ("b", 4_000_000_000),
+            ("c", 4_000_000_000),
+        ],
     );
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("result"), Some(4_000_000_000));
@@ -854,7 +867,11 @@ fn avg3_u32_hand_computed() {
     let (_, _, cell) = step(
         "avg3_u32",
         "Avg3Wide",
-        &[("a", u32::MAX as u64), ("b", u32::MAX as u64), ("c", u32::MAX as u64)],
+        &[
+            ("a", u32::MAX as u64),
+            ("b", u32::MAX as u64),
+            ("c", u32::MAX as u64),
+        ],
     );
     assert_eq!(cell.get("result"), Some(u32::MAX as u64));
 }
@@ -957,9 +974,12 @@ fn smag_clamp_matches_hand_computed_cases() {
         "smag_clamp",
         "SmagClamp",
         &[
-            ("mag_x", 8), ("neg_x", 1),
-            ("mag_lo", 5), ("neg_lo", 1),
-            ("mag_hi", 10), ("neg_hi", 0),
+            ("mag_x", 8),
+            ("neg_x", 1),
+            ("mag_lo", 5),
+            ("neg_lo", 1),
+            ("mag_hi", 10),
+            ("neg_hi", 0),
         ],
     );
     assert_eq!(report.halt, cell80::Halt::Returned);
@@ -970,9 +990,12 @@ fn smag_clamp_matches_hand_computed_cases() {
         "smag_clamp",
         "SmagClamp",
         &[
-            ("mag_x", 15), ("neg_x", 0),
-            ("mag_lo", 5), ("neg_lo", 1),
-            ("mag_hi", 10), ("neg_hi", 0),
+            ("mag_x", 15),
+            ("neg_x", 0),
+            ("mag_lo", 5),
+            ("neg_lo", 1),
+            ("mag_hi", 10),
+            ("neg_hi", 0),
         ],
     );
     assert_eq!(report.halt, cell80::Halt::Returned);
@@ -983,9 +1006,12 @@ fn smag_clamp_matches_hand_computed_cases() {
         "smag_clamp",
         "SmagClamp",
         &[
-            ("mag_x", 3), ("neg_x", 1),
-            ("mag_lo", 5), ("neg_lo", 1),
-            ("mag_hi", 1), ("neg_hi", 1),
+            ("mag_x", 3),
+            ("neg_x", 1),
+            ("mag_lo", 5),
+            ("neg_lo", 1),
+            ("mag_hi", 1),
+            ("neg_hi", 1),
         ],
     );
     assert_eq!(report.halt, cell80::Halt::Returned);
@@ -996,9 +1022,12 @@ fn smag_clamp_matches_hand_computed_cases() {
         "smag_clamp",
         "SmagClamp",
         &[
-            ("mag_x", 5), ("neg_x", 1),
-            ("mag_lo", 5), ("neg_lo", 1),
-            ("mag_hi", 10), ("neg_hi", 0),
+            ("mag_x", 5),
+            ("neg_x", 1),
+            ("mag_lo", 5),
+            ("neg_lo", 1),
+            ("mag_hi", 10),
+            ("neg_hi", 0),
         ],
     );
     assert_eq!(report.halt, cell80::Halt::Returned);
@@ -1009,9 +1038,12 @@ fn smag_clamp_matches_hand_computed_cases() {
         "smag_clamp",
         "SmagClamp",
         &[
-            ("mag_x", 3), ("neg_x", 0),
-            ("mag_lo", 1), ("neg_lo", 0),
-            ("mag_hi", 10), ("neg_hi", 7),
+            ("mag_x", 3),
+            ("neg_x", 0),
+            ("mag_lo", 1),
+            ("neg_lo", 0),
+            ("mag_hi", 10),
+            ("neg_hi", 7),
         ],
     );
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF06));

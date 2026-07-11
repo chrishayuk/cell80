@@ -106,7 +106,6 @@ fn bucket4_matches_defined_behaviour() {
     assert_eq!((result, out), (3, 3));
 }
 
-
 #[test]
 fn bucket4_u32_matches_defined_behaviour() {
     // bucket4_u32: the wide u32 sibling of bucket4 -- x<t1 -> 0, x<t2 -> 1, x<t3 -> 2,
@@ -205,7 +204,11 @@ fn byte_to_permille_matches_defined_behaviour() {
             failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -215,11 +218,11 @@ fn permille_to_byte_matches_defined_behaviour() {
     // Checks both scale endpoints, an exact-division midpoint, and two
     // truncating-division cases near the top of the range.
     let cases: &[(u16, u16)] = &[
-        (0, 0),       // 0*51/200 = 0
-        (1000, 255),  // 1000*51/200 = 51000/200 = 255 (exact top of scale)
-        (200, 51),    // 200*51/200 = 10200/200 = 51 (exact)
-        (500, 127),   // 500*51/200 = 25500/200 = 127.5 -> 127 (truncation)
-        (999, 254),   // 999*51/200 = 50949/200 = 254.745 -> 254 (truncation)
+        (0, 0),      // 0*51/200 = 0
+        (1000, 255), // 1000*51/200 = 51000/200 = 255 (exact top of scale)
+        (200, 51),   // 200*51/200 = 10200/200 = 51 (exact)
+        (500, 127),  // 500*51/200 = 25500/200 = 127.5 -> 127 (truncation)
+        (999, 254),  // 999*51/200 = 50949/200 = 254.745 -> 254 (truncation)
     ];
 
     let mut failures = Vec::new();

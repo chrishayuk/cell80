@@ -616,7 +616,6 @@ fn grid_coords_u32_matches_defined_behaviour() {
     assert_eq!((cell.get("x"), cell.get("y")), (Some(0), Some(65537)));
 }
 
-
 // grid_index_u32 (spatial-grid): wide/checked sibling of grid_index -- the encode-side
 // counterpart to grid_coords_u32's decode. Checks the flatten relationship y*width+x for a
 // case matching plain grid_index, a case matching grid_coords_u32's own decode example, the
@@ -690,41 +689,83 @@ fn point_aabb_dist_sq_matches_hand_computed_expectations() {
 
     // Strictly inside box (0,0,10,10) -> clamps to itself -> 0.
     assert_eq!(
-        step(&[("px", 5), ("py", 5), ("rx", 0), ("ry", 0), ("rw", 10), ("rh", 10)]),
+        step(&[
+            ("px", 5),
+            ("py", 5),
+            ("rx", 0),
+            ("ry", 0),
+            ("rw", 10),
+            ("rh", 10)
+        ]),
         0
     );
 
     // Outside on x only (py stays in range): cx clamps to rx+rw=10, cy=5.
     // dx = 15-10 = 5, dy = 0 -> dist_sq = 25.
     assert_eq!(
-        step(&[("px", 15), ("py", 5), ("rx", 0), ("ry", 0), ("rw", 10), ("rh", 10)]),
+        step(&[
+            ("px", 15),
+            ("py", 5),
+            ("rx", 0),
+            ("ry", 0),
+            ("rw", 10),
+            ("rh", 10)
+        ]),
         25
     );
 
     // Outside diagonally, nearest corner (10,10): dx=5, dy=5 -> dist_sq = 50.
     assert_eq!(
-        step(&[("px", 15), ("py", 15), ("rx", 0), ("ry", 0), ("rw", 10), ("rh", 10)]),
+        step(&[
+            ("px", 15),
+            ("py", 15),
+            ("rx", 0),
+            ("ry", 0),
+            ("rw", 10),
+            ("rh", 10)
+        ]),
         50
     );
 
     // Exactly on the box's far edge (rx+rw, py inside) -> inclusive, still counts as
     // inside (clamp uses strict >, not >=) -> dx=0, dy=0 -> dist_sq = 0.
     assert_eq!(
-        step(&[("px", 10), ("py", 5), ("rx", 0), ("ry", 0), ("rw", 10), ("rh", 10)]),
+        step(&[
+            ("px", 10),
+            ("py", 5),
+            ("rx", 0),
+            ("ry", 0),
+            ("rw", 10),
+            ("rh", 10)
+        ]),
         0
     );
 
     // Outside below both rx and ry (upper-left of box (5,5,10,10)): cx=5, cy=5,
     // dx=5, dy=5 -> dist_sq = 50.
     assert_eq!(
-        step(&[("px", 0), ("py", 0), ("rx", 5), ("ry", 5), ("rw", 10), ("rh", 10)]),
+        step(&[
+            ("px", 0),
+            ("py", 0),
+            ("rx", 5),
+            ("ry", 5),
+            ("rw", 10),
+            ("rh", 10)
+        ]),
         50
     );
 
     // Degenerate zero-size box (a single point at the origin): clamps fully to (0,0),
     // classic 3-4-5 triangle -> dist_sq = 3*3 + 4*4 = 25.
     assert_eq!(
-        step(&[("px", 3), ("py", 4), ("rx", 0), ("ry", 0), ("rw", 0), ("rh", 0)]),
+        step(&[
+            ("px", 3),
+            ("py", 4),
+            ("rx", 0),
+            ("ry", 0),
+            ("rw", 0),
+            ("rh", 0)
+        ]),
         25
     );
 }
@@ -841,7 +882,13 @@ fn aabb_expand_matches_hand_computed_cases() {
 
     // margin itself so large that margin*2 overflows u16 before being added to w/h.
     assert_eq!(
-        step(&[("x", 0), ("y", 0), ("w", 100), ("h", 100), ("margin", 40000)]),
+        step(&[
+            ("x", 0),
+            ("y", 0),
+            ("w", 100),
+            ("h", 100),
+            ("margin", 40000)
+        ]),
         (0, 0, 65535, 65535)
     );
 }
@@ -891,19 +938,39 @@ fn morton_encode_3d_matches_hand_computed_values() {
         cell
     }
 
-    let cell = step("morton_encode_3d", "MortonEncode3d", &[("x", 0), ("y", 0), ("z", 0)]);
+    let cell = step(
+        "morton_encode_3d",
+        "MortonEncode3d",
+        &[("x", 0), ("y", 0), ("z", 0)],
+    );
     assert_eq!(cell.get("code"), Some(0));
 
     // Unit vectors on each axis land at bit 0 (x), bit 1 (y), bit 2 (z) respectively.
-    let cell = step("morton_encode_3d", "MortonEncode3d", &[("x", 1), ("y", 0), ("z", 0)]);
+    let cell = step(
+        "morton_encode_3d",
+        "MortonEncode3d",
+        &[("x", 1), ("y", 0), ("z", 0)],
+    );
     assert_eq!(cell.get("code"), Some(1));
-    let cell = step("morton_encode_3d", "MortonEncode3d", &[("x", 0), ("y", 1), ("z", 0)]);
+    let cell = step(
+        "morton_encode_3d",
+        "MortonEncode3d",
+        &[("x", 0), ("y", 1), ("z", 0)],
+    );
     assert_eq!(cell.get("code"), Some(2));
-    let cell = step("morton_encode_3d", "MortonEncode3d", &[("x", 0), ("y", 0), ("z", 1)]);
+    let cell = step(
+        "morton_encode_3d",
+        "MortonEncode3d",
+        &[("x", 0), ("y", 0), ("z", 1)],
+    );
     assert_eq!(cell.get("code"), Some(4));
 
     // (1,1,1) sets all three low bits: the first octree cell's code.
-    let cell = step("morton_encode_3d", "MortonEncode3d", &[("x", 1), ("y", 1), ("z", 1)]);
+    let cell = step(
+        "morton_encode_3d",
+        "MortonEncode3d",
+        &[("x", 1), ("y", 1), ("z", 1)],
+    );
     assert_eq!(cell.get("code"), Some(7));
 
     // Max case: 65535 masks down to its low 10 bits (0x3FF) on every axis. Per-axis

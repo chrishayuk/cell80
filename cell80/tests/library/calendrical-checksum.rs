@@ -184,7 +184,6 @@ fn is_weekday_matches_hand_computed_cases() {
     );
 }
 
-
 #[test]
 fn luhn_check_u32_matches_hand_computed_cases() {
     // luhn_check_u32 splits a full card number into hi (upper digits) and lo (fixed
@@ -193,8 +192,12 @@ fn luhn_check_u32_matches_hand_computed_cases() {
     use cell80::{StateCell, DEFAULT_CYCLES};
 
     fn step(hi: u64, lo: u64) -> u16 {
-        let mut cell = StateCell::bind(&crate::common::cell_src("luhn_check_u32"), "LuhnCheckU32", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = StateCell::bind(
+            &crate::common::cell_src("luhn_check_u32"),
+            "LuhnCheckU32",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         cell.set("hi", hi).unwrap();
         cell.set("lo", lo).unwrap();
         let report = cell.run(DEFAULT_CYCLES).unwrap();
@@ -228,18 +231,18 @@ fn luhn_check_digit_u32_matches_hand_computed_cases() {
     // reducing any result over 9 by subtracting 9 -- the same rule luhn_check_digit uses
     // at u16 width, just continued across the hi/lo boundary.
     let cases: &[(u32, u32, u16)] = &[
-        (0, 0, 0),                     // trivial: no digits, check digit 0
-        (0, 1792, 1),                  // hi=0; matches narrow luhn_check_digit(1792) = 1
-        (7, 992739871, 3),             // classic Visa test number 7992739871 split across
+        (0, 0, 0),         // trivial: no digits, check digit 0
+        (0, 1792, 1),      // hi=0; matches narrow luhn_check_digit(1792) = 1
+        (7, 992739871, 3), // classic Visa test number 7992739871 split across
         // the hi/lo boundary (hi holds just the leading "7"); known-good check digit is 3
-        (1, 5, 8),                     // hi=1, lo=5 -- lo has 8 leading (high-order) zero
+        (1, 5, 8), // hi=1, lo=5 -- lo has 8 leading (high-order) zero
         // digits before its single "5"; full number is 1000000005 (digits 5,0,0,0,0,0,0,0,0,1
         // from the right), doubling at even position sums to 2, check digit (10-2)%10=8 --
         // exercises that hi's fixed parity (double at odd local position) doesn't depend on
         // how many of lo's digits were actually nonzero
         (999_999_999, 999_999_999, 8), // max-width edge: 18 nines; doubling a 9 always
-        // yields 9 (2*9=18, 18-9=9) so parity is irrelevant here, sum = 18*9 = 162, check
-        // digit (10 - 162 % 10) % 10 = 8
+                                       // yields 9 (2*9=18, 18-9=9) so parity is irrelevant here, sum = 18*9 = 162, check
+                                       // digit (10 - 162 % 10) % 10 = 8
     ];
 
     for (hi, lo, expected) in cases {
@@ -266,7 +269,12 @@ fn isbn10_check_matches_hand_computed_cases() {
     // Local helpers: bind the state cell, feed body (9-digit prefix packed as u32) and
     // check (the 10th character's value, 0-9 or 10 for 'X'), run, and read back `valid`.
     fn isbn10_check(body: u32, check: u16) -> u16 {
-        let mut c = cell80::StateCell::bind(&crate::common::cell_src("isbn10_check"), "Isbn10Check", None).unwrap();
+        let mut c = cell80::StateCell::bind(
+            &crate::common::cell_src("isbn10_check"),
+            "Isbn10Check",
+            None,
+        )
+        .unwrap();
         c.set("body", body as u64).unwrap();
         c.set("check", check as u64).unwrap();
         c.run(cell80::DEFAULT_CYCLES).unwrap();
@@ -299,7 +307,11 @@ fn isbn10_check_matches_hand_computed_cases() {
             ));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -308,10 +320,15 @@ fn isbn10_check_digit_matches_hand_computed_cases() {
     // 5 independently hand-computed expectations: standard weighted-mod-11 cases, the
     // all-zero edge case, and a case landing on the 'X' (10) check character.
     fn digit_for(body: u64) -> u64 {
-        let mut cell = cell80::StateCell::bind(&crate::common::cell_src("isbn10_check_digit"), "Isbn10CheckDigit", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("isbn10_check_digit"),
+            "Isbn10CheckDigit",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind: {e}"));
         cell.set("body", body).unwrap();
-        cell.run(cell80::DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        cell.run(cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
         cell.get("digit").unwrap()
     }
 
@@ -359,7 +376,12 @@ fn ean13_check_matches_hand_computed_cases() {
         ("5901234123457 (valid EAN-13)", 5_901_234, 123_457, 1),
         // Same number with the check digit corrupted (7 -> 8): total becomes 91, not a
         // multiple of 10.
-        ("5901234123458 (corrupted check digit)", 5_901_234, 123_458, 0),
+        (
+            "5901234123458 (corrupted check digit)",
+            5_901_234,
+            123_458,
+            0,
+        ),
         // "0036000291452" -- valid UPC-A (036000291452) written as EAN-13 with a leading 0.
         // Hand sum: 0+0+3+18+0+0+0+6+9+3+4+15+2 = 60 -> %10==0.
         ("0036000291452 (valid UPC-A as EAN-13)", 36_000, 291_452, 1),
@@ -368,7 +390,12 @@ fn ean13_check_matches_hand_computed_cases() {
         ("9780306406157 (valid ISBN-13)", 9_780_306, 406_157, 1),
         // Same ISBN-13 with the check digit corrupted (7 -> 8): total becomes 101, not a
         // multiple of 10.
-        ("9780306406158 (corrupted check digit)", 9_780_306, 406_158, 0),
+        (
+            "9780306406158 (corrupted check digit)",
+            9_780_306,
+            406_158,
+            0,
+        ),
         // Trivial all-zero edge case: sum is 0, a multiple of 10 -- valid.
         ("0000000000000 (trivial all-zero)", 0, 0, 1),
     ];
@@ -377,10 +404,16 @@ fn ean13_check_matches_hand_computed_cases() {
     for (label, hi, lo, expected) in cases {
         let got = step(*hi, *lo);
         if got != *expected {
-            failures.push(format!("{label}: hi={hi} lo={lo} => {got}, expected {expected}"));
+            failures.push(format!(
+                "{label}: hi={hi} lo={lo} => {got}, expected {expected}"
+            ));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -429,7 +462,11 @@ fn ean13_check_digit_matches_hand_computed_cases() {
             ));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -452,37 +489,86 @@ fn days_between_matches_hand_computed_cases() {
     }
 
     // Adjacent days -> 1.
-    let (report, cell) = step(&[("y1", 2024), ("m1", 1), ("d1", 1), ("y2", 2024), ("m2", 1), ("d2", 2)]);
+    let (report, cell) = step(&[
+        ("y1", 2024),
+        ("m1", 1),
+        ("d1", 1),
+        ("y2", 2024),
+        ("m2", 1),
+        ("d2", 2),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(1));
 
     // Full leap year span: 2024 is a leap year (div 4, not div 100), so Jan1 2024 -> Jan1 2025
     // covers all 366 days of 2024.
-    let (report, cell) = step(&[("y1", 2024), ("m1", 1), ("d1", 1), ("y2", 2025), ("m2", 1), ("d2", 1)]);
+    let (report, cell) = step(&[
+        ("y1", 2024),
+        ("m1", 1),
+        ("d1", 1),
+        ("y2", 2025),
+        ("m2", 1),
+        ("d2", 1),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(366));
 
     // Same date -> 0.
-    let (report, cell) = step(&[("y1", 2023), ("m1", 6), ("d1", 15), ("y2", 2023), ("m2", 6), ("d2", 15)]);
+    let (report, cell) = step(&[
+        ("y1", 2023),
+        ("m1", 6),
+        ("d1", 15),
+        ("y2", 2023),
+        ("m2", 6),
+        ("d2", 15),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(0));
 
     // Order independence: Jan1 2023 -> Jun15 2023 is 31+28+31+30+31+14 = 165 days in either
     // direction (the cell always returns the absolute difference).
-    let (report, cell) = step(&[("y1", 2023), ("m1", 1), ("d1", 1), ("y2", 2023), ("m2", 6), ("d2", 15)]);
+    let (report, cell) = step(&[
+        ("y1", 2023),
+        ("m1", 1),
+        ("d1", 1),
+        ("y2", 2023),
+        ("m2", 6),
+        ("d2", 15),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(165));
-    let (report, cell) = step(&[("y1", 2023), ("m1", 6), ("d1", 15), ("y2", 2023), ("m2", 1), ("d2", 1)]);
+    let (report, cell) = step(&[
+        ("y1", 2023),
+        ("m1", 6),
+        ("d1", 15),
+        ("y2", 2023),
+        ("m2", 1),
+        ("d2", 1),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(165));
 
     // Leap-day crossing: 2020 is a leap year, so Feb28 -> Mar1 spans Feb29 too -> 2 days.
-    let (report, cell) = step(&[("y1", 2020), ("m1", 2), ("d1", 28), ("y2", 2020), ("m2", 3), ("d2", 1)]);
+    let (report, cell) = step(&[
+        ("y1", 2020),
+        ("m1", 2),
+        ("d1", 28),
+        ("y2", 2020),
+        ("m2", 3),
+        ("d2", 1),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Returned);
     assert_eq!(cell.get("days"), Some(2));
 
     // Escalation: a multi-century span overflows u16::MAX days (~179 years) -> halt 0xFF05
     // (needs_wider_math), per the cell's documented limits.
-    let (report, _) = step(&[("y1", 0), ("m1", 1), ("d1", 1), ("y2", 65535), ("m2", 12), ("d2", 31)]);
+    let (report, _) = step(&[
+        ("y1", 0),
+        ("m1", 1),
+        ("d1", 1),
+        ("y2", 65535),
+        ("m2", 12),
+        ("d2", 31),
+    ]);
     assert_eq!(report.halt, cell80::Halt::Escalate(0xFF05));
 }

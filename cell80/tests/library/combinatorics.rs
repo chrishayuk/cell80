@@ -529,7 +529,6 @@ fn choose_with_repetition_hand_computed() {
     assert_eq!(cell.get("result"), Some(4));
 }
 
-
 // eulerian_number: A(n,k), the number of permutations of n elements with exactly
 // k descents (positions i where perm[i] > perm[i+1]).
 #[test]

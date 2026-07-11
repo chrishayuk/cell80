@@ -895,7 +895,10 @@ fn collatz_next_hand_computed() {
     assert_eq!(run("collatz_next", &[21843]).result, 65530);
 
     // n=0 is out of domain -- escalate.
-    assert_eq!(run("collatz_next", &[0]).halt, cell80::Halt::Escalate(0xFF06));
+    assert_eq!(
+        run("collatz_next", &[0]).halt,
+        cell80::Halt::Escalate(0xFF06)
+    );
 
     // n=21845 (odd) -> 3*21845+1 = 65536, one past u16::MAX -- needs_wider_math escalation.
     assert_eq!(

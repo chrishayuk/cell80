@@ -316,7 +316,6 @@ fn value_at_percent_matches_hand_computed_expectations() {
     assert_eq!(run(0, 200, 25), 50);
 }
 
-
 #[test]
 fn value_at_percent_u32_matches_hand_computed_expectations() {
     // ValueAtPercentWide: wide (u32) sibling of value_at_percent -- given range [lo, hi]
@@ -378,12 +377,12 @@ fn outside_range_matches_defined_behaviour() {
     // outside_range: the exact logical complement of between_exclusive -- 1 if x <= lo
     // or x >= hi (x lies on or beyond either edge of the open interval), else 0.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("outside_range", &[5, 0, 10], 0),   // strictly inside (0,10) -> not outside
-        ("outside_range", &[0, 0, 10], 1),   // x == lo (boundary excluded from open interval) -> outside
-        ("outside_range", &[10, 0, 10], 1),  // x == hi (boundary excluded from open interval) -> outside
-        ("outside_range", &[15, 0, 10], 1),  // x beyond hi -> outside
-        ("outside_range", &[9, 0, 10], 0),   // x just inside the upper edge -> not outside
-        ("outside_range", &[5, 5, 5], 1),    // degenerate empty interval (lo == hi) -> everything is outside
+        ("outside_range", &[5, 0, 10], 0), // strictly inside (0,10) -> not outside
+        ("outside_range", &[0, 0, 10], 1), // x == lo (boundary excluded from open interval) -> outside
+        ("outside_range", &[10, 0, 10], 1), // x == hi (boundary excluded from open interval) -> outside
+        ("outside_range", &[15, 0, 10], 1), // x beyond hi -> outside
+        ("outside_range", &[9, 0, 10], 0),  // x just inside the upper edge -> not outside
+        ("outside_range", &[5, 5, 5], 1), // degenerate empty interval (lo == hi) -> everything is outside
     ];
 
     let mut failures = Vec::new();
@@ -456,14 +455,16 @@ fn remap_range_matches_hand_computed_expectations() {
     // clamps x into the input range first, then scales: out_lo + (x-in_lo)*(out_hi-out_lo)/(in_hi-in_lo).
     // Degenerate input range (in_hi <= in_lo) always returns out_lo.
     fn step(x: u16, in_lo: u16, in_hi: u16, out_lo: u16, out_hi: u16) -> u16 {
-        let mut cell = cell80::StateCell::bind(&crate::common::cell_src("remap_range"), "RemapRange", None)
-            .unwrap_or_else(|e| panic!("bind: {e}"));
+        let mut cell =
+            cell80::StateCell::bind(&crate::common::cell_src("remap_range"), "RemapRange", None)
+                .unwrap_or_else(|e| panic!("bind: {e}"));
         cell.set("x", x as u64).unwrap();
         cell.set("in_lo", in_lo as u64).unwrap();
         cell.set("in_hi", in_hi as u64).unwrap();
         cell.set("out_lo", out_lo as u64).unwrap();
         cell.set("out_hi", out_hi as u64).unwrap();
-        cell.run(cell80::DEFAULT_CYCLES).unwrap_or_else(|e| panic!("run: {e}"));
+        cell.run(cell80::DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run: {e}"));
         cell.get("result").unwrap() as u16
     }
 
@@ -506,27 +507,57 @@ fn remap_range_u32_matches_hand_computed_expectations() {
     };
 
     // Normal case: 50 within [0,100] maps to [0,200] -> midpoint -> 100
-    let (r, rep) = step(&[("x", 50), ("in_lo", 0), ("in_hi", 100), ("out_lo", 0), ("out_hi", 200)]);
+    let (r, rep) = step(&[
+        ("x", 50),
+        ("in_lo", 0),
+        ("in_hi", 100),
+        ("out_lo", 0),
+        ("out_hi", 200),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Returned);
     assert_eq!(r, 100);
 
     // x below in_lo clamps to in_lo -> maps to out_lo
-    let (r, rep) = step(&[("x", 5), ("in_lo", 10), ("in_hi", 20), ("out_lo", 100), ("out_hi", 200)]);
+    let (r, rep) = step(&[
+        ("x", 5),
+        ("in_lo", 10),
+        ("in_hi", 20),
+        ("out_lo", 100),
+        ("out_hi", 200),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Returned);
     assert_eq!(r, 100);
 
     // x above in_hi clamps to in_hi -> maps to out_hi
-    let (r, rep) = step(&[("x", 999), ("in_lo", 10), ("in_hi", 20), ("out_lo", 100), ("out_hi", 200)]);
+    let (r, rep) = step(&[
+        ("x", 999),
+        ("in_lo", 10),
+        ("in_hi", 20),
+        ("out_lo", 100),
+        ("out_hi", 200),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Returned);
     assert_eq!(r, 200);
 
     // Offset ranges: 150 within [100,300] -> (150-100)*(1000-0)/(300-100) = 50000/200 = 250
-    let (r, rep) = step(&[("x", 150), ("in_lo", 100), ("in_hi", 300), ("out_lo", 0), ("out_hi", 1000)]);
+    let (r, rep) = step(&[
+        ("x", 150),
+        ("in_lo", 100),
+        ("in_hi", 300),
+        ("out_lo", 0),
+        ("out_hi", 1000),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Returned);
     assert_eq!(r, 250);
 
     // Degenerate source range (in_hi <= in_lo) -> falls back to out_lo regardless of x
-    let (r, rep) = step(&[("x", 1000), ("in_lo", 50), ("in_hi", 50), ("out_lo", 7), ("out_hi", 99)]);
+    let (r, rep) = step(&[
+        ("x", 1000),
+        ("in_lo", 50),
+        ("in_hi", 50),
+        ("out_lo", 7),
+        ("out_hi", 99),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Returned);
     assert_eq!(r, 7);
 
@@ -545,6 +576,12 @@ fn remap_range_u32_matches_hand_computed_expectations() {
     // Overflow escalation: (c - in_lo) * (out_hi - out_lo) overflows u32.
     // x=3 clamped within [0,10] -> c-in_lo=3; out_hi-out_lo=2,000,000,000;
     // 3 * 2,000,000,000 = 6,000,000,000 > u32::MAX (4,294,967,295) -> escalate.
-    let (_, rep) = step(&[("x", 3), ("in_lo", 0), ("in_hi", 10), ("out_lo", 0), ("out_hi", 2_000_000_000)]);
+    let (_, rep) = step(&[
+        ("x", 3),
+        ("in_lo", 0),
+        ("in_hi", 10),
+        ("out_lo", 0),
+        ("out_hi", 2_000_000_000),
+    ]);
     assert_eq!(rep.halt, cell80::Halt::Escalate(0xFF05));
 }

@@ -286,20 +286,19 @@ fn bit_is_set_u32_wide_sibling_matches_hand_computed_cases() {
     assert_eq!(bit_is_set_u32(0xFFFFFFFF, 0), 1);
 }
 
-
 #[test]
 fn lowest_set_bit_matches_hand_computed_cases() {
     // lowest_set_bit isolates just the value of x's least-significant set bit via
     // x & (0 - x); this differs from bit_is_set (needs a named bit index) and from
     // popcount (returns a count, not a value).
     let cases: &[(&str, &[u16], u16)] = &[
-        ("lowest_set_bit", &[0], 0),        // no bits set -> 0
+        ("lowest_set_bit", &[0], 0),         // no bits set -> 0
         ("lowest_set_bit", &[12], 4),        // 0b1100 -> lowest set bit is bit 2 (4)
-        ("lowest_set_bit", &[64], 64),        // power of two is its own lowest set bit
+        ("lowest_set_bit", &[64], 64),       // power of two is its own lowest set bit
         ("lowest_set_bit", &[7], 1),         // odd number always isolates bit 0 (1)
-        ("lowest_set_bit", &[80], 16),        // 0b1010000 -> lowest set bit is bit 4 (16)
-        ("lowest_set_bit", &[65535], 1),      // all bits set -> lowest set bit is bit 0 (1)
-        ("lowest_set_bit", &[32768], 32768),  // only the top bit set -> isolates itself
+        ("lowest_set_bit", &[80], 16),       // 0b1010000 -> lowest set bit is bit 4 (16)
+        ("lowest_set_bit", &[65535], 1),     // all bits set -> lowest set bit is bit 0 (1)
+        ("lowest_set_bit", &[32768], 32768), // only the top bit set -> isolates itself
     ];
 
     let mut failures = Vec::new();
@@ -319,18 +318,19 @@ fn highest_set_bit_matches_hand_computed_cases() {
     // bits until every bit below the highest set bit is 1, then subtract the
     // right-shift-by-1 of that from itself to leave only the top bit standing.
     fn run_cell(id: &str, args: &[u16]) -> u16 {
-        let mut r = cell80::Runner::compile(&crate::common::cell_src(id)).unwrap_or_else(|e| panic!("compile {id}: {e}"));
+        let mut r = cell80::Runner::compile(&crate::common::cell_src(id))
+            .unwrap_or_else(|e| panic!("compile {id}: {e}"));
         r.run(None, args, cell80::DEFAULT_CYCLES)
             .unwrap_or_else(|e| panic!("run {id}: {e}"))
             .result
     }
 
     let cases: &[(&str, &[u16], u16)] = &[
-        ("highest_set_bit", &[0], 0),         // no bits set at all -> defined as 0
-        ("highest_set_bit", &[1], 1),         // only bit 0 set -> top bit is itself
-        ("highest_set_bit", &[5], 4),         // 0b101 -> highest bit is bit 2 (4)
-        ("highest_set_bit", &[6], 4),         // 0b110 -> highest bit is bit 2 (4)
-        ("highest_set_bit", &[1024], 1024),   // already a lone power of two -> mirrors back
+        ("highest_set_bit", &[0], 0),       // no bits set at all -> defined as 0
+        ("highest_set_bit", &[1], 1),       // only bit 0 set -> top bit is itself
+        ("highest_set_bit", &[5], 4),       // 0b101 -> highest bit is bit 2 (4)
+        ("highest_set_bit", &[6], 4),       // 0b110 -> highest bit is bit 2 (4)
+        ("highest_set_bit", &[1024], 1024), // already a lone power of two -> mirrors back
         ("highest_set_bit", &[65535], 32768), // 0xFFFF -> highest bit is bit 15 (0x8000)
     ];
 
@@ -341,7 +341,11 @@ fn highest_set_bit_matches_hand_computed_cases() {
             failures.push(format!("{id}({args:?}) = {got}, expected {exp}"));
         }
     }
-    assert!(failures.is_empty(), "cell mismatches:\n{}", failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "cell mismatches:\n{}",
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -356,7 +360,10 @@ fn clear_lowest_set_bit_matches_hand_computed_cases() {
 
     for (x, expected) in cases {
         let got = run_cell("clear_lowest_set_bit", &[*x]);
-        assert_eq!(got, *expected, "clear_lowest_set_bit({x}) = {got}, expected {expected}");
+        assert_eq!(
+            got, *expected,
+            "clear_lowest_set_bit({x}) = {got}, expected {expected}"
+        );
     }
 }
 
@@ -367,11 +374,11 @@ fn mask_overlap_count_matches_defined_behaviour() {
     // itself) and hamming_distance16 (counts bits that DIFFER, popcount(a ^ b)).
     // Cases hand-computed below.
     let cases: &[(&str, &[u16], u16)] = &[
-        ("mask_overlap_count", &[15, 5], 2),      // 0b1111 & 0b0101 = 0b0101 -> 2 set bits
+        ("mask_overlap_count", &[15, 5], 2), // 0b1111 & 0b0101 = 0b0101 -> 2 set bits
         ("mask_overlap_count", &[65535, 65535], 16), // full overlap on all 16 bits
-        ("mask_overlap_count", &[0, 65535], 0),   // a has no bits -> no overlap possible
-        ("mask_overlap_count", &[10, 12], 1),     // 0b1010 & 0b1100 = 0b1000 -> 1 set bit
-        ("mask_overlap_count", &[255, 256], 0),   // disjoint bit ranges (low byte vs bit 8) -> 0
+        ("mask_overlap_count", &[0, 65535], 0), // a has no bits -> no overlap possible
+        ("mask_overlap_count", &[10, 12], 1), // 0b1010 & 0b1100 = 0b1000 -> 1 set bit
+        ("mask_overlap_count", &[255, 256], 0), // disjoint bit ranges (low byte vs bit 8) -> 0
     ];
 
     let mut failures = Vec::new();
@@ -395,12 +402,9 @@ fn set_bit_u32_wide_sibling_matches_hand_computed_cases() {
     // set_bit's fn run(x: u16, bit: u16) can't accept a 32-bit x under the 16-bit
     // calling convention. Cases hand-computed via x | (1 << bit).
     fn set_bit_u32(x: u32, bit: u16) -> u32 {
-        let mut cell = cell80::StateCell::bind(
-            &crate::common::cell_src("set_bit_u32"),
-            "SetBitU32",
-            None,
-        )
-        .unwrap_or_else(|e| panic!("bind set_bit_u32: {e}"));
+        let mut cell =
+            cell80::StateCell::bind(&crate::common::cell_src("set_bit_u32"), "SetBitU32", None)
+                .unwrap_or_else(|e| panic!("bind set_bit_u32: {e}"));
         cell.set("x", x as u64).unwrap();
         cell.set("bit", bit as u64).unwrap();
         cell.run(cell80::DEFAULT_CYCLES)

@@ -92,7 +92,6 @@ fn trailing_ones_matches_hand_computed_cases() {
     );
 }
 
-
 #[test]
 fn bit_length_u32_wide_sibling_matches_hand_computed_cases() {
     // bit_length_u32: the u32-width sibling of bit_length -- index of the highest set
@@ -220,8 +219,12 @@ fn trailing_zeros_u32_matches_hand_computed_expectations() {
 #[test]
 fn reverse_bits_u32_matches_hand_computed_cases() {
     fn reverse(x: u32) -> u32 {
-        let mut cell = cell80::StateCell::bind(&crate::common::cell_src("reverse_bits_u32"), "ReverseBitsU32", None)
-            .unwrap_or_else(|e| panic!("bind reverse_bits_u32: {e}"));
+        let mut cell = cell80::StateCell::bind(
+            &crate::common::cell_src("reverse_bits_u32"),
+            "ReverseBitsU32",
+            None,
+        )
+        .unwrap_or_else(|e| panic!("bind reverse_bits_u32: {e}"));
         cell.set("x", x as u64).unwrap();
         let report = cell.run(cell80::DEFAULT_CYCLES).unwrap();
         assert_eq!(report.result, 1, "status flag should be 1");
@@ -302,7 +305,11 @@ fn rotl32_matches_hand_computed_cases() {
     assert_eq!(rotl32(0x12345678, 8), 0x34567812, "case 3: byte rotate");
 
     // 4) 0xFFFFFFFF rotl 17 = 0xFFFFFFFF (all bits set is invariant under any rotation).
-    assert_eq!(rotl32(0xFFFFFFFF, 17), 0xFFFFFFFF, "case 4: all-ones invariant");
+    assert_eq!(
+        rotl32(0xFFFFFFFF, 17),
+        0xFFFFFFFF,
+        "case 4: all-ones invariant"
+    );
 
     // 5) 0x00000001 rotl 33 = 0x00000002 (n=33 mod 32 = 1, same as case 1 -- proves the
     //    n-mod-32 wraparound for n >= 32, not just n < 32 inputs).
@@ -312,7 +319,11 @@ fn rotl32_matches_hand_computed_cases() {
     assert_eq!(rotl32(0x0000FFFF, 16), 0xFFFF0000, "case 6: half swap");
 
     // 7) x rotl 32 = x unchanged (n=32 mod 32 = 0, identity rotation).
-    assert_eq!(rotl32(0x12345678, 32), 0x12345678, "case 7: n=32 is identity");
+    assert_eq!(
+        rotl32(0x12345678, 32),
+        0x12345678,
+        "case 7: n=32 is identity"
+    );
 }
 
 #[test]
