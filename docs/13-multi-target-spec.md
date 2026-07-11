@@ -350,6 +350,12 @@ The cell contract lives in the **cell80** crate, not rustz80, and no v0.1 workst
 owned it:
 - E1. Manifest target id + family hash fields (`.cell` v10); loader refuses a
   target-id mismatch the way it refuses a bank-pin mismatch today.
+  *Landed 2026-07-11:* v10 carries `target` (the machine-body family — `z80-cell`
+  for every cartridge this crate makes) and `family_hash` (SHA-256 over the same
+  canonical text the u64 source-hash digests — identity-grade, sibling bodies
+  share it). The loader refuses a foreign body up front, naming both; pre-v10
+  cartridges read back as `z80-cell` with no family hash. Both fields sit inside
+  the artifact-hash-covered prefix, so they are part of each body's identity.
 - E2. Per-target memory-map story for `state_addrs` (today: u16 byte addresses at
   `STATE_BASE = 0xB000`, 2-byte slots, baked into `CellHost::run_state` and the
   register-probe router). Decision deferred to E-design: per-target address tables vs

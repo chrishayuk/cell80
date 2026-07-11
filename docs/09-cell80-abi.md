@@ -203,11 +203,17 @@ field with a known envelope), the
 `limits` list (the escalation contract's static half, above), and an optional
 **fixed-point `scale`** (v7: a presence byte, then the fractional-bit count if present —
 `//! scale: N`, so a Q8.8 cell declares 8; a consumer reads its values as `raw / 2^N`).
-`from_bytes` still reads v6 (no scale), v5 (no buffer types), v4 (no `limits`, no content
-addressing), v3 (addresses without widths → fields read as `u16`), and v2 (no
-`state_addrs`) cartridges. This named, versioned,
+As of **v10** the manifest also carries the **cell-family identity**
+([13-multi-target-spec.md](13-multi-target-spec.md) §2.6 / WS-E1): a **target id**
+naming the machine body (`z80-cell` for everything this crate makes — a host refuses
+a body it can't run, the kernel-bank-pin posture) and an optional **family hash**
+(SHA-256 over the canonical source; sibling-target bodies of the same cell share it,
+while each body keeps its own artifact hash).
+`from_bytes` still reads every older version — v9 (no family identity), v8, v7, v6
+(no buffer types), v5, v4 (no `limits`, no content addressing), v3 (addresses without
+widths → fields read as `u16`), and v2 (no `state_addrs`). This named, versioned,
 manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
-`CellGraph` pass around. (Note: the `.cell` *file* format version — v7 — is distinct
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v10 — is distinct
 from the runtime `ABI_VERSION` above, now 3.)
 
 ### Content addressing & signing (v5)

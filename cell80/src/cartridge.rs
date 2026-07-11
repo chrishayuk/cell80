@@ -29,7 +29,18 @@ const MAGIC: &[u8; 4] = b"CELL";
 // against the resident bank) the SHA-256 of the bank image it assumed — loading the
 // cartridge under a *different* bank is a hard error, never silently different
 // arithmetic. Pre-v9 cartridges read back as unbanked.
-const VERSION: u8 = 9;
+// v10 adds the **cell-family identity** (docs 13 §2.6 / WS-E1): a **target id**
+// string naming the machine body the cartridge carries (everything this crate makes
+// is `z80-cell`; a host refuses a body it can't run, the kernel-bank-pin posture),
+// and an optional **family hash** — SHA-256 over the canonical source, shared by
+// sibling-target bodies of the same cell. Pre-v10 cartridges read back as
+// `z80-cell` with no family hash.
+const VERSION: u8 = 10;
+
+/// The machine-body target this crate compiles and hosts. (Docs 13 §2.1a names full
+/// certified targets; at the cartridge level the body's *family* is what a host can
+/// check before loading.)
+pub const Z80_CELL_TARGET: &str = "z80-cell";
 
 /// SHA-256 of the resident kernel bank's image — the content identity a banked
 /// cartridge pins in its manifest (v9): same bank bytes ⇒ same arithmetic. Cached
@@ -138,6 +149,15 @@ pub struct Manifest {
     /// against the resident softfloat bank — the arithmetic's content identity,
     /// covered by the artifact hash the way the code bytes are.
     pub kernel_bank: Option<[u8; 32]>,
+    /// Which **machine body** this cartridge carries (v10) — e.g. [`Z80_CELL_TARGET`].
+    /// A host refuses a body it can't run, the same way it refuses a foreign
+    /// kernel-bank pin; sibling-target hosts arrive with WS-E3.
+    pub target: String,
+    /// The **family hash** (v10): SHA-256 over the canonical source text — the
+    /// target-independent identity ("same cell, N bodies", docs 13 §2.6). Sibling
+    /// cartridges compiled from the same source share it; the per-target
+    /// [`Cartridge::artifact_hash`] stays each body's identity.
+    pub family_hash: Option<[u8; 32]>,
     /// Optional **fixed-point scale** (`//! scale: N`): the number of fractional bits in
     /// the cell's `u16`/`u32` values, so a consumer reads them as `raw / 2^N` (a Q8.8
     /// cell declares `8`). `None` = plain integers. The dialect has no float type — this
@@ -228,6 +248,14 @@ impl Cartridge {
         };
         let mut h = std::collections::hash_map::DefaultHasher::new();
         src.hash(&mut h);
+        // The family hash: SHA-256 over the same canonical text the u64 source-hash
+        // digests — identity-grade, shared by sibling-target bodies of this cell.
+        let family_hash = {
+            use sha2::{Digest, Sha256};
+            let mut fh = Sha256::new();
+            fh.update(src.as_bytes());
+            Some(fh.finalize().into())
+        };
         let signature = rustz80::entry_signature(src, &entry)?;
         let state_addrs = super::state_field_addrs(src, &entry)?;
         Ok(Cartridge {
@@ -245,6 +273,8 @@ impl Cartridge {
                 scale: opts.scale,
                 finite_result: opts.finite_result.unwrap_or(true),
                 kernel_bank: opts.kernel_bank.then(kernel_bank_hash),
+                target: Z80_CELL_TARGET.to_string(),
+                family_hash,
             },
             program,
             signature: None,
@@ -290,6 +320,15 @@ impl Cartridge {
         b.push(m.finite_result as u8);
         // v9: the kernel-bank pin (presence + 32-byte SHA-256 of the bank image).
         match &m.kernel_bank {
+            Some(h) => {
+                b.push(1);
+                b.extend_from_slice(h);
+            }
+            None => b.push(0),
+        }
+        // v10: the machine-body target id + the optional family hash.
+        put_string(&mut b, &m.target);
+        match &m.family_hash {
             Some(h) => {
                 b.push(1);
                 b.extend_from_slice(h);
@@ -434,6 +473,32 @@ impl Cartridge {
         } else {
             None
         };
+        // v10+ names the machine body and may carry the family hash; a pre-v10
+        // cartridge is a z80-cell body by construction (the only body that existed).
+        let (target, family_hash) = if ver >= 10 {
+            let target = r.string()?;
+            let family = match r.u8()? {
+                0 => None,
+                1 => {
+                    let mut h = [0u8; 32];
+                    h.copy_from_slice(r.take(32)?);
+                    Some(h)
+                }
+                other => return Err(format!("bad family-hash marker {other}")),
+            };
+            (target, family)
+        } else {
+            (Z80_CELL_TARGET.to_string(), None)
+        };
+        // A body this host can't run is refused up front — the kernel-bank-pin
+        // posture: never silently different execution.
+        if target != Z80_CELL_TARGET {
+            return Err(format!(
+                "this cartridge carries a `{target}` machine body — this host runs \
+                 `{Z80_CELL_TARGET}` bodies (sibling-target hosts arrive with the \
+                 cell-family work, docs 13 WS-E)"
+            ));
+        }
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
         let (stored_hash, cart_sig) = if ver >= 5 {
@@ -499,6 +564,8 @@ impl Cartridge {
                 scale,
                 finite_result,
                 kernel_bank,
+                target,
+                family_hash,
             },
             program,
             signature: cart_sig,

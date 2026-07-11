@@ -38,7 +38,7 @@ mod tfidf;
 mod typeled;
 
 pub use admission::{admit, AdmissionReport, RefusalReason, DUPLICATE_AGREEMENT};
-pub use cartridge::{Cartridge, CartridgeOpts, Manifest};
+pub use cartridge::{Cartridge, CartridgeOpts, Manifest, Z80_CELL_TARGET};
 pub use cli::{parse_args, run_cli, USAGE};
 pub use config::{CellConfig, DivByZero};
 pub use discover::{discover_cell_files, find_cell_file};
