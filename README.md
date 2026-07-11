@@ -107,9 +107,14 @@ is never self-refereed. The identity story is formal too: `.cell` **v10** manife
 carry a **target id** (which machine body the cartridge holds — a host refuses a
 body it can't run) and a **family hash** (SHA-256 over the canonical source, shared
 by sibling-target bodies — what "one cell, many bodies" means as an artifact
-property, not just a demo). Still owed: the Sail/spike *execution* adversary, the
-RV32 peephole suite, the per-body host (WS-E3 — the first loadable RV32 cartridge),
-and the silicon co-sign.
+property, not just a demo). And the first **loadable RV32 cartridge** exists
+(WS-E3 slice 1): the cartridge body is per-target (`Body::Z80`/`Body::Rv32` — Z80
+serialization unchanged, every existing artifact hash holds), `compile_rv32` runs
+the same canonicalization/capability/prelude pipeline through the RV32 backend, and
+`Rv32Runner` is the sibling of `Runner` — one source, two cartridges, one family
+hash, both bodies running and agreeing, prelude kernels included. Still owed: full
+host dispatch by body (`CellHost` over mixed-body libraries), the Sail/spike
+*execution* adversary, the RV32 peephole suite, and the silicon co-sign.
 
 ## The vision
 
@@ -455,9 +460,15 @@ explicit width-bridge family with `SignExtend`, i32 through the IR, the
 `cell80-core` extraction); WS-B's compiler live and fenced (B1–B3 plus the
 determinism-fuzz battery and the CI-required GNU-gas emission adversary; byte-exact
 window parity with the interpreter; per-file coverage ≥90%); WS-E underway
-(`.cell` v10 target id + family hash landed, the state-layout question resolved by
-the family slot ABI). Owed: WS-E3's per-body host, the Sail/spike execution
-adversary, the RV32 peephole suite, and the RP2350 `mcycle` co-sign (B4).
+(`.cell` v10 target id + family hash; the state-layout question resolved by the
+family slot ABI; the first loadable RV32 cartridge via `compile_rv32` +
+`Rv32Runner`). **Phase 6 is drafted**
+([docs/14-model-native-cells-spec.md](docs/14-model-native-cells-spec.md) —
+model-native cells: GPU bodies over the same IR seam, retrieval by execution,
+decode-time wiring, trained invocation), with its falsification gate sequenced
+before any training spend. Owed from Phase 5: full `CellHost` dispatch by body,
+the Sail/spike execution adversary, the RV32 peephole suite, and the RP2350
+`mcycle` co-sign (B4).
 
 ---
 
