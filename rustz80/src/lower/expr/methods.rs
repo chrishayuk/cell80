@@ -13,12 +13,14 @@ pub(crate) fn lower_method_call(
     let method = m.method.to_string();
     // f32's method surface. Kernel-backed: `.sqrt()`, the rounding family
     // (`.floor()`/`.ceil()`/`.trunc()`/`.round()` — `round` is Rust's
-    // half-away-from-zero), and `.min()`/`.max()` (Rust "NaN is missing data",
-    // with -0 < +0 and sNaN-ignored pinned deterministic). Pure-bits sugar:
+    // half-away-from-zero), `.min()`/`.max()` (Rust "NaN is missing data",
+    // with -0 < +0 and sNaN-ignored pinned deterministic), and the F2
+    // transcendentals `.exp()`/`.ln()`/`.powf(b)` (class approximate — a declared
+    // ULP bound, not bit-exact-vs-rustc; see softfloat.rs). Pure-bits sugar:
     // `.abs()`, `.copysign(b)`, and the classification trio
     // `.is_nan()`/`.is_finite()`/`.is_subnormal()` (inline compares, no kernel).
     if let "sqrt" | "abs" | "floor" | "ceil" | "trunc" | "round" | "min" | "max" | "copysign"
-    | "is_nan" | "is_finite" | "is_subnormal" = method.as_str()
+    | "is_nan" | "is_finite" | "is_subnormal" | "exp" | "ln" | "powf" = method.as_str()
     {
         let (recv, rw) = lower_expr(&m.receiver, ctx)?;
         if rw != Width::F32 {
@@ -33,6 +35,8 @@ pub(crate) fn lower_method_call(
             "ceil" => Some("fceil"),
             "trunc" => Some("ftrunc"),
             "round" => Some("fround"),
+            "exp" => Some("fexp"),
+            "ln" => Some("fln"),
             _ => None,
         };
         if let Some(kernel) = unary_kernel {
@@ -42,11 +46,11 @@ pub(crate) fn lower_method_call(
             ctx.mark_f32(kernel);
             return Ok((Expr::Call(kernel.to_string(), vec![recv]), Width::F32));
         }
-        if method == "min" || method == "max" {
+        if method == "min" || method == "max" || method == "powf" {
             let arg = m
                 .args
                 .first()
-                .ok_or("`.min()`/`.max()` take one argument")?;
+                .ok_or("`.min()`/`.max()`/`.powf()` take one argument")?;
             let (ae, aw) = lower_expr(arg, ctx)?;
             require_f32_pair(rw, aw)?;
             if f32_operand_effects(&recv) && f32_operand_effects(&ae) {
@@ -55,7 +59,11 @@ pub(crate) fn lower_method_call(
                      call convention reorders them — hoist one to a `let` binding"
                 ));
             }
-            let kernel = if method == "min" { "fmin" } else { "fmax" };
+            let kernel = match method.as_str() {
+                "min" => "fmin",
+                "max" => "fmax",
+                _ => "fpow",
+            };
             ctx.mark_f32(kernel);
             return Ok((Expr::Call(kernel.to_string(), vec![recv, ae]), Width::F32));
         }

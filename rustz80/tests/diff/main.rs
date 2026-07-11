@@ -33,6 +33,7 @@ mod consts;
 mod control_flow;
 mod eval_order;
 mod f32_ops;
+mod f32_trans;
 mod functions;
 mod fuzz_rv32;
 mod generics;

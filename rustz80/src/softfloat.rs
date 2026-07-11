@@ -23,6 +23,19 @@
 //! 24-bit significand + 6 guard/round/sticky bits (6, not 3, so a post-subtraction
 //! normalize shift cannot move a rounding boundary across the jam bit); exponents ride
 //! a +300 offset where intermediate values can go negative.
+//!
+//! **F2 — owned transcendentals** (`fexp`/`fln`/`fpow`, the amendment's §F2): class
+//! **approximate**, NOT bit-exact-vs-rustc — rustc's answer here *is* platform libm's,
+//! the thing being escaped. Each carries a declared ULP bound over its domain
+//! (`//! accuracy:` in the consuming cell's manifest, verified in
+//! `tests/diff/f32_trans.rs` against offline-MPFR golden tables — measured, never
+//! assumed). Cody–Waite reduction + the Cephes single-precision minimax polynomials
+//! (Moshier's coefficients, as u32 bit-pattern literals with the generator pinned in
+//! `tests/data/gen_f32_trans_golden.py`), composed over the correctly-rounded F0 ops —
+//! so cross-target bit-identity is inherited, and "kernels never halt" holds
+//! unchanged (`fln(x<0)` → NaN, `fln(0)` → −Inf, `fexp` over/underflow → +Inf/0,
+//! `fpow(x<0, y)` → NaN with `pow(0,0) = 1` and `pow(1, y) = pow(x, 0) = 1` pinned to
+//! Rust's `powf`; domain policing stays at the cell boundary, `0xFF06`/`finite_result`).
 
 /// Restricted-dialect source of the whole family: the kernel five, the comparison
 /// trio (`feq`/`flt`/`fle` — Rust semantics exactly: NaN compares false, -0 == +0;
@@ -687,6 +700,191 @@ fn fmax(a: u32, b: u32) -> u32 {
     }
     result
 }
+
+fn fexp(x: u32) -> u32 {
+    let mag = x & 0x7FFFFFFFu32;
+    let sgn = x >> 31u32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if mag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag == 0x7F800000u32 {
+        result = 0u32;
+        if sgn == 0u32 {
+            result = 0x7F800000u32;
+        }
+        done = 1u32;
+    } else if sgn == 0u32 && mag >= 0x42B17218u32 {
+        result = 0x7F800000u32;
+        done = 1u32;
+    } else if sgn == 1u32 && mag >= 0x42CFF1B5u32 {
+        result = 0u32;
+        done = 1u32;
+    } else if mag == 0u32 {
+        result = 0x3F800000u32;
+        done = 1u32;
+    }
+    if done == 0u32 {
+        let nf = fround(fmul(x, 0x3FB8AA3Bu32));
+        let nmag = nf & 0x7FFFFFFFu32;
+        let mut nv = 0u32;
+        if nmag != 0u32 {
+            let mut m24 = (nmag & 0x7FFFFFu32) | 0x800000u32;
+            let mut k = 150u32 - (nmag >> 23u32);
+            while k != 0u32 {
+                m24 = m24 >> 1u32;
+                k = k - 1u32;
+            }
+            nv = m24;
+        }
+        let t1 = fmul(nf, 0x3F318000u32);
+        let hi = fsub(x, t1);
+        let t2 = fmul(nf, 0xB95E8083u32);
+        let r = fsub(hi, t2);
+        let mut p = 0x39506967u32;
+        p = fadd(fmul(p, r), 0x3AB743CEu32);
+        p = fadd(fmul(p, r), 0x3C088908u32);
+        p = fadd(fmul(p, r), 0x3D2AA9C1u32);
+        p = fadd(fmul(p, r), 0x3E2AAAAAu32);
+        p = fadd(fmul(p, r), 0x3F000000u32);
+        let er = fadd(fadd(fmul(fmul(r, r), p), r), 0x3F800000u32);
+        let k1 = nv >> 1u32;
+        let k2 = nv - k1;
+        let mut s1 = 0u32;
+        let mut s2 = 0u32;
+        if (nf >> 31u32) == 1u32 {
+            s1 = (127u32 - k1) << 23u32;
+            s2 = (127u32 - k2) << 23u32;
+        } else {
+            s1 = (127u32 + k1) << 23u32;
+            s2 = (127u32 + k2) << 23u32;
+        }
+        result = fmul(fmul(er, s1), s2);
+    }
+    result
+}
+
+fn fln(x: u32) -> u32 {
+    let mag = x & 0x7FFFFFFFu32;
+    let sgn = x >> 31u32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if mag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag == 0u32 {
+        result = 0xFF800000u32;
+        done = 1u32;
+    } else if sgn == 1u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if mag == 0x7F800000u32 {
+        result = 0x7F800000u32;
+        done = 1u32;
+    }
+    if done == 0u32 {
+        let mut bits = mag;
+        let mut esub = 0u32;
+        if bits < 0x800000u32 {
+            bits = fmul(bits, 0x4C000000u32);
+            esub = 25u32;
+        }
+        let eb = bits >> 23u32;
+        let xh = (bits & 0x7FFFFFu32) | 0x3F000000u32;
+        let sub = 126u32 + esub;
+        let mut emag = 0u32;
+        let mut eneg = 0u32;
+        if eb >= sub {
+            emag = eb - sub;
+        } else {
+            emag = sub - eb;
+            eneg = 1u32;
+        }
+        let mut x1 = 0u32;
+        if xh < 0x3F3504F3u32 {
+            if eneg == 1u32 {
+                emag = emag + 1u32;
+            } else if emag == 0u32 {
+                emag = 1u32;
+                eneg = 1u32;
+            } else {
+                emag = emag - 1u32;
+            }
+            x1 = fsub(fadd(xh, xh), 0x3F800000u32);
+        } else {
+            x1 = fsub(xh, 0x3F800000u32);
+        }
+        let z = fmul(x1, x1);
+        let mut p = 0x3D9021BBu32;
+        p = fadd(fmul(p, x1), 0xBDEBD1B8u32);
+        p = fadd(fmul(p, x1), 0x3DEF251Au32);
+        p = fadd(fmul(p, x1), 0xBDFE5D4Fu32);
+        p = fadd(fmul(p, x1), 0x3E11E9BFu32);
+        p = fadd(fmul(p, x1), 0xBE2AAE50u32);
+        p = fadd(fmul(p, x1), 0x3E4CCEACu32);
+        p = fadd(fmul(p, x1), 0xBE7FFFFCu32);
+        p = fadd(fmul(p, x1), 0x3EAAAAAAu32);
+        let mut y = fmul(fmul(x1, z), p);
+        // fe = (float) signed e — built from bits directly (emag <= 176, always
+        // exact; `int_to_f32` is a typed builtin whose F32 result couldn't take
+        // the sign-bit OR below without crossing representations).
+        let mut fe = 0u32;
+        if emag != 0u32 {
+            let mut t = emag;
+            let mut pw = 0u32;
+            while t > 1u32 {
+                t = t >> 1u32;
+                pw = pw + 1u32;
+            }
+            let mut mm = emag;
+            let mut k = 23u32 - pw;
+            while k != 0u32 {
+                mm = mm << 1u32;
+                k = k - 1u32;
+            }
+            fe = ((127u32 + pw) << 23u32) | (mm & 0x7FFFFFu32);
+            if eneg == 1u32 {
+                fe = fe | 0x80000000u32;
+            }
+        }
+        y = fadd(y, fmul(fe, 0xB95E8083u32));
+        y = fsub(y, fmul(z, 0x3F000000u32));
+        let xy = fadd(x1, y);
+        result = fadd(xy, fmul(fe, 0x3F318000u32));
+    }
+    result
+}
+
+fn fpow(a: u32, b: u32) -> u32 {
+    let amag = a & 0x7FFFFFFFu32;
+    let bmag = b & 0x7FFFFFFFu32;
+    let mut result = 0u32;
+    let mut done = 0u32;
+    if bmag == 0u32 {
+        result = 0x3F800000u32;
+        done = 1u32;
+    } else if a == 0x3F800000u32 {
+        result = 0x3F800000u32;
+        done = 1u32;
+    } else if amag > 0x7F800000u32 || bmag > 0x7F800000u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if (a >> 31u32) == 1u32 && amag != 0u32 {
+        result = 0x7FC00000u32;
+        done = 1u32;
+    } else if amag == 0u32 {
+        result = 0u32;
+        if (b >> 31u32) == 1u32 {
+            result = 0x7F800000u32;
+        }
+        done = 1u32;
+    }
+    if done == 0u32 {
+        result = fexp(fmul(b, fln(a)));
+    }
+    result
+}
 "#;
 
 /// Transitive kernel dependencies — which helper `Func`s each kernel's `Func` needs
@@ -712,6 +910,30 @@ pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
     ("fround", &[]),
     ("fmin", &["flt"]),
     ("fmax", &["flt"]),
+    // F2 owned transcendentals (approximate class — declared ULP bounds, not
+    // bit-exact-vs-rustc; see the F2 note in the module doc). Composed over the
+    // correctly-rounded F0 ops, so their determinism story is F0's.
+    (
+        "fexp",
+        &["fround", "fmul", "fsub", "fadd", "f32_shr_jam", "f32_pack"],
+    ),
+    (
+        "fln",
+        &["fadd", "fsub", "fmul", "f32_shr_jam", "f32_pack"],
+    ),
+    (
+        "fpow",
+        &[
+            "fexp",
+            "fln",
+            "fmul",
+            "fround",
+            "fsub",
+            "fadd",
+            "f32_shr_jam",
+            "f32_pack",
+        ],
+    ),
 ];
 
 /// Where the resident kernel bank lives in the Cell VM's map: code at
@@ -726,6 +948,14 @@ pub const BANK_SCRATCH: u16 = 0xB800;
 /// helpers — the heavy shared family. Conversions/rounding/min-max stay
 /// per-cell (they're small and often absent); when compiled banked they resolve
 /// `f32_pack`/`f32_shr_jam`/`flt` into the bank by name.
+///
+/// The F2 transcendentals (`fexp`/`fln`/`fpow`) **deliberately stay out**: adding
+/// them changes the bank image ⇒ new bank hash ⇒ every existing banked artifact
+/// hard-refuses to load (same-bank-or-refuse), and the size math is tight (the
+/// family ≈ 4.6–6.3 KB vs ~5 KB of headroom under `0xFF00`). They ride the
+/// non-bank append path (the `int_to_f32` precedent) — their `fadd`/`fmul` calls
+/// still resolve into the bank — and residency waits for a deliberate, measured
+/// rebank event.
 pub const BANK_FNS: &[&str] = &[
     "fadd",
     "fsub",

@@ -105,7 +105,7 @@ fn f32_kernel_cost_envelope() {
     let base_src = "fn run() -> u16 { let x = 42u32; (x >> 16u32) as u16 }";
     let mut runner = Runner::compile(base_src).unwrap();
     let base = runner.run(None, &[], BUDGET).unwrap();
-    let table: [(&str, String, u64); 9] = [
+    let table: [(&str, String, u64); 12] = [
         ("fadd", format!("fadd({pi}u32, {e}u32)"), 14_000),
         ("fsub", format!("fsub({pi}u32, {e}u32)"), 16_000),
         ("fmul", format!("fmul({pi}u32, {e}u32)"), 15_000),
@@ -115,6 +115,18 @@ fn f32_kernel_cost_envelope() {
         ("ffloor", format!("ffloor({pi}u32)"), 6_000),
         ("fround", format!("fround({pi}u32)"), 6_000),
         ("fmin", format!("fmin({pi}u32, {e}u32)"), 8_000),
+        // F2 transcendentals (2026-07-11). Pre-registered estimates (H-F2, recorded
+        // before measuring): fexp ≈ 240K, fln ≈ 300K, fpow ≈ 550K — measured
+        // 296,554 / 338,393 / 628,991 T (estimates within ~25%; the composed-over-F0
+        // pricing model holds, unlike F0's own 3x miss). Ceilings at measured +27%.
+        // fpow ≈ 31% of DEFAULT_CYCLES: one transcendental per cell is cheap, a
+        // pow-heavy inner loop is not — route those to Q or host. Unbanked images:
+        // fexp 8,127 B / fpow 11,083 B, so a pow-using SANDBOXED cell needs
+        // `kernel_bank: on` (its inline copy would blow the 8,192 B cap; banked it
+        // carries only the F2 bodies, the F0 calls resolving into the bank).
+        ("fexp", format!("fexp({e}u32)"), 380_000),
+        ("fln", format!("fln({pi}u32)"), 430_000),
+        ("fpow", format!("fpow({pi}u32, {e}u32)"), 800_000),
     ];
     // The typed conversions drive through the typed surface (their args/returns are
     // f32-typed by interception); `.is_finite()` is inline bit-compares, ~noise.
