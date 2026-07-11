@@ -298,8 +298,8 @@ fn cosine_score_approx_matches_hand_computed_expectations() {
     // = 4,294,836,225 < u32::MAX), sidestepping the sqrt-of-a-product overflow this cell
     // was parked behind for many checkpoints.
     fn score(ax: u16, ay: u16, bx: u16, by: u16) -> u16 {
-        let mut cell = StateCell::bind(&cell_src("cosine_score_approx"), "CosineScoreApprox", None)
-            .unwrap();
+        let mut cell =
+            StateCell::bind(&cell_src("cosine_score_approx"), "CosineScoreApprox", None).unwrap();
         cell.set("ax", ax as u64).unwrap();
         cell.set("ay", ay as u64).unwrap();
         cell.set("bx", bx as u64).unwrap();

@@ -118,6 +118,6 @@ fn lerp_i16_matches_hand_computed_expectations() {
     assert_eq!(run_cell("lerp_i16", &[100, 65486, 64]), 63); // a=100, b=-50, t=0.25 -> 63 (truncated toward zero)
     assert_eq!(run_cell("lerp_i16", &[50, 65486, 0]), 50); // t=0 -> a unchanged
     assert_eq!(run_cell("lerp_i16", &[50, 65486, 256]), 65486); // t=256 -> b exactly
-                                                                 // a=i16::MAX, b=i16::MIN: diff magnitude 65535, itself not representable as i16.
+                                                                // a=i16::MAX, b=i16::MIN: diff magnitude 65535, itself not representable as i16.
     assert_eq!(run_cell("lerp_i16", &[32767, 32768, 128]), 0);
 }
