@@ -116,6 +116,15 @@ impl<'p> Interp<'p> {
         self.mem[addr as usize..addr as usize + bytes.len()].copy_from_slice(bytes);
     }
 
+    /// IR steps consumed so far — one per statement, per expression node, and
+    /// per loop iteration (`tick`'s exact placement). This is the canonical
+    /// family cost (docs 14, Q2): target backends that meter steps (the GPU
+    /// bodies) are held to *this* count, bit for bit; T-states/cycles are
+    /// per-target refinements. Cumulative across `run` calls on one instance.
+    pub fn steps(&self) -> u64 {
+        FUEL - self.fuel
+    }
+
     // ── memory ──────────────────────────────────────────────────────────────────
 
     fn rd8(&self, a: u16) -> u16 {

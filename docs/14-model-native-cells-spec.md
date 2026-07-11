@@ -88,6 +88,91 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
+### 2026-07-11 — Oracle transcripts: the gate's interpreter cost paid once (WS-E follow-up)
+
+**Shipped.** The bit-exactness gate's wall clock was never the GPU (its full
+share is < 1 s at the measured rate) — it was the reference interpreter
+independently deriving every expected sextet. That verdict is deterministic
+per `(cell source, input schedule)`, so it now memoizes as a **content-
+addressed transcript digest** (docs 12's fact-file idea applied to the GPU
+gate): `cell80/tests/golden/msl_oracle_transcripts.json` holds one SHA-256
+per cell × schedule, keyed by the combined source hash. A hit turns grading
+into GPU-run + digest compare — the 245-cell CI battery drops from ~66 s to
+~12 s (all residual is Metal pipeline compiles), and the 10⁶ gate from its
+72-minute live bill to under a minute. The transcript is a **cache, never an
+authority**: a
+miss, a changed cell, or any disagreement falls back to the live interpreter
+(which also localizes the disagreeing inputs); `UPDATE_GOLDEN=1` re-blesses.
+A deliberate interpreter-semantics change regenerates the file; the
+always-live R1/E2 corner battery guards that seam on every push. The oracle
+side also got honest parallelism first (grading fans out per input chunk
+across all cores — a step-heavy cell no longer pins one core), so the
+one-time blessing run is ~16× the old serial pace.
+
+### 2026-07-11 — E2 + E3 on Metal: loops, IR-step parity, the megakernel (WS-E slices 2–3)
+
+**Shipped.** Loops and branches lower to MSL (`while`/`loop`/`for`,
+`break`/`continue` — a `for` body rides a `do…while(false)` wrapper so
+`continue` reaches the induction step; MSL has no `goto`), budget-bounded by a
+per-thread fuel counter that mirrors the interpreter's `tick()` placement
+**exactly**: one step per statement, per expression node, per loop iteration.
+Every thread reports its step count and the batteries assert **IR-step
+parity** alongside value parity — Q2 is now operational, not notational: the
+canonical family cost is metered identically on CPU and GPU, and a runaway
+loop is a counted trap (`STATUS_FUEL`, same 100M budget) on both substrates,
+never a hung dispatch. E3's two layouts share one kernel shape (grid =
+cells × inputs, cell-major): `compile` emits the one-cell × N-inputs module
+(fuzzing/reward organs), `compile_library` fuses the whole eligible library
+into one translation unit (library × probe-set — retrieval by execution's
+substrate). Eligible coverage doubled: E1's 173 straight-line cells plus the
+loop cells (and the library grew under us all day — 245 integer value cells
+at the final run), every one bit-exact on values, status, **and steps**. The
+pre-registered gate ran clean over the widened fragment: **245 cells × 10⁶
+seeded-random inputs, values + status + IR steps bit-identical, zero
+disagreements** (M3 Max, 72 min live — the one-time blessing price; see the
+transcripts entry). The E3 megakernel battery runs the same cells × 16
+probes in **one dispatch** with zero disagreements.
+
+**Measured (M3 Max, end-to-end including buffer setup + readback, fuel
+metering on).** One-cell × N: **3.7×10⁸ evals/s** at N = 2²⁰ (0.4 ms at 2¹⁶,
+54 ms at 2²⁴) — the ≥10⁸ target clears by 3.7× *with* exact metering.
+Library × probes: 137–178 ms/launch nearly flat from 8 to 512 probes
+(→ 7×10⁵ evals/s at 512) — a fixed per-launch cost dominated by the fused
+242-case kernel, not by the evals; fine for batch retrieval, not yet the
+"~ms" decode-loop number, and the fix directions are recorded as owed.
+Codegen itself is cheap: 2.2 ms to emit 514 KiB of MSL, 2.9 s one-time Metal
+compile. Divergence probe (gcd, data-dependent loop counts): uniform-deep
+lanes 2.9×10⁸ evals/s vs shuffled-random 3.4×10⁸ — wall time tracks the
+**max lane** in a warp (12.3 ms at mean 112/max 240 steps vs 14.4 ms at
+uniform 251), confirming the E2 hypothesis: WCET-friendly ≈ SIMT-friendly,
+because a WCET bound is exactly a bound on the worst lane.
+
+**Found (and this is why the battery exists).** The Apple Metal compiler
+**miscompiles** an integer divide feeding a branch that guards stores through
+a `thread`-reference parameter in a non-inlined function — the branch
+polarity inverts. Invisible while the inliner swallowed everything; at
+242 fused cells the heuristic stopped inlining `mul_sat` and the megakernel
+battery caught it (5 disagreeing probes), bisected to a 10-line repro, and
+pinned: `always_inline` is ignored at scale, MSL 3.1 doesn't help, the
+member-array Ctx doesn't help alone. The dodge is structural and shipped:
+div/rem ride opaque `noinline` value-taking helpers (the call boundary blocks
+the faulty fusion; signed `MIN/-1` wrap lives inside them), and cell
+functions are **pinned noinline** so the shipped configuration is exactly the
+battery-validated one rather than whatever the inliner felt like. R1 said
+"GPU integer semantics differ across shading languages"; the sharper lesson
+is that the *toolchain itself* is part of the threat model, and bit-exact
+batteries at library scale are the only reason this was caught.
+
+**Owed.** The library-launch fixed cost (~140 ms): split pipelines /
+Metal function tables / per-cell specialization — needed before F1-scale
+"~ms" retrieval claims. State cells (455 now) still await typed-state
+readback; `Body::Msl` + family-hash attestation (E6) with the host
+integration; f32 (E4); CUDA before H3. And the cost-map surfaced a
+**worst-case step discipline** gap — seven cells carry ~99.9% of the gate's
+oracle bill (one is 1.9M steps/input) — proposed as a per-cell step budget +
+`pow_mod` prelude kernel in
+[step-budget-amendment.md](step-budget-amendment.md).
+
 ### 2026-07-11 — E1 on Metal: `rustmsl` + the library battery (WS-E slice 1)
 
 **Shipped.** `rustmsl`, the MSL sibling of rustz80/rustrv32 over the same

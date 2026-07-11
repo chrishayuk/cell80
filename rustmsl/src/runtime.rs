@@ -1,7 +1,8 @@
 //! The Metal executor (macOS): compile an [`MslModule`]'s source with fast-math
-//! **off**, then dispatch one thread per input triple and read back each
-//! thread's `[r0, r1, r2, status]` quad. Buffers are `StorageModeShared`
-//! (unified memory — the Apple-Silicon path docs 14 leans on for G1/G3).
+//! **off**, then dispatch the `n_cells × n_inputs` grid and read back each
+//! thread's `[r0, r1, r2, status, steps_lo, steps_hi]` sextet. Buffers are
+//! `StorageModeShared` (unified memory — the Apple-Silicon path docs 14 leans
+//! on for G1/G3).
 
 use crate::codegen::{MslModule, IN_STRIDE, KERNEL_NAME, OUT_STRIDE};
 use metal::{
@@ -9,13 +10,14 @@ use metal::{
     MTLResourceOptions, MTLSize,
 };
 
-/// A compiled-and-ready cell kernel: pipeline state, queue, and the const blob
-/// resident on the device. Build once per cell, dispatch many batches.
+/// A compiled-and-ready module: pipeline state, queue, and the const blob
+/// resident on the device. Build once, dispatch many batches.
 pub struct GpuBatch {
     device: Device,
     queue: CommandQueue,
     pipeline: ComputePipelineState,
     consts: Buffer,
+    n_cells: usize,
 }
 
 impl GpuBatch {
@@ -25,6 +27,7 @@ impl GpuBatch {
         let device = Device::system_default().ok_or_else(|| "msl: no Metal device".to_string())?;
         let opts = CompileOptions::new();
         opts.set_fast_math_enabled(false);
+        opts.set_language_version(metal::MTLLanguageVersion::V3_1);
         let library = device
             .new_library_with_source(&module.source, &opts)
             .map_err(|e| format!("msl: kernel compile failed: {e}"))?;
@@ -51,20 +54,23 @@ impl GpuBatch {
             queue,
             pipeline,
             consts,
+            n_cells: module.cells.len(),
         })
     }
 
-    /// Run one thread per input triple; each output quad is `[r0, r1, r2,
-    /// status]` (status per [`crate::STATUS_OK`] and friends; a halt's code
-    /// rides `r0`).
+    /// Run every cell in the module against every input triple — one thread
+    /// per (cell, input), cell-major: the sextet for `(cell, input)` sits at
+    /// `cell * inputs.len() + input`. A halt's code rides `r0`; steps decode
+    /// via [`crate::steps_of`].
     pub fn run(&self, inputs: &[[u16; IN_STRIDE]]) -> Result<Vec<[u16; OUT_STRIDE]>, String> {
         if inputs.is_empty() {
             return Ok(Vec::new());
         }
-        let n = inputs.len();
+        let n_in = inputs.len();
+        let n = self.n_cells * n_in;
         let in_buf = self.device.new_buffer_with_data(
             inputs.as_ptr() as *const _,
-            (n * IN_STRIDE * 2) as u64,
+            (n_in * IN_STRIDE * 2) as u64,
             MTLResourceOptions::StorageModeShared,
         );
         let out_buf = self.device.new_buffer(
@@ -77,6 +83,12 @@ impl GpuBatch {
         enc.set_buffer(0, Some(&in_buf), 0);
         enc.set_buffer(1, Some(&out_buf), 0);
         enc.set_buffer(2, Some(&self.consts), 0);
+        let n_inputs = n_in as u32;
+        enc.set_bytes(
+            3,
+            std::mem::size_of::<u32>() as u64,
+            &n_inputs as *const u32 as *const _,
+        );
         // Non-uniform threadgroups (dispatch_threads) — every Apple-Silicon
         // family supports them, so the grid is exactly `n` with no tail guard.
         let width = self.pipeline.thread_execution_width().max(1);

@@ -116,14 +116,20 @@ hash, both bodies running and agreeing, prelude kernels included. Still owed: fu
 host dispatch by body (`CellHost` over mixed-body libraries), the Sail/spike
 *execution* adversary, the RV32 peephole suite, and the silicon co-sign.
 
-The family now reaches the GPU (Phase 6, WS-E): **`rustmsl`** compiles
-straight-line integer cells through the same IR seam to Metal compute kernels —
-one thread per input, the interpreter still the one source of meaning. The E1
-gate ran clean on an M3 Max: **173 library cells × 10⁶ seeded-random inputs,
-every `[r0, r1, r2, status]` quad bit-identical to the reference interpreter**;
-divide-by-zero and `halt` surface as per-thread trap statuses, and anything
-outside the E1 fragment (loops → E2, state cells → E3, f32 → E4) refuses with a
-typed, counted reason. A GPU result that disagrees with the interpreter is a
+The family now reaches the GPU (Phase 6, WS-E): **`rustmsl`** compiles integer
+cells — straight-line *and* looping — through the same IR seam to Metal compute
+kernels, one thread per input, the interpreter still the one source of meaning.
+Loops carry the interpreter's exact fuel discipline, so each thread reports its
+**IR-step count** and the batteries assert step parity alongside value parity;
+a runaway loop is the same counted trap on both substrates. The gate ran clean
+on an M3 Max: **245 library cells × 10⁶ seeded-random inputs, values, status,
+and steps bit-identical to the reference interpreter**, at a measured
+**3.7×10⁸ evals/s** peak with metering on — and the whole library runs against
+a probe set in a single megakernel dispatch (retrieval by execution's
+substrate). The batteries earn their keep: they caught a genuine Apple Metal
+compiler bug (a divide feeding branch-guarded stores inverts the branch in
+non-inlined functions), bisected it to a 10-line repro, and the shipped codegen
+dodges it structurally. A GPU result that disagrees with the interpreter is a
 defect, never a "GPU difference".
 
 ## The vision
@@ -452,7 +458,7 @@ cell_compose(
 | **[`cell80-core`](./cell80-core)** | the **target-independent compiler core** (Phase 5): the typed IR and its semantic contract, the inline/DCE passes, the reference IR interpreter, and the target descriptors. Dependency-free. |
 | **[`rustz80`](./rustz80)** | the restricted-Rust → Z80 compiler (**backend zero**): `syn` frontend → `cell80-core` IR → Z80 codegen. Differential-tested against `rustc`. |
 | **[`rustrv32`](./rustrv32)** | the **RV32I(M) sibling backend** (Phase 5, WS-B): its own symbolic `Ins` layer + exact encoder, a cycle-accounted RV32IM executor (Hazard3/RP2350-shaped), and codegen over the shared IR — live in the same diff battery. |
-| **[`rustmsl`](./rustmsl)** | the **Metal (MSL) sibling backend** (Phase 6, WS-E): IR→MSL codegen for straight-line integer cells + a batch GPU executor, bit-exact against the reference interpreter (E1 gate: 173 cells × 10⁶ inputs, zero disagreements). |
+| **[`rustmsl`](./rustmsl)** | the **Metal (MSL) sibling backend** (Phase 6, WS-E): IR→MSL codegen for integer cells (loops included, fuel-metered tick-for-tick) + a batch GPU executor and the library×probes megakernel — bit-exact against the reference interpreter on values *and* IR steps (245 cells × 10⁶ inputs; 3.7×10⁸ evals/s measured). |
 | **[`cell80`](./cell80)** | the **cell micro-VM + tooling** (built on `rustz80`): `.cell` cartridges, a compile-once/run-many `Runner` + `CellPool`, a decode-once fast path, `CellIndex`, the warm `CellHost`, typed-state I/O, host-routed `CellGraph` composition, and the `cell80` CLI. |
 | **[`cell80-py`](./cell80-py)** | PyO3 bindings — the warm `CellHost` as a Python class (built with maturin). |
 | **[`cell80-mcp`](./cell80-mcp)** | the MCP server over a warm cell library (`chuk-mcp-server`). |
@@ -495,11 +501,13 @@ family slot ABI; the first loadable RV32 cartridge via `compile_rv32` +
 ([docs/14-model-native-cells-spec.md](docs/14-model-native-cells-spec.md) —
 model-native cells: GPU bodies over the same IR seam, retrieval by execution,
 decode-time wiring, trained invocation): the F2 routing gate passed
-(probe-equipped paraphrase P@1 0.859 vs the 0.80 bar) and **E1 landed on
-Metal** — `rustmsl` compiles the library's straight-line integer value cells
-to Metal compute kernels, and the pre-registered gate ran clean: 173 cells ×
-10⁶ random inputs, bit-exact against the reference interpreter, zero
-disagreements. Owed from Phase 5: full `CellHost` dispatch by body,
+(probe-equipped paraphrase P@1 0.859 vs the 0.80 bar) and **E1–E3 landed on
+Metal** — `rustmsl` compiles the library's integer value cells (loops
+included, fuel-metered tick-for-tick) to Metal compute kernels; the
+pre-registered gate ran clean (245 cells × 10⁶ random inputs, values +
+status + IR steps bit-exact) at a measured 3.7×10⁸ evals/s, with the whole
+library runnable against a probe set in one megakernel dispatch.
+Owed from Phase 5: full `CellHost` dispatch by body,
 the Sail/spike execution adversary, the RV32 peephole suite, and the RP2350
 `mcycle` co-sign (B4).
 

@@ -1,7 +1,12 @@
-//! MSL codegen (Phase 6 WS-E/E1): lowering of the `cell80-core` typed IR to
-//! Metal Shading Language for **straight-line** integer cells — loop-free bodies
-//! (`if` allowed; `while`/`loop`/`for` are E2 territory and refuse with a typed
-//! error). One thread per input triple: the batch layout E3 grows into.
+//! MSL codegen (Phase 6 WS-E, E1+E2): lowering of the `cell80-core` typed IR to
+//! Metal Shading Language — straight-line integer cells (E1) plus loops and
+//! branches (E2: `while`/`loop`/`for`, `break`/`continue`), budget-bounded by a
+//! per-thread fuel counter that mirrors the interpreter's `tick()` placement
+//! **exactly** (one step per statement, per expression node, per loop
+//! iteration). Each thread reports its step count, so batteries assert
+//! IR-step parity — the canonical family cost (docs 14, Q2) — alongside value
+//! parity, and a runaway loop is a counted trap ([`STATUS_FUEL`]), never a hung
+//! dispatch.
 //!
 //! **The data model is the interpreter's.** All IR pointer values are 16-bit
 //! addresses into the family window: consts at `0x8000`, the slot file at
@@ -23,6 +28,18 @@
 //! and guarded with `min`/select for runtime counts, matching `interp.rs` arm by
 //! arm. Divide-by-zero and `halt(code)` are per-thread traps mirroring the
 //! interpreter's refusals — a status word per thread, never a poisoned value.
+//!
+//! **The batch layouts (E3)** share one kernel shape: the grid is
+//! `n_cells × n_inputs`, a thread routes `tid → (cell, input)`, and each cell's
+//! window (its const-blob slice, its slot-file length) is selected per thread.
+//! [`compile`] emits a one-cell module (the fuzzing/reward layout);
+//! [`compile_library`] fuses many cells into one translation unit (the
+//! library × probe-set layout — retrieval by execution's substrate, WS-F).
+//!
+//! `continue` inside a `for` must reach the induction step (the interpreter's
+//! `Flow::Continue` lands on the step, and MSL has no `goto`) — so a `for`
+//! body is wrapped in `do { … } while(false)`: C's `continue` exits the wrapper
+//! into the step, and `break` sets a flag the wrapper checks to leave the loop.
 
 use cell80_core::ir::*;
 use std::collections::HashMap;
@@ -41,22 +58,25 @@ pub const STATUS_DIV0: u16 = 1;
 pub const STATUS_HALT: u16 = 2;
 /// Per-thread run status: a write outside the mapped window regions.
 pub const STATUS_OOW: u16 = 3;
+/// Per-thread run status: fuel exhausted (the interpreter's runaway-loop guard,
+/// same budget, same tick placement).
+pub const STATUS_FUEL: u16 = 4;
+
+/// The execution budget — the interpreter's `FUEL`, per thread.
+pub const FUEL: u32 = 100_000_000;
 
 /// The emitted kernel's function name.
 pub const KERNEL_NAME: &str = "cell_main";
 
 /// Inputs consumed per thread (the `HL`/`DE`/`BC` register-arg convention).
 pub const IN_STRIDE: usize = 3;
-/// Outputs produced per thread: `r0 r1 r2 status`.
-pub const OUT_STRIDE: usize = 4;
+/// Outputs produced per thread: `r0 r1 r2 status steps_lo steps_hi`.
+pub const OUT_STRIDE: usize = 6;
 
-/// A compiled MSL module: the translation unit (one kernel, [`KERNEL_NAME`]),
-/// the const blob to bind read-only at `buffer(2)`, and the entry's shape.
+/// One cell's shape inside a compiled module.
 #[derive(Clone, Debug)]
-pub struct MslModule {
-    pub source: String,
-    pub consts: Vec<u8>,
-    /// The IR entry function this kernel wraps.
+pub struct CellMeta {
+    /// The IR entry function this cell's case wraps.
     pub entry: String,
     /// Entry parameter slots consumed from the input triple (≤ 3).
     pub params: usize,
@@ -65,113 +85,179 @@ pub struct MslModule {
     pub wide_ret: bool,
 }
 
-struct FrameInfo {
-    base: u16,
-    wide_ret: bool,
-    ret_len: usize,
+/// A compiled MSL module: one translation unit (one kernel, [`KERNEL_NAME`])
+/// over one or more cells, the concatenated const blob to bind read-only at
+/// `buffer(2)`, and each cell's shape. The output grid is cell-major:
+/// thread `cell · n_inputs + input` writes quad `[r0, r1, r2, status,
+/// steps_lo, steps_hi]`.
+#[derive(Clone, Debug)]
+pub struct MslModule {
+    pub source: String,
+    pub consts: Vec<u8>,
+    pub cells: Vec<CellMeta>,
 }
 
-struct Gen<'a> {
-    frames: HashMap<&'a str, (FrameInfo, &'a Func)>,
-    consts: HashMap<&'a str, u16>,
-    const_len: usize,
-    total_slots: u16,
-    tmp: usize,
-    out: String,
+/// One cell's compile input for [`compile_library`]: lowered+pruned functions,
+/// its const pool, and its entry name.
+pub struct LibraryCell<'a> {
+    pub funcs: &'a [(String, Func)],
+    pub consts: &'a [(String, Vec<u8>)],
+    pub entry: &'a str,
 }
 
-/// Compile lowered functions + const data to an MSL module wrapping `entry`.
-/// Refuses (with a typed error) anything outside the E1 fragment: loops,
-/// recursion, ports, f32.
+/// Compile one cell (the one-cell × N-inputs layout). Refuses (with a typed
+/// error) anything outside the E1+E2 fragment: recursion, ports-by-policy,
+/// f32 (E4).
 pub fn compile(
     funcs: &[(String, Func)],
     consts: &[(String, Vec<u8>)],
     entry: &str,
 ) -> Result<MslModule, String> {
-    if let Some(cycle) = cell80_core::dce::find_recursion(funcs) {
-        return Err(format!("msl: recursion is not lowered: {cycle}"));
+    compile_library(&[LibraryCell {
+        funcs,
+        consts,
+        entry,
+    }])
+}
+
+/// Fuse many cells into one translation unit — the library × probe-set layout
+/// (E3): one launch runs every cell against every input triple.
+pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
+    if cells.is_empty() {
+        return Err("msl: empty library".into());
     }
-    // Frames laid in `funcs` order with a running base — the interpreter's (and
-    // every sibling backend's) slot-assignment rule, so addresses agree.
-    let mut frames = HashMap::new();
-    let mut base = 0u16;
-    for (name, f) in funcs {
-        frames.insert(
-            name.as_str(),
-            (
+    let mut g = Gen {
+        frames: HashMap::new(),
+        consts: HashMap::new(),
+        prefix: String::new(),
+        tmp: 0,
+        loops: Vec::new(),
+        out: String::new(),
+    };
+
+    let mut blob = Vec::new();
+    let mut metas = Vec::new();
+    let mut max_slots = 1u16;
+    // Per-cell: (const buffer offset, const len, slot bytes, entry base, fn).
+    let mut cases: Vec<(usize, usize, u32, u16, CellMeta)> = Vec::new();
+
+    for (ci, cell) in cells.iter().enumerate() {
+        let tag = |e: String| {
+            if cells.len() == 1 {
+                e
+            } else {
+                format!("{e} (cell `{}`)", cell.entry)
+            }
+        };
+        if let Some(cycle) = cell80_core::dce::find_recursion(cell.funcs) {
+            return Err(tag(format!("msl: recursion is not lowered: {cycle}")));
+        }
+        // Frames laid in `funcs` order with a running base — the interpreter's
+        // (and every sibling backend's) slot-assignment rule, so addresses agree.
+        g.frames.clear();
+        g.consts.clear();
+        g.prefix = format!("c{ci}_");
+        let mut base = 0u16;
+        for (name, f) in cell.funcs {
+            g.frames.insert(
+                name.clone(),
                 FrameInfo {
                     base,
                     wide_ret: f.wide_ret,
-                    ret_len: f.ret.len(),
+                    wide_param: f.wide_param,
+                    wide_second: f.wide_second,
                 },
-                f,
-            ),
-        );
-        base = base.wrapping_add(f.n_locals as u16);
-    }
-    let total_slots = base;
-    let mut blob = Vec::new();
-    let mut const_map = HashMap::new();
-    let mut at = CONST_BASE;
-    for (name, bytes) in consts {
-        const_map.insert(name.as_str(), at);
-        blob.extend_from_slice(bytes);
-        at = at.wrapping_add(bytes.len() as u16);
-    }
-    if CONST_BASE as usize + blob.len() > SCRATCH as usize {
-        return Err("msl: const data overflows into the slot file".into());
-    }
-    let (entry_info, entry_fn) = frames
-        .get(entry)
-        .map(|(i, f)| (i.base, *f))
-        .ok_or_else(|| format!("msl: unknown entry `{entry}`"))?;
+            );
+            base = base.wrapping_add(f.n_locals as u16);
+        }
+        max_slots = max_slots.max(base);
+        let cst_off = blob.len();
+        let mut at = CONST_BASE;
+        for (name, bytes) in cell.consts {
+            g.consts.insert(name.clone(), at);
+            blob.extend_from_slice(bytes);
+            at = at.wrapping_add(bytes.len() as u16);
+        }
+        let cst_len = blob.len() - cst_off;
+        if CONST_BASE as usize + cst_len > SCRATCH as usize {
+            return Err(tag("msl: const data overflows into the slot file".into()));
+        }
+        let entry_fn = cell
+            .funcs
+            .iter()
+            .find(|(n, _)| n == cell.entry)
+            .map(|(_, f)| f)
+            .ok_or_else(|| tag(format!("msl: unknown entry `{}`", cell.entry)))?;
+        let entry_base = g.frames[cell.entry].base;
 
-    let mut g = Gen {
-        frames,
-        consts: const_map,
-        const_len: blob.len(),
-        total_slots,
-        tmp: 0,
-        out: String::new(),
-    };
-    g.prelude();
-    for (name, _) in funcs {
-        let _ = writeln!(g.out, "static void {}(thread Ctx& c);", mangle(name));
+        for (name, _) in cell.funcs {
+            let _ = writeln!(
+                g.out,
+                "static CELLFN void {}(thread Ctx& c);",
+                g.mangle(name)
+            );
+        }
+        for (name, f) in cell.funcs {
+            g.gen_fn(name, f).map_err(&tag)?;
+        }
+        let meta = CellMeta {
+            entry: cell.entry.to_string(),
+            params: entry_fn.params.min(IN_STRIDE),
+            ret_regs: if entry_fn.wide_ret {
+                2
+            } else {
+                entry_fn.ret.len()
+            },
+            wide_ret: entry_fn.wide_ret,
+        };
+        cases.push((cst_off, cst_len, base as u32 * 2, entry_base, meta.clone()));
+        metas.push(meta);
     }
-    g.out.push('\n');
-    for (name, f) in funcs {
-        g.gen_fn(name, f)?;
-    }
-    g.kernel(entry, entry_info, entry_fn);
-
+    // The prelude needs the fused slot-file size (the Ctx array member), so it
+    // prepends after every cell has been walked.
+    let funcs_text = std::mem::take(&mut g.out);
+    g.prelude(max_slots);
+    g.out.push_str(&funcs_text);
+    g.kernel(&cases);
     Ok(MslModule {
         source: g.out,
         consts: blob,
-        entry: entry.to_string(),
-        params: entry_fn.params.min(IN_STRIDE),
-        ret_regs: if entry_fn.wide_ret {
-            2
-        } else {
-            entry_fn.ret.len()
-        },
-        wide_ret: entry_fn.wide_ret,
+        cells: metas,
     })
 }
 
-/// A function's MSL name (`f_` + the IR name, non-identifier chars folded to `_`).
-fn mangle(name: &str) -> String {
-    let body: String = name
-        .chars()
-        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
-        .collect();
-    format!("f_{body}")
+struct FrameInfo {
+    base: u16,
+    wide_ret: bool,
+    wide_param: bool,
+    wide_second: bool,
 }
 
-impl<'a> Gen<'a> {
-    fn prelude(&mut self) {
-        let slot_bytes = (self.total_slots as u32) * 2;
-        let const_len = self.const_len as u32;
+struct Gen {
+    frames: HashMap<String, FrameInfo>,
+    consts: HashMap<String, u16>,
+    /// Per-cell function-name prefix (`c0_`, `c1_`, …) — cells share one
+    /// translation unit, and every cell defines `run`.
+    prefix: String,
+    tmp: usize,
+    /// The enclosing-loop stack: `None` for `while`/`loop` (C `break`/
+    /// `continue` bind directly), `Some(flag)` for a `for` body's
+    /// do-while(false) wrapper (`break` sets the flag; `continue` falls to the
+    /// induction step).
+    loops: Vec<Option<String>>,
+    out: String,
+}
+
+impl Gen {
+    fn prelude(&mut self, n_slots: u16) {
+        let n_slots = n_slots.max(1);
         let o = &mut self.out;
+        // The slot file is an array *member*, not a thread pointer: passing a
+        // struct holding a `thread ushort*` into non-inlined functions
+        // miscompiled on Metal (branch inversion once the fused unit grew past
+        // the inliner's appetite — caught by the E3 megakernel battery). A
+        // member array keeps the provenance visible and is correct whether or
+        // not the compiler inlines.
         let _ = writeln!(
             o,
             "// generated by rustmsl — do not edit; semantics are the cell80-core interpreter's\n\
@@ -179,25 +265,48 @@ impl<'a> Gen<'a> {
              using namespace metal;\n\
              \n\
              struct Ctx {{\n\
-             \x20   thread ushort* slots;\n\
+             \x20   ushort slots[{n_slots}];\n\
              \x20   device const uchar* cst;\n\
+             \x20   uint cst_len;\n\
+             \x20   uint slot_bytes;\n\
              \x20   uint trap;\n\
              \x20   uint halt;\n\
+             \x20   uint fuel;\n\
              \x20   uint r0; uint r1; uint r2;\n\
              \x20   uint rw;\n\
              \x20   uint rn;\n\
              }};\n\
              \n\
+             // The interpreter's tick(): one unit per statement, per expression\n\
+             // node, per loop iteration; exhaustion is a trap, never a hang.\n\
+             #define TICK if (--c.fuel == 0u) {{ c.trap = {fuel_trap}u; return; }}\n\
+             // Cell functions are pinned noinline: the shipped configuration is\n\
+             // exactly the battery-validated one, not an inliner heuristic's.\n\
+             #define CELLFN __attribute__((noinline))\n\
+             \n\
              // Sign-extend a masked 16-bit lane / bit-cast a 32-bit lane to signed.\n\
              static int sx16(uint x) {{ return (int)as_type<short>((ushort)(x)); }}\n\
              static int sx32(uint x) {{ return as_type<int>(x); }}\n\
+             \n\
+             // Division rides opaque value-taking helpers: Metal's backend\n\
+             // miscompiles a divide feeding a branch that guards stores through\n\
+             // a thread-reference param (branch polarity inverts — caught by the\n\
+             // E3 megakernel battery on `mul_sat`, minimised to a 10-line repro).\n\
+             // The call boundary blocks the faulty fusion; zero-checks stay at\n\
+             // the call site (the trap), and the signed MIN/-1 wrap lives here.\n\
+             static __attribute__((noinline)) uint udiv(uint a, uint b) {{ return a / b; }}\n\
+             static __attribute__((noinline)) uint urem(uint a, uint b) {{ return a % b; }}\n\
+             static __attribute__((noinline)) uint sdiv16(uint a, uint b) {{ return ((uint)(sx16(a) / sx16(b))) & 0xFFFFu; }}\n\
+             static __attribute__((noinline)) uint srem16(uint a, uint b) {{ return ((uint)(sx16(a) % sx16(b))) & 0xFFFFu; }}\n\
+             static __attribute__((noinline)) uint sdiv32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? a : (uint)(sx32(a) / sx32(b)); }}\n\
+             static __attribute__((noinline)) uint srem32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? 0u : (uint)(sx32(a) % sx32(b)); }}\n\
              \n\
              // Byte-routed window emulation: consts (read-only), the slot file, else\n\
              // zero on read and a trap on write (the pre-registered E1 weakening).\n\
              static uint rd8(thread Ctx& c, uint a) {{\n\
              \x20   a &= 0xFFFFu;\n\
-             \x20   if (a >= 0x{cb:X}u && a < 0x{cb:X}u + {const_len}u) return (uint)c.cst[a - 0x{cb:X}u];\n\
-             \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + {slot_bytes}u) {{\n\
+             \x20   if (a >= 0x{cb:X}u && a < 0x{cb:X}u + c.cst_len) return (uint)c.cst[a - 0x{cb:X}u];\n\
+             \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + c.slot_bytes) {{\n\
              \x20       uint o = a - 0x{sc:X}u;\n\
              \x20       return ((uint)c.slots[o >> 1] >> ((o & 1u) * 8u)) & 0xFFu;\n\
              \x20   }}\n\
@@ -205,7 +314,7 @@ impl<'a> Gen<'a> {
              }}\n\
              static void wr8(thread Ctx& c, uint a, uint v) {{\n\
              \x20   a &= 0xFFFFu;\n\
-             \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + {slot_bytes}u) {{\n\
+             \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + c.slot_bytes) {{\n\
              \x20       uint o = a - 0x{sc:X}u;\n\
              \x20       uint i = o >> 1;\n\
              \x20       uint sh = (o & 1u) * 8u;\n\
@@ -221,7 +330,18 @@ impl<'a> Gen<'a> {
             cb = CONST_BASE,
             sc = SCRATCH,
             oow = STATUS_OOW,
+            fuel_trap = STATUS_FUEL,
         );
+    }
+
+    /// A function's MSL name: cell prefix + `f_` + the IR name, non-identifier
+    /// chars folded to `_`.
+    fn mangle(&self, name: &str) -> String {
+        let body: String = name
+            .chars()
+            .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
+            .collect();
+        format!("{}f_{body}", self.prefix)
     }
 
     fn temp(&mut self) -> String {
@@ -237,6 +357,11 @@ impl<'a> Gen<'a> {
         self.out.push('\n');
     }
 
+    /// The interpreter's `tick()` at this point in the emission.
+    fn tick(&mut self, ind: usize) {
+        self.line(ind, "TICK");
+    }
+
     /// Emit `uint NAME = EXPR;` and return the temp's name — every value is
     /// materialised at its evaluation point, so side effects (calls, traps)
     /// sequence exactly as the interpreter's left-to-right order.
@@ -244,6 +369,10 @@ impl<'a> Gen<'a> {
         let t = self.temp();
         self.line(ind, &format!("uint {t} = {expr};"));
         t
+    }
+
+    fn frame(&self, name: &str) -> &FrameInfo {
+        &self.frames[name]
     }
 
     fn slot_addr(&self, fr: &FrameInfo, slot: usize) -> u16 {
@@ -267,6 +396,8 @@ impl<'a> Gen<'a> {
     // ── 16-bit expressions (the interpreter's `eval16`, arm by arm) ────────────
 
     fn e16(&mut self, fr: &FrameInfo, e: &Expr, ind: usize) -> Result<String, String> {
+        // eval16 ticks on entry for every node, literals included.
+        self.tick(ind);
         match e {
             Expr::Lit(n) => Ok(format!("{n}u")),
             Expr::Var(slot) => {
@@ -448,17 +579,22 @@ impl<'a> Gen<'a> {
                     ind,
                     &format!("if ({tr} == 0u) {{ c.trap = {}u; return; }}", STATUS_DIV0),
                 );
-                let sym = if matches!(op, BinOp::Div) { "/" } else { "%" };
+                // Truncation toward zero and the dividend's-sign remainder live
+                // in the helpers (MIN/-1 wraps via the int32 quotient re-mask).
                 if w == Width::SWord {
-                    // Truncate toward zero, remainder takes the dividend's sign;
-                    // MIN/-1 wraps — safe here because the int32 quotient 32768
-                    // re-masks to 0x8000 (rustc's `wrapping_*`).
-                    self.bind(
-                        ind,
-                        &format!("((uint)(sx16({tl}) {sym} sx16({tr}))) & 0xFFFFu"),
-                    )
+                    let f = if matches!(op, BinOp::Div) {
+                        "sdiv16"
+                    } else {
+                        "srem16"
+                    };
+                    self.bind(ind, &format!("{f}({tl}, {tr})"))
                 } else {
-                    self.bind(ind, &format!("({tl} {sym} {tr}) & {m}"))
+                    let f = if matches!(op, BinOp::Div) {
+                        "udiv"
+                    } else {
+                        "urem"
+                    };
+                    self.bind(ind, &format!("{f}({tl}, {tr}) & {m}"))
                 }
             }
             BinOp::Shl => {
@@ -488,6 +624,8 @@ impl<'a> Gen<'a> {
     // ── 32-bit expressions (the interpreter's `eval32`) ────────────────────────
 
     fn e32(&mut self, fr: &FrameInfo, e: &Expr, ind: usize) -> Result<String, String> {
+        // eval32 ticks on entry for every node.
+        self.tick(ind);
         match e {
             Expr::Lit32(n) => Ok(format!("{n}u")),
             Expr::Var32(slot) => {
@@ -534,26 +672,16 @@ impl<'a> Gen<'a> {
                             ind,
                             &format!("if ({tr} == 0u) {{ c.trap = {}u; return; }}", STATUS_DIV0),
                         );
-                        if *signed {
-                            // rustc `wrapping_div`/`wrapping_rem`: MIN/-1 is MIN
-                            // (rem 0) — C++ overflows there, so select it out.
-                            let sym = if matches!(op, BinOp::Div) { "/" } else { "%" };
-                            let min_wrap = if matches!(op, BinOp::Div) {
-                                tl.clone()
-                            } else {
-                                "0u".into()
-                            };
-                            Ok(self.bind(
-                                ind,
-                                &format!(
-                                    "({tl} == 0x80000000u && {tr} == 0xFFFFFFFFu) ? {min_wrap} \
-                                     : (uint)(sx32({tl}) {sym} sx32({tr}))"
-                                ),
-                            ))
-                        } else {
-                            let sym = if matches!(op, BinOp::Div) { "/" } else { "%" };
-                            Ok(self.bind(ind, &format!("{tl} {sym} {tr}")))
-                        }
+                        // rustc `wrapping_div`/`wrapping_rem` semantics live in
+                        // the helpers (MIN/-1 selected out — C++ overflows there).
+                        let f = match (op, *signed) {
+                            (BinOp::Div, true) => "sdiv32",
+                            (BinOp::Rem, true) => "srem32",
+                            (BinOp::Div, false) => "udiv",
+                            (BinOp::Rem, false) => "urem",
+                            _ => unreachable!(),
+                        };
+                        Ok(self.bind(ind, &format!("{f}({tl}, {tr})")))
                     }
                     BinOp::Shl | BinOp::Shr => Err("msl: u32 shifts lower to Shift32".into()),
                 }
@@ -596,13 +724,13 @@ impl<'a> Gen<'a> {
             let t = self.e16(fr, &args[0], ind)?;
             return Ok(CallVal::Operand(text.replace("ARG", &t)));
         }
-        let (info, f) = self
-            .frames
-            .get(name)
-            .map(|(i, f)| ((i.base, i.wide_ret), *f))
-            .ok_or_else(|| format!("msl: call to unknown fn `{name}`"))?;
-        let (callee_base, callee_wide) = info;
-        let (wide_param, wide_second) = (f.wide_param, f.wide_second);
+        let (callee_base, callee_wide, wide_param, wide_second) = {
+            let f = self
+                .frames
+                .get(name)
+                .ok_or_else(|| format!("msl: call to unknown fn `{name}`"))?;
+            (f.base, f.wide_ret, f.wide_param, f.wide_second)
+        };
         // Evaluate every argument *before* writing any callee slot — an argument
         // that aliases the callee's slots through a pointer reads pre-call values.
         let mut writes: Vec<(u16, bool, String)> = Vec::new(); // (abs slot, wide, temp)
@@ -645,7 +773,8 @@ impl<'a> Gen<'a> {
                 self.line(ind, &format!("c.slots[{slot}u] = (ushort)({t});"));
             }
         }
-        self.line(ind, &format!("{}(c);", mangle(name)));
+        let m = self.mangle(name);
+        self.line(ind, &format!("{m}(c);"));
         self.line(ind, "if (c.trap != 0u) { return; }");
         Ok(if callee_wide {
             CallVal::Wide
@@ -664,6 +793,8 @@ impl<'a> Gen<'a> {
     }
 
     fn stmt(&mut self, fr: &FrameInfo, s: &Stmt, ind: usize) -> Result<(), String> {
+        // exec_stmt ticks on entry for every statement.
+        self.tick(ind);
         match s {
             Stmt::Assign(slot, e) => {
                 let t = self.e16(fr, e, ind)?;
@@ -779,16 +910,92 @@ impl<'a> Gen<'a> {
                     self.line(ind, "}");
                 }
             }
-            Stmt::While(..) | Stmt::Loop(..) | Stmt::ForRange { .. } => {
-                return Err(
-                    "msl: not straight-line — loops (`while`/`loop`/`for`) are E2, \
-                     not lowered yet"
-                        .into(),
+            Stmt::While(cond, body) => {
+                self.line(ind, "for (;;) {");
+                // One tick per iteration (the interpreter's loop-top tick),
+                // then the condition re-evaluates.
+                self.tick(ind + 1);
+                let tl = self.e16(fr, &cond.lhs, ind + 1)?;
+                let tr = self.e16(fr, &cond.rhs, ind + 1)?;
+                let c = cmp16_text(cond.cmp, &tl, &tr, cond.signed);
+                self.line(ind + 1, &format!("if (!({c})) break;"));
+                self.loops.push(None);
+                self.stmts(fr, body, ind + 1)?;
+                self.loops.pop();
+                self.line(ind, "}");
+            }
+            Stmt::Loop(body) => {
+                self.line(ind, "for (;;) {");
+                self.tick(ind + 1);
+                self.loops.push(None);
+                self.stmts(fr, body, ind + 1)?;
+                self.loops.pop();
+                self.line(ind, "}");
+            }
+            Stmt::ForRange {
+                var,
+                end,
+                inclusive,
+                width,
+                body,
+            } => {
+                let vi = self.slot_idx(fr, *var);
+                self.line(ind, "for (;;) {");
+                self.tick(ind + 1);
+                // The bound re-evaluates every iteration (it lives in a temp
+                // slot the loop header reads), the variable re-reads its slot.
+                let tv = self.bind(ind + 1, &format!("(uint)c.slots[{vi}u]"));
+                let tb = self.e16(fr, end, ind + 1)?;
+                let keep = {
+                    let cmp = if *inclusive { "<=" } else { "<" };
+                    if *width == Width::SWord {
+                        format!("sx16({tv}) {cmp} sx16({tb})")
+                    } else {
+                        format!("{tv} {cmp} {tb}")
+                    }
+                };
+                self.line(ind + 1, &format!("if (!({keep})) break;"));
+                // The body rides a do-while(false) wrapper: C `continue` exits
+                // it into the induction step (the interpreter's continue
+                // target); `break` raises a flag the wrapper turns into a real
+                // loop exit. MSL has no `goto` to do this more directly.
+                let brk = self.temp();
+                self.line(ind + 1, &format!("uint {brk} = 0u;"));
+                self.line(ind + 1, "do {");
+                self.loops.push(Some(brk.clone()));
+                self.stmts(fr, body, ind + 2)?;
+                self.loops.pop();
+                self.line(ind + 1, "} while (false);");
+                self.line(ind + 1, &format!("if ({brk} != 0u) break;"));
+                // The induction step re-reads the slot (the body may assign the
+                // loop variable) and masks to the variable's width.
+                let mask = if *width == Width::Byte {
+                    "0xFFu"
+                } else {
+                    "0xFFFFu"
+                };
+                self.line(
+                    ind + 1,
+                    &format!("c.slots[{vi}u] = (ushort)(((uint)c.slots[{vi}u] + 1u) & {mask});"),
                 );
+                self.line(ind, "}");
             }
-            Stmt::Break | Stmt::Continue => {
-                return Err("msl: break/continue outside a loop (E2, not lowered yet)".into());
-            }
+            Stmt::Break => match self.loops.last() {
+                Some(Some(brk)) => {
+                    let brk = brk.clone();
+                    self.line(ind, &format!("{brk} = 1u;"));
+                    self.line(ind, "break;");
+                }
+                Some(None) => self.line(ind, "break;"),
+                None => return Err("msl: break outside a loop".into()),
+            },
+            Stmt::Continue => match self.loops.last() {
+                // Inside a for body's wrapper, C `continue` exits the do-while
+                // into the induction step; in while/loop it re-enters at the
+                // iteration tick — both are the interpreter's continue target.
+                Some(_) => self.line(ind, "continue;"),
+                None => return Err("msl: continue outside a loop".into()),
+            },
             Stmt::Return(val) => {
                 match val {
                     None => {
@@ -812,17 +1019,18 @@ impl<'a> Gen<'a> {
 
     // ── functions and the kernel ───────────────────────────────────────────────
 
-    fn gen_fn(&mut self, name: &'a str, f: &'a Func) -> Result<(), String> {
+    fn gen_fn(&mut self, name: &str, f: &Func) -> Result<(), String> {
         let info = {
-            let (i, _) = &self.frames[name];
+            let i = self.frame(name);
             FrameInfo {
                 base: i.base,
                 wide_ret: i.wide_ret,
-                ret_len: i.ret_len,
+                wide_param: i.wide_param,
+                wide_second: i.wide_second,
             }
         };
-        let m = mangle(name);
-        self.line(0, &format!("static void {m}(thread Ctx& c) {{"));
+        let m = self.mangle(name);
+        self.line(0, &format!("static CELLFN void {m}(thread Ctx& c) {{"));
         // The shared return regs zero at entry so a void path reads as absent.
         self.line(1, "c.r0 = 0u; c.r1 = 0u; c.r2 = 0u; c.rw = 0u; c.rn = 0u;");
         self.stmts(&info, &f.body, 1)
@@ -851,9 +1059,10 @@ impl<'a> Gen<'a> {
         Ok(())
     }
 
-    fn kernel(&mut self, entry: &str, entry_base: u16, entry_fn: &Func) {
-        let n_slots = self.total_slots.max(1);
-        let m = mangle(entry);
+    /// The kernel: grid `n_cells × n_inputs`, cell-major; each case selects the
+    /// cell's window (const slice, slot-file length), loads its args, runs its
+    /// entry, and latches its result shape.
+    fn kernel(&mut self, cases: &[(usize, usize, u32, u16, CellMeta)]) {
         let o = &mut self.out;
         let _ = writeln!(
             o,
@@ -861,38 +1070,60 @@ impl<'a> Gen<'a> {
              \x20   device const ushort* inp [[buffer(0)]],\n\
              \x20   device ushort* outp [[buffer(1)]],\n\
              \x20   device const uchar* cst [[buffer(2)]],\n\
+             \x20   constant uint& n_inputs [[buffer(3)]],\n\
              \x20   uint tid [[thread_position_in_grid]])\n\
              {{\n\
-             \x20   ushort slots[{n_slots}] = {{}};\n\
-             \x20   Ctx c;\n\
-             \x20   c.slots = slots;\n\
-             \x20   c.cst = cst;\n\
-             \x20   c.trap = 0u; c.halt = 0u;\n\
-             \x20   c.r0 = 0u; c.r1 = 0u; c.r2 = 0u; c.rw = 0u; c.rn = 0u;"
+             \x20   uint cell = tid / n_inputs;\n\
+             \x20   uint idx = tid % n_inputs;\n\
+             \x20   Ctx c = {{}};\n\
+             \x20   c.fuel = {FUEL}u;\n\
+             \x20   uint r0 = 0u; uint r1 = 0u; uint r2 = 0u;\n\
+             \x20   switch (cell) {{"
         );
-        for i in 0..entry_fn.params.min(IN_STRIDE) {
-            let slot = entry_base.wrapping_add(i as u16);
-            let _ = writeln!(o, "    slots[{slot}u] = inp[tid * {IN_STRIDE}u + {i}u];");
-        }
-        let _ = writeln!(o, "    {m}(c);");
-        if entry_fn.wide_ret {
+        for (ci, (cst_off, cst_len, slot_bytes, entry_base, meta)) in cases.iter().enumerate() {
             let _ = writeln!(
                 o,
-                "    uint r0 = c.rw & 0xFFFFu;\n\
-                 \x20   uint r1 = c.rw >> 16u;\n\
-                 \x20   uint r2 = 0u;"
+                "    case {ci}u: {{\n\
+                 \x20       c.cst = cst + {cst_off}u;\n\
+                 \x20       c.cst_len = {cst_len}u;\n\
+                 \x20       c.slot_bytes = {slot_bytes}u;"
             );
-        } else {
-            let _ = writeln!(
-                o,
-                "    uint r0 = (c.rn > 0u) ? c.r0 : 0u;\n\
-                 \x20   uint r1 = (c.rn > 1u) ? c.r1 : 0u;\n\
-                 \x20   uint r2 = (c.rn > 2u) ? c.r2 : 0u;"
-            );
+            for i in 0..meta.params {
+                let slot = entry_base.wrapping_add(i as u16);
+                let _ = writeln!(
+                    o,
+                    "        c.slots[{slot}u] = inp[idx * {IN_STRIDE}u + {i}u];"
+                );
+            }
+            // The per-cell prefix is positional, mirroring compile_library.
+            let entry: String = meta
+                .entry
+                .chars()
+                .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
+                .collect();
+            let _ = writeln!(o, "        c{ci}_f_{entry}(c);");
+            if meta.wide_ret {
+                let _ = writeln!(
+                    o,
+                    "        r0 = c.rw & 0xFFFFu;\n\
+                     \x20       r1 = c.rw >> 16u;\n\
+                     \x20       break; }}"
+                );
+            } else {
+                let _ = writeln!(
+                    o,
+                    "        r0 = (c.rn > 0u) ? c.r0 : 0u;\n\
+                     \x20       r1 = (c.rn > 1u) ? c.r1 : 0u;\n\
+                     \x20       r2 = (c.rn > 2u) ? c.r2 : 0u;\n\
+                     \x20       break; }}"
+                );
+            }
         }
         let _ = writeln!(
             o,
-            "    if (c.trap != 0u) {{\n\
+            "    }}\n\
+             \x20   uint steps = {FUEL}u - c.fuel;\n\
+             \x20   if (c.trap != 0u) {{\n\
              \x20       r0 = (c.trap == {halt}u) ? (c.halt & 0xFFFFu) : 0u;\n\
              \x20       r1 = 0u;\n\
              \x20       r2 = 0u;\n\
@@ -901,6 +1132,8 @@ impl<'a> Gen<'a> {
              \x20   outp[tid * {OUT_STRIDE}u + 1u] = (ushort)r1;\n\
              \x20   outp[tid * {OUT_STRIDE}u + 2u] = (ushort)r2;\n\
              \x20   outp[tid * {OUT_STRIDE}u + 3u] = (ushort)c.trap;\n\
+             \x20   outp[tid * {OUT_STRIDE}u + 4u] = (ushort)(steps & 0xFFFFu);\n\
+             \x20   outp[tid * {OUT_STRIDE}u + 5u] = (ushort)(steps >> 16u);\n\
              }}",
             halt = STATUS_HALT,
         );

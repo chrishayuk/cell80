@@ -63,19 +63,28 @@ model / platform; a certified target is the named triple). Owed: WS-E3's per-bod
 host, the Sail/spike execution adversary, the RV32 peephole, the B4 `mcycle`
 co-sign on silicon.
 
-**GPU target family (Phase 6 WS-E, doc 14 — opened with E1 on Metal).**
+**GPU target family (Phase 6 WS-E, doc 14 — E1→E3 on Metal, one day).**
 **`rustmsl`** — the MSL sibling of rustz80/rustrv32 over the same cell80-core
-seam: IR→MSL codegen for straight-line integer cells (the interpreter's
-semantics arm by arm — width masks, shift-by-≥-width, signed `MIN/-1` div
-wrapping select-guarded past C++ UB, divide-by-zero/`halt` as per-thread trap
-statuses) and a fast-math-off Metal batch executor (`GpuBatch`, one thread per
-input triple, unified-memory buffers). The pre-registered E1 gate ran clean:
-**173 straight-line integer value cells × 10⁶ seeded-random inputs
-(1.73×10⁸ evaluations), the `[r0, r1, r2, status]` quad bit-exact against
-the reference interpreter, zero disagreements** (M3 Max; the R1 corner
-battery pins the drift corners separately). Refusals typed and counted: 69
-loop cells (E2), 415 state cells (typed-state readback, with E3), f32 (E4).
-No throughput claim yet — E3's megakernel layouts own that benchmark.
+seam: IR→MSL codegen for integer cells, straight-line *and* looping (the
+interpreter's semantics arm by arm — width masks, shift-by-≥-width, signed
+`MIN/-1` div wrapping past C++ UB, divide-by-zero/`halt`/fuel as per-thread
+trap statuses), with the interpreter's fuel discipline mirrored tick for tick
+so **IR steps — the canonical family cost (Q2) — are metered identically on
+CPU and GPU and asserted per input**. `GpuBatch` (fast-math off, unified
+memory) serves both E3 layouts on one kernel shape: one-cell × N-inputs and
+the **library × probe-set megakernel** — 245 cells × 16 probes in a single
+dispatch, zero disagreements. Gates and measurements (M3 Max, metering on):
+245 integer value cells × 10⁶ seeded inputs bit-exact on values, status, and
+steps; **3.7×10⁸ evals/s** one-cell peak (the ≥10⁸ target, cleared 3.7×);
+library launches ~140–180 ms flat (fixed fused-kernel cost — owed);
+divergence probe: wall time tracks the worst warp lane, so WCET-friendly ≈
+SIMT-friendly, as hypothesized. The batteries also caught a **real Apple
+Metal compiler bug** (integer divide + branch-guarded stores through a
+thread-reference param inverts the branch when not inlined) — bisected to a
+10-line repro, dodged structurally with noinline div helpers and pinned
+noinline cell functions: the shipped configuration is the validated one.
+Owed: the library-launch fixed cost, typed-state readback (455 state cells),
+`Body::Msl` + family-hash attestation (E6), f32 (E4), CUDA before H3.
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`

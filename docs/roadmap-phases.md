@@ -418,19 +418,27 @@ either outcome is a finding). A structural note promoted from its design work:
 as per-target descriptor refinements. Notation: this spec's WS-E..I are scoped to
 doc 14 (doc 13's WS-A..E are Phase 5's).
 
-**WS-E opened 2026-07-11 — E1 on Metal shipped** (ledger in doc 14 §6):
-`rustmsl`, the MSL sibling backend over the shared IR seam, a fast-math-off
-Metal batch executor (one thread per input triple), the R1 corner battery
-(shift-by-≥-width, signed-shift saturation, `MIN/-1` div wrapping, byte wrap,
-short-circuit-hidden traps — interpreter ≡ GPU on all of it), and the
-pre-registered E1 gate run clean: **173 straight-line integer value cells ×
-10⁶ seeded-random inputs (1.73×10⁸ evaluations), the full `[r0, r1, r2,
-status]` quad bit-exact against the reference interpreter, zero
-disagreements** (M3 Max, 266 s). Refusals are typed and counted, never
-silent: 69 loop cells await E2, 415 state cells await typed-state readback
-with E3's host integration, f32 is E4. *Owed next:* E2, E3's megakernel
-layouts + the throughput benchmark (no evals/s claim exists yet), and
-`Body::Msl` cartridge integration with family-hash attestation (E6).
+**WS-E opened 2026-07-11 — E1, E2, and E3 on Metal shipped same-day** (ledger
+in doc 14 §6): `rustmsl`, the MSL sibling backend over the shared IR seam.
+E1: straight-line integer cells, the R1 corner battery (shift-by-≥-width,
+signed-shift saturation, `MIN/-1` div wrapping, short-circuit-hidden traps).
+E2: loops/branches with the interpreter's fuel discipline mirrored tick for
+tick — **IR-step parity is asserted alongside value parity** (Q2 made
+operational), and a runaway loop is the same counted trap on both substrates.
+E3: both batch layouts on one kernel shape — one-cell × N-inputs and the
+**library × probe-set megakernel** (245 cells × 16 probes in one dispatch,
+zero disagreements). Measured on M3 Max with metering on: **3.7×10⁸ evals/s**
+one-cell peak (the ≥10⁸ target clears 3.7×); library launches are ~140–180 ms
+flat (fixed fused-kernel cost — owed); the divergence probe confirms
+WCET-friendly ≈ SIMT-friendly (wall time tracks the worst warp lane). The
+batteries also **caught a real Apple Metal compiler bug** — integer divide
+feeding a branch guarding stores through a thread-reference param inverts the
+branch in non-inlined functions — bisected to a 10-line repro and dodged
+structurally (noinline div helpers; cell functions pinned noinline so the
+shipped configuration is the validated one). 245 integer value cells clean;
+455 state cells await typed-state readback, f32 is E4. *Owed next:* the
+library-launch fixed cost, `Body::Msl` + family-hash attestation (E6),
+typed-state readback, CUDA before H3.
 
 ---
 
@@ -468,8 +476,9 @@ Phase 3 shipped alongside, as designed. Phase 4's Ins layer + peephole landed be
 the next dialect expansion, as required. Phase 6 (model-native cells, doc 14) is
 drafted with its own falsification ladder — the F2 routing gate precedes any
 training spend, and passed 2026-07-11 (probe-equipped paraphrase 0.859 vs the
-0.80 bar; checkpoint 21); WS-E opened the same day with E1 on Metal
-(`rustmsl`, 173 cells × 10⁶ inputs bit-exact vs the interpreter).
+0.80 bar; checkpoint 21); WS-E opened the same day and ran E1→E3 on Metal
+(`rustmsl`: 245 integer value cells bit-exact vs the interpreter on values
+*and* IR steps, the library×probes megakernel, 3.7×10⁸ evals/s measured).
 Phase 5 (multi-target) opened 2026-07-10;
 WS-A shipped whole in two days, WS-B's compiler is live in the battery behind a
 fuzz battery and a CI-required independent emission adversary, and WS-E's identity

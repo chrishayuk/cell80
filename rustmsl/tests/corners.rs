@@ -2,17 +2,24 @@
 //! interpreter, bit for bit, on exactly the corners where shading languages
 //! drift — shift-by-≥-width, signed arithmetic shift saturation, signed
 //! div/rem wrapping (`MIN/-1`), byte-width wrap, short-circuit evaluation
-//! hiding a trap, and the trap statuses themselves (divide-by-zero, `halt`).
+//! hiding a trap, and the trap statuses themselves (divide-by-zero, `halt`,
+//! fuel exhaustion). E2 widens it to loops: `while`/`for`/`loop`,
+//! `break`/`continue` (including `continue` reaching a `for`'s induction
+//! step), nested loops, and data-dependent iteration counts.
+//!
+//! Every case also asserts **IR-step parity**: the GPU's per-thread step
+//! count must equal the interpreter's `tick` count exactly — the canonical
+//! family cost (docs 14, Q2) metered on both substrates.
 //!
 //! Each case lowers a dialect snippet once, runs every input on a fresh
 //! interpreter and once as one GPU batch, and asserts the full
-//! `[r0, r1, r2, status]` quad agrees. Seeded xorshift inputs — no `rand`,
-//! fully reproducible (the `cell_fuzz` discipline).
+//! `[r0, r1, r2, status]` quad plus the step count agree. Seeded xorshift
+//! inputs — no `rand`, fully reproducible (the `cell_fuzz` discipline).
 
 #![cfg(target_os = "macos")]
 
 use cell80_core::{Interp, Target};
-use rustmsl::{GpuBatch, STATUS_DIV0, STATUS_HALT, STATUS_OK};
+use rustmsl::{steps_of, GpuBatch, STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK};
 
 /// The `cell_fuzz` xorshift — fixed seeds, no `rand`, fully reproducible.
 struct Rng(u64);
@@ -30,7 +37,7 @@ impl Rng {
     }
 }
 
-/// What the interpreter said, folded to the GPU's output quad shape.
+/// What the interpreter said, folded to the GPU's output shape.
 fn interp_quad(res: Result<Vec<u16>, String>) -> [u16; 4] {
     match res {
         Ok(v) => [
@@ -40,6 +47,7 @@ fn interp_quad(res: Result<Vec<u16>, String>) -> [u16; 4] {
             STATUS_OK,
         ],
         Err(e) if e.contains("divide by zero") => [0, 0, 0, STATUS_DIV0],
+        Err(e) if e.contains("fuel exhausted") => [0, 0, 0, STATUS_FUEL],
         Err(e) => {
             let code = e
                 .strip_prefix("interp: halt(")
@@ -52,7 +60,7 @@ fn interp_quad(res: Result<Vec<u16>, String>) -> [u16; 4] {
 }
 
 /// Lower `src`, run every input triple on interpreter and GPU, assert the
-/// quads agree bit for bit.
+/// quads and step counts agree bit for bit.
 fn check(src: &str, inputs: &[[u16; 3]]) {
     let file: syn::File =
         syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
@@ -64,17 +72,25 @@ fn check(src: &str, inputs: &[[u16; 3]]) {
     let gpu = GpuBatch::new(&module)
         .unwrap_or_else(|e| panic!("gpu pipeline failed: {e}\nmsl:\n{}", module.source));
     let got = gpu.run(inputs).expect("gpu run");
-    let n_args = module.params;
-    for (i, (args, gpu_quad)) in inputs.iter().zip(&got).enumerate() {
+    let n_args = module.cells[0].params;
+    for (i, (args, gpu_out)) in inputs.iter().zip(&got).enumerate() {
         let mut interp = Interp::new(
             &lowered.funcs,
             consts.iter().map(|(n, b)| (n.as_str(), b.as_slice())),
             Target::Cell.descriptor(),
         );
-        let want = interp_quad(interp.run("run", &args[..n_args]));
+        let res = interp.run("run", &args[..n_args]);
+        let want = interp_quad(res);
+        let want_steps = u32::try_from(interp.steps()).expect("steps fit u32");
+        let got_quad = [gpu_out[0], gpu_out[1], gpu_out[2], gpu_out[3]];
         assert_eq!(
-            *gpu_quad, want,
-            "case {i}: args {args:?} — gpu {gpu_quad:?} != interpreter {want:?}\nsrc: {src}"
+            got_quad, want,
+            "case {i}: args {args:?} — gpu {got_quad:?} != interpreter {want:?}\nsrc: {src}"
+        );
+        assert_eq!(
+            steps_of(gpu_out),
+            want_steps,
+            "case {i}: args {args:?} — gpu steps != interpreter steps\nsrc: {src}"
         );
     }
 }
@@ -97,6 +113,8 @@ fn sweep(seed: u64, n: usize) -> Vec<[u16; 3]> {
     }
     v
 }
+
+// ── E1: straight-line corners ──────────────────────────────────────────────
 
 #[test]
 fn shift_var_by_ge_width_matches_interp() {
@@ -161,7 +179,7 @@ fn signed_compare_orders_by_twos_complement() {
 
 #[test]
 fn short_circuit_hides_the_divide() {
-    // `b / a` must not run (or trap) when `a == 0` short-circuits it away.
+    // `b / a` must not run (or trap, or tick) when `a == 0` short-circuits it.
     check(
         "fn run(a: u16, b: u16) -> u16 { if a > 0 && b / a > 2 { 1 } else { 0 } }",
         &sweep(0x5eed_0008, 4000),
@@ -227,14 +245,86 @@ fn helper_call_through_the_slot_file() {
     );
 }
 
+// ── E2: loops and branches ─────────────────────────────────────────────────
+
 #[test]
-fn loops_refuse_with_a_typed_error() {
-    let src = "fn run(x: u16) -> u16 { let mut s = 0; let mut i = 0; while i < x { s = s + i; i = i + 1; } s }";
-    let file: syn::File = syn::parse_str(src).unwrap();
-    let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default()).unwrap();
-    let err = rustmsl::compile(&lowered.funcs, &lowered.const_data(), "run").unwrap_err();
-    assert!(
-        err.contains("E2") && err.contains("straight-line"),
-        "want a typed E2 refusal, got: {err}"
+fn while_gcd_data_dependent_iterations() {
+    // The canonical data-dependent loop count — the divergence shape E2 is
+    // about. Steps parity proves the iteration count matched exactly.
+    check(
+        "fn run(a: u16, b: u16) -> u16 { let mut x = a; let mut y = b; while y != 0 { let t = x % y; x = y; y = t; } x }",
+        &sweep(0x5eed_0010, 4000),
+    );
+}
+
+#[test]
+fn for_range_accumulates() {
+    check(
+        "fn run(n: u16, k: u16) -> u16 { let mut s = 0; for i in 0..(n & 255) { s = s + i + k; } s }",
+        &sweep(0x5eed_0011, 3000),
+    );
+}
+
+#[test]
+fn continue_reaches_the_induction_step() {
+    // The do-while(false) wrapper: `continue` must land on the step, not the
+    // condition — an infinite loop (and a steps mismatch) if it doesn't.
+    check(
+        "fn run(n: u16, m: u16) -> u16 { let mut s = 0; for i in 0..(n & 127) { if i % 3 == 0 { continue; } if i == m { continue; } s = s + i; } s }",
+        &sweep(0x5eed_0012, 3000),
+    );
+}
+
+#[test]
+fn break_exits_the_right_loop() {
+    check(
+        "fn run(n: u16, k: u16) -> u16 { let mut s = 0; for i in 0..(n & 255) { if i > k { break; } s = s + 1; } while s > 40000 { s = s - 7; break; } s }",
+        &sweep(0x5eed_0013, 3000),
+    );
+}
+
+#[test]
+fn nested_loops_with_inner_break_and_continue() {
+    check(
+        "fn run(a: u16, b: u16) -> u16 { let mut s = 0; for i in 0..(a & 31) { for j in 0..(b & 31) { if j == i { continue; } if j > 20 { break; } s = s + 1; } if s > 400 { break; } } s }",
+        &sweep(0x5eed_0014, 2000),
+    );
+}
+
+#[test]
+fn loop_with_break_value_shape() {
+    check(
+        "fn run(x: u16) -> u16 { let mut v = x | 1; let mut n = 0; loop { if v == 1 { break; } if v % 2 == 0 { v = v / 2; } else { v = (v & 8191) * 3 + 1; } n = n + 1; if n > 400 { break; } } n }",
+        &sweep(0x5eed_0015, 2000),
+    );
+}
+
+#[test]
+fn byte_loop_variable_wraps() {
+    // A u8 induction variable: the step masks to the variable's width.
+    check(
+        "fn run(n: u16) -> u16 { let mut s = 0; let mut i: u8 = 250; while i != 4 { i = i + 1; s = s + 1; if s > 300 { break; } } s + (n & 0) }",
+        &sweep(0x5eed_0016, 1000),
+    );
+}
+
+#[test]
+fn prelude_kernels_loop_on_the_gpu() {
+    // gcd/isqrt from the shared prelude — helper calls that themselves loop.
+    check(
+        "fn gcd(a: u16, b: u16) -> u16 { let mut x = a; let mut y = b; while y != 0u16 { let t = x % y; x = y; y = t; } x }\n\
+         fn isqrt(n: u16) -> u16 { let mut r = 0u16; while r < 255u16 && (r + 1u16) * (r + 1u16) <= n { r = r + 1u16; } r }\n\
+         fn run(a: u16, b: u16) -> u16 { gcd(a, b) + isqrt(a) }",
+        &sweep(0x5eed_0017, 3000),
+    );
+}
+
+#[test]
+fn runaway_loop_is_a_fuel_trap_on_both_sides() {
+    // The budget bound (E2): a loop that never exits burns exactly FUEL steps
+    // on both substrates and surfaces as the same trap — never a hung dispatch.
+    check(
+        "fn run(x: u16) -> u16 { let mut s = 0; loop { s = s + 1; if x > 65534 { if s == 0 { break; } } } s }",
+        &[[1, 0, 0], [65535, 0, 0]],
     );
 }
