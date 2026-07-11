@@ -161,6 +161,22 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     Overall P@1 (0.7034) now exceeds checkpoint 1's own overall (0.6974) despite the
     library growing 114→163 cells. The kill-gate concern raised at checkpoint 10 is
     resolved, not just mitigated.
+  - Checkpoints 13-16 (203→209 cells: the GSM8K math campaign's second slice + retrieval
+    recovery, third slice, fourth slice) are recorded in `library-scale-curve.json` but
+    were narrated in `docs/library-growth.md`'s own prose (the "second slice"/"third
+    slice"/"fourth slice" pack notes) rather than backfilled here — not duplicating that
+    account.
+  - **Checkpoint 17 (`checkpoint-17-workflow-batch`, 395 cells, commit `3e757f9`,
+    2026-07-11) — recorded after a long gap.** No checkpoint was taken between here and
+    checkpoint 16 despite 186 cells landing (the math-server mining campaign, waves 6-14,
+    plus two ecosystem-mining/family-expansion batches) — a real process gap, not a
+    deliberate skip. P@1 direct 0.8202 / paraphrase 0.3887 / adversarial 0.4167 (797 cases).
+    Against checkpoint 1's baseline (114 cells): paraphrase essentially flat (0.4247 →
+    0.3887, −3.6 pts), **adversarial still above it** (0.3939 → 0.4167, +2.3 pts) — after
+    the library grew 3.5×. The kill-gate does not trip. Full account, including the
+    checkpoint-16→17 adversarial dip (−8.3 pts, likely the same same-shape-sibling effect
+    checkpoint 12 already diagnosed as text-search-unfixable) in `docs/library-growth.md`'s
+    "Checkpoint 17" note.
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

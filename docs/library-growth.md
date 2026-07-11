@@ -719,23 +719,37 @@ cell purely for arg count (4 fields: two 2D vectors), not width.
 
 - **scoring / choice — second slice landed** (see the pack note above): `weighted_sum2`,
   `weighted_sum3`, `choose_best3`, `is_clear_winner`. `score_2factor` folded into
-  `weighted_sum2`'s tags (identical formula); `choose_best4` and `tie_break_*` still open
-  (the former is a straightforward generalization when a 4th candidate is actually
-  needed; the latter is under-specified — no concrete use case beyond what
-  `argmax3`/`choose_best3`/`mode3` already bake in).
+  `weighted_sum2`'s tags (identical formula). **`choose_best4`/`weighted_sum4` landed in the
+  90-cell workflow batch** (2026-07-11, "Systematic family expansion" above) — the
+  straightforward 4-candidate generalization, built once the pattern was clearly repeated.
+  `tie_break_*` still open, still under-specified — no concrete use case beyond what
+  `argmax3`/`choose_best3`/`mode3` already bake in.
 - **vector, still open**: `cosine_score_approx` (see above — blocked on an overflow-safe
-  fixed-point sqrt-of-a-product).
+  fixed-point sqrt-of-a-product; the 90-cell batch added `dot3`/`norm3_sq`, the 3D siblings
+  of the 2D vector ops, but didn't touch this blocker).
 - **stateful / RNG — first slice landed** (see the pack note above): `lcg_next`,
   `xorshift16`, `counter_step`. `bounded_rand` was checked against `docs/cell-index.md`
   and found to be an exact duplicate of `safe_mod` — not built. (`ema_update`/
   `moving_avg_update` — skip, `q_lerp` already is this: `q_lerp(prev, sample, alpha)` is
-  one EMA step.)
+  one EMA step.) **`xorshift32`/`counter_step_u32`/`pingpong_step` landed in the 90-cell
+  batch** — wide/new siblings of the same family.
 - **time / budget** — checked against `docs/cell-index.md` before building: `used_percent` is
   `percent`, `fits_budget` is `is_le`, `cooldown_remaining` is `sub_sat`, `time_until` is
   `sub_sat`, `deadline_missed` is `is_ge` — all aliases, none of these get built as new cells.
 - **signed deltas — first slice landed** (see the pack note above): `sign_i16`, `abs_i16`,
   `clamp_i16`, `apply_delta_clamped`. `lerp_i16` still open (signed multiply/divide
-  rounding direction and overflow safety not yet worked out).
+  rounding direction and overflow safety not yet worked out — though the 90-cell batch's
+  `negate_i16`/`min_i16`/`max_i16`/`abs_diff_i16` and, separately, `linear_solve_1var`/
+  `linear_eq_holds`'s sign-magnitude pattern make the "not yet worked out" part more
+  tractable than when this was first written).
+- **array-state-field gap, still open (confirmed, not just suspected)** — blocks the whole
+  sliding-window family (`simple_moving_average`, `weighted_moving_average`,
+  `rolling_variance`, `rolling_std`) and percentile-from-histogram. A hand-authored,
+  logic-verified `simple_moving_average` sits unlanded in
+  `experiments/sliding-window-state-cells/` pending a real named array/buffer round-trip
+  design (the same primitive Phase S3's `bytes[N]`/`str[N]` I/O needs and never built) — see
+  `experiments/sliding-window-state-cells-findings.md` for the open design questions. This is
+  a design task, not an authoring one; the 90-cell batch deliberately didn't touch it.
 
 ## Phase 2.3 — growing toward ~1,000 cells
 
@@ -962,6 +976,32 @@ intended mechanism for further growth is **precipitation**: M2/M3 (the plan IR, 
 hand-guessed candidates. That work is in progress (`feat/cell-solve`). Every hand-authored
 batch so far has cost real, only partially-recovered retrieval precision; cells with
 demonstrated use are worth that cost, more speculative ones may not be.
+
+**Checkpoint 17 (2026-07-11, 395 cells, commit `3e757f9`) — a long-overdue re-check after a
+big, untracked gap.** No checkpoint was recorded between here and checkpoint 16 (209 cells)
+despite 186 cells landing in between: the entire math-server mining campaign (waves 6-14,
+209→303/310) and both ecosystem-mining/family-expansion batches this session (310→313→395)
+ran without an intermediate retrieval read-out — a real process gap, not a deliberate skip;
+flagged so the next grower doesn't inherit the same blind spot. The numbers, run and recorded
+before deciding what to build next rather than after: overall P@1 0.6098, direct 0.8202,
+paraphrase 0.3887, adversarial 0.4167 (`cell-eval retrieval`, 797 cases across 395 cells).
+Against checkpoint 16 (209 cells): direct and overall are essentially flat (both within half a
+point), **paraphrase actually improved** (0.3631 → 0.3887, +2.6 points) despite the library
+nearly doubling, and **adversarial dipped** (0.5000 → 0.4167, −8.3 points) — the one number
+worth flagging, though a 186-cell, multi-session gap between measurements makes it impossible
+to attribute to any single batch. Against checkpoint 1's original baseline (114 cells: direct
+0.94 / paraphrase 0.42 / adversarial 0.39) — the actual reference the kill-gate rule
+watches — **paraphrase is essentially flat** (0.4247 → 0.3887, −3.6 points) and
+**adversarial is still above it** (0.3939 → 0.4167, +2.3 points), after the library grew
+114 → 395 (3.5×). **The kill-gate does not trip**: the rule explicitly watches paraphrase/
+adversarial against the checkpoint-1 floor, not direct, and not the most recent checkpoint —
+by that letter, retrieval has held up remarkably well through the library more than tripling.
+The adversarial dip since checkpoint 16 is consistent with the project's standing diagnosis
+(same-shape sibling families — more of them now, after two batches deliberately built missing
+siblings — are a text-search-unfixable class; see checkpoint 12's `TypeLedIndex` finding
+above), not a new problem. Full report: `cell-eval/baselines/library-scale-curve.json`'s
+checkpoint 17 entry (797 cases, every query/rank/hit recorded, not just the summary numbers
+quoted here).
 
 **MATH/AIME pack, first slice (2026-07-05) — the pause above deliberately overridden on
 request.** The pause and `docs/math-campaign-spec.md`'s own gating ("MATH/AIME packs...
