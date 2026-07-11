@@ -100,9 +100,12 @@ def build_server() -> ChukMCPServer:
         description="Run a cell by id. For a plain cell pass `args` (u16 ints, in signature "
         "order). For a STATE cell — one whose manifest lists `state` fields, e.g. manhattan — "
         "pass `fields` as {name: int} to drive it by name; the reply then includes the full "
-        "post-run `state`. Returns result + regs + cost (cycles, trapped_ops) + halt. "
-        "halt='escalate' is a typed hand-off, NOT an error: the cell declares the request "
-        "exceeds its kernel class (`escalate` names why — needs_strings/needs_floats/"
+        "post-run `state`. An ARRAY state field (u16[N]/u32[N], e.g. simple_moving_average's "
+        "window) takes a list: {value: 10, window: [0,0,0,0,0,0,0,0], ...} — and reads back "
+        "as one; to persist state across calls, feed the returned `state` (arrays included) "
+        "into the next call's `fields`. Returns result + regs + cost (cycles, trapped_ops) + "
+        "halt. halt='escalate' is a typed hand-off, NOT an error: the cell declares the "
+        "request exceeds its kernel class (`escalate` names why — needs_strings/needs_floats/"
         "needs_io/...); route the request to a more capable tool instead of retrying. The "
         "runner stays warm across calls.",
     )

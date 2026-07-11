@@ -53,6 +53,21 @@ def test_tool_bodies_cover_all_four_verbs():
     assert "error" in h["cell_compose"]([{"cell": "weighted_sum", "args": [1, 2]}])  # bad arity
 
 
+def test_cell_run_drives_array_state_fields_as_lists():
+    # The `.cell` v11 array-state surface end-to-end through the MCP tool body:
+    # a sliding-window cell's window rides as a JSON list, reads back as one, and
+    # feeding the returned state into the next call persists it — avg 10, then 15.
+    h = _handlers()
+    first = h["cell_run"]("simple_moving_average", fields={"value": 10})
+    assert first["result"] == 10
+    assert first["state"]["window"] == [10, 0, 0, 0, 0, 0, 0, 0]
+    feed = dict(first["state"])
+    feed["value"] = 20
+    second = h["cell_run"]("simple_moving_average", fields=feed)
+    assert second["result"] == 15  # (10 + 20) / 2 — the window persisted by name
+    assert second["state"]["window"] == [10, 20, 0, 0, 0, 0, 0, 0]
+
+
 def test_library_is_a_cached_singleton():
     assert server.library() is server.library()
 

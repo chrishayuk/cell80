@@ -289,9 +289,13 @@ impl CellHost {
         Ok(d)
     }
 
-    /// Drive a loaded **state cell by field name**: `fields` is `{name: int}`. Returns
+    /// Drive a loaded **state cell by field name**: `fields` is `{name: int}` — or, for a
+    /// cell with `u16[N]`/`u32[N]` array state fields (`.cell` v11), `{name: int | list[int]}`
+    /// (arrays as lists; a short list zero-fills its envelope). Returns
     /// `{result, regs, cycles, trapped_ops, halt, state: {name: value}}`, where `state` is the
-    /// full post-run struct read back by name. The JSON↔state surface — no raw addresses.
+    /// full post-run struct read back by name, array fields as lists. The JSON↔state
+    /// surface — no raw addresses. Any list present routes through the array-capable values
+    /// lane; all-scalar calls keep the exact scalar path.
     #[pyo3(signature = (handle, fields, cycles=2_000_000))]
     fn run_state<'py>(
         &mut self,
@@ -300,13 +304,22 @@ impl CellHost {
         fields: &Bound<'py, PyDict>,
         cycles: u64,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut named = Vec::with_capacity(fields.len());
+        use cell80::FieldValue;
+        let mut values = Vec::with_capacity(fields.len());
         for (k, v) in fields.iter() {
-            named.push((k.extract::<String>()?, v.extract::<u64>()?));
+            let name = k.extract::<String>()?;
+            if let Ok(list) = v.extract::<Vec<u64>>() {
+                values.push((name, FieldValue::Array(list)));
+            } else {
+                values.push((name, FieldValue::Scalar(v.extract::<u64>()?)));
+            }
         }
+        // The values lane serves scalar-only cells identically (this verb was never
+        // the cached path — that's `run_state_fast`, which stays scalar-only), so
+        // one lane covers both and an array-state cell is always driven correctly.
         let (rep, state) = self
             .host
-            .run_state(handle, &named, cycles)
+            .run_state_values(handle, &values, cycles)
             .map_err(PyValueError::new_err)?;
         let d = PyDict::new_bound(py);
         d.set_item("result", rep.result)?;
@@ -316,7 +329,10 @@ impl CellHost {
         set_halt(&d, rep.halt)?;
         let sd = PyDict::new_bound(py);
         for (name, val) in state {
-            sd.set_item(name, val)?;
+            match val {
+                FieldValue::Scalar(v) => sd.set_item(name, v)?,
+                FieldValue::Array(vs) => sd.set_item(name, vs)?,
+            }
         }
         d.set_item("state", sd)?;
         Ok(d)
@@ -325,6 +341,8 @@ impl CellHost {
     /// The **cached** state-cell hot path (docs/12 §2): like `run_state`, but through the
     /// memo table when `set_cache(True)` — repeated identical field sets become hash
     /// lookups. Returns `{result, regs, cycles, trapped_ops, halt, state: {name: value}}`.
+    /// Scalar-only by design (the memo value shape feeds `.facts`): array-state cells —
+    /// and list values — are refused with a pointer at `run_state`.
     #[pyo3(signature = (handle, fields, cycles=2_000_000))]
     fn run_state_fast<'py>(
         &mut self,
@@ -335,7 +353,14 @@ impl CellHost {
     ) -> PyResult<Bound<'py, PyDict>> {
         let mut named = Vec::with_capacity(fields.len());
         for (k, v) in fields.iter() {
-            named.push((k.extract::<String>()?, v.extract::<u64>()?));
+            let name = k.extract::<String>()?;
+            if v.extract::<Vec<u64>>().is_ok() {
+                return Err(PyValueError::new_err(format!(
+                    "field `{name}` is a list — run_state_fast is the scalar-only \
+                     cached lane; drive array state fields through run_state"
+                )));
+            }
+            named.push((name, v.extract::<u64>()?));
         }
         let (f, state) = self
             .host
