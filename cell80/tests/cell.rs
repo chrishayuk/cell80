@@ -1435,7 +1435,7 @@ fn array_state_named_surface() {
     // element offset. State persistence is host re-feed, arrays included.
     let mut cell = StateCell::bind(SMA_SRC, "SimpleMovingAverage", None).unwrap();
 
-    let mut step = |cell: &mut StateCell, value: u64| -> u64 {
+    let step = |cell: &mut StateCell, value: u64| -> u64 {
         // Re-feed the prior run's full state (the first call feeds the zero state).
         let window = cell.get_array("window").unwrap();
         let head = cell.get("head").unwrap();
