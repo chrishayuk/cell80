@@ -1,4 +1,4 @@
-//! Manhattan distance between two grid points with signed (i16) coordinates: dx + dy into a wide u32 dist field, each coordinate difference computed via an excess-32768 shift feeding the shared iabs_diff kernel (the geom_distance_3d/orientation2d/slope_fraction technique) -- the signed sibling manhattan/manhattan_wide/chebyshev/euclid_sq lack, since their u16-only fields can't take an origin-centered coordinate at all.
+//! Manhattan distance for signed (i16) grid coordinates: each difference goes through an excess-32768 shift into the shared iabs_diff kernel, dx + dy accumulated wide (u32 dist field) — origin-centered points welcome.
 //! tags: grid, distance, spatial, score, navigation, signed, i16, wide, u32
 //! entry: PtsSigned::run
 struct PtsSigned { x1: i16, y1: i16, x2: i16, y2: i16, dist: u32 }

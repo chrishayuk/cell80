@@ -1,4 +1,4 @@
-//! Manhattan distance between two grid points: dx + dy, into a wide u32 dist field so two extreme-apart u16 coordinates can't silently wrap past u16 the way manhattan's u16 dist field can.
+//! Manhattan distance between two grid points with a wide u32 dist field: dx + dy stays exact where far-apart u16 coordinates would wrap a u16 result.
 //! tags: grid, distance, spatial, score, navigation, wide, u32, large
 //! entry: Pts::run
 struct Pts { x1: u16, y1: u16, x2: u16, y2: u16, dist: u32 }
