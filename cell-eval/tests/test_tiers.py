@@ -88,9 +88,12 @@ def test_embedder_static_and_cell_potion_paths(monkeypatch):
     # encode_cached: repeated docs hit the cache (same vectors back).
     c = e.encode_cached(["min of two", "min of two"])
     assert (c[0] == c[1]).all()
-    # "cell-potion" resolves to the local trained-artifact path before loading.
+    # "cell-potion" resolves to the local trained-artifact path before loading
+    # (compare path parts, not the string — Windows separators differ).
+    import pathlib
+
     Embedder("cell-potion")
-    assert seen[-1].endswith("potion/model"), seen
+    assert pathlib.PurePath(seen[-1]).parts[-2:] == ("potion", "model"), seen
 
 
 def test_embedder_ollama_backend_offline(monkeypatch):
