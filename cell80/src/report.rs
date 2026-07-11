@@ -110,8 +110,8 @@ impl Halt {
     }
 }
 
-/// A typed state-field kind: a scalar width for typed memory read-back, or (ABI v3)
-/// a fixed-capacity buffer.
+/// A typed state-field kind: a scalar width for typed memory read-back, (ABI v3)
+/// a fixed-capacity buffer, or (`.cell` v11) a fixed-length scalar array.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ty {
     U8,
@@ -130,10 +130,69 @@ pub enum Ty {
     /// converts with `f32::from_bits`/`to_bits`); the typed distinction keeps f32
     /// state from silently posing as an integer.
     F32,
+    /// `u16[N]` / `u32[N]` — a fixed-length scalar-array state field (`.cell` v11):
+    /// `N` little-endian elements of the given width at the field address, one
+    /// element per slot (`u16`) or per two slots (`u32`). Driven whole through the
+    /// array surface (`StateCell::set_array`/`get_array`, `run_state_values`); the
+    /// scalar `set`/`get`/input-triple paths reject it so an array can never
+    /// silently ride (or be misread as) a scalar.
+    Array(ArrayElem, u16),
+}
+
+/// The element width of a [`Ty::Array`] state field. `u8` arrays stay
+/// [`Ty::Bytes`] (byte-packed, Phase S); `[f32; N]` fields don't compile in the
+/// dialect yet, so there is deliberately no `F32` element.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArrayElem {
+    U16,
+    U32,
+}
+
+impl ArrayElem {
+    /// The element's byte width (2 or 4).
+    pub fn bytes(self) -> u16 {
+        match self {
+            ArrayElem::U16 => 2,
+            ArrayElem::U32 => 4,
+        }
+    }
+    /// The element as a scalar [`Ty`] (for per-element input triples / peeks).
+    pub fn scalar_ty(self) -> Ty {
+        match self {
+            ArrayElem::U16 => Ty::U16,
+            ArrayElem::U32 => Ty::U32,
+        }
+    }
+    /// The one-byte wire sub-code that follows [`Ty::Array`]'s code 6 (reuses the
+    /// scalar codes: `0` = u16, `1` = u32).
+    pub fn code(self) -> u8 {
+        match self {
+            ArrayElem::U16 => 0,
+            ArrayElem::U32 => 1,
+        }
+    }
+    /// Decode a wire sub-code.
+    pub fn from_code(c: u8) -> Result<ArrayElem, String> {
+        match c {
+            0 => Ok(ArrayElem::U16),
+            1 => Ok(ArrayElem::U32),
+            other => Err(format!("unknown array element code {other}")),
+        }
+    }
+}
+
+/// A named state-field value crossing the host boundary: a scalar (at the field's
+/// own width; f32 as raw bits) or a whole array field, element values in order.
+/// The array lane of the typed-state surface — see `CellHost::run_state_values`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FieldValue {
+    Scalar(u64),
+    Array(Vec<u64>),
 }
 
 impl Ty {
-    /// Parse `u8`/`u16`/`u32`, or the v3 buffer forms `bytes[N]`/`str[N]`.
+    /// Parse `u8`/`u16`/`u32`, the v3 buffer forms `bytes[N]`/`str[N]`, or the v11
+    /// array forms `u16[N]`/`u32[N]`.
     pub fn parse(s: &str) -> Result<Ty, String> {
         match s {
             "u8" => Ok(Ty::U8),
@@ -141,26 +200,30 @@ impl Ty {
             "u32" => Ok(Ty::U32),
             "f32" => Ok(Ty::F32),
             other => {
-                let buf = |prefix: &str| -> Option<Result<Ty, String>> {
+                let sized = |prefix: &str, mk: fn(u16) -> Ty| -> Option<Result<Ty, String>> {
                     let inner = other.strip_prefix(prefix)?.strip_suffix(']')?;
                     Some(match inner.parse::<u16>() {
-                        Ok(n) if prefix.starts_with("bytes") => Ok(Ty::Bytes(n)),
-                        Ok(n) => Ok(Ty::Str(n)),
+                        Ok(n) => Ok(mk(n)),
                         Err(_) => Err(format!("bad capacity in `{other}`")),
                     })
                 };
-                buf("bytes[").or_else(|| buf("str[")).unwrap_or_else(|| {
-                    Err(format!(
-                        "unknown type `{other}` (want u8/u16/u32/bytes[N]/str[N])"
-                    ))
-                })
+                sized("bytes[", Ty::Bytes)
+                    .or_else(|| sized("str[", Ty::Str))
+                    .or_else(|| sized("u16[", |n| Ty::Array(ArrayElem::U16, n)))
+                    .or_else(|| sized("u32[", |n| Ty::Array(ArrayElem::U32, n)))
+                    .unwrap_or_else(|| {
+                        Err(format!(
+                            "unknown type `{other}` (want u8/u16/u32/f32/bytes[N]/str[N]/u16[N]/u32[N])"
+                        ))
+                    })
             }
         }
     }
 
     /// The one-byte wire code (the `.cell` manifest's `state_addrs` encoding).
-    /// Buffer codes (`3`/`4`) are followed on the wire by a u16 capacity —
-    /// format v6+ only (see `cartridge.rs`).
+    /// Buffer codes (`3`/`4`) are followed on the wire by a u16 capacity (format
+    /// v6+); the array code (`6`) by an element sub-code byte + u16 element count
+    /// (format v11+) — see `cartridge.rs`.
     pub fn code(self) -> u8 {
         match self {
             Ty::U16 => 0,
@@ -169,11 +232,13 @@ impl Ty {
             Ty::Bytes(_) => 3,
             Ty::Str(_) => 4,
             Ty::F32 => 5,
+            Ty::Array(..) => 6,
         }
     }
 
     /// Decode a [`code`](Ty::code) byte; buffer codes take the capacity that
-    /// followed on the wire.
+    /// followed on the wire. Code 6 (array) carries an element sub-code too —
+    /// decode it with [`Ty::array_from_wire`], not here.
     pub fn from_code(c: u8, capacity: u16) -> Result<Ty, String> {
         match c {
             0 => Ok(Ty::U16),
@@ -182,14 +247,33 @@ impl Ty {
             3 => Ok(Ty::Bytes(capacity)),
             5 => Ok(Ty::F32),
             4 => Ok(Ty::Str(capacity)),
+            6 => Err("state-field code 6 (array) needs its element sub-code — \
+                      decode with Ty::array_from_wire"
+                .into()),
             other => Err(format!("unknown state-field type code {other}")),
         }
     }
 
-    /// `Some(N)` for the v3 buffer kinds; `None` for scalars.
+    /// Decode the v11 array wire form: code 6, then `elem` sub-code, then `len`.
+    pub fn array_from_wire(elem: u8, len: u16) -> Result<Ty, String> {
+        Ok(Ty::Array(ArrayElem::from_code(elem)?, len))
+    }
+
+    /// `Some(N)` for the non-scalar kinds — the v3 buffers (`N` = byte capacity)
+    /// and the v11 arrays (`N` = element count); `None` for scalars. Every scalar
+    /// path guards on this, so arrays inherit the buffers' "never rides a scalar
+    /// triple" safety; array-aware surfaces opt in via [`Ty::array_dims`].
     pub fn capacity(self) -> Option<u16> {
         match self {
-            Ty::Bytes(n) | Ty::Str(n) => Some(n),
+            Ty::Bytes(n) | Ty::Str(n) | Ty::Array(_, n) => Some(n),
+            _ => None,
+        }
+    }
+
+    /// `Some((elem, len))` for an array field; `None` otherwise.
+    pub fn array_dims(self) -> Option<(ArrayElem, u16)> {
+        match self {
+            Ty::Array(e, n) => Some((e, n)),
             _ => None,
         }
     }
@@ -204,6 +288,8 @@ impl std::fmt::Display for Ty {
             Ty::Bytes(n) => write!(f, "bytes[{n}]"),
             Ty::Str(n) => write!(f, "str[{n}]"),
             Ty::F32 => write!(f, "f32"),
+            Ty::Array(ArrayElem::U16, n) => write!(f, "u16[{n}]"),
+            Ty::Array(ArrayElem::U32, n) => write!(f, "u32[{n}]"),
         }
     }
 }

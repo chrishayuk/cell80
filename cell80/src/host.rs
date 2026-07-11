@@ -562,6 +562,17 @@ impl CellHost {
         if l.state_addrs.is_empty() {
             return Err("cell has no named state (not a state cell)".into());
         }
+        // An array-state cell must fail loudly here, not run with its window
+        // silently unfed and return a plausible wrong answer — the exact trap the
+        // sliding-window experiment pinned down. The memoized read-back is
+        // scalar-shaped anyway; array cells take the uncached values lane.
+        if let Some((name, _, ty)) = l.state_addrs.iter().find(|(_, _, t)| t.array_dims().is_some())
+        {
+            return Err(format!(
+                "cell has array state field `{name}: {ty}` — drive it with \
+                 run_state_values (pass arrays as lists)"
+            ));
+        }
         let entry = l.entry.clone();
         let addrs = l.state_addrs.clone();
         let mut inputs = Vec::with_capacity(fields.len());
@@ -594,6 +605,16 @@ impl CellHost {
         if l.state_addrs.is_empty() {
             return Err("cell has no named state (not a state cell)".into());
         }
+        // Same loud-failure rule as `run_state_fast`: a scalar-only caller driving
+        // an array-state cell would compute over an unfed window — refuse and point
+        // at the values lane instead.
+        if let Some((name, _, ty)) = l.state_addrs.iter().find(|(_, _, t)| t.array_dims().is_some())
+        {
+            return Err(format!(
+                "cell has array state field `{name}: {ty}` — drive it with \
+                 run_state_values (pass arrays as lists)"
+            ));
+        }
         let entry = l.entry.clone();
         let addrs = l.state_addrs.clone();
         // Resolve each named input to its address, at the field's own width — a `u32`
@@ -614,6 +635,76 @@ impl CellHost {
         let reads: Vec<(String, u16, Ty)> =
             addrs.iter().map(|(n, a, t)| (n.clone(), *a, *t)).collect();
         let state = l.runner.read_named(&reads);
+        Ok((report, state))
+    }
+
+    /// Drive a state cell by field name with **value envelopes** — the array-capable
+    /// sibling of [`run_state`](Self::run_state). Scalar fields take
+    /// [`FieldValue::Scalar`] (the field's own width; f32 as raw bits); a
+    /// `u16[N]`/`u32[N]` array field takes [`FieldValue::Array`] (up to `N` element
+    /// values — unsupplied trailing elements read as 0, longer than declared is an
+    /// error). Reads **every** addressable field back, arrays whole. Uncached by
+    /// design: a windowed cell's inputs change every call, so the memo table would
+    /// be dead weight (and the `.facts` export stays scalar-shaped) — the follow-up
+    /// is noted on `run_state_fast`.
+    pub fn run_state_values(
+        &mut self,
+        handle: usize,
+        fields: &[(String, FieldValue)],
+        budget: u64,
+    ) -> Result<(Report, Vec<(String, FieldValue)>), String> {
+        let l = self.loaded(handle)?;
+        if l.state_addrs.is_empty() {
+            return Err("cell has no named state (not a state cell)".into());
+        }
+        let entry = l.entry.clone();
+        let addrs = l.state_addrs.clone();
+        let mut inputs = Vec::with_capacity(fields.len());
+        for (name, val) in fields {
+            let (addr, ty) = addrs
+                .iter()
+                .find(|(n, _, _)| n == name)
+                .map(|(_, a, t)| (*a, *t))
+                .ok_or_else(|| format!("no state field `{name}`"))?;
+            match (val, ty.array_dims()) {
+                (FieldValue::Scalar(v), None) => {
+                    if ty.capacity().is_some() {
+                        return Err(format!(
+                            "field `{name}` is {ty} — a buffer; the byte-buffer I/O \
+                             surface arrives with Phase S3"
+                        ));
+                    }
+                    inputs.push((addr, ty, *v));
+                }
+                (FieldValue::Array(vals), Some((elem, len))) => {
+                    if vals.len() > len as usize {
+                        return Err(format!(
+                            "field `{name}` is {ty} — {} values won't fit",
+                            vals.len()
+                        ));
+                    }
+                    for (i, &v) in vals.iter().enumerate() {
+                        inputs.push((addr + i as u16 * elem.bytes(), elem.scalar_ty(), v));
+                    }
+                }
+                (FieldValue::Scalar(_), Some(_)) => {
+                    return Err(format!(
+                        "field `{name}` is {ty} — pass it as an array, not a scalar"
+                    ))
+                }
+                (FieldValue::Array(_), None) => {
+                    return Err(format!(
+                        "field `{name}` is {ty} — pass it as a scalar, not an array"
+                    ))
+                }
+            }
+        }
+        let report = l
+            .runner
+            .run_with_inputs(Some(&entry), &[STATE_BASE], &inputs, budget)?;
+        let reads: Vec<(String, u16, Ty)> =
+            addrs.iter().map(|(n, a, t)| (n.clone(), *a, *t)).collect();
+        let state = l.runner.read_named_values(&reads);
         Ok((report, state))
     }
 

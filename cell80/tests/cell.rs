@@ -1363,17 +1363,17 @@ fn struct_layout_offsets() {
         }
     );
     assert_eq!(l[1].offset, 1); // y
-    // arr — a true word array: 4 slots, marked word_len so the named-state surface
-    // can address it (a tuple/nested-struct field of the same slot count stays None).
+                                // arr — a true word array: 4 slots, marked word_len so the named-state surface
+                                // can address it (a tuple/nested-struct field of the same slot count stays None).
     assert_eq!((l[2].offset, l[2].slots, l[2].word_len), (2, 4, Some(4)));
     assert_eq!((l[3].offset, l[3].slots, l[3].dword), (6, 2, true)); // total — a wide u32
-    // wides — wide-elemented, not a wide scalar: dword must NOT fire, wide_len does.
+                                                                     // wides — wide-elemented, not a wide scalar: dword must NOT fire, wide_len does.
     assert_eq!(
         (l[4].offset, l[4].slots, l[4].dword, l[4].wide_len),
         (8, 6, false, Some(3))
     );
     assert_eq!(l[5].offset, 14); // score, after the wide array's six slots
-    // A tuple field has slots > 1 but is NOT a word array — word_len stays None.
+                                 // A tuple field has slots > 1 but is NOT a word array — word_len stays None.
     let t = rustz80::struct_layout("struct T { p: (u16, u16), q: u16 }", "T").unwrap();
     assert_eq!((t[0].slots, t[0].word_len), (2, None));
     assert!(rustz80::struct_layout(src, "Nope").is_err());
@@ -1408,6 +1408,148 @@ fn typed_io_named_loop() {
         )
         .unwrap();
     assert_eq!(rep2.result, 100);
+}
+
+// The verified sliding-window cell from experiments/sliding-window-state-cells — a true
+// trailing-8 ring buffer, the shape the scalar-only named surface used to block.
+const SMA_SRC: &str = "
+struct SimpleMovingAverage { value: u16, window: [u16; 8], head: u16, count: u16, sum: u32, avg: u16 }
+impl SimpleMovingAverage {
+    fn run(&mut self) -> u16 {
+        let full = self.count == 8u16;
+        let evict = if full { self.window[self.head as usize] as u32 } else { 0u32 };
+        self.window[self.head as usize] = self.value;
+        self.sum = self.sum - evict + (self.value as u32);
+        if !full { self.count = self.count + 1u16; }
+        self.head = (self.head + 1u16) % 8u16;
+        self.avg = (self.sum / (self.count as u32)) as u16;
+        self.avg
+    }
+}";
+
+#[test]
+fn array_state_named_surface() {
+    use cell80::StateCell;
+    // The named array round-trip (`.cell` v11 surface): set_array/get_array by field
+    // name — no raw addresses, unlike the experiment's probe which hand-computed every
+    // element offset. State persistence is host re-feed, arrays included.
+    let mut cell = StateCell::bind(SMA_SRC, "SimpleMovingAverage", None).unwrap();
+
+    let mut step = |cell: &mut StateCell, value: u64| -> u64 {
+        // Re-feed the prior run's full state (the first call feeds the zero state).
+        let window = cell.get_array("window").unwrap();
+        let head = cell.get("head").unwrap();
+        let count = cell.get("count").unwrap();
+        let sum = cell.get("sum").unwrap();
+        cell.set("value", value).unwrap();
+        cell.set_array("window", &window).unwrap();
+        cell.set("head", head).unwrap();
+        cell.set("count", count).unwrap();
+        cell.set("sum", sum).unwrap();
+        let rep = cell.run(DEFAULT_CYCLES).unwrap();
+        assert_eq!(rep.result as u64, cell.get("avg").unwrap());
+        cell.get("avg").unwrap()
+    };
+
+    // The experiment's verified 10-step expectations: fill (avg over samples so far),
+    // then true sliding (the oldest sample leaves as each new one arrives).
+    #[rustfmt::skip]
+    let expect = [
+        (10, 10), (20, 15), (30, 20), (40, 25), (50, 30),
+        (60, 35), (70, 40), (80, 45), (90, 55), (100, 65),
+    ];
+    for (value, want) in expect {
+        assert_eq!(step(&mut cell, value), want, "value={value}");
+    }
+
+    // Short set_array: unsupplied trailing elements read as 0 (the reset zeroes the
+    // previous run's writes, so the envelope is always fully defined).
+    cell.set_array("window", &[7, 7]).unwrap();
+    cell.set("count", 2).unwrap();
+    cell.set("sum", 14).unwrap();
+    cell.set("head", 2).unwrap();
+    cell.set("value", 7).unwrap();
+    cell.run(DEFAULT_CYCLES).unwrap();
+    assert_eq!(cell.get_array("window").unwrap(), vec![7, 7, 7, 0, 0, 0, 0, 0]);
+    assert_eq!(cell.get("avg"), Some(7));
+
+    // Error surface: scalar set on an array field, array set on a scalar, overflow,
+    // and the scalar get returning None for the array (get_array is the reader).
+    assert!(cell.set("window", 1).unwrap_err().contains("set_array"));
+    assert!(cell.set_array("head", &[1]).unwrap_err().contains("not an array"));
+    assert!(cell.set_array("window", &[0; 9]).unwrap_err().contains("won't fit"));
+    assert_eq!(cell.get("window"), None);
+}
+
+#[test]
+fn array_state_host_values_lane() {
+    use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost, FieldValue};
+    // CellHost: the scalar run_state lanes must fail LOUDLY on an array-state cell
+    // (an unfed window would return a plausible wrong average — the silent-wrong-answer
+    // trap), and run_state_values drives it correctly.
+    let mut host = CellHost::new();
+    host.add(
+        Cartridge::compile(
+            SMA_SRC,
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some("sma".into()),
+                entry: Some("SimpleMovingAverage::run".into()),
+                summary: "trailing-8 moving average".into(),
+                tags: vec!["state".into()],
+                limits: Vec::new(),
+                scale: None,
+                ..Default::default()
+            },
+        )
+        .unwrap(),
+    );
+    let h = host.load("sma").unwrap();
+
+    let scalar_err = host
+        .run_state(h, &[("value".into(), 10u64)], DEFAULT_CYCLES)
+        .unwrap_err();
+    assert!(scalar_err.contains("run_state_values"), "{scalar_err}");
+    let fast_err = host
+        .run_state_fast(h, &[("value".into(), 10u64)], DEFAULT_CYCLES)
+        .unwrap_err();
+    assert!(fast_err.contains("run_state_values"), "{fast_err}");
+
+    // Two steps through the values lane, feeding the full state envelope back.
+    let fields = vec![("value".into(), FieldValue::Scalar(10))];
+    let (rep, state) = host.run_state_values(h, &fields, DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.result, 10);
+    let feed: Vec<(String, FieldValue)> = state
+        .into_iter()
+        .map(|(n, v)| {
+            if n == "value" {
+                (n, FieldValue::Scalar(20))
+            } else {
+                (n, v)
+            }
+        })
+        .collect();
+    let (rep2, state2) = host.run_state_values(h, &feed, DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep2.result, 15); // (10 + 20) / 2 — the window persisted by name
+    let window = state2.iter().find(|(n, _)| n == "window").unwrap();
+    assert_eq!(
+        window.1,
+        FieldValue::Array(vec![10, 20, 0, 0, 0, 0, 0, 0])
+    );
+
+    // Shape mismatches are named errors, not coercions.
+    let bad = host.run_state_values(
+        h,
+        &[("window".into(), FieldValue::Scalar(1))],
+        DEFAULT_CYCLES,
+    );
+    assert!(bad.unwrap_err().contains("as an array"));
+    let bad2 = host.run_state_values(
+        h,
+        &[("value".into(), FieldValue::Array(vec![1]))],
+        DEFAULT_CYCLES,
+    );
+    assert!(bad2.unwrap_err().contains("as a scalar"));
 }
 
 #[test]

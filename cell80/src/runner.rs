@@ -454,13 +454,16 @@ impl Runner {
         inputs: &[(u16, Ty, u64)],
         budget: u64,
     ) -> Result<Report, String> {
-        // Buffer fields (`bytes[N]`/`str[N]`) can't ride the scalar input triple —
-        // the byte-buffer write surface is Phase S3. Reject before exec, which
-        // assumes validated scalars.
+        // Non-scalar fields can't ride the scalar input triple: an array field is
+        // driven element-wise (`StateCell::set_array` / `run_state_values` expand it
+        // to per-element scalar triples before this call); a `bytes[N]`/`str[N]`
+        // buffer's byte-I/O surface is Phase S3. Reject before exec, which assumes
+        // validated scalars.
         if let Some((addr, ty, _)) = inputs.iter().find(|(_, ty, _)| ty.capacity().is_some()) {
             return Err(format!(
-                "input at {addr:#06x} is {ty} — a buffer, not a scalar; the \
-                 byte-buffer I/O surface arrives with Phase S3"
+                "input at {addr:#06x} is {ty} — not a scalar; arrays are driven \
+                 element-wise through the array surface, byte buffers arrive with \
+                 Phase S3"
             ));
         }
         let (entry, entry_addr) = self.resolve_entry(entry)?;
@@ -542,11 +545,14 @@ impl Runner {
         reads: &[(String, u16, Ty)],
         budget: u64,
     ) -> Result<(Fast, Vec<(String, u64)>), String> {
-        // Buffer fields can't ride the scalar triple (same rule as `run_with_inputs`).
+        // Non-scalar fields can't ride the scalar triple (same rule as
+        // `run_with_inputs`); the memoized read-back is scalar-shaped too, so an
+        // array-state cell takes the uncached `run_state_values` lane instead.
         if let Some((addr, ty, _)) = inputs.iter().find(|(_, ty, _)| ty.capacity().is_some()) {
             return Err(format!(
-                "input at {addr:#06x} is {ty} — a buffer, not a scalar; the \
-                 byte-buffer I/O surface arrives with Phase S3"
+                "input at {addr:#06x} is {ty} — not a scalar; arrays are driven \
+                 element-wise through the array surface, byte buffers arrive with \
+                 Phase S3"
             ));
         }
         let entry_addr = self.resolve_addr(entry)?;
@@ -750,9 +756,11 @@ impl Runner {
                 Ty::U8 => 1,
                 Ty::U16 => 2,
                 Ty::U32 | Ty::F32 => 4, // f32 rides as its raw binary32 bits
-                // Validated out by `run_with_inputs` (buffers don't ride the
-                // scalar input triple until the S3 byte-I/O surface).
-                Ty::Bytes(_) | Ty::Str(_) => unreachable!("buffer input reached exec"),
+                // Validated out by `run_with_inputs` (arrays are pre-expanded to
+                // per-element scalars; buffers wait for the S3 byte-I/O surface).
+                Ty::Bytes(_) | Ty::Str(_) | Ty::Array(..) => {
+                    unreachable!("non-scalar input reached exec")
+                }
             };
             for i in 0..bytes {
                 let a = addr.wrapping_add(i as u16) as usize;
@@ -844,8 +852,40 @@ impl Runner {
                     // f32 reads back as its raw bits — the host converts with
                     // `f32::from_bits`; the type keeps the repr from blurring.
                     Ty::U32 | Ty::F32 => self.peek_u32(*addr) as u64,
-                    // A buffer field has no scalar reading — skipped rather than
-                    // misreported; the byte read-back surface is Phase S3.
+                    // A buffer/array field has no scalar reading — skipped rather
+                    // than misreported; arrays read whole via `read_named_values`,
+                    // the byte read-back surface is Phase S3.
+                    Ty::Bytes(_) | Ty::Str(_) | Ty::Array(..) => return None,
+                };
+                Some((name.clone(), v))
+            })
+            .collect()
+    }
+
+    /// Decode named, typed values from post-run memory **including array fields** —
+    /// the value-envelope read-back ([`FieldValue`]). Scalars read as
+    /// [`read_named`](Runner::read_named); a `u16[N]`/`u32[N]` field reads its whole
+    /// declared envelope, element values in order. Buffer fields (`bytes[N]`/
+    /// `str[N]`) are still skipped (Phase S3).
+    pub fn read_named_values(&self, fields: &[(String, u16, Ty)]) -> Vec<(String, FieldValue)> {
+        fields
+            .iter()
+            .filter_map(|(name, addr, ty)| {
+                let v = match ty {
+                    Ty::U8 => FieldValue::Scalar(self.peek_u8(*addr) as u64),
+                    Ty::U16 => FieldValue::Scalar(self.peek_u16(*addr) as u64),
+                    Ty::U32 | Ty::F32 => FieldValue::Scalar(self.peek_u32(*addr) as u64),
+                    Ty::Array(elem, len) => FieldValue::Array(
+                        (0..*len)
+                            .map(|i| {
+                                let a = addr + i * elem.bytes();
+                                match elem {
+                                    crate::ArrayElem::U16 => self.peek_u16(a) as u64,
+                                    crate::ArrayElem::U32 => self.peek_u32(a) as u64,
+                                }
+                            })
+                            .collect(),
+                    ),
                     Ty::Bytes(_) | Ty::Str(_) => return None,
                 };
                 Some((name.clone(), v))
