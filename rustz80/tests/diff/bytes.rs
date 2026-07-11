@@ -44,6 +44,9 @@ fn byte_literal_match_pattern() {
 }
 
 #[test]
+// The byte-literal-array *spelling* is the construct under test — the host const
+// mirrors the dialect source verbatim (clippy 1.97 would respell it `*b"abc"`).
+#[allow(clippy::byte_char_slices)]
 fn byte_literal_in_consts() {
     // Scalar consts and const-array elements take byte literals.
     const ZERO: u8 = b'0';
