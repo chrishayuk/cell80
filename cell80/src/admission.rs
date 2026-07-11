@@ -553,14 +553,29 @@ mod tests {
         let retrieval = write_retrieval(
             &dir,
             &[
-                ("w4-1", "sum of a trailing window of four", "wsum4", "direct"),
+                (
+                    "w4-1",
+                    "sum of a trailing window of four",
+                    "wsum4",
+                    "direct",
+                ),
                 ("w4c-1", "rolling four sample total", "wsum4_copy", "direct"),
-                ("w8-1", "sum of a trailing window of eight", "wsum8", "direct"),
+                (
+                    "w8-1",
+                    "sum of a trailing window of eight",
+                    "wsum8",
+                    "direct",
+                ),
             ],
         );
         let report = admit(dir.to_str().unwrap(), &retrieval).unwrap();
         let admitted: Vec<&str> = report.admitted.iter().map(|m| m.id.as_str()).collect();
-        assert_eq!(admitted, ["wsum4", "wsum8"], "refused: {:?}", report.refused);
+        assert_eq!(
+            admitted,
+            ["wsum4", "wsum8"],
+            "refused: {:?}",
+            report.refused
+        );
         assert_eq!(report.refused.len(), 1);
         assert!(matches!(
             &report.refused[0].1[0],

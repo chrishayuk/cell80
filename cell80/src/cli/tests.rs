@@ -21,16 +21,17 @@ fn parse_meta_reads_finite_result() {
 fn parse_meta_reads_accuracy() {
     // The F2 header key: a free-form declared ULP bound (harness-verified, not
     // parser-validated); absent (or empty) means None — exact semantics.
-    let (_, _, _, _, _, acc, _, _) = parse_meta(
-        "//! s\n//! accuracy: <= 4 ulp over [-87.34, 88.72]\nfn run() -> u16 { 1u16 }",
-    );
+    let (_, _, _, _, _, acc, _, _) =
+        parse_meta("//! s\n//! accuracy: <= 4 ulp over [-87.34, 88.72]\nfn run() -> u16 { 1u16 }");
     assert_eq!(acc.as_deref(), Some("<= 4 ulp over [-87.34, 88.72]"));
     let (_, _, _, _, _, acc, _, _) = parse_meta("//! s\nfn run() -> u16 { 1u16 }");
     assert_eq!(acc, None);
-    let (_, _, _, _, _, acc, _, _) = parse_meta("//! s\n//! accuracy:   \nfn run() -> u16 { 1u16 }");
+    let (_, _, _, _, _, acc, _, _) =
+        parse_meta("//! s\n//! accuracy:   \nfn run() -> u16 { 1u16 }");
     assert_eq!(acc, None);
     // The accuracy line never leaks into the summary.
-    let (summary, ..) = parse_meta("//! accuracy: <= 2 ulp\n//! the real summary\nfn run() -> u16 { 1u16 }");
+    let (summary, ..) =
+        parse_meta("//! accuracy: <= 2 ulp\n//! the real summary\nfn run() -> u16 { 1u16 }");
     assert_eq!(summary, "the real summary");
 }
 

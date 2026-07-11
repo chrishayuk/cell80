@@ -888,7 +888,9 @@ impl Cartridge {
             None => String::new(),
         };
         let accuracy = match &m.accuracy {
-            Some(a) => format!("\n  accuracy: {a} (approximate class — declared, harness-verified)"),
+            Some(a) => {
+                format!("\n  accuracy: {a} (approximate class — declared, harness-verified)")
+            }
             None => String::new(),
         };
         let hash = self.artifact_hash();

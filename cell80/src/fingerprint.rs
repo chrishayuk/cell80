@@ -466,8 +466,11 @@ mod tests {
             &[1, 2, 3, 4, 5, 6, 7, 8],
         ];
         for vals in cases {
-            let named: Vec<(String, u64)> =
-                vals.iter().enumerate().map(|(i, v)| (format!("f{i}"), *v)).collect();
+            let named: Vec<(String, u64)> = vals
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (format!("f{i}"), *v))
+                .collect();
             let enveloped: Vec<(String, crate::FieldValue)> = vals
                 .iter()
                 .enumerate()
@@ -483,14 +486,17 @@ mod tests {
         }
         // And a concrete hard pin so the shared arithmetic itself can't drift
         // silently under both paths at once.
-        assert_eq!(digest_state(100, &[("a".into(), 7u64), ("b".into(), 9u64)]), {
-            let mut d = 100u16;
-            d ^= 7u16.rotate_left(3);
-            d = d.rotate_left(1);
-            d ^= 9u16.rotate_left(8);
-            d = d.rotate_left(1);
-            d
-        });
+        assert_eq!(
+            digest_state(100, &[("a".into(), 7u64), ("b".into(), 9u64)]),
+            {
+                let mut d = 100u16;
+                d ^= 7u16.rotate_left(3);
+                d = d.rotate_left(1);
+                d ^= 9u16.rotate_left(8);
+                d = d.rotate_left(1);
+                d
+            }
+        );
     }
 
     #[test]
@@ -512,10 +518,24 @@ mod tests {
         let a = state_cell("wsum", "S::run", sum_src);
         let b = state_cell("wsum2", "S::run", sum_src);
         let c = state_cell("wmax", "M::run", max_src);
-        let (fa, fb, fc) = (Fingerprint::of(&a), Fingerprint::of(&b), Fingerprint::of(&c));
-        assert!(fa.outputs.iter().any(Option::is_some), "array cell must probe");
-        assert_eq!(fa.agreement(&fb), 1.0, "identical layout+behaviour ⇒ identical");
-        assert!(fa.agreement(&fc) < 1.0, "sum vs max over the window must separate");
+        let (fa, fb, fc) = (
+            Fingerprint::of(&a),
+            Fingerprint::of(&b),
+            Fingerprint::of(&c),
+        );
+        assert!(
+            fa.outputs.iter().any(Option::is_some),
+            "array cell must probe"
+        );
+        assert_eq!(
+            fa.agreement(&fb),
+            1.0,
+            "identical layout+behaviour ⇒ identical"
+        );
+        assert!(
+            fa.agreement(&fc) < 1.0,
+            "sum vs max over the window must separate"
+        );
     }
 
     #[test]
