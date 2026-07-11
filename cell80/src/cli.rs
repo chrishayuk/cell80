@@ -1255,7 +1255,7 @@ fn cmd_exec(args: &[String]) -> Result<String, String> {
     };
     // Default to the cartridge's own entry (the manifest knows it).
     let entry = entry.unwrap_or_else(|| cart.manifest.entry.clone());
-    let mut runner = Runner::new(&cart.program);
+    let mut runner = Runner::new(cart.z80()?);
     run_and_format(
         &mut runner,
         Some(&entry),

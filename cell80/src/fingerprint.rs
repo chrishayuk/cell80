@@ -132,7 +132,7 @@ impl Fingerprint {
     /// probe[i % 3]`) — deterministic per layout, so identical-layout duplicates
     /// (the real dupe risk) fingerprint identically.
     pub fn compute(cart: &Cartridge, probes: &[[u16; 3]], budget: u64) -> Self {
-        let mut runner = Runner::new(&cart.program);
+        let mut runner = Runner::new(cart.z80().expect("fingerprints probe z80-cell bodies"));
         let entry = cart.manifest.entry.as_str();
         // A tuple-returning free function spreads its payload across HL/DE/BC — digest all
         // the declared registers, not just HL (a scalar declares 1, so it is unchanged).
@@ -237,7 +237,7 @@ pub(crate) fn rank_examples_iter<'a>(
 ) -> Vec<&'a Manifest> {
     let mut scored: Vec<(i32, &Manifest)> = carts
         .map(|c| {
-            let mut runner = Runner::new(&c.program);
+            let mut runner = Runner::new(c.z80().expect("fingerprints probe z80-cell bodies"));
             let entry = c.manifest.entry.as_str();
             let hits = examples
                 .iter()
@@ -267,7 +267,7 @@ pub(crate) fn rank_field_examples_iter<'a>(
     let mut scored: Vec<(i32, &Manifest)> = carts
         .filter(|c| !c.manifest.state_addrs.is_empty())
         .map(|c| {
-            let mut runner = Runner::new(&c.program);
+            let mut runner = Runner::new(c.z80().expect("fingerprints probe z80-cell bodies"));
             let entry = c.manifest.entry.as_str();
             let addrs = &c.manifest.state_addrs;
             let hits = examples

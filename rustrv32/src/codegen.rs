@@ -38,10 +38,75 @@ pub const SCRATCH: u16 = 0x9000;
 
 /// A compiled image: code (position-independent, entered via `symbols`), the
 /// const blob to plant at [`CONST_BASE`], and each function's byte offset.
+#[derive(Clone)]
 pub struct Image {
     pub code: Vec<u8>,
     pub consts: Vec<u8>,
     pub symbols: HashMap<String, u32>,
+}
+
+/// The serialized image magic (the RV32 sibling of the Z80 body's `CZ80`).
+pub const IMAGE_MAGIC: &[u8; 4] = b"CV32";
+
+impl Image {
+    /// Serialize: magic, version, code, consts, and the symbol table in sorted
+    /// order (deterministic bytes — the artifact hash covers them).
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut b = Vec::new();
+        b.extend_from_slice(IMAGE_MAGIC);
+        b.push(1); // image format version
+        b.extend_from_slice(&(self.code.len() as u32).to_le_bytes());
+        b.extend_from_slice(&self.code);
+        b.extend_from_slice(&(self.consts.len() as u32).to_le_bytes());
+        b.extend_from_slice(&self.consts);
+        let mut syms: Vec<_> = self.symbols.iter().collect();
+        syms.sort();
+        b.extend_from_slice(&(syms.len() as u32).to_le_bytes());
+        for (name, off) in syms {
+            b.extend_from_slice(&(name.len() as u16).to_le_bytes());
+            b.extend_from_slice(name.as_bytes());
+            b.extend_from_slice(&off.to_le_bytes());
+        }
+        b
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        let mut i = 0usize;
+        let take = |i: &mut usize, n: usize| -> Result<&[u8], String> {
+            let s = bytes
+                .get(*i..*i + n)
+                .ok_or_else(|| "rv32 image truncated".to_string())?;
+            *i += n;
+            Ok(s)
+        };
+        if take(&mut i, 4)? != IMAGE_MAGIC {
+            return Err("not an rv32 cell image".into());
+        }
+        if take(&mut i, 1)?[0] != 1 {
+            return Err("unsupported rv32 image version".into());
+        }
+        let u32v = |i: &mut usize| -> Result<u32, String> {
+            Ok(u32::from_le_bytes(take(i, 4)?.try_into().unwrap()))
+        };
+        let code_len = u32v(&mut i)? as usize;
+        let code = take(&mut i, code_len)?.to_vec();
+        let consts_len = u32v(&mut i)? as usize;
+        let consts = take(&mut i, consts_len)?.to_vec();
+        let n_syms = u32v(&mut i)? as usize;
+        let mut symbols = HashMap::with_capacity(n_syms);
+        for _ in 0..n_syms {
+            let name_len = u16::from_le_bytes(take(&mut i, 2)?.try_into().unwrap()) as usize;
+            let name = String::from_utf8(take(&mut i, name_len)?.to_vec())
+                .map_err(|_| "bad symbol name".to_string())?;
+            let off = u32v(&mut i)?;
+            symbols.insert(name, off);
+        }
+        Ok(Image {
+            code,
+            consts,
+            symbols,
+        })
+    }
 }
 
 /// Compile lowered functions + const data to an RV32 image.

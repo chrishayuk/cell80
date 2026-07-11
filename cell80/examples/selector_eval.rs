@@ -280,7 +280,10 @@ fn main() {
     let probes: &[[u16; 2]] = &[[3, 7], [7, 3], [10, 3], [100, 4], [12, 8], [9, 6], [8, 8]];
     let behavioural_top = |want: &str| -> Option<String> {
         let cart = carts.iter().find(|c| c.manifest.id == want)?;
-        let mut r = Runner::new(&cart.program);
+        let mut r = Runner::new(
+            cart.z80()
+                .expect("the selector eval probes z80-cell bodies"),
+        );
         let mut examples = Vec::new();
         for p in probes {
             let out = r.run(Some(&cart.manifest.entry), p, DEFAULT_CYCLES).ok()?;

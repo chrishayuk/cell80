@@ -134,7 +134,11 @@ fn actions() -> Vec<Act> {
 fn tables(acts: &[Act]) -> Vec<Vec<u16>> {
     acts.iter()
         .map(|a| {
-            let mut r = Runner::new(&a.cart.program);
+            let mut r = Runner::new(
+                a.cart
+                    .z80()
+                    .expect("the composition eval runs z80-cell bodies"),
+            );
             let entry = a.cart.manifest.entry.clone();
             (0..=u16::MAX)
                 .map(|v| {

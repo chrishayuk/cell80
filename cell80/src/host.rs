@@ -274,7 +274,7 @@ impl CellHost {
             .catalog
             .get(id)
             .ok_or_else(|| format!("no cell `{id}`"))?;
-        let mut runner = self.pool.acquire(&cart.program);
+        let mut runner = self.pool.acquire(cart.z80()?);
         // Facts key on the shareable content address, not the bare image self-hash
         // (docs/12 §2) — stamp the cartridge's v5 artifact hash.
         runner.set_artifact_hash(cart.artifact_hash());

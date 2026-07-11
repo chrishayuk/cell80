@@ -412,7 +412,7 @@ fn cartridge_roundtrip_and_inspect() {
     assert_eq!(back.manifest.abi_version, ABI_VERSION);
     assert!(!back.manifest.compiler_version.is_empty());
     assert_eq!(
-        Runner::new(&back.program)
+        Runner::new(back.z80().unwrap())
             .run(None, &[6, 7], DEFAULT_CYCLES)
             .unwrap()
             .result,
@@ -2015,7 +2015,7 @@ fn signing_round_trips_and_forgeries_fail() {
     // Corrupt one signature byte: the hash still matches, the signature must not.
     // Layout: [manifest][hash 32][marker 1][vk 32][sig 64][img_len 4][img] — the
     // signature block ends 4 + img_len bytes before the end.
-    let img_len = cart.program.to_bytes().len();
+    let img_len = cart.z80().unwrap().to_bytes().len();
     let sig_last = bytes.len() - 4 - img_len - 1;
     let mut forged = bytes.clone();
     forged[sig_last] ^= 0x01;
@@ -2036,7 +2036,7 @@ fn pre_v5_cartridges_still_load() {
     // v5 byte stream by splicing those fields out and rewriting the version byte.
     let cart = adder_cart();
     let v5 = cart.to_bytes();
-    let img = cart.program.to_bytes();
+    let img = cart.z80().unwrap().to_bytes();
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();

@@ -3,7 +3,6 @@
 //! a compiled [`CellProgram`] image. This is the portable object the CLI, a tool index, and
 //! the MCP server pass around — the gate for "compile once → ship → discover → run."
 use super::program::{put_string, ImageReader};
-use super::report::sorted_symbols;
 use super::*;
 use rustz80::Signature;
 use std::hash::{Hash, Hasher};
@@ -37,10 +36,77 @@ const MAGIC: &[u8; 4] = b"CELL";
 // `z80-cell` with no family hash.
 const VERSION: u8 = 10;
 
-/// The machine-body target this crate compiles and hosts. (Docs 13 §2.1a names full
-/// certified targets; at the cartridge level the body's *family* is what a host can
-/// check before loading.)
+/// The Z80 micro-VM machine body — what [`crate::Runner`]/[`crate::CellHost`] run.
+/// (Docs 13 §2.1a names full certified targets; at the cartridge level the body's
+/// *family* is what a host checks before loading.)
 pub const Z80_CELL_TARGET: &str = "z80-cell";
+
+/// The RV32 machine body (the rustrv32 backend on the Hazard3-shaped executor) —
+/// what [`crate::Rv32Runner`] runs.
+pub const RV32_TARGET: &str = "rv32im-hazard3";
+
+/// A cartridge's **machine body**: the per-target compiled artifact behind the
+/// (target-independent) manifest. One cell, many bodies — each body its own
+/// artifact hash, all sharing the family hash.
+#[derive(Clone)]
+pub enum Body {
+    Z80(CellProgram),
+    Rv32(Rv32Body),
+}
+
+/// The RV32 body: the compiled image plus the capability/resource policy (the Z80
+/// body embeds its policy in the `CZ80` image; the RV32 image is policy-free, so
+/// the cartridge carries it alongside).
+#[derive(Clone)]
+pub struct Rv32Body {
+    pub image: rustrv32::Image,
+    pub cfg: CellConfig,
+}
+
+impl Rv32Body {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut b = Vec::new();
+        let mut flags = 0u8;
+        if self.cfg.allow_raw_memory {
+            flags |= 1;
+        }
+        if self.cfg.allow_ports {
+            flags |= 2;
+        }
+        if matches!(self.cfg.div_by_zero, crate::DivByZero::Saturate) {
+            flags |= 4;
+        }
+        b.push(flags);
+        b.extend_from_slice(&(self.cfg.max_code_bytes.unwrap_or(0) as u32).to_le_bytes());
+        b.extend_from_slice(&(self.cfg.max_touched.unwrap_or(0) as u32).to_le_bytes());
+        b.extend_from_slice(&self.image.to_bytes());
+        b
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
+        if bytes.len() < 9 {
+            return Err("rv32 body truncated".into());
+        }
+        let flags = bytes[0];
+        let max_code = u32::from_le_bytes(bytes[1..5].try_into().unwrap()) as usize;
+        let max_touched = u32::from_le_bytes(bytes[5..9].try_into().unwrap()) as usize;
+        let cfg = CellConfig {
+            allow_raw_memory: flags & 1 != 0,
+            allow_ports: flags & 2 != 0,
+            max_code_bytes: (max_code != 0).then_some(max_code),
+            max_touched: (max_touched != 0).then_some(max_touched),
+            div_by_zero: if flags & 4 != 0 {
+                crate::DivByZero::Saturate
+            } else {
+                crate::DivByZero::Halt
+            },
+        };
+        Ok(Rv32Body {
+            image: rustrv32::Image::from_bytes(&bytes[9..])?,
+            cfg,
+        })
+    }
+}
 
 /// SHA-256 of the resident kernel bank's image — the content identity a banked
 /// cartridge pins in its manifest (v9): same bank bytes ⇒ same arithmetic. Cached
@@ -200,7 +266,7 @@ pub struct CartridgeOpts {
 #[derive(Clone)]
 pub struct Cartridge {
     pub manifest: Manifest,
-    pub program: CellProgram,
+    pub body: Body,
     /// An optional ed25519 `(verifying key, signature)` over the [artifact
     /// hash](Cartridge::artifact_hash) — attached by [`sign`](Cartridge::sign), carried
     /// through serialization, and **verified on load** when present. Unsigned artifacts
@@ -212,6 +278,62 @@ pub struct Cartridge {
     /// `(source_name, slot)` renames from `Full` canonicalization, with unit metadata.
     /// Compile provenance, not artifact content — empty on `from_bytes` loads.
     pub canon_renames: Vec<rustz80::Rename>,
+}
+
+impl Cartridge {
+    /// The Z80 body — the boundary every Z80-host path (Runner, CellHost, the
+    /// CLI) crosses. A different machine body is a typed refusal naming it.
+    pub fn z80(&self) -> Result<&CellProgram, String> {
+        match &self.body {
+            Body::Z80(p) => Ok(p),
+            Body::Rv32(_) => Err(format!(
+                "this cartridge carries a `{}` machine body — this runner hosts \
+                 `{Z80_CELL_TARGET}` bodies (use `Rv32Runner`)",
+                self.manifest.target
+            )),
+        }
+    }
+
+    /// The inspection view every body answers: sorted `(symbol, address)` pairs,
+    /// code size, function count, and the capability policy.
+    fn body_view(&self) -> (Vec<(String, u32)>, usize, usize, &CellConfig) {
+        match &self.body {
+            Body::Z80(p) => {
+                let prog = p.program();
+                let mut syms: Vec<(String, u32)> = prog
+                    .symbols
+                    .iter()
+                    .map(|(n, a)| (n.clone(), *a as u32))
+                    .collect();
+                syms.sort();
+                let n_fns = prog.size_report().len();
+                (syms, prog.code.len(), n_fns, &p.cfg)
+            }
+            Body::Rv32(b) => {
+                let mut syms: Vec<(String, u32)> = b
+                    .image
+                    .symbols
+                    .iter()
+                    .map(|(n, a)| (n.clone(), *a))
+                    .collect();
+                syms.sort();
+                let n_fns = syms.len();
+                (syms, b.image.code.len(), n_fns, &b.cfg)
+            }
+        }
+    }
+
+    /// The RV32 body — [`crate::Rv32Runner`]'s boundary, same posture.
+    pub fn rv32(&self) -> Result<&Rv32Body, String> {
+        match &self.body {
+            Body::Rv32(b) => Ok(b),
+            Body::Z80(_) => Err(format!(
+                "this cartridge carries a `{}` machine body — this runner hosts \
+                 `{RV32_TARGET}` bodies (use `Runner`/`CellHost`)",
+                self.manifest.target
+            )),
+        }
+    }
 }
 
 impl Cartridge {
@@ -276,7 +398,99 @@ impl Cartridge {
                 target: Z80_CELL_TARGET.to_string(),
                 family_hash,
             },
-            program,
+            body: Body::Z80(program),
+            signature: None,
+            canon_repairs: canon.repairs,
+            canon_renames: canon.renames,
+        })
+    }
+
+    /// [`Cartridge::compile`] for the **RV32 machine body** (WS-E3): the same
+    /// canonicalization, capability scan, shared-kernel prelude, entry
+    /// resolution, manifest, and family hash — the body compiles through the
+    /// rustrv32 backend instead. Sibling cartridges from one source share the
+    /// family hash; each keeps its own artifact hash.
+    pub fn compile_rv32(src: &str, cfg: CellConfig, opts: CartridgeOpts) -> Result<Self, String> {
+        use std::hash::{Hash, Hasher};
+        if opts.kernel_bank {
+            return Err(
+                "the resident kernel bank is a Z80-VM residency concept — RV32 bodies \
+                 carry their kernels inline (bank parity is a WS-E follow-up)"
+                    .into(),
+            );
+        }
+        let canon = rustz80::canonicalize_source(
+            src,
+            &rustz80::CanonOptions {
+                mode: opts.canon,
+                hints: opts.canon_hints.clone(),
+                wide_default: opts.canon_wide,
+                lift_literals: false,
+                checked: false,
+            },
+        )
+        .map_err(|d| d.to_string())?;
+        let src: &str = &canon.source;
+        // The same prelude + caps + DCE pipeline as the Z80 body (program.rs),
+        // lowered once and compiled with the RV32 backend.
+        let combined = format!(
+            "{src}
+{}{}",
+            super::program::CELL_PRELUDE,
+            rustz80::F32_KERNELS
+        );
+        let file: syn::File = syn::parse_str(&combined).map_err(|e| format!("parse error: {e}"))?;
+        crate::config::check_caps(&file, &cfg)?;
+        let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())?;
+        let const_data = lowered.const_data();
+        let names: Vec<&str> = lowered.funcs.iter().map(|(n, _)| n.as_str()).collect();
+        let entry = match &opts.entry {
+            Some(e) if names.contains(&e.as_str()) => e.clone(),
+            Some(e) => return Err(format!("no entry `{e}` in the program")),
+            None if names.contains(&"run") => "run".into(),
+            None if names.contains(&"main") => "main".into(),
+            None => return Err("no `run`/`main` entry — pass an explicit entry".into()),
+        };
+        let funcs = cell80_core::inline::inline(lowered.funcs, &[&entry]);
+        let funcs = cell80_core::dce::prune(funcs, &[&entry]);
+        let image = rustrv32::compile(&funcs, &const_data)?;
+        if let Some(max) = cfg.max_code_bytes {
+            if image.code.len() > max {
+                return Err(format!(
+                    "rv32 code is {} bytes — over the {max}-byte capability ceiling",
+                    image.code.len()
+                ));
+            }
+        }
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        src.hash(&mut h);
+        let family_hash = {
+            use sha2::{Digest, Sha256};
+            let mut fh = Sha256::new();
+            fh.update(src.as_bytes());
+            Some(fh.finalize().into())
+        };
+        let signature = rustz80::entry_signature(src, &entry)?;
+        let state_addrs = super::state_field_addrs(src, &entry)?;
+        Ok(Cartridge {
+            manifest: Manifest {
+                id: opts.id.unwrap_or_else(|| entry.clone()),
+                summary: opts.summary,
+                tags: opts.tags,
+                entry,
+                source_hash: h.finish(),
+                compiler_version: env!("CARGO_PKG_VERSION").to_string(),
+                abi_version: ABI_VERSION,
+                signature,
+                state_addrs,
+                limits: opts.limits,
+                scale: opts.scale,
+                finite_result: opts.finite_result.unwrap_or(true),
+                kernel_bank: None,
+                target: RV32_TARGET.to_string(),
+                family_hash,
+            },
+            body: Body::Rv32(Rv32Body { image, cfg }),
             signature: None,
             canon_repairs: canon.repairs,
             canon_renames: canon.renames,
@@ -345,7 +559,10 @@ impl Cartridge {
         use sha2::{Digest, Sha256};
         let mut h = Sha256::new();
         h.update(self.manifest_bytes());
-        h.update(self.program.to_bytes());
+        h.update(match &self.body {
+            Body::Z80(p) => p.to_bytes(),
+            Body::Rv32(b) => b.to_bytes(),
+        });
         h.finalize().into()
     }
 
@@ -372,7 +589,10 @@ impl Cartridge {
             }
             None => b.push(0),
         }
-        let img = self.program.to_bytes();
+        let img = match &self.body {
+            Body::Z80(p) => p.to_bytes(),
+            Body::Rv32(b) => b.to_bytes(),
+        };
         b.extend_from_slice(&(img.len() as u32).to_le_bytes());
         b.extend_from_slice(&img);
         b
@@ -490,15 +710,7 @@ impl Cartridge {
         } else {
             (Z80_CELL_TARGET.to_string(), None)
         };
-        // A body this host can't run is refused up front — the kernel-bank-pin
-        // posture: never silently different execution.
-        if target != Z80_CELL_TARGET {
-            return Err(format!(
-                "this cartridge carries a `{target}` machine body — this host runs \
-                 `{Z80_CELL_TARGET}` bodies (sibling-target hosts arrive with the \
-                 cell-family work, docs 13 WS-E)"
-            ));
-        }
+
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
         let (stored_hash, cart_sig) = if ver >= 5 {
@@ -548,7 +760,18 @@ impl Cartridge {
                 }
             }
         }
-        let program = CellProgram::from_bytes(img)?;
+        // The body parses per its declared target; an unknown body is refused up
+        // front (the kernel-bank-pin posture — never silently different execution).
+        let body = match target.as_str() {
+            Z80_CELL_TARGET => Body::Z80(CellProgram::from_bytes(img)?),
+            RV32_TARGET => Body::Rv32(Rv32Body::from_bytes(img)?),
+            other => {
+                return Err(format!(
+                    "this cartridge carries a `{other}` machine body — this build hosts \
+                     `{Z80_CELL_TARGET}` and `{RV32_TARGET}` bodies (docs 13 §2.1a)"
+                ))
+            }
+        };
         Ok(Cartridge {
             manifest: Manifest {
                 id,
@@ -567,7 +790,7 @@ impl Cartridge {
                 target,
                 family_hash,
             },
-            program,
+            body,
             signature: cart_sig,
             canon_repairs: Vec::new(),
             canon_renames: Vec::new(),
@@ -577,9 +800,12 @@ impl Cartridge {
     /// A human-readable inspection summary.
     pub fn to_human(&self) -> String {
         let m = &self.manifest;
-        let p = self.program.program();
-        let c = &self.program.cfg;
-        let entry_addr = p.symbols.get(&m.entry).copied().unwrap_or(0);
+        let (symbols, code_len, n_functions, c) = self.body_view();
+        let entry_addr = symbols
+            .iter()
+            .find(|(n, _)| n == &m.entry)
+            .map(|(_, a)| *a)
+            .unwrap_or(0);
         let caps = format!(
             "raw_memory={} ports={} max_code={} max_touched={}",
             c.allow_raw_memory,
@@ -587,7 +813,7 @@ impl Cartridge {
             c.max_code_bytes.map_or("∞".into(), |n| n.to_string()),
             c.max_touched.map_or("∞".into(), |n| n.to_string()),
         );
-        let syms: Vec<String> = sorted_symbols(&p.symbols)
+        let syms: Vec<String> = symbols
             .iter()
             .map(|(n, a)| format!("{n}@0x{a:04X}"))
             .collect();
@@ -641,8 +867,8 @@ impl Cartridge {
             state,
             m.entry,
             entry_addr,
-            p.code.len(),
-            p.size_report().len(),
+            code_len,
+            n_functions,
             caps,
             syms.join(", "),
             m.source_hash,
@@ -652,11 +878,10 @@ impl Cartridge {
     /// A JSON inspection summary (for tooling / a tool index).
     pub fn to_json(&self) -> String {
         let m = &self.manifest;
-        let p = self.program.program();
-        let c = &self.program.cfg;
+        let (symbols, code_len, n_functions, c) = self.body_view();
         let tags: Vec<String> = m.tags.iter().map(|t| format!("\"{t}\"")).collect();
         let limits: Vec<String> = m.limits.iter().map(|l| format!("\"{l}\"")).collect();
-        let syms: Vec<String> = sorted_symbols(&p.symbols)
+        let syms: Vec<String> = symbols
             .iter()
             .map(|(n, a)| format!("\"{n}\":{a}"))
             .collect();
@@ -685,8 +910,8 @@ impl Cartridge {
             pairs_json(&m.signature.params),
             m.signature.ret,
             pairs_json(&m.signature.state),
-            p.code.len(),
-            p.size_report().len(),
+            code_len,
+            n_functions,
             m.source_hash,
             hex(&self.artifact_hash()),
             self.signature.is_some(),

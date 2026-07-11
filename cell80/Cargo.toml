@@ -16,6 +16,10 @@ categories = ["emulators", "compilers"]
 
 [dependencies]
 rustz80 = { path = "../rustz80", version = "0.8.0" }
+# The sibling machine bodies (WS-E3): the RV32 backend + executor, and the
+# shared core's IR passes for the per-target compile pipeline.
+rustrv32 = { path = "../rustrv32", version = "0.8.0" }
+cell80-core = { path = "../cell80-core", version = "0.8.0" }
 z80 = { package = "cell80-z80", path = "../z80", version = "0.8.0" }
 serde_json = "1"
 # The capability scan walks the parsed AST; the cell layer parses + cap-checks before

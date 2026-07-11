@@ -33,7 +33,7 @@ pub struct Op {
 impl Op {
     /// Build an op from a compiled cell and a fixed second argument (ignored by 1-arg cells).
     pub fn from_cell(name: &str, cart: &Cartridge, arg: u16) -> Self {
-        let mut r = Runner::new(&cart.program);
+        let mut r = Runner::new(cart.z80().expect("synth composes z80-cell bodies"));
         let entry = cart.manifest.entry.clone();
         let table = (0..=u16::MAX)
             .map(|v| {

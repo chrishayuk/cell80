@@ -376,6 +376,18 @@ owned it:
   only per-body runners behind one surface, and the E1 target gate parameterised by
   which body the host runs.
 - E3. Host/runner generalisation (a `Runner` per executor behind one host surface).
+  *Slice 1 landed 2026-07-11 — the first loadable RV32 cartridge.* The cartridge
+  body is now an enum (`Body::Z80`/`Body::Rv32`; the Z80 serialization is
+  byte-identical, so every existing artifact hash holds); `Cartridge::compile_rv32`
+  runs the same canon → caps → shared-kernel-prelude → DCE pipeline through the
+  rustrv32 backend; the E1 gate is host-parameterised (`from_bytes` parses any
+  known body — the *refusal* moved to each runner's boundary, typed and naming
+  both sides); `Rv32Runner` is the sibling of `Runner`. Proven: one source, two
+  cartridges, one family hash, two artifact hashes, both bodies running and
+  agreeing — with prelude kernels (`gcd`) riding both pipelines. rustrv32 joined
+  the publish set. *Owed for full E3:* `CellHost` dispatch by body (warm pools,
+  search/route across mixed-body libraries), rv32 typed-state I/O by name, and
+  the kernel-bank parity question.
 - **M2 explicitly does *not* wait for WS-E:** the demo runs RV32 through a thin
   `rv32 exec` harness that bypasses `CellHost`. WS-E is what makes the family a
   *product* rather than a demo.

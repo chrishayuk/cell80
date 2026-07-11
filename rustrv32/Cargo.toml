@@ -13,7 +13,6 @@ repository.workspace = true
 readme = "README.md"
 keywords = ["riscv", "rv32", "compiler", "emulator", "cell80"]
 categories = ["compilers", "emulators"]
-publish = false # joins the publish set when consumable (M2)
 
 [dependencies]
 # The target-independent core: typed IR, passes, the reference IR interpreter.

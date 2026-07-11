@@ -30,6 +30,7 @@ pub mod plan;
 mod program;
 mod report;
 mod runner;
+mod rv32;
 mod selector;
 mod state;
 mod synth;
@@ -38,7 +39,9 @@ mod tfidf;
 mod typeled;
 
 pub use admission::{admit, AdmissionReport, RefusalReason, DUPLICATE_AGREEMENT};
-pub use cartridge::{Cartridge, CartridgeOpts, Manifest, Z80_CELL_TARGET};
+pub use cartridge::{
+    Body, Cartridge, CartridgeOpts, Manifest, Rv32Body, RV32_TARGET, Z80_CELL_TARGET,
+};
 pub use cli::{parse_args, run_cli, USAGE};
 pub use config::{CellConfig, DivByZero};
 pub use discover::{discover_cell_files, find_cell_file};
@@ -50,6 +53,7 @@ pub use index::CellIndex;
 pub use program::CellProgram;
 pub use report::{Fast, Halt, Report, Ty, ABI_VERSION, ESCALATE_BASE, ESCALATE_REASONS};
 pub use runner::{run, CellPool, Runner};
+pub use rv32::{Rv32Report, Rv32Runner};
 pub use selector::{fingerprint_features, Encoder, Rng, Routed, SlotRouter};
 pub use state::{state_field_addrs, StateCell, STATE_BASE};
 pub use synth::{synthesize, synthesize_with, Op, Plan};

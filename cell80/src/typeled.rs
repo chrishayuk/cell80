@@ -44,7 +44,11 @@ const PRED_PROBES: &[[u16; 3]] = &[
 /// is 0 or 1, and *both* values occur — so a constant-0 transformer (or a cell that never
 /// returns cleanly) isn't mistaken for one.
 fn is_predicate(cart: &Cartridge) -> bool {
-    let mut runner = Runner::new(&cart.program);
+    let Ok(prog) = cart.z80() else {
+        // Foreign-body cartridges answer type-led probes as "not a predicate".
+        return false;
+    };
+    let mut runner = Runner::new(prog);
     let entry = cart.manifest.entry.as_str();
     let outs: Vec<u16> = PRED_PROBES
         .iter()
