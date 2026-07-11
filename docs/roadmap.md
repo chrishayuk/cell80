@@ -355,7 +355,25 @@ strictly by sequence; the library grows by eval need:
    kill-gate was re-checked at both 395 and 500 cells (checkpoints 17-18,
    `cell-eval/baselines/library-scale-curve.json`): paraphrase is flat and **adversarial is
    now measurably above the original 114-cell baseline** despite the library growing 4.4×,
-   so growth remains sanctioned.
+   so growth remains sanctioned. **500→653 (2026-07-11) is round 3, one discovery agent per
+   single pack** (32 packs) — deepest yet, and it landed the most cells of the three rounds
+   (153, confirming round 2's own finding that narrower digging finds more): 197 raw → 160
+   deduped → 159 verified → gate caught 6 duplicates → **153 landed, 653 admitted / 0
+   refused**. **This is where the kill-gate finally tripped for real (checkpoint 19)** —
+   paraphrase fell to 0.3736, a 5.1-point drop from checkpoint 1's baseline, over double the
+   ~2.3-point drop that triggered the original checkpoint-10 pause-and-fix cycle. Flagged to
+   the user rather than launching a round 4 past it. Diagnosis: of 386 cells appearing as a
+   miss, only 11 were genuinely under-tagged — the other 375 are the same-shape-sibling
+   saturation this project has repeatedly diagnosed as not fixable by wording, and three
+   rounds of deliberately building missing siblings is exactly what grows that class. Fixed
+   the 11 real gaps, verified each fix landed on its target query — **checkpoint 20**:
+   paraphrase recovered to 0.3866 (~25% of the drop), adversarial to 0.5000 (+8.3pt). A
+   partial recovery, same honest shape as checkpoint 11 — the dominant remaining cause needs
+   the structural lever this project has already named and not yet built (behavioural
+   I/O-example routing, or a type-led index that discriminates on structural shape). Full
+   account, including a second and larger instance of shared-checkout friction (a concurrent
+   `Cartridge::program → Cartridge::body` refactor spanning 7 files, versus round 2's single
+   `tfidf.rs`), in `docs/library-growth.md`'s "Round 3" section.
    **The 209→310 gap is `docs/math-server-map.md`'s mining pass** (`chuk-mcp-math-server`'s
    642 functions classified against the live library) **plus its full harvest, waves 6-14
    (2026-07-07 to 2026-07-09)**: number theory (Möbius/omega/divisor-power-sum/Jordan

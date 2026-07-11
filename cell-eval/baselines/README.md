@@ -186,6 +186,30 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
     **adversarial is now clearly above it** (0.3939 → 0.4444, +5.1 pts) — after the library
     grew 4.4× over the session. The kill-gate has not tripped across either of the two
     Workflow batches.
+  - **Checkpoint 19 (`checkpoint-19-workflow-round3`, 653 cells, commit `1d50f03`,
+    2026-07-11) — the kill-gate trips for real.** P@1 direct 0.8087 / paraphrase **0.3736**
+    / adversarial 0.4167 (1313 cases). Paraphrase is 5.1 points below checkpoint 1's
+    0.4247 baseline — more than double the ~2.3-point drop that triggered the original
+    checkpoint-10 pause. Diagnosed rather than patched blind: of 386 cells appearing as a
+    paraphrase/adversarial miss, only 11 have genuinely sparse tags (below the library's
+    median of 9); the other 375 are same-shape-sibling saturation (`gcd` vs `gcd3`/
+    `gcd_u32`, etc.) — the class this project has repeatedly found is not fixable by
+    wording, and three rounds of deliberately building missing siblings is exactly what
+    grows it. Not launched past — flagged for a decision, matching the checkpoint-10
+    precedent.
+  - **Checkpoint 20 (`checkpoint-20-tag-recovery`, 653 cells, commit `54924f6`,
+    2026-07-11) — the fix, measured.** Ten cells with genuinely sparse tags (`abs_diff`,
+    `manhattan`, `weighted_sum`, `range_check`, `avg2`, `days_in_month`, `bcd_encode`,
+    `dot2`, `mod_u32`, `q_sqrt`) got targeted additions, each aimed at a specific missed
+    query. Result: direct 0.8042 (−0.45pt, noise), **paraphrase 0.3866 (+1.3pt, ~25% of
+    the drop recovered)**, **adversarial 0.5000 (+8.3pt)**. 13 of 16 newly-fixed cases were
+    the targeted cells' own previously-missed queries (confirming the fix worked as
+    intended); the 8 regressions elsewhere were all inspected and are benign same-shape
+    reshuffling (a cell now ranking #2 behind its own u32/i16 sibling instead of #1). A
+    partial recovery, the same honest shape as checkpoint 11 — the dominant remaining cause
+    needs the structural lever this project has already named and not yet built
+    (behavioural I/O-example routing, or a type-led index that discriminates on structural
+    shape).
 
 Re-record after a change that claims to move one of these (library growth, diagnostic
 rewrites, index changes) and compare in the diff — drift is the signal.

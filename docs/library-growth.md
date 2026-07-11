@@ -2048,6 +2048,75 @@ essentially flat, and **adversarial is now measurably above the original baselin
 despite the library growing 4.4× over the session. The kill-gate has not tripped once across
 either batch.
 
+### Round 3 — deepest yet, and the kill-gate finally trips (653 cells, checkpoints 19-20)
+
+One discovery agent per single pack this time (32 packs, up from round 2's 13 clusters) —
+narrower digging kept finding more, not less, confirming round 2's own finding: 197 raw
+candidates → 160 deduped (capped) → 159 verified, 1 failure → the gate caught 6 duplicates
+(the same "gate names either side of the pair" quirk recurred; always back out the new one)
+→ **153 landed, 653 admitted / 0 refused**. Codegen golden purely additive (541 insertions,
+0 deletions). `cargo test -p cell80 --test library`: 418 passed, 0 failed.
+
+**Process note: dedupe was generalized to scale with the candidate count** (chunks of ~45
+raw candidates each, however many chunks that takes) rather than round 2's fixed 2-way
+split — a 32-agent fan-out could plausibly produce more raw candidates than round 2's
+13-agent one, and a fixed split doesn't scale. Worked cleanly, no stall.
+
+**A bigger instance of shared-checkout friction than round 2's.** By Finalize time, a
+concurrent session had landed an in-flight `Cartridge::program → Cartridge::body` refactor
+spanning `cell80/Cargo.toml` and six `cell80/src/*.rs` files — broader than round 2's
+single-file `tfidf.rs` workaround. It briefly left the whole crate non-compiling, then
+self-resolved for the library binary but not for `cell80/tests/cell.rs` (two call sites
+still referenced the removed `cart.program` field) or two example binaries. The Finalize
+agent isolated real signal anyway — `--test library` (418/418), `--lib`, `--doc`, and every
+other integration test target all green — and named exactly which 4 compile errors were
+concurrent-and-unrelated rather than declaring the whole suite "probably fine." `cell80/tests/
+cell.rs` needed the same index-surgery round 2 used (one `Runner::new(...)` line belonging to
+the concurrent refactor, mixed into the same file as this batch's count-assertion updates):
+temporarily reverted their line, staged, restored it in the working tree.
+
+**The kill-gate tripped for real this time — checkpoint 19.** P@1 at 653 cells: direct
+0.8087, **paraphrase 0.3736** (a 5.1-point drop from checkpoint 1's 0.4247 baseline — more
+than double the ~2.3-point drop that triggered the checkpoint-10 pause-and-fix cycle),
+adversarial 0.4167 (still above baseline, but paraphrase alone trips the rule as written).
+Flagged to the user rather than launching a round 4 past it — matching the checkpoint-10
+precedent, this isn't a call to make unilaterally. Chosen response: pause growth, fix
+retrieval first.
+
+**Diagnosis before treatment, at the new scale.** 386 of 653 cells (59%) appeared as a
+paraphrase-or-adversarial miss somewhere in the 1,313-case run — far more than checkpoint
+12's handful. Cross-referencing against the library's own tag-count distribution (median 9
+tags/cell) found only **11 of those 386 have genuinely sparse tags** (under 6); the other
+375 are the same-shape-sibling saturation effect this project has diagnosed and re-diagnosed
+since checkpoint 12 as *not* fixable by wording (`gcd` vs `gcd3`/`gcd_u32`, `is_lt` vs `min`,
+`lcm` vs `lcm3` — both sides legitimately share the query's vocabulary; no lexical signal
+separates them). Rounds 1-3 spent this whole session deliberately building missing siblings,
+which is exactly what grows this class of collision — the tradeoff was known, not accidental.
+A brute-force tag pass across all 386 would have mostly been wasted effort against a problem
+tags cannot solve; the honest, bounded fix is the 11 genuinely under-tagged cells, matching
+checkpoint 11/12's own discipline of a targeted pass, verified before/after, not a blanket one.
+
+**The fix and its measured effect.** Ten cells got targeted tag additions (`abs_diff`,
+`manhattan`, `weighted_sum`, `range_check`, `avg2`, `days_in_month`, `bcd_encode`, `dot2`,
+`mod_u32`, `q_sqrt` — `lcm3` was the eleventh but its loss is purely to same-shape siblings
+`min3`/`gcd3`, left alone as unfixable by wording). Each addition targeted a specific missed
+query directly (e.g. `manhattan` gained `taxicab`/`horizontal`/`vertical` for "taxicab
+distance moving only horizontally and vertically", which it was losing to unrelated cells
+entirely). Measured, not assumed: **checkpoint 20** — direct 0.8042 (−0.45pt, noise),
+**paraphrase 0.3866 (+1.3pt, ~25% of the drop recovered)**, **adversarial 0.5000 (+8.3pt)**.
+13 of the 16 total newly-fixed cases were the targeted cells' own previously-missed queries
+— confirming the fix worked as intended, not by coincidence. 8 cases regressed elsewhere, all
+inspected: every one is the same benign same-shape-sibling reshuffling (`manhattan` now
+ranks #2 behind its own `manhattan_wide`/`manhattan_i16` on a couple of queries instead of
+#1 — a harmless nudge, not a real loss). **A partial recovery, the same honest shape as
+checkpoint 11** — not declared "fixed," because the dominant remaining cause (same-shape
+saturation, now affecting a much larger fraction of the library than at checkpoint 12's
+scale) needs the structural lever this project has already named and not yet built out
+(behavioural I/O-example routing, `cell80 route` — or a type-led index that actually
+discriminates on structural shape, which the standing finding says today's does not).
+Growth resumes from here at the user's discretion, with this tradeoff now recorded rather
+than assumed away.
+
 ## After authoring: re-run the evals
 
 Each new **family** is a retrieval test case; each **predicate + transform** pair a composition

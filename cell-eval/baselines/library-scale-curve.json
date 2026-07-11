@@ -148532,7 +148532,7 @@
   {
     "label": "checkpoint-20-tag-recovery: 10 targeted tag fixes (abs_diff/manhattan/weighted_sum/range_check/avg2/days_in_month/bcd_encode/dot2/mod_u32/q_sqrt) after checkpoint 19s kill-gate trip",
     "cell_count": 653,
-    "commit": "pending",
+    "commit": "54924f6",
     "retrieval": {
       "eval": "retrieval",
       "library": "seed",
