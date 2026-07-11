@@ -87,6 +87,45 @@ assumption-flushing step, deliberately first). The existing Spectrum48/Cell fork
 becomes two descriptor instances (or one descriptor + an arithmetic-strategy field),
 proving the mechanism on backend zero before any new ISA exists.
 
+### 2.1a Backends, cores, platforms — three layers, not one (amendment, 2026-07-11)
+
+The flat table above conflates three things the family must keep separate, or every
+board becomes a new compiler:
+
+```
+cell source
+    ↓
+ISA backend         rustz80 / rustrv32 / rustthumb (v6-M)      — one compiler per ISA
+    ↓
+core timing model   Z80 / Hazard3 / Cortex-M0+ / Cortex-M33    — one cycle table per core
+    ↓
+platform            Spectrum48 / RP2350 / RP2040 / STM32G0 …   — linker layout, SRAM rules,
+                                                                  peripherals, the co-sign rig
+```
+
+A **certified target** is the full triple, named as such —
+`rv32im-hazard3-rp2350-sram`, `thumbv6m-cortexm0plus-rp2040-sram`,
+`thumbv6m-cortexm0plus-stm32g031-sram` — because identical instructions do not imply
+identical timing across cores or buses: pipeline and bus behaviour are part of the
+claim. The same silicon can host two certified targets (RP2350 boots either Hazard3
+or Cortex-M33: the controlled same-chip ISA experiment — same SRAM, clock,
+peripherals, cell, inputs; only the architecture differs). ISA backends may grow
+**profiles** rather than siblings where the ISA itself is parameterised: `rustrv32`
+carries `rv32im` today and earns `rv32i` (owned mul/div kernels) and `rv32e`
+(x0–x15 — the CH32V003-class 2 KiB-SRAM proof) as descriptor-selected profiles, not
+new crates.
+
+**Hardware ladder (post-B4 priority):** RP2040/M0+ (the genuinely different ISA —
+WS-D as specced), then RP2350-M33 (the same-silicon comparison), then CH32V003/rv32e
+(the minimality proof). Connected deployment (ESP32-C3-class) splits into
+*connected mode* (deterministic behaviour, uncertified timing) vs *certified mode*
+(SRAM-resident, radio and unrelated interrupts quiesced, bounded window) — the same
+posture §6 risk 3 pre-registers for RP2350. Open-RTL cores (PicoRV32, SERV) are the
+eventual research targets: RTL simulation as one more adversary, and the SERV-fabric
+shape (one tiny isolated core per reflex organ) is the SOMA model in silicon.
+Linux/Wasm/eBPF distribution bodies stay out until the embedded family is convincing
+(§1's non-goal discipline).
+
 ### 2.2 Typed IR changes
 
 1. **Width generalisation — the heaviest WS-A item.** Today `Width` is a closed
