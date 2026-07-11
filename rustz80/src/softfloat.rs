@@ -1118,10 +1118,7 @@ pub(crate) const KERNEL_DEPS: &[(&str, &[&str])] = &[
         "fexp",
         &["fround", "fmul", "fsub", "fadd", "f32_shr_jam", "f32_pack"],
     ),
-    (
-        "fln",
-        &["fadd", "fsub", "fmul", "f32_shr_jam", "f32_pack"],
-    ),
+    ("fln", &["fadd", "fsub", "fmul", "f32_shr_jam", "f32_pack"]),
     (
         "fpow",
         &[

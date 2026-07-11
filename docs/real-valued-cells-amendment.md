@@ -1,8 +1,10 @@
 # The F-waves — owned IEEE binary32, an amendment to the real-valued-cells policy
 
 *Status: **registered 2026-07-07; F0–F3 + repr tags + the kernel bank all landed
-within two days** (see §F3 for the bank's measurements; open: Rapier-trace
-validation, F2 behind Wave 3's counter, `fma`). Original F0/F1 record: — the kernel five +
+within two days; F2 (the full transcendental family) shipped 2026-07-11** — the
+demand gate fired via Finance80, §F2 has the measured contract. Open: Rapier-trace
+validation, `fma`, F2 bank residency (deferred with measured size numbers).
+Original F0/F1 record: — the kernel five +
 comparison trio + oracle banks + escalation codes + measured cost table + scratch
 relocation + the typed f32 surface with the F0.6 canon guard (H-F4 in CI) + the F1
 set: conversions (typed builtins; `f32_to_*` halts `0xFF08` on domain, the family's
@@ -181,23 +183,46 @@ a customer names it).
 
 ### F2 — owned transcendentals (demand-gated; supersedes Wave 3's representation choice)
 
-The real-valued-cells spec's Wave 3 registered CORDIC trig at Q16 behind an escalation
-counter. **The gate survives unchanged; the representation question is now open** — one
-trig decision, not two competing packs: when the counter crosses threshold, the customer
-that fired it chooses the tier (physics demand → f32; agent-reflex demand → Q16). No
-trig is authored twice.
+**Status 2026-07-11: SHIPPED, f32 tier, full family** — `fexp`/`fln`/`fpow` +
+`fsin`/`fcos`/`fatan2` in `rustz80/src/softfloat.rs`, typed surface
+`.exp()/.ln()/.powf()/.sin()/.cos()/.atan2()`. The gate fired the way §F2 said it
+would: **Finance80 was the customer** (7 recorded `host_only`-blocked functions —
+NPER, PDURATION, PRICE, ODDFPRICE, ODDLPRICE, XIRR, XNPV — `docs/excel-financial-map.md`)
+and picked f32; trig rode the same wave for F3's rotational demand. No trig authored
+twice — Wave 3's CORDIC-at-Q16 candidate is retired.
 
-If f32 wins: `sin_f32` / `cos_f32` / `atan2_f32` / `exp_f32` / `log_f32` as **owned**
-implementations — payne-hanek-lite range reduction + minimax polynomial over the F0
-kernels. Contract structure from the Q-spec, one honest narrowing stated loudly:
+What shipped vs what was specced, honestly:
 
-- **Determinism oracle:** both targets agree bit-exactly — unchanged.
-- **rustc check: explicitly N/A** — rustc's answer here *is* libm's answer, which is
-  the thing being escaped. The manifest says so per cell.
-- **Accuracy oracle:** declared ULP bound (`//! accuracy: <= 1 ulp over [domain]`),
-  verified harness-side against MPFR ground truth. CORE-MATH and RLIBM serve as
-  reference implementations and range-reduction prior art (they prove ≤0.5 ULP f32
-  correct rounding is achievable — a target to price, not a requirement to assume).
+- **Algorithm:** Cody–Waite reduction + the Cephes single-precision minimax
+  polynomials (Moshier's coefficients, u32 bit-pattern literals) composed over the
+  F0 kernels — "payne-hanek-lite" in the spec's words; full Payne–Hanek stays
+  unbuilt, which is why sin/cos carry a declared **domain wall** (|x| ≤ 8192; beyond
+  it: NaN, deterministic — never a silently-degraded value).
+- **Determinism oracle:** both targets bit-exact — *strengthened*: the golden
+  harness asserts kernel ≡ a host-side correctly-rounded-f32 simulation on all four
+  executors (Spectrum, Cell, IR interpreter, RV32), 4,420 cases.
+- **rustc check: N/A as specced** — the manifests say so per cell.
+- **Accuracy oracle:** measured against offline-mpmath (MPFR-class, 96-bit) golden
+  tables in `rustz80/tests/diff/f32_trans.rs`, generator pinned in
+  `rustz80/tests/data/gen_f32_trans_golden.py`. Measured: **fexp/fln ≤ 1 ulp,
+  fatan2 ≤ 2 ulp, fpow ≤ 40 ulp over |y·ln x| ≤ 60** (error amplification is
+  intrinsic to exp(y·ln x) — bound declared over the domain, the spec's own form),
+  **fsin/fcos: absolute error ≤ 2⁻²⁴ over the domain** (near trig zeros at large
+  |x|, reduction error is a fixed absolute quantity, so relative ULP diverges for
+  every non-Payne-Hanek f32 trig — the honest bound is absolute; the spec's ≤ 1 ulp
+  guess was priced and narrowed, not assumed). The spec's "≤ 1 ulp" aspiration vs
+  CORE-MATH/RLIBM's ≤ 0.5: still a target to price if a customer ever needs it.
+- **Bank residency: deferred deliberately** — a rebank invalidates every banked
+  artifact (same-bank-or-refuse), and the family (~6 KB) straddles the bank's ~5 KB
+  headroom; the kernels ride the non-bank append path, their F0 calls resolving
+  into the bank. Costs (measured, pinned +27% in `cell80/tests/f32_kernels.rs`):
+  fexp 297K / fln 338K / fpow 629K / fsin 228K / fcos 255K / fatan2 256K T.
+  Unbanked fpow/fatan2 images exceed the 8,192 B sandbox cap — cells using them
+  compile `kernel_bank: on`.
+- **First customers through it same-day:** `excel_nper` + `excel_pduration`
+  (`cell80/cells/excel-financial/`), each carrying a measured `//! accuracy:`
+  header with the small-rate `ln(1+r)` limit named (`fln1p` is the priced follow-up
+  if a customer hits it).
 
 ### F3 — the physics pack (the customer that justifies the family)
 
@@ -271,10 +296,10 @@ any approximation enters).
   fires on an f32 chain; the sensitive-chain canon test is a permanent CI member.
   *Kill:* a guard breach is a hashing-correctness bug and blocks release, because it
   silently forks content addresses from runtime behaviour.
-- **H-F5 (demand, inherited):** the transcendental gate = Wave 3's counter, unchanged.
-  *Kill:* counter silent → F2 stays unauthored, F3 ships restricted to
-  polynomial-expressible physics (which is most of the named pack), and the negative
-  is banked.
+- **H-F5 (demand, inherited): RESOLVED 2026-07-11** — the gate fired through the
+  Finance80 customer (7 recorded transcendental-blocked `host_only` functions, the
+  map's own wall #2), which chose f32; F2 shipped the full family the same day
+  (§F2 above has the measured contract). The kill clause never triggered.
 
 ## Honest limits
 

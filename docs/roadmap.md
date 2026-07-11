@@ -712,7 +712,19 @@ running-stat cells toward "ask the agent to write Python."
   re-priced 4096→8192 = half the physical budget); measured cost table + banked negatives
   (barrel-jam slower than the loop; fadd 10,854 T) in `docs/10-dialect-semantics.md`; first
   hand-authored cells (`softfloat` pack: `norm2_f32`, `lerp_f32`) through admission with
-  retrieval rows. **Owned transcendentals stay F2, demand-gated. Repr tags landed** (`plan::Repr` —
+  retrieval rows. **✓ F2 owned transcendentals shipped (2026-07-11, full family)** —
+  the demand gate fired via Finance80 (7 transcendental-blocked `host_only` functions),
+  which picked f32: `fexp`/`fln`/`fpow` + `fsin`/`fcos`/`fatan2`, Cephes minimax over
+  the F0 kernels, class **approximate** (measured vs offline-MPFR golden tables:
+  exp/ln ≤ 1 ulp, atan2 ≤ 2 ulp, pow ≤ 40 ulp over |y·ln x| ≤ 60, sin/cos abs ≤ 2⁻²⁴
+  over |x| ≤ 8192 — the amendment §F2 has the full contract), typed surface
+  `.exp()/.ln()/.powf()/.sin()/.cos()/.atan2()`, `//! accuracy:` manifest headers
+  (`.cell` v11), NOT bank-resident (deferred with measured sizes — a rebank
+  invalidates every banked artifact), proof cells `excel_nper`/`excel_pduration`
+  same-day. The array-state harness gap closed the same day (`.cell` v11,
+  `run_state_values` — the sliding-window family landed on it), so the remaining 10
+  ex-`host_only` Excel financials are an authoring wave now, not a capability gap.
+  **Repr tags landed** (`plan::Repr` —
   the renderer type-flows representation like dimension; mixed-repr/q-mul/f32-exactness
   are named kills, f32 targets gate on finiteness, the battery perturbs f32 by +1.0):
   model-composed float *plans* are legal through the renderer; model-authored f32

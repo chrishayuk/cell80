@@ -13,7 +13,10 @@ UTF-8 buffer: u16 LE length + up to `N` bytes, host-validated at the boundary).
 Scalar `set`/`get`/`read_named` paths **reject/skip** buffer fields with a steering
 error; the byte-buffer I/O surface (host packing, `str_out` promotion, graph `str`
 edges) arrives with Phase S3. No new traps — string work lowers to `LDIR`/`CPIR`-shaped
-loops with honest cycle costs (spec §5).
+loops with honest cycle costs (spec §5). (**Word/dword scalar arrays stopped waiting
+for S3**: `.cell` v11's `u16[N]`/`u32[N]` state fields round-trip by name today —
+wire code 6, `StateCell::set_array`/`get_array`, `CellHost::run_state_values` — on
+the same code-plus-payload wire pattern S3's byte buffers will ride.)
 
 **v2 (the 32-bit lane).** Two additions over v1: the `ED FE` traps `0x12` (MUL32) and
 `0x13` (DIVMOD32), and **`u32` state fields** — two consecutive little-endian slots (low
@@ -193,13 +196,16 @@ with a compiled `CellProgram` (and its serialized image).
 
 `CellProgram::to_bytes()` / `from_bytes()` serialize a compact, self-contained **image**
 (magic `CZ80`: version, code, symbols, policy) with no `syn`. A **`.cell` cartridge** (magic
-`CELL`, format **v7**) wraps that image with its `Manifest` — id, summary, tags, entry,
+`CELL`, format **v11**) wraps that image with its `Manifest` — id, summary, tags, entry,
 source hash, compiler + ABI version, the typed I/O **signature** (`params` / `ret` / `state`),
 `state_addrs`: each addressable state field's byte address **and kind** (`Ty`, one byte:
 0 = u16, 1 = u32, 2 = u8, 3 = bytes[N], 4 = str[N] — buffer codes followed by a u16
-capacity) at `STATE_BASE` (so a host or a peer cell in a graph drives the
+capacity; 5 = f32 — binary32 bits in u32-wide storage; 6 = a **scalar array**
+`u16[N]`/`u32[N]`, v11 — followed by an element sub-code byte (0 = u16, 1 = u32) and a
+u16 element count) at `STATE_BASE` (so a host or a peer cell in a graph drives the
 cell **by field name without the source** — a `u32` field at its full width, a buffer
-field with a known envelope), the
+field with a known envelope, an array field whole through
+`StateCell::set_array`/`get_array` / `CellHost::run_state_values`), the
 `limits` list (the escalation contract's static half, above), and an optional
 **fixed-point `scale`** (v7: a presence byte, then the fractional-bit count if present —
 `//! scale: N`, so a Q8.8 cell declares 8; a consumer reads its values as `raw / 2^N`).
@@ -208,12 +214,14 @@ As of **v10** the manifest also carries the **cell-family identity**
 naming the machine body (`z80-cell` for everything this crate makes — a host refuses
 a body it can't run, the kernel-bank-pin posture) and an optional **family hash**
 (SHA-256 over the canonical source; sibling-target bodies of the same cell share it,
-while each body keeps its own artifact hash).
-`from_bytes` still reads every older version — v9 (no family identity), v8, v7, v6
+while each body keeps its own artifact hash). **v11** adds the optional **accuracy
+contract** (`//! accuracy:` — the F2 `approximate` class's declared, harness-measured
+error bound; a presence byte + string after the family hash).
+`from_bytes` still reads every older version — v10, v9 (no family identity), v8, v7, v6
 (no buffer types), v5, v4 (no `limits`, no content addressing), v3 (addresses without
 widths → fields read as `u16`), and v2 (no `state_addrs`). This named, versioned,
 manifest-bearing artifact is the object the CLI, a tool index, the MCP server, and a
-`CellGraph` pass around. (Note: the `.cell` *file* format version — v10 — is distinct
+`CellGraph` pass around. (Note: the `.cell` *file* format version — v11 — is distinct
 from the runtime `ABI_VERSION` above, now 3.)
 
 ### Content addressing & signing (v5)

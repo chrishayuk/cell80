@@ -1499,3 +1499,21 @@ ranked #1 on their direct queries via `cell80 search` before their rows were wri
 Experiment close-out (design-question resolutions included) in
 `experiments/sliding-window-state-cells-findings.md`; the v11 wire details in
 `cell80/src/cartridge.rs`'s version ledger.
+
+### F2 transcendentals — the second dialect wall falls the same day (2026-07-11)
+
+The other half of the "and/or transcendentals" blocker above: the F2 demand gate
+(`docs/real-valued-cells-amendment.md` §F2/H-F5) fired via the Finance80 customer, and
+the **full family shipped** — `fexp`/`fln`/`fpow` + `fsin`/`fcos`/`fatan2` as owned
+kernels (Cephes minimax over the F0 five, class *approximate*: exp/ln measured ≤ 1 ulp,
+atan2 ≤ 2 ulp, pow ≤ 40 ulp over |y·ln x| ≤ 60, sin/cos absolute ≤ 2⁻²⁴ over
+|x| ≤ 8192, all vs offline-MPFR golden tables; 4,420 cases bit-exact to a host-side
+correctly-rounded-f32 simulation on all four executors). Two proof cells rode in
+(747 total): `excel_nper` and `excel_pduration` — the pack's first `.ln()` cells,
+Excel's own documented values pinned, `#NUM!` as typed `0xFF06`, measured
+`//! accuracy:` headers (`.cell` v11's other new field). With both walls down, the
+remaining 10 ex-`host_only` Excel financials (`IRR`/`NPV`/`XIRR`/... —
+`docs/excel-financial-map.md`) are an ordinary authoring wave now. Deferred with
+numbers: F2 bank residency (family ≈ 6 KB vs ~5 KB bank headroom; a rebank
+invalidates every banked artifact), `fln1p` (the small-rate `ln(1+r)` accuracy gap
+both proof cells document), full Payne–Hanek reduction (the |x| ≤ 8192 trig wall).

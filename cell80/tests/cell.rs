@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("745 cells"));
+    assert!(listing.contains("range_check") && listing.contains("747 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("745 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("747 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 745, "got: {out}");
+    assert_eq!(cells.len(), 747, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -982,13 +982,15 @@ fn cli_index_gate_over_the_real_library() {
     // agreement 1.00, not a probe-bank coincidence) — kept the already-admitted
     // gust_factor_f32, dropped rain_rate_f32 rather than shipping duplicate code under a
     // different name. 745 admitted, 0 refused.
+    // 745→747: the F2 transcendental proof pair (excel_nper, excel_pduration) — the
+    // excel-financial pack's first .ln() cells, same day as the F2 kernels landed.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("745 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("747 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]
@@ -2363,12 +2365,13 @@ fn pre_v5_cartridges_still_load() {
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();
-    // Drop the trailing v5/v7/v8/v9/v10 manifest fields a v4 stream never had: the
-    // empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
-    // finite_result byte (1), the v9 kernel-bank presence byte (1), and the v10
+    // Drop the trailing v5/v7/v8/v9/v10/v11 manifest fields a v4 stream never had:
+    // the empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
+    // finite_result byte (1), the v9 kernel-bank presence byte (1), the v10
     // family identity — the `z80-cell` target string (2-byte len + 8) and the
-    // family-hash presence byte + digest (1 + 32).
-    v4.extend_from_slice(&v5[..manifest_end - 48]);
+    // family-hash presence byte + digest (1 + 32) — and the v11 accuracy
+    // presence byte (1).
+    v4.extend_from_slice(&v5[..manifest_end - 49]);
     v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
     v4[4] = 4; // version byte
     let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path

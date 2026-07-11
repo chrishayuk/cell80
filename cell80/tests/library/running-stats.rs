@@ -79,8 +79,12 @@ fn sliding_window_cells_match_defined_behaviour() {
     // simple_moving_average — the experiment's verified 10-step expectations
     // (experiments/sliding-window-state-cells-findings.md), now through the named
     // surface instead of hand-computed raw address triples.
-    let mut sma = StateCell::bind(&cell_src("simple_moving_average"), "SimpleMovingAverage", None)
-        .unwrap_or_else(|e| panic!("bind sma: {e}"));
+    let mut sma = StateCell::bind(
+        &cell_src("simple_moving_average"),
+        "SimpleMovingAverage",
+        None,
+    )
+    .unwrap_or_else(|e| panic!("bind sma: {e}"));
     #[rustfmt::skip]
     let expect = [
         (10u64, 10u64), (20, 15), (30, 20), (40, 25), (50, 30),
@@ -145,7 +149,11 @@ fn sliding_window_cells_match_defined_behaviour() {
         if ring.len() > 8 {
             ring.remove(0);
         }
-        let num: u64 = ring.iter().enumerate().map(|(j, &x)| (j as u64 + 1) * x).sum();
+        let num: u64 = ring
+            .iter()
+            .enumerate()
+            .map(|(j, &x)| (j as u64 + 1) * x)
+            .sum();
         let den: u64 = (1..=ring.len() as u64).sum();
         assert_eq!(got[i], num / den, "wma step {i}");
     }
@@ -153,7 +161,9 @@ fn sliding_window_cells_match_defined_behaviour() {
     // rolling_variance — mirror oracle: truncated mean, squared-deviation walk,
     // truncated divide. An old outlier must age out (the windowed-vs-cumulative
     // distinction that makes this a different cell from running_variance_step).
-    let stream = [100u64, 100, 100, 5000, 100, 100, 100, 100, 100, 100, 100, 100];
+    let stream = [
+        100u64, 100, 100, 5000, 100, 100, 100, 100, 100, 100, 100, 100,
+    ];
     let got = drive(
         "rolling_variance",
         "RollingVariance",
@@ -175,7 +185,12 @@ fn sliding_window_cells_match_defined_behaviour() {
     assert_eq!(got[11], 0, "outlier must age out of the window");
 
     // rolling_std — floor(sqrt(rolling variance)).
-    let got = drive("rolling_std", "RollingStd", &["head", "count", "sum"], &stream);
+    let got = drive(
+        "rolling_std",
+        "RollingStd",
+        &["head", "count", "sum"],
+        &stream,
+    );
     let mut ring: Vec<u64> = Vec::new();
     for (i, &v) in stream.iter().enumerate() {
         ring.push(v);

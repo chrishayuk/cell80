@@ -236,25 +236,25 @@ fn f32_trans_special_pins() {
         (format!("fexp({NAN}u32)"), NAN),
         (format!("fexp({INF}u32)"), INF),
         (format!("fexp({NINF}u32)"), 0),
-        (format!("fexp(0u32)"), ONE),
-        (format!("fexp(2147483648u32)"), ONE), // -0
-        (format!("fexp(0x42B17218u32)"), INF), // x ≥ 88.722839 → +Inf
-        (format!("fexp(0xC2CFF1B5u32)"), 0),   // x ≤ -103.972084 → +0
+        ("fexp(0u32)".to_string(), ONE),
+        ("fexp(2147483648u32)".to_string(), ONE), // -0
+        ("fexp(0x42B17218u32)".to_string(), INF), // x ≥ 88.722839 → +Inf
+        ("fexp(0xC2CFF1B5u32)".to_string(), 0),   // x ≤ -103.972084 → +0
         // fln: NaN→NaN, ±0→-Inf, x<0→NaN, +Inf→+Inf, ln(1)=+0 exactly
         (format!("fln({NAN}u32)"), NAN),
-        (format!("fln(0u32)"), NINF),
-        (format!("fln(2147483648u32)"), NINF),
+        ("fln(0u32)".to_string(), NINF),
+        ("fln(2147483648u32)".to_string(), NINF),
         (format!("fln({NEG_TWO}u32)"), NAN),
         (format!("fln({NINF}u32)"), NAN),
         (format!("fln({INF}u32)"), INF),
         (format!("fln({ONE}u32)"), 0),
         // fpow: the Rust powf pins
-        (format!("fpow({NAN}u32, 0u32)"), ONE),  // NaN^0 = 1
+        (format!("fpow({NAN}u32, 0u32)"), ONE), // NaN^0 = 1
         (format!("fpow({ONE}u32, {NAN}u32)"), ONE), // 1^NaN = 1
         (format!("fpow({TWO}u32, 0u32)"), ONE),
         (format!("fpow({NEG_TWO}u32, {HALF}u32)"), NAN), // negative base → NaN (documented)
-        (format!("fpow(0u32, {TWO}u32)"), 0),    // 0^y>0 = +0
-        (format!("fpow(0u32, {NEG_TWO}u32)"), INF), // 0^y<0 = +Inf
+        (format!("fpow(0u32, {TWO}u32)"), 0),            // 0^y>0 = +0
+        (format!("fpow(0u32, {NEG_TWO}u32)"), INF),      // 0^y<0 = +Inf
         (format!("fpow({INF}u32, {TWO}u32)"), INF),
         (format!("fpow({INF}u32, {NEG_TWO}u32)"), 0),
         (format!("fpow({TWO}u32, {INF}u32)"), INF),
@@ -262,23 +262,23 @@ fn f32_trans_special_pins() {
         (format!("fpow({TWO}u32, {NINF}u32)"), 0),
         // fsin/fcos: ±0 pins, NaN/±Inf → NaN (IEEE), and the declared-domain wall
         // (|x| > 8192 → NaN, deterministic — never a silently-degraded value)
-        (format!("fsin(0u32)"), 0),
-        (format!("fsin(2147483648u32)"), 0x8000_0000), // sin(-0) = -0
+        ("fsin(0u32)".to_string(), 0),
+        ("fsin(2147483648u32)".to_string(), 0x8000_0000), // sin(-0) = -0
         (format!("fsin({INF}u32)"), NAN),
         (format!("fsin({NAN}u32)"), NAN),
-        (format!("fsin(0x46000001u32)"), NAN), // just past the domain wall
-        (format!("fcos(0u32)"), ONE),
-        (format!("fcos(2147483648u32)"), ONE),
+        ("fsin(0x46000001u32)".to_string(), NAN), // just past the domain wall
+        ("fcos(0u32)".to_string(), ONE),
+        ("fcos(2147483648u32)".to_string(), ONE),
         (format!("fcos({NINF}u32)"), NAN),
         (format!("fcos({NAN}u32)"), NAN),
-        (format!("fcos(0xC6000001u32)"), NAN),
+        ("fcos(0xC6000001u32)".to_string(), NAN),
         // fatan2: the IEEE special-value table (signs matter everywhere)
         (format!("fatan2(0u32, {ONE}u32)"), 0),
         (format!("fatan2(2147483648u32, {ONE}u32)"), 0x8000_0000),
         (format!("fatan2(0u32, {NEG_TWO}u32)"), 0x4049_0FDB), // +pi
         (format!("fatan2(2147483648u32, {NEG_TWO}u32)"), 0xC049_0FDB), // -pi
-        (format!("fatan2({ONE}u32, 0u32)"), 0x3FC9_0FDB), // +pi/2
-        (format!("fatan2(0xBF800000u32, 0u32)"), 0xBFC9_0FDB), // -pi/2
+        (format!("fatan2({ONE}u32, 0u32)"), 0x3FC9_0FDB),     // +pi/2
+        ("fatan2(0xBF800000u32, 0u32)".to_string(), 0xBFC9_0FDB), // -pi/2
         (format!("fatan2({INF}u32, {INF}u32)"), 0x3F49_0FDB), // +pi/4
         (format!("fatan2({INF}u32, {NINF}u32)"), 0x4016_CBE4), // +3pi/4
         (format!("fatan2(0xFF800000u32, {NINF}u32)"), 0xC016_CBE4), // -3pi/4
@@ -335,7 +335,11 @@ fn f() -> u16 {
 "#;
     assert_eq!(run_program_pruned(ln_src, "f"), 0, "ln");
     assert_eq!(run_program_pruned(exp_src, "f"), 0, "exp");
-    assert_eq!(run_program_banked(pow_src, "f"), 0, "powf (banked — inline overruns)");
+    assert_eq!(
+        run_program_banked(pow_src, "f"),
+        0,
+        "powf (banked — inline overruns)"
+    );
 }
 
 /// Bank bit-invisibility: the F2 kernels are NOT bank members (residency is a

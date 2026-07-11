@@ -4217,12 +4217,22 @@ fn excel_nper_matches_test_cases() {
         (&[("rate", 0.0), ("pmt", -100.0), ("pv", 1000.0)], 10.0),
         // A target future value joins the stream.
         (
-            &[("rate", 0.05), ("pmt", -100.0), ("pv", 1000.0), ("fv", 100.0)],
+            &[
+                ("rate", 0.05),
+                ("pmt", -100.0),
+                ("pv", 1000.0),
+                ("fv", 100.0),
+            ],
             15.2067,
         ),
         // Annuity-due (type = 1): payments at period start.
         (
-            &[("rate", 0.05), ("pmt", -100.0), ("pv", 1000.0), ("due", 1.0)],
+            &[
+                ("rate", 0.05),
+                ("pmt", -100.0),
+                ("pv", 1000.0),
+                ("due", 1.0),
+            ],
             13.2536,
         ),
     ];
@@ -4281,7 +4291,9 @@ fn excel_pduration_matches_test_cases() {
         };
         let cart = cell80::Cartridge::compile(&src, cell80::CellConfig::permissive(), opts)
             .unwrap_or_else(|e| panic!("compile excel_pduration (banked): {e}"));
-        let program = cart.z80().unwrap_or_else(|e| panic!("excel_pduration z80: {e}"));
+        let program = cart
+            .z80()
+            .unwrap_or_else(|e| panic!("excel_pduration z80: {e}"));
         let mut runner = cell80::Runner::new(program);
         let report = runner
             .run_with_inputs(Some(entry), &[cell80::STATE_BASE], &sets, 2_000_000)

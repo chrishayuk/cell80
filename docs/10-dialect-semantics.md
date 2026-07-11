@@ -308,8 +308,32 @@ four u32 multiplies ride `ED FE` traps charged ~4 T each, so its honest cost pai
 | `int_to_f32` | 6,392¹ | 0 | 1,044 |
 | `q16_to_f32` | 11,526¹ | 0 | 1,044 |
 | `f32_to_int_trunc` | 14,895¹ | 0 | 903 |
+| `fexp` | 296,554² | 48 | 8,127 |
+| `fln` | 338,393² | 56 | 7,817 |
+| `fpow` | 628,991² | 108 | 11,083³ |
+| `fsin` | 227,891² | 36 | 7,939 |
+| `fcos` | 255,483² | 40 | 7,982 |
+| `fatan2` | 255,825² | 24 | 10,110³ |
 
 ¹ value-dependent: the conversion normalize/strip loops shift by 1 up to 31/23 steps.
+
+² the F2 transcendentals (2026-07-11, class **approximate** — declared accuracy
+bounds measured against MPFR golden tables, not bit-exact-vs-rustc; typed surface
+`.exp()/.ln()/.powf()/.sin()/.cos()/.atan2()`; contract in
+`docs/real-valued-cells-amendment.md` §F2). One transcendental per cell is 10–30%
+of `DEFAULT_CYCLES`; a transcendental-heavy inner loop routes to Q or host. A
+priced side effect on the *existing* F0 cells: the single-site inline fold counts
+call sites **before** DCE, and the F2 bodies call `fadd`/`fsub`/`fmul`/`fdiv`/
+`fround` in the appended kernel text — so those kernels stopped folding into
+their (previously sole) callers and compile as standalone fns: ~+50 B image and
+one CALL/RET per op for affected cells, results bit-identical, every ceiling in
+this table still met (codegen golden re-blessed with the re-layout). Counting
+call sites post-DCE would restore the fold — priced as a compiler follow-up, not
+done in the F2 wave.
+
+³ over the 8,192 B sandbox cap inline — a sandboxed cell using `powf`/`atan2`
+compiles `kernel_bank: on` (the F2 bodies stay local; their F0 calls resolve into
+the bank).
 
 **Banked negative** (2026-07-07): a barrel-decomposed `f32_shr_jam` (test-and-shift by
 16/8/4/2/1) measured *worse* than the per-bit loop on the typical profile — fadd 12,406
