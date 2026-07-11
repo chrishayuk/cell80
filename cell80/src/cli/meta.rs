@@ -11,7 +11,7 @@ pub(super) fn parse_scale(s: &str) -> Option<u8> {
 }
 
 /// Parse a cell source's leading `//!` header →
-/// `(summary, tags, entry, limits, scale, finite_result)`.
+/// `(summary, tags, entry, limits, scale, accuracy, finite_result, kernel_bank)`.
 #[allow(clippy::type_complexity)]
 pub(super) fn parse_meta(
     src: &str,
@@ -21,11 +21,13 @@ pub(super) fn parse_meta(
     Option<String>,
     Vec<String>,
     Option<u8>,
+    Option<String>,
     Option<bool>,
     bool,
 ) {
     let (mut summary, mut tags, mut entry, mut limits, mut scale) =
         (String::new(), Vec::new(), None, Vec::new(), None);
+    let mut accuracy = None;
     let mut finite_result = None;
     let mut kernel_bank = false;
     let csv = |s: &str| -> Vec<String> {
@@ -49,6 +51,14 @@ pub(super) fn parse_meta(
             } else if let Some(sv) = rest.strip_prefix("scale:") {
                 // Fixed-point scale (fractional bits) — `//! scale: 8` for a Q8.8 cell.
                 scale = parse_scale(sv);
+            } else if let Some(av) = rest.strip_prefix("accuracy:") {
+                // The F2 accuracy contract — a declared ULP bound over a domain,
+                // e.g. `//! accuracy: <= 4 ulp over [-87.34, 88.72]`. Free-form;
+                // the harness, not the parser, holds it to measurement.
+                let a = av.trim();
+                if !a.is_empty() {
+                    accuracy = Some(a.to_string());
+                }
             } else if let Some(kv) = rest.strip_prefix("kernel_bank:") {
                 // Compile against the resident kernel bank — the image calls into
                 // BANK_ORG and the manifest pins the bank hash (`.cell` v9).
@@ -73,6 +83,7 @@ pub(super) fn parse_meta(
         entry,
         limits,
         scale,
+        accuracy,
         finite_result,
         kernel_bank,
     )
@@ -86,7 +97,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
         Some("rs") => Some((|| {
             let src =
                 std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let (summary, tags, entry, limits, scale, finite_result, kernel_bank) =
+            let (summary, tags, entry, limits, scale, accuracy, finite_result, kernel_bank) =
                 parse_meta(&src);
             let id = path
                 .file_stem()
@@ -103,6 +114,7 @@ pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartrid
                     tags,
                     limits,
                     scale,
+                    accuracy,
                     finite_result,
                     kernel_bank,
                     ..Default::default()

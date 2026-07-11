@@ -18,6 +18,23 @@ fn parse_meta_reads_finite_result() {
 }
 
 #[test]
+fn parse_meta_reads_accuracy() {
+    // The F2 header key: a free-form declared ULP bound (harness-verified, not
+    // parser-validated); absent (or empty) means None — exact semantics.
+    let (_, _, _, _, _, acc, _, _) = parse_meta(
+        "//! s\n//! accuracy: <= 4 ulp over [-87.34, 88.72]\nfn run() -> u16 { 1u16 }",
+    );
+    assert_eq!(acc.as_deref(), Some("<= 4 ulp over [-87.34, 88.72]"));
+    let (_, _, _, _, _, acc, _, _) = parse_meta("//! s\nfn run() -> u16 { 1u16 }");
+    assert_eq!(acc, None);
+    let (_, _, _, _, _, acc, _, _) = parse_meta("//! s\n//! accuracy:   \nfn run() -> u16 { 1u16 }");
+    assert_eq!(acc, None);
+    // The accuracy line never leaks into the summary.
+    let (summary, ..) = parse_meta("//! accuracy: <= 2 ulp\n//! the real summary\nfn run() -> u16 { 1u16 }");
+    assert_eq!(summary, "the real summary");
+}
+
+#[test]
 fn finite_result_header_flows_to_the_manifest() {
     // A library `.rs` with the opt-out header compiles to a manifest with the
     // contract off — the whole `library_cartridge` wiring, not just the parser.
@@ -64,12 +81,12 @@ fn scale_header_parses() {
     assert_eq!(parse_scale("Q16.16"), Some(16));
     assert_eq!(parse_scale("  12 "), Some(12));
     assert_eq!(parse_scale("nonsense"), None);
-    let (summary, _, _, _, scale, _, _) =
+    let (summary, _, _, _, scale, _, _, _) =
         parse_meta("//! Q8.8 multiply\n//! tags: math\n//! scale: 8\nfn run() -> u16 { 0u16 }");
     assert_eq!(scale, Some(8));
     // The scale line never leaks into the summary; absent → None.
     assert_eq!(summary, "Q8.8 multiply");
-    let (_, _, _, _, none, _, _) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
+    let (_, _, _, _, none, _, _, _) = parse_meta("//! plain\nfn run() -> u16 { 0u16 }");
     assert_eq!(none, None);
     // End-to-end: the library path picks up `q_mul`'s `//! scale: 8` (skip if the
     // sibling cells corpus isn't present, e.g. a packaged crates.io build).

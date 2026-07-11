@@ -34,7 +34,16 @@ const MAGIC: &[u8; 4] = b"CELL";
 // and an optional **family hash** — SHA-256 over the canonical source, shared by
 // sibling-target bodies of the same cell. Pre-v10 cartridges read back as
 // `z80-cell` with no family hash.
-const VERSION: u8 = 10;
+// v11 adds two things. (1) **Array state-field types**: a `u16[N]`/`u32[N]` entry's
+// type code (6) is followed by an element sub-code byte (0 = u16, 1 = u32) and a
+// u16 LE element count — the named-array round-trip surface (the sliding-window
+// family). Pre-v11 cartridges never contain code 6, so back-compat reads hold, the
+// v6 buffer-code posture. (2) The optional **accuracy contract** (`//! accuracy:`,
+// F-wave §F2): a presence byte + string after the family hash, declaring an
+// `approximate`-class cell's ULP bound over its domain (owned transcendentals are
+// deterministic but not correctly-rounded; the contract is verified harness-side,
+// never assumed). Pre-v11 cartridges read back as `None`.
+const VERSION: u8 = 11;
 
 /// The Z80 micro-VM machine body — what [`crate::Runner`]/[`crate::CellHost`] run.
 /// (Docs 13 §2.1a names full certified targets; at the cartridge level the body's
@@ -141,14 +150,18 @@ fn read_pairs(r: &mut ImageReader) -> Result<Vec<(String, String)>, String> {
 
 /// Serialize / read a `(name, u16 address, ty)` list (the state field addresses). A v3
 /// cartridge has no `ty` byte — its fields read back as `u16` (the only width v3 knew).
-/// A v6+ buffer entry (type code 3/4) carries a u16 capacity after the code.
+/// A v6+ buffer entry (type code 3/4) carries a u16 capacity after the code; a v11+
+/// array entry (code 6) carries an element sub-code byte + a u16 element count.
 fn put_addrs(b: &mut Vec<u8>, v: &[(String, u16, Ty)]) {
     b.extend_from_slice(&(v.len() as u16).to_le_bytes());
     for (n, a, ty) in v {
         put_string(b, n);
         b.extend_from_slice(&a.to_le_bytes());
         b.push(ty.code());
-        if let Some(cap) = ty.capacity() {
+        if let Some((elem, len)) = ty.array_dims() {
+            b.push(elem.code());
+            b.extend_from_slice(&len.to_le_bytes());
+        } else if let Some(cap) = ty.capacity() {
             b.extend_from_slice(&cap.to_le_bytes());
         }
     }
@@ -160,10 +173,16 @@ fn read_addrs(r: &mut ImageReader, ver: u8) -> Result<Vec<(String, u16, Ty)>, St
         let name = r.string()?;
         let addr = r.u16()?;
         let ty = if ver >= 4 {
-            let code = r.u8()?;
-            // Buffer codes carry a capacity; pre-v6 formats never wrote them.
-            let cap = if matches!(code, 3 | 4) { r.u16()? } else { 0 };
-            Ty::from_code(code, cap)?
+            match r.u8()? {
+                // The v11 array code: element sub-code, then element count.
+                // Pre-v11 cartridges never wrote code 6 — no version gate needed.
+                6 => Ty::array_from_wire(r.u8()?, r.u16()?)?,
+                code => {
+                    // Buffer codes carry a capacity; pre-v6 formats never wrote them.
+                    let cap = if matches!(code, 3 | 4) { r.u16()? } else { 0 };
+                    Ty::from_code(code, cap)?
+                }
+            }
         } else {
             Ty::U16
         };
@@ -231,6 +250,13 @@ pub struct Manifest {
     /// `q_mul`/`q_div` and `docs/10-dialect-semantics.md`), so a host/agent can present or
     /// combine it correctly without guessing from the summary.
     pub scale: Option<u8>,
+    /// The optional **accuracy contract** (v11, `//! accuracy:` — F-wave §F2): an
+    /// `approximate`-class cell's declared error bound over its domain, e.g.
+    /// `"<= 4 ulp over [-87.34, 88.72]"`. Owned transcendentals are deterministic
+    /// (both compile targets bit-identical) but not correctly rounded — this names
+    /// the honest bound, set from harness measurement against ground truth, never
+    /// assumed. `None` = exact/correctly-rounded semantics (every pre-F2 cell).
+    pub accuracy: Option<String>,
 }
 
 /// Options for [`Cartridge::compile`] (all optional).
@@ -244,6 +270,8 @@ pub struct CartridgeOpts {
     pub limits: Vec<String>,
     /// Optional fixed-point scale (fractional bits) — see [`Manifest::scale`].
     pub scale: Option<u8>,
+    /// Optional accuracy contract (`//! accuracy:`) — see [`Manifest::accuracy`].
+    pub accuracy: Option<String>,
     /// The F0.4 boundary contract — `None` means the default (`true`). See
     /// [`Manifest::finite_result`].
     pub finite_result: Option<bool>,
@@ -397,6 +425,7 @@ impl Cartridge {
                 kernel_bank: opts.kernel_bank.then(kernel_bank_hash),
                 target: Z80_CELL_TARGET.to_string(),
                 family_hash,
+                accuracy: opts.accuracy,
             },
             body: Body::Z80(program),
             signature: None,
@@ -489,6 +518,7 @@ impl Cartridge {
                 kernel_bank: None,
                 target: RV32_TARGET.to_string(),
                 family_hash,
+                accuracy: opts.accuracy,
             },
             body: Body::Rv32(Rv32Body { image, cfg }),
             signature: None,
@@ -546,6 +576,14 @@ impl Cartridge {
             Some(h) => {
                 b.push(1);
                 b.extend_from_slice(h);
+            }
+            None => b.push(0),
+        }
+        // v11: the optional accuracy contract (presence byte + string).
+        match &m.accuracy {
+            Some(a) => {
+                b.push(1);
+                put_string(&mut b, a);
             }
             None => b.push(0),
         }
@@ -710,6 +748,17 @@ impl Cartridge {
         } else {
             (Z80_CELL_TARGET.to_string(), None)
         };
+        // v11+ may declare an accuracy contract; older cartridges (and every
+        // exact/correctly-rounded cell) read back as `None`.
+        let accuracy = if ver >= 11 {
+            match r.u8()? {
+                0 => None,
+                1 => Some(r.string()?),
+                other => return Err(format!("bad accuracy marker {other}")),
+            }
+        } else {
+            None
+        };
 
         // v5+ is content-addressed: the stored hash covers bytes[..here] + the image.
         let manifest_end = r.i;
@@ -789,6 +838,7 @@ impl Cartridge {
                 kernel_bank,
                 target,
                 family_hash,
+                accuracy,
             },
             body,
             signature: cart_sig,
@@ -837,6 +887,10 @@ impl Cartridge {
             Some(n) => format!("\n  scale: Q·{n} (values are raw / 2^{n})"),
             None => String::new(),
         };
+        let accuracy = match &m.accuracy {
+            Some(a) => format!("\n  accuracy: {a} (approximate class — declared, harness-verified)"),
+            None => String::new(),
+        };
         let hash = self.artifact_hash();
         let artifact = match &self.signature {
             Some((vk, _)) => format!(
@@ -847,7 +901,7 @@ impl Cartridge {
             None => format!("sha256:{}  (unsigned)", hex(&hash)),
         };
         format!(
-            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}{scale}\n  \
+            "cell `{}`  (abi {}, compiler {})\n  {}\n  tags: {}\n  signature: {}{}{limits}{scale}{accuracy}\n  \
              entry: {} @ 0x{:04X}\n  code: {} bytes, {} functions\n  capabilities: {}\n  \
              symbols: {}\n  source_hash: 0x{:016x}\n  artifact: {artifact}",
             m.id,
@@ -893,7 +947,7 @@ impl Cartridge {
         };
         format!(
             "{{\"id\":\"{}\",\"abi\":{},\"compiler\":\"{}\",\"summary\":\"{}\",\"tags\":[{}],\
-             \"limits\":[{}],\"scale\":{},\
+             \"limits\":[{}],\"scale\":{},\"accuracy\":{},\
              \"entry\":\"{}\",\"signature\":{{\"params\":[{}],\"ret\":\"{}\",\"state\":[{}]}},\
              \"code_bytes\":{},\"functions\":{},\"source_hash\":\"0x{:016x}\",\
              \"artifact_hash\":\"sha256:{}\",\"signed\":{},\
@@ -906,6 +960,9 @@ impl Cartridge {
             tags.join(","),
             limits.join(","),
             m.scale.map_or("null".into(), |n| n.to_string()),
+            m.accuracy
+                .as_ref()
+                .map_or("null".into(), |a| format!("\"{a}\"")),
             m.entry,
             pairs_json(&m.signature.params),
             m.signature.ret,

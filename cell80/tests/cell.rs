@@ -2347,12 +2347,13 @@ fn pre_v5_cartridges_still_load() {
     let img_block_len = 4 + img.len();
     let manifest_end = v5.len() - img_block_len - 33; // hash(32) + unsigned marker(1)
     let mut v4 = Vec::new();
-    // Drop the trailing v5/v7/v8/v9/v10 manifest fields a v4 stream never had: the
-    // empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
-    // finite_result byte (1), the v9 kernel-bank presence byte (1), and the v10
+    // Drop the trailing v5/v7/v8/v9/v10/v11 manifest fields a v4 stream never had:
+    // the empty limits u16 (2 bytes), the v7 scale presence byte (1), the v8
+    // finite_result byte (1), the v9 kernel-bank presence byte (1), the v10
     // family identity — the `z80-cell` target string (2-byte len + 8) and the
-    // family-hash presence byte + digest (1 + 32).
-    v4.extend_from_slice(&v5[..manifest_end - 48]);
+    // family-hash presence byte + digest (1 + 32) — and the v11 accuracy
+    // presence byte (1).
+    v4.extend_from_slice(&v5[..manifest_end - 49]);
     v4.extend_from_slice(&v5[v5.len() - img_block_len..]);
     v4[4] = 4; // version byte
     let back = Cartridge::from_bytes(&v4).unwrap(); // no hash → grandfathered, verified load path
