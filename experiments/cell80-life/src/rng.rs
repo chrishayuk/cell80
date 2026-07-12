@@ -5,10 +5,10 @@
 //! `cell80-life` binary's `Rng` (a single mutable xorshift64* stream consumed in `Vec`
 //! iteration order) does not have it, which is exactly why EX-0 needs a different one.
 
-/// The one stream EX-0 draws from today (a per-organism-per-tick mutation roll, computed
-/// and recorded but not yet branching anything — see `experiments/deterministic-ecology.md`
-/// EX-0's scope). Distinct experiments/roles get distinct `stream` values so their draws
-/// never collide.
+/// A per-organism-per-tick mutation roll (EX-0: computed and recorded but not yet
+/// branching anything — see `experiments/deterministic-ecology.md` EX-0's scope). Distinct
+/// experiments/roles get distinct `stream` values so their draws never collide; see also
+/// `contention::EAT_CONTENTION_STREAM`, the RNG's first real, branching use (EX-1).
 pub const MUTATION_STREAM: u8 = 0;
 
 /// `draw(seed, tick, organism_id, stream)` — same four inputs always produce the same u32,

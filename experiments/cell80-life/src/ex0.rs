@@ -10,24 +10,20 @@
 //!
 //! Deliberately scoped narrow (see the design doc): one homogeneous genome for the whole
 //! run (no species, no mutation-driven genome diversity — that's EX-2/EX-3), the existing
-//! 1D world (2D/scale is EX-1's job), and food-tile eating is **non-exclusive within a
-//! tick** — every organism that intends to eat at a tile gets the snapshot's food amount,
-//! and the tile clears once at tick end, regardless of how many organisms ate there. That
-//! is a deliberate divergence from `cell80-life`'s sequential first-wins rule, needed
-//! because "who processed first" isn't a well-posed question once a tick is a batch
-//! dispatch rather than a `Vec` loop — see the findings doc for what this does and doesn't
-//! show about `cell80-life`'s original population dynamics.
-use crate::genes::{CompiledGene, GeneSet};
+//! 1D world (2D/scale is EX-1's job). A contested eat-tile (more than one organism
+//! intending to eat there this tick) is resolved by `contention::resolve_eat_contention` —
+//! an order-independent, RNG-picked single winner gets the real `eat` output; everyone
+//! else keeps their post-decay energy. "Who processed first" isn't a well-posed question
+//! once a tick is a batch dispatch rather than a `Vec` loop, so this replaces
+//! `cell80-life`'s sequential first-wins rule; an earlier version of this file granted
+//! food to every contestant uncontested, which caused a population explosion — see the
+//! findings doc.
+use crate::contention;
+pub use crate::genes::EngineKind;
+use crate::genes::{batch_run, sum_steps, GeneSet};
 use crate::history::{HistoryHasher, OrgSnapshot, TickRecord};
 use crate::rng::{self, MUTATION_STREAM};
 use crate::{StartingGenome, World};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EngineKind {
-    CpuReference,
-    #[cfg(target_os = "macos")]
-    Gpu,
-}
 
 pub struct RunConfig {
     pub seed: u64,
@@ -50,25 +46,6 @@ struct Org {
     id: u32,
     pos: usize,
     energy: u16,
-}
-
-/// Run one gene role against every living organism's own input triple in a single batched
-/// call: a per-organism `Interp` loop for `CpuReference`, one `GpuBatch::run` dispatch for
-/// `Gpu`. Returns `(result, ir_steps)` per organism, same order as `inputs`.
-fn batch_run(engine: EngineKind, gene: &CompiledGene, inputs: &[[u16; 3]]) -> Vec<(u16, u64)> {
-    match engine {
-        EngineKind::CpuReference => inputs.iter().map(|args| gene.run_cpu(args)).collect(),
-        #[cfg(target_os = "macos")]
-        EngineKind::Gpu => gene.run_gpu_batch(inputs),
-    }
-}
-
-fn sum_steps(batches: &[&[(u16, u64)]]) -> u64 {
-    batches
-        .iter()
-        .flat_map(|b| b.iter())
-        .map(|(_, steps)| steps)
-        .sum()
 }
 
 pub fn run(
@@ -96,6 +73,7 @@ pub fn run(
     let mut records = Vec::with_capacity(cfg.ticks as usize);
     let mut total_births = 0u32;
     let mut total_starved = 0u32;
+    let mut total_contention_losses = 0u32;
 
     for tick in 0..cfg.ticks {
         if orgs.is_empty() {
@@ -140,22 +118,32 @@ pub fn run(
             .collect();
         let eat_out = batch_run(engine, &genes.eat, &eat_in);
 
-        // Resolve stages 1-4: apply decay, movement/eating, food-tile clearing.
-        let mut ate_positions: Vec<usize> = Vec::new();
+        // Resolve stages 1-4: apply decay and movement now; an eat-intent only becomes a
+        // candidate here — whether it actually lands depends on contention resolution
+        // below, since more than one organism can intend to eat the same tile this tick.
+        let mut eat_candidates: Vec<(u32, usize)> = Vec::new();
         let mut resolved_energy = vec![0u16; orgs.len()];
         for (i, o) in orgs.iter_mut().enumerate() {
             let action = sense_out[i].0;
-            let mut energy = decay_out[i].0;
+            resolved_energy[i] = decay_out[i].0;
             match action {
-                0 if hungry_out[i].0 == 1 => {
-                    energy = eat_out[i].0;
-                    ate_positions.push(o.pos);
-                }
+                0 if hungry_out[i].0 == 1 => eat_candidates.push((o.id, o.pos)),
                 1 if o.pos > 0 => o.pos -= 1,
                 2 if o.pos + 1 < world.len() => o.pos += 1,
                 _ => {}
             }
-            resolved_energy[i] = energy;
+        }
+
+        // Exactly one winner per contested tile (order-independent — see contention.rs);
+        // everyone else keeps the post-decay energy already recorded above.
+        let winners = contention::resolve_eat_contention(cfg.seed, tick, &eat_candidates);
+        total_contention_losses += (eat_candidates.len() - winners.len()) as u32;
+        let mut ate_positions: Vec<usize> = Vec::new();
+        for (i, o) in orgs.iter().enumerate() {
+            if winners.contains(&o.id) {
+                resolved_energy[i] = eat_out[i].0;
+                ate_positions.push(o.pos);
+            }
         }
         for pos in ate_positions {
             world.eat_at(pos);
@@ -259,6 +247,7 @@ pub fn run(
             food: world.food.clone(),
             births: total_births,
             starved: total_starved,
+            contention_losses: total_contention_losses,
             total_ir_steps,
         };
         hasher.absorb(&record);

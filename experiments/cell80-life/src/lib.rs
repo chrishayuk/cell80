@@ -9,10 +9,13 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
+pub mod contention;
 pub mod ex0;
+pub mod ex1;
 pub mod genes;
 pub mod history;
 pub mod rng;
+pub mod world2d;
 
 fn default_species() -> String {
     "grazer".to_string()

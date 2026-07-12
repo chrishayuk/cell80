@@ -115,3 +115,31 @@ impl GeneSet {
         })
     }
 }
+
+/// Which body runs a tick's gene calls — shared by `ex0.rs` (1D) and `ex1.rs` (2D) so
+/// there's exactly one "how do I dispatch a batch of organisms against one gene" concept,
+/// not two copies of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EngineKind {
+    CpuReference,
+    #[cfg(target_os = "macos")]
+    Gpu,
+}
+
+/// Run one gene role against every living organism's own input triple in a single batched
+/// call: a per-organism `Interp` loop for `CpuReference`, one `GpuBatch::run` dispatch for
+/// `Gpu`. Returns `(result, ir_steps)` per organism, same order as `inputs`.
+pub fn batch_run(engine: EngineKind, gene: &CompiledGene, inputs: &[[u16; 3]]) -> Vec<(u16, u64)> {
+    match engine {
+        EngineKind::CpuReference => inputs.iter().map(|args| gene.run_cpu(args)).collect(),
+        #[cfg(target_os = "macos")]
+        EngineKind::Gpu => gene.run_gpu_batch(inputs),
+    }
+}
+
+/// Total IR-step cost across a tick's gene-role batches — a single summed aggregate (see
+/// `history::TickRecord::total_ir_steps`'s doc comment for why that's a stated
+/// simplification, not a per-organism-per-role trace).
+pub fn sum_steps(batches: &[&[(u16, u64)]]) -> u64 {
+    batches.iter().flat_map(|b| b.iter()).map(|(_, s)| s).sum()
+}
