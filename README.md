@@ -130,7 +130,7 @@ memory, filed.
 
 ## The library
 
-The seed library has grown to **782 cells across 42 packs** — math, statistics,
+The seed library has grown to **790 cells across 42 packs** — math, statistics,
 Excel-shaped financial functions, an owned f32 softfloat surface (bit-identical to
 rustc), calendars and checksums, sliding-window and state-machine families — each behind
 an **admission gate with behavioural fingerprints** that catches the duplicates
@@ -155,6 +155,29 @@ running the candidates* — lifts it to **0.859** (adversarial 0.47 → 0.89, di
 Behaviour ranks, text breaks ties, and a fused query is provably never worse than plain
 search. The GPU megakernel is that idea's hardware substrate: the whole library against a
 probe set in one dispatch.
+
+**The retrieval-vs-scale curve** (Phase 2.3) is tracked as a committed baseline —
+one real eval run per landed batch, 21 checkpoints so far
+([`cell-eval/baselines/library-scale-curve.json`](cell-eval/baselines/library-scale-curve.json)):
+
+| cells | text-only P@1: paraphrase | adversarial | direct | checkpoint |
+|---:|---:|---:|---:|---|
+| 114 | 0.42 | 0.39 | 0.94 | seed library complete |
+| 163 | 0.40 | 0.41 | 0.92 | GSM8K campaign M1 |
+| 395 | 0.39 | 0.42 | 0.82 | first workflow batch |
+| 500 | 0.39 | 0.44 | 0.81 | workflow round 2 |
+| 653 | 0.39 | 0.50 | 0.80 | round 3 + tag recovery |
+| 788 | 0.43 | 0.56 | 0.82 | trig / XIRR / mathstat wave |
+
+The honest reading across 7× growth: text-only **paraphrase is flat** (~0.36–0.46, no
+collapse but nowhere near product-grade), **direct declines** as every batch adds
+confusable siblings (0.94 → 0.82), and **adversarial improves** (0.39 → 0.56 — the
+admission gate and two tag audits doing their job). That flat paraphrase line is
+precisely why the **fused behavioural lane** exists: at 653 cells it measures
+**0.859** paraphrase (0.879 with the arity tie-break; adversarial 0.92), and its first
+contact with a new wave (Finance80, 697 cells) held **0.88 / 0.93** at 98.4% example
+coverage. Growth is gated on both lanes — a batch that dents the fused lane doesn't
+land. Next pre-registered scale points: 1,000 / 2,000 / 5,000 cells.
 
 ---
 

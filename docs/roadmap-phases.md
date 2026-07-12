@@ -238,6 +238,13 @@ strong evidence a maintainer should review, not proof.
 P@1/adoption/composition as the library grows — the retrieval-quality-vs-scale curve is
 the headline chart for the vision section.
 *DoD:* eval runs at 1K cells; curve published in README.
+*Status (2026-07-13):* the curve itself is live and **published in the README** (§The
+library) — 21 committed checkpoints, 114 → 788 cells, one real `cell-eval curve` run
+per landed batch, both growth-gate lanes summarized (text-only flat on paraphrase,
+declining on direct, improving on adversarial; fused lane 0.86–0.88 where measured).
+Remaining for the DoD: the growth campaign from 790 to the 1,000-cell checkpoint
+(pre-registered alongside 2K/5K in `cell-eval/baselines/README.md`), which is a
+batch-authoring workflow run, not eval machinery — the machinery is done.
 
 ---
 
