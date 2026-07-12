@@ -1793,6 +1793,12 @@
 {"id": "excel_stdev_s-direct-1", "query": "sample standard deviation of a list of numbers (Excel STDEV.S, Bessel-corrected, divide by n-1)", "expected": "excel_stdev_s", "category": "direct"}
 {"id": "excel_stdev_s-para-1", "query": "how do I compute STDEV.S, the sample standard deviation with the n-1 degrees-of-freedom correction, over up to 16 numbers", "expected": "excel_stdev_s", "category": "paraphrase"}
 {"id": "excel_stdev_s-adversarial-1", "query": "standard deviation of a SAMPLE subset of data (not the full population STDEV.P divides by n) -- the n-1 corrected version", "expected": "excel_stdev_s", "category": "adversarial"}
+{"id": "excel_sumsq-direct-1", "query": "SUMSQ: sum of the squares of a list of numbers", "expected": "excel_sumsq", "category": "direct"}
+{"id": "excel_sumsq-para-1", "query": "Excel function that squares each value in a list and adds all the squares together", "expected": "excel_sumsq", "category": "paraphrase"}
+{"id": "excel_sumsq-adversarial-1", "query": "sum of squared values in a range -- not the plain sum of the range and not the average of the squares", "expected": "excel_sumsq", "category": "adversarial"}
+{"id": "excel_var_s-direct-1", "query": "VAR.S: sample variance of a list of numbers, Bessel-corrected, divide by n-1", "expected": "excel_var_s", "category": "direct"}
+{"id": "excel_var_s-para-1", "query": "compute the variance of a sample data set (not the whole population), squared deviations divided by count minus one", "expected": "excel_var_s", "category": "paraphrase"}
+{"id": "excel_var_s-adversarial-1", "query": "variance of a SAMPLE subset of data, the un-square-rooted sibling of STDEV.S -- not VAR.P (population, divides by n) and not STDEV.S itself (which takes the square root)", "expected": "excel_var_s", "category": "adversarial"}
 {"id": "excel_large-direct-1", "query": "Excel LARGE function: return the k-th largest value in a list of numbers", "expected": "excel_large", "category": "direct"}
 {"id": "excel_large-para-1", "query": "find the second-biggest or third-biggest number in a set of up to 16 values, ranked from the top down", "expected": "excel_large", "category": "paraphrase"}
 {"id": "excel_large-adversarial-1", "query": "k-th largest value in an array -- distinct from MAX (always the single largest, k fixed at 1) and from SMALL (the k-th SMALLEST, not largest)", "expected": "excel_large", "category": "adversarial"}

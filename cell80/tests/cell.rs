@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("788 cells"));
+    assert!(listing.contains("range_check") && listing.contains("790 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("788 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("790 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 788, "got: {out}");
+    assert_eq!(cells.len(), 790, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -1015,13 +1015,28 @@ fn cli_index_gate_over_the_real_library() {
     // helper (`crate::common::BankedCell`) since composing two distinct heavy F2
     // kernels overruns the host-oracle harness's unbanked code+locals ceiling before
     // `STATE_BASE`, a hard architecture wall independent of the sandboxed byte cap.
+    // 788→790: the fingerprint array-probe bug above, fixed at the root — turned out
+    // NOT to need a new `ArrayElem::F32` wire variant after all. `u32` array elements
+    // are now probed the same way scalar `Ty::F32` fields already were (the small
+    // probe integer converted to its own f32 bit pattern), closing the ambiguity
+    // without touching the manifest/wire format: a genuinely-integer `u32[N]` array
+    // still gets four distinguishable (if larger) probe values across the bank, so
+    // nothing regresses for that case, while an f32-bit-pattern array — this pack's
+    // whole `excel-mathstat`/`excel-financial` array family — stops looking like an
+    // all-subnormal, all-zero-after-squaring collision. `u16` elements are untouched
+    // (four bytes never fit two, so a `u16[N]` array can never carry f32 bits in the
+    // first place). `excel_sumsq`/`excel_var_s` re-landed unchanged from the backed-out
+    // wave, this time admitted cleanly (fingerprint agreement against
+    // `excel_stdev_p`/`excel_stdev_s` now well under 1.0) — see the new
+    // `f32_bit_pattern_arrays_probe_as_floats_not_subnormals` regression test in
+    // `cell80/src/fingerprint.rs` for the isolated repro.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("788 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("790 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

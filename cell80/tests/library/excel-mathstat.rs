@@ -921,3 +921,92 @@ fn excel_countblank_matches_test_cases() {
     let report = cell.run(DEFAULT_CYCLES).unwrap();
     assert_eq!(report.halt, Halt::Escalate(0xFF06));
 }
+
+#[test]
+fn excel_sumsq_matches_test_cases() {
+    // Re-landed after the fingerprint array-probe fix (cell80/src/fingerprint.rs):
+    // this cell was originally backed out as a false-positive admission-gate
+    // duplicate of excel_stdev_p/excel_stdev_s (both collapsed to identical
+    // fingerprints because u32 array elements were probed with raw small
+    // integers -- subnormal floats whose squares all underflow to 0.0). The
+    // gate now probes u32 array elements as small floats' bit patterns, so a
+    // sum-of-squares reduction separates cleanly from a mean/variance reduction.
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[3_f32, 4_f32], 2u16, ArrOutcome::Value(25_f32)),
+        (&[5_f32], 1u16, ArrOutcome::Value(25_f32)),
+        (&[-2_f32, 3_f32, -4_f32], 3u16, ArrOutcome::Value(29_f32)),
+        (&[1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32, 1_f32], 16u16, ArrOutcome::Value(16_f32)),
+        (&[0_f32, 2.5_f32], 2u16, ArrOutcome::Value(6.25_f32)),
+        (&[1.5_f32, 2.5_f32, 3.5_f32], 3u16, ArrOutcome::Value(20.75_f32)),
+        (&[], 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_sumsq"), "ExcelSumsq", None)
+            .unwrap_or_else(|e| panic!("bind excel_sumsq: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_sumsq case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_sumsq case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("sumsq").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_sumsq case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_sumsq case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn excel_var_s_matches_test_cases() {
+    // Re-landed after the same fingerprint array-probe fix as excel_sumsq above.
+    let cases: &[(&[f32], u16, ArrOutcome)] = &[
+        (&[2_f32, 4_f32, 4_f32, 4_f32, 5_f32, 5_f32, 7_f32, 9_f32], 8u16, ArrOutcome::Value(4.5714285714285_f32)),
+        (&[10_f32, 20_f32], 2u16, ArrOutcome::Value(50_f32)),
+        (&[7_f32, 7_f32, 7_f32, 7_f32], 4u16, ArrOutcome::Value(0_f32)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32], 5u16, ArrOutcome::Value(2.5_f32)),
+        (&[1_f32], 1u16, ArrOutcome::Halt(65286)),
+        (&[], 0u16, ArrOutcome::Halt(65286)),
+        (&[1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32, 9_f32, 10_f32, 11_f32, 12_f32, 13_f32, 14_f32, 15_f32, 16_f32], 17u16, ArrOutcome::Halt(65286)),
+    ];
+    for (i, (values, count, want)) in cases.iter().enumerate() {
+        let mut cell = StateCell::bind(&cell_src("excel_var_s"), "ExcelVarS", None)
+            .unwrap_or_else(|e| panic!("bind excel_var_s: {e}"));
+        let bits: Vec<u64> = values.iter().map(|v| v.to_bits() as u64).collect();
+        cell.set_array("values", &bits).unwrap();
+        cell.set("count", *count as u64).unwrap();
+        let report = cell
+            .run(DEFAULT_CYCLES)
+            .unwrap_or_else(|e| panic!("run excel_var_s case {i}: {e}"));
+        match want {
+            ArrOutcome::Value(w) => {
+                assert_eq!(report.halt, Halt::Returned, "excel_var_s case {i}: {report:?}");
+                let got = f32::from_bits(cell.get("var").unwrap() as u32);
+                assert!(
+                    f32_tol(got, *w),
+                    "excel_var_s case {i}: got {got} want {w}",
+                );
+            }
+            ArrOutcome::Halt(code) => {
+                assert_eq!(
+                    report.halt,
+                    Halt::Escalate(*code),
+                    "excel_var_s case {i} expected an escalation, got {report:?}",
+                );
+            }
+        }
+    }
+}

@@ -199,13 +199,29 @@ impl Fingerprint {
                     for (addr, ty, i) in &state {
                         if let Some((elem, len)) = ty.array_dims() {
                             // Element j ← probe[(i + j) % 3]: the cyclic field
-                            // convention extended along the element axis.
+                            // convention extended along the element axis. A `u32`
+                            // element may be a plain integer OR an f32 bit-pattern
+                            // (`ArrayElem` has no `F32` variant — report.rs's own
+                            // comment records why — so the manifest can't say which);
+                            // probing it with the raw small integer is exactly the
+                            // scalar Ty::F32 bug this file already fixed once, one
+                            // level down: every small integer is a subnormal float,
+                            // and any two squared-deviation-style reductions over an
+                            // all-subnormal envelope underflow to the identical 0.0
+                            // on every probe (confirmed directly — excel_stdev_p and
+                            // excel_var_s fingerprinted identically to unrelated
+                            // sibling cells before this fix). `u32` elements are now
+                            // probed the same way scalar f32 fields already are: as
+                            // a small float's bit pattern. `u16` elements can never
+                            // carry f32 bits (four bytes don't fit two), so they keep
+                            // the raw integer probe unchanged.
                             for j in 0..len {
-                                inputs.push((
-                                    addr + j * elem.bytes(),
-                                    elem.scalar_ty(),
-                                    p[(*i + j as usize) % 3] as u64,
-                                ));
+                                let raw = p[(*i + j as usize) % 3];
+                                let v = match elem {
+                                    crate::ArrayElem::U32 => (raw as f32).to_bits() as u64,
+                                    crate::ArrayElem::U16 => raw as u64,
+                                };
+                                inputs.push((addr + j * elem.bytes(), elem.scalar_ty(), v));
                             }
                         } else {
                             // An f32 field takes the probe as a *float* (3 → 3.0's
@@ -546,6 +562,50 @@ mod tests {
         assert!(
             fa.agreement(&fc) < 1.0,
             "sum vs max over the window must separate"
+        );
+    }
+
+    #[test]
+    fn f32_bit_pattern_arrays_probe_as_floats_not_subnormals() {
+        // A `u32[N]` array carrying f32 bit-patterns (excel_stdev_p/excel_var_s's own
+        // convention: f32_from_bits per element) used to be probed with the raw small
+        // integer, which is a subnormal float — squaring any subnormal underflows to
+        // 0.0, so a sum-of-squares and a sum-of-fourth-powers reduction (genuinely
+        // different behaviour on any real input) both collapsed to identical 0.0 on
+        // every probe. This is the exact class of bug that made excel_stdev_p and
+        // excel_var_s fingerprint-collide with each other before the array-probe fix.
+        let sumsq_src = "struct SS { values: [u32; 4], out: f32 }
+            impl SS { fn run(&mut self) -> u16 {
+                let mut acc = 0.0f32;
+                let mut i = 0u16;
+                while i < 4u16 {
+                    let v = f32_from_bits(self.values[i as usize]);
+                    acc = acc + v * v;
+                    i = i + 1u16;
+                }
+                self.out = acc; 1u16 } }";
+        let sum4_src = "struct S4 { values: [u32; 4], out: f32 }
+            impl S4 { fn run(&mut self) -> u16 {
+                let mut acc = 0.0f32;
+                let mut i = 0u16;
+                while i < 4u16 {
+                    let v = f32_from_bits(self.values[i as usize]);
+                    let v2 = v * v;
+                    acc = acc + v2 * v2;
+                    i = i + 1u16;
+                }
+                self.out = acc; 1u16 } }";
+        let sumsq = state_cell("sumsq", "SS::run", sumsq_src);
+        let sum4 = state_cell("sum4", "S4::run", sum4_src);
+        let (fs, f4) = (Fingerprint::of(&sumsq), Fingerprint::of(&sum4));
+        assert!(
+            fs.outputs.iter().any(Option::is_some),
+            "f32-bit-pattern array cell must probe"
+        );
+        assert!(
+            fs.agreement(&f4) < 1.0,
+            "sum-of-squares vs sum-of-fourth-powers over an f32-bit-pattern array must \
+             separate — before the fix both underflowed to 0.0 on every probe"
         );
     }
 
