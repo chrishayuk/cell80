@@ -35,6 +35,22 @@
 //! A deliberate *interpreter semantics* change must regenerate every
 //! transcript (delete the file and re-bless); the always-live corner battery
 //! in `rustmsl/tests/corners.rs` guards that seam on every push.
+//!
+//! **A defect class this battery's own discipline owns, named for future integrators
+//! (found 2026-07-12, latent since this file's own earliest form):** any *other* CPU/GPU
+//! dual-execution harness built on these same primitives (`Interp`/`GpuBatch`) must fold
+//! a trap (div-by-zero, fuel exhaustion, `halt(code)`) to the *same* defined `r0` convention
+//! this battery already tests for (`STATUS_DIV0`/`STATUS_FUEL`/`STATUS_HALT` above) — it is
+//! not automatically inherited. `experiments/cell80-life/`'s own CPU-reference/GPU dual-body
+//! engine independently re-derived this and got it wrong the first time (a bare `unwrap`
+//! that panicked on a legitimate trap), invisible for months because its six curated genes
+//! never tripped one; only pointing an *evolutionary* search at uncurated cells with
+//! mutation-selected, adversarial inputs (no hand-designed test battery would have picked
+//! those inputs) surfaced it immediately. The lesson generalizes: a curated test battery
+//! encodes its author's priors about where bugs are; an evolutionary/fuzzing process has no
+//! such priors and finds the corners no one thought to write a test for. Any new consumer of
+//! `Interp`/`GpuBatch` should copy this battery's trap-folding convention explicitly, not
+//! assume it comes for free.
 
 #![cfg(target_os = "macos")]
 

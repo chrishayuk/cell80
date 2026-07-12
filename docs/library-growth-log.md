@@ -1564,3 +1564,45 @@ engine, not authored cells that shipped. The load-bearing finding: the GPU makes
 *evaluation* free; **search and generalization are the real problems**, and
 full-domain verification + the dedup gate are what separate a real discovery from a
 lucky probe-fit.
+
+### The pre-registration return: every experiment's headline finding was a side effect (2026-07-12)
+
+Not a wave entry — a cross-cutting meta-observation from the deterministic-ecology
+programme (`experiments/deterministic-ecology.md`, EX-0–EX-5, complete as of today),
+recorded here because it bears directly on how this library's own growth/verification work
+should be evaluated, not just on the ecology experiment. Across all six gates, **the most
+valuable output was never the thing the experiment was designed to find**:
+
+- EX-2 was designed to test whether bytecode mutation produces viable diversity; it also
+  surfaced a live CPU/GPU trap-representation parity bug (`cell80/tests/msl_battery.rs`'s
+  own module doc now names this defect class explicitly) — found only because mutation
+  pointed uncurated cells at adversarial, mutation-selected inputs no hand-designed test
+  battery would have picked.
+- The same composition sweep was designed to prove viability; it reframed *what search
+  space the synthesis programme should use* — typed composition of verified cells, not
+  op-stream edits (`docs/roadmap.md` item 8 now carries the receipt) — the same shape
+  `evolved-cells` found independently from the GA/MCTS-vs-A* direction. Two unrelated
+  experiments converging on one answer is stronger evidence than either alone.
+- EX-3 was designed to find a coupled predator/prey arms race; the arms race did not
+  survive a permutation-null test (p=0.13–0.99 across 6 seeds), but the mutation-off
+  control did — mutation is causally necessary for two-species coexistence at this scale,
+  a narrower and more defensible claim than the one the experiment set out to prove.
+- EX-5 was designed to prove one evolved organism could export to the robot's ISA; it also
+  became a real stress test of the multi-target contract (`docs/13-multi-target-spec.md`'s
+  WS-E3 note) — an evolved gene cell, not a hand-picked demo cell, exported and hash-attested
+  clean on the first real run, with zero new compiler code needed.
+
+**Why this belongs next to the growth engine entry above, not just in an experiment doc**:
+pre-registration (writing down what a gate is *for* before running it) is what makes a
+surprise visible as a surprise — the same discipline the growth log's own gates already
+depend on (the paraphrase/adversarial kill-gate above, the CEGIS full-domain-verification
+requirement). A process without a stated target can't tell you when it found something
+better than the target. This is also the reasoning behind the one open follow-up worth
+prioritizing over new library growth: EX-2's "adoption ≠ fitness" finding (29.6% of births
+carried a composed gene, but composed-gene carriers averaged *fewer* direct children than
+disk-gene carriers, 0.829 vs 1.067) is a population-*mean* comparison that is structurally
+incapable of answering the design doc's actual criterion ("occasionally fitter than
+parent") — if a few composed candidates are strongly advantageous while most are
+neutral-to-worse, the mean hides exactly that distribution, and EX-4's lineage machinery
+(already built, already proven) can answer it directly: per-composed-candidate fitness
+against its own parent lineage, not the aggregate.

@@ -391,6 +391,17 @@ owned it:
 - **M2 explicitly does *not* wait for WS-E:** the demo runs RV32 through a thin
   `rv32 exec` harness that bypasses `CellHost`. WS-E is what makes the family a
   *product* rather than a demo.
+- **External validation (2026-07-12):** `experiments/deterministic-ecology.md`'s EX-5
+  exercised E3 slice 1 with a payload nobody designed it for — a gene cell an evolving
+  organism actually selected in a GPU-batched 2-D ecology (a `repro_promoter` that had
+  mutated away from its species' starting cell), not a hand-picked demo cell. Compiled
+  both bodies from its real disk source, hash-attested (`family_hash` equal, `artifact_hash`
+  differs, `from_bytes` round-trips), ran on `Runner`/`Rv32Runner`/the CPU-reference
+  interpreter, agreed bit-for-bit — zero changes needed to `cell80`/`rustrv32`/`rustz80`.
+  The contract held under an input distribution nobody constructed by hand, which is
+  stronger evidence the E1–E3 abstraction is real rather than an artifact of the cells its
+  own test suite happens to exercise. Full account: `experiments/deterministic-ecology-
+  findings.md`'s `## EX-5` section.
 
 ## 4. Verification matrix (per cell, per release)
 
