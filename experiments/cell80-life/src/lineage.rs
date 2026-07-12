@@ -10,7 +10,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use sha2::{Digest, Sha256};
 
 use crate::ex2::FieldOverride;
-use crate::history::{BirthEvent, OrgSnapshot2DGenome, TickRecord2DGenome};
+use crate::history::{
+    BirthEvent, BirthEventEco, OrgSnapshot2DEco, OrgSnapshot2DGenome, Species, TickRecord2DEco,
+    TickRecord2DGenome,
+};
 
 /// The 6 heritable fields every genome-carrying type in this codebase shares, in the same
 /// order — hashed once here rather than duplicating the byte-layout logic per carrier type
@@ -56,6 +59,31 @@ impl GenomeFields {
             hungry_promoter: s.hungry_promoter,
             repro_promoter: s.repro_promoter,
             sense_move: s.sense_move,
+        }
+    }
+
+    /// EX-3's `BirthEventEco` carries the same 6 fields as `BirthEvent` plus `species`
+    /// (ignored here — species is orthogonal to genome content, never part of the hash).
+    pub fn from_birth_eco(b: &BirthEventEco) -> Self {
+        GenomeFields {
+            decay_amount: b.decay_amount,
+            repro_threshold: b.repro_threshold,
+            repro_give_pct: b.repro_give_pct,
+            hungry_promoter: b.hungry_promoter,
+            repro_promoter: b.repro_promoter,
+            sense_move: b.sense_move,
+        }
+    }
+
+    /// EX-3's `OrgSnapshot2DEco` counterpart to `from_snapshot`.
+    pub fn from_snapshot_eco(o: &OrgSnapshot2DEco) -> Self {
+        GenomeFields {
+            decay_amount: o.decay_amount,
+            repro_threshold: o.repro_threshold,
+            repro_give_pct: o.repro_give_pct,
+            hungry_promoter: o.hungry_promoter,
+            repro_promoter: o.repro_promoter,
+            sense_move: o.sense_move,
         }
     }
 
@@ -132,11 +160,27 @@ pub struct LineageTree {
 }
 
 impl LineageTree {
+    /// `initial_organisms` genesis ids, always `0..initial_organisms` — correct for a
+    /// single-species run (EX-1/EX-2) where genesis ids start at 0. A thin wrapper over
+    /// `build_from_genesis_ids`.
     pub fn build(starting: &GenomeFields, initial_organisms: usize, births: &[BirthEvent]) -> Self {
+        let genesis_ids: Vec<u32> = (0..initial_organisms as u32).collect();
+        Self::build_from_genesis_ids(&genesis_ids, starting, births)
+    }
+
+    /// EX-3's counterpart to `build`: a second species' genesis ids don't start at 0 (they
+    /// come after the first species' full initial population in `ex3.rs`'s shared,
+    /// monotonic id counter), so the caller supplies the exact genesis id set instead of a
+    /// count.
+    pub fn build_from_genesis_ids(
+        genesis_ids: &[u32],
+        starting: &GenomeFields,
+        births: &[BirthEvent],
+    ) -> Self {
         let mut by_child_id = HashMap::new();
         let mut by_hash: HashMap<[u8; 32], Vec<u32>> = HashMap::new();
 
-        for id in 0..initial_organisms as u32 {
+        for &id in genesis_ids {
             by_hash.entry(starting.hash()).or_default().push(id);
             by_child_id.insert(
                 id,
@@ -166,6 +210,65 @@ impl LineageTree {
     pub fn with_genome(&self, hash: &[u8; 32]) -> &[u32] {
         self.by_hash.get(hash).map(|v| v.as_slice()).unwrap_or(&[])
     }
+}
+
+/// EX-3's species-filtering adapter: reduce one species' view of a two-species run down to
+/// the exact shapes `detect_plurality_events`/`find_origins`/`LineageTree::build_from_genesis_ids`
+/// already consume, so those functions run **unmodified** on a second species — no `_eco`
+/// variant of any of them. `food`/`births`/`starved`/`contention_losses`/`total_ir_steps`
+/// aren't reproduced (they're run-global counts, not species-partitioned, and none of the
+/// three functions above read them — see `plurality_at`/`find_origins`, which only touch
+/// `tick` and `organisms`); this mirrors the test helpers' own `tick_rec(..)` convention of
+/// leaving them at their zero value when irrelevant to the analysis.
+pub fn eco_ticks_to_genome(ticks: &[TickRecord2DEco], species: Species) -> Vec<TickRecord2DGenome> {
+    ticks
+        .iter()
+        .map(|rec| TickRecord2DGenome {
+            tick: rec.tick,
+            organisms: rec
+                .organisms
+                .iter()
+                .filter(|o| o.species == species)
+                .map(|o| OrgSnapshot2DGenome {
+                    id: o.id,
+                    x: o.x,
+                    y: o.y,
+                    energy: o.energy,
+                    decay_amount: o.decay_amount,
+                    repro_threshold: o.repro_threshold,
+                    repro_give_pct: o.repro_give_pct,
+                    hungry_promoter: o.hungry_promoter,
+                    repro_promoter: o.repro_promoter,
+                    sense_move: o.sense_move,
+                })
+                .collect(),
+            food: Vec::new(),
+            births: 0,
+            starved: 0,
+            contention_losses: 0,
+            total_ir_steps: 0,
+        })
+        .collect()
+}
+
+/// `BirthEventEco` -> `BirthEvent`, filtered to one species — the birth-log counterpart to
+/// `eco_ticks_to_genome`, feeding `LineageTree::build_from_genesis_ids` unmodified.
+pub fn eco_births_to_genome(births: &[BirthEventEco], species: Species) -> Vec<BirthEvent> {
+    births
+        .iter()
+        .filter(|b| b.species == species)
+        .map(|b| BirthEvent {
+            child_id: b.child_id,
+            parent_id: b.parent_id,
+            tick: b.tick,
+            decay_amount: b.decay_amount,
+            repro_threshold: b.repro_threshold,
+            repro_give_pct: b.repro_give_pct,
+            hungry_promoter: b.hungry_promoter,
+            repro_promoter: b.repro_promoter,
+            sense_move: b.sense_move,
+        })
+        .collect()
 }
 
 /// One sampled tick's plurality winner for a role, among the living population.
@@ -504,5 +607,185 @@ mod tests {
     fn genome_hash_is_stable_and_content_sensitive() {
         assert_eq!(genome(1).hash(), genome(1).hash());
         assert_ne!(genome(1).hash(), genome(2).hash());
+    }
+
+    fn birth_eco(child_id: u32, parent_id: u32, tick: u32, species: Species, hungry: u16) -> BirthEventEco {
+        let g = genome(hungry);
+        BirthEventEco {
+            child_id,
+            parent_id,
+            tick,
+            species,
+            decay_amount: g.decay_amount,
+            repro_threshold: g.repro_threshold,
+            repro_give_pct: g.repro_give_pct,
+            hungry_promoter: g.hungry_promoter,
+            repro_promoter: g.repro_promoter,
+            sense_move: g.sense_move,
+        }
+    }
+
+    fn org_eco(id: u32, species: Species, hungry: u16) -> OrgSnapshot2DEco {
+        let g = genome(hungry);
+        OrgSnapshot2DEco {
+            id,
+            x: 0,
+            y: 0,
+            energy: 100,
+            species,
+            decay_amount: g.decay_amount,
+            repro_threshold: g.repro_threshold,
+            repro_give_pct: g.repro_give_pct,
+            hungry_promoter: g.hungry_promoter,
+            repro_promoter: g.repro_promoter,
+            sense_move: g.sense_move,
+        }
+    }
+
+    fn tick_rec_eco(tick: u32, orgs: Vec<OrgSnapshot2DEco>) -> TickRecord2DEco {
+        TickRecord2DEco {
+            tick,
+            organisms: orgs,
+            food: Vec::new(),
+            births: 0,
+            starved: 0,
+            contention_losses: 0,
+            predation_kills: 0,
+            total_ir_steps: 0,
+        }
+    }
+
+    #[test]
+    fn genome_fields_from_eco_matches_non_eco_for_the_same_values() {
+        let b = birth_eco(2, 0, 10, Species::Predator, 1);
+        let b_plain = birth(2, 0, 10, 1);
+        assert_eq!(GenomeFields::from_birth_eco(&b), GenomeFields::from_birth(&b_plain));
+
+        let o = org_eco(5, Species::Grazer, 3);
+        let o_plain = org(5, 3);
+        assert_eq!(GenomeFields::from_snapshot_eco(&o), GenomeFields::from_snapshot(&o_plain));
+    }
+
+    #[test]
+    fn build_from_genesis_ids_supports_a_non_zero_starting_range() {
+        // A second species' genesis ids start after the first species' population, e.g.
+        // predators occupying ids 40..48 in a run with 40 grazers.
+        let starting = genome(0);
+        let genesis_ids = [40u32, 41, 42];
+        let births = vec![birth(43, 41, 5, 1)]; // genuine mutation: parent(41)=0 -> child(43)=1
+        let tree = LineageTree::build_from_genesis_ids(&genesis_ids, &starting, &births);
+
+        assert_eq!(tree.get(40).unwrap().parent_id, None, "genesis organism, not a birth");
+        assert_eq!(tree.get(41).unwrap().parent_id, None);
+        assert_eq!(tree.get(42).unwrap().parent_id, None);
+        assert_eq!(
+            trace_origin(&tree, Role::Hungry, 43),
+            OriginKind::Mutated {
+                origin_child_id: 43,
+                origin_parent_id: 41,
+                origin_tick: 5,
+                parent_genome: genome(0),
+                child_genome: genome(1),
+            }
+        );
+    }
+
+    #[test]
+    fn eco_adapters_filter_by_species_and_preserve_values() {
+        let ticks = vec![tick_rec_eco(
+            0,
+            vec![org_eco(0, Species::Grazer, 5), org_eco(1, Species::Predator, 9)],
+        )];
+        let births = vec![
+            birth_eco(2, 0, 10, Species::Grazer, 6),
+            birth_eco(3, 1, 10, Species::Predator, 8),
+        ];
+
+        let grazer_ticks = eco_ticks_to_genome(&ticks, Species::Grazer);
+        assert_eq!(grazer_ticks.len(), 1);
+        assert_eq!(grazer_ticks[0].organisms.len(), 1, "predator must be filtered out");
+        assert_eq!(grazer_ticks[0].organisms[0].id, 0);
+        assert_eq!(grazer_ticks[0].organisms[0].hungry_promoter, 5);
+
+        let predator_ticks = eco_ticks_to_genome(&ticks, Species::Predator);
+        assert_eq!(predator_ticks[0].organisms.len(), 1, "grazer must be filtered out");
+        assert_eq!(predator_ticks[0].organisms[0].id, 1);
+
+        let grazer_births = eco_births_to_genome(&births, Species::Grazer);
+        assert_eq!(grazer_births.len(), 1);
+        assert_eq!(grazer_births[0].child_id, 2);
+        assert_eq!(grazer_births[0].hungry_promoter, 6);
+
+        let predator_births = eco_births_to_genome(&births, Species::Predator);
+        assert_eq!(predator_births.len(), 1);
+        assert_eq!(predator_births[0].child_id, 3);
+    }
+
+    #[test]
+    fn eco_adapters_feed_detect_plurality_events_and_find_origins_unmodified() {
+        // Two species sharing one run; only the predator's `hungry_promoter` plurality
+        // actually shifts. The species-filtered view must isolate that shift without the
+        // grazer population (constant at 0) interfering.
+        let ticks = vec![
+            tick_rec_eco(
+                0,
+                vec![
+                    org_eco(0, Species::Grazer, 0),
+                    org_eco(1, Species::Grazer, 0),
+                    org_eco(10, Species::Predator, 0),
+                    org_eco(11, Species::Predator, 0),
+                ],
+            ),
+            tick_rec_eco(
+                20,
+                vec![
+                    org_eco(0, Species::Grazer, 0),
+                    org_eco(1, Species::Grazer, 0),
+                    org_eco(12, Species::Predator, 1),
+                    org_eco(13, Species::Predator, 1),
+                ],
+            ),
+            tick_rec_eco(
+                40,
+                vec![
+                    org_eco(0, Species::Grazer, 0),
+                    org_eco(1, Species::Grazer, 0),
+                    org_eco(12, Species::Predator, 1),
+                    org_eco(13, Species::Predator, 1),
+                ],
+            ),
+            tick_rec_eco(
+                60,
+                vec![
+                    org_eco(0, Species::Grazer, 0),
+                    org_eco(1, Species::Grazer, 0),
+                    org_eco(12, Species::Predator, 1),
+                    org_eco(13, Species::Predator, 1),
+                ],
+            ),
+        ];
+        let births = vec![
+            birth_eco(12, 10, 20, Species::Predator, 1),
+            birth_eco(13, 11, 20, Species::Predator, 1),
+        ];
+
+        let predator_ticks = eco_ticks_to_genome(&ticks, Species::Predator);
+        let predator_births = eco_births_to_genome(&births, Species::Predator);
+        let grazer_ticks = eco_ticks_to_genome(&ticks, Species::Grazer);
+
+        // No grazer event: hungry_promoter never changes for that species.
+        let grazer_events = detect_plurality_events(&grazer_ticks, Role::Hungry, 20, 3);
+        assert!(grazer_events.is_empty());
+
+        let predator_events = detect_plurality_events(&predator_ticks, Role::Hungry, 20, 3);
+        assert_eq!(predator_events.len(), 1);
+        let event = &predator_events[0];
+        assert_eq!((event.from, event.to, event.shift_tick), (0, 1, 20));
+
+        let genesis_ids = [10u32, 11];
+        let starting = genome(0);
+        let tree = LineageTree::build_from_genesis_ids(&genesis_ids, &starting, &predator_births);
+        let origins = find_origins(&tree, &predator_ticks, event);
+        assert_eq!(origins.len(), 2, "two independent predator mutations, both live at the shift tick");
     }
 }
