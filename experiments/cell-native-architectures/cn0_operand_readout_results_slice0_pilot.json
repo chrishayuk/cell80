@@ -1,0 +1,315 @@
+{
+  "model": "google/gemma-3-4b-it",
+  "n_layers": 34,
+  "layers": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+  ],
+  "n_per_family": 40,
+  "val_range": [
+    1,
+    99
+  ],
+  "families": [
+    "digit",
+    "word",
+    "mixed",
+    "narrative"
+  ],
+  "held_out_family": {
+    "digit": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.025,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.025,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.05,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.125,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.15,
+        "mlp": 0.0
+      }
+    },
+    "word": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.225,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.15,
+        "mlp": 0.0
+      }
+    },
+    "mixed": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.025,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.025,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.025,
+        "fourier": 0.225,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.25,
+        "mlp": 0.0
+      }
+    },
+    "narrative": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      }
+    }
+  },
+  "random_split": {
+    "12": {
+      "linear": 0.0,
+      "fourier": 0.0,
+      "mlp": 0.0
+    },
+    "13": {
+      "linear": 0.0,
+      "fourier": 0.0,
+      "mlp": 0.0
+    },
+    "14": {
+      "linear": 0.0,
+      "fourier": 0.0,
+      "mlp": 0.0
+    },
+    "15": {
+      "linear": 0.0,
+      "fourier": 0.0,
+      "mlp": 0.0
+    },
+    "16": {
+      "linear": 0.0,
+      "fourier": 0.0,
+      "mlp": 0.0
+    },
+    "17": {
+      "linear": 0.0,
+      "fourier": 0.031,
+      "mlp": 0.0
+    },
+    "18": {
+      "linear": 0.0,
+      "fourier": 0.062,
+      "mlp": 0.0
+    },
+    "19": {
+      "linear": 0.0,
+      "fourier": 0.031,
+      "mlp": 0.0
+    },
+    "20": {
+      "linear": 0.0,
+      "fourier": 0.062,
+      "mlp": 0.0
+    },
+    "21": {
+      "linear": 0.0,
+      "fourier": 0.219,
+      "mlp": 0.0
+    },
+    "22": {
+      "linear": 0.0,
+      "fourier": 0.25,
+      "mlp": 0.031
+    }
+  }
+}

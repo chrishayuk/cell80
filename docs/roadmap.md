@@ -478,6 +478,19 @@ strictly by sequence; the library grows by eval need:
    not the renderer). Full spec, sequencing gates (M0-M4), and the pre-registered hypotheses:
    `docs/math-campaign-spec.md`. The extraction leg of that spec is now **superseded by
    the amended registration** (`docs/math-campaign-amendment.md`) — see item 10.
+   **A fifth gap, found later via a different consumer of the same plan IR**
+   (`cell-native-architectures`'s CN-2 experiment, `experiments/cell-native-
+   architectures-findings.md`, 2026-07-12): the plan IR is **unsigned** (`u32`-only, no
+   signed representation anywhere in the op chain), so a `sub` whose intermediate result
+   goes negative escalates (`needs_wider_math`) instead of verifying — even when the
+   negative value is exactly correct. Confirmed on 3 real cases from a 60-problem
+   battery (e.g. `636 - 710 = -74`): the model's arithmetic was right every time, cell80
+   just had no way to say so. **Not yet fixed** — the escalation is honest (never a wrong
+   answer) but it's a real coverage hole that will only get worse as CN-2's battery
+   scales, since any subtraction-into-negative step now always escalates rather than
+   verifies. Distinct from the library's existing signed `i16`/sign-magnitude (`smag_*`)
+   kernels, which cover signed arithmetic for hand-authored cells — the plan IR's `add`/
+   `sub`/`mul`/`div` op chain (`cell80/src/plan.rs`) doesn't route through them at all.
 10. **M2.5 canonicalization + M2.6 fold/width/typed-diagnostics + M2.9 `cell80 compose`,
    ✓ shipped (2026-07-06).** PlanFix's findings (`experiments/planfix/`) demoted plan-IR
    JSON to an internal wire format and moved every deterministic repair into the

@@ -1,0 +1,471 @@
+{
+  "model": "google/gemma-3-4b-it",
+  "n_layers": 34,
+  "layers": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28
+  ],
+  "n_per_family": 200,
+  "val_range": [
+    1,
+    99
+  ],
+  "families": [
+    "digit",
+    "word",
+    "mixed",
+    "narrative"
+  ],
+  "held_out_family": {
+    "digit": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.04,
+        "mlp": 0.005
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.105,
+        "mlp": 0.0
+      },
+      "23": {
+        "linear": 0.005,
+        "fourier": 0.355,
+        "mlp": 0.0
+      },
+      "24": {
+        "linear": 0.0,
+        "fourier": 0.4,
+        "mlp": 0.005
+      },
+      "25": {
+        "linear": 0.0,
+        "fourier": 0.175,
+        "mlp": 0.0
+      },
+      "26": {
+        "linear": 0.0,
+        "fourier": 0.14,
+        "mlp": 0.005
+      },
+      "27": {
+        "linear": 0.0,
+        "fourier": 0.15,
+        "mlp": 0.005
+      },
+      "28": {
+        "linear": 0.0,
+        "fourier": 0.24,
+        "mlp": 0.0
+      }
+    },
+    "word": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.005
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.015,
+        "mlp": 0.005
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.005
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.01,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.08,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.005,
+        "fourier": 0.165,
+        "mlp": 0.005
+      },
+      "23": {
+        "linear": 0.005,
+        "fourier": 0.365,
+        "mlp": 0.0
+      },
+      "24": {
+        "linear": 0.0,
+        "fourier": 0.36,
+        "mlp": 0.01
+      },
+      "25": {
+        "linear": 0.0,
+        "fourier": 0.28,
+        "mlp": 0.0
+      },
+      "26": {
+        "linear": 0.0,
+        "fourier": 0.25,
+        "mlp": 0.005
+      },
+      "27": {
+        "linear": 0.0,
+        "fourier": 0.135,
+        "mlp": 0.0
+      },
+      "28": {
+        "linear": 0.0,
+        "fourier": 0.125,
+        "mlp": 0.005
+      }
+    },
+    "mixed": {
+      "12": {
+        "linear": 0.005,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.005,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.005
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.01,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.01,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.17,
+        "mlp": 0.005
+      },
+      "22": {
+        "linear": 0.005,
+        "fourier": 0.35,
+        "mlp": 0.0
+      },
+      "23": {
+        "linear": 0.01,
+        "fourier": 0.575,
+        "mlp": 0.01
+      },
+      "24": {
+        "linear": 0.005,
+        "fourier": 0.49,
+        "mlp": 0.0
+      },
+      "25": {
+        "linear": 0.01,
+        "fourier": 0.345,
+        "mlp": 0.005
+      },
+      "26": {
+        "linear": 0.01,
+        "fourier": 0.27,
+        "mlp": 0.0
+      },
+      "27": {
+        "linear": 0.005,
+        "fourier": 0.25,
+        "mlp": 0.0
+      },
+      "28": {
+        "linear": 0.0,
+        "fourier": 0.215,
+        "mlp": 0.005
+      }
+    },
+    "narrative": {
+      "12": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "13": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "14": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "15": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "16": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "17": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "18": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "19": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "20": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "21": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "22": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      },
+      "23": {
+        "linear": 0.0,
+        "fourier": 0.01,
+        "mlp": 0.0
+      },
+      "24": {
+        "linear": 0.0,
+        "fourier": 0.02,
+        "mlp": 0.0
+      },
+      "25": {
+        "linear": 0.0,
+        "fourier": 0.03,
+        "mlp": 0.0
+      },
+      "26": {
+        "linear": 0.0,
+        "fourier": 0.005,
+        "mlp": 0.0
+      },
+      "27": {
+        "linear": 0.0,
+        "fourier": 0.01,
+        "mlp": 0.0
+      },
+      "28": {
+        "linear": 0.0,
+        "fourier": 0.0,
+        "mlp": 0.0
+      }
+    }
+  },
+  "random_split": {
+    "12": {
+      "linear": 0.031,
+      "fourier": 0.537,
+      "mlp": 0.019
+    },
+    "13": {
+      "linear": 0.031,
+      "fourier": 0.537,
+      "mlp": 0.013
+    },
+    "14": {
+      "linear": 0.025,
+      "fourier": 0.606,
+      "mlp": 0.056
+    },
+    "15": {
+      "linear": 0.044,
+      "fourier": 0.494,
+      "mlp": 0.031
+    },
+    "16": {
+      "linear": 0.031,
+      "fourier": 0.506,
+      "mlp": 0.013
+    },
+    "17": {
+      "linear": 0.037,
+      "fourier": 0.456,
+      "mlp": 0.013
+    },
+    "18": {
+      "linear": 0.031,
+      "fourier": 0.494,
+      "mlp": 0.019
+    },
+    "19": {
+      "linear": 0.031,
+      "fourier": 0.494,
+      "mlp": 0.019
+    },
+    "20": {
+      "linear": 0.044,
+      "fourier": 0.481,
+      "mlp": 0.006
+    },
+    "21": {
+      "linear": 0.037,
+      "fourier": 0.719,
+      "mlp": 0.05
+    },
+    "22": {
+      "linear": 0.05,
+      "fourier": 0.688,
+      "mlp": 0.075
+    },
+    "23": {
+      "linear": 0.044,
+      "fourier": 0.856,
+      "mlp": 0.062
+    },
+    "24": {
+      "linear": 0.037,
+      "fourier": 0.75,
+      "mlp": 0.031
+    },
+    "25": {
+      "linear": 0.037,
+      "fourier": 0.656,
+      "mlp": 0.037
+    },
+    "26": {
+      "linear": 0.025,
+      "fourier": 0.619,
+      "mlp": 0.037
+    },
+    "27": {
+      "linear": 0.031,
+      "fourier": 0.556,
+      "mlp": 0.044
+    },
+    "28": {
+      "linear": 0.025,
+      "fourier": 0.475,
+      "mlp": 0.037
+    }
+  }
+}

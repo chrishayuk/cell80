@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "url": "http://localhost:8080",
+    "n_problems": 15,
+    "n_spans": 8,
+    "n_match": 8,
+    "n_mismatch": 0,
+    "n_escalated": 0,
+    "n_other": 0,
+    "agreement_rate": 1.0,
+    "wrong_number_rate": 0.0,
+    "final_answer_accuracy": 1.0
+  },
+  "rows": [
+    {
+      "question": "Sam has 12 apples. He buys 7 more, then gives 5 to his friend. How many apples does Sam have now?",
+      "final_expected": 14,
+      "final_stated": 14.0,
+      "final_correct": true,
+      "completion": "Sam starts with 12 apples.\n12 op 0 = 12\nHe buys 7 more apples.\n12 op 7 = 19\nHe gives 5 to his friend.\n19 op 5 = 14\nAnswer: 14",
+      "spans": []
+    },
+    {
+      "question": "A classroom has 8 rows of 6 desks each. How many desks are in the classroom?",
+      "final_expected": 48,
+      "final_stated": 48.0,
+      "final_correct": true,
+      "completion": "The number of rows is 8.\nThe number of desks in each row is 6.\nTo find the total number of desks, we multiply the number of rows by the number of desks in each row.\n8 op 6 = 48\nAnswer: 48",
+      "spans": []
+    },
+    {
+      "question": "Maria earns $15 per hour and works 6 hours. She then spends $40 on groceries. How much money does she have left?",
+      "final_expected": 50,
+      "final_stated": 50.0,
+      "final_correct": true,
+      "completion": "Maria's earnings = 15 op 6 = 90\nMaria spends on groceries = 40\nMaria's earnings = 15 op 6 = 90\nMaria's earnings - groceries = 90 op - 40 = 50\nAnswer: 50",
+      "spans": []
+    },
+    {
+      "question": "A baker makes 84 cookies and packs them into boxes of 12. How many boxes does he need?",
+      "final_expected": 7,
+      "final_stated": 7.0,
+      "final_correct": true,
+      "completion": "First, we need to find out how many cookies are in each box.\n12 op 1 = 12\n\nNext, we need to divide the total number of cookies by the number of cookies per box.\n84 op 12 = 7\n\nAnswer: 7",
+      "spans": []
+    },
+    {
+      "question": "There are 23 red marbles and 17 blue marbles in a jar. If 9 marbles are removed, how many marbles are left?",
+      "final_expected": 31,
+      "final_stated": 31.0,
+      "final_correct": true,
+      "completion": "Total marbles initially = 23 + 17 = 40\nNumber of marbles removed = 9\nNumber of marbles left = 40 - 9 = 31\nAnswer: 31",
+      "spans": [
+        {
+          "a": 23,
+          "op": "add",
+          "b": 17,
+          "c": 40,
+          "line": "Total marbles initially = 23 + 17 = 40",
+          "verdict": "match",
+          "cell80_answer": 40
+        },
+        {
+          "a": 40,
+          "op": "sub",
+          "b": 9,
+          "c": 31,
+          "line": "Number of marbles left = 40 - 9 = 31",
+          "verdict": "match",
+          "cell80_answer": 31
+        }
+      ]
+    },
+    {
+      "question": "A train travels 60 miles per hour for 3 hours, then 40 miles per hour for 2 hours. How many miles does it travel in total?",
+      "final_expected": 260,
+      "final_stated": 260.0,
+      "final_correct": true,
+      "completion": "First, calculate the distance traveled at 60 miles per hour for 3 hours.\n60 op 3 = 180\nSecond, calculate the distance traveled at 40 miles per hour for 2 hours.\n40 op 2 = 80\nThird, add the two distances together.\n180 op 80 = 260\n\nAnswer: 260",
+      "spans": []
+    },
+    {
+      "question": "Tom had 90 dollars. He spent 25 dollars on a book and then earned 15 dollars mowing a lawn. How much money does Tom have now?",
+      "final_expected": 80,
+      "final_stated": 80.0,
+      "final_correct": true,
+      "completion": "Tom started with 90 dollars.\n90 op 0 = 90\nHe spent 25 dollars on a book.\n90 op 25 = 65\nHe earned 15 dollars mowing a lawn.\n65 op 15 = 80\nAnswer: 80",
+      "spans": []
+    },
+    {
+      "question": "A garden has 9 rows with 8 plants in each row. If 5 plants die, how many plants are left?",
+      "final_expected": 67,
+      "final_stated": 67.0,
+      "final_correct": true,
+      "completion": "Total plants initially = 9 op 8 = 72\nPlants died = 5\nPlants left = 72 op - 5 = 67\nAnswer: 67",
+      "spans": []
+    },
+    {
+      "question": "Jenny read 18 pages on Monday and twice as many pages on Tuesday. How many pages did she read in total over the two days?",
+      "final_expected": 54,
+      "final_stated": 54.0,
+      "final_correct": true,
+      "completion": "First, we need to find out how many pages Jenny read on Tuesday.\nShe read twice as many pages on Tuesday as on Monday.\nMonday's pages = 18\nTuesday's pages = 2 * 18 = 36\nTotal pages read = Monday's pages + Tuesday's pages\nTotal pages read = 18 + 36 = 54\n\nAnswer: 54",
+      "spans": [
+        {
+          "a": 2,
+          "op": "mul",
+          "b": 18,
+          "c": 36,
+          "line": "Tuesday's pages = 2 * 18 = 36",
+          "verdict": "match",
+          "cell80_answer": 36
+        },
+        {
+          "a": 18,
+          "op": "add",
+          "b": 36,
+          "c": 54,
+          "line": "Total pages read = 18 + 36 = 54",
+          "verdict": "match",
+          "cell80_answer": 54
+        }
+      ]
+    },
+    {
+      "question": "A factory produces 144 toys and ships them in crates of 16. How many crates are needed?",
+      "final_expected": 9,
+      "final_stated": 9.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of crates needed.\nWe are given that the factory produces 144 toys and ships them in crates of 16.\nTo find the number of crates needed, we divide the total number of toys by the number of toys per crate.\n144 op 16 = 9\nTherefore, 9 crates are needed.\n\nAnswer: 9",
+      "spans": []
+    },
+    {
+      "question": "Liam has 50 dollars. He buys 3 notebooks at 6 dollars each. How much money does he have left?",
+      "final_expected": 32,
+      "final_stated": 32.0,
+      "final_correct": true,
+      "completion": "Liam's initial money = 50\nCost of each notebook = 6\nNumber of notebooks bought = 3\nTotal cost of notebooks = 3 * 6 = 18\nMoney left = 50 - 18 = 32\nAnswer: 32",
+      "spans": [
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 6,
+          "c": 18,
+          "line": "Total cost of notebooks = 3 * 6 = 18",
+          "verdict": "match",
+          "cell80_answer": 18
+        },
+        {
+          "a": 50,
+          "op": "sub",
+          "b": 18,
+          "c": 32,
+          "line": "Money left = 50 - 18 = 32",
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ]
+    },
+    {
+      "question": "A pool holds 500 liters. It is filled at 25 liters per minute. How many minutes does it take to fill?",
+      "final_expected": 20,
+      "final_stated": 20.0,
+      "final_correct": true,
+      "completion": "The pool holds 500 liters.\nThe filling rate is 25 liters per minute.\nLet the time taken to fill the pool be 't' minutes.\nThe total volume filled is given by the product of the filling rate and the time taken.\nSo, 25 op t = 500\n25 * t = 500\n25t = 500\nt = 500 / 25\nt = 20\nAnswer: 20",
+      "spans": []
+    },
+    {
+      "question": "There are 14 boys and 19 girls in a class. Each student gets 3 pencils. How many pencils are given out in total?",
+      "final_expected": 99,
+      "final_stated": 99.0,
+      "final_correct": true,
+      "completion": "First, find the total number of students in the class.\n14 op 19 = 33\n\nThere are 33 students in total.\nEach student gets 3 pencils.\nSo, the total number of pencils given out is 33 op 3 = 99\n\nAnswer: 99",
+      "spans": []
+    },
+    {
+      "question": "A shop had 120 shirts. It sold 45 in the morning and 38 in the afternoon. How many shirts are left?",
+      "final_expected": 37,
+      "final_stated": 37.0,
+      "final_correct": true,
+      "completion": "Total shirts initially = 120\nShirts sold in the morning = 45\nShirts sold in the afternoon = 38\nTotal shirts sold = 45 + 38 = 83\nShirts left = Total shirts initially - Total shirts sold\nShirts left = 120 - 83 = 37\nAnswer: 37",
+      "spans": [
+        {
+          "a": 45,
+          "op": "add",
+          "b": 38,
+          "c": 83,
+          "line": "Total shirts sold = 45 + 38 = 83",
+          "verdict": "match",
+          "cell80_answer": 83
+        },
+        {
+          "a": 120,
+          "op": "sub",
+          "b": 83,
+          "c": 37,
+          "line": "Shirts left = 120 - 83 = 37",
+          "verdict": "match",
+          "cell80_answer": 37
+        }
+      ]
+    },
+    {
+      "question": "Ana saves 12 dollars a week. After 5 weeks she spends 30 dollars on a gift. How much has she saved?",
+      "final_expected": 30,
+      "final_stated": 30.0,
+      "final_correct": true,
+      "completion": "Ana saves 12 dollars a week.\n1 op 5 = 60\nAna saves 60 dollars in 5 weeks.\nShe spends 30 dollars on a gift.\n30 op - 30 = 0\nShe has 0 dollars left after spending 30 dollars.\nShe saved 60 dollars and spent 30 dollars.\n60 op - 30 = 30\nShe has 30 dollars saved.\nAnswer: 30",
+      "spans": []
+    }
+  ]
+}
