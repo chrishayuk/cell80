@@ -92,11 +92,18 @@ enum Inst {
     Store(usize),
     /// Pop and discard (a `Stmt::Eval`'d expression's result).
     Pop,
+    /// Duplicate the top of stack (short-circuit `Logic`: keep the deciding
+    /// value while also testing it).
+    Dup,
     /// Pop a; if zero, jump to the target instruction index.
     JmpZero(usize),
     Jmp(usize),
     /// Finish: the result is the bottom `arity` operands (reg0..), in order.
     Ret(usize),
+    /// `halt(code)` — stop with STATUS_HALT, the code (top of stack) riding r0.
+    /// A diverging expression: statically it leaves its "result" in place so the
+    /// enclosing context stays balanced, but execution ends here.
+    Halt,
 }
 
 /// A linearized cell: flat code, its slot count, param count, and static max
@@ -148,9 +155,9 @@ impl Lin {
     /// Emit an instruction, updating the operand-stack height by its net effect.
     fn emit(&mut self, inst: Inst) {
         let delta: isize = match &inst {
-            Inst::PushLit(_) | Inst::PushVar(_) => 1,
+            Inst::PushLit(_) | Inst::PushVar(_) | Inst::Dup => 1,
             Inst::Bin(..) | Inst::Cmp(..) | Inst::Store(_) | Inst::Pop | Inst::JmpZero(_) => -1,
-            Inst::ShiftLit { .. } | Inst::Trunc | Inst::Step | Inst::Jmp(_) => 0,
+            Inst::ShiftLit { .. } | Inst::Trunc | Inst::Step | Inst::Jmp(_) | Inst::Halt => 0,
             Inst::Ret(arity) => -(*arity as isize),
         };
         if delta > 0 {
@@ -215,9 +222,38 @@ impl Lin {
             | Expr::PtrIndex { .. }
             | Expr::LoadAt(..) => return Err(Bail::Memory),
             Expr::MulConst(..) => return Err(Bail::UnsupportedExpr("MulConst")),
-            Expr::Logic { .. } => return Err(Bail::UnsupportedExpr("Logic (short-circuit)")),
+            // Short-circuit: the deciding operand value *is* the result when it
+            // decides; the RHS ticks only when actually evaluated. `Dup` the
+            // decider to test it while keeping it as the fall-through result.
+            Expr::Logic { and, lhs, rhs } => {
+                self.expr(lhs)?;
+                self.emit(Inst::Dup);
+                if *and {
+                    // `&&`: decider 0 short-circuits (keep it); else drop, eval rhs.
+                    let end = self.new_label();
+                    self.emit(Inst::JmpZero(end));
+                    self.emit(Inst::Pop);
+                    self.expr(rhs)?;
+                    self.place(end);
+                } else {
+                    // `||`: decider ≠ 0 short-circuits (keep it); else drop, eval rhs.
+                    let rhs_l = self.new_label();
+                    let end = self.new_label();
+                    self.emit(Inst::JmpZero(rhs_l));
+                    self.emit(Inst::Jmp(end));
+                    self.place(rhs_l);
+                    self.emit(Inst::Pop);
+                    self.expr(rhs)?;
+                    self.place(end);
+                }
+            }
             Expr::ShiftVar { .. } => return Err(Bail::UnsupportedExpr("ShiftVar (runtime amount)")),
-            Expr::Halt(_) => return Err(Bail::UnsupportedExpr("Halt")),
+            // `halt(code)`: node `Step` (emitted above) then the code subtree
+            // (its own ticks), then stop — mirrors `eval16(Halt)` tick + code eval.
+            Expr::Halt(code) => {
+                self.expr(code)?;
+                self.emit(Inst::Halt);
+            }
         }
         Ok(())
     }
@@ -349,10 +385,15 @@ fn linearize(f: &Func) -> Result<CellProgram, Bail> {
 
 // ── the reference VM (transliteration target for the MSL kernel) ──────────────
 
+/// The VM's outcome, mirroring `Interp`'s: a value return, a `halt(code)`, a
+/// fuel-exhaustion trap (with the step count *at* the trap — the parity point),
+/// or divide-by-zero.
 #[derive(Debug, PartialEq)]
-enum VmErr {
+enum VmOut {
+    Value(Vec<u16>, u64),
+    Halt(u16, u64),
+    Fuel(u64),
     DivZero,
-    Fuel,
 }
 
 const VM_FUEL: u64 = 100_000_000;
@@ -387,9 +428,9 @@ fn cmp16(cmp: Cmp, l: u16, r: u16, signed: bool) -> bool {
     }
 }
 
-/// Execute a `CellProgram`. Returns `(result regs, IR steps)` — the two things
-/// the correctness gate compares against `Interp`.
-fn vm_run(prog: &CellProgram, args: &[u16]) -> Result<(Vec<u16>, u64), VmErr> {
+/// Execute a `CellProgram`. Returns the outcome + IR steps — the things the
+/// correctness gate compares against `Interp`.
+fn vm_run(prog: &CellProgram, args: &[u16]) -> VmOut {
     let mut slots = vec![0u16; prog.n_locals];
     for i in 0..prog.params {
         slots[i] = args.get(i).copied().unwrap_or(0);
@@ -402,7 +443,7 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> Result<(Vec<u16>, u64), VmErr> {
             Inst::Step => {
                 steps += 1;
                 if steps >= VM_FUEL {
-                    return Err(VmErr::Fuel);
+                    return VmOut::Fuel(steps);
                 }
             }
             Inst::PushLit(n) => stack.push(*n),
@@ -419,7 +460,7 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> Result<(Vec<u16>, u64), VmErr> {
                     BinOp::Xor => a ^ b,
                     BinOp::Div | BinOp::Rem => {
                         if b == 0 {
-                            return Err(VmErr::DivZero);
+                            return VmOut::DivZero;
                         }
                         match (op, *w == Width::SWord) {
                             (BinOp::Div, true) => (a as i16).wrapping_div(b as i16) as u16,
@@ -463,6 +504,10 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> Result<(Vec<u16>, u64), VmErr> {
             Inst::Pop => {
                 stack.pop().unwrap();
             }
+            Inst::Dup => {
+                let v = *stack.last().unwrap();
+                stack.push(v);
+            }
             Inst::JmpZero(t) => {
                 if stack.pop().unwrap() == 0 {
                     pc = *t;
@@ -474,7 +519,10 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> Result<(Vec<u16>, u64), VmErr> {
                 continue;
             }
             Inst::Ret(arity) => {
-                return Ok((stack[..*arity].to_vec(), steps));
+                return VmOut::Value(stack[..*arity].to_vec(), steps);
+            }
+            Inst::Halt => {
+                return VmOut::Halt(*stack.last().unwrap(), steps);
             }
         }
         pc += 1;
@@ -509,6 +557,61 @@ impl Rng {
         x ^= x << 5;
         self.0 = x;
         (x & 0xFFFF) as u16
+    }
+}
+
+/// Extract the code from `Interp`'s halt error (`"interp: halt(N)"`) — the
+/// value that must ride r0 in the sextet.
+fn parse_halt(e: &str) -> Option<u16> {
+    e.strip_prefix("interp: halt(")?.strip_suffix(')')?.parse::<u16>().ok()
+}
+
+/// Trap battery (note 4): the fuel-exhaustion path the corpus can't exercise.
+/// A runaway loop must trap in both Interp and the VM (STATUS_FUEL), and the
+/// step-at-trap tests the coalesced fuel-check placement (note 3) — Interp
+/// checks every tick, the VM checks once per coalesced `STEP k`, so a mismatch
+/// would be bounded by (max coalesced k − 1). Removes the "completed runs only"
+/// asterisk on the trap path.
+fn trap_battery() {
+    use cell80_core::ir::{BinOp, Width};
+    // `loop { s = s + 1; }` — never exits; a coalesced body (loop-iter + assign
+    // + Bin + Var ticks fold into one STEP) so the check-placement question bites.
+    let runaway = Func {
+        params: 0,
+        n_locals: 1,
+        body: vec![Stmt::Loop(vec![Stmt::Assign(
+            0,
+            Expr::Bin(BinOp::Add, Box::new(Expr::Var(0)), Box::new(Expr::Lit(1)), Width::Word),
+        )])],
+        ret: vec![Expr::Lit(0)],
+        wide_param: false,
+        wide_second: false,
+        wide_ret: false,
+    };
+    let funcs = vec![("run".to_string(), runaway)];
+    let prog = linearize(&funcs[0].1).expect("runaway linearizes");
+    let no_consts: Vec<(&str, &[u8])> = Vec::new();
+    let mut interp = Interp::new(&funcs, no_consts, Target::Cell.descriptor());
+    let ires = interp.run("run", &[]);
+    let isteps = interp.steps();
+    let vout = vm_run(&prog, &[]);
+
+    println!("\n== trap battery: fuel-exhaustion parity (runaway `loop {{ s += 1 }}`) ==");
+    match vout {
+        VmOut::Fuel(vsteps) => {
+            let both = ires.is_err();
+            let delta = vsteps as i64 - isteps as i64;
+            println!("  interp: trapped={} at {isteps} steps", ires.is_err());
+            println!("  vm:     STATUS_FUEL at {vsteps} steps");
+            if both && delta == 0 {
+                println!("  ✓ both trap; step-at-trap identical (Δ=0) — coalescing didn't cross the cap");
+            } else if both {
+                println!("  ~ both trap; step-at-trap Δ={delta} (bounded by max coalesced k−1, as designed)");
+            } else {
+                println!("  ✗ interp did not trap as expected");
+            }
+        }
+        other => println!("  ✗ vm returned {other:?}, expected fuel trap"),
     }
 }
 
@@ -585,27 +688,54 @@ fn main() {
                 Target::Cell.descriptor(),
             );
             let iref = interp.run("run", args);
-            let Ok(iout) = iref else { continue }; // skip probes Interp refuses (e.g. div0)
-            let isteps = interp.steps();
-            match vm_run(&prog, args) {
-                Ok((vout, vsteps)) => {
-                    if vout != iout {
+            let isteps = interp.steps(); // valid on both return and halt-Err
+            let out = vm_run(&prog, args);
+            match iref {
+                Ok(iout) => match out {
+                    VmOut::Value(vout, vsteps) => {
+                        if vout != iout {
+                            ok = false;
+                            detail = format!("values @ {args:?}: vm={vout:?} interp={iout:?}");
+                            break;
+                        }
+                        if vsteps != isteps {
+                            ok = false;
+                            detail = format!("STEPS @ {args:?}: vm={vsteps} interp={isteps}");
+                            break;
+                        }
+                        max_matched_steps = max_matched_steps.max(vsteps);
+                    }
+                    other => {
                         ok = false;
-                        detail = format!("values @ {args:?}: vm={vout:?} interp={iout:?}");
+                        detail = format!("vm {other:?} but interp returned {iout:?} @ {args:?}");
                         break;
                     }
-                    if vsteps != isteps {
-                        ok = false;
-                        detail = format!("STEPS @ {args:?}: vm={vsteps} interp={isteps}");
-                        break;
-                    }
-                    max_matched_steps = max_matched_steps.max(vsteps);
-                }
-                Err(e) => {
-                    ok = false;
-                    detail = format!("vm error {e:?} @ {args:?} but interp ok ({iout:?})");
-                    break;
-                }
+                },
+                Err(e) => match parse_halt(&e) {
+                    // Interp halted: verify code (rides r0) AND step-at-halt.
+                    Some(code) => match out {
+                        VmOut::Halt(vcode, vsteps) => {
+                            if vcode != code {
+                                ok = false;
+                                detail = format!("HALT code @ {args:?}: vm={vcode} interp={code}");
+                                break;
+                            }
+                            if vsteps != isteps {
+                                ok = false;
+                                detail = format!("HALT steps @ {args:?}: vm={vsteps} interp={isteps}");
+                                break;
+                            }
+                            max_matched_steps = max_matched_steps.max(vsteps);
+                        }
+                        other => {
+                            ok = false;
+                            detail = format!("interp halt({code}) but vm {other:?} @ {args:?}");
+                            break;
+                        }
+                    },
+                    // Any other refusal (div0) — not tested here.
+                    None => continue,
+                },
             }
         }
         if ok {
@@ -644,6 +774,11 @@ fn main() {
         }
     }
 
+    // Trap battery: the fuel-exhaustion path (note 4). ~seconds (Interp runs to
+    // the 10^8-tick cap). GPU shares the VM's STEP/fuel logic, verified identical
+    // on completed runs above.
+    trap_battery();
+
     // Piece 2: the MSL interpreter kernel + the gate (macOS only).
     #[cfg(target_os = "macos")]
     msl::run(&supported_cells, &probes);
@@ -679,6 +814,9 @@ mod msl {
     const OP_JMPZERO: u32 = 9;
     const OP_JMP: u32 = 10;
     const OP_RET: u32 = 11;
+    const OP_DUP: u32 = 12;
+    const OP_HALT: u32 = 13;
+    const STATUS_HALT: u16 = 2;
 
     const MAX_LOCALS: usize = 64;
     const OUT_STRIDE: usize = 6;
@@ -761,9 +899,11 @@ mod msl {
                     Inst::Trunc => (OP_TRUNC, 0),
                     Inst::Store(s) => (OP_STORE, *s as u32),
                     Inst::Pop => (OP_POP, 0),
+                    Inst::Dup => (OP_DUP, 0),
                     Inst::JmpZero(t) => (OP_JMPZERO, *t as u32), // remapped below
                     Inst::Jmp(t) => (OP_JMP, *t as u32),         // remapped below
                     Inst::Ret(arity) => (OP_RET, *arity as u32),
+                    Inst::Halt => (OP_HALT, 0),
                     Inst::Step => unreachable!(),
                 };
                 words.push(pair);
@@ -790,8 +930,8 @@ mod msl {
 using namespace metal;
 
 constant uint OP_STEP=0,OP_PUSHLIT=1,OP_PUSHVAR=2,OP_BIN=3,OP_SHIFTLIT=4,
-              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11;
-constant uint ST_OK=0u, ST_DIV0=1u, ST_FUEL=4u;
+              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13;
+constant uint ST_OK=0u, ST_DIV0=1u, ST_HALT=2u, ST_FUEL=4u;
 constant uint FUEL=100000000u;
 #define MAX_LOCALS 64
 #define MAX_STACK  16
@@ -870,6 +1010,7 @@ kernel void interp(
           case OP_TRUNC: { ushort a=stack[--sp]; stack[sp++]=a&0xFFu; break; }
           case OP_STORE: slots[arg]=stack[--sp]; break;
           case OP_POP: --sp; break;
+          case OP_DUP: { ushort v=stack[sp-1]; stack[sp++]=v; break; }
           case OP_JMPZERO: { ushort v=stack[--sp]; if(v==0){ pc=code_off+arg; continue; } break; }
           case OP_JMP: pc=code_off+arg; continue;
           case OP_RET: {
@@ -879,6 +1020,7 @@ kernel void interp(
              if(arity>=3u) r2=stack[2];
              done=true; break;
           }
+          case OP_HALT: { r0=stack[sp-1]; status=ST_HALT; done=true; break; }
           default: done=true; break;
         }
         pc++;
@@ -1017,20 +1159,31 @@ kernel void interp(
                     consts.iter().map(|(n, b)| (n.as_str(), b.as_slice())),
                     Target::Cell.descriptor(),
                 );
-                let Ok(iout) = interp.run("run", args) else { continue };
+                let iref = interp.run("run", args);
                 let isteps = interp.steps();
                 let base = (ci * probes.len() + pi) * OUT_STRIDE;
                 let g = &gpu[base..base + OUT_STRIDE];
                 let gsteps = g[4] as u64 | ((g[5] as u64) << 16);
-                checked += 1;
-                let vals_ok = iout.iter().enumerate().all(|(k, v)| g[k] == *v);
-                if vals_ok && gsteps == isteps && g[3] == 0 {
+                let matched = match &iref {
+                    Ok(iout) => {
+                        checked += 1;
+                        g[3] == 0 && gsteps == isteps && iout.iter().enumerate().all(|(k, v)| g[k] == *v)
+                    }
+                    Err(e) => match super::parse_halt(e) {
+                        // Halt: sextet must read STATUS_HALT with code in r0.
+                        Some(code) => {
+                            checked += 1;
+                            g[3] == STATUS_HALT && g[0] == code && gsteps == isteps
+                        }
+                        None => continue, // div0 etc. — not tested here
+                    },
+                };
+                if matched {
                     ok += 1;
                 } else if fail.len() < 15 {
                     fail.push(format!(
-                        "  {name} @ {args:?}: gpu={:?} steps={gsteps} status={} | interp={iout:?} steps={isteps}",
-                        &g[..iout.len().max(1)],
-                        g[3]
+                        "  {name} @ {args:?}: gpu r0={} status={} steps={gsteps} | interp={iref:?} steps={isteps}",
+                        g[0], g[3]
                     ));
                 }
             }
