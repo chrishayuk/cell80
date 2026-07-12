@@ -131,7 +131,7 @@ struct Lin<'a> {
     code: Vec<Inst>,
     labels: Vec<usize>,             // label id → instruction index (filled by `place`)
     loops: Vec<(usize, usize)>,     // (continue target, break target) per enclosing loop
-    ret_ctx: Vec<usize>,            // inline-return labels (empty ⇒ top level ⇒ Ret)
+    ret_ctx: Vec<(usize, bool)>,    // (inline-return label, callee returns u32); empty ⇒ top level ⇒ Ret
     frame_base: usize,              // current frame's slot offset (0 ⇒ entry frame)
     slots_used: usize,              // high-water mark of allocated slots
     wide_ret: bool,                 // entry returns u32 (Ret produces 2 words)
@@ -241,7 +241,12 @@ impl<'a> Lin<'a> {
                     self.expr(&args[0])?;
                     self.emit(Inst::Ctz);
                 }
-                _ => self.inline_call(name, args)?,
+                _ => {
+                    // A wide-returning call in 16-bit position yields its low word.
+                    if self.inline_call(name, args)? {
+                        self.emit(Inst::Pop);
+                    }
+                }
             },
             // 32-bit → 16-bit bridges (evaluated by eval16): node Step (above) +
             // the wide subtree's ticks, then narrow the result.
@@ -353,7 +358,13 @@ impl<'a> Lin<'a> {
                 self.expr32(inner)?;
                 self.emit(Inst::Shift32 { left: *left, k: *k, signed: *signed });
             }
-            Expr::Call(..) => return Err(Bail::ResidualCall), // wide-returning call: not inlined yet
+            // A call in u32 position: inline it; it must be wide-returning
+            // (`Interp` errors on a narrow call in a u32 context).
+            Expr::Call(name, args) => {
+                if !self.inline_call(name, args)? {
+                    return Err(Bail::ResidualCall);
+                }
+            }
             Expr::Deref32(..) => return Err(Bail::Memory),
             _ => return Err(Bail::WideValue),
         }
@@ -378,9 +389,13 @@ impl<'a> Lin<'a> {
             // jumps to the inline-end; at top level it's a real `Ret`. The
             // per-statement `Step` (emitted above) matches `exec_stmt`'s tick either way.
             Stmt::Return(val) => match self.ret_ctx.last().copied() {
-                Some(end) => {
+                Some((end, wide)) => {
                     let e = val.as_ref().ok_or(Bail::ResidualCall)?; // void return in a value callee
-                    self.expr(e)?; // inlined callees are narrow-return (wide bail in inline_call)
+                    if wide {
+                        self.expr32(e)?; // wide-returning callee: leave a u32
+                    } else {
+                        self.expr(e)?;
+                    }
                     self.emit(Inst::Jmp(end));
                 }
                 None => match (val, self.wide_ret) {
@@ -465,50 +480,74 @@ impl<'a> Lin<'a> {
         Ok(())
     }
 
-    /// Fully inline a call in expression position — no call stack (note 2). The
-    /// tick accounting mirrors `Interp::call`: the `Step` for the call node is
-    /// already emitted by `expr`; each arg's eval ticks as a *caller* node; the
-    /// param-binding stores do NOT tick; the callee body ticks normally; and the
-    /// fall-through return evals `ret` (ticking) with no statement tick. The
-    /// callee's frame is a fresh slot range so its locals never alias the caller's.
-    fn inline_call(&mut self, name: &str, args: &[Expr]) -> Result<(), Bail> {
+    /// Fully inline a call in expression position — no call stack (note 2).
+    /// Returns whether the result is wide (u32, two stack entries). The tick
+    /// accounting mirrors `Interp::call`: the call node's `Step` is already
+    /// emitted by the caller; each arg's eval ticks as a *caller* node (`expr32`
+    /// for a `wide_param`); the param-binding stores do NOT tick; the callee body
+    /// ticks normally; and the fall-through return evals `ret` (ticking, `expr32`
+    /// when `wide_ret`) with no statement tick. The callee's frame is a fresh slot
+    /// range so its locals never alias the caller's.
+    fn inline_call(&mut self, name: &str, args: &[Expr]) -> Result<bool, Bail> {
         let callee = self
             .funcs
             .iter()
             .find(|(n, _)| n == name)
             .map(|(_, f)| f)
             .ok_or(Bail::ResidualCall)?;
-        // Value-returning, narrow, non-wide callees only (the common helper shape).
-        if callee.wide_param || callee.wide_second || callee.wide_ret || callee.ret.len() != 1 {
+        // `wide_second` (the __mul32 two-wide-param stack shape) isn't handled.
+        if callee.wide_second || callee.ret.len() != 1 {
             return Err(Bail::WideValue);
         }
-        if callee.params != args.len() {
+        // Param slot layout: a `wide_param` makes arg0 a u32 (two slots); the rest
+        // are narrow. Verify the plan fills exactly the callee's param slots.
+        let mut plan: Vec<(usize, bool)> = Vec::new(); // (slot offset in callee frame, wide)
+        let mut slot = 0usize;
+        for i in 0..args.len() {
+            let wide = i == 0 && callee.wide_param;
+            plan.push((slot, wide));
+            slot += if wide { 2 } else { 1 };
+        }
+        if slot != callee.params {
             return Err(Bail::ResidualCall);
         }
-        // Evaluate every arg (in the CALLER frame) before binding any param — the
-        // interpreter's rule (an arg may read a pre-call value). Then store into
-        // the fresh callee frame in reverse (stack order); stores don't tick.
         let base = self.slots_used;
         self.slots_used += callee.n_locals;
-        for a in args {
-            self.expr(a)?;
+        // Evaluate every arg (in the CALLER frame) before binding any param, then
+        // store into the fresh callee frame in reverse (stack order) — no ticks.
+        for (a, &(_, wide)) in args.iter().zip(&plan) {
+            if wide {
+                self.expr32(a)?;
+            } else {
+                self.expr(a)?;
+            }
         }
-        for i in (0..callee.params).rev() {
-            self.emit(Inst::Store(base + i));
+        for &(off, wide) in plan.iter().rev() {
+            if wide {
+                self.emit(Inst::Store(base + off + 1)); // hi (top of stack)
+                self.emit(Inst::Store(base + off)); // lo
+            } else {
+                self.emit(Inst::Store(base + off));
+            }
         }
-        // Inline the body in the callee frame; a callee `return` jumps to `end`.
+        // Inline the body in the callee frame; a callee `return` jumps to `end`,
+        // leaving its value (narrow or wide per `wide_ret`) on the stack.
         let saved = self.frame_base;
         self.frame_base = base;
         let end = self.new_label();
-        self.ret_ctx.push(end);
+        self.ret_ctx.push((end, callee.wide_ret));
         self.block(&callee.body)?;
         self.ret_ctx.pop();
-        // Fall-through return: eval the single ret expr (dead if the body always
-        // returned — its `Step`s then never execute, so parity holds).
-        self.expr(&callee.ret[0])?;
+        // Fall-through return (dead if the body always returned — its `Step`s then
+        // never execute, so parity holds).
+        if callee.wide_ret {
+            self.expr32(&callee.ret[0])?;
+        } else {
+            self.expr(&callee.ret[0])?;
+        }
         self.place(end);
         self.frame_base = saved;
-        Ok(())
+        Ok(callee.wide_ret)
     }
 
     /// Resolve label ids embedded in jumps to instruction indices.
@@ -1302,6 +1341,36 @@ mod tests {
         let call = Expr::Call("__bits_count_ones".into(), vec![Expr::Var(0)]);
         for x in [0u16, 1, 0xF0F0, 0xFFFF] {
             assert_parity(&cell(1, 1, vec![], call.clone()), &[x]);
+        }
+    }
+
+    #[test]
+    fn wide_returning_inlined_call() {
+        // helper(x: u16) -> u32 { (x as u32) * 2 }
+        // run(x)          -> u32 { helper(x) + 1 }   — a wide call inlined in u32 position
+        let mul = Expr::Bin32(
+            BinOp::Mul,
+            Box::new(Expr::Widen(Box::new(Expr::Var(0)))),
+            Box::new(Expr::Lit32(2)),
+            false,
+        );
+        let helper = Func {
+            params: 1, n_locals: 1, body: vec![], ret: vec![mul],
+            wide_param: false, wide_second: false, wide_ret: true,
+        };
+        let call = Expr::Bin32(
+            BinOp::Add,
+            Box::new(Expr::Call("helper".into(), vec![Expr::Var(0)])),
+            Box::new(Expr::Lit32(1)),
+            false,
+        );
+        let run = Func {
+            params: 1, n_locals: 1, body: vec![], ret: vec![call],
+            wide_param: false, wide_second: false, wide_ret: true,
+        };
+        let funcs = vec![("run".to_string(), run), ("helper".to_string(), helper)];
+        for x in [0u16, 5, 1000, 40000] {
+            assert_parity(&funcs, &[x]);
         }
     }
 }
