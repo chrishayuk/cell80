@@ -1,8 +1,12 @@
-# Cell-Native Model Architectures — wave 1 findings (CN-0, CN-2 slice-0)
+# Cell-Native Model Architectures — CN-0/CN-2 findings
 
-Status: pilot / slice-0 only. Both experiments are defined in
-`cell-native-architectures.md`. This note covers the first concrete run of
-each, kicked off 2026-07-12. Code lives in `cell-native-architectures/`.
+Status: CN-0 through two waves (hyperparameter sweep, operation breadth,
+narrative contrastive probe + null test) — still a scoping result, not a
+pass or a kill, per its own `## CN-0, read against the gate, after two waves`
+section below. CN-2 through one wave (60-problem verified-decoding battery;
+injection/resampling not yet built). Both experiments are defined in
+`cell-native-architectures.md`. Kicked off 2026-07-12. Code lives in
+`cell-native-architectures/`.
 
 ## Infrastructure map (established before any code was written)
 
@@ -136,6 +140,204 @@ architecture were single fixed choices, not searched), multiplication/
 subtraction, or a dedicated narrative-vs-others contrastive probe design
 (the current setup treats all 4 families symmetrically, but narrative's
 failure mode looks qualitatively different from the other three's).
+
+## CN-0 wave 2 — hyperparameter sweep, operation breadth, the narrative
+## contrastive probe, and the null test that mattered most
+
+Addresses all three items the rerun left open. **Read against the gate: still
+scoping, not a pass or a kill** — this wave sharpens *why*, it doesn't move
+the verdict.
+
+### The one clean, load-bearing finding: linear sees nothing, Fourier sees almost everything
+
+Across every op, every held-out family, every layer, every feature
+representation tested this wave (tap, operand-position, mean-pooled) and
+last wave: **linear probes never exceed 0.225**, often sitting at exactly
+0.000. **Fourier probes range 0.5-1.0** on the same data. This is not a
+margin, it's categorical. Pre-registering the Fourier/codebook family
+*cheapest-second* (`cell-native-architectures.md`'s own "cheapest first"
+ordering) is the reason CN-0 has a real signal to argue about at all — a
+linear-only probe would have read as a clean kill (<80% everywhere, in fact
+near 0% everywhere) and scoped out depths 2-3 on what would have been a false
+negative. Operand information lives in a periodic/helical encoding, not a
+linear one, exactly as the Fourier/clock literature on number representations
+predicts — and it now has a receipt on Gemma 3 4B specifically.
+
+### Hyperparameter sweep: rules out under-tuning, doesn't move the number
+
+`cn0_operand_readout.py` rewritten with a real, honest sweep: ridge λ over
+9 values, MLP over 4 hidden sizes × 3 learning rates — all selected via a
+**nested inner validation split carved out of the pooled training families**
+(never the true held-out family itself, which would leak the test set into
+hyperparameter selection and inflate the number). Addition, full sweep:
+
+| held out | exact-pair (tuned) | exact-pair (single fixed choice, prior wave) |
+|---|---:|---:|
+| digit | 0.400 | 0.400 |
+| word | 0.365 | 0.365 |
+| mixed | 0.575 | 0.575 |
+| narrative | 0.030 | 0.030 |
+
+**Bit-for-bit identical to the untuned baseline.** A real, properly
+cross-validated sweep found nothing the single fixed choice hadn't already
+found. This closes the "maybe it's just under-tuned" hypothesis the prior
+wave left open: 57.5% (mixed, the ceiling so far) is very likely close to a
+genuine representational limit for this probe class on held-out surface
+forms, not a tuning artifact.
+
+### Operation breadth: subtraction and multiplication generalize much better than addition — narrative doesn't, for any of them
+
+Extended the battery to `sub`/`mul` (same 4 surface-form families, same
+tuned-probe pipeline, `CN0_OPS` env var). Held-out-family exact-pair, best
+probe/layer:
+
+| held out | add | sub | mul |
+|---|---:|---:|---:|
+| digit | 0.400 | **0.850** | 0.585 |
+| word | 0.365 | 0.660 | **0.865** |
+| mixed | 0.575 | **0.925** | **0.895** |
+| narrative | 0.030 | 0.385 | 0.120 |
+
+Subtraction and multiplication both clear the 80% kill line on `mixed`
+(0.925/0.895), and subtraction clears it on `digit` too (0.850) —
+addition never clears 80% anywhere. **Narrative is the hardest family for
+every operation tested, by a wide margin, though its floor moves**:
+0.030 (add) -> 0.120 (mul) -> 0.385 (sub). None of the three operations
+reach the 95% gate on any held-out family. Read plainly: operand-readout
+generalization is *operation-dependent*, and addition — the only operation
+the prior wave tested — happens to be the hardest case, not a representative
+one. A CN-0 verdict based on addition alone would have been reading the
+floor of the distribution, not its center.
+
+### Mean-pooling: fixes in-distribution recovery, actively hurts cross-family generalization
+
+Added a `CN0_FEATURE=mean_pooled` mode (mean over every token position's
+residual, not just the last-token tap) to test whether the tap position was
+simply the wrong read. Addition, held-out-family, tuned:
+
+| held out | tap | mean-pooled |
+|---|---:|---:|
+| digit | 0.400 | 0.125 |
+| word | 0.365 | 0.050 |
+| mixed | 0.575 | 0.095 |
+| narrative | 0.030 | 0.005 |
+
+**Worse across the board, including narrative itself.** Mean-pooling
+averages in each surface form's own filler tokens (narrative's "Sam had...
+marbles and found... more" carries far more non-operand tokens than
+digit's "94 + 62 = "), so the pooled vector becomes *more*
+surface-form-entangled, not less — the opposite of what would help
+cross-family transfer. A fix that helps in-distribution readout can still
+actively hurt the generalization the gate actually measures; the two
+questions ("is the information there" vs. "does the read transfer across
+surface form") do not share an answer.
+
+### The narrative contrastive probe: real information, precisely characterized — and the null test that mattered most
+
+**Hypothesis:** narrative's near-total tap-based failure (0.030, both prior
+waves) reflects a wrong-tap-position artifact, not missing information —
+narrative embeds operands many tokens before the tap ("Sam had `{a}`
+marbles and found `{b}` more. Sam now has "), unlike the other three
+families where operands sit immediately before it.
+
+**Method** (`cn0_narrative_probe.py`, new): locate each operand's own last
+digit-token index via prefix tokenization (verified by hand: in "Sam had 72
+marbles...", the '2' of '72' sits at token index 5, the tap at index 17).
+Compare three feature reads, in-distribution (random 80/20 split within
+narrative alone, N=200): **tap** (the original method), **operand_positions**
+(concat of the residual at each operand's own token), **mean_pooled**.
+
+| feature | best exact-pair (in-distribution) | best layer |
+|---|---:|---:|
+| tap | 0.925 | L5 |
+| operand_positions | 1.000 | flat, L2-L26 |
+| mean_pooled | 0.975 | L2 |
+
+The hypothesis was right: reading at the operand's own position (or pooling
+broadly) recovers the information almost perfectly *in-distribution* — tap
+alone, at the right layer, already gets to 0.925 within narrative's own
+distribution (vs. 0.030 when trained on the other three families and tested
+on narrative, the held-out-family number). The information was never
+missing; it just doesn't transfer from other surface forms' tap-position
+geometry.
+
+**A 1.000, flat across 8 layers, is not something to report without a null
+check — so before writing any of this up, one was run.** Extended the layer
+sweep down to the raw token embedding itself (zero transformer computation)
+and the first few layers (L0, L1, L2, L5), on the same operand_positions
+feature:
+
+| layer | tap (fourier) | operand_positions (fourier) |
+|---|---:|---:|
+| embed (raw, 0 layers) | 0.000 | 0.000 |
+| L0 | 0.000 | 0.975 |
+| L1 | 0.725 | 0.950 |
+| L2 | 0.750 | 1.000 |
+| L5 | **0.925** | 1.000 |
+| L19-26 | 0.525-0.725 | 1.000 (flat) |
+
+**The raw embedding reads at exactly 0.000 — this is not the probe decoding
+the tokenizer.** If it were, the trivially-available, lossless token
+identity at the embedding layer would already recover close to 1.000, and it
+doesn't. Something the model computes is necessary. But the more precise
+finding is that whatever that something is, it forms almost immediately (by
+L0-L1) and then stays essentially flat through L26 for `operand_positions` —
+consistent with the residual stream's additive architecture (once an early
+layer writes a clean, Fourier-decodable numeral code into a token's own
+position, later layers have no strong pressure to overwrite it there). This
+means `operand_positions`'s 1.000 is real, but it is better described as
+reading a fast-forming, stable **numeral encoding at that token's own
+position**, not evidence of extended in-flight arithmetic computation
+building up with depth. `tap`, by contrast, shows a real depth profile in
+this same test (0 at embed/L0, rising to a peak of 0.925 at L5, declining
+through L19-26) — a genuinely different, depth-dependent signature.
+
+**A structural point that limits what any of this can mean for CN-3, stated
+plainly so the write-up doesn't overclaim:** `operand_positions` and
+`mean_pooled` are not features the prosthetic (CN-3) can actually use.
+CN-3 needs the operands read from the in-flight residual *at the decision
+point*, before the model commits to a continuation — a single tap, not a
+read that requires already knowing where the operands sit in text that may
+not even be fully known yet in a fully general setting, and not a pool over
+positions decided after the fact. **`tap` is the only feature representation
+this experiment tested that CN-3 could actually deploy**, and `tap`'s
+narrative number is 0.725 in-distribution / 0.030 held-out-family — the
+harder, real number. `operand_positions`/`mean_pooled`'s strong results are
+a genuine scientific finding (the information exists, cleanly, in the
+residual stream) but not an architectural one (it is not available where
+CN-3 would need to read it).
+
+### CN-0, read against the gate, after two waves
+
+**Still a scoping result, not a pass or a kill — exactly the pre-registered
+middle.** The gate (>=95% held-out) has not been met by any operation,
+family, feature representation, or hyperparameter setting tried across
+either wave. The kill line (<80% everywhere) has been *cleared* on some
+op/family pairs (sub digit 0.850, sub mixed 0.925, mul mixed 0.895, mul word
+0.865) and not on others (every case involving narrative; addition
+everywhere). Two waves of investigation have not resolved the ambiguity —
+they've sharpened it: this is now known to be a real, operation-dependent,
+surface-form-dependent, tap-position-dependent phenomenon, not noise, tuning,
+or an artifact of one under-tested operation.
+
+**Immediate next steps (not yet done):**
+1. A **held-out-family sweep for sub/mul restricted to `tap`-vs-`operand_positions`**
+   was not run this wave (only addition got the mean-pooled/operand-position
+   treatment) — worth checking whether sub/mul's already-stronger
+   generalization holds up or changes under the other feature reads.
+2. **A proper multi-split average**, not a single random 80/20 split, for
+   the in-distribution numbers above — single-split variance is visible
+   already (the narrative-only tap number moved from 0.725 to 0.925 across
+   two runs differing only in how many other layers were swept before it,
+   which shifts the RNG stream's inner-validation-split state).
+3. **CN-3's actual dependency is `tap`'s held-out-family number, not
+   operand_positions' or mean_pooled's** — any future CN-0 work should
+   report the `tap` number as the headline for the gate/kill decision and
+   keep the others clearly labeled as "information exists" evidence, not
+   deployability evidence.
+4. Root-cause `spin_pool`'s remaining concurrency bug (bug 3, carried over
+   from wave 1, still open).
+5. Wave 2 (CN-1's H1 factory, CN-3's prosthetic) still hasn't been scoped.
 
 ## CN-2 slice-0 — verified decoding, real result obtained
 

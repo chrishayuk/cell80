@@ -1,0 +1,741 @@
+{
+  "model": "google/gemma-3-4b-it",
+  "n_layers": 34,
+  "layers": [
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28
+  ],
+  "n_per_family": 200,
+  "val_range": [
+    1,
+    99
+  ],
+  "ops": {
+    "add": {
+      "held_out_family": {
+        "digit": {
+          "12": {
+            "linear": 0.0,
+            "linear_lambda": 3.0,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "13": {
+            "linear": 0.0,
+            "linear_lambda": 3.0,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "14": {
+            "linear": 0.0,
+            "linear_lambda": 30.0,
+            "fourier": 0.035,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "15": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "16": {
+            "linear": 0.0,
+            "linear_lambda": 10.0,
+            "fourier": 0.025,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "17": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.03,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "18": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "19": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "20": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "21": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.01,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "22": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.015,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "23": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.125,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "24": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.07,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "25": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.045,
+            "fourier_lambda": 100.0,
+            "mlp": 0.005,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "26": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.055,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "27": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "28": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.03,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          }
+        },
+        "word": {
+          "12": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "13": {
+            "linear": 0.0,
+            "linear_lambda": 3.0,
+            "fourier": 0.01,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "14": {
+            "linear": 0.0,
+            "linear_lambda": 0.1,
+            "fourier": 0.01,
+            "fourier_lambda": 1.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.001
+          },
+          "15": {
+            "linear": 0.0,
+            "linear_lambda": 30.0,
+            "fourier": 0.01,
+            "fourier_lambda": 10.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "16": {
+            "linear": 0.0,
+            "linear_lambda": 10.0,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.001
+          },
+          "17": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.01
+          },
+          "18": {
+            "linear": 0.0,
+            "linear_lambda": 3.0,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "19": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.01,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.001
+          },
+          "20": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.015,
+            "fourier_lambda": 10.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "21": {
+            "linear": 0.0,
+            "linear_lambda": 10.0,
+            "fourier": 0.02,
+            "fourier_lambda": 30.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "22": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.05,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "23": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.035,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "24": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.04,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.001
+          },
+          "25": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.015,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.001
+          },
+          "26": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.025,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.001
+          },
+          "27": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.025,
+            "fourier_lambda": 0.01,
+            "mlp": 0.005,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "28": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          }
+        },
+        "mixed": {
+          "12": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.02,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "13": {
+            "linear": 0.0,
+            "linear_lambda": 30.0,
+            "fourier": 0.02,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.01
+          },
+          "14": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.01,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "15": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.06,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "16": {
+            "linear": 0.0,
+            "linear_lambda": 10.0,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "17": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.025,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "18": {
+            "linear": 0.005,
+            "linear_lambda": 30.0,
+            "fourier": 0.07,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "19": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.025,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.01
+          },
+          "20": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.015,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "21": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.035,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "22": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.03,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "23": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.045,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "24": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.075,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "25": {
+            "linear": 0.005,
+            "linear_lambda": 0.01,
+            "fourier": 0.03,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "26": {
+            "linear": 0.005,
+            "linear_lambda": 0.01,
+            "fourier": 0.03,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.001
+          },
+          "27": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.035,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.005
+          },
+          "28": {
+            "linear": 0.0,
+            "linear_lambda": 100.0,
+            "fourier": 0.095,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.001
+          }
+        },
+        "narrative": {
+          "12": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "13": {
+            "linear": 0.0,
+            "linear_lambda": 10.0,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "14": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 10.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "15": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.005
+          },
+          "16": {
+            "linear": 0.005,
+            "linear_lambda": 10.0,
+            "fourier": 0.0,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "17": {
+            "linear": 0.005,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "18": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "19": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 100.0,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          },
+          "20": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.001
+          },
+          "21": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.005,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "22": {
+            "linear": 0.0,
+            "linear_lambda": 30.0,
+            "fourier": 0.005,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 32,
+            "mlp_lr": 0.01
+          },
+          "23": {
+            "linear": 0.0,
+            "linear_lambda": 30.0,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.005
+          },
+          "24": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.01
+          },
+          "25": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "26": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 256,
+            "mlp_lr": 0.001
+          },
+          "27": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 64,
+            "mlp_lr": 0.005
+          },
+          "28": {
+            "linear": 0.0,
+            "linear_lambda": 0.01,
+            "fourier": 0.0,
+            "fourier_lambda": 0.01,
+            "mlp": 0.0,
+            "mlp_hidden": 128,
+            "mlp_lr": 0.01
+          }
+        }
+      },
+      "random_split": {
+        "12": {
+          "linear": 0.069,
+          "fourier": 0.875,
+          "mlp": 0.019
+        },
+        "13": {
+          "linear": 0.044,
+          "fourier": 0.838,
+          "mlp": 0.056
+        },
+        "14": {
+          "linear": 0.062,
+          "fourier": 0.787,
+          "mlp": 0.044
+        },
+        "15": {
+          "linear": 0.05,
+          "fourier": 0.812,
+          "mlp": 0.025
+        },
+        "16": {
+          "linear": 0.05,
+          "fourier": 0.75,
+          "mlp": 0.025
+        },
+        "17": {
+          "linear": 0.062,
+          "fourier": 0.769,
+          "mlp": 0.062
+        },
+        "18": {
+          "linear": 0.069,
+          "fourier": 0.794,
+          "mlp": 0.013
+        },
+        "19": {
+          "linear": 0.069,
+          "fourier": 0.794,
+          "mlp": 0.031
+        },
+        "20": {
+          "linear": 0.037,
+          "fourier": 0.787,
+          "mlp": 0.031
+        },
+        "21": {
+          "linear": 0.05,
+          "fourier": 0.812,
+          "mlp": 0.044
+        },
+        "22": {
+          "linear": 0.037,
+          "fourier": 0.863,
+          "mlp": 0.013
+        },
+        "23": {
+          "linear": 0.062,
+          "fourier": 0.85,
+          "mlp": 0.05
+        },
+        "24": {
+          "linear": 0.05,
+          "fourier": 0.825,
+          "mlp": 0.062
+        },
+        "25": {
+          "linear": 0.062,
+          "fourier": 0.769,
+          "mlp": 0.037
+        },
+        "26": {
+          "linear": 0.05,
+          "fourier": 0.756,
+          "mlp": 0.025
+        },
+        "27": {
+          "linear": 0.062,
+          "fourier": 0.769,
+          "mlp": 0.037
+        },
+        "28": {
+          "linear": 0.031,
+          "fourier": 0.713,
+          "mlp": 0.031
+        }
+      }
+    }
+  }
+}
