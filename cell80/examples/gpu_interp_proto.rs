@@ -43,24 +43,33 @@
 //! how the megakernel itself landed), but state cells are on the WS-F critical
 //! path, so the format leaves room rather than forcing a v2 bytecode.
 //!
-//! ## The pre-registered gate — and its post-hoc amendments
-//! - **Correctness:** bit-identical values *and* step counts vs `Interp`. RESULT:
-//!   7360/7360 (cell,probe) — but **completed runs only**; trap-path (fuel
-//!   exhaustion / `Halt`) step parity is unverified until the trap battery lands
-//!   alongside `STATUS_HALT`. Cite the 7360/7360 with that asterisk.
-//! - **Performance:** the spec said "per-eval flat within ±20% from 64 → full
-//!   library." AMENDED post-hoc: it should have read **"non-increasing per-eval,
-//!   no cliff."** The measured curve *improves* 97.9 → 1.1 ns/eval over 115 →
-//!   50k — a ~90× swing, which violates the ±20% *letter* in the favorable
-//!   direction. The failure mode the gate existed to catch (a cliff) is absent,
-//!   so it passes on **intent**; the ±20% was mis-specified. Recorded here so a
-//!   future reader doesn't find a ±20% gate next to a 90× curve unannotated.
-//! - **Shape caveat (do not conflate two numbers):** the interpreter's win is
-//!   *scaling*, NOT per-eval speed. The apples-to-apples pair is Gate A (same
-//!   cells, same probes): compiled 49 ns vs interpreter 162 ns — **compiled wins
-//!   3.3×**. And the 1.1 ns/eval at 50k must NOT be set beside the compiled
-//!   one-cell peak (3.7×10⁸ evals/s): different workload shapes (50k tiny cells ×
-//!   64 probes, simple-skewed corpus vs one cell × 10⁶ inputs). Not the same axis.
+//! ## The pre-registered gate — results, amendments, and one honest failure
+//! - **Correctness:** bit-identical values *and* step counts vs `Interp`. RESULT
+//!   (representative 167-cell subset): CPU 167/167, GPU 10688/10688 (cell,probe).
+//!   Trap paths: fuel-exhaustion Δ=0 and halt-code parity verified in the trap
+//!   battery; div-by-zero and signed MIN/−1 still owed there before the asterisk
+//!   fully lifts.
+//! - **Gate A (per-eval ≤ monolith, ~507 ns, at 249 cells): FAILED as
+//!   registered.** On the *representative* subset the interpreter is 1415 ns/eval
+//!   vs the compiled monolith's 86 ns at 167 cells — ~16.5× slower — and
+//!   interpolating the Gate-B curve it is still ~1000 ns at 249. The earlier
+//!   "3.3× / crossover by ~500 cells" reading was a composition artifact of the
+//!   simple subset, same as the ~1 ns figure; the "gate cleared" verdict was
+//!   accepted on that skewed evidence and is retracted here.
+//! - **The decision survives, re-derived on a corrected basis** (not on Gate A):
+//!   (a) the compiled path *cannot exist* at target scale — cliffed by ~128
+//!   cells, unbuildable at thousands; (b) the interpreter is flat/no-cliff to
+//!   500k distinct entries at ~23 ns/eval representative; (c) the honest
+//!   crossover is therefore in the **500–5000 cell band** (at 500 cells the
+//!   interpreter is ~500 ns against a monolith already past its cliff), NOT
+//!   ~500-and-falling. Below that band compiled wins ~10×. So: two bodies, with
+//!   the handoff around **10²–10³ cells** (measurable later, not load-bearing).
+//! - **Flatness amendment:** the spec's "±20% from 64 → full" was mis-specified;
+//!   it should read **"non-increasing per-eval, no cliff,"** which the measured
+//!   monotone-improving curve meets. (Recorded favorable-direction amendment.)
+//! - **Never conflate:** the interpreter's win is *scaling*, not per-eval speed;
+//!   and no at-scale ns/eval belongs beside the compiled one-cell×10⁶ peak
+//!   (3.7×10⁸ evals/s) — different workload shapes, not the same axis.
 //!
 //! Run: `cargo run --release -p cell80 --example gpu_interp_proto`
 
@@ -596,23 +605,81 @@ fn trap_battery() {
     let isteps = interp.steps();
     let vout = vm_run(&prog, &[]);
 
-    println!("\n== trap battery: fuel-exhaustion parity (runaway `loop {{ s += 1 }}`) ==");
+    println!("\n== trap battery: fuel / div0 / signed MIN÷-1 parity ==");
     match vout {
         VmOut::Fuel(vsteps) => {
             let both = ires.is_err();
             let delta = vsteps as i64 - isteps as i64;
-            println!("  interp: trapped={} at {isteps} steps", ires.is_err());
-            println!("  vm:     STATUS_FUEL at {vsteps} steps");
             if both && delta == 0 {
-                println!("  ✓ both trap; step-at-trap identical (Δ=0) — coalescing didn't cross the cap");
+                println!("  fuel: both trap at {isteps} steps (Δ=0) — coalescing didn't cross the cap ✓");
             } else if both {
-                println!("  ~ both trap; step-at-trap Δ={delta} (bounded by max coalesced k−1, as designed)");
+                println!("  fuel: both trap; step-at-trap Δ={delta} (bounded by max coalesced k−1) ~");
             } else {
-                println!("  ✗ interp did not trap as expected");
+                println!("  fuel: ✗ interp did not trap as expected");
             }
         }
-        other => println!("  ✗ vm returned {other:?}, expected fuel trap"),
+        other => println!("  fuel: ✗ vm returned {other:?}, expected fuel trap"),
     }
+
+    // Divide-by-zero: `x / (x - x)` — always 0 divisor. Both must trap.
+    let div0 = one_expr_cell(Expr::Bin(
+        BinOp::Div,
+        Box::new(Expr::Var(0)),
+        Box::new(Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word)),
+        Width::Word,
+    ));
+    battery_case("div0 (x / (x-x))", &div0, &[7], |ires, vout| {
+        let interp_div0 = ires.as_ref().err().is_some_and(|e| e.contains("divide by zero"));
+        matches!(vout, VmOut::DivZero) && interp_div0
+    });
+
+    // Signed MIN ÷ -1: the C-UB corner. i16::MIN / -1 wraps to i16::MIN (0x8000)
+    // in rustc/Interp; the VM's short/short promotes to int so 32768 doesn't
+    // overflow — verify they agree rather than assume.
+    let mindiv = one_expr_cell(Expr::Bin(
+        BinOp::Div,
+        Box::new(Expr::Lit(0x8000)),
+        Box::new(Expr::Lit(0xFFFF)),
+        Width::SWord,
+    ));
+    battery_case("signed MIN ÷ -1", &mindiv, &[0], |ires, vout| {
+        matches!((ires, vout), (Ok(v), VmOut::Value(o, _)) if v == o && v.first() == Some(&0x8000))
+    });
+}
+
+/// A zero-statement cell whose entry returns `e` — for battery corner cases.
+fn one_expr_cell(e: Expr) -> Vec<(String, Func)> {
+    vec![(
+        "run".to_string(),
+        Func {
+            params: 1,
+            n_locals: 1,
+            body: vec![],
+            ret: vec![e],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: false,
+        },
+    )]
+}
+
+/// Run one synthetic cell through Interp and the VM, check with `pred`.
+fn battery_case(
+    name: &str,
+    funcs: &[(String, Func)],
+    args: &[u16],
+    pred: impl Fn(&Result<Vec<u16>, String>, &VmOut) -> bool,
+) {
+    let prog = linearize(&funcs[0].1).expect("battery cell linearizes");
+    let no_consts: Vec<(&str, &[u8])> = Vec::new();
+    let mut interp = Interp::new(funcs, no_consts, Target::Cell.descriptor());
+    let ires = interp.run("run", args);
+    let vout = vm_run(&prog, args);
+    let ok = pred(&ires, &vout);
+    println!(
+        "  {name}: interp={ires:?} vm={vout:?}  {}",
+        if ok { "✓" } else { "✗ MISMATCH" }
+    );
 }
 
 /// Does this statement tree contain a loop? Used only to confirm the
@@ -733,8 +800,17 @@ fn main() {
                             break;
                         }
                     },
-                    // Any other refusal (div0) — not tested here.
-                    None => continue,
+                    // Divide-by-zero: a verified trap path, not a skip (step-at-trap
+                    // bounded by coalescing like fuel, so status parity is the check).
+                    None if e.contains("divide by zero") => match out {
+                        VmOut::DivZero => {}
+                        other => {
+                            ok = false;
+                            detail = format!("interp div0 but vm {other:?} @ {args:?}");
+                            break;
+                        }
+                    },
+                    None => continue, // any other refusal — not a case we construct
                 },
             }
         }
@@ -796,7 +872,7 @@ fn main() {
 #[cfg(target_os = "macos")]
 mod msl {
     use super::{CellProgram, Consts, Funcs, Inst};
-    use cell80_core::ir::{BinOp, Cmp, Width};
+    use cell80_core::ir::{BinOp, Cmp, Expr, Width};
     use cell80_core::{Interp, Target};
     use metal::{Device, MTLResourceOptions, MTLSize};
     use std::time::Instant;
@@ -816,6 +892,7 @@ mod msl {
     const OP_RET: u32 = 11;
     const OP_DUP: u32 = 12;
     const OP_HALT: u32 = 13;
+    const STATUS_DIV0: u16 = 1;
     const STATUS_HALT: u16 = 2;
 
     const MAX_LOCALS: usize = 64;
@@ -1175,7 +1252,12 @@ kernel void interp(
                             checked += 1;
                             g[3] == STATUS_HALT && g[0] == code && gsteps == isteps
                         }
-                        None => continue, // div0 etc. — not tested here
+                        // Divide-by-zero: sextet must read STATUS_DIV0.
+                        None if e.contains("divide by zero") => {
+                            checked += 1;
+                            g[3] == STATUS_DIV0
+                        }
+                        None => continue,
                     },
                 };
                 if matched {
@@ -1194,6 +1276,63 @@ kernel void interp(
         );
         for f in &fail {
             println!("  ✗{f}");
+        }
+
+        // GPU trap battery: dispatch the synthetic corners so the div0 and
+        // signed-MIN÷-1 KERNEL paths actually execute on GPU (a corpus probe may
+        // never hit them). Two cells × one probe.
+        {
+            let div0 = super::one_expr_cell(Expr::Bin(
+                BinOp::Div,
+                Box::new(Expr::Var(0)),
+                Box::new(Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word)),
+                Width::Word,
+            ));
+            let mindiv = super::one_expr_cell(Expr::Bin(
+                BinOp::Div,
+                Box::new(Expr::Lit(0x8000)),
+                Box::new(Expr::Lit(0xFFFF)),
+                Width::SWord,
+            ));
+            let p0 = super::linearize(&div0[0].1).unwrap();
+            let p1 = super::linearize(&mindiv[0].1).unwrap();
+            let mut bcode = Vec::new();
+            let mut btable = Vec::new();
+            for p in [&p0, &p1] {
+                let off = (bcode.len() / 2) as u32;
+                bcode.extend_from_slice(&encode(p));
+                btable.push(off);
+                btable.push(p.n_locals as u32);
+                btable.push(p.params as u32);
+            }
+            let bprobes: Vec<u16> = vec![7, 0, 0];
+            let cbuf = device.new_buffer_with_data(bcode.as_ptr() as *const _, (bcode.len() * 4) as u64, MTLResourceOptions::StorageModeShared);
+            let tbuf = device.new_buffer_with_data(btable.as_ptr() as *const _, (btable.len() * 4) as u64, MTLResourceOptions::StorageModeShared);
+            let pbuf = device.new_buffer_with_data(bprobes.as_ptr() as *const _, (bprobes.len() * 2) as u64, MTLResourceOptions::StorageModeShared);
+            let obuf = device.new_buffer((2 * OUT_STRIDE * 2) as u64, MTLResourceOptions::StorageModeShared);
+            let one_probe: u32 = 1;
+            let cmd = queue.new_command_buffer();
+            let enc = cmd.new_compute_command_encoder();
+            enc.set_compute_pipeline_state(&pipeline);
+            enc.set_buffer(0, Some(&cbuf), 0);
+            enc.set_buffer(1, Some(&tbuf), 0);
+            enc.set_buffer(2, Some(&pbuf), 0);
+            enc.set_buffer(3, Some(&obuf), 0);
+            enc.set_bytes(4, 4, &one_probe as *const u32 as *const _);
+            enc.dispatch_thread_groups(MTLSize::new(2, 1, 1), MTLSize::new(1, 1, 1));
+            enc.end_encoding();
+            cmd.commit();
+            cmd.wait_until_completed();
+            let bout = unsafe { std::slice::from_raw_parts(obuf.contents() as *const u16, 2 * OUT_STRIDE) };
+            let div0_ok = bout[3] == STATUS_DIV0; // cell 0 status
+            let min_ok = bout[OUT_STRIDE] == 0x8000 && bout[OUT_STRIDE + 3] == 0; // cell 1 r0, status OK
+            println!(
+                "  gpu battery: div0→status {} ({}), MIN÷-1→r0 {} ({})",
+                bout[3],
+                if div0_ok { "✓" } else { "✗" },
+                bout[OUT_STRIDE],
+                if min_ok { "✓" } else { "✗" }
+            );
         }
 
         // ── Timing helper: build code+table buffers ONCE, time dispatch only ──
@@ -1292,8 +1431,14 @@ kernel void interp(
             Some((ms, ns)) => {
                 println!("    {:<26} {:>9.3} ms   {:>8.1} ns/eval", "compiled monolith", ms, ns);
                 println!(
-                    "    → interpreter is {:.2}× the compiled per-eval (gate wants ≤ ~1× at 249+, and FLAT)",
+                    "    → interpreter is {:.1}× the compiled per-eval. GATE A (≤ ~507 ns at 249)",
                     interp_ns / ns
+                );
+                println!(
+                    "      FAILED as registered (compiled wins at this scale). Decision re-derived"
+                );
+                println!(
+                    "      from Gate B: compiled can't exist at scale; crossover is the 500–5000 band."
                 );
             }
             None => println!("    compiled monolith: (failed to build over this subset)"),
