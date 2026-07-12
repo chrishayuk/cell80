@@ -76,9 +76,10 @@
 use cell80_core::ir::{BinOp, Cmp, Cond, Expr, Func, Stmt, Width};
 use cell80_core::{Interp, Target};
 
-/// Fixed operand-stack cap (note 4). Cells whose static max depth exceeds this
+/// Fixed operand-stack cap (note 4), in stack entries — matches the kernel's
+/// MAX_STACK. A u32 uses two entries. Cells whose static max depth exceeds this
 /// are excluded and counted.
-const STACK_CAP: usize = 64;
+const STACK_CAP: usize = 32;
 
 /// One flat instruction. Value ops act on an operand stack; `Step` is the only
 /// step-charging op (note 1); control ops carry a resolved instruction index.
@@ -119,6 +120,19 @@ enum Inst {
     Popcnt,
     Clz,
     Ctz,
+    // ── 32-bit ops. A u32 lives as two stack entries: low word pushed first,
+    // high word on top. Existing u16 ops are untouched; these are the only
+    // width-aware additions. Var32/Lit32/Trunc32/Widen/Assign32 decompose into
+    // existing PushVar/PushLit/Pop/Store pairs and need no new op.
+    /// Pop b(lo,hi) then a(lo,hi); push `a op b` as (lo,hi). `signed` selects
+    /// i32 div/rem (MIN/-1 guarded on GPU — 32-bit div overflows, unlike 16-bit).
+    Bin32(BinOp, bool),
+    /// Pop a(lo,hi); push the shift by literal `k` as (lo,hi).
+    Shift32 { left: bool, k: u8, signed: bool },
+    /// Pop b(lo,hi) then a(lo,hi); push `(a cmp b) as 1|0` (a u16 bool).
+    Cmp32(Cmp, bool),
+    /// Sign-extend: pop lo (u16), push lo then the high word (0xFFFF if lo<0 else 0).
+    SextHi,
 }
 
 /// A linearized cell: flat code, its slot count, param count, and static max
@@ -154,6 +168,7 @@ struct Lin<'a> {
     ret_ctx: Vec<usize>,            // inline-return labels (empty ⇒ top level ⇒ Ret)
     frame_base: usize,              // current frame's slot offset (0 ⇒ entry frame)
     slots_used: usize,              // high-water mark of allocated slots
+    wide_ret: bool,                 // entry returns u32 (Ret produces 2 words)
     cur_depth: usize,
     max_depth: usize,
 }
@@ -168,6 +183,7 @@ impl<'a> Lin<'a> {
             ret_ctx: Vec::new(),
             frame_base: 0,
             slots_used: entry_locals,
+            wide_ret: false,
             cur_depth: 0,
             max_depth: 0,
         }
@@ -193,7 +209,11 @@ impl<'a> Lin<'a> {
             | Inst::Halt
             | Inst::Popcnt
             | Inst::Clz
-            | Inst::Ctz => 0,
+            | Inst::Ctz
+            | Inst::Shift32 { .. } => 0,
+            Inst::Bin32(..) => -2, // pop two u32 (4), push one u32 (2)
+            Inst::Cmp32(..) => -3, // pop two u32 (4), push one u16 bool (1)
+            Inst::SextHi => 1,     // pop u16 (1), push u32 (2)
             Inst::Ret(arity) => -(*arity as isize),
         };
         if delta > 0 {
@@ -257,15 +277,25 @@ impl<'a> Lin<'a> {
                 }
                 _ => self.inline_call(name, args)?,
             },
+            // 32-bit → 16-bit bridges (evaluated by eval16): node Step (above) +
+            // the wide subtree's ticks, then narrow the result.
+            Expr::Trunc32(inner) => {
+                self.expr32(inner)?;
+                self.emit(Inst::Pop); // drop the high word, keep low
+            }
+            Expr::Cmp32 { cmp, lhs, rhs, signed } => {
+                self.expr32(lhs)?;
+                self.expr32(rhs)?;
+                self.emit(Inst::Cmp32(*cmp, *signed));
+            }
+            // Pure-wide nodes never appear in 16-bit value position.
             Expr::Lit32(_)
             | Expr::Var32(_)
             | Expr::Bin32(..)
             | Expr::Shift32 { .. }
-            | Expr::Trunc32(_)
             | Expr::Deref32(..)
             | Expr::Widen(_)
-            | Expr::SignExtend(_)
-            | Expr::Cmp32 { .. } => return Err(Bail::WideValue),
+            | Expr::SignExtend(_) => return Err(Bail::WideValue),
             Expr::Index(..)
             | Expr::Peek(_)
             | Expr::InPort(_)
@@ -321,6 +351,49 @@ impl<'a> Lin<'a> {
         Ok(())
     }
 
+    /// Linearize a 32-bit expression, leaving a u32 on the stack as two entries
+    /// (low word first, high on top). Emits the node `Step` first (eval32 ticks
+    /// per node, exactly like eval16).
+    fn expr32(&mut self, e: &Expr) -> Result<(), Bail> {
+        self.emit(Inst::Step);
+        match e {
+            Expr::Lit32(n) => {
+                self.emit(Inst::PushLit((*n & 0xFFFF) as u16));
+                self.emit(Inst::PushLit((*n >> 16) as u16));
+            }
+            Expr::Var32(slot) => {
+                self.emit(Inst::PushVar(self.frame_base + *slot));
+                self.emit(Inst::PushVar(self.frame_base + *slot + 1));
+            }
+            Expr::Widen(inner) => {
+                self.expr(inner)?; // 16-bit low word
+                self.emit(Inst::PushLit(0)); // zero-extend
+            }
+            Expr::SignExtend(inner) => {
+                self.expr(inner)?;
+                self.emit(Inst::SextHi);
+            }
+            // Identity in wide position (the interpreter re-evaluates wide).
+            Expr::Trunc32(inner) => self.expr32(inner)?,
+            Expr::Bin32(op, l, r, signed) => match op {
+                BinOp::Shl | BinOp::Shr => return Err(Bail::WideValue), // → Shift32
+                _ => {
+                    self.expr32(l)?;
+                    self.expr32(r)?;
+                    self.emit(Inst::Bin32(*op, *signed));
+                }
+            },
+            Expr::Shift32 { left, e: inner, k, signed } => {
+                self.expr32(inner)?;
+                self.emit(Inst::Shift32 { left: *left, k: *k, signed: *signed });
+            }
+            Expr::Call(..) => return Err(Bail::ResidualCall), // wide-returning call: not inlined yet
+            Expr::Deref32(..) => return Err(Bail::Memory),
+            _ => return Err(Bail::WideValue),
+        }
+        Ok(())
+    }
+
     /// Linearize a statement. Emits the per-statement `Step` first (mirroring
     /// `exec_stmt`'s tick at the top, before the match — so break/continue/return
     /// all tick once too).
@@ -341,12 +414,17 @@ impl<'a> Lin<'a> {
             Stmt::Return(val) => match self.ret_ctx.last().copied() {
                 Some(end) => {
                     let e = val.as_ref().ok_or(Bail::ResidualCall)?; // void return in a value callee
-                    self.expr(e)?;
+                    self.expr(e)?; // inlined callees are narrow-return (wide bail in inline_call)
                     self.emit(Inst::Jmp(end));
                 }
-                None => match val {
-                    None => self.emit(Inst::Ret(0)),
-                    Some(e) => {
+                None => match (val, self.wide_ret) {
+                    (None, _) => self.emit(Inst::Ret(0)),
+                    // Wide return: eval as u32, produce r0=low, r1=high (run()'s convention).
+                    (Some(e), true) => {
+                        self.expr32(e)?;
+                        self.emit(Inst::Ret(2));
+                    }
+                    (Some(e), false) => {
                         self.expr(e)?;
                         self.emit(Inst::Ret(1));
                     }
@@ -397,7 +475,13 @@ impl<'a> Lin<'a> {
             }
             Stmt::ForRange { .. } => return Err(Bail::UnsupportedStmt("ForRange")),
             Stmt::AssignTuple(..) => return Err(Bail::UnsupportedStmt("AssignTuple (call)")),
-            Stmt::Assign32(..) | Stmt::Store32(..) => return Err(Bail::WideValue),
+            // Wide local store: eval u32, store high then low (stack has low under high).
+            Stmt::Assign32(slot, e) => {
+                self.expr32(e)?;
+                self.emit(Inst::Store(self.frame_base + *slot + 1));
+                self.emit(Inst::Store(self.frame_base + *slot));
+            }
+            Stmt::Store32(..) => return Err(Bail::Memory),
             Stmt::StoreIndex(..)
             | Stmt::Poke(..)
             | Stmt::Store(..)
@@ -481,17 +565,25 @@ fn linearize(funcs: &[(String, Func)], entry: &str) -> Result<CellProgram, Bail>
         .find(|(n, _)| n == entry)
         .map(|(_, f)| f)
         .ok_or(Bail::ResidualCall)?;
-    if f.wide_param || f.wide_second || f.wide_ret {
+    // wide_param (u32 first arg → 2 slots) and wide_ret (u32 return → 2 words)
+    // are handled; wide_second (the __mul32 two-wide-param stack shape) is not.
+    if f.wide_second {
         return Err(Bail::WideValue);
     }
     let mut lin = Lin::new(funcs, f.n_locals);
+    lin.wide_ret = f.wide_ret;
     lin.block(&f.body)?;
     // Fall-through return: `Interp` evaluates each `f.ret` expr (each ticks) with
-    // no statement tick, then returns them. Emit that as the tail.
-    for e in &f.ret {
-        lin.expr(e)?;
+    // no statement tick, then returns them. A wide return produces two words.
+    if f.wide_ret {
+        lin.expr32(&f.ret[0])?;
+        lin.emit(Inst::Ret(2));
+    } else {
+        for e in &f.ret {
+            lin.expr(e)?;
+        }
+        lin.emit(Inst::Ret(f.ret.len()));
     }
-    lin.emit(Inst::Ret(f.ret.len()));
     if lin.max_depth > STACK_CAP {
         return Err(Bail::StackTooDeep);
     }
@@ -530,6 +622,28 @@ fn mask(v: u16, w: Width) -> u16 {
 fn cmp16(cmp: Cmp, l: u16, r: u16, signed: bool) -> bool {
     if signed && !matches!(cmp, Cmp::Eq | Cmp::Ne) {
         let (l, r) = (l as i16, r as i16);
+        match cmp {
+            Cmp::Lt => l < r,
+            Cmp::Le => l <= r,
+            Cmp::Gt => l > r,
+            Cmp::Ge => l >= r,
+            _ => unreachable!(),
+        }
+    } else {
+        match cmp {
+            Cmp::Lt => l < r,
+            Cmp::Le => l <= r,
+            Cmp::Gt => l > r,
+            Cmp::Ge => l >= r,
+            Cmp::Eq => l == r,
+            Cmp::Ne => l != r,
+        }
+    }
+}
+
+fn cmp32(cmp: Cmp, l: u32, r: u32, signed: bool) -> bool {
+    if signed && !matches!(cmp, Cmp::Eq | Cmp::Ne) {
+        let (l, r) = (l as i32, r as i32);
         match cmp {
             Cmp::Lt => l < r,
             Cmp::Le => l <= r,
@@ -632,6 +746,65 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> VmOut {
             Inst::Ctz => {
                 let a = stack.pop().unwrap();
                 stack.push(a.trailing_zeros() as u16);
+            }
+            Inst::Bin32(op, signed) => {
+                let bh = stack.pop().unwrap() as u32;
+                let bl = stack.pop().unwrap() as u32;
+                let ah = stack.pop().unwrap() as u32;
+                let al = stack.pop().unwrap() as u32;
+                let (a, b) = (al | (ah << 16), bl | (bh << 16));
+                let res = match op {
+                    BinOp::Add => a.wrapping_add(b),
+                    BinOp::Sub => a.wrapping_sub(b),
+                    BinOp::Mul => a.wrapping_mul(b),
+                    BinOp::Or => a | b,
+                    BinOp::And => a & b,
+                    BinOp::Xor => a ^ b,
+                    BinOp::Div | BinOp::Rem => {
+                        if b == 0 {
+                            return VmOut::DivZero;
+                        }
+                        match (op, *signed) {
+                            (BinOp::Div, true) => (a as i32).wrapping_div(b as i32) as u32,
+                            (BinOp::Rem, true) => (a as i32).wrapping_rem(b as i32) as u32,
+                            (BinOp::Div, false) => a / b,
+                            (BinOp::Rem, false) => a % b,
+                            _ => unreachable!(),
+                        }
+                    }
+                    BinOp::Shl | BinOp::Shr => unreachable!("wide shifts are Shift32"),
+                };
+                stack.push((res & 0xFFFF) as u16);
+                stack.push((res >> 16) as u16);
+            }
+            Inst::Shift32 { left, k, signed } => {
+                let ah = stack.pop().unwrap() as u32;
+                let al = stack.pop().unwrap() as u32;
+                let a = al | (ah << 16);
+                let res = if *signed && !*left {
+                    ((a as i32) >> (*k).min(31) as u32) as u32
+                } else if *k >= 32 {
+                    0
+                } else if *left {
+                    a << *k
+                } else {
+                    a >> *k
+                };
+                stack.push((res & 0xFFFF) as u16);
+                stack.push((res >> 16) as u16);
+            }
+            Inst::Cmp32(cmp, signed) => {
+                let bh = stack.pop().unwrap() as u32;
+                let bl = stack.pop().unwrap() as u32;
+                let ah = stack.pop().unwrap() as u32;
+                let al = stack.pop().unwrap() as u32;
+                let r = cmp32(*cmp, al | (ah << 16), bl | (bh << 16), *signed);
+                stack.push(r as u16);
+            }
+            Inst::SextHi => {
+                let lo = stack.pop().unwrap();
+                stack.push(lo);
+                stack.push(if lo & 0x8000 != 0 { 0xFFFF } else { 0 });
             }
             Inst::Store(s) => slots[*s] = stack.pop().unwrap(),
             Inst::Pop => {
@@ -1039,6 +1212,10 @@ mod msl {
     const OP_POPCNT: u32 = 14;
     const OP_CLZ: u32 = 15;
     const OP_CTZ: u32 = 16;
+    const OP_BIN32: u32 = 17;
+    const OP_SHIFT32: u32 = 18;
+    const OP_CMP32: u32 = 19;
+    const OP_SEXTHI: u32 = 20;
     const STATUS_DIV0: u16 = 1;
     const STATUS_HALT: u16 = 2;
 
@@ -1131,6 +1308,13 @@ mod msl {
                     Inst::Popcnt => (OP_POPCNT, 0),
                     Inst::Clz => (OP_CLZ, 0),
                     Inst::Ctz => (OP_CTZ, 0),
+                    Inst::Bin32(op, signed) => (OP_BIN32, binop_code(*op) | ((*signed as u32) << 8)),
+                    Inst::Shift32 { left, k, signed } => (
+                        OP_SHIFT32,
+                        (*k as u32) | ((*left as u32) << 16) | ((*signed as u32) << 17),
+                    ),
+                    Inst::Cmp32(c, signed) => (OP_CMP32, cmp_code(*c) | ((*signed as u32) << 8)),
+                    Inst::SextHi => (OP_SEXTHI, 0),
                     Inst::Step => unreachable!(),
                 };
                 words.push(pair);
@@ -1158,11 +1342,11 @@ using namespace metal;
 
 constant uint OP_STEP=0,OP_PUSHLIT=1,OP_PUSHVAR=2,OP_BIN=3,OP_SHIFTLIT=4,
               OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13,
-              OP_POPCNT=14,OP_CLZ=15,OP_CTZ=16;
+              OP_POPCNT=14,OP_CLZ=15,OP_CTZ=16,OP_BIN32=17,OP_SHIFT32=18,OP_CMP32=19,OP_SEXTHI=20;
 constant uint ST_OK=0u, ST_DIV0=1u, ST_HALT=2u, ST_FUEL=4u;
 constant uint FUEL=100000000u;
 #define MAX_LOCALS 64
-#define MAX_STACK  16
+#define MAX_STACK  32
 
 kernel void interp(
     const device uint*   code       [[buffer(0)]],
@@ -1242,6 +1426,55 @@ kernel void interp(
           case OP_POPCNT: { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)popcount(x); break; }
           case OP_CLZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(clz(x)-16u); break; }
           case OP_CTZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(x==0u?16u:ctz(x)); break; }
+          // 32-bit ops: a u32 is two stack entries (low, then high on top).
+          case OP_BIN32: {
+             uint bh=stack[--sp], bl=stack[--sp], ah=stack[--sp], al=stack[--sp];
+             uint a=al|(ah<<16), b=bl|(bh<<16);
+             uint binop=arg&0xFFu; bool sg=((arg>>8)&1u)!=0u; uint res=0u;
+             switch(binop){
+               case 0: res=a+b; break;
+               case 1: res=a-b; break;
+               case 2: res=a*b; break;
+               case 5: res=a|b; break;
+               case 6: res=a&b; break;
+               case 7: res=a^b; break;
+               case 3: case 4: {
+                  if(b==0u){ status=ST_DIV0; done=true; res=0u; }
+                  else if(sg){
+                     // guard MIN/-1 — 32-bit int div overflows (C UB), unlike 16-bit
+                     bool ov=(a==0x80000000u && b==0xFFFFFFFFu);
+                     if(binop==3u) res=ov?a:(uint)((int)a/(int)b);
+                     else res=ov?0u:(uint)((int)a%(int)b);
+                  } else { res=(binop==3u)?(a/b):(a%b); }
+                  break;
+               }
+             }
+             stack[sp++]=(ushort)(res&0xFFFFu); stack[sp++]=(ushort)(res>>16); break;
+          }
+          case OP_SHIFT32: {
+             uint ah=stack[--sp], al=stack[--sp]; uint a=al|(ah<<16);
+             uint k=arg&0xFFu; bool left=((arg>>16)&1u)!=0u; bool sg=((arg>>17)&1u)!=0u; uint res;
+             if(sg && !left){ int sa=(int)a; uint kk=min(k,31u); res=(uint)(sa>>kk); }
+             else if(k>=32u){ res=0u; }
+             else if(left){ res=a<<k; }
+             else { res=a>>k; }
+             stack[sp++]=(ushort)(res&0xFFFFu); stack[sp++]=(ushort)(res>>16); break;
+          }
+          case OP_CMP32: {
+             uint bh=stack[--sp], bl=stack[--sp], ah=stack[--sp], al=stack[--sp];
+             uint a=al|(ah<<16), b=bl|(bh<<16);
+             uint cmp=arg&0xFFu; bool sg=((arg>>8)&1u)!=0u; bool r;
+             if(sg && cmp<4u){ int sa=(int)a, sb=(int)b;
+                switch(cmp){case 0:r=sa<sb;break;case 1:r=sa<=sb;break;case 2:r=sa>sb;break;default:r=sa>=sb;break;}
+             } else {
+                switch(cmp){case 0:r=a<b;break;case 1:r=a<=b;break;case 2:r=a>b;break;case 3:r=a>=b;break;case 4:r=a==b;break;default:r=a!=b;break;}
+             }
+             stack[sp++]=r?1:0; break;
+          }
+          case OP_SEXTHI: {
+             ushort lo=stack[--sp]; stack[sp++]=lo;
+             stack[sp++]=((lo&0x8000u)!=0u)?(ushort)0xFFFFu:(ushort)0u; break;
+          }
           case OP_STORE: slots[arg]=stack[--sp]; break;
           case OP_POP: --sp; break;
           case OP_DUP: { ushort v=stack[sp-1]; stack[sp++]=v; break; }
