@@ -34,7 +34,7 @@
 //! randomness, so a run with the same genome files, tick count, and seed is fully
 //! reproducible.
 use cell80::{Cartridge, CartridgeOpts, CellConfig, CellHost};
-use serde::Deserialize;
+use cell80_life::{load_starting_genome, StartingGenome, World};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -49,32 +49,6 @@ const THRESHOLD_BOUNDS: (i32, i32) = (50, 400);
 const GIVE_PCT_BOUNDS: (i32, i32) = (10, 90);
 const NUMERIC_MUTATE_PCT: u64 = 25;
 const SWAP_MUTATE_PCT: u64 = 8;
-
-fn default_species() -> String {
-    "grazer".to_string()
-}
-
-#[derive(Deserialize)]
-struct StartingGenome {
-    id: String,
-    initial_energy: u16,
-    decay_amount: u16,
-    repro_threshold: u16,
-    repro_give_pct: u16,
-    genes: StartingGenes,
-    #[serde(default = "default_species")]
-    species: String,
-}
-
-#[derive(Deserialize)]
-struct StartingGenes {
-    decay: String,
-    hungry_promoter: String,
-    eat: String,
-    sense_move: String,
-    repro_promoter: String,
-    split: String,
-}
 
 /// A structurally different pipeline, not just different parameter values. Fixed for an
 /// organism's whole lineage in this version — species itself doesn't mutate.
@@ -196,45 +170,6 @@ fn mutate(rng: &mut Rng, g: &OrgGenome, pools: &Pools) -> OrgGenome {
     child
 }
 
-struct World {
-    food: Vec<u16>,
-    regrow_at: Vec<u16>,
-    food_capacity: Vec<u16>,
-}
-
-impl World {
-    fn new() -> Self {
-        let mut food = vec![0u16; WORLD_LEN];
-        let mut i = 1;
-        while i < WORLD_LEN {
-            food[i] = FOOD_VALUE;
-            i += 3;
-        }
-        let food_capacity = food.clone();
-        World {
-            food,
-            regrow_at: vec![0; WORLD_LEN],
-            food_capacity,
-        }
-    }
-
-    fn eat_at(&mut self, pos: usize) {
-        self.food[pos] = 0;
-        self.regrow_at[pos] = FOOD_REGROW_TICKS;
-    }
-
-    fn tick_regrow(&mut self) {
-        for i in 0..WORLD_LEN {
-            if self.regrow_at[i] > 0 {
-                self.regrow_at[i] -= 1;
-                if self.regrow_at[i] == 0 {
-                    self.food[i] = self.food_capacity[i];
-                }
-            }
-        }
-    }
-}
-
 struct Organism {
     pos: usize,
     energy: u16,
@@ -287,12 +222,6 @@ fn load_gene(host: &mut CellHost, cells_dir: &Path, name: &str) -> usize {
     host.add(cart);
     host.load(name)
         .unwrap_or_else(|e| panic!("loading {name}: {e}"))
-}
-
-fn load_starting_genome(path: &Path) -> StartingGenome {
-    let src = fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("reading genome {}: {e}", path.display()));
-    serde_json::from_str(&src).unwrap_or_else(|e| panic!("parsing genome {}: {e}", path.display()))
 }
 
 /// Scan every `.rs` cell source under `cells_dir` (cells live in pack subdirectories,
@@ -436,7 +365,7 @@ fn main() {
         );
     }
 
-    let mut world = World::new();
+    let mut world = World::new(WORLD_LEN, FOOD_VALUE, FOOD_REGROW_TICKS);
     let mut organisms: Vec<Organism> = startings
         .iter()
         .enumerate()
