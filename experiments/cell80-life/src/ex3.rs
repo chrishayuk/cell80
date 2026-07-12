@@ -21,7 +21,7 @@
 //! removed) — `main.rs`'s sequential `Vec`-order processing let a victim act *if* processed
 //! before its killer, an accident of iteration order with no batched-engine equivalent.
 use crate::contention;
-use crate::ex2::{mutate, GenePools, OrgGenome};
+use crate::ex2::{mutate, GenePools, OrgGenome, Overrides};
 use crate::genes::{batch_run, batch_run_grouped, sum_steps, EngineKind};
 use crate::history::{BirthEventEco, HistoryHasher, OrgSnapshot2DEco, Species, TickRecord2DEco};
 use crate::predation::PreyIndex;
@@ -110,12 +110,42 @@ fn killed_victims_from(
         .collect()
 }
 
+/// The original entry point — unchanged signature/behavior (delegates to `run_impl` with no
+/// overrides, a provable no-op path: every override lookup below becomes `None`).
 pub fn run(
     engine: EngineKind,
     cfg: &RunConfig3,
     grazer_starting: &StartingGenome3,
     predator_starting: &StartingGenome3,
     pools: &GenePools,
+) -> RunOutput3 {
+    run_impl(engine, cfg, grazer_starting, predator_starting, pools, None)
+}
+
+/// EX-3's counterfactual entry point, the same discipline EX-4's `ex2::run_with_overrides`
+/// established: revert one specific birth's one specific mutated field (keyed by child id,
+/// itself a pure function of `(seed, cfg, startings, pools)` — see `ex2::run_with_overrides`'s
+/// doc comment) and replay, to confirm a traced coupled-trait-change event is causal rather
+/// than coincidental. Meaningful only when `cfg.mutation_enabled` — reverting a mutation in a
+/// run that never mutates is a no-op by construction.
+pub fn run_with_overrides(
+    engine: EngineKind,
+    cfg: &RunConfig3,
+    grazer_starting: &StartingGenome3,
+    predator_starting: &StartingGenome3,
+    pools: &GenePools,
+    overrides: &Overrides,
+) -> RunOutput3 {
+    run_impl(engine, cfg, grazer_starting, predator_starting, pools, Some(overrides))
+}
+
+fn run_impl(
+    engine: EngineKind,
+    cfg: &RunConfig3,
+    grazer_starting: &StartingGenome3,
+    predator_starting: &StartingGenome3,
+    pools: &GenePools,
+    overrides: Option<&Overrides>,
 ) -> RunOutput3 {
     let mut world = World2D::new(
         cfg.seed,
@@ -382,7 +412,7 @@ pub fn run(
                     mutate(
                         cfg.seed, tick, id, &orgs[i].genome,
                         hungry_pool_len, repro_pool_len, sense_pool_len,
-                        None,
+                        overrides.and_then(|o| o.get(&id)),
                     )
                 } else {
                     orgs[i].genome.clone()
