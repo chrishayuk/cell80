@@ -113,6 +113,12 @@ enum Inst {
     /// A diverging expression: statically it leaves its "result" in place so the
     /// enclosing context stays balanced, but execution ends here.
     Halt,
+    /// `__bits_*` intrinsics over u16 (pop x, push result): `count_ones`,
+    /// `leading_zeros`, `trailing_zeros`. These lower as calls in the IR but the
+    /// interpreter owns their rustc-identical semantics, so they're one op here.
+    Popcnt,
+    Clz,
+    Ctz,
 }
 
 /// A linearized cell: flat code, its slot count, param count, and static max
@@ -140,17 +146,31 @@ enum Bail {
 /// The linearizer: emits code while tracking operand-stack height and holding
 /// break/continue targets. Labels are allocated up front and resolved to
 /// instruction indices in a final fixup pass.
-struct Lin {
+struct Lin<'a> {
+    funcs: &'a [(String, Func)],    // for full inlining of residual calls (note 2)
     code: Vec<Inst>,
     labels: Vec<usize>,             // label id → instruction index (filled by `place`)
     loops: Vec<(usize, usize)>,     // (continue target, break target) per enclosing loop
+    ret_ctx: Vec<usize>,            // inline-return labels (empty ⇒ top level ⇒ Ret)
+    frame_base: usize,              // current frame's slot offset (0 ⇒ entry frame)
+    slots_used: usize,              // high-water mark of allocated slots
     cur_depth: usize,
     max_depth: usize,
 }
 
-impl Lin {
-    fn new() -> Self {
-        Lin { code: Vec::new(), labels: Vec::new(), loops: Vec::new(), cur_depth: 0, max_depth: 0 }
+impl<'a> Lin<'a> {
+    fn new(funcs: &'a [(String, Func)], entry_locals: usize) -> Self {
+        Lin {
+            funcs,
+            code: Vec::new(),
+            labels: Vec::new(),
+            loops: Vec::new(),
+            ret_ctx: Vec::new(),
+            frame_base: 0,
+            slots_used: entry_locals,
+            cur_depth: 0,
+            max_depth: 0,
+        }
     }
 
     fn new_label(&mut self) -> usize {
@@ -166,7 +186,14 @@ impl Lin {
         let delta: isize = match &inst {
             Inst::PushLit(_) | Inst::PushVar(_) | Inst::Dup => 1,
             Inst::Bin(..) | Inst::Cmp(..) | Inst::Store(_) | Inst::Pop | Inst::JmpZero(_) => -1,
-            Inst::ShiftLit { .. } | Inst::Trunc | Inst::Step | Inst::Jmp(_) | Inst::Halt => 0,
+            Inst::ShiftLit { .. }
+            | Inst::Trunc
+            | Inst::Step
+            | Inst::Jmp(_)
+            | Inst::Halt
+            | Inst::Popcnt
+            | Inst::Clz
+            | Inst::Ctz => 0,
             Inst::Ret(arity) => -(*arity as isize),
         };
         if delta > 0 {
@@ -184,7 +211,7 @@ impl Lin {
         self.emit(Inst::Step); // one tick per expression node
         match e {
             Expr::Lit(n) => self.emit(Inst::PushLit(*n)),
-            Expr::Var(slot) => self.emit(Inst::PushVar(*slot)),
+            Expr::Var(slot) => self.emit(Inst::PushVar(self.frame_base + *slot)),
             Expr::Trunc(inner) => {
                 self.expr(inner)?;
                 self.emit(Inst::Trunc);
@@ -212,7 +239,24 @@ impl Lin {
                 self.expr(r)?;
                 self.emit(Inst::Bin(*op, *w));
             }
-            Expr::Call(..) => return Err(Bail::ResidualCall),
+            // `__bits_*` builtins: node `Step` (above) + the arg's ticks, then the
+            // intrinsic (no extra tick — mirrors `call()`'s builtin path). Any
+            // other call is fully inlined (note 2).
+            Expr::Call(name, args) => match name.as_str() {
+                "__bits_count_ones" => {
+                    self.expr(&args[0])?;
+                    self.emit(Inst::Popcnt);
+                }
+                "__bits_leading_zeros" => {
+                    self.expr(&args[0])?;
+                    self.emit(Inst::Clz);
+                }
+                "__bits_trailing_zeros" => {
+                    self.expr(&args[0])?;
+                    self.emit(Inst::Ctz);
+                }
+                _ => self.inline_call(name, args)?,
+            },
             Expr::Lit32(_)
             | Expr::Var32(_)
             | Expr::Bin32(..)
@@ -285,17 +329,29 @@ impl Lin {
         match s {
             Stmt::Assign(slot, e) => {
                 self.expr(e)?;
-                self.emit(Inst::Store(*slot));
+                self.emit(Inst::Store(self.frame_base + *slot));
             }
             Stmt::Eval(e) => {
                 self.expr(e)?;
                 self.emit(Inst::Pop);
             }
-            Stmt::Return(None) => self.emit(Inst::Ret(0)),
-            Stmt::Return(Some(e)) => {
-                self.expr(e)?;
-                self.emit(Inst::Ret(1));
-            }
+            // Inside an inlined callee, `return` leaves its value on the stack and
+            // jumps to the inline-end; at top level it's a real `Ret`. The
+            // per-statement `Step` (emitted above) matches `exec_stmt`'s tick either way.
+            Stmt::Return(val) => match self.ret_ctx.last().copied() {
+                Some(end) => {
+                    let e = val.as_ref().ok_or(Bail::ResidualCall)?; // void return in a value callee
+                    self.expr(e)?;
+                    self.emit(Inst::Jmp(end));
+                }
+                None => match val {
+                    None => self.emit(Inst::Ret(0)),
+                    Some(e) => {
+                        self.expr(e)?;
+                        self.emit(Inst::Ret(1));
+                    }
+                },
+            },
             Stmt::If(cond, then, els) => {
                 let else_l = self.new_label();
                 let end_l = self.new_label();
@@ -359,6 +415,52 @@ impl Lin {
         Ok(())
     }
 
+    /// Fully inline a call in expression position — no call stack (note 2). The
+    /// tick accounting mirrors `Interp::call`: the `Step` for the call node is
+    /// already emitted by `expr`; each arg's eval ticks as a *caller* node; the
+    /// param-binding stores do NOT tick; the callee body ticks normally; and the
+    /// fall-through return evals `ret` (ticking) with no statement tick. The
+    /// callee's frame is a fresh slot range so its locals never alias the caller's.
+    fn inline_call(&mut self, name: &str, args: &[Expr]) -> Result<(), Bail> {
+        let callee = self
+            .funcs
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, f)| f)
+            .ok_or(Bail::ResidualCall)?;
+        // Value-returning, narrow, non-wide callees only (the common helper shape).
+        if callee.wide_param || callee.wide_second || callee.wide_ret || callee.ret.len() != 1 {
+            return Err(Bail::WideValue);
+        }
+        if callee.params != args.len() {
+            return Err(Bail::ResidualCall);
+        }
+        // Evaluate every arg (in the CALLER frame) before binding any param — the
+        // interpreter's rule (an arg may read a pre-call value). Then store into
+        // the fresh callee frame in reverse (stack order); stores don't tick.
+        let base = self.slots_used;
+        self.slots_used += callee.n_locals;
+        for a in args {
+            self.expr(a)?;
+        }
+        for i in (0..callee.params).rev() {
+            self.emit(Inst::Store(base + i));
+        }
+        // Inline the body in the callee frame; a callee `return` jumps to `end`.
+        let saved = self.frame_base;
+        self.frame_base = base;
+        let end = self.new_label();
+        self.ret_ctx.push(end);
+        self.block(&callee.body)?;
+        self.ret_ctx.pop();
+        // Fall-through return: eval the single ret expr (dead if the body always
+        // returned — its `Step`s then never execute, so parity holds).
+        self.expr(&callee.ret[0])?;
+        self.place(end);
+        self.frame_base = saved;
+        Ok(())
+    }
+
     /// Resolve label ids embedded in jumps to instruction indices.
     fn resolve(&mut self) {
         let labels = &self.labels;
@@ -371,13 +473,18 @@ impl Lin {
     }
 }
 
-/// Linearize one lowered entry function. Bails (with a reason) on anything
-/// outside the piece-1 subset.
-fn linearize(f: &Func) -> Result<CellProgram, Bail> {
+/// Linearize the entry `entry` from `funcs`, fully inlining any calls it makes.
+/// Bails (with a reason) on anything outside the supported subset.
+fn linearize(funcs: &[(String, Func)], entry: &str) -> Result<CellProgram, Bail> {
+    let f = funcs
+        .iter()
+        .find(|(n, _)| n == entry)
+        .map(|(_, f)| f)
+        .ok_or(Bail::ResidualCall)?;
     if f.wide_param || f.wide_second || f.wide_ret {
         return Err(Bail::WideValue);
     }
-    let mut lin = Lin::new();
+    let mut lin = Lin::new(funcs, f.n_locals);
     lin.block(&f.body)?;
     // Fall-through return: `Interp` evaluates each `f.ret` expr (each ticks) with
     // no statement tick, then returns them. Emit that as the tail.
@@ -389,7 +496,12 @@ fn linearize(f: &Func) -> Result<CellProgram, Bail> {
         return Err(Bail::StackTooDeep);
     }
     lin.resolve();
-    Ok(CellProgram { code: lin.code, n_locals: f.n_locals, params: f.params, max_depth: lin.max_depth })
+    Ok(CellProgram {
+        code: lin.code,
+        n_locals: lin.slots_used,
+        params: f.params,
+        max_depth: lin.max_depth,
+    })
 }
 
 // ── the reference VM (transliteration target for the MSL kernel) ──────────────
@@ -509,6 +621,18 @@ fn vm_run(prog: &CellProgram, args: &[u16]) -> VmOut {
                 let a = stack.pop().unwrap();
                 stack.push(a & 0xFF);
             }
+            Inst::Popcnt => {
+                let a = stack.pop().unwrap();
+                stack.push(a.count_ones() as u16);
+            }
+            Inst::Clz => {
+                let a = stack.pop().unwrap();
+                stack.push(a.leading_zeros() as u16);
+            }
+            Inst::Ctz => {
+                let a = stack.pop().unwrap();
+                stack.push(a.trailing_zeros() as u16);
+            }
             Inst::Store(s) => slots[*s] = stack.pop().unwrap(),
             Inst::Pop => {
                 stack.pop().unwrap();
@@ -598,7 +722,7 @@ fn trap_battery() {
         wide_ret: false,
     };
     let funcs = vec![("run".to_string(), runaway)];
-    let prog = linearize(&funcs[0].1).expect("runaway linearizes");
+    let prog = linearize(&funcs, "run").expect("runaway linearizes");
     let no_consts: Vec<(&str, &[u8])> = Vec::new();
     let mut interp = Interp::new(&funcs, no_consts, Target::Cell.descriptor());
     let ires = interp.run("run", &[]);
@@ -645,6 +769,26 @@ fn trap_battery() {
     battery_case("signed MIN ÷ -1", &mindiv, &[0], |ires, vout| {
         matches!((ires, vout), (Ok(v), VmOut::Value(o, _)) if v == o && v.first() == Some(&0x8000))
     });
+
+    // __bits_* intrinsics — no corpus cell exercises them, so verify here across
+    // inputs incl. 0 (the clz/ctz corner where u16 wants 16, not uint's 32).
+    for (nm, fname) in [
+        ("count_ones", "__bits_count_ones"),
+        ("leading_zeros", "__bits_leading_zeros"),
+        ("trailing_zeros", "__bits_trailing_zeros"),
+    ] {
+        let cell = one_expr_cell(Expr::Call(fname.to_string(), vec![Expr::Var(0)]));
+        let prog = linearize(&cell, "run").expect("bits cell linearizes");
+        let mut all_ok = true;
+        for &x in &[0u16, 1, 0x00F0, 0xF0F0, 0xFFFF] {
+            let no_consts: Vec<(&str, &[u8])> = Vec::new();
+            let mut interp = Interp::new(&cell, no_consts, Target::Cell.descriptor());
+            let ir = interp.run("run", &[x]);
+            let vr = vm_run(&prog, &[x]);
+            all_ok &= matches!((&ir, &vr), (Ok(v), VmOut::Value(o, s)) if v == o && *s == 2);
+        }
+        println!("  bits::{nm}: {}", if all_ok { "✓ (5 inputs incl. 0)" } else { "✗ MISMATCH" });
+    }
 }
 
 /// A zero-statement cell whose entry returns `e` — for battery corner cases.
@@ -670,7 +814,7 @@ fn battery_case(
     args: &[u16],
     pred: impl Fn(&Result<Vec<u16>, String>, &VmOut) -> bool,
 ) {
-    let prog = linearize(&funcs[0].1).expect("battery cell linearizes");
+    let prog = linearize(funcs, "run").expect("battery cell linearizes");
     let no_consts: Vec<(&str, &[u8])> = Vec::new();
     let mut interp = Interp::new(funcs, no_consts, Target::Cell.descriptor());
     let ires = interp.run("run", args);
@@ -733,7 +877,7 @@ fn main() {
         total += 1;
 
         let entry = funcs.iter().find(|(n, _)| n == "run").map(|(_, f)| f).unwrap();
-        let prog = match linearize(entry) {
+        let prog = match linearize(&funcs, "run") {
             Ok(p) => p,
             Err(b) => {
                 *bail_hist.entry(format!("{b:?}")).or_default() += 1;
@@ -892,6 +1036,9 @@ mod msl {
     const OP_RET: u32 = 11;
     const OP_DUP: u32 = 12;
     const OP_HALT: u32 = 13;
+    const OP_POPCNT: u32 = 14;
+    const OP_CLZ: u32 = 15;
+    const OP_CTZ: u32 = 16;
     const STATUS_DIV0: u16 = 1;
     const STATUS_HALT: u16 = 2;
 
@@ -981,6 +1128,9 @@ mod msl {
                     Inst::Jmp(t) => (OP_JMP, *t as u32),         // remapped below
                     Inst::Ret(arity) => (OP_RET, *arity as u32),
                     Inst::Halt => (OP_HALT, 0),
+                    Inst::Popcnt => (OP_POPCNT, 0),
+                    Inst::Clz => (OP_CLZ, 0),
+                    Inst::Ctz => (OP_CTZ, 0),
                     Inst::Step => unreachable!(),
                 };
                 words.push(pair);
@@ -1007,7 +1157,8 @@ mod msl {
 using namespace metal;
 
 constant uint OP_STEP=0,OP_PUSHLIT=1,OP_PUSHVAR=2,OP_BIN=3,OP_SHIFTLIT=4,
-              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13;
+              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13,
+              OP_POPCNT=14,OP_CLZ=15,OP_CTZ=16;
 constant uint ST_OK=0u, ST_DIV0=1u, ST_HALT=2u, ST_FUEL=4u;
 constant uint FUEL=100000000u;
 #define MAX_LOCALS 64
@@ -1085,6 +1236,12 @@ kernel void interp(
              stack[sp++]=r?1:0; break;
           }
           case OP_TRUNC: { ushort a=stack[--sp]; stack[sp++]=a&0xFFu; break; }
+          // u16 bit intrinsics: popcount is width-agnostic on the zero-extended
+          // value; clz/ctz must be forced to the 16-bit answer (uint clz is +16;
+          // uint ctz(0) is 32, but u16 wants 16).
+          case OP_POPCNT: { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)popcount(x); break; }
+          case OP_CLZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(clz(x)-16u); break; }
+          case OP_CTZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(x==0u?16u:ctz(x)); break; }
           case OP_STORE: slots[arg]=stack[--sp]; break;
           case OP_POP: --sp; break;
           case OP_DUP: { ushort v=stack[sp-1]; stack[sp++]=v; break; }
@@ -1278,38 +1435,34 @@ kernel void interp(
             println!("  ✗{f}");
         }
 
-        // GPU trap battery: dispatch the synthetic corners so the div0 and
-        // signed-MIN÷-1 KERNEL paths actually execute on GPU (a corpus probe may
-        // never hit them). Two cells × one probe.
+        // GPU trap/intrinsic battery: dispatch the synthetic corners so their
+        // KERNEL paths actually execute on GPU (a corpus probe may never hit
+        // them), and compare each cell's sextet to Interp. Probe [0,0,0] hits
+        // every corner at once: 0/0 traps, MIN÷-1 ignores args, clz/ctz at zero.
         {
-            let div0 = super::one_expr_cell(Expr::Bin(
-                BinOp::Div,
-                Box::new(Expr::Var(0)),
-                Box::new(Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word)),
-                Width::Word,
-            ));
-            let mindiv = super::one_expr_cell(Expr::Bin(
-                BinOp::Div,
-                Box::new(Expr::Lit(0x8000)),
-                Box::new(Expr::Lit(0xFFFF)),
-                Width::SWord,
-            ));
-            let p0 = super::linearize(&div0[0].1).unwrap();
-            let p1 = super::linearize(&mindiv[0].1).unwrap();
+            let sub00 = || Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word);
+            let call = |n: &str| Expr::Call(n.to_string(), vec![Expr::Var(0)]);
+            let cases: Vec<(&str, Funcs)> = vec![
+                ("div0", super::one_expr_cell(Expr::Bin(BinOp::Div, Box::new(Expr::Var(0)), Box::new(sub00()), Width::Word))),
+                ("MIN÷-1", super::one_expr_cell(Expr::Bin(BinOp::Div, Box::new(Expr::Lit(0x8000)), Box::new(Expr::Lit(0xFFFF)), Width::SWord))),
+                ("count_ones", super::one_expr_cell(call("__bits_count_ones"))),
+                ("leading_zeros", super::one_expr_cell(call("__bits_leading_zeros"))),
+                ("trailing_zeros", super::one_expr_cell(call("__bits_trailing_zeros"))),
+            ];
+            let progs: Vec<CellProgram> = cases.iter().map(|(_, f)| super::linearize(f, "run").unwrap()).collect();
             let mut bcode = Vec::new();
             let mut btable = Vec::new();
-            for p in [&p0, &p1] {
-                let off = (bcode.len() / 2) as u32;
+            for p in &progs {
+                btable.push((bcode.len() / 2) as u32);
                 bcode.extend_from_slice(&encode(p));
-                btable.push(off);
                 btable.push(p.n_locals as u32);
                 btable.push(p.params as u32);
             }
-            let bprobes: Vec<u16> = vec![7, 0, 0];
+            let bprobes: Vec<u16> = vec![0, 0, 0];
             let cbuf = device.new_buffer_with_data(bcode.as_ptr() as *const _, (bcode.len() * 4) as u64, MTLResourceOptions::StorageModeShared);
             let tbuf = device.new_buffer_with_data(btable.as_ptr() as *const _, (btable.len() * 4) as u64, MTLResourceOptions::StorageModeShared);
             let pbuf = device.new_buffer_with_data(bprobes.as_ptr() as *const _, (bprobes.len() * 2) as u64, MTLResourceOptions::StorageModeShared);
-            let obuf = device.new_buffer((2 * OUT_STRIDE * 2) as u64, MTLResourceOptions::StorageModeShared);
+            let obuf = device.new_buffer((cases.len() * OUT_STRIDE * 2) as u64, MTLResourceOptions::StorageModeShared);
             let one_probe: u32 = 1;
             let cmd = queue.new_command_buffer();
             let enc = cmd.new_compute_command_encoder();
@@ -1319,20 +1472,25 @@ kernel void interp(
             enc.set_buffer(2, Some(&pbuf), 0);
             enc.set_buffer(3, Some(&obuf), 0);
             enc.set_bytes(4, 4, &one_probe as *const u32 as *const _);
-            enc.dispatch_thread_groups(MTLSize::new(2, 1, 1), MTLSize::new(1, 1, 1));
+            enc.dispatch_thread_groups(MTLSize::new(cases.len() as u64, 1, 1), MTLSize::new(1, 1, 1));
             enc.end_encoding();
             cmd.commit();
             cmd.wait_until_completed();
-            let bout = unsafe { std::slice::from_raw_parts(obuf.contents() as *const u16, 2 * OUT_STRIDE) };
-            let div0_ok = bout[3] == STATUS_DIV0; // cell 0 status
-            let min_ok = bout[OUT_STRIDE] == 0x8000 && bout[OUT_STRIDE + 3] == 0; // cell 1 r0, status OK
-            println!(
-                "  gpu battery: div0→status {} ({}), MIN÷-1→r0 {} ({})",
-                bout[3],
-                if div0_ok { "✓" } else { "✗" },
-                bout[OUT_STRIDE],
-                if min_ok { "✓" } else { "✗" }
-            );
+            let bout = unsafe { std::slice::from_raw_parts(obuf.contents() as *const u16, cases.len() * OUT_STRIDE) };
+            let mut all_ok = true;
+            for (i, (nm, f)) in cases.iter().enumerate() {
+                let no_consts: Vec<(&str, &[u8])> = Vec::new();
+                let mut interp = Interp::new(f, no_consts, Target::Cell.descriptor());
+                let ir = interp.run("run", &[0]);
+                let g = &bout[i * OUT_STRIDE..(i + 1) * OUT_STRIDE];
+                let ok = match &ir {
+                    Ok(v) => g[3] == 0 && v.iter().enumerate().all(|(k, x)| g[k] == *x),
+                    Err(e) => e.contains("divide by zero") && g[3] == STATUS_DIV0,
+                };
+                all_ok &= ok;
+                let _ = nm;
+            }
+            println!("  gpu battery (div0/MIN÷-1/bits @ probe 0): {}", if all_ok { "all ✓" } else { "✗ MISMATCH" });
         }
 
         // ── Timing helper: build code+table buffers ONCE, time dispatch only ──
