@@ -159,17 +159,61 @@ mod macos {
             // raw signature of "predator event -> prey response -> a further predator
             // event" repeated, without yet distinguishing role or asserting causal
             // linkage (that's what the counterfactual replay is for).
-            let mut best_run = 1usize.min(tagged.len());
-            let mut cur_run = if tagged.is_empty() { 0 } else { 1 };
-            for w in tagged.windows(2) {
-                if w[0].species != w[1].species {
-                    cur_run += 1;
-                    best_run = best_run.max(cur_run);
-                } else {
-                    cur_run = 1;
-                }
-            }
-            println!("  longest species-alternating chronological run: {best_run} events");
+            let labels: Vec<Species> = tagged.iter().map(|t| t.species).collect();
+            let observed_run = longest_alternating_run(&labels);
+            println!("  longest species-alternating chronological run: {observed_run} events");
+
+            // Both event streams are dense and low-vote-share (0.2-0.5) — near-ties that
+            // flip from ordinary demographic churn, not obvious directional selection (see
+            // the module doc). With 6 independent (species, role) streams firing this
+            // often, SOME cross-species alternation is close to guaranteed by chance alone,
+            // so a raw run length isn't yet evidence of real temporal coupling. Null model:
+            // shuffle the same species-label multiset across the same tick positions many
+            // times (Fisher-Yates via this project's own deterministic counter-based draw,
+            // not a new RNG dependency) and see how often chance alone reaches or exceeds
+            // the observed run — an empirical p-value, not an eyeballed impression.
+            const TRIALS: u32 = 20_000;
+            let p = permutation_p_value(&labels, observed_run, seed, TRIALS);
+            println!(
+                "  permutation null check ({TRIALS} shuffles): P(run >= {observed_run} by chance alone) = {p:.4}"
+            );
         }
+    }
+
+    fn longest_alternating_run(labels: &[Species]) -> usize {
+        let mut best_run = 1usize.min(labels.len());
+        let mut cur_run = if labels.is_empty() { 0 } else { 1 };
+        for w in labels.windows(2) {
+            if w[0] != w[1] {
+                cur_run += 1;
+                best_run = best_run.max(cur_run);
+            } else {
+                cur_run = 1;
+            }
+        }
+        best_run
+    }
+
+    /// Fraction of `trials` random relabelings (same species-label multiset, same tick
+    /// positions — only the assignment of which label goes where is shuffled) whose longest
+    /// alternating run is `>= observed_run`. A small fraction means the observed alternation
+    /// is genuinely unusual, not just what mixing two frequent, independent event streams
+    /// produces anyway.
+    fn permutation_p_value(labels: &[Species], observed_run: usize, seed: u64, trials: u32) -> f64 {
+        if labels.len() < 2 {
+            return 1.0;
+        }
+        let mut shuffled = labels.to_vec();
+        let mut at_least_as_long = 0u32;
+        for trial in 0..trials {
+            for i in (1..shuffled.len()).rev() {
+                let j = (cell80_life::rng::draw(seed, trial, i as u32, 255) as usize) % (i + 1);
+                shuffled.swap(i, j);
+            }
+            if longest_alternating_run(&shuffled) >= observed_run {
+                at_least_as_long += 1;
+            }
+        }
+        at_least_as_long as f64 / trials as f64
     }
 }
