@@ -1225,3 +1225,83 @@ kernel void interp(
 
 #[cfg(target_os = "macos")]
 pub use gpu::InterpBatch;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cell80_core::ir::{BinOp, Expr, Func, Stmt};
+    use cell80_core::{Interp, Target};
+
+    /// Build a one-function library whose `run` returns `ret`.
+    fn cell(params: usize, n_locals: usize, body: Vec<Stmt>, ret: Expr) -> Vec<(String, Func)> {
+        vec![(
+            "run".into(),
+            Func { params, n_locals, body, ret: vec![ret], wide_param: false, wide_second: false, wide_ret: false },
+        )]
+    }
+
+    /// cpu_run must match Interp bit-for-bit (values AND steps) on `args`.
+    fn assert_parity(funcs: &[(String, Func)], args: &[u16]) {
+        let prog = linearize(funcs, "run").expect("linearizes");
+        let mut interp = Interp::new(funcs, Vec::<(&str, &[u8])>::new(), Target::Cell.descriptor());
+        let iref = interp.run("run", args);
+        let isteps = interp.steps();
+        match (iref, cpu_run(&prog, args)) {
+            (Ok(v), VmOut::Value(o, s)) => {
+                assert_eq!(v, o, "values @ {args:?}");
+                assert_eq!(isteps, s, "steps @ {args:?}");
+            }
+            (Err(e), out) if e.contains("divide by zero") => assert!(matches!(out, VmOut::DivZero)),
+            (a, b) => panic!("mismatch @ {args:?}: interp={a:?} vm={b:?}"),
+        }
+    }
+
+    #[test]
+    fn arithmetic_and_steps() {
+        // run(x, y) = (x + y) * x   over Word
+        let add = Expr::Bin(BinOp::Add, Box::new(Expr::Var(0)), Box::new(Expr::Var(1)), Width::Word);
+        let mul = Expr::Bin(BinOp::Mul, Box::new(add), Box::new(Expr::Var(0)), Width::Word);
+        let c = cell(2, 2, vec![], mul);
+        for args in [[3u16, 4], [0, 0], [65535, 1], [12345, 6789]] {
+            assert_parity(&c, &args);
+        }
+    }
+
+    #[test]
+    fn div_by_zero_traps() {
+        // run(x) = x / (x - x)  — always divide by zero
+        let z = Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word);
+        let d = Expr::Bin(BinOp::Div, Box::new(Expr::Var(0)), Box::new(z), Width::Word);
+        assert_parity(&cell(1, 1, vec![], d), &[7]);
+    }
+
+    #[test]
+    fn signed_min_div_neg_one_wraps() {
+        // i16::MIN / -1 wraps to i16::MIN (0x8000), not a trap.
+        let d = Expr::Bin(BinOp::Div, Box::new(Expr::Lit(0x8000)), Box::new(Expr::Lit(0xFFFF)), Width::SWord);
+        assert_parity(&cell(1, 1, vec![], d), &[0]);
+    }
+
+    #[test]
+    fn loop_and_control_flow() {
+        // run(n): s=0; i=0; while i<n { s = s + i; i = i + 1 } ; return s
+        use cell80_core::ir::{Cmp, Cond};
+        let cond = Cond { cmp: Cmp::Lt, lhs: Expr::Var(2), rhs: Expr::Var(0), signed: false };
+        let body = vec![
+            Stmt::Assign(1, Expr::Bin(BinOp::Add, Box::new(Expr::Var(1)), Box::new(Expr::Var(2)), Width::Word)),
+            Stmt::Assign(2, Expr::Bin(BinOp::Add, Box::new(Expr::Var(2)), Box::new(Expr::Lit(1)), Width::Word)),
+        ];
+        let c = cell(1, 3, vec![Stmt::Assign(1, Expr::Lit(0)), Stmt::Assign(2, Expr::Lit(0)), Stmt::While(cond, body)], Expr::Var(1));
+        for n in [0u16, 1, 5, 100] {
+            assert_parity(&c, &[n]);
+        }
+    }
+
+    #[test]
+    fn bits_intrinsic() {
+        let call = Expr::Call("__bits_count_ones".into(), vec![Expr::Var(0)]);
+        for x in [0u16, 1, 0xF0F0, 0xFFFF] {
+            assert_parity(&cell(1, 1, vec![], call.clone()), &[x]);
+        }
+    }
+}
