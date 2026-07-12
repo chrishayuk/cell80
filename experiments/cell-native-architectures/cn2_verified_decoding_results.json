@@ -1,13 +1,13 @@
 {
   "summary": {
-    "url": "http://localhost:8080",
+    "url": "reprocess:cn2_verified_decoding_results.json",
     "n_problems": 60,
     "n_spans": 127,
-    "n_match": 122,
+    "n_match": 125,
     "n_mismatch": 2,
-    "n_escalated": 3,
+    "n_escalated": 0,
     "n_other": 0,
-    "agreement_rate": 0.961,
+    "agreement_rate": 0.984,
     "wrong_number_rate": 0.016,
     "final_answer_accuracy": 0.883
   },
@@ -743,8 +743,8 @@
           "b": 710,
           "c": -74,
           "line": "636 - 710 = -74",
-          "verdict": "escalated",
-          "kill": "escalate:needs_wider_math"
+          "verdict": "match",
+          "cell80_answer": -74
         }
       ]
     },
@@ -1182,8 +1182,8 @@
           "b": 493,
           "c": -41,
           "line": "452 - 493 = -41",
-          "verdict": "escalated",
-          "kill": "escalate:needs_wider_math"
+          "verdict": "match",
+          "cell80_answer": -41
         },
         {
           "a": 493,
@@ -1619,8 +1619,8 @@
           "b": 734,
           "c": -254,
           "line": "480 - 734 = -254",
-          "verdict": "escalated",
-          "kill": "escalate:needs_wider_math"
+          "verdict": "match",
+          "cell80_answer": -254
         }
       ]
     },

@@ -505,12 +505,18 @@ strictly by sequence; the library grows by eval need:
    goes negative escalates (`needs_wider_math`) instead of verifying — even when the
    negative value is exactly correct. Confirmed on 3 real cases from a 60-problem
    battery (e.g. `636 - 710 = -74`): the model's arithmetic was right every time, cell80
-   just had no way to say so. **Not yet fixed** — the escalation is honest (never a wrong
-   answer) but it's a real coverage hole that will only get worse as CN-2's battery
-   scales, since any subtraction-into-negative step now always escalates rather than
-   verifies. Distinct from the library's existing signed `i16`/sign-magnitude (`smag_*`)
-   kernels, which cover signed arithmetic for hand-authored cells — the plan IR's `add`/
-   `sub`/`mul`/`div` op chain (`cell80/src/plan.rs`) doesn't route through them at all.
+   just had no way to say so. **✓ Fixed same-day (2026-07-12): the `i32` repr — the plan
+   IR's signed lane.** Two's-complement bits ride the existing u32 state fields (backend
+   zero has no native signed-32; signed add/sub/mul are bit-identical to u32 patterns),
+   and the renderer emits the sign discipline itself: sign-rule overflow checks on
+   add/sub (still `needs_wider_math`), branch-free magnitude mul/div with the sign
+   reapplied (division truncates toward zero, rustc `i32` semantics), a symmetric range
+   with `i32::MIN` excluded at parse and escalated in-op, `nonneg` as a real signed
+   check, `exact_div` as a magnitude question, and mixed `int`/`i32` ops as a render
+   kill (opt-in, never implicit). All 3 CN-2 escalations became verified matches on
+   reprocess — agreement 0.961 → 0.984, zero escalations, only the 2 genuine model
+   errors left. Distinct from the library's `i16`/sign-magnitude (`smag_*`) kernels,
+   which stay the hand-authored-cell story; the plan lane is rendered inline.
 10. **M2.5 canonicalization + M2.6 fold/width/typed-diagnostics + M2.9 `cell80 compose`,
    ✓ shipped (2026-07-06).** PlanFix's findings (`experiments/planfix/`) demoted plan-IR
    JSON to an internal wire format and moved every deterministic repair into the

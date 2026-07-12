@@ -224,10 +224,16 @@ def extract_spans(text: str):
 def verify_span(host: cell80_py.CellHost, span: dict) -> dict:
     if span["op"] not in ("add", "sub", "mul", "div"):
         return {**span, "verdict": "unparseable_op"}
+    # The i32 repr (plan IR signed lane, added 2026-07-12 for exactly this
+    # harness): a subtraction into a negative intermediate now *verifies*
+    # instead of escalating needs_wider_math - the 3 escalations in the
+    # first 60-problem run were all the model being right about a negative
+    # result cell80 couldn't represent. The answer comes back as the
+    # two's-complement bits of the i32 in a u64.
     plan = {
         "quantities": [
-            {"id": "x", "value": span["a"], "unit": "count"},
-            {"id": "y", "value": span["b"], "unit": "count"},
+            {"id": "x", "value": span["a"], "unit": "count", "repr": "i32"},
+            {"id": "y", "value": span["b"], "unit": "count", "repr": "i32"},
         ],
         "ops": [[span["op"], "x", "y", "z"]],
         "target": "z",
@@ -240,9 +246,12 @@ def verify_span(host: cell80_py.CellHost, span: dict) -> dict:
     if answer is None:
         kill = rep["plans"][0].get("kill") if rep.get("plans") else None
         return {**span, "verdict": "escalated", "kill": kill}
-    if int(answer) == span["c"]:
-        return {**span, "verdict": "match", "cell80_answer": int(answer)}
-    return {**span, "verdict": "mismatch", "cell80_answer": int(answer)}
+    answer = int(answer)
+    if answer >= 2**31:  # two's-complement i32 bits
+        answer -= 2**32
+    if answer == span["c"]:
+        return {**span, "verdict": "match", "cell80_answer": answer}
+    return {**span, "verdict": "mismatch", "cell80_answer": answer}
 
 
 def main():
@@ -251,35 +260,59 @@ def main():
     ap.add_argument("--max-tokens", type=int, default=120)
     ap.add_argument("--limit", type=int, default=None, help="only run the first N battery problems")
     ap.add_argument("--timeout", type=int, default=600)
+    ap.add_argument(
+        "--reprocess",
+        metavar="RESULTS_JSON",
+        default=None,
+        help="offline: re-extract and re-verify the saved completions in an existing "
+        "results file instead of querying the server (the completions are "
+        "deterministic - temperature 0 - so this is exactly a rerun minus the model)",
+    )
     args = ap.parse_args()
 
     host = cell80_py.CellHost()
     host.set_cache(True)
 
-    battery = BATTERY[: args.limit] if args.limit else BATTERY
     t0 = time.time()
     rows = []
-    for i, item in enumerate(battery):
-        try:
-            text = chat(args.url, item["q"], args.max_tokens, args.timeout)
-        except requests.RequestException as e:
-            print(f"[{i}] HTTP error: {e}", flush=True)
-            rows.append({"question": item["q"], "final_expected": item["final"], "error": str(e), "spans": []})
-            continue
-        spans = extract_spans(text)
-        verified = [verify_span(host, s) for s in spans]
-        final_m = re.search(r"Answer:\s*(-?\d+(?:\.\d+)?)", text)
-        final_stated = float(final_m.group(1)) if final_m else None
-        rows.append({
-            "question": item["q"],
-            "final_expected": item["final"],
-            "final_stated": final_stated,
-            "final_correct": (final_stated is not None and float(final_stated) == float(item["final"])),
-            "completion": text,
-            "spans": verified,
-        })
-        n_match = sum(1 for s in verified if s["verdict"] == "match")
-        print(f"[{i}] {len(verified)} spans, {n_match} matched, final_correct={rows[-1]['final_correct']}  ({time.time()-t0:.1f}s)", flush=True)
+    if args.reprocess:
+        saved = json.loads(Path(args.reprocess).read_text())["rows"]
+        if args.limit:
+            saved = saved[: args.limit]
+        for i, old in enumerate(saved):
+            text = old.get("completion")
+            if text is None:  # an HTTP-error row: nothing to reprocess
+                rows.append(old)
+                continue
+            spans = extract_spans(text)
+            verified = [verify_span(host, s) for s in spans]
+            rows.append({**old, "spans": verified})
+            n_match = sum(1 for s in verified if s["verdict"] == "match")
+            print(f"[{i}] {len(verified)} spans, {n_match} matched (reprocess)", flush=True)
+        battery = saved
+    else:
+        battery = BATTERY[: args.limit] if args.limit else BATTERY
+        for i, item in enumerate(battery):
+            try:
+                text = chat(args.url, item["q"], args.max_tokens, args.timeout)
+            except requests.RequestException as e:
+                print(f"[{i}] HTTP error: {e}", flush=True)
+                rows.append({"question": item["q"], "final_expected": item["final"], "error": str(e), "spans": []})
+                continue
+            spans = extract_spans(text)
+            verified = [verify_span(host, s) for s in spans]
+            final_m = re.search(r"Answer:\s*(-?\d+(?:\.\d+)?)", text)
+            final_stated = float(final_m.group(1)) if final_m else None
+            rows.append({
+                "question": item["q"],
+                "final_expected": item["final"],
+                "final_stated": final_stated,
+                "final_correct": (final_stated is not None and float(final_stated) == float(item["final"])),
+                "completion": text,
+                "spans": verified,
+            })
+            n_match = sum(1 for s in verified if s["verdict"] == "match")
+            print(f"[{i}] {len(verified)} spans, {n_match} matched, final_correct={rows[-1]['final_correct']}  ({time.time()-t0:.1f}s)", flush=True)
 
     all_spans = [s for r in rows for s in r["spans"]]
     n_total = len(all_spans)
@@ -289,7 +322,7 @@ def main():
     n_other = n_total - n_match - n_mismatch - n_escalated
 
     summary = {
-        "url": args.url,
+        "url": f"reprocess:{args.reprocess}" if args.reprocess else args.url,
         "n_problems": len(battery),
         "n_spans": n_total,
         "n_match": n_match,

@@ -565,3 +565,195 @@ fn render_rejects_are_named() {
         "unit mismatch",
     );
 }
+
+/// The CN-2 gap (roadmap item 9, fifth finding): a sub into a negative
+/// intermediate must *verify*, not escalate, when the plan opts into the
+/// signed lane. Bits are two's complement in the u32 state field.
+#[test]
+fn i32_sub_goes_negative_and_verifies() {
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    // The literal case from the CN-2 battery: 636 - 710 = -74.
+    let p = plan(
+        r#"{ "quantities": [ {"id":"x","value":636,"unit":"count","repr":"i32"},
+                             {"id":"y","value":710,"unit":"count","repr":"i32"} ],
+             "ops": [ ["sub","x","y","z"] ], "target": "z" }"#,
+    );
+    let rep = host.solve(&[p], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.outcomes[0].kill, None, "signed sub must not escalate");
+    assert_eq!(rep.outcomes[0].answer_repr, "i32");
+    assert_eq!(rep.answer, Some((-74i32) as u32 as u64));
+
+    // A negative intermediate flows onward: (3 - 10) * 4 = -28, then + 100 = 72.
+    let chain = plan(
+        r#"{ "quantities": [ {"id":"a","value":3,"unit":"count","repr":"i32"},
+                             {"id":"b","value":10,"unit":"count","repr":"i32"},
+                             {"id":"k","value":4,"unit":"scalar","repr":"i32"},
+                             {"id":"c","value":100,"unit":"count","repr":"i32"} ],
+             "ops": [ ["sub","a","b","d"], ["mul","d","k","e"], ["add","e","c","f"] ],
+             "target": "f" }"#,
+    );
+    let rep = host.solve(&[chain], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.outcomes[0].kill, None);
+    assert_eq!(rep.answer, Some(72u64));
+
+    // Negative quantities parse (two's-complement payload), signed div
+    // truncates toward zero: -7 / 2 = -3, rustc i32 semantics.
+    let div = plan(
+        r#"{ "quantities": [ {"id":"a","value":-7,"unit":"count","repr":"i32"},
+                             {"id":"b","value":2,"unit":"scalar","repr":"i32"} ],
+             "ops": [ ["div","a","b","q"] ], "target": "q" }"#,
+    );
+    let rep = host.solve(&[div], DEFAULT_CYCLES).unwrap();
+    assert_eq!(rep.answer, Some((-3i32) as u32 as u64));
+}
+
+/// The signed lane keeps every escalation the unsigned lane had: overflow is
+/// still needs_wider_math (now by the sign rule), i32::MIN is unrepresentable
+/// by policy, mixing int and i32 is a render kill, and the constraints do
+/// real signed work.
+#[test]
+fn i32_kill_classes() {
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    let q =
+        |id: &str, v: i64| format!(r#"{{"id":"{id}","value":{v},"unit":"scalar","repr":"i32"}}"#);
+    // i32::MAX + 1 overflows the signed range.
+    let add_over = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["add","a","b","c"] ], "target": "c" }}"#,
+        q("a", i32::MAX as i64),
+        q("b", 1)
+    ));
+    // -(2^31-1) - 1 lands exactly on the excluded MIN pattern.
+    let sub_min = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["sub","a","b","c"] ], "target": "c" }}"#,
+        q("a", -(i32::MAX as i64)),
+        q("b", 1)
+    ));
+    // 65536 * 65536 overflows.
+    let mul_over = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["mul","a","b","c"] ], "target": "c" }}"#,
+        q("a", 65536),
+        q("b", 65536)
+    ));
+    // -8 / 0 still dies as div_by_zero.
+    let div0 = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["div","a","b","c"] ], "target": "c" }}"#,
+        q("a", -8),
+        q("b", 0)
+    ));
+    let rep = host
+        .solve(&[add_over, sub_min, mul_over, div0], DEFAULT_CYCLES)
+        .unwrap();
+    assert_eq!(rep.answer, None);
+    let kills: Vec<&str> = rep
+        .outcomes
+        .iter()
+        .map(|o| o.kill.as_deref().unwrap())
+        .collect();
+    assert!(kills[0].contains("needs_wider_math"), "{kills:?}");
+    assert!(kills[1].contains("needs_wider_math"), "{kills:?}");
+    assert!(kills[2].contains("needs_wider_math"), "{kills:?}");
+    assert!(kills[3].contains("div_by_zero"), "{kills:?}");
+
+    // Mixed int/i32 op is a render kill, same rule as every repr pair.
+    let mixed = plan(
+        r#"{ "quantities": [ {"id":"a","value":3,"unit":"count"},
+                             {"id":"b","value":-2,"unit":"count","repr":"i32"} ],
+             "ops": [ ["add","a","b","c"] ], "target": "c" }"#,
+    );
+    let rep = host.solve(&[mixed], DEFAULT_CYCLES).unwrap();
+    let kill = rep.outcomes[0].kill.as_deref().unwrap();
+    assert!(
+        kill.starts_with("render:") && kill.contains("mixes int and i32"),
+        "{kill}"
+    );
+
+    // nonneg is a real check on i32 (sign bit of the field), and exact_div
+    // is a magnitude question: -7 % 3 != 0 in magnitudes.
+    let neg = plan(
+        r#"{ "quantities": [ {"id":"a","value":3,"unit":"count","repr":"i32"},
+                             {"id":"b","value":10,"unit":"count","repr":"i32"} ],
+             "ops": [ ["sub","a","b","c"] ], "target": "c",
+             "constraints": [ ["nonneg","c"] ] }"#,
+    );
+    let inexact = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["div","a","b","c"] ], "target": "c",
+              "constraints": [ ["exact_div","a","b"] ] }}"#,
+        q("a", -7),
+        q("b", 3)
+    ));
+    let exact = plan(&format!(
+        r#"{{ "quantities": [ {}, {} ], "ops": [ ["div","a","b","c"] ], "target": "c",
+              "constraints": [ ["exact_div","a","b"] ] }}"#,
+        q("a", -6),
+        q("b", 3)
+    ));
+    let rep = host.solve(&[neg, inexact, exact], DEFAULT_CYCLES).unwrap();
+    assert!(
+        rep.outcomes[0]
+            .kill
+            .as_deref()
+            .unwrap()
+            .contains("out_of_domain"),
+        "{:?}",
+        rep.outcomes[0].kill
+    );
+    assert!(
+        rep.outcomes[1]
+            .kill
+            .as_deref()
+            .unwrap()
+            .contains("out_of_domain"),
+        "{:?}",
+        rep.outcomes[1].kill
+    );
+    assert_eq!(rep.outcomes[2].kill, None);
+    assert_eq!(rep.outcomes[2].answer, Some((-2i32) as u32 as u64));
+}
+
+/// Slot canonicalization is repr-blind for the signed lane too, and the
+/// i32 parse enforces the symmetric range (MIN has no negation).
+#[test]
+fn i32_renderer_is_canonical_and_parse_bounds() {
+    let a = plan(
+        r#"{ "quantities": [ {"id":"x","value":-5,"unit":"count","repr":"i32"},
+                             {"id":"y","value":9,"unit":"count","repr":"i32"} ],
+             "ops": [ ["add","x","y","out"] ], "target": "out" }"#,
+    );
+    let mut b = a.clone();
+    b.quantities.reverse();
+    assert_eq!(a.render().unwrap(), b.render().unwrap());
+
+    // i32::MIN is refused at parse; i32::MAX and its negation are accepted.
+    assert!(Plan::from_json(
+        r#"{ "quantities": [ {"id":"x","value":-2147483648,"unit":"count","repr":"i32"} ],
+             "ops": [], "target": "x" }"#
+    )
+    .is_err());
+    assert!(Plan::from_json(
+        r#"{ "quantities": [ {"id":"x","value":-2147483647,"unit":"count","repr":"i32"} ],
+             "ops": [], "target": "x" }"#
+    )
+    .is_ok());
+}
+
+/// The counterfactual battery perturbs an i32 quantity by +1 on the *value*:
+/// two subtraction schemas and one adder disagree, the subtractors' agreement
+/// survives the sweep, and the shared answer is the negative one.
+#[test]
+fn i32_counterfactual_battery() {
+    let mut host = CellHost::new();
+    host.set_cache(true);
+    let sub = r#"{ "quantities": [ {"id":"a","value":5,"unit":"count","repr":"i32"},
+                                   {"id":"b","value":9,"unit":"count","repr":"i32"} ],
+                   "ops": [ ["sub","a","b","out"] ], "target": "out" }"#;
+    let add = r#"{ "quantities": [ {"id":"a","value":5,"unit":"count","repr":"i32"},
+                                   {"id":"b","value":9,"unit":"count","repr":"i32"} ],
+                   "ops": [ ["add","a","b","out"] ], "target": "out" }"#;
+    let rep = host
+        .solve(&[plan(sub), plan(sub), plan(add)], DEFAULT_CYCLES)
+        .unwrap();
+    assert!(rep.battery_ran);
+    assert_eq!(rep.answer, Some((-4i32) as u32 as u64));
+}

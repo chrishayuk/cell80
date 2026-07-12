@@ -33,8 +33,9 @@ pub struct Plan {
 pub struct Quantity {
     pub id: String,
     /// The raw 32-bit payload: the integer itself for `int`/`q8`/`q16`, the IEEE
-    /// binary32 **bits** for `f32` (the repr tag interprets, bits never lie about
-    /// which they are — the renderer refuses every mixed-repr op).
+    /// binary32 **bits** for `f32`, the two's-complement bits for `i32` (the repr
+    /// tag interprets, bits never lie about which they are — the renderer refuses
+    /// every mixed-repr op).
     pub value: u32,
     pub unit: String,
     /// The representation tag (F-wave amendment §F0): orthogonal to dimension the
@@ -51,6 +52,15 @@ pub enum Repr {
     /// Plain integers (the GSM default — exact, checked, escalating).
     #[default]
     Int,
+    /// Signed 32-bit integers, carried as **two's-complement bits in the u32
+    /// state field** (backend zero has no native signed-32 lane — signed add/
+    /// sub/mul are bit-identical to u32 patterns, so the renderer emits its own
+    /// sign discipline instead: escalate on signed overflow, magnitudes for
+    /// mul/div, truncation toward zero — rustc `i32` division semantics). The
+    /// range is symmetric: `i32::MIN` has no negation, so parse refuses it and
+    /// any op that would produce it escalates — every live value satisfies
+    /// `|v| <= i32::MAX` and `0u32 - bits` is always the true magnitude.
+    I32,
     /// Q8.8 fixed point (raw scaled integer; `scale` semantics ride the tag).
     Q8,
     /// Q16.16 fixed point.
@@ -64,15 +74,17 @@ impl Repr {
     fn parse(s: &str) -> Result<Repr, String> {
         Ok(match s {
             "" | "int" => Repr::Int,
+            "i32" => Repr::I32,
             "q8" => Repr::Q8,
             "q16" => Repr::Q16,
             "f32" => Repr::F32,
-            other => return Err(format!("unknown repr `{other}` (int/q8/q16/f32)")),
+            other => return Err(format!("unknown repr `{other}` (int/i32/q8/q16/f32)")),
         })
     }
     fn name(self) -> &'static str {
         match self {
             Repr::Int => "int",
+            Repr::I32 => "i32",
             Repr::Q8 => "q8",
             Repr::Q16 => "q16",
             Repr::F32 => "f32",
@@ -96,6 +108,9 @@ impl Quantity {
     fn perturbed(&self) -> u64 {
         match self.repr {
             Repr::F32 => (f32::from_bits(self.value) + 1.0).to_bits() as u64,
+            // Signed: +1 on the *value*, not the bits — saturating at i32::MAX
+            // (the same no-op edge the u32 reprs have at u32::MAX).
+            Repr::I32 => (self.value as i32).saturating_add(1) as u32 as u64,
             _ => self.value.saturating_add(1) as u64,
         }
     }
@@ -191,6 +206,15 @@ impl Plan {
                         .and_then(|x| x.as_f64())
                         .ok_or_else(|| format!("quantity `{id}` needs a number `value`"))?;
                     (f as f32).to_bits()
+                } else if repr == Repr::I32 {
+                    // Symmetric range: i32::MIN has no negation, so it never
+                    // enters (the render-time sign discipline relies on this).
+                    q.get("value")
+                        .and_then(|x| x.as_i64())
+                        .filter(|v| v.unsigned_abs() <= i32::MAX as u64)
+                        .ok_or_else(|| {
+                            format!("quantity `{id}` needs an i32 `value` (|v| <= 2147483647)")
+                        })? as i32 as u32
                 } else {
                     q.get("value")
                         .and_then(|x| x.as_u64())
@@ -512,6 +536,62 @@ impl Plan {
                 op_lines.push_str(&format!("        self.{out} = self.{a} {line} self.{b};\n"));
                 continue;
             }
+            // Signed ops: two's-complement bits in u32 fields. add/sub are the
+            // wrapping u32 patterns plus the textbook sign-rule escalation;
+            // mul/div go through magnitudes (safe: i32::MIN is excluded at parse
+            // and escalated below, so `0 - bits` is always the true magnitude)
+            // with the result sign reapplied — division truncates toward zero,
+            // rustc i32 semantics. Any result landing on the MIN bit pattern
+            // escalates too, keeping the range symmetric for downstream ops.
+            if ra == Repr::I32 {
+                const SIGN: &str = "2147483648u32"; // the i32 sign bit / MIN pattern
+                let signs = format!(
+                    "        let sa{n} = (self.{a} >= {SIGN}) as u32;\n        let sb{n} = (self.{b} >= {SIGN}) as u32;\n"
+                );
+                // Branch-free |x|: with mask = 0 - sign (all ones iff negative),
+                // (x ^ mask) - mask is x or its two's-complement negation.
+                let mags = format!(
+                    "        let na{n} = 0u32 - sa{n};\n        let nb{n} = 0u32 - sb{n};\n        \
+                     let ma{n} = (self.{a} ^ na{n}) - na{n};\n        \
+                     let mb{n} = (self.{b} ^ nb{n}) - nb{n};\n"
+                );
+                match op.op.as_str() {
+                    "add" | "sub" => {
+                        let (sym, overflow) = if op.op == "add" {
+                            // Same signs in, different sign out ⇒ overflow.
+                            ("+", format!("sa{n} == sb{n}"))
+                        } else {
+                            // Different signs in, result flips from a ⇒ overflow.
+                            ("-", format!("sa{n} != sb{n}"))
+                        };
+                        op_lines.push_str(&format!(
+                            "{signs}        let t{n} = self.{a} {sym} self.{b};\n        \
+                             if {overflow} && ((t{n} >= {SIGN}) as u32) != sa{n} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        \
+                             if t{n} == {SIGN} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        \
+                             self.{out} = t{n};\n"
+                        ));
+                    }
+                    "mul" => {
+                        op_lines.push_str(&format!(
+                            "{signs}{mags}        let p{n} = ma{n} * mb{n};\n        \
+                             if ma{n} != 0u32 && p{n} / ma{n} != mb{n} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        \
+                             if p{n} >= {SIGN} {{ halt({NEEDS_WIDER_MATH}u16); }}\n        \
+                             let nr{n} = 0u32 - (sa{n} ^ sb{n});\n        \
+                             self.{out} = (p{n} ^ nr{n}) - nr{n};\n"
+                        ));
+                    }
+                    _ => {
+                        // Magnitude quotient ≤ magnitude dividend < 2^31, so the
+                        // sign reapplication can't overflow; /0 halts on its own.
+                        op_lines.push_str(&format!(
+                            "{signs}{mags}        let d{n} = ma{n} / mb{n};\n        \
+                             let nr{n} = 0u32 - (sa{n} ^ sb{n});\n        \
+                             self.{out} = (d{n} ^ nr{n}) - nr{n};\n"
+                        ));
+                    }
+                }
+                continue;
+            }
             match op.op.as_str() {
                 "add" => {
                     // Wrap detect: a checked add, escalating rather than wrapping.
@@ -545,13 +625,19 @@ impl Plan {
                     if !dims.contains_key(id.as_str()) {
                         return Err(format!("nonneg: `{id}` is not defined"));
                     }
-                    // Integer reprs: u32 by construction, sub already escalates —
-                    // renders as nothing. f32 has a sign bit, so the constraint is
-                    // a real check (NaN compares false and passes here; a NaN
-                    // *target* still dies at the finite gate).
+                    // Unsigned integer reprs: u32 by construction, sub already
+                    // escalates — renders as nothing. f32 has a sign bit, so the
+                    // constraint is a real check (NaN compares false and passes
+                    // here; a NaN *target* still dies at the finite gate). i32's
+                    // sign lives in the top bit of the u32 field.
                     if reprs[id.as_str()] == Repr::F32 {
                         checks.push(format!(
                             "        if self.{} < 0.0f32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
+                            slot[id.as_str()]
+                        ));
+                    } else if reprs[id.as_str()] == Repr::I32 {
+                        checks.push(format!(
+                            "        if self.{} >= 2147483648u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
                             slot[id.as_str()]
                         ));
                     }
@@ -566,15 +652,40 @@ impl Plan {
                              tiers' claim; f32 is correctly_rounded, never exact"
                         ));
                     }
-                    checks.push(format!(
-                        "        if self.{} % self.{} != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
-                        slot[a.as_str()],
-                        slot[b.as_str()]
-                    ));
+                    let (ia, ib) = (
+                        reprs[a.as_str()] == Repr::I32,
+                        reprs[b.as_str()] == Repr::I32,
+                    );
+                    if ia != ib {
+                        return Err(format!(
+                            "exact_div: `{a}`/`{b}` mixes int and i32 — representations \
+                             never convert implicitly"
+                        ));
+                    }
+                    if ia {
+                        // Signed: exactness is a magnitude question. Temps are
+                        // keyed by the slots (not a counter) so the rendered
+                        // check is independent of constraint order — the sort
+                        // below stays a true canonicalization.
+                        let (sa, sb) = (&slot[a.as_str()], &slot[b.as_str()]);
+                        checks.push(format!(
+                            "        let e{sa}{sb}a = 0u32 - ((self.{sa} >= 2147483648u32) as u32);\n        \
+                             let e{sa}{sb}b = 0u32 - ((self.{sb} >= 2147483648u32) as u32);\n        \
+                             if ((self.{sa} ^ e{sa}{sb}a) - e{sa}{sb}a) % ((self.{sb} ^ e{sa}{sb}b) - e{sa}{sb}b) != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n"
+                        ));
+                    } else {
+                        checks.push(format!(
+                            "        if self.{} % self.{} != 0u32 {{ halt({OUT_OF_DOMAIN}u16); }}\n",
+                            slot[a.as_str()],
+                            slot[b.as_str()]
+                        ));
+                    }
                 }
             }
         }
         checks.sort();
+        // A repeated constraint must not redeclare its (slot-keyed) temps.
+        checks.dedup();
         let target_slot = slot
             .get(self.target.as_str())
             .cloned()

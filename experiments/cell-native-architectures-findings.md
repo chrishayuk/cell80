@@ -342,6 +342,54 @@ differs") ran the full 15-request CN-2 battery with zero crashes.
 - `7e5b84b8` — bug 3 hardening + the two new stress tests, commit message
   is explicit that root cause remains open
 
+## CN-2 follow-up — the plan-IR signed lane, and 3 escalations become matches
+
+The unsigned-plan-IR gap above (roadmap item 9's fifth finding) is now
+**fixed** (2026-07-12, same day): `cell80/src/plan.rs` gained an `i32` repr —
+the signed lane the escalations were asking for.
+
+**Design, since backend zero has no native signed-32:** i32 values ride the
+existing u32 state fields as **two's-complement bits** (the dialect doc's own
+observation — signed add/sub/mul are bit-identical to u32 patterns — made
+load-bearing). The renderer emits its own sign discipline instead of leaning
+on a signed type: add/sub are the wrapping u32 ops plus the textbook
+sign-rule overflow check (same-signs-in/different-sign-out for add, its
+mirror for sub → `needs_wider_math`, exactly as the unsigned lane escalates);
+mul/div convert to magnitudes branch-free (`(x ^ mask) - mask`), run the
+existing unsigned checks, and reapply the result sign — division truncates
+toward zero, rustc `i32` semantics. The range is symmetric by policy:
+`i32::MIN` has no negation, so parse refuses it and any op that would produce
+it escalates — which is what makes the magnitude trick unconditionally safe.
+`nonneg` becomes a real check on i32 (it renders as nothing for u32), and
+`exact_div` becomes a magnitude question. Mixed `int`/`i32` ops are a render
+kill like every other repr pair — the extractor opts into the signed lane
+explicitly. 5 new tests in `cell80/tests/plan.rs` (the literal `636 - 710 =
+-74` case, chains through negative intermediates, the kill classes, canonical
+rendering, the counterfactual battery on a negative answer).
+
+**CN-2 re-verified against the saved 60-problem completions** (temperature-0
+completions are deterministic, so `--reprocess` — added to the harness — is
+exactly a rerun minus the model; the harness now sends `repr: "i32"`
+quantities and decodes two's-complement answers):
+
+```json
+{
+  "n_problems": 60, "n_spans": 127,
+  "n_match": 125, "n_mismatch": 2, "n_escalated": 0,
+  "agreement_rate": 0.984, "wrong_number_rate": 0.016,
+  "final_answer_accuracy": 0.883
+}
+```
+
+All three previously-escalated spans (`636 - 710 = -74`, `452 - 493 = -41`,
+`480 - 734 = -254`) now **verify as matches** — the model was right each
+time, and cell80 can finally say so. The only remaining non-matches are the
+2 genuine caught model arithmetic errors (`68 * 31 = 2088`, `1569 + 299 =
+1888`), which is the measurement working as designed: **agreement 0.961 →
+0.984 with zero escalations**, and the wrong-number-rate baseline (0.016)
+now stands on a battery with no verifier coverage holes. CN-2 is ready for
+the G2 build proper (verified decoding *with* resampling on mismatch).
+
 ## Wave 1 status: both experiments have real, well-powered first results
 
 CN-0's 5× rerun and CN-2's 60-problem rerun (above) are both done. Neither
@@ -363,10 +411,9 @@ measurement apparatus itself before treating its numbers as science.
    narrative's near-total failure (0–3% at every layer, both runs) looks
    qualitatively different from the other three families', not just a
    smaller-N version of the same gap.
-3. CN-2: fix the plan-IR's unsigned-only limitation (the 3 escalations
-   above are the model being *right* and cell80 being unable to verify a
-   negative intermediate) before scaling the battery further, or the
-   escalation rate will just grow with it. Then this is ready for the real
-   G2 build (verified decoding *with* resampling on mismatch) — slice-0/
-   rerun only measured, never corrected.
+3. ~~CN-2: fix the plan-IR's unsigned-only limitation~~ **Done** (the i32
+   signed lane, section above): all 3 escalations became verified matches,
+   agreement 0.984, zero coverage holes left in the verifier. CN-2 is now
+   ready for the real G2 build (verified decoding *with* resampling on
+   mismatch) — slice-0/rerun only measured, never corrected.
 4. Wave 2 (CN-1's H1 factory, CN-3's prosthetic) hasn't been scoped yet.
