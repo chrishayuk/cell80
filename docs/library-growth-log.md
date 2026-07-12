@@ -1542,3 +1542,25 @@ duplicates stay 1.0 everywhere). Gate: 756 admitted, 0 refused; all nine #1 on
 their direct queries before their rows were written (three needed sharper direct
 phrasings to beat their own siblings — mirr/mduration/oddfyield vocabulary
 overlap is real).
+
+### The growth ENGINE — GPU-scored evolution (grown, not authored; 2026-07-12)
+
+Every entry above is a cell *authored* by hand. This one records the machinery for
+growing them instead: GPU-scored evolution over the existing library, where the
+interpreter's inliner *is* the composition engine (a candidate that `Call`s cells
+linearizes into one bytecode program) and `rustmsl::interp::InterpBatch` scores a
+whole population against a target's I/O in one dispatch per generation (docs/14
+ledger 2026-07-12; `cell80/examples/gpu_grow*.rs`, `gpu_discover.rs`).
+Demonstrated: **grew a real cell** (`bit_length → reverse_bits`, full-domain
+0/65536, novel), then a **wave** (85 → 93 building blocks, *compounding* — grown
+cells become blocks, the dedup gate rejecting near-dupes at the 0.834 threshold).
+For **independently-specified** targets (a reference function, not a known chain),
+discovery + **CEGIS** (grow the probe set with counterexamples until a probe-match
+is full-domain-correct *by construction*) turned probe-only fakes into genuine
+discoveries — but honestly **1 of 7 clean**, the rest correctly rejected by
+full-domain verification (probe-matching but wrong) or the dedup gate (already a
+cell). **Not yet admitted to the catalog** — these are verified demos of the
+engine, not authored cells that shipped. The load-bearing finding: the GPU makes
+*evaluation* free; **search and generalization are the real problems**, and
+full-domain verification + the dedup gate are what separate a real discovery from a
+lucky probe-fit.

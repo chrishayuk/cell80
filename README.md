@@ -16,7 +16,9 @@ claim about any particular chip. The same source cell runs on:
 
 - a **cycle-accurate Z80 micro-VM** (backend zero — where the project started),
 - **RV32I on real silicon** (Hazard3 / RP2350 — a robot's reflex organ),
-- the **GPU** (Metal today; one thread per (cell, input), whole-library megakernels),
+- the **GPU** (Metal today — a compiled per-cell kernel for one cell × N inputs, *plus* a
+  fixed-size **bytecode interpreter** that runs a whole library × probes in one dispatch
+  without the kernel growing with the library, so retrieval-by-execution scales),
 
 with the **reference IR interpreter as the single oracle**: a result on any body that
 disagrees with the interpreter — value, trap status, step count, or state byte — is a

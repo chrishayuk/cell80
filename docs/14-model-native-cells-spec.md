@@ -88,6 +88,69 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
+### 2026-07-12 — The interpreter backend: the megakernel's wall priced, and the fix that scales (WS-E/F)
+
+**Priced the megakernel launch — and found a wall.** `compile_library`'s
+library×probe dispatch was assumed cheap; it isn't. A **kernel-size cliff** at
+~64→128 fused cells (~44× jump in dispatch time), count-driven (reversed-order
+confirms it isn't cell identity) and **not** sync overhead (single-command-buffer
+tiling, since reverted, didn't help; same-kernel ×N is ~30× cheaper than N
+distinct kernels). The mechanism is per-kernel code growing with the library
+(PSO re-specialization / occupancy — unprofiled, but bounds-over-mechanism the
+rule survives): **kernel size must be constant in library size.** The current
+library is already past the cliff — a full-library launch is ~30 ms, ~2×10⁶
+evals/s, three orders under the one-cell peak. This is exactly the "library-launch
+fixed cost" the README owed. (`cell80/examples/library_launch_cost.rs`.)
+
+**Shipped the fix: `rustmsl::interp`, a fixed-size bytecode interpreter.** One MSL
+kernel reads each cell's IR from a data buffer (per-cell offset table +
+concatenated bytecode; one threadgroup per cell, probes across lanes), so adding
+cells grows a *buffer*, not the kernel. No cliff — flat/no-cliff to 500k distinct
+entries (153 MiB), shared≈distinct (memory bandwidth isn't a wall either), where
+the compiled path cannot even build. Bit-identical to the reference interpreter,
+values **and** IR-step counts, at **93% of value cells** (232/249): the width/
+control subset + short-circuit logic + `halt` + full call inlining + the u16/u32
+width classes + the `__bits_*` intrinsics. Step parity carried by emitted markers
+at the walker's exact charge points (per statement, per loop-attempt, per
+expression node), coalesced within basic blocks; the trap battery (fuel Δ=0, halt
+code, div0, signed MIN÷-1) all parity-verified CPU+GPU. Unit-tested; a CPU
+reference VM (`cpu_run`) is the portable oracle. This makes the **two-body
+architecture** literal: compiled `GpuBatch` for single cell × N inputs (WS-H
+reward organs, fuzzing — fastest per eval, its 3.7×10⁸ peak untouched),
+interpreted `InterpBatch` for library × probe-set (WS-F — the only one that
+*scales* in cell count). Handoff around 10²–10³ cells.
+
+**WS-F gate: cleared, wide — with an honest timing correction.** Behavioural
+routing (execute candidates against a query's I/O examples, rank by match) hits
+**100% precision@1** on the real retrieval dataset (463/463 expected cells in the
+tied-top rank) — against the 0.389 text baseline and the ≥0.80 gate. The central
+thesis holds: behavioural routing is exact where text is a coin-flip. **But** on
+today's 232-cell library the GPU *loses* to the scalar Runner loop — per-query
+dispatch is fixed-overhead-bound (~2 probes/query), and batched fingerprinting at
+DEFAULT_PROBES is ~16× slower (build + tiny grid). The interpreter backend is a
+**scale play**: its home is exhaustive index-build fingerprinting and
+synthesis-scale evaluation, not interactive per-query routing on a small library.
+The **F2 hybrid** (fingerprint/text gate → execute top-k) stays load-bearing for
+interactive latency. WS-F correction, measured at representative composition:
+exhaustive execution ≈ 20 ns/eval, so 10⁶ cells × 8 probes ≈ ~160 ms —
+index-build/refresh, not per-query interactive.
+
+**Synthesis by execution — the same primitive, at the scale where the GPU wins.**
+Library × probes *queries* a library; a candidate population × a target *evolves*
+one. Program synthesis: a 4096-candidate population scored against a target in ONE
+`InterpBatch` dispatch per generation (1.3×10⁸ evals/s), full-domain-verified
+solve. The **library-growth engine** (the inliner *is* the composition engine — a
+candidate that Calls cells linearizes into one program) grew a real cell
+(`bit_length → reverse_bits`, full-domain 0/65536, novel), then a **wave** (85→93
+cells, *compounding* — grown cells become building blocks, dedup gate rejecting
+near-dupes). Independent-target discovery (targets specified by behaviour, not as
+compositions) + **CEGIS** (grow the probe set with counterexamples until "matches
+the probes" == "is the function", so every solve is full-domain-correct by
+construction). The load-bearing lesson, applied to the synthesizer itself: **the
+GPU makes evaluation free; search and generalization are the real problems, and
+full-domain verification + the dedup gate are what separate a discovery from a
+lucky probe-fit.** (`cell80/examples/gpu_{route,fingerprint,synth,grow,grow_wave,discover}.rs`.)
+
 ### 2026-07-11 — The step-cost offenders fixed, GPU-audited (step-budget amendment §3a)
 
 **Shipped.** Six of the seven cells carrying ~99.9% of the oracle gate's bill

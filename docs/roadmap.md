@@ -88,9 +88,12 @@ state windows under adversarial random state — 496/496 bit-exact on values,
 status, steps, and final state bytes (741 of 746 cells now on the GPU); the
 battery's first catch was two sliding-window cells writing through an
 unmasked state index — trapped by the GPU's typed window, absorbed silently
-by the open interpreter memory, filed as a defect. Owed: the library-launch
-fixed cost, `Body::Msl` + family-hash attestation (E6), f32 (E4), the OOW
-bounds fix, CUDA before H3.
+by the open interpreter memory, filed as a defect. **The library-launch fixed
+cost is now priced** — a kernel-size cliff at ~100 fused cells — and answered by
+a fixed-size **bytecode interpreter** (`rustmsl::interp`, the two-body
+library-dispatch backend: flat/no-cliff to 500k cells, 93% coverage, bit-identical
+CPU+GPU; docs/14 ledger 2026-07-12). Owed: `Body::Msl` + family-hash attestation
+(E6), f32 (E4), the OOW bounds fix, CUDA before H3.
 
 **Cell micro-VM (the `cell80` crate, built on `rustz80`).**
 - **Dual target** — `Spectrum48` (authentic, software mul/div) and `Cell` (Cell80: `ED FE`
