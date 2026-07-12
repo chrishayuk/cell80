@@ -1,6 +1,8 @@
 # 17 — Deterministic Ecology on State Cells: the experiment programme (draft v0.1)
 
-**Status:** draft for review · speculative, off-roadmap (same footing as `cell80-life.md`)
+**Status:** EX-0, EX-1, EX-2 (both operators), and EX-4 built and landed — receipts in
+`deterministic-ecology-findings.md`. EX-3/EX-5 not started. Still speculative, off-roadmap
+(same footing as `cell80-life.md`).
 **Depends on:** cell80-life (composition → selection, established), evolved-cells /
 cell-synth-evolve (GA/MCTS/A* search reusable API), the WS-E GPU interpreter
 (state cells, IR-step parity, one-cell×N at 3.7×10⁸ evals/s up to N=2²⁰, library×probe
@@ -49,6 +51,9 @@ history. Run it on GPU and CPU-reference; assert byte-identical. **Kill:** if re
 bit-exact, the whole premise ("auditable, reproducible evolution") is void — fix before biology.
 Cost: days. This is the first thing built.
 
+**Status: DONE.** Both gates passed cleanly on the first working implementation. Full
+account in `deterministic-ecology-findings.md`'s `## EX-0` section.
+
 ## 2. The experiments
 
 Ordered so each unlocks the next; every one has a kill criterion and a pre-registered
@@ -72,6 +77,15 @@ interpreter result holds: per-tick cost scales with organisms, not with genome d
 **Kill.** Populations only survive in a narrow hand-tuned parameter slot → the ecology is
 fragile, not a substrate; report the slot and stop.
 **Cost.** Low. Mostly harnessing existing genomes to the GPU stepper.
+
+**Status: DONE.** Population survival/steadiness scales robustly to 10⁵ organisms, but the
+qualitative regime *distinction* between the two genomes (steady vs. boom-bust) does not
+survive scaling — traced, not just observed, to a small-population finite-size effect via a
+dimensionality-isolation experiment (a height=1 ring reproduces the split at n≈8–20, but it
+collapses again by n≈1000). Grazer's half of the gate passes at every scale/topology
+tested; rapid_reproducer's oscillatory half does not, at any scale ≥ ~100 — the literal
+answer to this experiment's own question. Full account in
+`deterministic-ecology-findings.md`'s `## EX-1` section.
 
 ---
 
@@ -98,6 +112,18 @@ richer-but-bounded move: mutation over a *typed cell-assembly grammar* (swap/ins
 cells from the library into genome roles), which evolved-cells already showed is
 searchable. Either outcome is a result about the mutation substrate.
 **Depends on.** EX-1. **Cost.** Medium — the safety check reuses admission machinery.
+
+**Status: DONE — both operators.** Operator (a) (parametric + cell-swap): ported into the
+GPU-batchable engine; diversity emerges and grows exactly as expected (95.7% of births
+carry a mutated role over 2,000 ticks). Operator (b) (cell-assembly composition, arity-
+preserving 2-cell wiring): the kill/re-scope condition did **not** fire — viable
+compositions are far from vanishingly rare (57.7%/83.3% viable across the two role pools),
+and the ecology substantially exploits them once available (29.6% of births in an
+extended-pool run carry a composed gene). "Occasionally fitter than parent" was not shown
+at the population-aggregate level (composed-gene carriers averaged fewer direct children
+than disk-gene carriers in this run) — reported as-is, not smoothed over; an
+individual-candidate fitness breakdown remains open. Full account in
+`deterministic-ecology-findings.md`'s `## EX-2` section.
 
 ---
 
@@ -157,6 +183,13 @@ system can offer because none of them replay exactly.
 **Depends on.** EX-1 (works even without EX-2/3). **Cost.** Low-medium; pure payoff on the
 determinism spine.
 
+**Status: DONE.** Ran the full pipeline for real: a genuine sustained plurality-change
+event, traced to one origin mutation (a full 6-field diff surfaced a second, co-occurring
+numeric drift in the same birth), reverted, replayed — the event no longer occurred after
+the revert, with every tick before the fork byte-identical to baseline. "Evolution you can
+single-step and diff," demonstrated on real data, not just built and unit-tested. Full
+account in `deterministic-ecology-findings.md`'s `## EX-4` section.
+
 ---
 
 ### EX-5 — SOMA hand-off (does the population substrate serve the creature-raiser?)
@@ -184,9 +217,11 @@ EX-0 (replay gate, days) ── spine, blocks everything
 ```
 
 Wave 1: **EX-0 then EX-1** — prove replay, prove the known ecology scales. If EX-1's gate
-fails, the substrate claim is wrong and the cheap way to learn it is here.
+fails, the substrate claim is wrong and the cheap way to learn it is here. **Done.**
 Wave 2: **EX-4** (nearly free, and it's the differentiating artifact) alongside **EX-2**.
-Wave 3: **EX-3** (the flagship, the watchable one), then **EX-5** if the robot lane wants it.
+**Done.**
+Wave 3: **EX-3** (the flagship, the watchable one), then **EX-5** if the robot lane wants
+it. **Not started.**
 
 ## 4. The anti-artifact discipline (cross-cutting)
 

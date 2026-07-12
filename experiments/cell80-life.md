@@ -5,6 +5,14 @@ which is reserved for specs of things that are built or actively being built. Cu
 stays retrieval / the type-led index (see `docs/roadmap.md`); this does not compete with that.
 Empirical results from the mutation/selection runs: `cell80-life-findings.md`.
 
+This experiment's genomes/dynamics are now also being scaled onto the GPU-batchable,
+bit-exact-replay substrate in `deterministic-ecology.md` (doc 17, EX-0–EX-5) —
+`deterministic-ecology-findings.md` has since updated one load-bearing claim from this doc:
+the rapid_reproducer boom-bust regime (Finding 3 below) turned out to be a small-population
+finite-size effect that does not survive scaling past a few dozen organisms, in any world
+topology tested (EX-1). Read Finding 3/4 below as "what n≈2–12 showed," not as a property
+proven to generalize.
+
 A minimal prototype exists at `experiments/cell80-life/` (workspace member `cell80-life`,
 `cargo run -p cell80-life -- <ticks> [genome.json]`): a 1D grid world where organisms sense,
 move, eat, and reproduce by calling real `.cell` cartridges through a `CellHost` — not plain
