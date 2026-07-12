@@ -762,6 +762,29 @@ running-stat cells toward "ask the agent to write Python."
   Still open: the bit-for-bit Rapier-trace validation (gates any video claim),
   `fma` (demand-gated), and the sandbox cap re-tighten once bank-by-default is
   decided.**
+  **Found 2026-07-12: 62/790 cells fail a bare, unbanked `cell80 compile` (no
+  `--max-code-bytes` override) — discovered as a byproduct of bulk-compiling
+  the whole library for the memory-video recording pack, not itself library
+  work.** 50 hit the flat 8192-byte cap, 12 overrun the 0xb000 local-slot
+  scratch window. By pack: **excel-financial** 33 (`excel_rate`,
+  `excel_xirr`, `excel_npv`, `excel_pv`, `excel_irr`, `excel_pmt`, and 27
+  more amortization/yield/price functions), **trig** 19 (the full f32
+  inverse/hyperbolic family — `asin_f32`/`acos_f32`/`atan_f32`/`*h_f32`/
+  `a*h_f32`/`csc_f32`/`sec_f32`/`cot_f32` and duals), **excel-mathstat** 3
+  (`excel_stdev_p`/`_s`, `excel_var_s`), **physics** 2, **control-systems** 2
+  (`pid_step`, `pid_step_antiwindup`), **numerical-primitives** 2
+  (`matrix_solve_3x3`, `nth_root_f32`), **matrix** 1 (`matrix_inverse_2x2`).
+  The physics pair (`impulse_1d_f32`, `elastic_collision_1d_f32`) is the
+  sharper finding: both still declare `//! kernel_bank: on` and were the
+  cells measured banked-down above (8,197 B→337 B / 8,570 B→650 B), yet a
+  plain single-file `cell80 compile <src> -o out --id id` still produced the
+  unbanked ~8,257/8,570-byte image and failed the cap — banking isn't
+  engaging through that CLI path, not yet root-caused. None of the 62 block
+  anything today (the video's demo workload doesn't call any of them), but
+  they're real gaps for anyone bare-compiling the full library: either
+  extend kernel banking to the trig-f32/excel-financial/excel-mathstat/
+  matrix packs the way F3 physics got it, or fix single-file `compile` to
+  actually engage banking for cells that already declare it.**
 - **Cost honesty + DoD.** Wide / trapped ops are **counted in `trapped_ops` and gated** (capped,
   halted on budget), never folded into a cycles reward (extends the gate-not-gradient rule). The
   DoD grows one column: `Cell-target trap ≡ Spectrum-target software ≡ rustc`, under the
