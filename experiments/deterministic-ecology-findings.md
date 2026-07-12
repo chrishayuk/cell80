@@ -6,9 +6,10 @@ actually showed, with the receipts, one `##` section per experiment as they land
 the single multi-experiment design doc rather than one findings file per experiment.
 
 Code lives inside `experiments/cell80-life/` (`src/rng.rs`, `src/contention.rs`,
-`src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/ex0.rs`, `src/world2d.rs`,
-`src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`, `src/bin/ex2_mutation_report.rs`,
-`tests/ex0_*.rs`, `tests/ex1_*.rs`, `tests/ex2_*.rs`) rather than a new crate — deliberate,
+`src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/lineage.rs`, `src/ex0.rs`,
+`src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`,
+`src/bin/ex2_mutation_report.rs`, `src/bin/ex4_lineage_report.rs`, `tests/ex0_*.rs`,
+`tests/ex1_*.rs`, `tests/ex2_*.rs`, `tests/ex4_*.rs`) rather than a new crate — deliberate,
 per the project's current preference to stay inside `experiments/` rather than promote to
 a new workspace member while this stays speculative/off-roadmap.
 
@@ -502,3 +503,133 @@ cargo clippy -p cell80-life --all-targets
 - Confirm the dispatch-count-stays-cheap finding at a larger population scale than this
   pass's ~150–250 (EX-1's 10⁴–10⁵ organism runs, with mutation now turned on).
 - Operator (b) itself — the actual pre-registered comparison this pass explicitly defers.
+
+## EX-4 — the lineage record
+
+**TL;DR: exactly the research artifact the design doc promised, and it worked cleanly on
+the first real run that found a mutation-bearing event.** Every genome is now
+content-addressed (SHA-256 over its 6 heritable fields); a lineage tree built from EX-2's
+existing birth log traces any living organism's genome back to either a genesis organism or
+the specific birth that mutated it in; a detector finds real, sustained plurality shifts in
+which pool member the population favors for a role; and — the actual gate — reverting
+*exactly* the traced mutation and replaying removed the detected shift, while every tick
+before the reverted birth stayed byte-identical to the original run. "Evolution you can
+single-step and diff" is not aspirational here; it ran.
+
+### What was built
+
+- **`lineage.rs`** — `GenomeFields` (the 6 shared heritable fields, hashed once rather than
+  duplicating byte-layout logic across `BirthEvent`/`OrgSnapshot2DGenome`/
+  `StartingGenome2`); `LineageTree` (keyed on `(genome_hash, child_id)`, not hash alone, so
+  two organisms that independently mutate to the *same* genome stay distinct, queryable
+  nodes rather than being silently merged into one with an ambiguous parent);
+  `detect_plurality_events` (a `BTreeMap`-based, lowest-index-wins-ties plurality tracker,
+  sampled every 20 ticks — matching `cell80-life-findings.md`'s own hand-analysis cadence —
+  reporting a "sustained plurality change" only once the new winner holds for `K` further
+  samples, not a single-sample blip); `find_origins` (a backward ancestry walk from the
+  organisms *actually alive and carrying the winning value* at the event tick, not a
+  forward scan that could misattribute an extinct branch). 7 synthetic unit tests
+  (hand-constructed scenarios with a known-by-construction right answer) proved genesis
+  handling, single- and convergent-origin tracing, the tie-break rule, and the
+  sustain/blip distinction — all before ever pointing the detector at a real run.
+- **`ex2.rs`** — additive: `FieldOverride` (six independent skip-flags, one per mutation
+  branch) + `Overrides` (a `child_id`-keyed map) + `run_with_overrides`, sharing a private
+  `run_impl` with the existing `pub fn run` (now a thin, provably-unchanged wrapper —
+  re-verified `ex2_cpu_replay.rs`/`ex2_gpu_vs_cpu.rs` pass identically after the split).
+  Reverting *one field* of *one birth*, not the whole birth, matters in practice: the real
+  event found below shows a single birth mutating two fields at once (`repro_threshold`
+  *and* `repro_promoter` together) — reverting the whole call would have confounded which
+  change caused the detected effect.
+- **`tests/ex4_counterfactual_replay.rs`** — proves the fork mechanism itself, independent
+  of `lineage.rs`'s detection logic: revert one real field from one real birth, and confirm
+  (a) every tick before that birth is byte-identical to baseline, (b) the reverted field now
+  matches the parent's value, (c) the run's overall history hash still diverges afterward
+  (the override wasn't a no-op).
+- **`src/bin/ex4_lineage_report.rs`** — runs a real population, searches (seed ×
+  K ∈ {3,5,10} × role) for a mutation-bearing plurality event, prints the full 6-field diff
+  at the origin, reverts it, replays, and reports the honest outcome either way (causation
+  confirmed, or a redundant-origins finding).
+
+### Receipts
+
+Grazer genome, `ex2_mutation_report.rs`'s same base config (8 initial organisms, 32×32
+world, density 0.2, 2000 ticks, GPU engine), swept across the same 8 seeds
+`cell80-life-findings.md`'s Finding 3 used (plus the running seed `0x5eed_1234_c311_80ff`
+first). The first seed produced no sustained event at all; the second (`seed=1`) produced
+one immediately:
+
+| | value |
+|---|---|
+| role | `repro_promoter` |
+| shift | pool index 37 → 33 |
+| shift tick | 1,080 (K=5, sample every 20 ticks — 100-tick sustain window) |
+| share at shift / peak in window | 35.3% / 41.6% |
+| origins found | 1 (clean — no convergent-origin ambiguity this time) |
+| origin birth | organism 2231 (parent 2059), tick 994 |
+| origin diff | `repro_threshold: 198→192` **and** `repro_promoter: 37→33` in the same birth |
+| pre-fork ticks identical after revert | true (every tick < 994) |
+| event recurs after reverting just `repro_promoter`? | **no — causation confirmed** |
+
+`cargo test -p cell80-life` (both platforms) and `cargo clippy -p cell80-life
+--all-targets` are green, including the two new EX-4-specific tests and all of EX-0/1/2's
+existing tests, unchanged.
+
+### What this shows
+
+- The full pipeline works end-to-end on a real run, not just the synthetic unit tests:
+  hash → tree → sustained-event detection → backward-traced single origin → full-diff
+  report → single-field revert → byte-identical-before-the-fork replay → the event's
+  disappearance, all from one seed sweep with no cherry-picking beyond "first
+  mutation-bearing event found."
+- The full-diff design decision paid off immediately in practice, not just in principle:
+  the real origin birth mutated *two* fields at once. Reporting only the flagged role would
+  have hidden that `repro_threshold` moved in the same event — exactly the
+  misrepresentation the design was built to avoid.
+- The event is honestly modest, and reported as such: a 35–42% plurality shift among (at
+  the time) dozens of competing pool indices, not a majority and nowhere near
+  population-genetics fixation — consistent with EX-2's own dispatch-count receipts, and
+  exactly the reconciliation the design doc's language needed.
+
+### What this does *not* show
+
+- **Only one event was traced end-to-end.** The report searches seeds until it finds a
+  *mutation-bearing* candidate and stops there (by design — this is a demonstration that
+  the mechanism works, not a survey of how many events a run contains). A convergent-origin
+  case (>1 origin, which the synthetic tests already prove the machinery handles) was not
+  exercised on real data this pass — the real run that came closest (`seed=0x5eed...`'s
+  first candidate, before the search moved to `seed=1`) was a 6-origin, all-genesis
+  reversion-to-baseline case, itself an honestly-reported outcome but not the flagship one.
+- **The counterfactual reverted the *traced* origin only, not every conceivable path to the
+  same value.** "The event no longer occurs" confirms this specific mutation was
+  sufficient/necessary for *this* instance of the shift; it does not prove no other
+  lineage could ever reach the same plurality by a different route in a longer run.
+- **Numeric-field "fixation" is out of scope**, per the design decision — `decay_amount`/
+  `repro_threshold`/`repro_give_pct` drift continuously and are not modeled as discrete
+  winners here (see `cell80-life-findings.md` Finding 3 for that mechanism).
+- **The K∈{3,5,10} sensitivity sweep is implemented and used to pick a candidate, but this
+  section doesn't report the full comparative table** (how many events each K finds across
+  all seeds) — the report binary optimizes for finding one clean, real demonstration, not
+  for a systematic K-sensitivity census.
+
+### Reproduce it
+
+```
+cargo test -p cell80-life --lib lineage                       # any platform, the 7 synthetic unit tests
+cargo test -p cell80-life --test ex4_counterfactual_replay      # any platform
+cargo run -p cell80-life --release --bin ex4_lineage_report     # macOS (Metal) only, ~1-2 min
+cargo clippy -p cell80-life --all-targets
+```
+
+### What would raise confidence further
+
+- Deliberately search for (or construct) a convergent-origin case in a real run, not just
+  the synthetic test, to see the multi-origin report path exercised on GPU-produced data.
+- Report the full K-sensitivity table (event counts at K=3/5/10 across all 9 seeds), not
+  just the one candidate used for the demonstration.
+- Extend the origin-tracing/diff report to numeric fields too, even though they're not
+  modeled as discrete "fixation" events — a births-log-level diff is still meaningful for
+  them.
+- Run the counterfactual multiple times at different points to see whether *any* mutation
+  reaching this same pool index would eventually be found again given enough ticks/seeds —
+  i.e., is this specific mutation's disappearance a genuine dead end for the population, or
+  just a delay before an equivalent one reappears independently.

@@ -15,6 +15,7 @@ pub mod ex1;
 pub mod ex2;
 pub mod genes;
 pub mod history;
+pub mod lineage;
 pub mod pools;
 pub mod rng;
 pub mod world2d;

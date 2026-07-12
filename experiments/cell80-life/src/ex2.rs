@@ -21,6 +21,7 @@
 //!
 //! Movement/contention/world are otherwise unchanged from `ex1.rs` — EX-2 only makes genome
 //! *content* heterogeneous, not the tick's control-flow shape.
+use std::collections::HashMap;
 use std::path::Path;
 
 use crate::contention;
@@ -125,6 +126,26 @@ struct Org {
     genome: OrgGenome,
 }
 
+/// EX-4's counterfactual mechanism: force one specific birth's `mutate()` call to skip one
+/// specific field, so it inherits the parent's value there instead of the mutated one —
+/// "vary the *one* mutation," not the whole birth (`mutate()`'s 6 branches are
+/// independently RNG-gated, so a single birth can flip more than one field at once;
+/// reverting the whole call would confound attribution to just the field under test).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FieldOverride {
+    pub skip_decay: bool,
+    pub skip_threshold: bool,
+    pub skip_give_pct: bool,
+    pub skip_hungry_swap: bool,
+    pub skip_repro_swap: bool,
+    pub skip_sense_swap: bool,
+}
+
+/// Per-birth overrides, keyed by the child's id (deterministic given `(seed, cfg, starting,
+/// pools)` — see `run_with_overrides`'s doc comment for why the same id names the same
+/// birth across a baseline run and its counterfactual replay).
+pub type Overrides = HashMap<u32, FieldOverride>;
+
 fn clamp_u16(v: i32, bounds: (i32, i32)) -> u16 {
     v.clamp(bounds.0, bounds.1) as u16
 }
@@ -134,6 +155,11 @@ fn clamp_u16(v: i32, bounds: (i32, i32)) -> u16 {
 /// new organism is what's being generated), a pure function of `(seed, tick, child_id,
 /// stream)`. Numeric step spans (`%3-1`, `%21-10`, `%11-5`) match `main.rs`'s
 /// `Rng::step(1|10|5)` exactly, for continuity with the one proven reference.
+///
+/// `override_`, when `Some`, forces specific fields to skip their mutation branch entirely
+/// (the child inherits the parent's value there) — EX-4's counterfactual mechanism. Every
+/// stream is a pure function of its four inputs with no shared cursor, so skipping one
+/// field's effect has zero impact on any other field's draw.
 #[allow(clippy::too_many_arguments)]
 fn mutate(
     seed: u64,
@@ -143,23 +169,32 @@ fn mutate(
     hungry_pool_len: u16,
     repro_pool_len: u16,
     sense_pool_len: u16,
+    override_: Option<&FieldOverride>,
 ) -> OrgGenome {
     let mut child = parent.clone();
+    let ov = override_.copied().unwrap_or_default();
 
-    if rng::chance(seed, tick, child_id, rng::MUTATE_DECAY_CHANCE_STREAM, NUMERIC_MUTATE_PCT) {
+    if !ov.skip_decay
+        && rng::chance(seed, tick, child_id, rng::MUTATE_DECAY_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+    {
         let step = (rng::draw(seed, tick, child_id, rng::MUTATE_DECAY_MAGNITUDE_STREAM) % 3) as i32 - 1;
         child.decay_amount = clamp_u16(child.decay_amount as i32 + step, DECAY_BOUNDS);
     }
-    if rng::chance(seed, tick, child_id, rng::MUTATE_THRESHOLD_CHANCE_STREAM, NUMERIC_MUTATE_PCT) {
+    if !ov.skip_threshold
+        && rng::chance(seed, tick, child_id, rng::MUTATE_THRESHOLD_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+    {
         let step = (rng::draw(seed, tick, child_id, rng::MUTATE_THRESHOLD_MAGNITUDE_STREAM) % 21) as i32 - 10;
         child.repro_threshold = clamp_u16(child.repro_threshold as i32 + step, THRESHOLD_BOUNDS);
     }
-    if rng::chance(seed, tick, child_id, rng::MUTATE_GIVE_PCT_CHANCE_STREAM, NUMERIC_MUTATE_PCT) {
+    if !ov.skip_give_pct
+        && rng::chance(seed, tick, child_id, rng::MUTATE_GIVE_PCT_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+    {
         let step = (rng::draw(seed, tick, child_id, rng::MUTATE_GIVE_PCT_MAGNITUDE_STREAM) % 11) as i32 - 5;
         child.repro_give_pct = clamp_u16(child.repro_give_pct as i32 + step, GIVE_PCT_BOUNDS);
     }
 
-    if hungry_pool_len >= 2
+    if !ov.skip_hungry_swap
+        && hungry_pool_len >= 2
         && rng::chance(seed, tick, child_id, rng::MUTATE_HUNGRY_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
     {
         child.hungry_promoter = rng::pick_other_index(
@@ -167,7 +202,8 @@ fn mutate(
             child.hungry_promoter, hungry_pool_len,
         );
     }
-    if repro_pool_len >= 2
+    if !ov.skip_repro_swap
+        && repro_pool_len >= 2
         && rng::chance(seed, tick, child_id, rng::MUTATE_REPRO_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
     {
         child.repro_promoter = rng::pick_other_index(
@@ -175,7 +211,8 @@ fn mutate(
             child.repro_promoter, repro_pool_len,
         );
     }
-    if sense_pool_len >= 2
+    if !ov.skip_sense_swap
+        && sense_pool_len >= 2
         && rng::chance(seed, tick, child_id, rng::MUTATE_SENSE_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
     {
         child.sense_move = rng::pick_other_index(
@@ -187,11 +224,44 @@ fn mutate(
     child
 }
 
+/// The original, single-genome-per-run engine — unchanged signature and behavior from
+/// before EX-4 (delegates to `run_impl` with no overrides, provably a no-op path: every
+/// override lookup below becomes `None`).
 pub fn run(
     engine: EngineKind,
     cfg: &RunConfig2DGenome,
     starting: &StartingGenome2,
     pools: &GenePools,
+) -> RunOutput2DGenome {
+    run_impl(engine, cfg, starting, pools, None)
+}
+
+/// EX-4's counterfactual entry point: identical to `run`, except specific births (keyed by
+/// child id) skip specific mutation fields per `overrides`. Because `child_id` assignment
+/// is a pure function of `(seed, cfg, starting, pools)` — a plain monotonic counter,
+/// incremented only while iterating organisms by `Vec` index, never via a `HashMap`/
+/// `HashSet` — the same id from a baseline `run()` names the same birth event here. Every
+/// tick strictly before an overridden birth is therefore byte-identical between the two
+/// calls; ticks at and after it can genuinely diverge (the reverted organism now behaves
+/// differently, which can ripple into who else reproduces/dies/contests a tile) — compare
+/// post-fork state by genome value / population statistics, never by raw `child_id`
+/// equality across the two runs.
+pub fn run_with_overrides(
+    engine: EngineKind,
+    cfg: &RunConfig2DGenome,
+    starting: &StartingGenome2,
+    pools: &GenePools,
+    overrides: &Overrides,
+) -> RunOutput2DGenome {
+    run_impl(engine, cfg, starting, pools, Some(overrides))
+}
+
+fn run_impl(
+    engine: EngineKind,
+    cfg: &RunConfig2DGenome,
+    starting: &StartingGenome2,
+    pools: &GenePools,
+    overrides: Option<&Overrides>,
 ) -> RunOutput2DGenome {
     let mut world = World2D::new(
         cfg.seed,
@@ -374,6 +444,7 @@ pub fn run(
                 let child_genome = mutate(
                     cfg.seed, tick, id, &orgs[i].genome,
                     hungry_pool_len, repro_pool_len, sense_pool_len,
+                    overrides.and_then(|o| o.get(&id)),
                 );
                 all_births.push(BirthEvent {
                     child_id: id,

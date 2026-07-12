@@ -199,6 +199,13 @@ pub fn sum_steps(batches: &[&[(u16, u64)]]) -> u64 {
 /// how many distinct pool members are actually in use, not by population size — cheap while
 /// genome diversity stays low, the expected regime early in a mutation-driven run (see the
 /// design doc's dispatch-count-as-a-receipt discipline).
+///
+/// Determinism note (load-bearing for EX-2/EX-4's replay guarantees): the internal
+/// `HashMap`'s iteration order is genuinely process-randomized, but every result is
+/// scattered back by *original index* (`out[i] = ...`), never appended in group-iteration
+/// order — so no element's value can depend on which group the map happens to visit first.
+/// A future "simplification" that concatenated group outputs in iteration order instead of
+/// scattering by index would silently reintroduce real nondeterminism here.
 pub fn batch_run_grouped(
     engine: EngineKind,
     pool: &[CompiledGene],
