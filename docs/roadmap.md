@@ -451,25 +451,42 @@ strictly by sequence; the library grows by eval need:
    of the main pitch. Honestly gated: a learned value heuristic only *ties* the hand Hamming
    heuristic at equal budget so far (a kill gate, not a given). See `examples/composition_eval`.
 
-   **Update (2026-07-12): the deterministic-ecology programme's EX-2 result is independent
-   evidence for *what search space this mode should use*.** Pre-registration expected GP-style
-   brittleness (most random bytecode edits dead-on-arrival); instead, mutating by **wiring
-   already-verified cells into each other** (`g(a0,…,f(a0..aN),…,aN)`, `linearize` doing the
-   inlining — never editing a raw op stream) gave 57.7%/83.3% viable-by-construction
-   candidates, novel by fingerprint, and actually adopted by the ecology (29.6% of births in
-   an extended-pool run). Composition of bounded, sandboxed, already-correct functions is a
-   *much* better-behaved search space than op-stream mutation, and it inherits the sandbox for
-   free — `evolved-cells` found the same shape from the other direction (GA/MCTS beating A* on
-   lossy ops). Two independent experiments now agree: **the productive search space for this
-   mode is typed composition of verified cells, not bytecode edits.**
-   **A sharper caveat from the same run, worth designing any future eval around**: 29.6%
-   adoption is not evidence of fitness — composed-gene carriers averaged *fewer* direct
-   children than disk-gene carriers in that run (0.829 vs 1.067). A sandboxed candidate can't
-   crash or trap fatally, so nothing culls a mediocre one back out once it drifts in; adoption
-   here tracked drift/mutation pressure, not selection. If this synthesis mode's own eval ever
-   measures "candidates admitted/viable" as its success metric, it will report success while
-   producing noise — measure "outperforms its parent/alternative," not admission rate. Full
-   receipts: `experiments/deterministic-ecology-findings.md`'s `## EX-2` section.
+   **Update (2026-07-12; corrected 2026-07-13): the deterministic-ecology programme's EX-2
+   result is independent evidence for *what search space this mode should use* — and a worked
+   lesson in how to read it.** Pre-registration expected GP-style brittleness (most random
+   bytecode edits dead-on-arrival); instead, mutating by **wiring already-verified cells into
+   each other** (`g(a0,…,f(a0..aN),…,aN)`, `linearize` doing the inlining — never editing a raw
+   op stream) gave 57.7%/83.3% viable-by-construction candidates, novel by fingerprint, and
+   structurally unreachable by the swap-only pool. Composition of bounded, sandboxed,
+   already-correct functions is a *much* better-behaved search space than op-stream mutation,
+   and inherits the sandbox for free — `evolved-cells` found the same shape from the other
+   direction (GA/MCTS beating A* on lossy ops). **The load-bearing claim: the productive search
+   space for this mode is typed composition of verified cells, not bytecode edits.** It rests
+   on the viability rate and reachability — *not* on the ecology finding the candidates useful,
+   which it did not.
+
+   **Correction (the earlier draft of this note had the sign wrong, and the mistake is worth
+   keeping visible).** It read "29.6% of births carry a composed gene" as *adoption*. It isn't:
+   the swap resamples uniformly over a pool composition made 250/293 ≈ 85% composed, so neutral
+   drift alone predicts ~85% composed births — 29.6% is *far below* that, i.e. selection
+   *against*. A per-candidate counterfactual (revert one composed-gene birth, replay the
+   identical world, compare the same organism's offspring — `ex4_fitness_counterfactual.rs`,
+   commit `e470083`) confirms it: **0/15 composed genes were fitter than the disk gene they
+   replaced; every organism positioned to reproduce lost by switching.** Uniform purifying
+   selection — so the old "nothing culls a sandboxed mediocre candidate" worry was itself wrong
+   here; fecundity selection culled them fine.
+
+   **The design lesson, now evidenced rather than cautioned:** composition cheaply generates a
+   large *legal* space (58–83% valid) almost none of which is *useful* under a given fitness —
+   exactly a generator that needs a good *selector*, and survival in a toy ecology is a bad one
+   (reproducing says nothing about whether a function is worth having). Score
+   **"outperforms its parent/alternative," never admission or adoption rate.** The good selector
+   for *algorithm* discovery is **cost pressure under proved behavioural equivalence** (exact
+   `Report.cycles` as fitness, full-domain equality as the constraint) — the loop pre-registered
+   in `cell-cost-discovery-preregistration.md`, for which this EX-2 result is the empirical
+   foundation: cheap legal generation is real, so the research question is entirely in the
+   selector. Full receipts: `experiments/deterministic-ecology-findings.md`'s `## EX-2` section
+   (operator (b) + its *Follow-up*).
 9. **`cell_solve` — the math campaign's M2, ✓ shipped (2026-07-05).** The plan IR
    (`cell80/src/plan.rs`) is a wire format between model and host, never executable: a model
    extracts typed, unit-tagged quantities + an op chain (`add`/`sub`/`mul`/`div`) + a target,
