@@ -1,0 +1,19 @@
+# Runs the protocol pre-registered in ../cell-cost-discovery-preregistration.md: for every
+# total unary u16->u16 stdlib cell, search pipeline compositions of other stdlib cells for a
+# full-domain-identical implementation at strictly lower mean cost on the Z80 body, with
+# mul/div traps repriced to their measured software-replacement cost (P is measured in-run
+# from a trap-free shift-add mul16 vs a plain `a * b` trap cell — the substrate prices its
+# own trap). Equivalence is exact table equality over all 65,536 inputs (Tier A, proved),
+# never a fingerprint sample.
+[package]
+name = "cell-cost-discovery"
+description = "Pre-registered test: does cost pressure find cheaper proved-identical cells?"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+cell80 = { path = "../../cell80" }
+rayon = "1"
