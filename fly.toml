@@ -1,3 +1,10 @@
+# Pinned to a single machine (`fly scale count 1 --app cell80-mcp`) on purpose: the
+# cache backing cell_run's `cached` field is in-process memory, not shared across
+# machines. With >1 machine, a seed request and a later ask can land on different
+# machines and the "cached: true" demo silently breaks. At count=1 there's only ever
+# one machine to land on, so any client (a viewer's own chat_demo.py included) gets
+# consistent cached/fresh behavior against the public endpoint with zero setup. See
+# docs/scripts/video-1-the-memory-you-cant-lie-to.md, Recording pack section.
 app = "cell80-mcp"
 primary_region = "lhr"
 
