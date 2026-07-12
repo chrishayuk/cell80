@@ -66,7 +66,9 @@ mod macos {
             (x & 0xFFFF) as u16
         }
         fn probes(&mut self, n: usize) -> Vec<[u16; 3]> {
-            (0..n).map(|_| [self.next(), self.next(), self.next()]).collect()
+            (0..n)
+                .map(|_| [self.next(), self.next(), self.next()])
+                .collect()
         }
     }
 
@@ -295,7 +297,12 @@ mod macos {
                 let end = (start + tile).min(n);
                 let lib: Vec<LibraryCell> = cells[start..end]
                     .iter()
-                    .map(|(_, funcs, consts)| LibraryCell { funcs, consts, entry: "run", state_len: 0 })
+                    .map(|(_, funcs, consts)| LibraryCell {
+                        funcs,
+                        consts,
+                        entry: "run",
+                        state_len: 0,
+                    })
                     .collect();
                 modules.push(compile_library(&lib).unwrap());
                 start = end;

@@ -48,7 +48,9 @@ fn main() {
         }
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = std::fs::read_to_string(&path).unwrap();
-        let Ok(sig) = rustz80::entry_signature(&src, "run") else { continue };
+        let Ok(sig) = rustz80::entry_signature(&src, "run") else {
+            continue;
+        };
         let value = sig.state.is_empty()
             && sig.params.iter().all(|(_, ty)| {
                 matches!(ty.as_str(), "u8" | "u16" | "i16" | "u32" | "i32" | "bool")
@@ -57,14 +59,19 @@ fn main() {
             continue;
         }
         let Ok(funcs) = lower(&src) else { continue };
-        let Ok(prog) = linearize(&funcs, "run") else { continue };
+        let Ok(prog) = linearize(&funcs, "run") else {
+            continue;
+        };
         if prog.n_locals > 64 {
             continue;
         }
         let cart = match Cartridge::compile(
             &src,
             CellConfig::sandboxed(),
-            CartridgeOpts { id: Some(name.clone()), ..Default::default() },
+            CartridgeOpts {
+                id: Some(name.clone()),
+                ..Default::default()
+            },
         ) {
             Ok(c) => c,
             Err(_) => continue,
@@ -78,7 +85,10 @@ fn main() {
     let n = names.len();
     println!("batched library fingerprinting\n");
     println!("value cells (compile ∩ linearize): {n}");
-    println!("probe bank: {} probes (DEFAULT_PROBES)\n", DEFAULT_PROBES.len());
+    println!(
+        "probe bank: {} probes (DEFAULT_PROBES)\n",
+        DEFAULT_PROBES.len()
+    );
 
     // ── Scalar oracle: Fingerprint::of per cell (the admission path today) ──
     let t = Instant::now();
@@ -136,20 +146,40 @@ fn main() {
         let _ = batch.run(&big);
         let big_secs = t.elapsed().as_secs_f64();
 
-        println!("\nindex-build cost ({} cells × {} probes = {} evals):", n, np, n * np);
+        println!(
+            "\nindex-build cost ({} cells × {} probes = {} evals):",
+            n,
+            np,
+            n * np
+        );
         println!("  scalar (Runner per cell): {:>8.2} ms", scalar_secs * 1e3);
-        println!("  batched (build+dispatch): {:>8.2} ms   ← {:.1}× SLOWER at this scale", gpu_secs * 1e3, gpu_secs / scalar_secs);
+        println!(
+            "  batched (build+dispatch): {:>8.2} ms   ← {:.1}× SLOWER at this scale",
+            gpu_secs * 1e3,
+            gpu_secs / scalar_secs
+        );
         println!(
             "  batched dispatch alone, {} probes: {:.2} ms ({:.2e} evals/s)",
             big.len(),
             big_secs * 1e3,
             (n * big.len()) as f64 / big_secs
         );
-        println!("\nHonest finding: at today's {n}-cell library × {np}-probe bank the workload is too", );
-        println!("small — the scalar Runner loop wins fingerprinting (as it did per-query routing).");
-        println!("The GPU dispatch itself is fast ({:.1}M evals/s above); its win is asymptotic —", (n * big.len()) as f64 / big_secs / 1e6);
-        println!("flat/no-cliff to 500k cells (priced earlier). The backend is a SCALE play for the");
-        println!("\"millions of tools\" future, not a win on the current library. Correct + ready for");
+        println!(
+            "\nHonest finding: at today's {n}-cell library × {np}-probe bank the workload is too",
+        );
+        println!(
+            "small — the scalar Runner loop wins fingerprinting (as it did per-query routing)."
+        );
+        println!(
+            "The GPU dispatch itself is fast ({:.1}M evals/s above); its win is asymptotic —",
+            (n * big.len()) as f64 / big_secs / 1e6
+        );
+        println!(
+            "flat/no-cliff to 500k cells (priced earlier). The backend is a SCALE play for the"
+        );
+        println!(
+            "\"millions of tools\" future, not a win on the current library. Correct + ready for"
+        );
         println!("when the library is big enough to cross over; scalar stays right for today.");
     }
 }

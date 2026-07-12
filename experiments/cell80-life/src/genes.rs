@@ -214,7 +214,8 @@ pub fn batch_run_grouped(
 ) -> Vec<(u16, u64)> {
     debug_assert_eq!(role_idx.len(), inputs.len());
     let mut out = vec![(0u16, 0u64); inputs.len()];
-    let mut positions: std::collections::HashMap<u16, Vec<usize>> = std::collections::HashMap::new();
+    let mut positions: std::collections::HashMap<u16, Vec<usize>> =
+        std::collections::HashMap::new();
     for (i, &idx) in role_idx.iter().enumerate() {
         positions.entry(idx).or_default().push(i);
     }

@@ -55,7 +55,15 @@ fn chain_func(chain: &[usize], unary: &[String]) -> Func {
     for &c in chain {
         e = Expr::Call(unary[c].clone(), vec![e]);
     }
-    Func { params: 1, n_locals: 1, body: vec![], ret: vec![e], wide_param: false, wide_second: false, wide_ret: false }
+    Func {
+        params: 1,
+        n_locals: 1,
+        body: vec![],
+        ret: vec![e],
+        wide_param: false,
+        wide_second: false,
+        wide_ret: false,
+    }
 }
 
 /// Linearize a chain against the library pool (inlines the cell calls).
@@ -111,7 +119,9 @@ fn main() {
         }
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = std::fs::read_to_string(&path).unwrap();
-        let Ok(sig) = rustz80::entry_signature(&src, "run") else { continue };
+        let Ok(sig) = rustz80::entry_signature(&src, "run") else {
+            continue;
+        };
         let arity1 = sig.state.is_empty()
             && sig.params.len() == 1
             && matches!(sig.params[0].1.as_str(), "u8" | "u16" | "i16" | "bool");
@@ -129,7 +139,10 @@ fn main() {
     }
 
     println!("GPU cell growth by evolution over the existing library\n");
-    println!("building blocks: {} unary cells (single-func, inlinable)", unary.len());
+    println!(
+        "building blocks: {} unary cells (single-func, inlinable)",
+        unary.len()
+    );
 
     // Target: a 2-cell composition that is a genuine gap (behaviourally distinct
     // from every library cell). Pick the first pair whose composition is novel.
@@ -146,7 +159,12 @@ fn main() {
                 // novel ⇒ not behaviourally identical to any single library cell
                 let dup = lib_fp.iter().any(|(_, f)| agreement(&tfp, f) >= 1.0);
                 // non-degenerate ⇒ actually varies over the probes
-                let varies = tfp.iter().flatten().collect::<std::collections::HashSet<_>>().len() > 3;
+                let varies = tfp
+                    .iter()
+                    .flatten()
+                    .collect::<std::collections::HashSet<_>>()
+                    .len()
+                    > 3;
                 if !dup && varies {
                     target = Some((a, b, tp));
                     break 'pick;
@@ -158,10 +176,18 @@ fn main() {
         println!("no novel 2-cell target found");
         return;
     };
-    let wants: Vec<u16> = probes.iter().map(|p| eval(&target_prog, p[0]).unwrap()).collect();
+    let wants: Vec<u16> = probes
+        .iter()
+        .map(|p| eval(&target_prog, p[0]).unwrap())
+        .collect();
     let np = probes.len();
-    println!("target (a gap): {}({}(x)) — a composition no single cell reproduces", unary[tb], unary[ta]);
-    println!("search: population {POP}, chains of ≤{MAX_LEN} cells, scored on GPU per generation\n");
+    println!(
+        "target (a gap): {}({}(x)) — a composition no single cell reproduces",
+        unary[tb], unary[ta]
+    );
+    println!(
+        "search: population {POP}, chains of ≤{MAX_LEN} cells, scored on GPU per generation\n"
+    );
 
     #[cfg(not(target_os = "macos"))]
     {
@@ -205,15 +231,25 @@ fn main() {
             total_dt += t.elapsed().as_secs_f64();
             total_evals += progs.len() * np;
 
-            let exact = |bi: usize| (0..np).filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k]).count();
+            let exact = |bi: usize| {
+                (0..np)
+                    .filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k])
+                    .count()
+            };
             // fitness = correct output bits (gradient); solution = all probes exact
             let fit: Vec<usize> = slot
                 .iter()
                 .map(|s| match s {
-                    Some(bi) => (0..np).map(|k| {
-                        let o = out[bi * np + k];
-                        if o[3] == 0 { 16 - (o[0] ^ wants[k]).count_ones() as usize } else { 0 }
-                    }).sum(),
+                    Some(bi) => (0..np)
+                        .map(|k| {
+                            let o = out[bi * np + k];
+                            if o[3] == 0 {
+                                16 - (o[0] ^ wants[k]).count_ones() as usize
+                            } else {
+                                0
+                            }
+                        })
+                        .sum(),
                     None => 0,
                 })
                 .collect();
@@ -231,9 +267,16 @@ fn main() {
 
             // next gen: elitism (parsimony tie-break) + mutation + immigrants
             let mut order: Vec<usize> = (0..POP).collect();
-            order.sort_by(|&a, &b| fit[b].cmp(&fit[a]).then(population[a].len().cmp(&population[b].len())));
+            order.sort_by(|&a, &b| {
+                fit[b]
+                    .cmp(&fit[a])
+                    .then(population[a].len().cmp(&population[b].len()))
+            });
             let elite_n = (POP / 10).max(2);
-            let elite: Vec<Vec<usize>> = order[..elite_n].iter().map(|&i| population[i].clone()).collect();
+            let elite: Vec<Vec<usize>> = order[..elite_n]
+                .iter()
+                .map(|&i| population[i].clone())
+                .collect();
             let mut next = elite.clone();
             while next.len() < POP {
                 if rng.below(100) < 15 {
@@ -306,7 +349,10 @@ fn main() {
                     println!("\n  → full-domain-correct but close to `{best_id}` — admission's dedup gate would judge.");
                 }
             }
-            None => println!("not grown in {MAX_GEN} generations (best {}/{np})", best_curve.iter().max().unwrap()),
+            None => println!(
+                "not grown in {MAX_GEN} generations (best {}/{np})",
+                best_curve.iter().max().unwrap()
+            ),
         }
 
         println!(

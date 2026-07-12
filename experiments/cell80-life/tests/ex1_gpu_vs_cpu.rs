@@ -41,8 +41,16 @@ fn gpu_matches_cpu_reference_2d() {
 
     assert_eq!(cpu.ticks.len(), gpu.ticks.len());
     for (a, b) in cpu.ticks.iter().zip(&gpu.ticks) {
-        assert_eq!(a, b, "tick {} diverged between CPU-reference and GPU (2D)", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between CPU-reference and GPU (2D)",
+            a.tick
+        );
     }
     assert_eq!(cpu.history_hash, gpu.history_hash);
-    assert!(cpu.births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        cpu.births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 }

@@ -32,11 +32,11 @@
 
 use cell80_core::ir::{BinOp, Cmp, Cond, Expr, Func, Stmt, Width};
 
+/// Inputs consumed per thread (the register-arg triple).
+pub use crate::IN_STRIDE;
 /// Outputs produced per (cell, probe): `[r0, r1, r2, status, steps_lo, steps_hi]`
 /// — the same sextet the compiled backend produces.
 pub use crate::OUT_STRIDE;
-/// Inputs consumed per thread (the register-arg triple).
-pub use crate::IN_STRIDE;
 
 /// Fixed operand-stack cap (note 4), in stack entries — matches the kernel's
 /// MAX_STACK. A u32 uses two entries. Cells whose static max depth exceeds this
@@ -55,7 +55,12 @@ pub(crate) enum Inst {
     Bin(BinOp, Width),
     /// Shift by a compile-time-literal amount (the RHS `Interp` never evaluates):
     /// pop a, push the shifted value. `signed` selects arithmetic `>>` (SWord).
-    ShiftLit { left: bool, k: u32, w: Width, signed: bool },
+    ShiftLit {
+        left: bool,
+        k: u32,
+        w: Width,
+        signed: bool,
+    },
     /// Comparison as a value/condition: pop b, pop a, push `(a cmp b) as 1|0`.
     Cmp(Cmp, bool),
     /// Truncate to 8 bits: pop a, push `a & 0xFF`.
@@ -90,7 +95,11 @@ pub(crate) enum Inst {
     /// i32 div/rem (MIN/-1 guarded on GPU — 32-bit div overflows, unlike 16-bit).
     Bin32(BinOp, bool),
     /// Pop a(lo,hi); push the shift by literal `k` as (lo,hi).
-    Shift32 { left: bool, k: u8, signed: bool },
+    Shift32 {
+        left: bool,
+        k: u8,
+        signed: bool,
+    },
     /// Pop b(lo,hi) then a(lo,hi); push `(a cmp b) as 1|0` (a u16 bool).
     Cmp32(Cmp, bool),
     /// Sign-extend: pop lo (u16), push lo then the high word (0xFFFF if lo<0 else 0).
@@ -117,9 +126,9 @@ pub struct CellProgram {
 /// coverage histogram (the empirical input to what to support next).
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Bail {
-    ResidualCall,        // multi-call-site helper survived inlining (note 2)
-    WideValue,           // 32-bit / f32 node or wide param/ret
-    Memory,              // array / pointer / peek-poke / port
+    ResidualCall, // multi-call-site helper survived inlining (note 2)
+    WideValue,    // 32-bit / f32 node or wide param/ret
+    Memory,       // array / pointer / peek-poke / port
     UnsupportedExpr(&'static str),
     UnsupportedStmt(&'static str),
     StackTooDeep,
@@ -129,14 +138,14 @@ pub enum Bail {
 /// break/continue targets. Labels are allocated up front and resolved to
 /// instruction indices in a final fixup pass.
 struct Lin<'a> {
-    funcs: &'a [(String, Func)],    // for full inlining of residual calls (note 2)
+    funcs: &'a [(String, Func)], // for full inlining of residual calls (note 2)
     code: Vec<Inst>,
-    labels: Vec<usize>,             // label id → instruction index (filled by `place`)
-    loops: Vec<(usize, usize)>,     // (continue target, break target) per enclosing loop
-    ret_ctx: Vec<(usize, bool)>,    // (inline-return label, callee returns u32); empty ⇒ top level ⇒ Ret
-    frame_base: usize,              // current frame's slot offset (0 ⇒ entry frame)
-    slots_used: usize,              // high-water mark of allocated slots
-    wide_ret: bool,                 // entry returns u32 (Ret produces 2 words)
+    labels: Vec<usize>,         // label id → instruction index (filled by `place`)
+    loops: Vec<(usize, usize)>, // (continue target, break target) per enclosing loop
+    ret_ctx: Vec<(usize, bool)>, // (inline-return label, callee returns u32); empty ⇒ top level ⇒ Ret
+    frame_base: usize,           // current frame's slot offset (0 ⇒ entry frame)
+    slots_used: usize,           // high-water mark of allocated slots
+    wide_ret: bool,              // entry returns u32 (Ret produces 2 words)
     cur_depth: usize,
     max_depth: usize,
 }
@@ -204,7 +213,12 @@ impl<'a> Lin<'a> {
                 self.expr(inner)?;
                 self.emit(Inst::Trunc);
             }
-            Expr::Cmp { cmp, lhs, rhs, signed } => {
+            Expr::Cmp {
+                cmp,
+                lhs,
+                rhs,
+                signed,
+            } => {
                 self.expr(lhs)?;
                 self.expr(rhs)?;
                 self.emit(Inst::Cmp(*cmp, *signed));
@@ -256,7 +270,12 @@ impl<'a> Lin<'a> {
                 self.expr32(inner)?;
                 self.emit(Inst::Pop); // drop the high word, keep low
             }
-            Expr::Cmp32 { cmp, lhs, rhs, signed } => {
+            Expr::Cmp32 {
+                cmp,
+                lhs,
+                rhs,
+                signed,
+            } => {
                 self.expr32(lhs)?;
                 self.expr32(rhs)?;
                 self.emit(Inst::Cmp32(*cmp, *signed));
@@ -303,7 +322,9 @@ impl<'a> Lin<'a> {
                     self.place(end);
                 }
             }
-            Expr::ShiftVar { .. } => return Err(Bail::UnsupportedExpr("ShiftVar (runtime amount)")),
+            Expr::ShiftVar { .. } => {
+                return Err(Bail::UnsupportedExpr("ShiftVar (runtime amount)"))
+            }
             // `halt(code)`: node `Step` (emitted above) then the code subtree
             // (its own ticks), then stop — mirrors `eval16(Halt)` tick + code eval.
             Expr::Halt(code) => {
@@ -356,9 +377,18 @@ impl<'a> Lin<'a> {
                     self.emit(Inst::Bin32(*op, *signed));
                 }
             },
-            Expr::Shift32 { left, e: inner, k, signed } => {
+            Expr::Shift32 {
+                left,
+                e: inner,
+                k,
+                signed,
+            } => {
                 self.expr32(inner)?;
-                self.emit(Inst::Shift32 { left: *left, k: *k, signed: *signed });
+                self.emit(Inst::Shift32 {
+                    left: *left,
+                    k: *k,
+                    signed: *signed,
+                });
             }
             // A call in u32 position: inline it; it must be wide-returning
             // (`Interp` errors on a narrow call in a u32 context).
@@ -449,11 +479,17 @@ impl<'a> Lin<'a> {
                 self.place(end);
             }
             Stmt::Break => {
-                let (_, end) = *self.loops.last().ok_or(Bail::UnsupportedStmt("break outside loop"))?;
+                let (_, end) = *self
+                    .loops
+                    .last()
+                    .ok_or(Bail::UnsupportedStmt("break outside loop"))?;
                 self.emit(Inst::Jmp(end));
             }
             Stmt::Continue => {
-                let (top, _) = *self.loops.last().ok_or(Bail::UnsupportedStmt("continue outside loop"))?;
+                let (top, _) = *self
+                    .loops
+                    .last()
+                    .ok_or(Bail::UnsupportedStmt("continue outside loop"))?;
                 self.emit(Inst::Jmp(top));
             }
             Stmt::ForRange { .. } => return Err(Bail::UnsupportedStmt("ForRange")),
@@ -674,8 +710,8 @@ fn cmp32(cmp: Cmp, l: u32, r: u32, signed: bool) -> bool {
 /// correctness gate compares against `Interp`.
 pub fn cpu_run(prog: &CellProgram, args: &[u16]) -> VmOut {
     let mut slots = vec![0u16; prog.n_locals];
-    for i in 0..prog.params {
-        slots[i] = args.get(i).copied().unwrap_or(0);
+    for (slot, &arg) in slots.iter_mut().zip(args.iter().take(prog.params)) {
+        *slot = arg;
     }
     let mut stack: Vec<u16> = Vec::with_capacity(prog.max_depth + 1);
     let mut steps = 0u64;
@@ -872,7 +908,6 @@ mod gpu {
     const OP_CMP32: u32 = 19;
     const OP_SEXTHI: u32 = 20;
 
-
     fn binop_code(op: BinOp) -> u32 {
         match op {
             BinOp::Add => 0,
@@ -959,7 +994,9 @@ mod gpu {
                     Inst::Popcnt => (OP_POPCNT, 0),
                     Inst::Clz => (OP_CLZ, 0),
                     Inst::Ctz => (OP_CTZ, 0),
-                    Inst::Bin32(op, signed) => (OP_BIN32, binop_code(*op) | ((*signed as u32) << 8)),
+                    Inst::Bin32(op, signed) => {
+                        (OP_BIN32, binop_code(*op) | ((*signed as u32) << 8))
+                    }
                     Inst::Shift32 { left, k, signed } => (
                         OP_SHIFT32,
                         (*k as u32) | ((*left as u32) << 16) | ((*signed as u32) << 17),
@@ -1221,7 +1258,15 @@ kernel void interp(
             let code_buf = mk(&code);
             let table_buf = mk(&table);
             Ok((
-                InterpBatch { device, queue, pipeline, code_buf, table_buf, n_cells, max_tpg },
+                InterpBatch {
+                    device,
+                    queue,
+                    pipeline,
+                    code_buf,
+                    table_buf,
+                    n_cells,
+                    max_tpg,
+                },
                 skipped,
             ))
         }
@@ -1304,14 +1349,26 @@ mod tests {
     fn cell(params: usize, n_locals: usize, body: Vec<Stmt>, ret: Expr) -> Vec<(String, Func)> {
         vec![(
             "run".into(),
-            Func { params, n_locals, body, ret: vec![ret], wide_param: false, wide_second: false, wide_ret: false },
+            Func {
+                params,
+                n_locals,
+                body,
+                ret: vec![ret],
+                wide_param: false,
+                wide_second: false,
+                wide_ret: false,
+            },
         )]
     }
 
     /// cpu_run must match Interp bit-for-bit (values AND steps) on `args`.
     fn assert_parity(funcs: &[(String, Func)], args: &[u16]) {
         let prog = linearize(funcs, "run").expect("linearizes");
-        let mut interp = Interp::new(funcs, Vec::<(&str, &[u8])>::new(), Target::Cell.descriptor());
+        let mut interp = Interp::new(
+            funcs,
+            Vec::<(&str, &[u8])>::new(),
+            Target::Cell.descriptor(),
+        );
         let iref = interp.run("run", args);
         let isteps = interp.steps();
         match (iref, cpu_run(&prog, args)) {
@@ -1327,8 +1384,18 @@ mod tests {
     #[test]
     fn arithmetic_and_steps() {
         // run(x, y) = (x + y) * x   over Word
-        let add = Expr::Bin(BinOp::Add, Box::new(Expr::Var(0)), Box::new(Expr::Var(1)), Width::Word);
-        let mul = Expr::Bin(BinOp::Mul, Box::new(add), Box::new(Expr::Var(0)), Width::Word);
+        let add = Expr::Bin(
+            BinOp::Add,
+            Box::new(Expr::Var(0)),
+            Box::new(Expr::Var(1)),
+            Width::Word,
+        );
+        let mul = Expr::Bin(
+            BinOp::Mul,
+            Box::new(add),
+            Box::new(Expr::Var(0)),
+            Width::Word,
+        );
         let c = cell(2, 2, vec![], mul);
         for args in [[3u16, 4], [0, 0], [65535, 1], [12345, 6789]] {
             assert_parity(&c, &args);
@@ -1338,7 +1405,12 @@ mod tests {
     #[test]
     fn div_by_zero_traps() {
         // run(x) = x / (x - x)  — always divide by zero
-        let z = Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word);
+        let z = Expr::Bin(
+            BinOp::Sub,
+            Box::new(Expr::Var(0)),
+            Box::new(Expr::Var(0)),
+            Width::Word,
+        );
         let d = Expr::Bin(BinOp::Div, Box::new(Expr::Var(0)), Box::new(z), Width::Word);
         assert_parity(&cell(1, 1, vec![], d), &[7]);
     }
@@ -1346,7 +1418,12 @@ mod tests {
     #[test]
     fn signed_min_div_neg_one_wraps() {
         // i16::MIN / -1 wraps to i16::MIN (0x8000), not a trap.
-        let d = Expr::Bin(BinOp::Div, Box::new(Expr::Lit(0x8000)), Box::new(Expr::Lit(0xFFFF)), Width::SWord);
+        let d = Expr::Bin(
+            BinOp::Div,
+            Box::new(Expr::Lit(0x8000)),
+            Box::new(Expr::Lit(0xFFFF)),
+            Width::SWord,
+        );
         assert_parity(&cell(1, 1, vec![], d), &[0]);
     }
 
@@ -1354,12 +1431,42 @@ mod tests {
     fn loop_and_control_flow() {
         // run(n): s=0; i=0; while i<n { s = s + i; i = i + 1 } ; return s
         use cell80_core::ir::{Cmp, Cond};
-        let cond = Cond { cmp: Cmp::Lt, lhs: Expr::Var(2), rhs: Expr::Var(0), signed: false };
+        let cond = Cond {
+            cmp: Cmp::Lt,
+            lhs: Expr::Var(2),
+            rhs: Expr::Var(0),
+            signed: false,
+        };
         let body = vec![
-            Stmt::Assign(1, Expr::Bin(BinOp::Add, Box::new(Expr::Var(1)), Box::new(Expr::Var(2)), Width::Word)),
-            Stmt::Assign(2, Expr::Bin(BinOp::Add, Box::new(Expr::Var(2)), Box::new(Expr::Lit(1)), Width::Word)),
+            Stmt::Assign(
+                1,
+                Expr::Bin(
+                    BinOp::Add,
+                    Box::new(Expr::Var(1)),
+                    Box::new(Expr::Var(2)),
+                    Width::Word,
+                ),
+            ),
+            Stmt::Assign(
+                2,
+                Expr::Bin(
+                    BinOp::Add,
+                    Box::new(Expr::Var(2)),
+                    Box::new(Expr::Lit(1)),
+                    Width::Word,
+                ),
+            ),
         ];
-        let c = cell(1, 3, vec![Stmt::Assign(1, Expr::Lit(0)), Stmt::Assign(2, Expr::Lit(0)), Stmt::While(cond, body)], Expr::Var(1));
+        let c = cell(
+            1,
+            3,
+            vec![
+                Stmt::Assign(1, Expr::Lit(0)),
+                Stmt::Assign(2, Expr::Lit(0)),
+                Stmt::While(cond, body),
+            ],
+            Expr::Var(1),
+        );
         for n in [0u16, 1, 5, 100] {
             assert_parity(&c, &[n]);
         }
@@ -1384,8 +1491,13 @@ mod tests {
             false,
         );
         let helper = Func {
-            params: 1, n_locals: 1, body: vec![], ret: vec![mul],
-            wide_param: false, wide_second: false, wide_ret: true,
+            params: 1,
+            n_locals: 1,
+            body: vec![],
+            ret: vec![mul],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: true,
         };
         let call = Expr::Bin32(
             BinOp::Add,
@@ -1394,8 +1506,13 @@ mod tests {
             false,
         );
         let run = Func {
-            params: 1, n_locals: 1, body: vec![], ret: vec![call],
-            wide_param: false, wide_second: false, wide_ret: true,
+            params: 1,
+            n_locals: 1,
+            body: vec![],
+            ret: vec![call],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: true,
         };
         let funcs = vec![("run".to_string(), run), ("helper".to_string(), helper)];
         for x in [0u16, 5, 1000, 40000] {

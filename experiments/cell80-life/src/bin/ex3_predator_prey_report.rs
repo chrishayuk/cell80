@@ -114,7 +114,10 @@ mod macos {
                 println!(
                     "    seed={seed:<6} ended at tick {} (before the {tail}-tick tail window) \
                      final: grazers={} predators={} kills={}",
-                    out.ticks.len(), out.final_grazers, out.final_predators, out.total_predation_kills
+                    out.ticks.len(),
+                    out.final_grazers,
+                    out.final_predators,
+                    out.total_predation_kills
                 );
             }
         }
@@ -141,10 +144,34 @@ mod macos {
         if std::env::var("SKIP_PART1").is_err() {
             println!("== part 1: world-size/ratio/density calibration sweep ==");
             let configs = [
-                WorldConfig { width: 32, height: 32, grazers: 30, predators: 6, density: 0.25 },
-                WorldConfig { width: 48, height: 48, grazers: 40, predators: 8, density: 0.25 },
-                WorldConfig { width: 48, height: 48, grazers: 60, predators: 10, density: 0.3 },
-                WorldConfig { width: 64, height: 64, grazers: 60, predators: 10, density: 0.25 },
+                WorldConfig {
+                    width: 32,
+                    height: 32,
+                    grazers: 30,
+                    predators: 6,
+                    density: 0.25,
+                },
+                WorldConfig {
+                    width: 48,
+                    height: 48,
+                    grazers: 40,
+                    predators: 8,
+                    density: 0.25,
+                },
+                WorldConfig {
+                    width: 48,
+                    height: 48,
+                    grazers: 60,
+                    predators: 10,
+                    density: 0.3,
+                },
+                WorldConfig {
+                    width: 64,
+                    height: 64,
+                    grazers: 60,
+                    predators: 10,
+                    density: 0.25,
+                },
             ];
 
             let t0 = Instant::now();
@@ -177,8 +204,20 @@ mod macos {
         }
 
         let calibrated_configs = [
-            WorldConfig { width: 48, height: 48, grazers: 60, predators: 10, density: 0.3 },
-            WorldConfig { width: 64, height: 64, grazers: 60, predators: 10, density: 0.25 },
+            WorldConfig {
+                width: 48,
+                height: 48,
+                grazers: 60,
+                predators: 10,
+                density: 0.3,
+            },
+            WorldConfig {
+                width: 64,
+                height: 64,
+                grazers: 60,
+                predators: 10,
+                density: 0.25,
+            },
         ];
 
         if std::env::var("SKIP_PART2").is_err() {

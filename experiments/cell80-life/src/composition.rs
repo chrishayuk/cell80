@@ -213,7 +213,10 @@ pub fn generate_and_gate(
     }
 
     let candidate_fp = Fingerprint::from_value_sextets(&sextets, "u16");
-    if existing_fingerprints.iter().any(|fp| candidate_fp.agreement(fp) >= 1.0) {
+    if existing_fingerprints
+        .iter()
+        .any(|fp| candidate_fp.agreement(fp) >= 1.0)
+    {
         return GenerateOutcome::Duplicate;
     }
 
@@ -226,7 +229,11 @@ pub fn generate_and_gate(
     for_core.push(("run".to_string(), candidate_func));
     for_core.extend(pool.funcs.iter().cloned());
     for (i, p) in DEFAULT_PROBES.iter().enumerate() {
-        let mut interp = Interp::new(&for_core, std::iter::empty::<(&str, &[u8])>(), Target::Cell.descriptor());
+        let mut interp = Interp::new(
+            &for_core,
+            std::iter::empty::<(&str, &[u8])>(),
+            Target::Cell.descriptor(),
+        );
         let core_r0 = match interp.run("run", &p[..pool.arity]) {
             Ok(v) => v.first().copied().unwrap_or(0),
             Err(_) => {
@@ -267,7 +274,12 @@ pub struct GrowthReport {
 /// (a startup-time step, not a live per-tick event). A pure function of `seed`: the whole
 /// sweep, viable candidates included, is reproducible exactly like everything else in this
 /// experiment.
-pub fn grow_pool(pool: &ComposablePool, existing_fingerprints: &[Fingerprint], seed: u64, attempts: u32) -> GrowthReport {
+pub fn grow_pool(
+    pool: &ComposablePool,
+    existing_fingerprints: &[Fingerprint],
+    seed: u64,
+    attempts: u32,
+) -> GrowthReport {
     let mut report = GrowthReport {
         attempts: 0,
         structurally_invalid: 0,
@@ -281,10 +293,17 @@ pub fn grow_pool(pool: &ComposablePool, existing_fingerprints: &[Fingerprint], s
     }
     for attempt in 0..attempts {
         let f_idx = (rng::draw(seed, attempt, 0, COMPOSE_PAIR_STREAM) % n) as u16;
-        let g_idx = rng::pick_other_index(seed, attempt, 0, COMPOSE_PARTNER_STREAM, f_idx, n as u16);
+        let g_idx =
+            rng::pick_other_index(seed, attempt, 0, COMPOSE_PARTNER_STREAM, f_idx, n as u16);
         let slot = (rng::draw(seed, attempt, 0, COMPOSE_SLOT_STREAM) % pool.arity as u32) as usize;
         report.attempts += 1;
-        match generate_and_gate(pool, f_idx as usize, g_idx as usize, slot, existing_fingerprints) {
+        match generate_and_gate(
+            pool,
+            f_idx as usize,
+            g_idx as usize,
+            slot,
+            existing_fingerprints,
+        ) {
             GenerateOutcome::StructurallyInvalid => report.structurally_invalid += 1,
             GenerateOutcome::NotViable => report.not_viable += 1,
             GenerateOutcome::Duplicate => report.duplicate += 1,
@@ -305,10 +324,18 @@ mod tests {
 
     #[test]
     fn grow_pool_is_deterministic_and_accounts_for_every_attempt() {
-        let names = vec!["is_gt".to_string(), "is_ge".to_string(), "sub_sat".to_string(), "add_sat".to_string()];
+        let names = vec![
+            "is_gt".to_string(),
+            "is_ge".to_string(),
+            "sub_sat".to_string(),
+            "add_sat".to_string(),
+        ];
         let pool = ComposablePool::discover(&cells_dir(), &names, 2);
         assert_eq!(pool.funcs.len(), 4);
-        let fps: Vec<Fingerprint> = names.iter().filter_map(|n| fingerprint_pool_member(&cells_dir(), n, 2)).collect();
+        let fps: Vec<Fingerprint> = names
+            .iter()
+            .filter_map(|n| fingerprint_pool_member(&cells_dir(), n, 2))
+            .collect();
 
         let r1 = grow_pool(&pool, &fps, 0x5eed_1234, 50);
         let r2 = grow_pool(&pool, &fps, 0x5eed_1234, 50);
@@ -326,7 +353,11 @@ mod tests {
 
     #[test]
     fn discovers_composable_arity2_pool() {
-        let names = vec!["is_gt".to_string(), "is_ge".to_string(), "sub_sat".to_string()];
+        let names = vec![
+            "is_gt".to_string(),
+            "is_ge".to_string(),
+            "sub_sat".to_string(),
+        ];
         let pool = ComposablePool::discover(&cells_dir(), &names, 2);
         // All three are plain, single-function arithmetic/comparison cells — every one
         // should be composable.

@@ -75,7 +75,10 @@ mod tests {
         let candidates: Vec<(u32, usize)> = vec![(1, 5), (2, 5), (3, 5), (4, 9), (5, 9)];
         let winners = resolve_eat_contention(0x5eed, 3, &candidates);
         assert_eq!(winners.len(), 2, "one winner per contested position");
-        let pos5_winners = [1u32, 2, 3].iter().filter(|id| winners.contains(id)).count();
+        let pos5_winners = [1u32, 2, 3]
+            .iter()
+            .filter(|id| winners.contains(id))
+            .count();
         let pos9_winners = [4u32, 5].iter().filter(|id| winners.contains(id)).count();
         assert_eq!(pos5_winners, 1);
         assert_eq!(pos9_winners, 1);

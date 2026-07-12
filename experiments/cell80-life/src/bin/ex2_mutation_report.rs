@@ -104,9 +104,24 @@ mod macos {
             let repro: HashSet<u16> = rec.organisms.iter().map(|o| o.repro_promoter).collect();
             let sense: HashSet<u16> = rec.organisms.iter().map(|o| o.sense_move).collect();
             let n = rec.organisms.len().max(1) as f64;
-            let decay_avg = rec.organisms.iter().map(|o| o.decay_amount as f64).sum::<f64>() / n;
-            let thresh_avg = rec.organisms.iter().map(|o| o.repro_threshold as f64).sum::<f64>() / n;
-            let give_avg = rec.organisms.iter().map(|o| o.repro_give_pct as f64).sum::<f64>() / n;
+            let decay_avg = rec
+                .organisms
+                .iter()
+                .map(|o| o.decay_amount as f64)
+                .sum::<f64>()
+                / n;
+            let thresh_avg = rec
+                .organisms
+                .iter()
+                .map(|o| o.repro_threshold as f64)
+                .sum::<f64>()
+                / n;
+            let give_avg = rec
+                .organisms
+                .iter()
+                .map(|o| o.repro_give_pct as f64)
+                .sum::<f64>()
+                / n;
             println!(
                 "tick {:>5}  n={:<4}  dispatch-count: hungry={:<3} repro={:<3} sense={:<3}  avg: decay={:.1} thresh={:.0} give={:.0}%",
                 rec.tick,
@@ -183,7 +198,11 @@ mod macos {
                 let closest: Vec<f32> = report
                     .viable
                     .iter()
-                    .map(|c| fps.iter().map(|fp| c.fingerprint.agreement(fp)).fold(0.0_f32, f32::max))
+                    .map(|c| {
+                        fps.iter()
+                            .map(|fp| c.fingerprint.agreement(fp))
+                            .fold(0.0_f32, f32::max)
+                    })
                     .collect();
                 let avg_closest = closest.iter().sum::<f32>() / closest.len() as f32;
                 let max_closest = closest.iter().cloned().fold(0.0_f32, f32::max);
@@ -191,7 +210,10 @@ mod macos {
                     "    closest-existing-match agreement: avg={avg_closest:.3} max={max_closest:.3} (both < 1.0 by construction)"
                 );
                 for c in report.viable.iter().take(3) {
-                    println!("    e.g. {}(..) wired into {}(.., slot {}, ..)", c.f_name, c.g_name, c.slot);
+                    println!(
+                        "    e.g. {}(..) wired into {}(.., slot {}, ..)",
+                        c.f_name, c.g_name, c.slot
+                    );
                 }
             }
         }
@@ -281,10 +303,16 @@ mod macos {
             // disk-gene carriers — no pool-size confound, since both groups exist in the
             // same run under the same RNG stream.
             let child_count = |parent_id: u32| {
-                extended_out.births.iter().filter(|b| b.parent_id == parent_id).count()
+                extended_out
+                    .births
+                    .iter()
+                    .filter(|b| b.parent_id == parent_id)
+                    .count()
             };
-            let composed_children: Vec<usize> =
-                composed_births.iter().map(|b| child_count(b.child_id)).collect();
+            let composed_children: Vec<usize> = composed_births
+                .iter()
+                .map(|b| child_count(b.child_id))
+                .collect();
             let disk_children: Vec<usize> = extended_out
                 .births
                 .iter()

@@ -149,7 +149,14 @@ pub fn run_with_overrides(
     pools: &GenePools,
     overrides: &Overrides,
 ) -> RunOutput3 {
-    run_impl(engine, cfg, grazer_starting, predator_starting, pools, Some(overrides))
+    run_impl(
+        engine,
+        cfg,
+        grazer_starting,
+        predator_starting,
+        pools,
+        Some(overrides),
+    )
 }
 
 fn run_impl(
@@ -293,7 +300,8 @@ fn run_impl(
         // (the exact reuse `main.rs` established — no new gene role for predation).
         let hungry_role_idx: Vec<u16> = orgs.iter().map(|o| o.genome.hungry_promoter).collect();
         let hungry_in: Vec<[u16; 3]> = senses_x.iter().map(|&(h, _, _)| [h, 0, 0]).collect();
-        let hungry_out = batch_run_grouped(engine, &pools.hungry_pool, &hungry_role_idx, &hungry_in);
+        let hungry_out =
+            batch_run_grouped(engine, &pools.hungry_pool, &hungry_role_idx, &hungry_in);
 
         // Stage 5: eat — grazer: food_here becomes energy; predator: prey_here (the
         // victim's energy, per `PreyIndex`) becomes energy. Computed uniformly for
@@ -376,8 +384,12 @@ fn run_impl(
 
         // Predation-kill contention — the design doc's "tournament dispatch," the same
         // order-independent mechanism keyed by victim id instead of tile position.
-        let predation_winners =
-            contention::resolve_contention(cfg.seed, tick, &predation_candidates, contention::PREDATION_CONTENTION_STREAM);
+        let predation_winners = contention::resolve_contention(
+            cfg.seed,
+            tick,
+            &predation_candidates,
+            contention::PREDATION_CONTENTION_STREAM,
+        );
         let killed_victims = killed_victims_from(&predation_candidates, &predation_winners);
         total_predation_kills += killed_victims.len() as u32;
         for (i, o) in orgs.iter_mut().enumerate() {
@@ -407,7 +419,10 @@ fn run_impl(
         }
 
         // repro_promoter / split — species-agnostic (`main.rs`'s own framing), survivors only.
-        let repro_role_idx: Vec<u16> = survivors.iter().map(|&i| orgs[i].genome.repro_promoter).collect();
+        let repro_role_idx: Vec<u16> = survivors
+            .iter()
+            .map(|&i| orgs[i].genome.repro_promoter)
+            .collect();
         let repro_in: Vec<[u16; 3]> = survivors
             .iter()
             .map(|&i| [orgs[i].energy, orgs[i].genome.repro_threshold, 0])
@@ -430,8 +445,13 @@ fn run_impl(
                 next_id += 1;
                 let child_genome = if cfg.mutation_enabled {
                     mutate(
-                        cfg.seed, tick, id, &orgs[i].genome,
-                        hungry_pool_len, repro_pool_len, sense_pool_len,
+                        cfg.seed,
+                        tick,
+                        id,
+                        &orgs[i].genome,
+                        hungry_pool_len,
+                        repro_pool_len,
+                        sense_pool_len,
                         overrides.and_then(|o| o.get(&id)),
                     )
                 } else {
@@ -462,7 +482,13 @@ fn run_impl(
         }
 
         let total_ir_steps = sum_steps(&[
-            &decay_out, &action_x, &action_y, &hungry_out, &eat_out, &repro_out, &split_out,
+            &decay_out,
+            &action_x,
+            &action_y,
+            &hungry_out,
+            &eat_out,
+            &repro_out,
+            &split_out,
         ]);
 
         let placeholder = || Org {
@@ -518,7 +544,10 @@ fn run_impl(
     }
 
     let final_grazers = orgs.iter().filter(|o| o.species == Species::Grazer).count();
-    let final_predators = orgs.iter().filter(|o| o.species == Species::Predator).count();
+    let final_predators = orgs
+        .iter()
+        .filter(|o| o.species == Species::Predator)
+        .count();
 
     RunOutput3 {
         history_hash: hasher.finish(),
@@ -552,7 +581,10 @@ mod ordering_tests {
 
         let eat_candidates: Vec<(u32, usize)> = vec![(99, 4)];
         let eat_winners = contention::resolve_eat_contention(seed, tick, &eat_candidates);
-        assert!(eat_winners.contains(&99), "sanity: uncontested tile, grazer 99 wins its own eat");
+        assert!(
+            eat_winners.contains(&99),
+            "sanity: uncontested tile, grazer 99 wins its own eat"
+        );
 
         let predation_candidates: Vec<(u32, u32)> = vec![(10, 99), (11, 99)];
         let predation_winners = contention::resolve_contention(
@@ -561,10 +593,17 @@ mod ordering_tests {
             &predation_candidates,
             contention::PREDATION_CONTENTION_STREAM,
         );
-        assert_eq!(predation_winners.len(), 1, "exactly one predator wins the contested victim");
+        assert_eq!(
+            predation_winners.len(),
+            1,
+            "exactly one predator wins the contested victim"
+        );
 
         let killed = killed_victims_from(&predation_candidates, &predation_winners);
-        assert!(killed.contains(&99), "victim must be marked killed regardless of its own eat outcome");
+        assert!(
+            killed.contains(&99),
+            "victim must be marked killed regardless of its own eat outcome"
+        );
         assert_eq!(killed.len(), 1);
 
         // The override itself: even though grazer 99 won its eat-tile contention above, a
@@ -589,6 +628,10 @@ mod ordering_tests {
         let predation_candidates: Vec<(u32, u32)> = vec![(1, 50), (2, 50)];
         let winners = std::collections::HashSet::from([1u32]); // predator 2 lost the contention
         let killed = killed_victims_from(&predation_candidates, &winners);
-        assert_eq!(killed, std::collections::HashSet::from([50u32]), "still exactly one dead victim");
+        assert_eq!(
+            killed,
+            std::collections::HashSet::from([50u32]),
+            "still exactly one dead victim"
+        );
     }
 }

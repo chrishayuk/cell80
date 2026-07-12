@@ -213,7 +213,12 @@ pub fn run(
         // branching anything (EX-1 is single-genome; see the design doc for EX-2).
         let mutation_draws: Vec<(u32, u32)> = survivors
             .iter()
-            .map(|&i| (orgs[i].id, rng::draw(cfg.seed, tick, orgs[i].id, MUTATION_STREAM)))
+            .map(|&i| {
+                (
+                    orgs[i].id,
+                    rng::draw(cfg.seed, tick, orgs[i].id, MUTATION_STREAM),
+                )
+            })
             .collect();
 
         // repro_promoter / split — survivors only.

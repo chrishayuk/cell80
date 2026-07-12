@@ -30,7 +30,10 @@ fn lower(src: &str, entry: &str) -> Result<(Funcs, Consts), String> {
 
 /// Extract the code from `Interp`'s halt error (`"interp: halt(N)"`).
 fn parse_halt(e: &str) -> Option<u16> {
-    e.strip_prefix("interp: halt(")?.strip_suffix(')')?.parse::<u16>().ok()
+    e.strip_prefix("interp: halt(")?
+        .strip_suffix(')')?
+        .parse::<u16>()
+        .ok()
 }
 
 struct Rng(u32);
@@ -63,11 +66,15 @@ fn cpu_matches(
     let isteps = interp.steps();
     match (iref, cpu_run(prog, args)) {
         (Ok(iout), VmOut::Value(vout, vs)) if vout == iout && vs == isteps => Ok(()),
-        (Ok(iout), out) => Err(format!("value @ {args:?}: interp={iout:?}/{isteps} vm={out:?}")),
+        (Ok(iout), out) => Err(format!(
+            "value @ {args:?}: interp={iout:?}/{isteps} vm={out:?}"
+        )),
         (Err(e), out) => match parse_halt(&e) {
             Some(code) => match out {
                 VmOut::Halt(vc, vs) if vc == code && vs == isteps => Ok(()),
-                _ => Err(format!("halt @ {args:?}: interp={code}/{isteps} vm={out:?}")),
+                _ => Err(format!(
+                    "halt @ {args:?}: interp={code}/{isteps} vm={out:?}"
+                )),
             },
             None if e.contains("divide by zero") => match out {
                 VmOut::DivZero => Ok(()),
@@ -82,7 +89,9 @@ fn main() {
     let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let dir = manifest.join("cells");
     let mut rng = Rng(0x1234_5678);
-    let probes: Vec<[u16; 3]> = (0..64).map(|_| [rng.next(), rng.next(), rng.next()]).collect();
+    let probes: Vec<[u16; 3]> = (0..64)
+        .map(|_| [rng.next(), rng.next(), rng.next()])
+        .collect();
 
     let mut total = 0usize;
     let mut supported = 0usize;
@@ -100,7 +109,9 @@ fn main() {
         }
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = std::fs::read_to_string(&path).unwrap();
-        let Ok(sig) = rustz80::entry_signature(&src, "run") else { continue };
+        let Ok(sig) = rustz80::entry_signature(&src, "run") else {
+            continue;
+        };
         let scalar = sig.state.is_empty()
             && sig.params.iter().all(|(_, ty)| {
                 matches!(ty.as_str(), "u8" | "u16" | "i16" | "u32" | "i32" | "bool")
@@ -108,7 +119,9 @@ fn main() {
         if !scalar {
             continue;
         }
-        let Ok((funcs, consts)) = lower(&src, "run") else { continue };
+        let Ok((funcs, consts)) = lower(&src, "run") else {
+            continue;
+        };
         total += 1;
         let prog = match linearize(&funcs, "run") {
             Ok(p) => p,
@@ -171,7 +184,11 @@ fn gpu_corpus(cells: &[(String, Funcs, Consts, CellProgram)], probes: &[[u16; 3]
     let mut checked = 0usize;
     let mut ok = 0usize;
     let mut fail: Vec<String> = Vec::new();
-    for (ci, (name, funcs, consts, prog)) in cells.iter().filter(|(_, _, _, p)| p.n_locals <= 64).enumerate() {
+    for (ci, (name, funcs, consts, prog)) in cells
+        .iter()
+        .filter(|(_, _, _, p)| p.n_locals <= 64)
+        .enumerate()
+    {
         let params = prog.params.min(3);
         for (pi, probe) in probes.iter().enumerate() {
             let args = &probe[..params];
@@ -204,11 +221,17 @@ fn gpu_corpus(cells: &[(String, Funcs, Consts, CellProgram)], probes: &[[u16; 3]
             if m {
                 ok += 1;
             } else if fail.len() < 10 {
-                fail.push(format!("  {name} @ {args:?}: gpu r0={} st={} steps={gsteps} interp={iref:?}/{isteps}", g[0], g[3]));
+                fail.push(format!(
+                    "  {name} @ {args:?}: gpu r0={} st={} steps={gsteps} interp={iref:?}/{isteps}",
+                    g[0], g[3]
+                ));
             }
         }
     }
-    println!("\nGPU (InterpBatch): {ok}/{checked} bit-identical to Interp ({} cells, {skipped} skipped)", batch.n_cells());
+    println!(
+        "\nGPU (InterpBatch): {ok}/{checked} bit-identical to Interp ({} cells, {skipped} skipped)",
+        batch.n_cells()
+    );
     for f in &fail {
         println!("✗{f}");
     }
@@ -218,20 +241,26 @@ fn gpu_corpus(cells: &[(String, Funcs, Consts, CellProgram)], probes: &[[u16; 3]
 /// hand to InterpBatch (which needs `&[CellProgram]`) by re-linearizing.
 #[cfg(target_os = "macos")]
 fn re_linearize(cells: &[(String, Funcs, Consts, CellProgram)]) -> Vec<CellProgram> {
-    cells.iter().map(|(_, funcs, _, _)| linearize(funcs, "run").unwrap()).collect()
+    cells
+        .iter()
+        .map(|(_, funcs, _, _)| linearize(funcs, "run").unwrap())
+        .collect()
 }
 
 /// One-expression cell for battery corners.
 fn one_expr_cell(e: Expr) -> Vec<(String, Func)> {
-    vec![("run".to_string(), Func {
-        params: 1,
-        n_locals: 1,
-        body: vec![],
-        ret: vec![e],
-        wide_param: false,
-        wide_second: false,
-        wide_ret: false,
-    })]
+    vec![(
+        "run".to_string(),
+        Func {
+            params: 1,
+            n_locals: 1,
+            body: vec![],
+            ret: vec![e],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: false,
+        },
+    )]
 }
 
 /// Trap/intrinsic battery on the CPU VM vs Interp: fuel, div0, signed MIN÷-1,
@@ -239,38 +268,97 @@ fn one_expr_cell(e: Expr) -> Vec<(String, Func)> {
 fn trap_battery() {
     println!("\n== battery (CPU vm vs Interp) ==");
     // Fuel: a runaway loop must trap at the same step count.
-    let runaway = vec![("run".to_string(), Func {
-        params: 0,
-        n_locals: 1,
-        body: vec![Stmt::Loop(vec![Stmt::Assign(
-            0,
-            Expr::Bin(BinOp::Add, Box::new(Expr::Var(0)), Box::new(Expr::Lit(1)), Width::Word),
-        )])],
-        ret: vec![Expr::Lit(0)],
-        wide_param: false,
-        wide_second: false,
-        wide_ret: false,
-    })];
+    let runaway = vec![(
+        "run".to_string(),
+        Func {
+            params: 0,
+            n_locals: 1,
+            body: vec![Stmt::Loop(vec![Stmt::Assign(
+                0,
+                Expr::Bin(
+                    BinOp::Add,
+                    Box::new(Expr::Var(0)),
+                    Box::new(Expr::Lit(1)),
+                    Width::Word,
+                ),
+            )])],
+            ret: vec![Expr::Lit(0)],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: false,
+        },
+    )];
     let prog = linearize(&runaway, "run").unwrap();
-    let mut interp = Interp::new(&runaway, Vec::<(&str, &[u8])>::new(), Target::Cell.descriptor());
+    let mut interp = Interp::new(
+        &runaway,
+        Vec::<(&str, &[u8])>::new(),
+        Target::Cell.descriptor(),
+    );
     let ir = interp.run("run", &[]);
     let is = interp.steps();
     let fuel_ok = matches!((ir.is_err(), cpu_run(&prog, &[])), (true, VmOut::Fuel(vs)) if vs == is);
-    println!("  fuel:            {}", if fuel_ok { "✓ (Δ=0)" } else { "✗" });
+    println!(
+        "  fuel:            {}",
+        if fuel_ok { "✓ (Δ=0)" } else { "✗" }
+    );
 
-    let case = |name: &str, cell: &[(String, Func)], args: &[u16], want: fn(&Result<Vec<u16>, String>, &VmOut) -> bool| {
+    let case = |name: &str,
+                cell: &[(String, Func)],
+                args: &[u16],
+                want: fn(&Result<Vec<u16>, String>, &VmOut) -> bool| {
         let prog = linearize(cell, "run").unwrap();
         let mut it = Interp::new(cell, Vec::<(&str, &[u8])>::new(), Target::Cell.descriptor());
         let ir = it.run("run", args);
         let vr = cpu_run(&prog, args);
-        println!("  {name:<14} {}", if want(&ir, &vr) { "✓" } else { "✗ MISMATCH" });
+        println!(
+            "  {name:<14} {}",
+            if want(&ir, &vr) {
+                "✓"
+            } else {
+                "✗ MISMATCH"
+            }
+        );
     };
-    let sub = || Expr::Bin(BinOp::Sub, Box::new(Expr::Var(0)), Box::new(Expr::Var(0)), Width::Word);
-    case("div0:", &one_expr_cell(Expr::Bin(BinOp::Div, Box::new(Expr::Var(0)), Box::new(sub()), Width::Word)), &[7],
-        |ir, vr| ir.as_ref().err().is_some_and(|e| e.contains("divide by zero")) && matches!(vr, VmOut::DivZero));
-    case("MIN÷-1:", &one_expr_cell(Expr::Bin(BinOp::Div, Box::new(Expr::Lit(0x8000)), Box::new(Expr::Lit(0xFFFF)), Width::SWord)), &[0],
-        |ir, vr| matches!((ir, vr), (Ok(v), VmOut::Value(o, _)) if v == o && v.first() == Some(&0x8000)));
-    for (nm, f) in [("count_ones:", "__bits_count_ones"), ("leading_zeros:", "__bits_leading_zeros"), ("trailing_zeros:", "__bits_trailing_zeros")] {
+    let sub = || {
+        Expr::Bin(
+            BinOp::Sub,
+            Box::new(Expr::Var(0)),
+            Box::new(Expr::Var(0)),
+            Width::Word,
+        )
+    };
+    case(
+        "div0:",
+        &one_expr_cell(Expr::Bin(
+            BinOp::Div,
+            Box::new(Expr::Var(0)),
+            Box::new(sub()),
+            Width::Word,
+        )),
+        &[7],
+        |ir, vr| {
+            ir.as_ref()
+                .err()
+                .is_some_and(|e| e.contains("divide by zero"))
+                && matches!(vr, VmOut::DivZero)
+        },
+    );
+    case(
+        "MIN÷-1:",
+        &one_expr_cell(Expr::Bin(
+            BinOp::Div,
+            Box::new(Expr::Lit(0x8000)),
+            Box::new(Expr::Lit(0xFFFF)),
+            Width::SWord,
+        )),
+        &[0],
+        |ir, vr| matches!((ir, vr), (Ok(v), VmOut::Value(o, _)) if v == o && v.first() == Some(&0x8000)),
+    );
+    for (nm, f) in [
+        ("count_ones:", "__bits_count_ones"),
+        ("leading_zeros:", "__bits_leading_zeros"),
+        ("trailing_zeros:", "__bits_trailing_zeros"),
+    ] {
         let cell = one_expr_cell(Expr::Call(f.to_string(), vec![Expr::Var(0)]));
         let prog = linearize(&cell, "run").unwrap();
         let all = [0u16, 1, 0x00F0, 0xF0F0, 0xFFFF].iter().all(|&x| {

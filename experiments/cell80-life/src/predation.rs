@@ -71,8 +71,16 @@ mod tests {
 
     #[test]
     fn co_located_grazers_resolve_to_lowest_id_regardless_of_insertion_order() {
-        let a = [(9u32, 4usize, 10u16), (2u32, 4usize, 99u16), (5u32, 4usize, 42u16)];
-        let b = [(5u32, 4usize, 42u16), (2u32, 4usize, 99u16), (9u32, 4usize, 10u16)];
+        let a = [
+            (9u32, 4usize, 10u16),
+            (2u32, 4usize, 99u16),
+            (5u32, 4usize, 42u16),
+        ];
+        let b = [
+            (5u32, 4usize, 42u16),
+            (2u32, 4usize, 99u16),
+            (9u32, 4usize, 10u16),
+        ];
         let idx_a = PreyIndex::build(a.into_iter());
         let idx_b = PreyIndex::build(b.into_iter());
         assert_eq!(idx_a.at(4), Some((2, 99)));

@@ -81,12 +81,36 @@ mod macos {
                     "  origin: birth of organism {origin_child_id} (parent {origin_parent_id}) \
                      at tick {origin_tick} — full 6-field diff:"
                 );
-                diff_line("decay_amount", parent_genome.decay_amount, child_genome.decay_amount);
-                diff_line("repro_threshold", parent_genome.repro_threshold, child_genome.repro_threshold);
-                diff_line("repro_give_pct", parent_genome.repro_give_pct, child_genome.repro_give_pct);
-                diff_line("hungry_promoter", parent_genome.hungry_promoter, child_genome.hungry_promoter);
-                diff_line("repro_promoter", parent_genome.repro_promoter, child_genome.repro_promoter);
-                diff_line("sense_move", parent_genome.sense_move, child_genome.sense_move);
+                diff_line(
+                    "decay_amount",
+                    parent_genome.decay_amount,
+                    child_genome.decay_amount,
+                );
+                diff_line(
+                    "repro_threshold",
+                    parent_genome.repro_threshold,
+                    child_genome.repro_threshold,
+                );
+                diff_line(
+                    "repro_give_pct",
+                    parent_genome.repro_give_pct,
+                    child_genome.repro_give_pct,
+                );
+                diff_line(
+                    "hungry_promoter",
+                    parent_genome.hungry_promoter,
+                    child_genome.hungry_promoter,
+                );
+                diff_line(
+                    "repro_promoter",
+                    parent_genome.repro_promoter,
+                    child_genome.repro_promoter,
+                );
+                diff_line(
+                    "sense_move",
+                    parent_genome.sense_move,
+                    child_genome.sense_move,
+                );
             }
         }
     }
@@ -124,14 +148,24 @@ mod macos {
             for &role in &ROLES {
                 for event in detect_plurality_events(ticks, role, SAMPLE_EVERY, k) {
                     let origins = find_origins(tree, ticks, &event);
-                    let has_mutation = origins.iter().any(|o| matches!(o, OriginKind::Mutated { .. }));
+                    let has_mutation = origins
+                        .iter()
+                        .any(|o| matches!(o, OriginKind::Mutated { .. }));
                     let better = match &best {
                         None => true,
-                        Some(b) => (has_mutation && !b.has_mutation)
-                            || (has_mutation == b.has_mutation && origins.len() < b.origins.len()),
+                        Some(b) => {
+                            (has_mutation && !b.has_mutation)
+                                || (has_mutation == b.has_mutation
+                                    && origins.len() < b.origins.len())
+                        }
                     };
                     if better {
-                        best = Some(Candidate { event, origins, k, has_mutation });
+                        best = Some(Candidate {
+                            event,
+                            origins,
+                            k,
+                            has_mutation,
+                        });
                     }
                 }
             }
@@ -178,15 +212,23 @@ mod macos {
         let mut chosen: Option<(u64, ex2::RunOutput2DGenome, Candidate)> = None;
         for &seed in &seeds {
             let cfg = cfg_for(seed);
-            println!("== seed {seed:#x}: running baseline ({} ticks, GPU) ==", cfg.ticks);
+            println!(
+                "== seed {seed:#x}: running baseline ({} ticks, GPU) ==",
+                cfg.ticks
+            );
             let baseline = ex2::run(EngineKind::Gpu, &cfg, &starting2, &genes);
-            let tree = LineageTree::build(&starting_fields, cfg.initial_organisms, &baseline.births);
+            let tree =
+                LineageTree::build(&starting_fields, cfg.initial_organisms, &baseline.births);
 
             match best_candidate(&tree, &baseline.ticks) {
                 Some(c) if c.has_mutation => {
                     println!(
                         "  found a mutation-bearing event: {} {} -> {} at tick {} (K={})\n",
-                        role_name(c.event.role), c.event.from, c.event.to, c.event.shift_tick, c.k
+                        role_name(c.event.role),
+                        c.event.from,
+                        c.event.to,
+                        c.event.shift_tick,
+                        c.k
                     );
                     chosen = Some((seed, baseline, c));
                     break;
@@ -195,13 +237,17 @@ mod macos {
                     println!(
                         "  only a genesis-only reversion found ({} -> {} at tick {}); trying the \
                          next seed for a mutation-bearing event.\n",
-                        role_name(c.event.role), c.event.to, c.event.shift_tick
+                        role_name(c.event.role),
+                        c.event.to,
+                        c.event.shift_tick
                     );
                     if chosen.is_none() {
                         chosen = Some((seed, baseline, c));
                     }
                 }
-                None => println!("  no sustained plurality event at any K/role; trying the next seed.\n"),
+                None => println!(
+                    "  no sustained plurality event at any K/role; trying the next seed.\n"
+                ),
             }
         }
 
@@ -214,11 +260,19 @@ mod macos {
             return;
         };
 
-        let Candidate { event, origins, k, has_mutation } = candidate;
+        let Candidate {
+            event,
+            origins,
+            k,
+            has_mutation,
+        } = candidate;
 
         println!(
             "== event: seed {seed:#x}, role {}, {} -> {} at tick {} (K={k}) ==",
-            role_name(event.role), event.from, event.to, event.shift_tick
+            role_name(event.role),
+            event.from,
+            event.to,
+            event.shift_tick
         );
         println!(
             "   share at shift: {:.1}%   peak share in the sustained window: {:.1}%",
@@ -243,7 +297,10 @@ mod macos {
 
         let mut overrides: HashMap<u32, FieldOverride> = HashMap::new();
         for o in &origins {
-            if let OriginKind::Mutated { origin_child_id, .. } = o {
+            if let OriginKind::Mutated {
+                origin_child_id, ..
+            } = o
+            {
                 overrides.insert(*origin_child_id, event.role.skip_override());
             }
         }
@@ -254,7 +311,8 @@ mod macos {
             overrides.len(),
             role_name(event.role)
         );
-        let counterfactual = ex2::run_with_overrides(EngineKind::Gpu, &cfg, &starting2, &genes, &overrides);
+        let counterfactual =
+            ex2::run_with_overrides(EngineKind::Gpu, &cfg, &starting2, &genes, &overrides);
 
         let earliest_origin_tick = origins
             .iter()
@@ -272,8 +330,13 @@ mod macos {
             .all(|(a, b)| a == b);
         println!("   ticks strictly before the earliest reverted birth byte-identical: {pre_fork_identical}");
 
-        let still_happens =
-            still_reaches_plurality(&counterfactual.ticks, event.role, event.to, event.shift_tick, k);
+        let still_happens = still_reaches_plurality(
+            &counterfactual.ticks,
+            event.role,
+            event.to,
+            event.shift_tick,
+            k,
+        );
         if still_happens {
             println!(
                 "\n== RESULT: the event still occurs in the counterfactual replay — the \

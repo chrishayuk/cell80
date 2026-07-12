@@ -61,9 +61,17 @@ fn gpu_matches_cpu_reference_with_mutation() {
 
     assert_eq!(cpu.ticks.len(), gpu.ticks.len());
     for (a, b) in cpu.ticks.iter().zip(&gpu.ticks) {
-        assert_eq!(a, b, "tick {} diverged between CPU-reference and GPU (mutation-capable)", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between CPU-reference and GPU (mutation-capable)",
+            a.tick
+        );
     }
     assert_eq!(cpu.births, gpu.births);
     assert_eq!(cpu.history_hash, gpu.history_hash);
-    assert!(cpu.total_births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        cpu.total_births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 }

@@ -93,7 +93,8 @@ mod macos {
         println!(" has far fewer escape routes than any 2D world at the same tile count,");
         println!(" so the regime split might only show up at a small/dense enough config)");
         let rapid = load_starting_genome(&genome_path("rapid_reproducer"));
-        let rapid_genes = GeneSet::load(&cells, &rapid.genes).expect("compiling rapid_reproducer genes");
+        let rapid_genes =
+            GeneSet::load(&cells, &rapid.genes).expect("compiling rapid_reproducer genes");
 
         let ticks = 1000u32;
         let tail = 500usize;

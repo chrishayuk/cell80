@@ -76,9 +76,16 @@ fn gpu_matches_cpu_reference_with_two_species() {
 
     assert_eq!(cpu.ticks.len(), gpu.ticks.len());
     for (a, b) in cpu.ticks.iter().zip(&gpu.ticks) {
-        assert_eq!(a, b, "tick {} diverged between CPU-reference and GPU (two-species)", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between CPU-reference and GPU (two-species)",
+            a.tick
+        );
     }
     assert_eq!(cpu.births, gpu.births);
     assert_eq!(cpu.history_hash, gpu.history_hash);
-    assert!(cpu.total_predation_kills > 0, "expected predation to actually engage");
+    assert!(
+        cpu.total_predation_kills > 0,
+        "expected predation to actually engage"
+    );
 }

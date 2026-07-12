@@ -29,7 +29,9 @@ mod macos {
     use cell80_life::ex3::{self, RunConfig3, StartingGenome3};
     use cell80_life::genes::EngineKind;
     use cell80_life::history::Species;
-    use cell80_life::lineage::{detect_plurality_events, eco_ticks_to_genome, PluralityEvent, Role};
+    use cell80_life::lineage::{
+        detect_plurality_events, eco_ticks_to_genome, PluralityEvent, Role,
+    };
     use cell80_life::load_starting_genome;
     use cell80_life::pools::{discover_pools, Pools};
 
@@ -113,14 +115,19 @@ mod macos {
 
         for &seed in &seeds {
             let cfg = cfg_for(seed);
-            println!("\n== seed {seed:#x}: running flagship ({} ticks, GPU) ==", cfg.ticks);
+            println!(
+                "\n== seed {seed:#x}: running flagship ({} ticks, GPU) ==",
+                cfg.ticks
+            );
             let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
             println!(
                 "  final: grazers={} predators={}  total_births={}  total_predation_kills={}",
                 out.final_grazers, out.final_predators, out.total_births, out.total_predation_kills
             );
             if out.final_grazers == 0 || out.final_predators == 0 {
-                println!("  one-sided collapse this seed — skipping event analysis, trying next seed.");
+                println!(
+                    "  one-sided collapse this seed — skipping event analysis, trying next seed."
+                );
                 continue;
             }
 
@@ -130,10 +137,19 @@ mod macos {
             let mut tagged: Vec<TaggedEvent> = Vec::new();
             for &role in &ROLES {
                 for event in detect_plurality_events(&grazer_ticks, role, SAMPLE_EVERY, SUSTAIN_K) {
-                    tagged.push(TaggedEvent { species: Species::Grazer, role, event });
+                    tagged.push(TaggedEvent {
+                        species: Species::Grazer,
+                        role,
+                        event,
+                    });
                 }
-                for event in detect_plurality_events(&predator_ticks, role, SAMPLE_EVERY, SUSTAIN_K) {
-                    tagged.push(TaggedEvent { species: Species::Predator, role, event });
+                for event in detect_plurality_events(&predator_ticks, role, SAMPLE_EVERY, SUSTAIN_K)
+                {
+                    tagged.push(TaggedEvent {
+                        species: Species::Predator,
+                        role,
+                        event,
+                    });
                 }
             }
             tagged.sort_by_key(|t| t.event.shift_tick);

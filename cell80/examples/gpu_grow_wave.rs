@@ -52,7 +52,15 @@ fn chain_func(chain: &[usize], names: &[String]) -> Func {
     for &c in chain {
         e = Expr::Call(names[c].clone(), vec![e]);
     }
-    Func { params: 1, n_locals: 1, body: vec![], ret: vec![e], wide_param: false, wide_second: false, wide_ret: false }
+    Func {
+        params: 1,
+        n_locals: 1,
+        body: vec![],
+        ret: vec![e],
+        wide_param: false,
+        wide_second: false,
+        wide_ret: false,
+    }
 }
 
 /// Linearize a chain against the (growing) pool — inlines the cell calls.
@@ -83,7 +91,11 @@ fn agreement(a: &[Option<u16>], b: &[Option<u16>]) -> f32 {
     a.iter().zip(b).filter(|(x, y)| x == y).count() as f32 / n as f32
 }
 fn varied(f: &[Option<u16>]) -> bool {
-    f.iter().flatten().collect::<std::collections::HashSet<_>>().len() > 3
+    f.iter()
+        .flatten()
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+        > 3
 }
 
 fn main() {
@@ -106,8 +118,11 @@ fn main() {
         }
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = std::fs::read_to_string(&path).unwrap();
-        let Ok(sig) = rustz80::entry_signature(&src, "run") else { continue };
-        let arity1 = sig.state.is_empty() && sig.params.len() == 1
+        let Ok(sig) = rustz80::entry_signature(&src, "run") else {
+            continue;
+        };
+        let arity1 = sig.state.is_empty()
+            && sig.params.len() == 1
             && matches!(sig.params[0].1.as_str(), "u8" | "u16" | "i16" | "bool");
         let Ok(funcs) = lower(&src) else { continue };
         if funcs.len() == 1 {
@@ -122,7 +137,10 @@ fn main() {
     }
     let base_blocks = names.len();
     println!("GPU library-growth wave\n");
-    println!("start: {base_blocks} unary building blocks, {} library fingerprints\n", lib_fp.len());
+    println!(
+        "start: {base_blocks} unary building blocks, {} library fingerprints\n",
+        lib_fp.len()
+    );
 
     #[cfg(not(target_os = "macos"))]
     {
@@ -150,7 +168,9 @@ fn main() {
             for _ in 0..400 {
                 let len = 2 + rng.below(2);
                 let ch: Vec<usize> = (0..len).map(|_| rng.below(names.len())).collect();
-                let Some(tp) = chain_prog(&ch, &names, &pool) else { continue };
+                let Some(tp) = chain_prog(&ch, &names, &pool) else {
+                    continue;
+                };
                 let tfp = fp(&tp, &fp_probes);
                 // novel, non-degenerate, AND returns cleanly on every scoring probe
                 // (a growable cell that always produces a value).
@@ -162,18 +182,32 @@ fn main() {
                     break;
                 }
             }
-            let Some((_tch, target_prog, _tfp)) = target else { continue };
-            let wants: Vec<u16> = probes.iter().map(|p| eval(&target_prog, p[0]).unwrap()).collect();
+            let Some((_tch, target_prog, _tfp)) = target else {
+                continue;
+            };
+            let wants: Vec<u16> = probes
+                .iter()
+                .map(|p| eval(&target_prog, p[0]).unwrap())
+                .collect();
 
             // Evolve a composition to match the target's I/O (GPU-scored).
-            let mut pop: Vec<Vec<usize>> = (0..POP).map(|_| (0..1 + rng.below(MAX_LEN)).map(|_| rng.below(names.len())).collect()).collect();
+            let mut pop: Vec<Vec<usize>> = (0..POP)
+                .map(|_| {
+                    (0..1 + rng.below(MAX_LEN))
+                        .map(|_| rng.below(names.len()))
+                        .collect()
+                })
+                .collect();
             let mut solved: Option<Vec<usize>> = None;
             for _ in 0..MAX_GEN {
                 let mut progs = Vec::new();
                 let mut slot = Vec::with_capacity(POP);
                 for ch in &pop {
                     match chain_prog(ch, &names, &pool) {
-                        Some(p) => { slot.push(Some(progs.len())); progs.push(p); }
+                        Some(p) => {
+                            slot.push(Some(progs.len()));
+                            progs.push(p);
+                        }
                         None => slot.push(None),
                     }
                 }
@@ -183,11 +217,27 @@ fn main() {
                 total_dt += t.elapsed().as_secs_f64();
                 total_evals += progs.len() * np;
 
-                let exact = |bi: usize| (0..np).filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k]).count();
-                let fit: Vec<usize> = slot.iter().map(|s| match s {
-                    Some(bi) => (0..np).map(|k| { let o = out[bi*np+k]; if o[3]==0 {16-(o[0]^wants[k]).count_ones() as usize} else {0} }).sum(),
-                    None => 0,
-                }).collect();
+                let exact = |bi: usize| {
+                    (0..np)
+                        .filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k])
+                        .count()
+                };
+                let fit: Vec<usize> = slot
+                    .iter()
+                    .map(|s| match s {
+                        Some(bi) => (0..np)
+                            .map(|k| {
+                                let o = out[bi * np + k];
+                                if o[3] == 0 {
+                                    16 - (o[0] ^ wants[k]).count_ones() as usize
+                                } else {
+                                    0
+                                }
+                            })
+                            .sum(),
+                        None => 0,
+                    })
+                    .collect();
                 if let Some(bi) = slot.iter().flatten().find(|&&bi| exact(bi) == np) {
                     let ci = slot.iter().position(|s| *s == Some(*bi)).unwrap();
                     solved = Some(pop[ci].clone());
@@ -200,16 +250,32 @@ fn main() {
                 let mut next = elite.clone();
                 while next.len() < POP {
                     if rng.below(100) < 15 {
-                        next.push((0..1 + rng.below(MAX_LEN)).map(|_| rng.below(names.len())).collect());
+                        next.push(
+                            (0..1 + rng.below(MAX_LEN))
+                                .map(|_| rng.below(names.len()))
+                                .collect(),
+                        );
                         continue;
                     }
                     let mut c = elite[rng.below(en)].clone();
                     let len = c.len();
                     match rng.below(4) {
-                        0 if len > 0 => { let i = rng.below(len); c[i] = rng.below(names.len()); }
-                        1 if len < MAX_LEN => { let (i, v) = (rng.below(len + 1), rng.below(names.len())); c.insert(i, v); }
-                        2 if len > 1 => { let i = rng.below(len); c.remove(i); }
-                        _ if len > 1 => { let (i, j) = (rng.below(len), rng.below(len)); c.swap(i, j); }
+                        0 if len > 0 => {
+                            let i = rng.below(len);
+                            c[i] = rng.below(names.len());
+                        }
+                        1 if len < MAX_LEN => {
+                            let (i, v) = (rng.below(len + 1), rng.below(names.len()));
+                            c.insert(i, v);
+                        }
+                        2 if len > 1 => {
+                            let i = rng.below(len);
+                            c.remove(i);
+                        }
+                        _ if len > 1 => {
+                            let (i, j) = (rng.below(len), rng.below(len));
+                            c.swap(i, j);
+                        }
                         _ => {}
                     }
                     next.push(c);
@@ -223,9 +289,15 @@ fn main() {
                 continue;
             };
             let sp = chain_prog(&sol, &names, &pool).unwrap();
-            let mism = (0..=u16::MAX).filter(|&x| eval(&sp, x) != eval(&target_prog, x)).count();
+            let mism = (0..=u16::MAX)
+                .filter(|&x| eval(&sp, x) != eval(&target_prog, x))
+                .count();
             let sfp = fp(&sp, &fp_probes);
-            let (best_id, best_a) = lib_fp.iter().map(|(id, f)| (id.clone(), agreement(&sfp, f))).max_by(|a, b| a.1.total_cmp(&b.1)).unwrap();
+            let (best_id, best_a) = lib_fp
+                .iter()
+                .map(|(id, f)| (id.clone(), agreement(&sfp, f)))
+                .max_by(|a, b| a.1.total_cmp(&b.1))
+                .unwrap();
             let chain_str: Vec<&str> = sol.iter().map(|&c| names[c].as_str()).collect();
 
             if mism == 0 && best_a < 0.834 {
@@ -243,10 +315,16 @@ fn main() {
             }
         }
 
-        println!("\nwave complete: {} cells GROWN and admitted (library {base_blocks} → {} blocks)", grown.len(), names.len());
+        println!(
+            "\nwave complete: {} cells GROWN and admitted (library {base_blocks} → {} blocks)",
+            grown.len(),
+            names.len()
+        );
         println!(
             "GPU: {} candidate·example evals in {:.1} s ({:.2e}/s) across the whole wave",
-            total_evals, total_dt, total_evals as f64 / total_dt.max(1e-9)
+            total_evals,
+            total_dt,
+            total_evals as f64 / total_dt.max(1e-9)
         );
         println!("Each grown cell is full-domain-verified and novel — grown, not authored.");
     }

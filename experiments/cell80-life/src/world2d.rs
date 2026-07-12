@@ -136,7 +136,10 @@ mod tests {
     fn different_seeds_usually_differ() {
         let a = World2D::new(1, 20, 20, 0.25, 40, 8);
         let b = World2D::new(2, 20, 20, 0.25, 40, 8);
-        assert_ne!(a.food, b.food, "two different seeds produced an identical food layout");
+        assert_ne!(
+            a.food, b.food,
+            "two different seeds produced an identical food layout"
+        );
     }
 
     #[test]
@@ -161,7 +164,10 @@ mod tests {
         assert_eq!(w.food[pos], 0);
         w.tick_regrow();
         w.tick_regrow();
-        assert_eq!(w.food[pos], 0, "regrow_ticks=3, should still be empty after 2 ticks");
+        assert_eq!(
+            w.food[pos], 0,
+            "regrow_ticks=3, should still be empty after 2 ticks"
+        );
         w.tick_regrow();
         assert_eq!(w.food[pos], 40, "should regrow on the 3rd tick");
     }

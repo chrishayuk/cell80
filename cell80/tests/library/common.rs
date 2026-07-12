@@ -48,11 +48,9 @@ pub struct BankedCell {
 
 impl BankedCell {
     pub fn bind(src: &str, entry: &str) -> Self {
-        let prog = cell80::CellProgram::compile_with_config_banked(
-            src,
-            cell80::CellConfig::permissive(),
-        )
-        .unwrap_or_else(|e| panic!("banked-bind {entry}: {e}"));
+        let prog =
+            cell80::CellProgram::compile_with_config_banked(src, cell80::CellConfig::permissive())
+                .unwrap_or_else(|e| panic!("banked-bind {entry}: {e}"));
         let runner = cell80::Runner::new(&prog);
         let fields = cell80::state_field_addrs(src, entry)
             .unwrap_or_else(|e| panic!("state_field_addrs {entry}: {e}"))

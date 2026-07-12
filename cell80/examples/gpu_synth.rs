@@ -16,7 +16,14 @@ use std::time::Instant;
 const ARITY: usize = 2;
 const POP: usize = 4096;
 const MAX_GEN: usize = 200;
-const OPS: &[BinOp] = &[BinOp::Add, BinOp::Sub, BinOp::Mul, BinOp::And, BinOp::Or, BinOp::Xor];
+const OPS: &[BinOp] = &[
+    BinOp::Add,
+    BinOp::Sub,
+    BinOp::Mul,
+    BinOp::And,
+    BinOp::Or,
+    BinOp::Xor,
+];
 
 struct Rng(u64);
 impl Rng {
@@ -56,14 +63,27 @@ fn rand_expr(rng: &mut Rng, depth: u32) -> Expr {
         )
     } else {
         let op = OPS[rng.below(OPS.len() as u32) as usize];
-        Expr::Bin(op, Box::new(rand_expr(rng, depth - 1)), Box::new(rand_expr(rng, depth - 1)), Width::Word)
+        Expr::Bin(
+            op,
+            Box::new(rand_expr(rng, depth - 1)),
+            Box::new(rand_expr(rng, depth - 1)),
+            Width::Word,
+        )
     }
 }
 
 fn func_of(e: &Expr) -> Vec<(String, Func)> {
     vec![(
         "run".to_string(),
-        Func { params: ARITY, n_locals: ARITY, body: vec![], ret: vec![e.clone()], wide_param: false, wide_second: false, wide_ret: false },
+        Func {
+            params: ARITY,
+            n_locals: ARITY,
+            body: vec![],
+            ret: vec![e.clone()],
+            wide_param: false,
+            wide_second: false,
+            wide_ret: false,
+        },
     )]
 }
 
@@ -129,9 +149,15 @@ fn show(e: &Expr) -> String {
         Expr::Lit(n) => format!("{n}"),
         Expr::Bin(op, l, r, _) => {
             let s = match op {
-                BinOp::Add => "+", BinOp::Sub => "-", BinOp::Mul => "*",
-                BinOp::And => "&", BinOp::Or => "|", BinOp::Xor => "^",
-                BinOp::Shl => "<<", BinOp::Shr => ">>", _ => "?",
+                BinOp::Add => "+",
+                BinOp::Sub => "-",
+                BinOp::Mul => "*",
+                BinOp::And => "&",
+                BinOp::Or => "|",
+                BinOp::Xor => "^",
+                BinOp::Shl => "<<",
+                BinOp::Shr => ">>",
+                _ => "?",
             };
             format!("({} {s} {})", show(l), show(r))
         }
@@ -153,8 +179,18 @@ fn main() {
     // eval-bound, which is why cells compose existing cells, not free expressions.
     let target = Expr::Bin(
         BinOp::Or,
-        Box::new(Expr::Bin(BinOp::And, Box::new(Expr::Var(0)), Box::new(Expr::Lit(0xFF00)), Width::Word)),
-        Box::new(Expr::Bin(BinOp::And, Box::new(Expr::Var(1)), Box::new(Expr::Lit(0x00FF)), Width::Word)),
+        Box::new(Expr::Bin(
+            BinOp::And,
+            Box::new(Expr::Var(0)),
+            Box::new(Expr::Lit(0xFF00)),
+            Width::Word,
+        )),
+        Box::new(Expr::Bin(
+            BinOp::And,
+            Box::new(Expr::Var(1)),
+            Box::new(Expr::Lit(0x00FF)),
+            Width::Word,
+        )),
         Width::Word,
     );
     let target_prog = linearize(&func_of(&target), "run").unwrap();
@@ -164,7 +200,10 @@ fn main() {
     // More probes constrain the function better — fewer probe-equivalent-but-wrong
     // solutions survive (the synthesis generalization gap).
     let probes: Vec<[u16; 3]> = (0..64).map(|_| [rng.u16(), rng.u16(), 0]).collect();
-    let wants: Vec<u16> = probes.iter().map(|p| eval(&target_prog, &p[..ARITY]).unwrap()).collect();
+    let wants: Vec<u16> = probes
+        .iter()
+        .map(|p| eval(&target_prog, &p[..ARITY]).unwrap())
+        .collect();
     let np = probes.len();
 
     println!("GPU genetic program synthesis");
@@ -182,7 +221,8 @@ fn main() {
     {
         use rustmsl::interp::InterpBatch;
         let mut pop: Vec<Expr> = (0..POP).map(|_| rand_expr(&mut rng, 5)).collect();
-        let (mut batch, _) = InterpBatch::new(&[linearize(&func_of(&pop[0]), "run").unwrap()]).expect("metal");
+        let (mut batch, _) =
+            InterpBatch::new(&[linearize(&func_of(&pop[0]), "run").unwrap()]).expect("metal");
 
         let mut solution: Option<Expr> = None;
         let mut gen_found = 0;
@@ -218,14 +258,20 @@ fn main() {
                     Some(bi) => (0..np)
                         .map(|k| {
                             let o = out[bi * np + k];
-                            if o[3] == 0 { 16 - (o[0] ^ wants[k]).count_ones() as usize } else { 0 }
+                            if o[3] == 0 {
+                                16 - (o[0] ^ wants[k]).count_ones() as usize
+                            } else {
+                                0
+                            }
                         })
                         .sum(),
                     None => 0,
                 })
                 .collect();
             let exact = |bi: usize| -> usize {
-                (0..np).filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k]).count()
+                (0..np)
+                    .filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k])
+                    .count()
             };
             let mut best_exact = 0usize;
             for s in slot.iter().flatten() {
@@ -252,7 +298,11 @@ fn main() {
                 let child = if r < 60 {
                     mutate(&elite[rng.below(elite_n as u32) as usize], &mut rng)
                 } else if r < 88 {
-                    crossover(&elite[rng.below(elite_n as u32) as usize], &elite[rng.below(elite_n as u32) as usize], &mut rng)
+                    crossover(
+                        &elite[rng.below(elite_n as u32) as usize],
+                        &elite[rng.below(elite_n as u32) as usize],
+                        &mut rng,
+                    )
                 } else {
                     rand_expr(&mut rng, 5)
                 };
@@ -272,7 +322,10 @@ fn main() {
 
         match solution {
             Some(sol) => {
-                println!("\n✓ SOLVED at generation {gen_found}: f(x,y) = {}", show(&sol));
+                println!(
+                    "\n✓ SOLVED at generation {gen_found}: f(x,y) = {}",
+                    show(&sol)
+                );
                 // Full-domain-ish check: does it match the target beyond the probes?
                 let sol_prog = linearize(&func_of(&sol), "run").unwrap();
                 let mut mism = 0usize;
@@ -290,12 +343,16 @@ fn main() {
                     println!("  (the classic synthesis gap: matching the probes ≠ matching the function).");
                 }
             }
-            None => println!("\nnot solved in {MAX_GEN} generations (best {}/{np}).", best_curve.iter().max().unwrap()),
+            None => println!(
+                "\nnot solved in {MAX_GEN} generations (best {}/{np}).",
+                best_curve.iter().max().unwrap()
+            ),
         }
 
         println!(
             "\nGPU fitness evaluation: {} candidate·example evals across {} generations",
-            total_evals, best_curve.len()
+            total_evals,
+            best_curve.len()
         );
         println!(
             "  {:.1} ms total dispatch, {:.2e} evals/s — the whole population scored per generation",

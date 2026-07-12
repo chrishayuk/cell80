@@ -73,20 +73,61 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
                     || b.repro_promoter != starting2.repro_promoter
                     || b.sense_move != starting2.sense_move)
         })
-        .unwrap_or_else(|| panic!("no birth with an observable mutation from a genesis parent over {} ticks", cfg.ticks));
+        .unwrap_or_else(|| {
+            panic!(
+                "no birth with an observable mutation from a genesis parent over {} ticks",
+                cfg.ticks
+            )
+        });
 
     let (field_name, override_) = if target.hungry_promoter != starting2.hungry_promoter {
-        ("hungry_promoter", FieldOverride { skip_hungry_swap: true, ..Default::default() })
+        (
+            "hungry_promoter",
+            FieldOverride {
+                skip_hungry_swap: true,
+                ..Default::default()
+            },
+        )
     } else if target.repro_promoter != starting2.repro_promoter {
-        ("repro_promoter", FieldOverride { skip_repro_swap: true, ..Default::default() })
+        (
+            "repro_promoter",
+            FieldOverride {
+                skip_repro_swap: true,
+                ..Default::default()
+            },
+        )
     } else if target.sense_move != starting2.sense_move {
-        ("sense_move", FieldOverride { skip_sense_swap: true, ..Default::default() })
+        (
+            "sense_move",
+            FieldOverride {
+                skip_sense_swap: true,
+                ..Default::default()
+            },
+        )
     } else if target.decay_amount != starting2.decay_amount {
-        ("decay_amount", FieldOverride { skip_decay: true, ..Default::default() })
+        (
+            "decay_amount",
+            FieldOverride {
+                skip_decay: true,
+                ..Default::default()
+            },
+        )
     } else if target.repro_threshold != starting2.repro_threshold {
-        ("repro_threshold", FieldOverride { skip_threshold: true, ..Default::default() })
+        (
+            "repro_threshold",
+            FieldOverride {
+                skip_threshold: true,
+                ..Default::default()
+            },
+        )
     } else {
-        ("repro_give_pct", FieldOverride { skip_give_pct: true, ..Default::default() })
+        (
+            "repro_give_pct",
+            FieldOverride {
+                skip_give_pct: true,
+                ..Default::default()
+            },
+        )
     };
 
     let target_child_id = target.child_id;
@@ -94,7 +135,13 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
 
     let mut overrides = HashMap::new();
     overrides.insert(target_child_id, override_);
-    let counterfactual = ex2::run_with_overrides(EngineKind::CpuReference, &cfg, &starting2, &genes, &overrides);
+    let counterfactual = ex2::run_with_overrides(
+        EngineKind::CpuReference,
+        &cfg,
+        &starting2,
+        &genes,
+        &overrides,
+    );
 
     // (a) Every tick strictly before the overridden birth is byte-identical — nothing
     // upstream of the fork changed.
@@ -102,7 +149,11 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
         if a.tick >= target_tick {
             break;
         }
-        assert_eq!(a, b, "tick {} diverged before the overridden birth (tick {target_tick})", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged before the overridden birth (tick {target_tick})",
+            a.tick
+        );
     }
 
     // (b) The reverted field on that specific child now matches the parent's (starting)
@@ -111,7 +162,9 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
         .births
         .iter()
         .find(|b| b.child_id == target_child_id)
-        .unwrap_or_else(|| panic!("child {target_child_id} missing from the counterfactual run's birth log"));
+        .unwrap_or_else(|| {
+            panic!("child {target_child_id} missing from the counterfactual run's birth log")
+        });
     let (before, after) = match field_name {
         "hungry_promoter" => (target.hungry_promoter, reran.hungry_promoter),
         "repro_promoter" => (target.repro_promoter, reran.repro_promoter),
@@ -120,7 +173,10 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
         "repro_threshold" => (target.repro_threshold, reran.repro_threshold),
         _ => (target.repro_give_pct, reran.repro_give_pct),
     };
-    assert_ne!(before, after, "the override had no effect on `{field_name}`");
+    assert_ne!(
+        before, after,
+        "the override had no effect on `{field_name}`"
+    );
     let starting_value = match field_name {
         "hungry_promoter" => starting2.hungry_promoter,
         "repro_promoter" => starting2.repro_promoter,
@@ -129,7 +185,10 @@ fn reverting_one_field_forks_the_run_from_exactly_that_birth() {
         "repro_threshold" => starting2.repro_threshold,
         _ => starting2.repro_give_pct,
     };
-    assert_eq!(after, starting_value, "reverted `{field_name}` should now match the (genesis) parent's value");
+    assert_eq!(
+        after, starting_value,
+        "reverted `{field_name}` should now match the (genesis) parent's value"
+    );
 
     // (c) The override was not a silent no-op: the two runs' overall history diverges.
     assert_ne!(baseline.history_hash, counterfactual.history_hash);

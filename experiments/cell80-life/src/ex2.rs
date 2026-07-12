@@ -62,7 +62,10 @@ impl GenePools {
         role_pools: &Pools,
     ) -> Result<Self, String> {
         let load_all = |names: &[String]| -> Result<Vec<CompiledGene>, String> {
-            names.iter().map(|n| CompiledGene::load(cells_dir, n)).collect()
+            names
+                .iter()
+                .map(|n| CompiledGene::load(cells_dir, n))
+                .collect()
         };
         Ok(GenePools {
             decay: CompiledGene::load(cells_dir, decay_name)?,
@@ -182,49 +185,102 @@ pub(crate) fn mutate(
     let ov = override_.copied().unwrap_or_default();
 
     if !ov.skip_decay
-        && rng::chance(seed, tick, child_id, rng::MUTATE_DECAY_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_DECAY_CHANCE_STREAM,
+            NUMERIC_MUTATE_PCT,
+        )
     {
-        let step = (rng::draw(seed, tick, child_id, rng::MUTATE_DECAY_MAGNITUDE_STREAM) % 3) as i32 - 1;
+        let step =
+            (rng::draw(seed, tick, child_id, rng::MUTATE_DECAY_MAGNITUDE_STREAM) % 3) as i32 - 1;
         child.decay_amount = clamp_u16(child.decay_amount as i32 + step, DECAY_BOUNDS);
     }
     if !ov.skip_threshold
-        && rng::chance(seed, tick, child_id, rng::MUTATE_THRESHOLD_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_THRESHOLD_CHANCE_STREAM,
+            NUMERIC_MUTATE_PCT,
+        )
     {
-        let step = (rng::draw(seed, tick, child_id, rng::MUTATE_THRESHOLD_MAGNITUDE_STREAM) % 21) as i32 - 10;
+        let step = (rng::draw(seed, tick, child_id, rng::MUTATE_THRESHOLD_MAGNITUDE_STREAM) % 21)
+            as i32
+            - 10;
         child.repro_threshold = clamp_u16(child.repro_threshold as i32 + step, THRESHOLD_BOUNDS);
     }
     if !ov.skip_give_pct
-        && rng::chance(seed, tick, child_id, rng::MUTATE_GIVE_PCT_CHANCE_STREAM, NUMERIC_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_GIVE_PCT_CHANCE_STREAM,
+            NUMERIC_MUTATE_PCT,
+        )
     {
-        let step = (rng::draw(seed, tick, child_id, rng::MUTATE_GIVE_PCT_MAGNITUDE_STREAM) % 11) as i32 - 5;
+        let step = (rng::draw(seed, tick, child_id, rng::MUTATE_GIVE_PCT_MAGNITUDE_STREAM) % 11)
+            as i32
+            - 5;
         child.repro_give_pct = clamp_u16(child.repro_give_pct as i32 + step, GIVE_PCT_BOUNDS);
     }
 
     if !ov.skip_hungry_swap
         && hungry_pool_len >= 2
-        && rng::chance(seed, tick, child_id, rng::MUTATE_HUNGRY_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_HUNGRY_SWAP_CHANCE_STREAM,
+            SWAP_MUTATE_PCT,
+        )
     {
         child.hungry_promoter = rng::pick_other_index(
-            seed, tick, child_id, rng::MUTATE_HUNGRY_SWAP_TARGET_STREAM,
-            child.hungry_promoter, hungry_pool_len,
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_HUNGRY_SWAP_TARGET_STREAM,
+            child.hungry_promoter,
+            hungry_pool_len,
         );
     }
     if !ov.skip_repro_swap
         && repro_pool_len >= 2
-        && rng::chance(seed, tick, child_id, rng::MUTATE_REPRO_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_REPRO_SWAP_CHANCE_STREAM,
+            SWAP_MUTATE_PCT,
+        )
     {
         child.repro_promoter = rng::pick_other_index(
-            seed, tick, child_id, rng::MUTATE_REPRO_SWAP_TARGET_STREAM,
-            child.repro_promoter, repro_pool_len,
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_REPRO_SWAP_TARGET_STREAM,
+            child.repro_promoter,
+            repro_pool_len,
         );
     }
     if !ov.skip_sense_swap
         && sense_pool_len >= 2
-        && rng::chance(seed, tick, child_id, rng::MUTATE_SENSE_SWAP_CHANCE_STREAM, SWAP_MUTATE_PCT)
+        && rng::chance(
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_SENSE_SWAP_CHANCE_STREAM,
+            SWAP_MUTATE_PCT,
+        )
     {
         child.sense_move = rng::pick_other_index(
-            seed, tick, child_id, rng::MUTATE_SENSE_SWAP_TARGET_STREAM,
-            child.sense_move, sense_pool_len,
+            seed,
+            tick,
+            child_id,
+            rng::MUTATE_SENSE_SWAP_TARGET_STREAM,
+            child.sense_move,
+            sense_pool_len,
         );
     }
 
@@ -350,7 +406,8 @@ fn run_impl(
         // Stage 4: hungry_promoter — swappable role, grouped by pool index.
         let hungry_role_idx: Vec<u16> = orgs.iter().map(|o| o.genome.hungry_promoter).collect();
         let hungry_in: Vec<[u16; 3]> = senses_x.iter().map(|&(h, _, _)| [h, 0, 0]).collect();
-        let hungry_out = batch_run_grouped(engine, &pools.hungry_pool, &hungry_role_idx, &hungry_in);
+        let hungry_out =
+            batch_run_grouped(engine, &pools.hungry_pool, &hungry_role_idx, &hungry_in);
 
         // Stage 5: eat — fixed/shared cell, against post-decay energy.
         let eat_in: Vec<[u16; 3]> = senses_x
@@ -427,7 +484,10 @@ fn run_impl(
         }
 
         // repro_promoter (swappable, grouped) / split (fixed) — survivors only.
-        let repro_role_idx: Vec<u16> = survivors.iter().map(|&i| orgs[i].genome.repro_promoter).collect();
+        let repro_role_idx: Vec<u16> = survivors
+            .iter()
+            .map(|&i| orgs[i].genome.repro_promoter)
+            .collect();
         let repro_in: Vec<[u16; 3]> = survivors
             .iter()
             .map(|&i| [orgs[i].energy, orgs[i].genome.repro_threshold, 0])
@@ -449,8 +509,13 @@ fn run_impl(
                 let id = next_id;
                 next_id += 1;
                 let child_genome = mutate(
-                    cfg.seed, tick, id, &orgs[i].genome,
-                    hungry_pool_len, repro_pool_len, sense_pool_len,
+                    cfg.seed,
+                    tick,
+                    id,
+                    &orgs[i].genome,
+                    hungry_pool_len,
+                    repro_pool_len,
+                    sense_pool_len,
                     overrides.and_then(|o| o.get(&id)),
                 );
                 all_births.push(BirthEvent {
@@ -475,7 +540,13 @@ fn run_impl(
         }
 
         let total_ir_steps = sum_steps(&[
-            &decay_out, &action_x, &action_y, &hungry_out, &eat_out, &repro_out, &split_out,
+            &decay_out,
+            &action_x,
+            &action_y,
+            &hungry_out,
+            &eat_out,
+            &repro_out,
+            &split_out,
         ]);
 
         let placeholder = || Org {

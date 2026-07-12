@@ -102,7 +102,10 @@ impl GenomeFields {
     }
 
     pub fn short_hash(&self) -> String {
-        self.hash()[..8].iter().map(|b| format!("{b:02x}")).collect()
+        self.hash()[..8]
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
     }
 }
 
@@ -184,7 +187,12 @@ impl LineageTree {
             by_hash.entry(starting.hash()).or_default().push(id);
             by_child_id.insert(
                 id,
-                LineageNode { child_id: id, parent_id: None, tick: 0, genome: *starting },
+                LineageNode {
+                    child_id: id,
+                    parent_id: None,
+                    tick: 0,
+                    genome: *starting,
+                },
             );
         }
         for b in births {
@@ -200,7 +208,10 @@ impl LineageTree {
                 },
             );
         }
-        LineageTree { by_child_id, by_hash }
+        LineageTree {
+            by_child_id,
+            by_hash,
+        }
     }
 
     pub fn get(&self, child_id: u32) -> Option<&LineageNode> {
@@ -303,7 +314,11 @@ fn plurality_at(rec: &TickRecord2DGenome, role: Role) -> Option<Sample> {
             best = Some((idx, count));
         }
     }
-    best.map(|(winner, count)| Sample { tick: rec.tick, winner, share: count as f64 / total as f64 })
+    best.map(|(winner, count)| Sample {
+        tick: rec.tick,
+        winner,
+        share: count as f64 / total as f64,
+    })
 }
 
 /// A detected, sustained change in which pool member is the population's plurality choice
@@ -350,8 +365,13 @@ pub fn detect_plurality_events(
             continue;
         }
         let to = samples[i].winner;
-        if samples.len() - i >= sustain_k && samples[i..i + sustain_k].iter().all(|s| s.winner == to) {
-            let peak = samples[i..i + sustain_k].iter().map(|s| s.share).fold(0.0_f64, f64::max);
+        if samples.len() - i >= sustain_k
+            && samples[i..i + sustain_k].iter().all(|s| s.winner == to)
+        {
+            let peak = samples[i..i + sustain_k]
+                .iter()
+                .map(|s| s.share)
+                .fold(0.0_f64, f64::max);
             events.push(PluralityEvent {
                 role,
                 from: samples[i - 1].winner,
@@ -391,11 +411,19 @@ pub enum OriginKind {
 fn trace_origin(tree: &LineageTree, role: Role, child_id: u32) -> OriginKind {
     let mut current = child_id;
     loop {
-        let node = tree.get(current).expect("lineage tree missing a live organism's node");
+        let node = tree
+            .get(current)
+            .expect("lineage tree missing a live organism's node");
         match node.parent_id {
-            None => return OriginKind::Genesis { genesis_id: current },
+            None => {
+                return OriginKind::Genesis {
+                    genesis_id: current,
+                }
+            }
             Some(parent_id) => {
-                let parent = tree.get(parent_id).expect("lineage tree missing a parent node");
+                let parent = tree
+                    .get(parent_id)
+                    .expect("lineage tree missing a parent node");
                 if role.value(&parent.genome) != role.value(&node.genome) {
                     return OriginKind::Mutated {
                         origin_child_id: node.child_id,
@@ -434,7 +462,9 @@ pub fn find_origins(
         }
         let origin = trace_origin(tree, event.role, o.id);
         let key = match &origin {
-            OriginKind::Mutated { origin_child_id, .. } => *origin_child_id,
+            OriginKind::Mutated {
+                origin_child_id, ..
+            } => *origin_child_id,
             OriginKind::Genesis { genesis_id } => *genesis_id,
         };
         if seen.insert(key) {
@@ -508,8 +538,14 @@ mod tests {
     fn genesis_traces_to_genesis_organism() {
         let starting = genome(0);
         let tree = LineageTree::build(&starting, 2, &[]);
-        assert_eq!(trace_origin(&tree, Role::Hungry, 0), OriginKind::Genesis { genesis_id: 0 });
-        assert_eq!(trace_origin(&tree, Role::Hungry, 1), OriginKind::Genesis { genesis_id: 1 });
+        assert_eq!(
+            trace_origin(&tree, Role::Hungry, 0),
+            OriginKind::Genesis { genesis_id: 0 }
+        );
+        assert_eq!(
+            trace_origin(&tree, Role::Hungry, 1),
+            OriginKind::Genesis { genesis_id: 1 }
+        );
     }
 
     #[test]
@@ -553,11 +589,17 @@ mod tests {
             peak_share_in_window: 1.0,
         };
         let origins = find_origins(&tree, &ticks, &event);
-        assert_eq!(origins.len(), 2, "expected two distinct convergent origins, got {origins:?}");
+        assert_eq!(
+            origins.len(),
+            2,
+            "expected two distinct convergent origins, got {origins:?}"
+        );
         let ids: HashSet<u32> = origins
             .iter()
             .map(|o| match o {
-                OriginKind::Mutated { origin_child_id, .. } => *origin_child_id,
+                OriginKind::Mutated {
+                    origin_child_id, ..
+                } => *origin_child_id,
                 OriginKind::Genesis { genesis_id } => *genesis_id,
             })
             .collect();
@@ -584,7 +626,10 @@ mod tests {
             tick_rec(60, vec![org(0, 0), org(1, 0), org(2, 1)]),
         ];
         let events = detect_plurality_events(&ticks, Role::Hungry, 20, 3);
-        assert!(events.is_empty(), "a one-sample blip should not register: {events:?}");
+        assert!(
+            events.is_empty(),
+            "a one-sample blip should not register: {events:?}"
+        );
     }
 
     #[test]
@@ -609,7 +654,13 @@ mod tests {
         assert_ne!(genome(1).hash(), genome(2).hash());
     }
 
-    fn birth_eco(child_id: u32, parent_id: u32, tick: u32, species: Species, hungry: u16) -> BirthEventEco {
+    fn birth_eco(
+        child_id: u32,
+        parent_id: u32,
+        tick: u32,
+        species: Species,
+        hungry: u16,
+    ) -> BirthEventEco {
         let g = genome(hungry);
         BirthEventEco {
             child_id,
@@ -659,11 +710,17 @@ mod tests {
     fn genome_fields_from_eco_matches_non_eco_for_the_same_values() {
         let b = birth_eco(2, 0, 10, Species::Predator, 1);
         let b_plain = birth(2, 0, 10, 1);
-        assert_eq!(GenomeFields::from_birth_eco(&b), GenomeFields::from_birth(&b_plain));
+        assert_eq!(
+            GenomeFields::from_birth_eco(&b),
+            GenomeFields::from_birth(&b_plain)
+        );
 
         let o = org_eco(5, Species::Grazer, 3);
         let o_plain = org(5, 3);
-        assert_eq!(GenomeFields::from_snapshot_eco(&o), GenomeFields::from_snapshot(&o_plain));
+        assert_eq!(
+            GenomeFields::from_snapshot_eco(&o),
+            GenomeFields::from_snapshot(&o_plain)
+        );
     }
 
     #[test]
@@ -675,7 +732,11 @@ mod tests {
         let births = vec![birth(43, 41, 5, 1)]; // genuine mutation: parent(41)=0 -> child(43)=1
         let tree = LineageTree::build_from_genesis_ids(&genesis_ids, &starting, &births);
 
-        assert_eq!(tree.get(40).unwrap().parent_id, None, "genesis organism, not a birth");
+        assert_eq!(
+            tree.get(40).unwrap().parent_id,
+            None,
+            "genesis organism, not a birth"
+        );
         assert_eq!(tree.get(41).unwrap().parent_id, None);
         assert_eq!(tree.get(42).unwrap().parent_id, None);
         assert_eq!(
@@ -694,7 +755,10 @@ mod tests {
     fn eco_adapters_filter_by_species_and_preserve_values() {
         let ticks = vec![tick_rec_eco(
             0,
-            vec![org_eco(0, Species::Grazer, 5), org_eco(1, Species::Predator, 9)],
+            vec![
+                org_eco(0, Species::Grazer, 5),
+                org_eco(1, Species::Predator, 9),
+            ],
         )];
         let births = vec![
             birth_eco(2, 0, 10, Species::Grazer, 6),
@@ -703,12 +767,20 @@ mod tests {
 
         let grazer_ticks = eco_ticks_to_genome(&ticks, Species::Grazer);
         assert_eq!(grazer_ticks.len(), 1);
-        assert_eq!(grazer_ticks[0].organisms.len(), 1, "predator must be filtered out");
+        assert_eq!(
+            grazer_ticks[0].organisms.len(),
+            1,
+            "predator must be filtered out"
+        );
         assert_eq!(grazer_ticks[0].organisms[0].id, 0);
         assert_eq!(grazer_ticks[0].organisms[0].hungry_promoter, 5);
 
         let predator_ticks = eco_ticks_to_genome(&ticks, Species::Predator);
-        assert_eq!(predator_ticks[0].organisms.len(), 1, "grazer must be filtered out");
+        assert_eq!(
+            predator_ticks[0].organisms.len(),
+            1,
+            "grazer must be filtered out"
+        );
         assert_eq!(predator_ticks[0].organisms[0].id, 1);
 
         let grazer_births = eco_births_to_genome(&births, Species::Grazer);
@@ -786,6 +858,10 @@ mod tests {
         let starting = genome(0);
         let tree = LineageTree::build_from_genesis_ids(&genesis_ids, &starting, &predator_births);
         let origins = find_origins(&tree, &predator_ticks, event);
-        assert_eq!(origins.len(), 2, "two independent predator mutations, both live at the shift tick");
+        assert_eq!(
+            origins.len(),
+            2,
+            "two independent predator mutations, both live at the shift tick"
+        );
     }
 }

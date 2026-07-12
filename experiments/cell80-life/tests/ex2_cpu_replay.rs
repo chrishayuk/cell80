@@ -62,11 +62,19 @@ fn replay_is_bit_exact_with_mutation() {
 
     assert_eq!(run1.ticks.len(), run2.ticks.len());
     for (a, b) in run1.ticks.iter().zip(&run2.ticks) {
-        assert_eq!(a, b, "tick {} diverged between two identical-seed runs", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between two identical-seed runs",
+            a.tick
+        );
     }
     assert_eq!(run1.births, run2.births);
     assert_eq!(run1.history_hash, run2.history_hash);
-    assert!(run1.total_births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        run1.total_births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 
     // The whole point of this experiment: genome diversity should actually emerge. If every
     // birth's role indices matched the parent's exactly, mutation would be a no-op.
@@ -80,5 +88,9 @@ fn replay_is_bit_exact_with_mutation() {
             || b.repro_threshold != starting.repro_threshold
             || b.repro_give_pct != starting.repro_give_pct
     });
-    assert!(any_swap || any_numeric_drift, "no mutation observed over {} births", run1.births.len());
+    assert!(
+        any_swap || any_numeric_drift,
+        "no mutation observed over {} births",
+        run1.births.len()
+    );
 }

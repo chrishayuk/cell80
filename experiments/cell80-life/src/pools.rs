@@ -24,7 +24,8 @@ impl Pools {
         self.promoters
             .iter()
             .position(|n| n == name)
-            .unwrap_or_else(|| panic!("`{name}` not found in the discovered promoter pool")) as u16
+            .unwrap_or_else(|| panic!("`{name}` not found in the discovered promoter pool"))
+            as u16
     }
 
     /// Same as `promoter_index`, for the movement (`sense_move`) pool.
@@ -32,7 +33,8 @@ impl Pools {
         self.movement
             .iter()
             .position(|n| n == name)
-            .unwrap_or_else(|| panic!("`{name}` not found in the discovered movement pool")) as u16
+            .unwrap_or_else(|| panic!("`{name}` not found in the discovered movement pool"))
+            as u16
     }
 }
 
@@ -73,7 +75,9 @@ pub fn discover_pools(cells_dir: &Path) -> Pools {
             continue;
         };
         let sig = &cart.manifest.signature;
-        if !sig.state.is_empty() || sig.ret != "u16" || !sig.params.iter().all(|(_, ty)| ty == "u16")
+        if !sig.state.is_empty()
+            || sig.ret != "u16"
+            || !sig.params.iter().all(|(_, ty)| ty == "u16")
         {
             continue;
         }
@@ -83,7 +87,10 @@ pub fn discover_pools(cells_dir: &Path) -> Pools {
             _ => {}
         }
     }
-    Pools { promoters, movement }
+    Pools {
+        promoters,
+        movement,
+    }
 }
 
 #[cfg(test)]
@@ -102,9 +109,21 @@ mod tests {
         assert!(pools.promoters.contains(&"is_gt".to_string()));
         assert!(pools.promoters.contains(&"is_ge".to_string()));
         assert!(pools.movement.contains(&"argmax3".to_string()));
-        assert!(pools.promoters.windows(2).all(|w| w[0] <= w[1]), "promoters must be sorted");
-        assert!(pools.movement.windows(2).all(|w| w[0] <= w[1]), "movement must be sorted");
-        assert!(pools.promoters.len() >= 2, "need at least 2 promoters for swap mutation to have a choice");
-        assert!(pools.movement.len() >= 2, "need at least 2 movement cells for swap mutation to have a choice");
+        assert!(
+            pools.promoters.windows(2).all(|w| w[0] <= w[1]),
+            "promoters must be sorted"
+        );
+        assert!(
+            pools.movement.windows(2).all(|w| w[0] <= w[1]),
+            "movement must be sorted"
+        );
+        assert!(
+            pools.promoters.len() >= 2,
+            "need at least 2 promoters for swap mutation to have a choice"
+        );
+        assert!(
+            pools.movement.len() >= 2,
+            "need at least 2 movement cells for swap mutation to have a choice"
+        );
     }
 }

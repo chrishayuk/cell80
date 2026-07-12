@@ -165,7 +165,12 @@ pub fn run(
         // this starts to decide something).
         let mutation_draws: Vec<(u32, u32)> = survivors
             .iter()
-            .map(|&i| (orgs[i].id, rng::draw(cfg.seed, tick, orgs[i].id, MUTATION_STREAM)))
+            .map(|&i| {
+                (
+                    orgs[i].id,
+                    rng::draw(cfg.seed, tick, orgs[i].id, MUTATION_STREAM),
+                )
+            })
             .collect();
 
         // Stage 5: repro_promoter, stage 6: split — survivors only.

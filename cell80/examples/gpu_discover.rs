@@ -62,7 +62,9 @@ fn rand_tree(rng: &mut Rng, depth: u32, cells: &[Cell]) -> Expr {
         }
     } else {
         let c = rng.below(cells.len());
-        let args = (0..cells[c].arity).map(|_| rand_tree(rng, depth - 1, cells)).collect();
+        let args = (0..cells[c].arity)
+            .map(|_| rand_tree(rng, depth - 1, cells))
+            .collect();
         Expr::Call(cells[c].name.clone(), args)
     }
 }
@@ -80,7 +82,10 @@ fn replace_nth(e: &Expr, n: usize, sub: &Expr, c: &mut usize) -> Expr {
     }
     *c += 1;
     match e {
-        Expr::Call(name, args) => Expr::Call(name.clone(), args.iter().map(|a| replace_nth(a, n, sub, c)).collect()),
+        Expr::Call(name, args) => Expr::Call(
+            name.clone(),
+            args.iter().map(|a| replace_nth(a, n, sub, c)).collect(),
+        ),
         other => other.clone(),
     }
 }
@@ -90,7 +95,15 @@ fn mutate(e: &Expr, rng: &mut Rng, cells: &[Cell]) -> Expr {
 }
 
 fn cand_func(e: &Expr) -> Func {
-    Func { params: 1, n_locals: 1, body: vec![], ret: vec![e.clone()], wide_param: false, wide_second: false, wide_ret: false }
+    Func {
+        params: 1,
+        n_locals: 1,
+        body: vec![],
+        ret: vec![e.clone()],
+        wide_param: false,
+        wide_second: false,
+        wide_ret: false,
+    }
 }
 /// Linearize a candidate against `all` (slot 0 is the candidate, the rest is the
 /// library pool built ONCE). Swapping only slot 0 avoids cloning all 168 pool
@@ -112,7 +125,10 @@ fn show(e: &Expr) -> String {
     match e {
         Expr::Var(_) => "x".into(),
         Expr::Lit(n) => format!("{n}"),
-        Expr::Call(name, a) => format!("{name}({})", a.iter().map(show).collect::<Vec<_>>().join(", ")),
+        Expr::Call(name, a) => format!(
+            "{name}({})",
+            a.iter().map(show).collect::<Vec<_>>().join(", ")
+        ),
         _ => "?".into(),
     }
 }
@@ -152,11 +168,16 @@ fn main() {
         }
         let name = path.file_stem().unwrap().to_string_lossy().into_owned();
         let src = std::fs::read_to_string(&path).unwrap();
-        let Ok(sig) = rustz80::entry_signature(&src, "run") else { continue };
+        let Ok(sig) = rustz80::entry_signature(&src, "run") else {
+            continue;
+        };
         if !sig.state.is_empty() {
             continue;
         }
-        let scalar = sig.params.iter().all(|(_, t)| matches!(t.as_str(), "u8" | "u16" | "i16" | "u32" | "i32" | "bool"));
+        let scalar = sig
+            .params
+            .iter()
+            .all(|(_, t)| matches!(t.as_str(), "u8" | "u16" | "i16" | "u32" | "i32" | "bool"));
         let arity = sig.params.len();
         if !scalar || arity == 0 || arity > 2 {
             continue;
@@ -166,9 +187,15 @@ fn main() {
             if let Ok(p) = linearize(&funcs, "run") {
                 if p.n_locals <= 64 {
                     if arity == 1 {
-                        lib_fp.push((name.clone(), fp_probes.iter().map(|&x| eval(&p, x)).collect()));
+                        lib_fp.push((
+                            name.clone(),
+                            fp_probes.iter().map(|&x| eval(&p, x)).collect(),
+                        ));
                     }
-                    cells.push(Cell { name: name.clone(), arity });
+                    cells.push(Cell {
+                        name: name.clone(),
+                        arity,
+                    });
                     pool.push((name.clone(), funcs[0].1.clone()));
                 }
             }
@@ -176,8 +203,14 @@ fn main() {
     }
     let n_un = cells.iter().filter(|c| c.arity == 1).count();
     println!("GPU cell discovery (independent targets)\n");
-    println!("building blocks: {} cells ({} unary, {} binary)\n", cells.len(), n_un, cells.len() - n_un);
+    println!(
+        "building blocks: {} cells ({} unary, {} binary)\n",
+        cells.len(),
+        n_un,
+        cells.len() - n_un
+    );
 
+    #[allow(clippy::type_complexity)]
     let targets: Vec<(&str, fn(u16) -> u16)> = vec![
         ("digital_root", digital_root),
         ("hi_byte_popcount", |x| (x >> 8).count_ones() as u16),
@@ -216,7 +249,10 @@ fn main() {
         // sample is clean do we scan the full domain — so an accepted solve is
         // still exhaustively verified, but hard targets don't thrash the CPU.
         let counterexample = |sp: &CellProgram, tf: fn(u16) -> u16| -> Option<u16> {
-            if let Some(x) = (0..=u16::MAX).step_by(31).find(|&x| eval(sp, x) != Some(tf(x))) {
+            if let Some(x) = (0..=u16::MAX)
+                .step_by(31)
+                .find(|&x| eval(sp, x) != Some(tf(x)))
+            {
                 return Some(x);
             }
             (0..=u16::MAX).find(|&x| eval(sp, x) != Some(tf(x)))
@@ -248,32 +284,62 @@ fn main() {
                 let mut slot = Vec::with_capacity(POP);
                 for (_, p) in &pop {
                     match p {
-                        Some(cp) => { slot.push(Some(progs.len())); progs.push(cp.clone()); }
+                        Some(cp) => {
+                            slot.push(Some(progs.len()));
+                            progs.push(cp.clone());
+                        }
                         None => slot.push(None),
                     }
                 }
                 batch.reload(&progs);
                 let out = batch.run(&probes);
-                let exact = |bi: usize| (0..np).filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k]).count();
-                let fit: Vec<usize> = slot.iter().map(|s| match s {
-                    Some(bi) => (0..np).map(|k| { let o = out[bi*np+k]; if o[3]==0 {16-(o[0]^wants[k]).count_ones() as usize} else {0} }).sum(),
-                    None => 0,
-                }).collect();
+                let exact = |bi: usize| {
+                    (0..np)
+                        .filter(|&k| out[bi * np + k][3] == 0 && out[bi * np + k][0] == wants[k])
+                        .count()
+                };
+                let fit: Vec<usize> = slot
+                    .iter()
+                    .map(|s| match s {
+                        Some(bi) => (0..np)
+                            .map(|k| {
+                                let o = out[bi * np + k];
+                                if o[3] == 0 {
+                                    16 - (o[0] ^ wants[k]).count_ones() as usize
+                                } else {
+                                    0
+                                }
+                            })
+                            .sum(),
+                        None => 0,
+                    })
+                    .collect();
                 // A candidate matching every probe: verify full-domain; accept, or
                 // add the counterexample input and let evolution continue.
                 if let Some(&bi) = slot.iter().flatten().find(|&&bi| exact(bi) == np) {
                     let idx = slot.iter().position(|s| *s == Some(bi)).unwrap();
                     let sp = pop[idx].1.as_ref().unwrap(); // cached prog — no re-linearize
                     match counterexample(sp, *tf) {
-                        None => { solved = Some((pop[idx].0.clone(), sp.clone())); break; }
-                        Some(cx) if cex < 128 => { probes.push([cx, 0, 0]); cex += 1; }
+                        None => {
+                            solved = Some((pop[idx].0.clone(), sp.clone()));
+                            break;
+                        }
+                        Some(cx) if cex < 128 => {
+                            probes.push([cx, 0, 0]);
+                            cex += 1;
+                        }
                         Some(_) => break, // give up if the probe set balloons
                     }
                 }
                 let mut order: Vec<usize> = (0..POP).collect();
-                order.sort_by(|&a, &b| fit[b].cmp(&fit[a]).then(size(&pop[a].0).cmp(&size(&pop[b].0))));
+                order.sort_by(|&a, &b| {
+                    fit[b]
+                        .cmp(&fit[a])
+                        .then(size(&pop[a].0).cmp(&size(&pop[b].0)))
+                });
                 let en = (POP / 10).max(2);
-                let elite: Vec<(Expr, Option<CellProgram>)> = order[..en].iter().map(|&i| pop[i].clone()).collect();
+                let elite: Vec<(Expr, Option<CellProgram>)> =
+                    order[..en].iter().map(|&i| pop[i].clone()).collect();
                 let mut next = elite.clone();
                 while next.len() < POP {
                     let ce = if rng.below(100) < 12 {
@@ -292,20 +358,35 @@ fn main() {
                 // novelty remains to decide admission.
                 Some((e, sp)) => {
                     let sfp: Vec<Option<u16>> = fp_probes.iter().map(|&x| eval(&sp, x)).collect();
-                    let (bid, ba) = lib_fp.iter().map(|(id, f)| (id.clone(), agree(&sfp, f))).max_by(|a, b| a.1.total_cmp(&b.1)).unwrap();
+                    let (bid, ba) = lib_fp
+                        .iter()
+                        .map(|(id, f)| (id.clone(), agree(&sfp, f)))
+                        .max_by(|a, b| a.1.total_cmp(&b.1))
+                        .unwrap();
                     let verdict = if ba >= 0.834 {
                         format!("EXISTS as `{bid}` (agreement {ba:.3}) — dedup would reject")
                     } else {
                         format!("DISCOVERED — full-domain-correct, novel ({ba:.3} vs {bid}) — would admit")
                     };
                     println!("  {tname:<18} = {}", show(&e));
-                    println!("  {:<18}   {verdict}  [+{cex} cex, {gens} gens, {:.1}s]", "", t0.elapsed().as_secs_f64());
+                    println!(
+                        "  {:<18}   {verdict}  [+{cex} cex, {gens} gens, {:.1}s]",
+                        "",
+                        t0.elapsed().as_secs_f64()
+                    );
                 }
-                None => println!("  {tname:<18} : not discovered ({cex} cex, {gens} gens, {:.1}s)", t0.elapsed().as_secs_f64()),
+                None => println!(
+                    "  {tname:<18} : not discovered ({cex} cex, {gens} gens, {:.1}s)",
+                    t0.elapsed().as_secs_f64()
+                ),
             }
         }
-        println!("\nCEGIS: the probe set grows with counterexamples until matching every probe means");
-        println!("being the function — so every solve is full-domain-correct by construction. The dedup");
+        println!(
+            "\nCEGIS: the probe set grows with counterexamples until matching every probe means"
+        );
+        println!(
+            "being the function — so every solve is full-domain-correct by construction. The dedup"
+        );
         println!("gate then decides novelty. Probe-only fakes can no longer slip through.");
     }
 }

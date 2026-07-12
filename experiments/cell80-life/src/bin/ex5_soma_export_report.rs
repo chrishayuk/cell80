@@ -62,19 +62,26 @@ fn load_starting3(name: &str, species: Species, role_pools: &Pools) -> StartingG
 /// ecology engine itself runs (for the macOS-only GPU bonus cross-check).
 fn attest_cell(role: &str, name: &str, arity: usize, compiled: &CompiledGene) -> bool {
     let path = cell80::find_cell_file(&cells_dir(), name).unwrap_or_else(|e| panic!("{e}"));
-    let src = fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
+    let src =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
     let id = format!("ex5.{role}.{name}");
 
     let z80 = Cartridge::compile(
         &src,
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some(id.clone()), ..Default::default() },
+        CartridgeOpts {
+            id: Some(id.clone()),
+            ..Default::default()
+        },
     )
     .unwrap_or_else(|e| panic!("z80 compile of `{name}`: {e}"));
     let rv32 = Cartridge::compile_rv32(
         &src,
         CellConfig::sandboxed(),
-        CartridgeOpts { id: Some(id), ..Default::default() },
+        CartridgeOpts {
+            id: Some(id),
+            ..Default::default()
+        },
     )
     .unwrap_or_else(|e| panic!("rv32 compile of `{name}`: {e}"));
 
@@ -83,8 +90,10 @@ fn attest_cell(role: &str, name: &str, arity: usize, compiled: &CompiledGene) ->
     let family_match = z80.manifest.family_hash == rv32.manifest.family_hash;
     let artifact_differs = z80.artifact_hash() != rv32.artifact_hash();
 
-    let back = Cartridge::from_bytes(&rv32.to_bytes()).unwrap_or_else(|e| panic!("rv32 round-trip: {e}"));
-    let roundtrip_ok = back.manifest.target == RV32_TARGET && back.manifest.family_hash == rv32.manifest.family_hash;
+    let back =
+        Cartridge::from_bytes(&rv32.to_bytes()).unwrap_or_else(|e| panic!("rv32 round-trip: {e}"));
+    let roundtrip_ok = back.manifest.target == RV32_TARGET
+        && back.manifest.family_hash == rv32.manifest.family_hash;
 
     let mut zr = Runner::new(z80.z80().expect("z80 body"));
     let rr = Rv32Runner::load(&back).expect("rv32 runner");
@@ -93,13 +102,20 @@ fn attest_cell(role: &str, name: &str, arity: usize, compiled: &CompiledGene) ->
     let mut n = 0u32;
     for probe in DEFAULT_PROBES {
         let args16 = &probe[..arity];
-        let z_rep = zr.run(None, args16, 1_000_000).unwrap_or_else(|e| panic!("z80 run: {e}"));
+        let z_rep = zr
+            .run(None, args16, 1_000_000)
+            .unwrap_or_else(|e| panic!("z80 run: {e}"));
         let args32: Vec<u32> = args16.iter().map(|&v| v as u32).collect();
-        let r_rep = rr.run(&args32, &[], 1_000_000).unwrap_or_else(|e| panic!("rv32 run: {e}"));
+        let r_rep = rr
+            .run(&args32, &[], 1_000_000)
+            .unwrap_or_else(|e| panic!("rv32 run: {e}"));
         n += 1;
         if z_rep.result as u32 != r_rep.result {
             agree = false;
-            println!("      MISMATCH on {args16:?}: z80={} rv32={}", z_rep.result, r_rep.result);
+            println!(
+                "      MISMATCH on {args16:?}: z80={} rv32={}",
+                z_rep.result, r_rep.result
+            );
         }
     }
 
@@ -161,14 +177,21 @@ fn main() {
     let out = ex3::run(EngineKind::CpuReference, &cfg, &grazer, &predator, &genes);
     println!(
         "  {} ticks, final: grazers={} predators={}, total_predation_kills={}",
-        out.ticks.len(), out.final_grazers, out.final_predators, out.total_predation_kills
+        out.ticks.len(),
+        out.final_grazers,
+        out.final_predators,
+        out.total_predation_kills
     );
 
     let Some(final_tick) = out.ticks.last() else {
         println!("world went extinct before tick 0 — nothing to export.");
         return;
     };
-    let Some(organism) = final_tick.organisms.iter().find(|o| o.species == Species::Predator) else {
+    let Some(organism) = final_tick
+        .organisms
+        .iter()
+        .find(|o| o.species == Species::Predator)
+    else {
         println!("no surviving predator this seed/config — EX-5 needs one; try a different seed.");
         return;
     };
@@ -194,14 +217,31 @@ fn main() {
     println!("  repro_promoter  -> {repro_name}");
     println!("  sense_move      -> {sense_name}");
 
-    println!("\n== per-cell hash-attestation + behavioral identity (Z80 <-> RV32 <-> CPU-reference) ==");
+    println!(
+        "\n== per-cell hash-attestation + behavioral identity (Z80 <-> RV32 <-> CPU-reference) =="
+    );
     let roles: [(&str, &str, usize, &CompiledGene); 6] = [
         ("decay", &grazer_disk.genes.decay, 2, &genes.decay),
         ("eat", &grazer_disk.genes.eat, 2, &genes.eat),
         ("split", &grazer_disk.genes.split, 2, &genes.split),
-        ("hungry_promoter", &hungry_name, 2, &genes.hungry_pool[organism.hungry_promoter as usize]),
-        ("repro_promoter", &repro_name, 2, &genes.repro_pool[organism.repro_promoter as usize]),
-        ("sense_move", &sense_name, 3, &genes.sense_pool[organism.sense_move as usize]),
+        (
+            "hungry_promoter",
+            &hungry_name,
+            2,
+            &genes.hungry_pool[organism.hungry_promoter as usize],
+        ),
+        (
+            "repro_promoter",
+            &repro_name,
+            2,
+            &genes.repro_pool[organism.repro_promoter as usize],
+        ),
+        (
+            "sense_move",
+            &sense_name,
+            3,
+            &genes.sense_pool[organism.sense_move as usize],
+        ),
     ];
 
     let mut all_pass = true;

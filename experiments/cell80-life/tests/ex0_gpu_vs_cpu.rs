@@ -46,11 +46,19 @@ fn gpu_matches_cpu_reference() {
     for (a, b) in cpu.ticks.iter().zip(&gpu.ticks) {
         // Comparing the whole record (not just the final hash) localizes a disagreement to
         // a tick/organism/role, matching `msl_battery.rs`'s disagreement-localizing ethos.
-        assert_eq!(a, b, "tick {} diverged between CPU-reference and GPU", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between CPU-reference and GPU",
+            a.tick
+        );
     }
     assert_eq!(
         cpu.history_hash, gpu.history_hash,
         "history hash diverged between CPU-reference and GPU"
     );
-    assert!(cpu.births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        cpu.births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 }

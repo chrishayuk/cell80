@@ -40,7 +40,14 @@ pub fn chance(seed: u64, tick: u32, child_id: u32, stream: u8, pct: u64) -> bool
 /// function of the four fixed inputs, no retry loop, faithfully generalizing `main.rs`'s
 /// `pick_other` (a rejection loop over a mutable stream) to counter-based determinism.
 /// `n` must be `>= 2` (a pool of 1 has no "other" member to pick).
-pub fn pick_other_index(seed: u64, tick: u32, child_id: u32, stream: u8, current: u16, n: u16) -> u16 {
+pub fn pick_other_index(
+    seed: u64,
+    tick: u32,
+    child_id: u32,
+    stream: u8,
+    current: u16,
+    n: u16,
+) -> u16 {
     debug_assert!(n >= 2, "pick_other_index needs at least 2 pool members");
     // Modulo in u32 space (the draw's native width) before narrowing, so the full draw
     // contributes entropy rather than just its low 16 bits.
@@ -86,15 +93,24 @@ mod tests {
         // same id -> value map, since real dispatch order is undefined.
         let seed = 0x5eed_1234;
         let tick = 7;
-        let ascending: Vec<u32> = (0..64u32).map(|id| draw(seed, tick, id, MUTATION_STREAM)).collect();
+        let ascending: Vec<u32> = (0..64u32)
+            .map(|id| draw(seed, tick, id, MUTATION_STREAM))
+            .collect();
 
         let mut shuffled_ids: Vec<u32> = (0..64u32).collect();
         shuffled_ids.sort_by_key(|&id| (id.wrapping_mul(37).wrapping_add(11)) % 64);
-        assert_ne!(shuffled_ids, (0..64u32).collect::<Vec<_>>(), "the permutation used for this test is a no-op — pick a different one");
+        assert_ne!(
+            shuffled_ids,
+            (0..64u32).collect::<Vec<_>>(),
+            "the permutation used for this test is a no-op — pick a different one"
+        );
 
         for &id in &shuffled_ids {
             let v = draw(seed, tick, id, MUTATION_STREAM);
-            assert_eq!(v, ascending[id as usize], "draw for id={id} depends on call order");
+            assert_eq!(
+                v, ascending[id as usize],
+                "draw for id={id} depends on call order"
+            );
         }
     }
 
@@ -115,14 +131,18 @@ mod tests {
             .filter(|&id| chance(0x5eed, 1, id, MUTATE_DECAY_CHANCE_STREAM, 25))
             .count();
         let observed = hits as f64 / 10_000.0;
-        assert!((observed - 0.25).abs() < 0.02, "observed {observed}, want near 0.25");
+        assert!(
+            (observed - 0.25).abs() < 0.02,
+            "observed {observed}, want near 0.25"
+        );
     }
 
     #[test]
     fn pick_other_index_never_returns_current() {
         for current in 0..10u16 {
             for id in 0..200u32 {
-                let picked = pick_other_index(0x5eed, 1, id, MUTATE_SENSE_SWAP_TARGET_STREAM, current, 10);
+                let picked =
+                    pick_other_index(0x5eed, 1, id, MUTATE_SENSE_SWAP_TARGET_STREAM, current, 10);
                 assert_ne!(picked, current);
                 assert!(picked < 10);
             }
@@ -138,9 +158,22 @@ mod tests {
         let current = 2u16;
         let mut seen = std::collections::HashSet::new();
         for id in 0..2_000u32 {
-            seen.insert(pick_other_index(0x5eed, 1, id, MUTATE_SENSE_SWAP_TARGET_STREAM, current, n));
+            seen.insert(pick_other_index(
+                0x5eed,
+                1,
+                id,
+                MUTATE_SENSE_SWAP_TARGET_STREAM,
+                current,
+                n,
+            ));
         }
-        assert_eq!(seen.len(), (n - 1) as usize, "expected all {} other members reachable, saw {:?}", n - 1, seen);
+        assert_eq!(
+            seen.len(),
+            (n - 1) as usize,
+            "expected all {} other members reachable, saw {:?}",
+            n - 1,
+            seen
+        );
     }
 
     #[test]

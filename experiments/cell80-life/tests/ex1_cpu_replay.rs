@@ -39,8 +39,16 @@ fn replay_is_bit_exact_2d() {
 
     assert_eq!(run1.ticks.len(), run2.ticks.len());
     for (a, b) in run1.ticks.iter().zip(&run2.ticks) {
-        assert_eq!(a, b, "tick {} diverged between two identical-seed 2D runs", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between two identical-seed 2D runs",
+            a.tick
+        );
     }
     assert_eq!(run1.history_hash, run2.history_hash);
-    assert!(run1.births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        run1.births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 }

@@ -41,7 +41,11 @@ fn replay_is_bit_exact() {
         "the two runs recorded a different number of ticks"
     );
     for (a, b) in run1.ticks.iter().zip(&run2.ticks) {
-        assert_eq!(a, b, "tick {} diverged between two identical-seed runs", a.tick);
+        assert_eq!(
+            a, b,
+            "tick {} diverged between two identical-seed runs",
+            a.tick
+        );
     }
     assert_eq!(
         run1.history_hash, run2.history_hash,
@@ -50,5 +54,9 @@ fn replay_is_bit_exact() {
 
     // A sanity check that this run actually does something (births/deaths/starvation),
     // not a degenerate no-op — a replay gate on an empty run would prove nothing.
-    assert!(run1.births > 0, "expected at least one birth over {} ticks", cfg.ticks);
+    assert!(
+        run1.births > 0,
+        "expected at least one birth over {} ticks",
+        cfg.ticks
+    );
 }
