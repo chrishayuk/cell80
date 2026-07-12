@@ -277,6 +277,24 @@ impl Fingerprint {
         Self::compute(cart, DEFAULT_PROBES, DEFAULT_CYCLES)
     }
 
+    /// Build a **value-cell** fingerprint from a batched interpreter's per-probe
+    /// output sextets `[r0, r1, r2, status, steps_lo, steps_hi]` (one per probe,
+    /// in probe order) — e.g. `rustmsl::interp::InterpBatch::run`. `status == 0`
+    /// (clean return) folds `r0/r1/r2` via the same tuple-register digest as
+    /// [`compute`](Self::compute); any other status records `None`. Given
+    /// bit-identical register outputs this is byte-identical to `compute` on a
+    /// value cell — so a whole library can be fingerprinted in one GPU dispatch
+    /// instead of one `Runner` per cell. `ret` is the entry's return signature
+    /// (for tuple-register folding); state cells still use [`compute`].
+    pub fn from_value_sextets(sextets: &[[u16; 6]], ret: &str) -> Self {
+        let n_ret = ret_reg_count(ret);
+        let outputs = sextets
+            .iter()
+            .map(|s| (s[3] == 0).then(|| digest_regs(&[s[0], s[1], s[2]], n_ret)))
+            .collect();
+        Fingerprint { outputs }
+    }
+
     /// Fraction of probes on which two fingerprints agree (matching `None`s count as
     /// agreement). `1.0` = behaviourally indistinguishable on this bank; `0.0` = always
     /// differ. Returns `1.0` for two empty fingerprints.
