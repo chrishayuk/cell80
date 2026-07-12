@@ -36,8 +36,13 @@ pub struct CompiledGene {
     pub name: String,
     funcs: Funcs,
     consts: Consts,
+    // `None` for a cell with no Metal body — currently only EX-2's composed candidates
+    // (`from_funcs`), which run CPU-only by design (see the design doc's rationale: composed
+    // multi-`Func` candidates reopen const/namespacing questions the disk-loaded path
+    // sidesteps, for no real payoff given how rare they are). Every disk-loaded gene
+    // (`load`) still gets a real `GpuBatch`, unchanged from EX-0/EX-1.
     #[cfg(target_os = "macos")]
-    gpu: rustmsl::GpuBatch,
+    gpu: Option<rustmsl::GpuBatch>,
 }
 
 impl CompiledGene {
@@ -46,13 +51,33 @@ impl CompiledGene {
         let src =
             fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
         let (funcs, consts) = lower(&src)?;
+        Self::from_funcs_impl(name.to_string(), funcs, consts, true)
+    }
+
+    /// Build a `CompiledGene` directly from already-lowered IR — EX-2's composed candidates
+    /// (a synthetic multi-`Func` call graph, not something loaded from a `.rs` file on
+    /// disk). Always CPU-only (`gpu: None` on macOS too), never attempts a Metal compile.
+    pub fn from_funcs(name: &str, funcs: Funcs, consts: Consts) -> Result<Self, String> {
+        Self::from_funcs_impl(name.to_string(), funcs, consts, false)
+    }
+
+    fn from_funcs_impl(
+        name: String,
+        funcs: Funcs,
+        consts: Consts,
+        want_gpu: bool,
+    ) -> Result<Self, String> {
         #[cfg(target_os = "macos")]
-        let gpu = {
+        let gpu = if want_gpu {
             let module = rustmsl::compile(&funcs, &consts, "run")?;
-            rustmsl::GpuBatch::new(&module)?
+            Some(rustmsl::GpuBatch::new(&module)?)
+        } else {
+            None
         };
+        #[cfg(not(target_os = "macos"))]
+        let _ = want_gpu;
         Ok(CompiledGene {
-            name: name.to_string(),
+            name,
             funcs,
             consts,
             #[cfg(target_os = "macos")]
@@ -62,33 +87,56 @@ impl CompiledGene {
 
     /// Run on the CPU reference interpreter — a fresh `Interp` per call (cheap: it only
     /// builds an address table and a 64 KiB memory image, no re-parsing), matching the
-    /// `interp_run` pattern already proven in `gpu_cells.rs`/`msl_battery.rs`. Returns
-    /// `(result, ir_steps)`.
+    /// `interp_run` pattern already proven in `gpu_cells.rs`/`msl_battery.rs`. A trap
+    /// (divide-by-zero, fuel exhaustion, or an explicit `halt(code)`) is folded to an r0
+    /// value using the exact convention `cell80/tests/msl_battery.rs`'s `interp_quad`
+    /// already established as bit-exact against the GPU kernel's own status/r0 encoding —
+    /// `0` for divide-by-zero/fuel, `code` for `halt(code)` — rather than panicking. EX-0/
+    /// EX-1's six curated gene cells never happened to trap under the inputs exercised, so
+    /// this path was latent, not proven, until EX-2's cell-swap pool started calling
+    /// arbitrary same-signature stdlib cells (not curated for this use) with arbitrary
+    /// organism-supplied inputs — some legitimately trap, and that must fold the same way
+    /// on both bodies to keep "GPU ≡ interpreter" bit-exact. Any *other* error is a real
+    /// defect (e.g. a malformed program), not a trap, and still panics. Returns `(result,
+    /// ir_steps)`.
     pub fn run_cpu(&self, args: &[u16]) -> (u16, u64) {
         let mut interp = Interp::new(
             &self.funcs,
             self.consts.iter().map(|(n, b)| (n.as_str(), b.as_slice())),
             Target::Cell.descriptor(),
         );
-        let out = interp
-            .run("run", args)
-            .unwrap_or_else(|e| panic!("interp run `{}`: {e}", self.name));
-        (out[0], interp.steps())
+        let result = match interp.run("run", args) {
+            Ok(v) => v.first().copied().unwrap_or(0),
+            Err(e) if e.contains("divide by zero") => 0,
+            Err(e) if e.contains("fuel exhausted") => 0,
+            Err(e) => e
+                .strip_prefix("interp: halt(")
+                .and_then(|s| s.strip_suffix(')'))
+                .and_then(|s| s.parse::<u16>().ok())
+                .unwrap_or_else(|| panic!("interp run `{}`: {e}", self.name)),
+        };
+        (result, interp.steps())
     }
 
     /// Run a whole tick's worth of organisms in one Metal dispatch — the "one cell × N
-    /// inputs" batch layout, valid here because every organism in EX-0 shares this one
-    /// compiled genome (heterogeneous-genome batching is explicitly out of scope, see the
-    /// design doc). Returns `(result, ir_steps)` per organism, same order as `inputs`.
+    /// inputs" batch layout, valid here because every organism sharing this dispatch uses
+    /// this one compiled genome (heterogeneous-cell-choice batching happens one level up,
+    /// via `batch_run_grouped`). Falls back to the CPU path when this gene has no GPU body
+    /// (a composed candidate from `from_funcs`) — still bit-exact, just not GPU-dispatched.
+    /// Returns `(result, ir_steps)` per organism, same order as `inputs`.
     #[cfg(target_os = "macos")]
     pub fn run_gpu_batch(&self, inputs: &[[u16; 3]]) -> Vec<(u16, u64)> {
-        let outs = self
-            .gpu
-            .run(inputs)
-            .unwrap_or_else(|e| panic!("gpu run `{}`: {e}", self.name));
-        outs.iter()
-            .map(|o| (o[0], rustmsl::steps_of(o) as u64))
-            .collect()
+        match &self.gpu {
+            Some(gpu) => {
+                let outs = gpu
+                    .run(inputs)
+                    .unwrap_or_else(|e| panic!("gpu run `{}`: {e}", self.name));
+                outs.iter()
+                    .map(|o| (o[0], rustmsl::steps_of(o) as u64))
+                    .collect()
+            }
+            None => inputs.iter().map(|args| self.run_cpu(args)).collect(),
+        }
     }
 }
 
@@ -142,4 +190,67 @@ pub fn batch_run(engine: EngineKind, gene: &CompiledGene, inputs: &[[u16; 3]]) -
 /// simplification, not a per-organism-per-role trace).
 pub fn sum_steps(batches: &[&[(u16, u64)]]) -> u64 {
     batches.iter().flat_map(|b| b.iter()).map(|(_, s)| s).sum()
+}
+
+/// EX-2's heterogeneous-cell-choice dispatch: `role_idx[i]` names which `pool` member
+/// organism `i` currently uses for this role. Partitions `inputs` by that index, issues one
+/// `batch_run` per *distinct* value in `role_idx` (not one per organism), and scatters each
+/// group's results back to their original positions. Dispatch count per tick is bounded by
+/// how many distinct pool members are actually in use, not by population size — cheap while
+/// genome diversity stays low, the expected regime early in a mutation-driven run (see the
+/// design doc's dispatch-count-as-a-receipt discipline).
+pub fn batch_run_grouped(
+    engine: EngineKind,
+    pool: &[CompiledGene],
+    role_idx: &[u16],
+    inputs: &[[u16; 3]],
+) -> Vec<(u16, u64)> {
+    debug_assert_eq!(role_idx.len(), inputs.len());
+    let mut out = vec![(0u16, 0u64); inputs.len()];
+    let mut positions: std::collections::HashMap<u16, Vec<usize>> = std::collections::HashMap::new();
+    for (i, &idx) in role_idx.iter().enumerate() {
+        positions.entry(idx).or_default().push(i);
+    }
+    for (idx, group_positions) in positions {
+        let gene = &pool[idx as usize];
+        let group_inputs: Vec<[u16; 3]> = group_positions.iter().map(|&i| inputs[i]).collect();
+        let group_out = batch_run(engine, gene, &group_inputs);
+        for (&i, result) in group_positions.iter().zip(group_out) {
+            out[i] = result;
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod grouped_tests {
+    use super::*;
+    use std::path::Path;
+
+    fn cells_dir() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../cell80/cells")
+    }
+
+    #[test]
+    fn grouped_matches_naive_per_organism_dispatch() {
+        let pool = vec![
+            CompiledGene::load(&cells_dir(), "is_gt").unwrap(),
+            CompiledGene::load(&cells_dir(), "is_ge").unwrap(),
+        ];
+        // A handful of organisms, some sharing a pool index, none in a tidy sorted order —
+        // exercises the grouping/scatter step, not just the trivial single-group case.
+        let role_idx: Vec<u16> = vec![0, 1, 0, 0, 1, 0, 1];
+        let inputs: Vec<[u16; 3]> = (0..role_idx.len() as u16)
+            .map(|i| [i * 3, i * 3 + 1, 0])
+            .collect();
+
+        let grouped = batch_run_grouped(EngineKind::CpuReference, &pool, &role_idx, &inputs);
+        let naive: Vec<(u16, u64)> = role_idx
+            .iter()
+            .zip(&inputs)
+            .map(|(&idx, args)| pool[idx as usize].run_cpu(args))
+            .collect();
+
+        assert_eq!(grouped, naive);
+    }
 }

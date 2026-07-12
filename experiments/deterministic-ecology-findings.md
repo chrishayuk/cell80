@@ -6,10 +6,11 @@ actually showed, with the receipts, one `##` section per experiment as they land
 the single multi-experiment design doc rather than one findings file per experiment.
 
 Code lives inside `experiments/cell80-life/` (`src/rng.rs`, `src/contention.rs`,
-`src/genes.rs`, `src/history.rs`, `src/ex0.rs`, `src/world2d.rs`, `src/ex1.rs`,
-`src/bin/ex1_sweep.rs`, `tests/ex0_*.rs`, `tests/ex1_*.rs`) rather than a new crate —
-deliberate, per the project's current preference to stay inside `experiments/` rather than
-promote to a new workspace member while this stays speculative/off-roadmap.
+`src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/ex0.rs`, `src/world2d.rs`,
+`src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`, `src/bin/ex2_mutation_report.rs`,
+`tests/ex0_*.rs`, `tests/ex1_*.rs`, `tests/ex2_*.rs`) rather than a new crate — deliberate,
+per the project's current preference to stay inside `experiments/` rather than promote to
+a new workspace member while this stays speculative/off-roadmap.
 
 ## EX-0 — the replay gate
 
@@ -347,3 +348,157 @@ cargo clippy -p cell80-life --all-targets
 - Test whether a food-density *gradient* (not just a uniform probability) changes part 2's
   null result — uniform random placement may itself be diluting the resource clustering
   that drove the original 1D lattice-based food layout's boom-bust dynamic.
+
+## EX-2 — open-ended genome mutation (operator a: parametric + cell-swap)
+
+**TL;DR: genome diversity emerges and grows under mutation exactly as expected, both gates
+pass, and building this surfaced a real, previously-latent bit-exactness gap in EX-0/EX-1's
+own machinery — now fixed.** Every organism now carries its own genome (three numeric
+fields + three swappable-role pool indices); mutation on reproduction produces measurable,
+growing diversity (dispatch-count-per-role climbs from 1 to 7–30 over 2,000 ticks); 95.7%
+of births carry at least one role differing from the run's starting genome. Replay is
+bit-exact and GPU agrees byte-for-byte with the CPU-reference interpreter, including the
+new grouped-by-pool-index dispatch. This pass ships operator (a) only — parametric +
+cell-swap, the doc's "known" control — per the explicit checkpoint in the design doc:
+operator (b) (cell-assembly composition) is deferred to a follow-up pass.
+
+### What was built
+
+- **`pools.rs`** — role-pool discovery lifted from `main.rs`'s original `discover_pools`
+  (untouched): 85 promoter candidates, 43 movement candidates discovered from the current
+  library (up from `main.rs`'s own comment citing 54/26 at an earlier library size — the
+  pools have grown with the stdlib since).
+- **`rng.rs`** — 12 new streams, one per independent mutation decision
+  (`MUTATE_{DECAY,THRESHOLD,GIVE_PCT}_{CHANCE,MAGNITUDE}_STREAM`,
+  `MUTATE_{HUNGRY,REPRO,SENSE}_SWAP_{CHANCE,TARGET}_STREAM`), plus `chance()` and
+  `pick_other_index()` — a pure, index-exclusion reimplementation of `main.rs`'s stateful
+  `pick_other` rejection loop, unit-tested for uniform coverage and order-independence.
+- **`genes.rs`** — three additive changes: `CompiledGene.gpu` is now `Option<GpuBatch>`
+  (composed candidates will use `None`, though none exist yet — that's operator (b));
+  `CompiledGene::from_funcs` (unused so far, ready for operator (b)); `batch_run_grouped`,
+  the heterogeneous-cell-choice dispatcher (one GPU call per distinct pool index in use,
+  not per organism), unit-tested against a naive per-organism loop.
+- **`ex2.rs`** — the tick engine: `GenePools` (fixed `decay`/`eat`/`split` + swappable
+  `hungry_pool`/`repro_pool`/`sense_pool`), per-organism `OrgGenome`, and `mutate()`
+  applying operator (a)'s two mutation kinds via the 12 new streams. Movement/contention/
+  world are otherwise identical to `ex1.rs` — only genome *content* became heterogeneous.
+- **`history.rs`** — additive `OrgSnapshot2DGenome`/`TickRecord2DGenome`/
+  `absorb2d_genome`/`BirthEvent` (a light per-birth log: child/parent id, tick, post-
+  mutation genome — reusable by EX-4's lineage instrumentation later, not duplicated
+  there).
+- **`tests/ex2_cpu_replay.rs`**, **`tests/ex2_gpu_vs_cpu.rs`** — mirror EX-0/EX-1's two
+  tests, plus an explicit assertion that mutation actually produced observable drift (a
+  replay gate on a run where nothing ever mutated would prove nothing about EX-2 specifically).
+- **`src/bin/ex2_mutation_report.rs`** — genome-diversity-over-ticks and dispatch-count
+  receipts (not a `#[test]`, matching `ex1_sweep.rs`'s reporting convention).
+
+### A real bug this pass surfaced (and fixed) in EX-0/EX-1's own machinery
+
+The first real test run panicked: `interp run 'unit_div': interp: halt(65286)`. Cause:
+`genes.rs::run_cpu` treated *any* interpreter error as a bug and panicked — a choice that
+was never actually safe, just never exercised, because EX-0/EX-1's six curated gene cells
+(`sub_sat`/`is_gt`/`add_sat`/`argmax3`/`is_ge`/`discount_percent`) happen not to trap under
+the numeric ranges those experiments' ticks produce. EX-2's cell-swap pool calls *arbitrary*
+same-signature stdlib cells — not curated for this use — with arbitrary organism-supplied
+inputs, and some of them (like `unit_div`, a guarded division cell) legitimately halt on
+certain inputs. That's not a crash-worthy defect; it's a normal, well-typed trap the GPU
+kernel already handles by encoding it in the output sextet's `status`/`r0` fields, never by
+erroring the whole dispatch.
+
+**Fixed by reusing the exact, already-proven fold `cell80/tests/msl_battery.rs`'s
+`interp_quad` established**: divide-by-zero and fuel-exhaustion fold to `r0 = 0`;
+`halt(code)` folds to `r0 = code` — parsed from the same `"interp: halt(N)"` error-string
+convention `msl_battery.rs` already parses, not a new one invented here. Any *other* error
+still panics (a real defect, not a trap). Re-verified `cargo test -p cell80-life` fully
+green afterward, including EX-0/EX-1's existing tests (their six curated cells never
+exercise this path, so their behavior is unchanged) — the fix is strictly additive
+robustness, not a behavior change for anything already shipped.
+
+**Why this was a latent gap, not a new one**: `run_gpu_batch` never had this problem — a
+GPU thread's halt/trap was always encoded in its output sextet, never propagated as a
+dispatch-level error. The gap was specifically that `run_cpu` and `run_gpu_batch` disagreed
+on how to represent the *same* trap event, which would have broken "GPU ≡ interpreter"
+bit-exactness the moment any exercised cell actually trapped — EX-0/EX-1's curated cells
+just never did. This is exactly the kind of gap the project's own diff-battery discipline
+(`msl_battery.rs`) exists to catch at library scale; EX-2 caught the ecology-specific
+instance of it empirically, the first time this codebase's execution path was pointed at
+truly uncurated cells with adversarial (mutation-selected) inputs.
+
+### Receipts
+
+Run: grazer starting genome, seed `0x5eed_1234_c311_80ff`, 8 initial organisms, 32×32
+toroidal world, density 0.2, 2,000 ticks, GPU engine.
+
+| tick | n | dispatch: hungry / repro / sense | avg decay / thresh / give% |
+|---:|---:|---|---|
+| 0 | 8 | 1 / 1 / 1 | 1.0 / 200 / 50% |
+| 200 | 110 | 3 / 4 / 8 | 1.1 / 202 / 49% |
+| 600 | 165 | 6 / 18 / 8 | 1.1 / 203 / 50% |
+| 1,000 | 152 | 7 / 21 / 10 | 1.0 / 203 / 50% |
+| 1,400 | 195 | 11 / 25 / 14 | 1.1 / 201 / 48% |
+| 1,800 | 216 | 7 / 30 / 13 | 1.1 / 201 / 47% |
+
+- 2,000 ticks in 22.9 s (11.4 ms/tick) at this population/dispatch-count scale — consistent
+  with the ~0.2 ms/dispatch micro-benchmark (up to ~30 repro-role dispatches alone at peak
+  diversity, plus hungry/sense, roughly accounts for the observed per-tick cost).
+- 11,200 total births; **95.7% carry at least one role differing from the run's starting
+  genome** — mutation is not a rare event here, it's the dominant outcome per birth.
+- Numeric fields stay in a tight band around their starting values (decay≈1.0–1.2,
+  threshold≈200–203, give≈47–50%) even after thousands of mutation events — consistent
+  with `cell80-life-findings.md`'s Finding 3 (stabilizing selection, not neutral drift),
+  now reproduced in the GPU-batchable 2D engine independently.
+- `cargo test -p cell80-life` (both platforms) and `cargo clippy -p cell80-life
+  --all-targets` are green.
+
+### What this shows
+
+- Operator (a) — parametric + cell-swap — ported cleanly into the GPU-batchable engine.
+  Heterogeneous numeric parameters needed zero new dispatch machinery (already free);
+  heterogeneous cell choice needed exactly one new mechanism (`batch_run_grouped`), and
+  the micro-benchmark-predicted "grouping stays cheap" held up in the full engine, not
+  just the isolated benchmark.
+- The replay/GPU-parity gates hold under real, active mutation-driven diversity — a
+  meaningfully harder test than EX-0/EX-1's single fixed genome, since it now exercises
+  dozens of distinct pool members' actual trap/non-trap behavior across two bodies, not
+  just six curated, never-observed-to-trap cells.
+
+### What this does *not* show (deferred, by design)
+
+- **Operator (b) — cell-assembly/bytecode-level mutation — is not built in this pass.**
+  Per the design doc's explicit checkpoint, operator (a) alone is a legitimate stopping
+  point; the pre-registered comparison ("does bytecode mutation reach strategies parametric
+  mutation cannot") needs operator (b), which is a separate, larger follow-up.
+- **No fitness signal beyond survival/reproduction was measured for specific swapped-in
+  cells** — this pass reports that diversity grows and stabilizes, not which particular
+  pool members are over- or under-represented relative to a null-drift expectation (that
+  would need the population-genetics-style analysis `cell80-life-findings.md` flagged as
+  future work for its own Finding 3/4, still open here too).
+- **Everything EX-0/EX-1 already deferred still applies** (heterogeneous-*genome*-shape
+  GPU batching beyond pool-index grouping if diversity ever approaches population size;
+  no shared-mutable on-GPU world; RNG as host-fn not `.cell`).
+- **The trap-folding fix changes what "sandbox-safe" means operationally, worth stating
+  precisely**: a halting/trapping pool member is now a defined, non-fatal outcome (reads as
+  the halt code or 0), not a crash — but this is a *representation* fix (CPU now agrees
+  with what GPU already did), not a new safety *guarantee* about which cells are sensible
+  to use as a promoter/movement gate. A halting cell can still be swapped in and simply
+  "mostly reads as false/stay," exactly as `main.rs`'s own doc comment already described
+  for non-boolean/out-of-range candidates — this pass extends that same tolerance to
+  candidates that trap outright, rather than special-casing them.
+
+### Reproduce it
+
+```
+cargo test -p cell80-life --test ex2_cpu_replay              # any platform
+cargo test -p cell80-life --test ex2_gpu_vs_cpu               # macOS (Metal) only
+cargo run -p cell80-life --release --bin ex2_mutation_report  # macOS (Metal) only, ~25s
+cargo clippy -p cell80-life --all-targets
+```
+
+### What would raise confidence further
+
+- A population-genetics-style analysis of which specific pool members become
+  over-represented vs. a neutral-drift null, mirroring `cell80-life-findings.md`'s own
+  flagged-but-undone control (mutation-disabled-after-founding) for its Finding 3/4.
+- Confirm the dispatch-count-stays-cheap finding at a larger population scale than this
+  pass's ~150–250 (EX-1's 10⁴–10⁵ organism runs, with mutation now turned on).
+- Operator (b) itself — the actual pre-registered comparison this pass explicitly defers.
