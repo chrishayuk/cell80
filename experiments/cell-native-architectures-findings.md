@@ -1,12 +1,17 @@
 # Cell-Native Model Architectures — CN-0/CN-2 findings
 
-Status: CN-0 through two waves (hyperparameter sweep, operation breadth,
-narrative contrastive probe + null test) — still a scoping result, not a
-pass or a kill, per its own `## CN-0, read against the gate, after two waves`
-section below. CN-2 through one wave (60-problem verified-decoding battery;
-injection/resampling not yet built). Both experiments are defined in
-`cell-native-architectures.md`. Kicked off 2026-07-12. Code lives in
-`cell-native-architectures/`.
+Status: **CN-0 complete, gate not met, CN-3 scoped out for Gemma-class
+models** (hyperparameter sweep, operation breadth, narrative contrastive
+probe + null test, all in wave 2) — three alternative explanations for the
+generalization gap were tested and killed (under-tuning, addition being
+representative, narrative lacking the information), and the mechanism that
+survives (a fast-forming, flat, non-computational numeral encoding) gives a
+principled reason for the scope-out, not just a failed number. Full verdict
+and programme redirect (CN-1 next, not CN-3) in `## CN-0, read against the
+gate, after two waves` below. CN-2 through one wave (60-problem
+verified-decoding battery; injection/resampling not yet built). Both
+experiments are defined in `cell-native-architectures.md`. Kicked off
+2026-07-12. Code lives in `cell-native-architectures/`.
 
 ## Infrastructure map (established before any code was written)
 
@@ -307,37 +312,91 @@ a genuine scientific finding (the information exists, cleanly, in the
 residual stream) but not an architectural one (it is not available where
 CN-3 would need to read it).
 
-### CN-0, read against the gate, after two waves
+### CN-0, read against the gate, after two waves — the gate is not met, and CN-3 scopes out
 
-**Still a scoping result, not a pass or a kill — exactly the pre-registered
-middle.** The gate (>=95% held-out) has not been met by any operation,
-family, feature representation, or hyperparameter setting tried across
-either wave. The kill line (<80% everywhere) has been *cleared* on some
-op/family pairs (sub digit 0.850, sub mixed 0.925, mul mixed 0.895, mul word
-0.865) and not on others (every case involving narrative; addition
-everywhere). Two waves of investigation have not resolved the ambiguity —
-they've sharpened it: this is now known to be a real, operation-dependent,
-surface-form-dependent, tap-position-dependent phenomenon, not noise, tuning,
-or an artifact of one under-tested operation.
+**Precision on the pre-registered wording first, since it matters:** the
+*gate* (>=95% held-out-family exact-pair) has not been met anywhere, by any
+operation, family, feature representation, or hyperparameter setting, across
+either wave. The literal *kill trigger* as originally worded ("no family
+exceeds 80% anywhere in the band") did **not** strictly fire either — sub
+and mul both clear 80% on several families (sub digit 0.850, sub mixed
+0.925, mul mixed 0.895, mul word 0.865). So this is not "the pre-registered
+kill line tripped, mechanically." It's a judgment call, made explicitly, on
+the accumulated evidence — and that evidence now supports drawing it rather
+than deferring it further:
 
-**Immediate next steps (not yet done):**
-1. A **held-out-family sweep for sub/mul restricted to `tap`-vs-`operand_positions`**
-   was not run this wave (only addition got the mean-pooled/operand-position
-   treatment) — worth checking whether sub/mul's already-stronger
-   generalization holds up or changes under the other feature reads.
-2. **A proper multi-split average**, not a single random 80/20 split, for
-   the in-distribution numbers above — single-split variance is visible
-   already (the narrative-only tap number moved from 0.725 to 0.925 across
-   two runs differing only in how many other layers were swept before it,
-   which shifts the RNG stream's inner-validation-split state).
-3. **CN-3's actual dependency is `tap`'s held-out-family number, not
-   operand_positions' or mean_pooled's** — any future CN-0 work should
-   report the `tap` number as the headline for the gate/kill decision and
-   keep the others clearly labeled as "information exists" evidence, not
-   deployability evidence.
-4. Root-cause `spin_pool`'s remaining concurrency bug (bug 3, carried over
+1. **Three alternative explanations for the gap were tested and killed, not
+   assumed.** Under-tuning: dead (the nested-validated sweep reproduces the
+   untuned baseline bit-for-bit — a strong null). "Addition is
+   representative": dead — it was the *hardest* case tested, not a typical
+   one. "Narrative lacks the information": dead — `operand_positions` reads
+   1.000, and the embedding-layer control reads exactly **0.000**, ruling
+   out "the probe is just decoding the tokenizer" (the specific artifact the
+   1.000 raised suspicion of).
+2. **The finding the null test actually produced is a clean negative for
+   CN-3's own premise.** The operand encoding forms by L0-L1 and stays flat
+   through L26 — a fast-forming *numeral* encoding ("this token is the
+   number 47"), not evidence of extended in-flight computation ("the model
+   is currently computing 47 x 3"). If there's no extended computation,
+   there is no in-flight operand *state* for a prosthetic to intercept in
+   the first place — this is consistent with the standing observation
+   (elsewhere in this session's work) that Gemma's small-number arithmetic
+   behaves like lookup rather than computation. Two independent readings
+   now agree on that shape.
+3. **The one apparent fix doesn't transfer, and its failure mode is
+   diagnostic.** Mean-pooling helps in-distribution (0.975-1.000) but
+   *actively hurts* held-out-family generalization on every family tested
+   (0.005-0.125, worse than tap's own 0.030-0.575) — the signature of
+   fitting each surface form's own statistics, not recovering a
+   surface-invariant representation.
+4. **The strong features are architecturally unavailable to CN-3 regardless
+   of their probe score.** `operand_positions`/`mean_pooled` require
+   already knowing where the operands sit, or reading after the whole
+   sequence is in, neither of which is available at the decision point
+   CN-3 needs. `tap` is the only feature CN-3 could actually deploy, and
+   `tap`'s held-out-family narrative number is 0.030 — the real number, not
+   the encouraging one.
+5. **This is the second independent time this readout machinery has hit
+   surface-form brittleness on this model** (alongside the KnnStore result:
+   canonical 10/10 -> paraphrase 0/10). Two independent measurements of the
+   same failure mode is a property of what's there to read, not a
+   coincidence to route around with a better probe.
+
+**Verdict: CN-3 (the prosthetic, depth-2 landing) scopes out for
+Gemma-class models.** Not "parked pending a better probe" — the operand
+information required does not exist in a form both (a) surface-invariant
+and (b) available at the decision point, and the mechanism (fast-forming,
+flat, no extended computation) gives a principled reason not to expect that
+to change with more probing effort on this model. CN-0 did exactly the job
+its own pre-registration assigned it: settle the question cheaply (days, on
+existing instrumentation) before a month is spent on CN-3's surgical build.
+
+**What this does *not* touch:** depths 1 and 3 never depended on residual
+readout. **CN-1** (cell tokens + fingerprint embeddings) and **CN-6**
+(behavioural-spec emission) have the model *emit* the call in the token
+stream — the boundary lives where the model already succeeds at surface
+statistics, not where it needs an in-flight numeric intermediate. **CN-4**
+(the routed organ, TinyModel) is untouched and arguably sharper for this
+result: CN-0 asked "can the operands be *read* from what's already there,"
+and the answer is no — CN-4 asks "can a model be *trained* to put something
+readable there," a different question this result doesn't answer either
+way. The flat-from-L0 finding explains *why* nothing is there today
+(nothing in training ever required an intermediate operand representation)
+without saying anything about whether training pressure could create one.
+
+**Programme redirect: CN-1 is next**, not CN-3. The infusion thesis is
+unharmed — only its most surgical (residual-stream) form is closed for this
+model class; the token-stream form (a model that *learned to call* a cell)
+carries the practical claim forward untouched.
+
+**Remaining open items, now secondary to the CN-1 redirect:**
+1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3, carried over
    from wave 1, still open).
-5. Wave 2 (CN-1's H1 factory, CN-3's prosthetic) still hasn't been scoped.
+2. CN-1's H1 factory hasn't been scoped yet.
+3. A proper multi-split average (not a single random 80/20 split) for the
+   in-distribution numbers above would tighten them, but doesn't change the
+   verdict — noted for anyone who later wants a cleaner citation, not as a
+   blocker.
 
 ## CN-2 slice-0 — verified decoding, real result obtained
 

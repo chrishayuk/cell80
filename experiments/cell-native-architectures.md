@@ -41,6 +41,20 @@ Gemma-class models; the programme continues at depth 1 (tokens). A negative here
 *scoping* result, not a programme kill — that property is why CN-0 runs first.
 **Cost.** Days. Existing instrumentation.
 
+**Status: DONE — gate not met, CN-3 scoped out for Gemma-class models.** Two waves
+(hyperparameter sweep, operation breadth, a narrative contrastive probe, and a null test on
+the raw embedding layer) killed three alternative explanations for the held-out-family
+generalization gap — under-tuning, addition being a representative operation, and narrative
+lacking the operand information outright — before the scope-out was drawn. The mechanism
+that survives: operand encoding forms by L0–L1 and stays flat through L26, a fast-forming
+*numeral* encoding, not evidence of in-flight arithmetic computation — so there is no
+computed operand state for a prosthetic to intercept in the first place. The literal kill
+trigger as worded above ("no family exceeds 80% anywhere") did not strictly fire (sub/mul
+clear 80% on several families) — the **gate** (≥95%) is what was never met anywhere, and
+the scope-out is a reasoned call on the accumulated evidence, not a mechanical trigger. Full
+account: `cell-native-architectures-findings.md`'s `## CN-0, read against the gate, after
+two waves` section.
+
 ---
 
 ### CN-1 — Cell tokens with fingerprint embeddings (depth 1, the ablation that matters)
@@ -106,6 +120,14 @@ influence the continuation; revisit injection layer before abandoning (the zone 
 L21–L29 retrieval-reopening band is the alternative write site).
 **Depends on.** CN-0 pass.
 **Cost.** Days once CN-0 lands. This is the headline experiment.
+
+**Status: SCOPED OUT for Gemma-class models — CN-0 did not pass.** No readout feature CN-3
+could actually deploy at the decision point (a single last-token tap) reaches the operand
+information reliably across surface forms; the features that *did* read cleanly
+(`operand_positions`, whole-sequence pooling) require already knowing where the operands sit
+in text or reading after the full sequence is in, neither available when CN-3 would need to
+act. Not parked pending a better probe — see CN-0's status note for the mechanism. The
+programme redirects to CN-1 next.
 
 ---
 
@@ -190,8 +212,11 @@ CN-1 (tokens+fingerprint SFT) ─► CN-6 (spec emission) ─► CN-7 (compositi
 ```
 
 Wave 1 (now, parallel): **CN-0 + CN-2** — the keystone probe and the shippable product,
-neither blocks the other, both are days-scale.
-Wave 2: **CN-1** (first training spend) and **CN-3** (if CN-0 passed).
+neither blocks the other, both are days-scale. **CN-0 done — gate not met; CN-3 scoped out
+for Gemma-class models** (see CN-0/CN-3's own status notes above). CN-2: one wave done
+(60-problem verified-decoding battery), G2 build (injection/resampling) in progress.
+Wave 2: **CN-1** (first training spend) — now the programme's next experiment, not
+contingent on CN-3.
 Wave 3: **CN-4/5** and **CN-6**, informed by wave 2's gates. **CN-7** last.
 CUDA enters only at H3-scale RL and organ training beyond TinyModel — on the spine, not
 on wave 1's critical path.
