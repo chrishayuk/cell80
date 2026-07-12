@@ -6,8 +6,8 @@ actually showed, with the receipts, one `##` section per experiment as they land
 the single multi-experiment design doc rather than one findings file per experiment.
 
 Code lives inside `experiments/cell80-life/` (`src/rng.rs`, `src/contention.rs`,
-`src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/lineage.rs`, `src/ex0.rs`,
-`src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`,
+`src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/composition.rs`, `src/lineage.rs`,
+`src/ex0.rs`, `src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`,
 `src/bin/ex2_mutation_report.rs`, `src/bin/ex4_lineage_report.rs`, `tests/ex0_*.rs`,
 `tests/ex1_*.rs`, `tests/ex2_*.rs`, `tests/ex4_*.rs`) rather than a new crate — deliberate,
 per the project's current preference to stay inside `experiments/` rather than promote to
@@ -350,20 +350,27 @@ cargo clippy -p cell80-life --all-targets
   null result — uniform random placement may itself be diluting the resource clustering
   that drove the original 1D lattice-based food layout's boom-bust dynamic.
 
-## EX-2 — open-ended genome mutation (operator a: parametric + cell-swap)
+## EX-2 — open-ended genome mutation
 
-**TL;DR: genome diversity emerges and grows under mutation exactly as expected, both gates
-pass, and building this surfaced a real, previously-latent bit-exactness gap in EX-0/EX-1's
-own machinery — now fixed.** Every organism now carries its own genome (three numeric
-fields + three swappable-role pool indices); mutation on reproduction produces measurable,
-growing diversity (dispatch-count-per-role climbs from 1 to 7–30 over 2,000 ticks); 95.7%
-of births carry at least one role differing from the run's starting genome. Replay is
-bit-exact and GPU agrees byte-for-byte with the CPU-reference interpreter, including the
-new grouped-by-pool-index dispatch. This pass ships operator (a) only — parametric +
-cell-swap, the doc's "known" control — per the explicit checkpoint in the design doc:
-operator (b) (cell-assembly composition) is deferred to a follow-up pass.
+**TL;DR: both operators are done. Operator (a) (parametric + cell-swap) makes genome
+diversity emerge and grow exactly as expected; operator (b) (cell-assembly composition) is
+nowhere near "vanishingly rare" — most attempted compositions are viable, and roughly
+3-in-10 births in an extended-pool run actively carry a composed gene.** Both gates pass,
+and building operator (a) surfaced a real, previously-latent bit-exactness gap in EX-0/
+EX-1's own machinery — now fixed. Operator (b)'s own gate — sandbox-safe by construction,
+sometimes viable, occasionally fitter, reaching strategies parametric mutation structurally
+cannot — is addressed below with real receipts, not assumed.
 
-### What was built
+### Operator (a): parametric + cell-swap
+
+Every organism now carries its own genome (three numeric fields + three swappable-role
+pool indices); mutation on reproduction produces measurable, growing diversity
+(dispatch-count-per-role climbs from 1 to 7–30 over 2,000 ticks); 95.7% of births carry at
+least one role differing from the run's starting genome. Replay is bit-exact and GPU
+agrees byte-for-byte with the CPU-reference interpreter, including the new
+grouped-by-pool-index dispatch.
+
+### What was built (operator a)
 
 - **`pools.rs`** — role-pool discovery lifted from `main.rs`'s original `discover_pools`
   (untouched): 85 promoter candidates, 43 movement candidates discovered from the current
@@ -375,10 +382,11 @@ operator (b) (cell-assembly composition) is deferred to a follow-up pass.
   `pick_other_index()` — a pure, index-exclusion reimplementation of `main.rs`'s stateful
   `pick_other` rejection loop, unit-tested for uniform coverage and order-independence.
 - **`genes.rs`** — three additive changes: `CompiledGene.gpu` is now `Option<GpuBatch>`
-  (composed candidates will use `None`, though none exist yet — that's operator (b));
-  `CompiledGene::from_funcs` (unused so far, ready for operator (b)); `batch_run_grouped`,
-  the heterogeneous-cell-choice dispatcher (one GPU call per distinct pool index in use,
-  not per organism), unit-tested against a naive per-organism loop.
+  (`None` for a composed candidate — see operator (b) below); `CompiledGene::from_funcs`
+  (builds a `CompiledGene` directly from already-lowered IR, used by operator (b)'s
+  composed candidates); `batch_run_grouped`, the heterogeneous-cell-choice dispatcher (one
+  GPU call per distinct pool index in use, not per organism), unit-tested against a naive
+  per-organism loop.
 - **`ex2.rs`** — the tick engine: `GenePools` (fixed `decay`/`eat`/`split` + swappable
   `hungry_pool`/`repro_pool`/`sense_pool`), per-organism `OrgGenome`, and `mutate()`
   applying operator (a)'s two mutation kinds via the 12 new streams. Movement/contention/
@@ -465,10 +473,6 @@ toroidal world, density 0.2, 2,000 ticks, GPU engine.
 
 ### What this does *not* show (deferred, by design)
 
-- **Operator (b) — cell-assembly/bytecode-level mutation — is not built in this pass.**
-  Per the design doc's explicit checkpoint, operator (a) alone is a legitimate stopping
-  point; the pre-registered comparison ("does bytecode mutation reach strategies parametric
-  mutation cannot") needs operator (b), which is a separate, larger follow-up.
 - **No fitness signal beyond survival/reproduction was measured for specific swapped-in
   cells** — this pass reports that diversity grows and stabilizes, not which particular
   pool members are over- or under-represented relative to a null-drift expectation (that
@@ -486,23 +490,161 @@ toroidal world, density 0.2, 2,000 ticks, GPU engine.
   for non-boolean/out-of-range candidates — this pass extends that same tolerance to
   candidates that trap outright, rather than special-casing them.
 
-### Reproduce it
-
-```
-cargo test -p cell80-life --test ex2_cpu_replay              # any platform
-cargo test -p cell80-life --test ex2_gpu_vs_cpu               # macOS (Metal) only
-cargo run -p cell80-life --release --bin ex2_mutation_report  # macOS (Metal) only, ~25s
-cargo clippy -p cell80-life --all-targets
-```
-
-### What would raise confidence further
+### What would raise further confidence in operator (a) specifically
 
 - A population-genetics-style analysis of which specific pool members become
   over-represented vs. a neutral-drift null, mirroring `cell80-life-findings.md`'s own
   flagged-but-undone control (mutation-disabled-after-founding) for its Finding 3/4.
 - Confirm the dispatch-count-stays-cheap finding at a larger population scale than this
   pass's ~150–250 (EX-1's 10⁴–10⁵ organism runs, with mutation now turned on).
-- Operator (b) itself — the actual pre-registered comparison this pass explicitly defers.
+
+### Operator (b): cell-assembly composition
+
+The design doc's actual hypothesis: can mutation act on the bytecode itself — not just
+numbers and swaps among *existing* cells — producing organisms whose behaviour is novel and
+still sandbox-safe? Shipped as arity-preserving 2-cell wiring
+(`run(a0..aN) = g(a0,..,f(a0..aN),..,aN)`, f's output replacing one of g's argument slots),
+the design doc's own pre-registered kill/rescope fallback — reusing the exact
+`Expr::Call` + `linearize`-does-the-inlining trick a concurrent session's
+`cell80/examples/gpu_grow.rs` already proved at population scale, generalized here from
+unary chains to arity-preserving wiring since none of EX-2's three swappable roles (2- or
+3-arg) are unary.
+
+### What was built (operator b)
+
+- **`composition.rs`** — `ComposablePool::discover` (cells whose lowered form is exactly
+  one self-contained function *and* carries no const data — narrower than the swap pool,
+  and a real, checked rejection, not an assumed non-issue: an earlier draft of this file
+  silently discarded const data instead of checking for it, a correctness bug caught before
+  it shipped); `generate_and_gate` (structural bound via `rustmsl::interp::linearize`,
+  viability via `rustmsl::interp::cpu_run` over `cell80::DEFAULT_PROBES` with `Err` handled
+  as a counted stillbirth rather than panicked, novelty via
+  `Fingerprint::from_value_sextets` against every existing pool member — reusing
+  `admission.rs`'s `DUPLICATE_AGREEMENT` threshold directly, never calling `admission::admit`
+  itself, which would wrongly refuse every candidate for having no retrieval rows); **a
+  cross-interpreter consistency check** beyond what was originally planned — every viable
+  candidate is re-run through `cell80_core::Interp` (the actual body
+  `CompiledGene::run_cpu` executes it through once admitted) and rejected as not-viable on
+  any disagreement with `rustmsl`'s bytecode VM, applying this project's own
+  "a disagreeing executor is a defect, never expected variance" discipline to a second CPU
+  interpreter, not just the GPU body; `grow_pool` (a deterministic, seed-driven offline
+  sweep — mirroring `main.rs`'s own one-time-at-startup `discover_pools`, not a live
+  per-tick event).
+- **`Cargo.toml`** — `rustmsl` promoted from macOS-gated to an unconditional dependency:
+  `rustmsl::interp`'s `linearize`/`cpu_run` are not macOS-gated inside `rustmsl` itself
+  (only its `GpuBatch`/`InterpBatch` modules, which depend on the `metal` crate, are) —
+  composition's structural/viability gates build and run on every platform.
+- **`ex2_mutation_report.rs`** extended with a composition sweep (300 attempts/pool) and an
+  ecology adoption experiment: build a "control" `GenePools` (disk-loaded movement pool
+  only) and an "extended" one (the same pool plus every viable composed candidate,
+  compiled via `CompiledGene::from_funcs` — CPU-only, `gpu: None`, even though the run
+  otherwise uses the GPU engine; composed cells are rare enough that this doesn't cost
+  anything the receipts below show as significant), then run both and report adoption.
+
+### Receipts
+
+Same grazer/32×32/density-0.2/2000-tick/GPU config as operator (a)'s report, seed
+`0x5eed_c0de_c0de_5eed` for the composition sweep:
+
+| | promoters (arity 2) | movement (arity 3) |
+|---|---:|---:|
+| composable (single-func, no consts) | 80/85 | 34/43 |
+| fingerprinted for novelty | 75/85 | 42/43 |
+| attempts | 300 | 300 |
+| structurally invalid | 43 | 0 |
+| not viable (traps or cross-interpreter mismatch) | 75 | 0 |
+| duplicate (agreement ≥ 1.0 vs. an existing cell) | 9 | 50 |
+| **viable** | **173 (57.7%)** | **250 (83.3%)** |
+| closest-existing-match agreement, viable candidates | avg 0.590, max 0.950 | avg 0.696, max 0.950 |
+
+Ecology adoption, extending the movement pool from 43 to 293 (43 + 250 viable composed
+candidates), same seed as every other report in this doc:
+
+| | control | extended |
+|---|---:|---:|
+| final population | 253 | 324 |
+| total births | 11,200 | 21,413 |
+| births carrying a composed `sense_move` gene | — | 6,344 / 21,413 (29.6%) |
+| avg direct children — composed-gene carriers | — | 0.829 |
+| avg direct children — disk-gene carriers | — | 1.067 |
+
+`cargo test -p cell80-life` (both platforms) and `cargo clippy -p cell80-life
+--all-targets` are green, including the 4 new composition unit tests (composable-pool
+discovery, an end-to-end gate-outcome sweep, a deliberately-trapping pair proving
+stillbirth-not-crash, and `grow_pool` determinism).
+
+### What this shows
+
+- **Viable bytecode mutations are not vanishingly rare — the opposite.** 57.7%/83.3%
+  viable directly contradicts the design doc's own worried-about failure mode ("if viable
+  bytecode mutations are vanishingly rare... fall back"). The kill/rescope condition simply
+  didn't fire; this is a real, positive result for operator (b), not a fallback.
+- **Composed candidates are behaviourally novel, not near-duplicates dressed up as new** —
+  closest-match agreement averaging 0.59–0.70 (well below the 1.0 duplicate bar, in the
+  same range `evolved-cells-findings.md` reported for its own genuinely-novel discoveries)
+  shows real, if related-to-something-existing, behavior.
+- **The ecology actually exploits them, substantially** — 29.6% of all births in the
+  extended run carry a composed gene. This is the direct, real-data answer to "does
+  bytecode mutation reach strategies parametric mutation cannot": the swap-only pool
+  structurally cannot ever produce these genomes (they don't exist as named cells), and
+  nearly a third of births in the extended run carry one anyway.
+- **"Occasionally fitter" is not shown by the aggregate, and that's reported honestly, not
+  smoothed over.** Composed-gene carriers averaged *fewer* direct children than disk-gene
+  carriers (0.829 vs. 1.067) in this run — adoption is real, but the aggregate doesn't show
+  composed genes as more fit on average. This doesn't rule out individual composed
+  candidates being fitter than their specific parent (the doc's literal criterion) — that
+  needs a per-candidate lineage analysis EX-4's own machinery could now answer directly,
+  not attempted in this pass.
+- **A real correctness bug was caught before shipping, by the same discipline that caught
+  EX-2 operator (a)'s trap-folding gap**: the first draft of `ComposablePool::discover`
+  discarded a cell's const data rather than checking it was empty — harmless only because
+  none of the actually-composed cells in this sweep happened to need any, caught by
+  re-reading the code against what `rustz80::lower_program_full`'s `Lowered::const_data()`
+  actually returns, not by a failing test.
+
+### What this does *not* show
+
+- **The between-run (control vs. extended) comparison has a stated confound**: a larger
+  pool changes which index every swap draw lands on from the first mutation event onward,
+  so the two runs' populations diverge immediately — the 253-vs-324 final population
+  difference is not a clean causal read of "composed candidates grow the population," and
+  isn't presented as one. The within-run comparison is the primary signal.
+- **Only the movement pool (arity 3, `sense_move`) was extended for the adoption
+  experiment** — the promoter pool (shared by `hungry_promoter`/`repro_promoter`) would
+  need a more careful design to extend one role without silently affecting the other, since
+  `ex2.rs`'s `GenePools` compiles `hungry_pool`/`repro_pool` as separate instances from the
+  same name list; not attempted this pass.
+- **Composed candidates execute CPU-only even in the "GPU" engine run** — a stated v1
+  restriction (see the design doc), not yet a demonstrated GPU-compiled composed cell.
+- **Pool members carrying const data are excluded from both composability and the novelty
+  comparison** (75/85, 42/43 fingerprinted, not the full pools) — a narrow, stated gap: a
+  composed candidate could in principle duplicate a const-bearing cell's behavior without
+  the novelty check catching it.
+- **"Occasionally fitter than a specific parent"** — per above, only the aggregate
+  comparison was run this pass; individual-candidate fitness (which specific composed
+  genes out-perform which specific parents) is unmeasured.
+
+### Reproduce it
+
+```
+cargo test -p cell80-life --test ex2_cpu_replay              # any platform
+cargo test -p cell80-life --test ex2_gpu_vs_cpu               # macOS (Metal) only
+cargo test -p cell80-life --lib composition                   # any platform
+cargo run -p cell80-life --release --bin ex2_mutation_report  # macOS (Metal) only, ~2 min
+cargo clippy -p cell80-life --all-targets
+```
+
+### What would raise confidence further
+
+- Extend the promoter pool too (both roles, or one at a time with a deliberate
+  single-role-extension mechanism), not just movement.
+- A per-composed-candidate fitness breakdown (using EX-4's lineage machinery directly on an
+  extended-pool run) to test "occasionally fitter than parent" at the individual level,
+  not just the population aggregate.
+- Include const-bearing pool members in the novelty comparison via a fingerprinting path
+  that actually plants their const data, closing the stated gap.
+- A larger composition sweep (the doc's own kill/rescope condition didn't fire at
+  300 attempts/pool, but a wider sweep would tighten the viable-fraction estimate).
 
 ## EX-4 — the lineage record
 

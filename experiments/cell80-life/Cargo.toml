@@ -14,12 +14,12 @@ license.workspace = true
 cell80 = { path = "../../cell80" }
 cell80-core = { path = "../../cell80-core" }
 rustz80 = { path = "../../rustz80" }
+# Unconditional, not macOS-gated: rustmsl's codegen/`interp` module (`linearize`/`cpu_run`,
+# EX-2 operator (b)'s structural+viability gates) build on every platform — rustmsl only
+# macOS-gates its own `metal` dependency internally (`mod gpu`, `GpuBatch`/`InterpBatch`),
+# not the crate as a whole.
+rustmsl = { path = "../../rustmsl" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 syn = { version = "2", features = ["full"] }
-
-# EX-0's GPU body (experiments/deterministic-ecology.md) — the codegen builds everywhere,
-# the Metal executor only exists where Metal does.
-[target.'cfg(target_os = "macos")'.dependencies]
-rustmsl = { path = "../../rustmsl" }

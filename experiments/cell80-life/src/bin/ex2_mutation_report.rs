@@ -26,8 +26,9 @@ mod macos {
     use std::path::{Path, PathBuf};
     use std::time::Instant;
 
+    use cell80_life::composition::{fingerprint_pool_member, grow_pool, ComposablePool};
     use cell80_life::ex2::{self, GenePools, RunConfig2DGenome, StartingGenome2};
-    use cell80_life::genes::EngineKind;
+    use cell80_life::genes::{CompiledGene, EngineKind};
     use cell80_life::load_starting_genome;
     use cell80_life::pools::discover_pools;
 
@@ -134,5 +135,170 @@ mod macos {
             "births with at least one role differing from the run's starting genome: {swaps} ({:.1}%)",
             100.0 * swaps as f64 / out.births.len().max(1) as f64
         );
+
+        // ── Part 2: operator (b) — composition-sweep receipts ──────────────────────────
+        println!("\n== part 2: composition sweep (operator b) ==");
+        let promoter_pool = ComposablePool::discover(&cells_dir(), &role_pools.promoters, 2);
+        let movement_pool = ComposablePool::discover(&cells_dir(), &role_pools.movement, 3);
+        println!(
+            "composable (single-self-contained-function, no consts): {}/{} promoters, {}/{} movement",
+            promoter_pool.funcs.len(),
+            role_pools.promoters.len(),
+            movement_pool.funcs.len(),
+            role_pools.movement.len()
+        );
+
+        let promoter_fps: Vec<_> = role_pools
+            .promoters
+            .iter()
+            .filter_map(|n| fingerprint_pool_member(&cells_dir(), n, 2))
+            .collect();
+        let movement_fps: Vec<_> = role_pools
+            .movement
+            .iter()
+            .filter_map(|n| fingerprint_pool_member(&cells_dir(), n, 3))
+            .collect();
+        println!(
+            "fingerprinted (for novelty comparison): {}/{} promoters, {}/{} movement — a pool \
+             member with const data is excluded from both composability and this comparison, \
+             the same stated limitation",
+            promoter_fps.len(),
+            role_pools.promoters.len(),
+            movement_fps.len(),
+            role_pools.movement.len()
+        );
+
+        let sweep_seed = 0x5eed_c0de_c0de_5eedu64;
+        let sweep_attempts = 300u32;
+        for (label, pool, fps) in [
+            ("promoters (arity 2)", &promoter_pool, &promoter_fps),
+            ("movement (arity 3)", &movement_pool, &movement_fps),
+        ] {
+            let report = grow_pool(pool, fps, sweep_seed, sweep_attempts);
+            println!(
+                "\n  {label}: {} attempts -> {} structurally invalid, {} not viable, {} duplicate, {} viable",
+                report.attempts, report.structurally_invalid, report.not_viable, report.duplicate, report.viable.len()
+            );
+            if !report.viable.is_empty() {
+                let closest: Vec<f32> = report
+                    .viable
+                    .iter()
+                    .map(|c| fps.iter().map(|fp| c.fingerprint.agreement(fp)).fold(0.0_f32, f32::max))
+                    .collect();
+                let avg_closest = closest.iter().sum::<f32>() / closest.len() as f32;
+                let max_closest = closest.iter().cloned().fold(0.0_f32, f32::max);
+                println!(
+                    "    closest-existing-match agreement: avg={avg_closest:.3} max={max_closest:.3} (both < 1.0 by construction)"
+                );
+                for c in report.viable.iter().take(3) {
+                    println!("    e.g. {}(..) wired into {}(.., slot {}, ..)", c.f_name, c.g_name, c.slot);
+                }
+            }
+        }
+
+        // ── Part 3: does the ecology ever exploit a composed candidate? ─────────────────
+        println!("\n== part 3: ecology adoption — extended vs. control movement pool ==");
+        let movement_growth = grow_pool(&movement_pool, &movement_fps, sweep_seed, sweep_attempts);
+        if movement_growth.viable.is_empty() {
+            println!("no viable composed movement candidates from this sweep — nothing to test adoption with.");
+            return;
+        }
+        println!(
+            "extending the movement pool with {} viable composed candidate(s), original size {}",
+            movement_growth.viable.len(),
+            role_pools.movement.len()
+        );
+
+        let base_movement_len = role_pools.movement.len();
+        let build_genes = |extended: bool| -> GenePools {
+            let mut g = GenePools::load(
+                &cells_dir(),
+                &starting.genes.decay,
+                &starting.genes.eat,
+                &starting.genes.split,
+                &role_pools,
+            )
+            .expect("compiling gene pools");
+            if extended {
+                for c in &movement_growth.viable {
+                    let name = format!("{}∘{}[slot{}]", c.f_name, c.g_name, c.slot);
+                    let compiled = CompiledGene::from_funcs(&name, c.funcs.clone(), Vec::new())
+                        .expect("compiling a composed candidate");
+                    g.sense_pool.push(compiled);
+                }
+            }
+            g
+        };
+
+        let control_genes = build_genes(false);
+        let extended_genes = build_genes(true);
+        let adoption_cfg = RunConfig2DGenome {
+            seed: 0x5eed_1234_c311_80ff,
+            ticks: 2000,
+            initial_organisms: 8,
+            world_width: 32,
+            world_height: 32,
+            food_density: 0.2,
+            food_value: 40,
+            regrow_ticks: 8,
+        };
+
+        let control_out = ex2::run(EngineKind::Gpu, &adoption_cfg, &starting2, &control_genes);
+        let extended_out = ex2::run(EngineKind::Gpu, &adoption_cfg, &starting2, &extended_genes);
+
+        println!(
+            "control:  final_pop={} total_births={}",
+            control_out.final_population, control_out.total_births
+        );
+        println!(
+            "extended: final_pop={} total_births={}",
+            extended_out.final_population, extended_out.total_births
+        );
+        println!(
+            "NOTE: control vs. extended is NOT a clean isolate-one-variable comparison — a \
+             larger pool changes which index every swap draw lands on from the very first \
+             mutation event onward, so the two runs' populations diverge immediately. \
+             Reported as a secondary, explicitly-caveated signal; the within-run comparison \
+             below is the primary one."
+        );
+
+        let composed_births: Vec<_> = extended_out
+            .births
+            .iter()
+            .filter(|b| b.sense_move as usize >= base_movement_len)
+            .collect();
+        println!(
+            "\nextended run: {} / {} births carry a composed `sense_move` gene ({:.2}%)",
+            composed_births.len(),
+            extended_out.births.len(),
+            100.0 * composed_births.len() as f64 / extended_out.births.len().max(1) as f64
+        );
+
+        if composed_births.is_empty() {
+            println!("no adoption this run — composed candidates were available but never selected by a swap draw.");
+        } else {
+            // Within-run fitness proxy: direct children of composed-gene carriers vs.
+            // disk-gene carriers — no pool-size confound, since both groups exist in the
+            // same run under the same RNG stream.
+            let child_count = |parent_id: u32| {
+                extended_out.births.iter().filter(|b| b.parent_id == parent_id).count()
+            };
+            let composed_children: Vec<usize> =
+                composed_births.iter().map(|b| child_count(b.child_id)).collect();
+            let disk_children: Vec<usize> = extended_out
+                .births
+                .iter()
+                .filter(|b| (b.sense_move as usize) < base_movement_len)
+                .map(|b| child_count(b.child_id))
+                .collect();
+            let avg = |v: &[usize]| v.iter().sum::<usize>() as f64 / v.len().max(1) as f64;
+            println!(
+                "avg direct children — composed-gene carriers: {:.3} (n={})  disk-gene carriers: {:.3} (n={})",
+                avg(&composed_children),
+                composed_children.len(),
+                avg(&disk_children),
+                disk_children.len()
+            );
+        }
     }
 }
