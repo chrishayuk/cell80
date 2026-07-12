@@ -9,10 +9,13 @@ Code lives inside `experiments/cell80-life/` (`src/rng.rs`, `src/contention.rs`,
 `src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/composition.rs`, `src/lineage.rs`,
 `src/ex0.rs`, `src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/predation.rs`, `src/ex3.rs`,
 `src/bin/ex1_sweep.rs`, `src/bin/ex2_mutation_report.rs`, `src/bin/ex4_lineage_report.rs`,
-`src/bin/ex3_predator_prey_report.rs`, `src/bin/ex3_arms_race_report.rs`, `tests/ex0_*.rs`,
-`tests/ex1_*.rs`, `tests/ex2_*.rs`, `tests/ex3_*.rs`, `tests/ex4_*.rs`) rather than a new
-crate — deliberate, per the project's current preference to stay inside `experiments/`
-rather than promote to a new workspace member while this stays speculative/off-roadmap.
+`src/bin/ex3_predator_prey_report.rs`, `src/bin/ex3_arms_race_report.rs`,
+`src/bin/ex5_soma_export_report.rs`, `tests/ex0_*.rs`, `tests/ex1_*.rs`, `tests/ex2_*.rs`,
+`tests/ex3_*.rs`, `tests/ex4_*.rs`, `tests/ex5_*.rs`) rather than a new crate — deliberate,
+per the project's current preference to stay inside `experiments/` rather than promote to a
+new workspace member while this stays speculative/off-roadmap. EX-5 additionally reuses the
+main `cell80` crate's multi-target RV32 export API (`Cartridge::compile_rv32`/`Rv32Runner`,
+`docs/13-multi-target-spec.md`) read-only — no changes to `cell80`/`rustrv32`/`rustz80`.
 
 ## EX-0 — the replay gate
 
@@ -986,3 +989,130 @@ cargo clippy -p cell80-life --all-targets
   reaching this same pool index would eventually be found again given enough ticks/seeds —
   i.e., is this specific mutation's disappearance a genuine dead end for the population, or
   just a delay before an equivalent one reappears independently.
+
+## EX-5 — SOMA hand-off
+
+**TL;DR: passed cleanly on the first real run, and it required zero new `cell80`/`rustrv32`
+code — the multi-target RV32 export pipeline was already mature enough for this to be
+integration work, not compiler work.** One real surviving predator from an EX-3 flagship run
+had its full resolved genome (6 gene-cell choices) hash-attested and proven behaviorally
+identical across the Z80 body, the RV32 body (the robot's target ISA), and the
+CPU-reference interpreter — plus, as a bonus, the GPU body already proven throughout
+EX-0–EX-3. The organism's `repro_promoter` had genuinely evolved away from its species'
+starting cell (`is_ge` → `bit_is_set`, a real cell-swap mutation somewhere in its lineage,
+not a hand-picked example) — so this isn't a demo of "a" cell exporting cleanly, it's a
+demo of *this specific organism's evolved decision* exporting cleanly.
+
+### What was built
+
+- **`src/bin/ex5_soma_export_report.rs`** — runs a real EX-3 flagship simulation (seed 42,
+  the same config `ex3_predator_prey_report.rs`/`ex3_arms_race_report.rs` validated as
+  fully robust: 48×48, 60 grazers : 10 predators, density 0.3, `predator_satiation_ticks=20`,
+  mutation on), picks the first surviving predator at the final tick, computes its
+  `GenomeFields::hash()` (EX-4's lineage content-address, reused unmodified as a "genome
+  digest"), reverse-resolves its 3 evolved roles to named cells via `role_pools.promoters`/
+  `role_pools.movement` (plain indexing — no new lookup method needed), and for all 6 of its
+  gene-cell choices (3 fixed: decay/eat/split; 3 evolved): compiles both bodies from the
+  cell's real disk source (`Cartridge::compile`/`compile_rv32`), hash-attests them exactly
+  `cell80/tests/cartridge_v10.rs`'s proven `one_cell_two_bodies_one_family` pattern
+  (`family_hash` equal, `artifact_hash` differs, `from_bytes` round-trips), and runs all
+  three bodies (Z80, RV32, CPU-reference; GPU too on macOS) over `DEFAULT_PROBES`, asserting
+  bit-exact agreement. **Not macOS-gated** — `Rv32Runner`/`rustrv32::run_cell` is a
+  pure-Rust RISC-V executor, not Metal-backed; only the GPU cross-check is a macOS-only
+  bonus block that never gates the pass/fail verdict.
+- **`tests/ex5_rv32_export.rs`** — pins the mechanism itself on two real disk cells
+  (`is_gt`, `argmax3` — covering both arity-2 and arity-3 gene shapes) independent of a full
+  flagship run: same hash-attestation + three-way-agreement assertions, fast (<0.1s) and
+  fully deterministic, mirroring `tests/ex4_counterfactual_replay.rs`'s precedent of proving
+  the mechanism apart from the exploratory report binary.
+
+### Receipts
+
+Seed 42, 3,000 ticks: 1,927 grazers, 500 predators survived. Organism `id=133288` (predator,
+energy 83 at tick 2999) picked:
+
+| field | value |
+|---|---|
+| genome digest (`GenomeFields::hash`, 8-hex prefix) | `acd9e94364d25cba` |
+| `decay_amount` / `repro_threshold` / `repro_give_pct` | 1 / 254 / 54 |
+| `hungry_promoter` | `is_gt` |
+| `repro_promoter` | `bit_is_set` (evolved away from the species' starting `is_ge`) |
+| `sense_move` | `argmax3` |
+
+All 6 resolved cells (`sub_sat`, `add_sat`, `discount_percent`, `is_gt`, `bit_is_set`,
+`argmax3`) attested identically:
+
+| check | result |
+|---|---|
+| `family_hash` equal (Z80 body == RV32 body) | true, all 6 |
+| `artifact_hash` differs (per-body identity, as expected) | true, all 6 |
+| `from_bytes` round-trip of the RV32 body re-verifies | true, all 6 |
+| Z80 == RV32 agreement over 20 `DEFAULT_PROBES` | true, all 6, zero mismatches |
+| (macOS bonus) GPU == CPU-reference interpreter, same 20 probes | true, all 6 |
+
+`cargo test -p cell80-life --test ex5_rv32_export` (any platform, <0.1s) and
+`cargo run -p cell80-life --release --bin ex5_soma_export_report` (any platform, ~15s: most
+of it the 3,000-tick flagship run) both green; `cargo test -p cell80-life` (both platforms)
+and `cargo clippy -p cell80-life --all-targets` stay green, including every prior
+experiment's tests unchanged.
+
+### What this shows
+
+- **The multi-target RV32 export path is mature enough that EX-5 was integration work, not
+  compiler work.** Every API this needed — `Cartridge::compile_rv32`, `Rv32Runner`,
+  `find_cell_file`, the family-hash/artifact-hash contract — already existed and worked
+  exactly as `cell80/tests/cartridge_v10.rs` had already proven for hand-picked cells; zero
+  lines changed in `cell80`, `rustrv32`, or `rustz80`.
+- **The "genome IS a policy cell" framing holds up at the per-cell granularity the user
+  chose.** An evolved organism's decision-making genome decomposes cleanly into named,
+  independently-exportable, independently-hash-attestable cells — including a role that had
+  genuinely mutated away from its species' baseline (`repro_promoter`: `is_ge` →
+  `bit_is_set`), proving this isn't limited to genomes that happen to stay at their
+  starting values.
+- **The determinism spine now spans four independent execution bodies for the same
+  organism's real decisions**: Z80, RV32, the CPU-reference interpreter, and (on macOS) the
+  Metal GPU body — all agreeing bit-for-bit over the same probe inputs, extending EX-0–EX-3's
+  "GPU ≡ interpreter" discipline one more step to "GPU ≡ interpreter ≡ RV32."
+
+### What this does *not* show
+
+- **This is per-cell attestation, not a single composed whole-organism RV32 artifact** — a
+  deliberate, explicit scope decision (the user's choice between the two options offered).
+  The tick engine's host-orchestrated control flow (axis-priority movement, contention
+  resolution, predation-kill ordering) still lives in `ex3.rs`'s Rust code, not inside any
+  cell; folding it into one exported program is real redesign work, not a prototype, and
+  `composition.rs`'s existing machinery only does 2-cell arity-preserving wiring today, not
+  the N-cell wiring this would need.
+- **Cycle counts are not reported.** `Rv32Report.cycles` exists, but the RV32 cycle table
+  stays provisional until the RP2350 `mcycle` co-sign (B4, per `rv32.rs`'s own module doc) —
+  reporting a number here would misrepresent it as hardware-timed.
+- **Composed/non-disk candidate cells (EX-2's cell-assembly operator) are out of scope.**
+  The flagship config this pass used never extends the movement/promoter pools with
+  composed candidates, so every resolved role was a real disk cell; exporting a composed
+  candidate would need synthesizing valid `.cell` source text from its in-memory `Expr`
+  representation first — not attempted here.
+- **Only one organism, one seed.** This is a single demonstration that the seam works, not
+  a survey of how often/well it works across the population — matching EX-4's own stated
+  precedent (demonstrate on the first real candidate found, not an exhaustive sweep).
+
+### Reproduce it
+
+```
+cargo test -p cell80-life --test ex5_rv32_export                  # any platform, <0.1s
+cargo run -p cell80-life --release --bin ex5_soma_export_report   # any platform, ~15s
+cargo clippy -p cell80-life --all-targets
+```
+
+### What would raise confidence further
+
+- Export organisms from several seeds/ticks, not just one, to see whether every resolved
+  role cell attests cleanly or whether some (e.g. a state-carrying or higher-arity cell, if
+  the pools ever grow to include one) hits a gap the current six-cell genome doesn't exercise.
+- Extend to a composed/non-disk candidate cell (EX-2 operator b) once one is actually
+  adopted in a flagship-config run, to test the "synthesize `.cell` source from `Expr`"
+  gap named above.
+- Once B4 lands, re-report cycle counts as real, silicon-co-signed numbers instead of
+  omitting them.
+- Prototype the actual `CellHost`-by-body dispatch this would need to run a *whole tick's*
+  decision sequence as one RV32 program — the natural next step toward the design doc's
+  fuller "deploys to the RP2350" claim, once that upstream machinery lands.

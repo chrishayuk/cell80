@@ -1,8 +1,9 @@
 # 17 — Deterministic Ecology on State Cells: the experiment programme (draft v0.1)
 
-**Status:** EX-0, EX-1, EX-2 (both operators), and EX-4 built and landed — receipts in
-`deterministic-ecology-findings.md`. EX-3/EX-5 not started. Still speculative, off-roadmap
-(same footing as `cell80-life.md`).
+**Status:** EX-0 through EX-5, the full programme, built and landed — receipts in
+`deterministic-ecology-findings.md`. EX-3's coupled-arms-race claim did not hold up under a
+permutation-null test (an honest kill condition, not smoothed over); every other gate
+passed. Still speculative, off-roadmap (same footing as `cell80-life.md`).
 **Depends on:** cell80-life (composition → selection, established), evolved-cells /
 cell-synth-evolve (GA/MCTS/A* search reusable API), the WS-E GPU interpreter
 (state cells, IR-step parity, one-cell×N at 3.7×10⁸ evals/s up to N=2²⁰, library×probe
@@ -222,6 +223,18 @@ Prototype the export: winning genome → `.cell` → RV32 artifact, hash-atteste
 **Gate.** One organism evolved in EX-3 exported and shown behaviourally identical on the
 robot's target ISA. **Depends on.** EX-3 + docs/13 RV32 path. **Cost.** Integration.
 
+**Status: DONE — passed on the first real run, zero new `cell80`/`rustrv32` code needed.**
+One real surviving predator from an EX-3 flagship run had its full resolved genome (6
+gene-cell choices, including a `repro_promoter` that had genuinely evolved away from its
+species' starting cell) hash-attested and proven behaviorally identical across the Z80
+body, the RV32 body (the robot's target ISA), and the CPU-reference interpreter — extending
+EX-0–EX-3's "GPU ≡ interpreter" discipline to "GPU ≡ interpreter ≡ RV32." Scoped
+deliberately to per-cell attestation, not a single composed whole-organism RV32 artifact —
+the tick engine's host-orchestrated control flow isn't folded into one cell (that's a
+redesign, not a prototype); cycle counts aren't reported (the RV32 cycle table stays
+provisional until B4). Full account in `deterministic-ecology-findings.md`'s `## EX-5`
+section — this closes out the doc 17 programme.
+
 ---
 
 ## 3. Sequencing
@@ -238,8 +251,9 @@ fails, the substrate claim is wrong and the cheap way to learn it is here. **Don
 Wave 2: **EX-4** (nearly free, and it's the differentiating artifact) alongside **EX-2**.
 **Done.**
 Wave 3: **EX-3** (the flagship, the watchable one), then **EX-5** if the robot lane wants
-it. **EX-3 done** (kill condition fired honestly — see its `Status` note above); **EX-5 not
-started.**
+it. **Both done** — EX-3's kill condition fired honestly (see its `Status` note above);
+EX-5 passed on the first real run (see its `Status` note above). The doc 17 programme
+(EX-0–EX-5) is complete.
 
 ## 4. The anti-artifact discipline (cross-cutting)
 
