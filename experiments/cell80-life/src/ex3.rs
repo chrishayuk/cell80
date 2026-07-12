@@ -63,6 +63,15 @@ pub struct RunConfig3 {
     /// genome verbatim) — isolates "more room" (world size/population ratio) from
     /// "evolution" as the explanation for any population stability seen.
     pub mutation_enabled: bool,
+    /// Ticks a predator must wait after a kill before it can attack again (0 disables the
+    /// mechanic entirely). Checkpoint B: the mutation-off control replicated a 10/10-seed
+    /// predator extinction at two otherwise fully robust configs — but the *same*
+    /// satiation-less mechanic sustains healthy 10/10-seed coexistence with mutation on, so
+    /// the mechanic wasn't the suspected cause. Built anyway per explicit decision, to rule
+    /// out any residual overhunting confound rather than argue it away. A fixed constant,
+    /// not a genome field — `main.rs`'s own discipline (species-level, not individual-level,
+    /// unlike the swappable/numeric roles).
+    pub predator_satiation_ticks: u32,
 }
 
 pub struct RunOutput3 {
@@ -83,6 +92,10 @@ struct Org {
     energy: u16,
     species: Species,
     genome: OrgGenome,
+    /// Predators only: the tick number before which this organism cannot attack again
+    /// (0 = no active cooldown). Ecological state, not genome — never inherited, never
+    /// mutated, never snapshotted (mirrors `world2d.rs`'s `regrow_at` idiom).
+    satiation_until: u32,
 }
 
 fn genome_of(s: &StartingGenome3) -> OrgGenome {
@@ -173,6 +186,7 @@ fn run_impl(
             energy: grazer_starting.initial_energy,
             species: Species::Grazer,
             genome: grazer_genome.clone(),
+            satiation_until: 0,
         });
     }
     for i in 0..cfg.initial_predators {
@@ -184,6 +198,7 @@ fn run_impl(
             energy: predator_starting.initial_energy,
             species: Species::Predator,
             genome: predator_genome.clone(),
+            satiation_until: 0,
         });
     }
 
@@ -320,8 +335,12 @@ fn run_impl(
                     match o.species {
                         Species::Grazer => eat_candidates.push((o.id, o.pos)),
                         Species::Predator => {
-                            if let Some((victim_id, _)) = prey_index.at(o.pos) {
-                                predation_candidates.push((o.id, victim_id));
+                            // Satiated predators can still sense/stay (movement is
+                            // unaffected) but don't register as an attacker this tick.
+                            if tick >= o.satiation_until {
+                                if let Some((victim_id, _)) = prey_index.at(o.pos) {
+                                    predation_candidates.push((o.id, victim_id));
+                                }
                             }
                         }
                     }
@@ -361,9 +380,10 @@ fn run_impl(
             contention::resolve_contention(cfg.seed, tick, &predation_candidates, contention::PREDATION_CONTENTION_STREAM);
         let killed_victims = killed_victims_from(&predation_candidates, &predation_winners);
         total_predation_kills += killed_victims.len() as u32;
-        for (i, o) in orgs.iter().enumerate() {
+        for (i, o) in orgs.iter_mut().enumerate() {
             if o.species == Species::Predator && predation_winners.contains(&o.id) {
                 resolved_energy[i] = eat_out[i].0;
+                o.satiation_until = tick + cfg.predator_satiation_ticks;
             }
         }
         // A predation kill overrides everything else that tick for the victim — no eat, no
@@ -435,6 +455,7 @@ fn run_impl(
                     energy: child_energy,
                     species: orgs[i].species,
                     genome: child_genome,
+                    satiation_until: 0,
                 });
                 total_births += 1;
             }
@@ -450,6 +471,7 @@ fn run_impl(
             energy: 0,
             species: Species::Grazer,
             genome: grazer_genome.clone(),
+            satiation_until: 0,
         };
         let mut new_orgs: Vec<Org> = survivors
             .into_iter()

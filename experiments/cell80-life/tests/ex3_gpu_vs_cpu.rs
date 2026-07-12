@@ -33,6 +33,7 @@ fn run_config() -> RunConfig3 {
         food_value: 40,
         regrow_ticks: 8,
         mutation_enabled: true,
+        predator_satiation_ticks: 20,
     }
 }
 

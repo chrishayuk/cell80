@@ -165,6 +165,7 @@ mod macos {
                         food_value: 40,
                         regrow_ticks: 8,
                         mutation_enabled: true,
+                        predator_satiation_ticks: 0,
                     };
                     let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
                     report_run(seed, &out, tail);
@@ -175,16 +176,55 @@ mod macos {
             println!("== part 1 skipped (SKIP_PART1 set) — see prior run's output ==");
         }
 
-        // ── Part 2: the pre-registered mutation-off control ─────────────────────────────
-        // Swept across the two configs part 1 found fully robust (5/5 seeds sustained
-        // coexistence with mutation on) — not just the weaker 40:8 config — so a mutation-off
-        // collapse can't be dismissed as "that config just wasn't generous enough."
-        println!("\n== part 2: mutation-off control (design decision 8) ==");
         let calibrated_configs = [
             WorldConfig { width: 48, height: 48, grazers: 60, predators: 10, density: 0.3 },
             WorldConfig { width: 64, height: 64, grazers: 60, predators: 10, density: 0.25 },
         ];
 
+        if std::env::var("SKIP_PART2").is_err() {
+            // ── Part 2: the pre-registered mutation-off control ─────────────────────────
+            // Swept across the two configs part 1 found fully robust (5/5 seeds sustained
+            // coexistence with mutation on) — not just the weaker 40:8 config — so a
+            // mutation-off collapse can't be dismissed as "that config just wasn't generous
+            // enough." No satiation cooldown here (`predator_satiation_ticks: 0`) — this is
+            // the pre-satiation baseline; see part 3 for the mechanic itself.
+            println!("\n== part 2: mutation-off control (design decision 8) ==");
+            let t0 = Instant::now();
+            for c in &calibrated_configs {
+                println!(
+                    "\n  -- world {}x{} grazers={} predators={} density={} --",
+                    c.width, c.height, c.grazers, c.predators, c.density
+                );
+                for &mutation_enabled in &[true, false] {
+                    println!("\n    -- mutation_enabled={mutation_enabled} --");
+                    for &seed in &seeds {
+                        let cfg = RunConfig3 {
+                            seed,
+                            ticks,
+                            initial_grazers: c.grazers,
+                            initial_predators: c.predators,
+                            world_width: c.width,
+                            world_height: c.height,
+                            food_density: c.density,
+                            food_value: 40,
+                            regrow_ticks: 8,
+                            mutation_enabled,
+                            predator_satiation_ticks: 0,
+                        };
+                        let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
+                        report_run(seed, &out, tail);
+                    }
+                }
+            }
+            println!("\n(part 2 wall-clock: {:.1}s)", t0.elapsed().as_secs_f64());
+        } else {
+            println!("== part 2 skipped (SKIP_PART2 set) — see prior run's output ==");
+        }
+
+        // ── Part 3: the satiation mechanic (Checkpoint B, built per explicit decision) ──
+        // Does a predator kill-cooldown rescue the mutation-off case, or change the
+        // mutation-on case? Tested at the same two robust configs, both mutation states.
+        println!("\n== part 3: satiation mechanic (predator_satiation_ticks=20) ==");
         let t0 = Instant::now();
         for c in &calibrated_configs {
             println!(
@@ -205,12 +245,13 @@ mod macos {
                         food_value: 40,
                         regrow_ticks: 8,
                         mutation_enabled,
+                        predator_satiation_ticks: 20,
                     };
                     let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
                     report_run(seed, &out, tail);
                 }
             }
         }
-        println!("\n(part 2 wall-clock: {:.1}s)", t0.elapsed().as_secs_f64());
+        println!("\n(part 3 wall-clock: {:.1}s)", t0.elapsed().as_secs_f64());
     }
 }
