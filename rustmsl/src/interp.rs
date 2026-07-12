@@ -1171,9 +1171,9 @@ kernel void interp(
         /// Build from linearized cells. Cells whose local count exceeds the
         /// kernel bound are skipped; the count of skipped cells is returned
         /// alongside the batch. `n_cells()` reflects the admitted cells.
-        pub fn new(progs: &[CellProgram]) -> Result<(Self, usize), String> {
-            let device =
-                Device::system_default().ok_or_else(|| "msl: no Metal device".to_string())?;
+        /// Encode a program set into the concatenated code + per-cell offset
+        /// table, skipping (and counting) cells over the kernel's local bound.
+        fn pack(progs: &[CellProgram]) -> (Vec<u32>, Vec<u32>, usize) {
             let (mut code, mut table, mut skipped) = (Vec::new(), Vec::new(), 0usize);
             for prog in progs {
                 if prog.n_locals > MAX_LOCALS {
@@ -1185,6 +1185,13 @@ kernel void interp(
                 table.push(prog.n_locals as u32);
                 table.push(prog.params as u32);
             }
+            (code, table, skipped)
+        }
+
+        pub fn new(progs: &[CellProgram]) -> Result<(Self, usize), String> {
+            let device =
+                Device::system_default().ok_or_else(|| "msl: no Metal device".to_string())?;
+            let (code, table, skipped) = Self::pack(progs);
             let n_cells = table.len() / 3;
             let opts = metal::CompileOptions::new();
             opts.set_fast_math_enabled(false);
@@ -1220,6 +1227,26 @@ kernel void interp(
         /// Admitted cell count (skipped cells excluded).
         pub fn n_cells(&self) -> usize {
             self.n_cells
+        }
+
+        /// Swap in a new program set, reusing the compiled kernel/pipeline — the
+        /// hot path for a search loop (a fresh candidate population per
+        /// generation), avoiding a kernel recompile. Returns cells skipped for
+        /// exceeding the local-slot bound.
+        pub fn reload(&mut self, progs: &[CellProgram]) -> usize {
+            let (code, table, skipped) = Self::pack(progs);
+            let mk = |v: &[u32]| {
+                let bytes: &[u32] = if v.is_empty() { &[0] } else { v };
+                self.device.new_buffer_with_data(
+                    bytes.as_ptr() as *const _,
+                    (bytes.len() * 4) as u64,
+                    MTLResourceOptions::StorageModeShared,
+                )
+            };
+            self.code_buf = mk(&code);
+            self.table_buf = mk(&table);
+            self.n_cells = table.len() / 3;
+            skipped
         }
 
         /// Run every admitted cell against every probe in one dispatch. Returns
