@@ -11,6 +11,10 @@ use std::collections::{HashMap, HashSet};
 use crate::rng;
 
 pub const EAT_CONTENTION_STREAM: u8 = 1;
+/// EX-3: predation-kill contention (multiple predators targeting the same prey organism in
+/// one tick) — its own stream, distinct from `EAT_CONTENTION_STREAM`, one stream per
+/// independent decision.
+pub const PREDATION_CONTENTION_STREAM: u8 = 18;
 
 /// `candidates`: every `(organism_id, position)` pair that both chose "eat here" and passed
 /// `hungry_promoter` this tick — `position` is an opaque, `Eq + Hash` key (a flat 1D index
@@ -18,11 +22,25 @@ pub const EAT_CONTENTION_STREAM: u8 = 1;
 /// ids that win their tile; everyone else keeps their post-decay energy unchanged, no eat
 /// applied. A drawn-value tie (vanishingly unlikely) falls back to the lower organism id —
 /// a last-resort tie-break, not the primary rule, so it doesn't reintroduce a
-/// founder-always-wins bias.
+/// founder-always-wins bias. A thin wrapper over `resolve_contention` fixed to
+/// `EAT_CONTENTION_STREAM` — unchanged signature/behavior for `ex0.rs`/`ex1.rs`/`ex2.rs`.
 pub fn resolve_eat_contention<P: Eq + std::hash::Hash + Copy>(
     seed: u64,
     tick: u32,
     candidates: &[(u32, P)],
+) -> HashSet<u32> {
+    resolve_contention(seed, tick, candidates, EAT_CONTENTION_STREAM)
+}
+
+/// The general form: same order-independent, lowest-draw-wins resolution, over any caller-
+/// chosen `stream` — EX-3's predation-kill contention needs its own stream
+/// (`PREDATION_CONTENTION_STREAM`) distinct from eat-tile contention, since both can be live
+/// in the same tick and must draw from independent streams.
+pub fn resolve_contention<P: Eq + std::hash::Hash + Copy>(
+    seed: u64,
+    tick: u32,
+    candidates: &[(u32, P)],
+    stream: u8,
 ) -> HashSet<u32> {
     let mut by_pos: HashMap<P, Vec<u32>> = HashMap::new();
     for &(id, pos) in candidates {
@@ -34,7 +52,7 @@ pub fn resolve_eat_contention<P: Eq + std::hash::Hash + Copy>(
         let winner = ids
             .iter()
             .copied()
-            .min_by_key(|&id| (rng::draw(seed, tick, id, EAT_CONTENTION_STREAM), id))
+            .min_by_key(|&id| (rng::draw(seed, tick, id, stream), id))
             .expect("non-empty contestant group");
         winners.insert(winner);
     }

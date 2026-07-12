@@ -130,6 +130,38 @@ impl HistoryHasher {
         self.0.update(rec.contention_losses.to_le_bytes());
         self.0.update(rec.total_ir_steps.to_le_bytes());
     }
+
+    /// EX-3's counterpart to `absorb2d_genome` — `absorb`/`absorb2d`/`absorb2d_genome` and
+    /// their `TickRecord` types stay untouched, so EX-0/EX-1/EX-2's existing hash contracts
+    /// don't move.
+    pub fn absorb2d_eco(&mut self, rec: &TickRecord2DEco) {
+        self.0.update(rec.tick.to_le_bytes());
+        self.0.update((rec.organisms.len() as u32).to_le_bytes());
+        for o in &rec.organisms {
+            self.0.update(o.id.to_le_bytes());
+            self.0.update(o.x.to_le_bytes());
+            self.0.update(o.y.to_le_bytes());
+            self.0.update(o.energy.to_le_bytes());
+            self.0.update([match o.species {
+                Species::Grazer => 0u8,
+                Species::Predator => 1u8,
+            }]);
+            self.0.update(o.decay_amount.to_le_bytes());
+            self.0.update(o.repro_threshold.to_le_bytes());
+            self.0.update(o.repro_give_pct.to_le_bytes());
+            self.0.update(o.hungry_promoter.to_le_bytes());
+            self.0.update(o.repro_promoter.to_le_bytes());
+            self.0.update(o.sense_move.to_le_bytes());
+        }
+        for f in &rec.food {
+            self.0.update(f.to_le_bytes());
+        }
+        self.0.update(rec.births.to_le_bytes());
+        self.0.update(rec.starved.to_le_bytes());
+        self.0.update(rec.contention_losses.to_le_bytes());
+        self.0.update(rec.predation_kills.to_le_bytes());
+        self.0.update(rec.total_ir_steps.to_le_bytes());
+    }
 }
 
 /// EX-1's 2D counterpart to `OrgSnapshot` — two axis coordinates (each safely within a
@@ -197,6 +229,64 @@ pub struct BirthEvent {
     pub child_id: u32,
     pub parent_id: u32,
     pub tick: u32,
+    pub decay_amount: u16,
+    pub repro_threshold: u16,
+    pub repro_give_pct: u16,
+    pub hungry_promoter: u16,
+    pub repro_promoter: u16,
+    pub sense_move: u16,
+}
+
+/// EX-3: a structurally different pipeline (which world query feeds `sense_move`/
+/// `hungry_promoter`, and how the result gets interpreted) — not just different parameter
+/// values, and not itself part of the mutable genome. Fixed per lineage, copied verbatim
+/// from parent to child, never touched by `mutate()`; matches `main.rs`'s own discipline
+/// (only numeric thresholds and role-cell choices evolve within a species).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Species {
+    Grazer,
+    Predator,
+}
+
+/// EX-3's counterpart to `OrgSnapshot2DGenome` — adds `species`, otherwise identical.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrgSnapshot2DEco {
+    pub id: u32,
+    pub x: u16,
+    pub y: u16,
+    pub energy: u16,
+    pub species: Species,
+    pub decay_amount: u16,
+    pub repro_threshold: u16,
+    pub repro_give_pct: u16,
+    pub hungry_promoter: u16,
+    pub repro_promoter: u16,
+    pub sense_move: u16,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TickRecord2DEco {
+    pub tick: u32,
+    /// Every living organism, sorted by `id` — both species interleaved, since id is the
+    /// one global, cross-species order.
+    pub organisms: Vec<OrgSnapshot2DEco>,
+    pub food: Vec<u16>,
+    pub births: u32,
+    pub starved: u32,
+    pub contention_losses: u32,
+    /// Cumulative count of prey killed by a predator this run — the receipt analogue of
+    /// `contention_losses`: how often predation actually engages, not just that it exists.
+    pub predation_kills: u32,
+    pub total_ir_steps: u64,
+}
+
+/// EX-3's counterpart to `BirthEvent` — adds `species` (inherited, never mutated).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BirthEventEco {
+    pub child_id: u32,
+    pub parent_id: u32,
+    pub tick: u32,
+    pub species: Species,
     pub decay_amount: u16,
     pub repro_threshold: u16,
     pub repro_give_pct: u16,

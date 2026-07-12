@@ -109,14 +109,16 @@ pub struct RunOutput2DGenome {
     pub total_starved: u32,
 }
 
+/// `pub(crate)` (not private) so `ex3.rs` can reuse this type and `mutate()` directly for
+/// its own (species-tagged) organisms, rather than duplicating an identical struct.
 #[derive(Clone)]
-struct OrgGenome {
-    decay_amount: u16,
-    repro_threshold: u16,
-    repro_give_pct: u16,
-    hungry_promoter: u16,
-    repro_promoter: u16,
-    sense_move: u16,
+pub(crate) struct OrgGenome {
+    pub(crate) decay_amount: u16,
+    pub(crate) repro_threshold: u16,
+    pub(crate) repro_give_pct: u16,
+    pub(crate) hungry_promoter: u16,
+    pub(crate) repro_promoter: u16,
+    pub(crate) sense_move: u16,
 }
 
 struct Org {
@@ -160,8 +162,13 @@ fn clamp_u16(v: i32, bounds: (i32, i32)) -> u16 {
 /// (the child inherits the parent's value there) — EX-4's counterfactual mechanism. Every
 /// stream is a pure function of its four inputs with no shared cursor, so skipping one
 /// field's effect has zero impact on any other field's draw.
+///
+/// `pub(crate)` (not private) so `ex3.rs` can call this directly for its own organisms —
+/// mutation itself doesn't know or care about species, matching `main.rs`'s own discipline
+/// (only numeric thresholds and role-cell choices evolve within a species, never species
+/// itself).
 #[allow(clippy::too_many_arguments)]
-fn mutate(
+pub(crate) fn mutate(
     seed: u64,
     tick: u32,
     child_id: u32,
