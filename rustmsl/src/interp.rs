@@ -100,7 +100,9 @@ pub(crate) enum Inst {
 /// A linearized cell: flat bytecode, its slot count, param count, and static max
 /// operand-stack depth. In the buffer format this is one entry of the per-cell
 /// offset table. Produce one with [`linearize`]; run it with [`cpu_run`] or feed
-/// a slice of them to [`InterpBatch`].
+/// a slice of them to [`InterpBatch`]. `Clone` is cheap (a bytecode `memcpy`) —
+/// far cheaper than re-`linearize`, so a search loop can carry survivors forward.
+#[derive(Clone)]
 pub struct CellProgram {
     pub(crate) code: Vec<Inst>,
     /// Total 2-byte local slots the cell uses (after inlining).

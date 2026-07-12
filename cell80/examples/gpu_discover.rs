@@ -14,7 +14,7 @@ use cell80_core::ir::{Expr, Func};
 use rustmsl::interp::{cpu_run, linearize, CellProgram, VmOut};
 
 const POP: usize = 4096;
-const MAX_GEN: usize = 150;
+const MAX_GEN: usize = 400; // CEGIS spends generations per counterexample round
 const MAX_DEPTH: u32 = 5;
 const CANDIDATE: &str = "$candidate";
 
@@ -92,11 +92,12 @@ fn mutate(e: &Expr, rng: &mut Rng, cells: &[Cell]) -> Expr {
 fn cand_func(e: &Expr) -> Func {
     Func { params: 1, n_locals: 1, body: vec![], ret: vec![e.clone()], wide_param: false, wide_second: false, wide_ret: false }
 }
-fn cand_prog(e: &Expr, pool: &[(String, Func)]) -> Option<CellProgram> {
-    let mut all = Vec::with_capacity(pool.len() + 1);
-    all.push((CANDIDATE.to_string(), cand_func(e)));
-    all.extend(pool.iter().cloned());
-    match linearize(&all, CANDIDATE) {
+/// Linearize a candidate against `all` (slot 0 is the candidate, the rest is the
+/// library pool built ONCE). Swapping only slot 0 avoids cloning all 168 pool
+/// funcs per candidate — the search loop's real cost.
+fn cand_prog(all: &mut [(String, Func)], e: &Expr) -> Option<CellProgram> {
+    all[0].1 = cand_func(e);
+    match linearize(all, CANDIDATE) {
         Ok(p) if p.max_depth <= 32 && p.n_locals <= 64 => Some(p),
         _ => None,
     }
@@ -196,28 +197,58 @@ fn main() {
     #[cfg(target_os = "macos")]
     {
         use rustmsl::interp::InterpBatch;
+        use std::time::Instant;
         let mut rng = Rng(0x1357_9BDF_2468_ACE0);
-        let probes: Vec<[u16; 3]> = (0..64).map(|_| [rng.u16(), 0, 0]).collect();
-        let np = probes.len();
-        let seed = cand_prog(&Expr::Var(0), &pool).expect("seed");
+        let base_probes: Vec<[u16; 3]> = (0..48).map(|_| [rng.u16(), 0, 0]).collect();
+        // Build the linearize pool ONCE — slot 0 is the candidate, the rest the
+        // library. cand_prog swaps only slot 0 (no per-candidate pool clone).
+        let mut all: Vec<(String, Func)> = vec![(CANDIDATE.to_string(), cand_func(&Expr::Var(0)))];
+        all.extend(pool.iter().cloned());
+        let seed = cand_prog(&mut all, &Expr::Var(0)).expect("seed");
         let (mut batch, _) = InterpBatch::new(&[seed]).expect("metal");
 
         let agree = |a: &[Option<u16>], b: &[Option<u16>]| {
             let n = a.len().min(b.len());
             a.iter().zip(b).filter(|(x, y)| x == y).count() as f32 / n.max(1) as f32
         };
+        // First input where the candidate disagrees with the target. A cheap
+        // strided sample (~2100 inputs) rejects most fakes fast; only when the
+        // sample is clean do we scan the full domain — so an accepted solve is
+        // still exhaustively verified, but hard targets don't thrash the CPU.
+        let counterexample = |sp: &CellProgram, tf: fn(u16) -> u16| -> Option<u16> {
+            if let Some(x) = (0..=u16::MAX).step_by(31).find(|&x| eval(sp, x) != Some(tf(x))) {
+                return Some(x);
+            }
+            (0..=u16::MAX).find(|&x| eval(sp, x) != Some(tf(x)))
+        };
 
         for (tname, tf) in &targets {
-            let wants: Vec<u16> = probes.iter().map(|p| tf(p[0])).collect();
-            let mut pop: Vec<Expr> = (0..POP).map(|_| rand_tree(&mut rng, MAX_DEPTH, &cells)).collect();
-            let mut solved: Option<Expr> = None;
+            // CEGIS: grow the probe set with counterexamples until a candidate
+            // that matches every probe is ALSO full-domain-correct — by then,
+            // "matches the probes" == "is the function".
+            let mut probes = base_probes.clone();
+            // Linearize each candidate ONCE, at birth; survivors carry their
+            // compiled bytecode forward instead of recompiling every generation.
+            let mut pop: Vec<(Expr, Option<CellProgram>)> = Vec::with_capacity(POP);
+            for _ in 0..POP {
+                let e = rand_tree(&mut rng, MAX_DEPTH, &cells);
+                let p = cand_prog(&mut all, &e);
+                pop.push((e, p));
+            }
+            let mut solved: Option<(Expr, CellProgram)> = None;
+            let mut cex = 0usize;
+            let t0 = Instant::now();
+            let mut gens = 0usize;
 
             for _ in 0..MAX_GEN {
-                let mut progs = Vec::new();
+                gens += 1;
+                let wants: Vec<u16> = probes.iter().map(|p| tf(p[0])).collect();
+                let np = probes.len();
+                let mut progs = Vec::with_capacity(POP);
                 let mut slot = Vec::with_capacity(POP);
-                for e in &pop {
-                    match cand_prog(e, &pool) {
-                        Some(p) => { slot.push(Some(progs.len())); progs.push(p); }
+                for (_, p) in &pop {
+                    match p {
+                        Some(cp) => { slot.push(Some(progs.len())); progs.push(cp.clone()); }
                         None => slot.push(None),
                     }
                 }
@@ -228,46 +259,53 @@ fn main() {
                     Some(bi) => (0..np).map(|k| { let o = out[bi*np+k]; if o[3]==0 {16-(o[0]^wants[k]).count_ones() as usize} else {0} }).sum(),
                     None => 0,
                 }).collect();
+                // A candidate matching every probe: verify full-domain; accept, or
+                // add the counterexample input and let evolution continue.
                 if let Some(&bi) = slot.iter().flatten().find(|&&bi| exact(bi) == np) {
-                    solved = Some(pop[slot.iter().position(|s| *s == Some(bi)).unwrap()].clone());
-                    break;
+                    let idx = slot.iter().position(|s| *s == Some(bi)).unwrap();
+                    let sp = pop[idx].1.as_ref().unwrap(); // cached prog — no re-linearize
+                    match counterexample(sp, *tf) {
+                        None => { solved = Some((pop[idx].0.clone(), sp.clone())); break; }
+                        Some(cx) if cex < 128 => { probes.push([cx, 0, 0]); cex += 1; }
+                        Some(_) => break, // give up if the probe set balloons
+                    }
                 }
                 let mut order: Vec<usize> = (0..POP).collect();
-                order.sort_by(|&a, &b| fit[b].cmp(&fit[a]).then(size(&pop[a]).cmp(&size(&pop[b]))));
+                order.sort_by(|&a, &b| fit[b].cmp(&fit[a]).then(size(&pop[a].0).cmp(&size(&pop[b].0))));
                 let en = (POP / 10).max(2);
-                let elite: Vec<Expr> = order[..en].iter().map(|&i| pop[i].clone()).collect();
+                let elite: Vec<(Expr, Option<CellProgram>)> = order[..en].iter().map(|&i| pop[i].clone()).collect();
                 let mut next = elite.clone();
                 while next.len() < POP {
-                    let child = if rng.below(100) < 12 {
+                    let ce = if rng.below(100) < 12 {
                         rand_tree(&mut rng, MAX_DEPTH, &cells)
                     } else {
-                        mutate(&elite[rng.below(en)], &mut rng, &cells)
+                        mutate(&elite[rng.below(en)].0, &mut rng, &cells)
                     };
-                    next.push(child);
+                    let cp = cand_prog(&mut all, &ce); // linearize once, at birth
+                    next.push((ce, cp));
                 }
                 pop = next;
             }
 
             match solved {
-                Some(e) => {
-                    let sp = cand_prog(&e, &pool).unwrap();
-                    let mism = (0..=u16::MAX).filter(|&x| eval(&sp, x) != Some(tf(x))).count();
+                // A solve is full-domain-correct BY CONSTRUCTION (CEGIS) — only
+                // novelty remains to decide admission.
+                Some((e, sp)) => {
                     let sfp: Vec<Option<u16>> = fp_probes.iter().map(|&x| eval(&sp, x)).collect();
                     let (bid, ba) = lib_fp.iter().map(|(id, f)| (id.clone(), agree(&sfp, f))).max_by(|a, b| a.1.total_cmp(&b.1)).unwrap();
-                    let verdict = if mism > 0 {
-                        format!("probe-only ({mism}/65536 full-domain mismatches)")
-                    } else if ba >= 0.834 {
+                    let verdict = if ba >= 0.834 {
                         format!("EXISTS as `{bid}` (agreement {ba:.3}) — dedup would reject")
                     } else {
-                        format!("DISCOVERED — full-domain 0/65536, novel ({ba:.3} vs {bid}) — would admit")
+                        format!("DISCOVERED — full-domain-correct, novel ({ba:.3} vs {bid}) — would admit")
                     };
                     println!("  {tname:<18} = {}", show(&e));
-                    println!("  {:<18}   {verdict}", "");
+                    println!("  {:<18}   {verdict}  [+{cex} cex, {gens} gens, {:.1}s]", "", t0.elapsed().as_secs_f64());
                 }
-                None => println!("  {tname:<18} : not discovered in {MAX_GEN} generations"),
+                None => println!("  {tname:<18} : not discovered ({cex} cex, {gens} gens, {:.1}s)", t0.elapsed().as_secs_f64()),
             }
         }
-        println!("\nEach target specified by behaviour, not as a known composition — evolution had to");
-        println!("discover the tree. Full-domain verification and the dedup gate decide what earns in.");
+        println!("\nCEGIS: the probe set grows with counterexamples until matching every probe means");
+        println!("being the function — so every solve is full-domain-correct by construction. The dedup");
+        println!("gate then decides novelty. Probe-only fakes can no longer slip through.");
     }
 }
