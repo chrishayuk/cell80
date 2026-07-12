@@ -30,6 +30,12 @@ mod runtime;
 #[cfg(target_os = "macos")]
 pub use runtime::GpuBatch;
 
+/// The bytecode-interpreter backend — the library × probe-set body of the
+/// two-body design (this crate's `compile_library`/`GpuBatch` are the single
+/// cell × N-inputs body). Bytecode, linearizer and CPU reference VM build
+/// everywhere; [`interp::InterpBatch`] is the macOS/Metal library dispatch.
+pub mod interp;
+
 /// A thread's decoded step count from its output sextet (`steps_lo`,
 /// `steps_hi` — the interpreter-identical IR-step cost, docs 14 Q2).
 pub fn steps_of(out: &[u16; OUT_STRIDE]) -> u32 {
