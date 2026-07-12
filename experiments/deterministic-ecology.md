@@ -162,6 +162,23 @@ trait change is co-evolution.** Pre-register both and require the latter.
 degrees of freedom for an arms race; report and revisit interaction rules.
 **Depends on.** EX-2. **Cost.** Medium-high — the flagship run.
 
+**Status: DONE — the kill condition fired, honestly.** The two-species engine itself works
+cleanly (bit-exact replay, GPU ≡ CPU-reference, including predation-kill tournament
+dispatch), and the pre-registered mutation-off control landed a strong, well-powered result:
+mutation is causally necessary for predator/prey coexistence at this scale (10/10 seeds
+collapse to predator extinction without it, across two independently-robust world configs;
+a satiation mechanic built specifically to rule out an overhunting confound doesn't rescue
+it either, also 10/10). But the flagship claim — a traceable, coupled arms race — was not
+found: across 6 long (10,000-tick) seeds, a rigorous permutation-null test showed the
+observed cross-species event alternation is statistically indistinguishable from chance
+(p = 0.13–0.99). Per the pre-registered gate, this is real ecology (population dynamics,
+mutation-dependence) without demonstrated co-evolution — the kill condition this doc named
+up front, not a negative result being smoothed over. A genuine structural limitation likely
+contributes: grazers have no predator-sensing channel at all in this model, so any coupling
+could only ever act through the far fainter differential-mortality route. Full account,
+receipts, and what would raise confidence further in `deterministic-ecology-findings.md`'s
+`## EX-3` section.
+
 ---
 
 ### EX-4 — The lineage record (what only this substrate can deliver)
@@ -221,7 +238,8 @@ fails, the substrate claim is wrong and the cheap way to learn it is here. **Don
 Wave 2: **EX-4** (nearly free, and it's the differentiating artifact) alongside **EX-2**.
 **Done.**
 Wave 3: **EX-3** (the flagship, the watchable one), then **EX-5** if the robot lane wants
-it. **Not started.**
+it. **EX-3 done** (kill condition fired honestly — see its `Status` note above); **EX-5 not
+started.**
 
 ## 4. The anti-artifact discipline (cross-cutting)
 

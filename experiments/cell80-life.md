@@ -11,7 +11,14 @@ bit-exact-replay substrate in `deterministic-ecology.md` (doc 17, EX-0–EX-5) �
 the rapid_reproducer boom-bust regime (Finding 3 below) turned out to be a small-population
 finite-size effect that does not survive scaling past a few dozen organisms, in any world
 topology tested (EX-1). Read Finding 3/4 below as "what n≈2–12 showed," not as a property
-proven to generalize.
+proven to generalize. EX-3 also updated the predator/prey paragraph below: the "resource-
+balance/world-size problem, not chased further yet" hypothesis was tested directly at
+GPU-batchable scale — mutation, not more grazer carrying capacity/a satiation mechanic, turns
+out to be what the boom-bust collapse actually needed (10/10 seeds collapse without it, at
+two world configs otherwise fully robust with it on; a satiation mechanic built specifically
+to test the alternative doesn't rescue the collapse either). A traceable predator/prey arms
+race was not found, though — see `deterministic-ecology-findings.md`'s `## EX-3` section for
+the full account.
 
 A minimal prototype exists at `experiments/cell80-life/` (workspace member `cell80-life`,
 `cargo run -p cell80-life -- <ticks> [genome.json]`): a 1D grid world where organisms sense,

@@ -7,11 +7,12 @@ the single multi-experiment design doc rather than one findings file per experim
 
 Code lives inside `experiments/cell80-life/` (`src/rng.rs`, `src/contention.rs`,
 `src/genes.rs`, `src/history.rs`, `src/pools.rs`, `src/composition.rs`, `src/lineage.rs`,
-`src/ex0.rs`, `src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/bin/ex1_sweep.rs`,
-`src/bin/ex2_mutation_report.rs`, `src/bin/ex4_lineage_report.rs`, `tests/ex0_*.rs`,
-`tests/ex1_*.rs`, `tests/ex2_*.rs`, `tests/ex4_*.rs`) rather than a new crate — deliberate,
-per the project's current preference to stay inside `experiments/` rather than promote to
-a new workspace member while this stays speculative/off-roadmap.
+`src/ex0.rs`, `src/world2d.rs`, `src/ex1.rs`, `src/ex2.rs`, `src/predation.rs`, `src/ex3.rs`,
+`src/bin/ex1_sweep.rs`, `src/bin/ex2_mutation_report.rs`, `src/bin/ex4_lineage_report.rs`,
+`src/bin/ex3_predator_prey_report.rs`, `src/bin/ex3_arms_race_report.rs`, `tests/ex0_*.rs`,
+`tests/ex1_*.rs`, `tests/ex2_*.rs`, `tests/ex3_*.rs`, `tests/ex4_*.rs`) rather than a new
+crate — deliberate, per the project's current preference to stay inside `experiments/`
+rather than promote to a new workspace member while this stays speculative/off-roadmap.
 
 ## EX-0 — the replay gate
 
@@ -645,6 +646,216 @@ cargo clippy -p cell80-life --all-targets
   that actually plants their const data, closing the stated gap.
 - A larger composition sweep (the doc's own kill/rescope condition didn't fire at
   300 attempts/pool, but a wider sweep would tighten the viable-fraction estimate).
+
+## EX-3 — predator/prey co-evolution
+
+**TL;DR: the two-species engine itself works cleanly (bit-exact replay, GPU ≡
+CPU-reference, including predation-kill contention), and the pre-registered mutation-off
+control landed a genuinely strong result — mutation is causally necessary for predator/prey
+coexistence at this population scale, replicated 10/10 seeds across two independently-robust
+world configs, and *not* explained by an overhunting-mechanic defect (a satiation cooldown,
+built specifically to rule that out, doesn't rescue the mutation-off case either, also
+10/10). But the flagship claim — a traceable, coupled co-evolutionary arms race between the
+two species — was not found.** Under a rigorous permutation-null significance test (not just
+an eyeballed "the events look like they alternate"), every one of 6 long (10,000-tick) seeds
+came back statistically indistinguishable from chance interleaving of two independently
+noisy evolving populations (p = 0.13–0.99). Per the user's explicitly chosen bar (temporal
+pattern **and** counterfactual confirmation, the stricter of the two options offered), the
+claim fails at the first prong, so no counterfactual replay was run — doing so on a
+non-significant event would misrepresent what the data shows. Reported honestly as the
+design doc's own stated anti-artifact kill condition: real population dynamics and a real
+mutation-dependence result, but not demonstrated co-evolution.
+
+### What was built
+
+- **`history.rs`** — `Species` (heritable, never mutated — sits *beside* `OrgGenome`, not
+  inside it), `OrgSnapshot2DEco`/`TickRecord2DEco` (+ `predation_kills`, the receipt analogue
+  of `contention_losses`)/`BirthEventEco`, `HistoryHasher::absorb2d_eco`.
+- **`contention.rs`** — additive `PREDATION_CONTENTION_STREAM`; `resolve_eat_contention`
+  refactored into a thin wrapper over a new generalized `resolve_contention(seed, tick,
+  candidates, stream)`, since predation-kill contention needed its own stream and the old
+  function had `EAT_CONTENTION_STREAM` hardcoded inside its body.
+- **`predation.rs`** — `PreyIndex`: an O(n)-build/O(1)-lookup position-keyed index built once
+  per tick from the tick-start snapshot, replacing `main.rs`'s original `prey_at` (an O(n)
+  linear scan *per lookup*, ~5 lookups/predator/tick in 2D) — at EX-1's demonstrated
+  10⁴–10⁵-organism scale that would cost O(n_predators × n_total) per tick, plausibly
+  dominating everything else by orders of magnitude. Gives co-located grazers an explicit
+  lowest-id tie-break, a deliberate choice replacing `main.rs`'s accidental
+  `Vec`-scan-order one.
+- **`ex3.rs`** — the tick engine. `Org` carries `species` beside `genome` (never mutated,
+  copied verbatim parent→child); grazer sensing is unchanged from `ex2.rs` (food-driven);
+  predator sensing goes through `PreyIndex`, with `EXPLORE_BIAS` generalized from `main.rs`'s
+  1D left/right nudge to a 4-direction cycle (still a pure function of `tick`, no RNG) so a
+  predator with zero sensed prey doesn't freeze. Reuses `ex2::GenePools`/`ex2::mutate`
+  (bumped to `pub(crate)`) directly — no per-species duplication. Predation-kill resolution
+  is a new host-side stage (`killed_victims_from`, independently unit-tested): **a kill
+  overrides everything else that tick for the victim** — no eat, no reproduction, simply
+  removed — a deliberate clarification of `main.rs`'s own sequential-`Vec`-order accident,
+  which has no batched-engine equivalent. `run`/`run_with_overrides` mirror EX-4's exact
+  split (a thin `run_impl` wrapper), needed for a future counterfactual replay. A
+  `predator_satiation_ticks` cooldown (0 disables it) was added per an explicit Checkpoint B
+  decision — ecological state, not a genome field, matching `world2d.rs`'s `regrow_at` idiom.
+- **`lineage.rs`** — additive: `LineageTree::build_from_genesis_ids` (a second species'
+  genesis ids don't start at 0; `build` is now a thin wrapper), `GenomeFields::from_birth_eco`/
+  `from_snapshot_eco`, and `eco_ticks_to_genome`/`eco_births_to_genome` — a
+  species-filtering adapter that converts one species' view of a two-species run into the
+  *exact* shapes `detect_plurality_events`/`find_origins` already consume, so those functions
+  run **completely unmodified** on a second species. No `_eco` variant of either was needed.
+- **`tests/ex3_cpu_replay.rs`**, **`tests/ex3_gpu_vs_cpu.rs`** — mirror EX-2's two gates,
+  plus explicit assertions that predation actually engaged (kills > 0) and both species
+  survived to the end (not a one-sided collapse). 3 hand-constructed ordering-rule unit
+  tests (`ex3::ordering_tests`) pin down the "kill overrides eat/reproduce regardless of the
+  victim's own eat-contention outcome" rule specifically. 4 new `lineage.rs` unit tests cover
+  the species-filtering adapter and the non-zero-genesis-range case.
+- **`src/bin/ex3_predator_prey_report.rs`** — Part 1: world-size/ratio/density calibration
+  sweep (per-species tail CV/ratio, mirroring `ex1_sweep.rs`). Part 2: the pre-registered
+  mutation-off control. Part 3: the satiation-mechanic sweep.
+- **`src/bin/ex3_arms_race_report.rs`** — the coupled-trait-change detection: a long flagship
+  run per seed, both species' plurality-event timelines via the species-filtering adapter,
+  and a permutation-null significance test on the observed cross-species alternation.
+
+### Receipts — Checkpoint A (sanity)
+
+A basic config (48×48 world, 40 grazers, 8 predators, density 0.25, 400 ticks, no satiation
+yet) showed predation genuinely engaging — 539 kills, ending at 471 grazers / 149 predators,
+not a one-sided collapse — before further investment, with both correctness gates green.
+
+### Receipts — Part 1: calibration sweep (5 seeds, 3,000 ticks each)
+
+| world | ratio | density | outcome (5 seeds) |
+|---|---|---|---|
+| 32×32 | 30:6 | 0.25 | unstable — 2/5 full extinction, 1/5 predator-only extinction, 2/5 coexist |
+| 48×48 | 40:8 | 0.25 | mostly stable — 4/5 coexist, 1/5 predator extinction (grazers unchecked to 1,598) |
+| 48×48 | 60:10 | 0.30 | **fully robust — 5/5 coexist** (grazers 1,159–1,528; predators 306–497; 62k–83k kills) |
+| 64×64 | 60:10 | 0.25 | **fully robust — 5/5 coexist** (grazers 1,087–1,980; predators 473–561; 33k–52k kills) |
+
+### Receipts — Part 2: the mutation-off control (both robust configs, 5 seeds each, 3,000 ticks)
+
+| | mutation ON | mutation OFF |
+|---|---|---|
+| 48×48 @ 60:10/0.30 | 5/5 coexist (grazers 1,159–1,528; predators 306–497) | **5/5 predator extinction** (grazers crash to 19–193, one seed fully extinct) |
+| 64×64 @ 60:10/0.25 | 5/5 coexist (grazers 1,087–1,980; predators 473–561) | **5/5 predator extinction** (grazers crash to 68–229) |
+
+10/10 mutation-off seeds collapse to predator extinction at the exact two configs that are
+otherwise fully robust with mutation on — ruling out "the config just needed more room" as a
+confound, since this was deliberately re-tested at the *strongest* configs, not just the
+original borderline one.
+
+### Receipts — Part 3: the satiation mechanic (Checkpoint B)
+
+Built per an explicit decision (not skipped, despite the mechanic itself already looking
+innocent — see "What this shows" below) to rule out an overhunting confound directly.
+`predator_satiation_ticks = 20`, same 2 configs × 2 mutation states × 5 seeds:
+
+| | mutation ON (satiation=20) | mutation OFF (satiation=20) |
+|---|---|---|
+| 48×48 @ 60:10/0.30 | 5/5 coexist, *healthier* (grazers 1,545–2,275, higher than satiation=0) | **5/5 predator extinction still** (grazers 15–52) |
+| 64×64 @ 60:10/0.25 | 5/5 coexist (grazers 1,879–3,765) | **5/5 predator extinction still** (grazers 56–282) |
+
+### Receipts — coupled-trait-change detection (6 seeds, 10,000 ticks each)
+
+Flagship config: 48×48, 60 grazers : 10 predators, density 0.30, `predator_satiation_ticks =
+20`, mutation on. All 6 seeds sustained robust coexistence (grazers ~1,700–2,400, predators
+~430–550). Both species' plurality-event timelines (`Role::Hungry`/`Repro`/`Sense` ×
+`Species::Grazer`/`Predator`, K=5, sampled every 20 ticks) were dense — 41–56 events per
+10,000-tick seed — with vote-shares consistently in the 0.2–0.5 range (near-ties, never a
+majority), and a longest cross-species-alternating chronological run computed per seed:
+
+| seed | events | longest alternating run | P(run this long by chance, 20,000 shuffles) |
+|---:|---:|---:|---:|
+| `0x2a` (42) | 41 | 6 | 0.3448 |
+| `0x1` | — | 5 | 0.9110 |
+| `0x2` | 56 | 4 | 0.9897 |
+| `0x3` | — | 6 | 0.7127 |
+| `0x3e7` (999) | — | **9** | **0.1338** |
+| `0x5eed1234c31180ff` | — | 6 | 0.6916 |
+
+Not one seed reaches conventional significance — even the longest observed run (9, seed 999)
+is matched or exceeded by pure random relabeling 13% of the time.
+
+### What this shows
+
+- The species-branching engine design holds up exactly as planned: `Species` beside
+  `OrgGenome` (not inside it), one shared `GenePools`/`mutate()`, `PreyIndex`'s O(1) lookup,
+  and the generalized `resolve_contention` all compose correctly and deterministically —
+  both gates (bit-exact replay, GPU ≡ CPU-reference) passed on the same run that produced
+  every number above, including the satiation mechanic and 10,000-tick flagship runs.
+- **Mutation is causally necessary for predator/prey coexistence at this scale.** This is a
+  strong, well-powered result (10/10 mutation-off seeds collapse, at two configs
+  independently validated as fully robust with mutation on) — directly answering the
+  pre-registered control (design decision 8).
+- **The satiation mechanic's null result is itself informative, not wasted effort.** The
+  *same* satiation-less predation mechanic sustains 10/10-seed healthy coexistence with
+  mutation on; adding a kill-cooldown doesn't rescue the mutation-off case *at all* (still
+  10/10 predator extinction) and, if anything, makes the mutation-on case healthier (larger
+  grazer populations). This rules out "the mechanic has a satiation-shaped hole" as the
+  explanation for the mutation-off collapse — it's the fixed, non-adapting genesis genome
+  that fails, not the mechanic. Building it and testing empirically (per explicit decision)
+  gives this a firmer footing than arguing it away would have.
+- **The species-filtering adapter design paid off exactly as intended**: `detect_plurality_events`/
+  `find_origins` needed zero new code to run per-species on a two-species run — only
+  `eco_ticks_to_genome`/`eco_births_to_genome` (data reshaping) and
+  `build_from_genesis_ids` (a non-zero id range) were new.
+- **A rigorous null model matters at this population scale, not just an eyeballed
+  impression.** A "9-event alternating run" sounds long; the permutation test shows it's
+  unremarkable (p=0.13). Every seed's raw run length would have read as suggestive evidence
+  without this check — exactly the anti-artifact discipline the design doc's own framing
+  ("population oscillation is ecology; traceable coupled trait change is co-evolution, and
+  only the latter counts") was written to guard against.
+
+### What this does *not* show
+
+- **No coupled trait-change / co-evolutionary arms race was found.** Under the user's chosen
+  bar (temporal pattern *and* counterfactual confirmation — the stricter of the two options
+  offered), the claim fails at the first prong in all 6 seeds tested, so the counterfactual
+  half (`ex3::run_with_overrides`, already built and verified working) was never exercised
+  on this claim — running it on a non-significant event would manufacture a false
+  confirmation.
+- **A real structural limitation, not just a null result: grazers have no predator-sensing
+  channel at all in this model.** `sense_move`/`hungry_promoter` are always food-driven for
+  grazers — never informed by predator presence, distance, or behavior. Any true "prey
+  response" to a predator adaptation could only ever act through differential mortality
+  (whichever grazer genome/position/timing happens to survive predation better propagates
+  more), a far weaker and more diffuse coupling channel than a direct sense-and-react
+  adaptation. This may be a genuine reason no signal was found — the channel for coupling
+  was always going to be faint even if real.
+- **Only 6 seeds × 10,000 ticks were tested.** A larger seed sweep or substantially longer
+  runs might surface a genuine signal this pass didn't reach, or might further confirm the
+  null — this is not an exhaustive search, matching EX-4's own stated precedent of
+  demonstrating on the seeds/events actually found rather than surveying broadly.
+- **The permutation test's null model is a reasonable standard baseline, not the only
+  possible one** — uniform random relabeling of the same tick positions; it doesn't preserve
+  each individual stream's own event-rate clustering structure, which a stricter check might.
+- Numeric-field ("continuous-trait") arms race and predator-vs-predator interaction stay out
+  of scope, the same stated limitations `lineage.rs`/`main.rs` already carry forward.
+
+### Reproduce it
+
+```
+cargo test -p cell80-life --lib ex3                                # any platform (ordering-rule unit tests)
+cargo test -p cell80-life --lib lineage                            # any platform (species-filtering adapter tests)
+cargo test -p cell80-life --lib predation                          # any platform (PreyIndex tie-break tests)
+cargo test -p cell80-life --test ex3_cpu_replay                    # any platform
+cargo test -p cell80-life --test ex3_gpu_vs_cpu                    # macOS (Metal) only
+cargo run -p cell80-life --release --bin ex3_predator_prey_report  # macOS only, ~1 hour (full sweep)
+cargo run -p cell80-life --release --bin ex3_arms_race_report      # macOS only, ~20 min (6 seeds x 10,000 ticks)
+cargo clippy -p cell80-life --all-targets
+```
+
+### What would raise confidence further
+
+- Give grazers an actual predator-awareness sensing channel (a `PreyIndex`-style reverse
+  lookup reporting predator proximity), so a genuine sense-and-react coupling channel exists
+  to detect at all, rather than relying solely on the much fainter differential-mortality
+  channel this pass was limited to.
+- A longer flagship run (50,000+ ticks) or a larger seed sweep, to rule out that 10,000
+  ticks/6 seeds is simply too short/narrow a window for a real signal to separate from noise.
+- A stricter or alternative null model for the permutation test (e.g. one that preserves
+  each event stream's own clustering/rate structure rather than uniform relabeling).
+- If a future pass does find a statistically significant temporal pattern, complete the
+  second prong: revert the traced origin via `ex3::run_with_overrides` (already built,
+  already exercised by the correctness gates) and confirm causation, exactly as EX-4 did for
+  the single-species case.
 
 ## EX-4 — the lineage record
 
