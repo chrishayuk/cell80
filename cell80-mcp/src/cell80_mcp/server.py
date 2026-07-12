@@ -107,7 +107,10 @@ def build_server() -> ChukMCPServer:
         "halt. halt='escalate' is a typed hand-off, NOT an error: the cell declares the "
         "request exceeds its kernel class (`escalate` names why — needs_strings/needs_floats/"
         "needs_io/...); route the request to a more capable tool instead of retrying. The "
-        "runner stays warm across calls.",
+        "runner stays warm across calls. For plain (non-`fields`) calls, the reply also "
+        "carries `cached: bool` — true if this exact (id, args) pair was already known and "
+        "answered from memory with no execution, false if it just ran fresh; say so when "
+        "asked whether an answer was computed or remembered.",
     )
     def cell_run(
         id: str, args: list[int] | None = None, fields: dict | None = None

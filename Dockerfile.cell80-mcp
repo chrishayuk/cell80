@@ -22,6 +22,9 @@ WORKDIR /build
 COPY Cargo.toml Cargo.toml
 COPY z80 z80
 COPY rustz80 rustz80
+COPY rustrv32 rustrv32
+COPY rustmsl rustmsl
+COPY cell80-core cell80-core
 COPY cell80 cell80
 COPY cell80-py cell80-py
 RUN maturin build --release -m cell80-py/Cargo.toml --out /wheels

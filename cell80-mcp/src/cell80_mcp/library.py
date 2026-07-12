@@ -124,7 +124,16 @@ class CellLibrary:
         return self._handles[cell_id]
 
     def run(self, cell_id: str, args: list[int]) -> dict:
-        return self.host.run(self._handle(cell_id), list(args))
+        """Run a plain cell; the reply's `cached` flag says whether this exact
+        (cell, args) pair was served from the memo table (no execution) or run fresh —
+        the hits/lookups delta straddling this one call (docs/12's per-call provenance)."""
+        handle = self._handle(cell_id)
+        before = self.host.cache_stats(handle)
+        result = self.host.run(handle, list(args))
+        after = self.host.cache_stats(handle)
+        if before is not None and after is not None:
+            result["cached"] = after[0] > before[0]
+        return result
 
     def run_state(self, cell_id: str, fields: dict) -> dict:
         """Drive a state cell by named fields → {result, state: {...}, cost...}."""
