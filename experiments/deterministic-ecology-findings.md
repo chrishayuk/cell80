@@ -596,9 +596,9 @@ stillbirth-not-crash, and `grow_pool` determinism).
   smoothed over.** Composed-gene carriers averaged *fewer* direct children than disk-gene
   carriers (0.829 vs. 1.067) in this run — adoption is real, but the aggregate doesn't show
   composed genes as more fit on average. This doesn't rule out individual composed
-  candidates being fitter than their specific parent (the doc's literal criterion) — that
-  needs a per-candidate lineage analysis EX-4's own machinery could now answer directly,
-  not attempted in this pass.
+  candidates being fitter than their specific parent (the doc's literal criterion) — but a
+  per-candidate counterfactual (see *Follow-up* below) now tests exactly that and finds
+  **none** in a 15-origin sample, so the aggregate isn't concealing a fitter minority here.
 - **A real correctness bug was caught before shipping, by the same discipline that caught
   EX-2 operator (a)'s trap-folding gap**: the first draft of `ComposablePool::discover`
   discarded a cell's const data rather than checking it was empty — harmless only because
@@ -624,9 +624,65 @@ stillbirth-not-crash, and `grow_pool` determinism).
   comparison** (75/85, 42/43 fingerprinted, not the full pools) — a narrow, stated gap: a
   composed candidate could in principle duplicate a const-bearing cell's behavior without
   the novelty check catching it.
-- **"Occasionally fitter than a specific parent"** — per above, only the aggregate
-  comparison was run this pass; individual-candidate fitness (which specific composed
-  genes out-perform which specific parents) is unmeasured.
+- **"Occasionally fitter than a specific parent"** — now measured by counterfactual replay
+  (*Follow-up* below), not left to the aggregate: 0/15 focal composed genes beat their
+  specific parent. What remains open is scale (15 origins on one seed), not the direction.
+
+### Follow-up: the per-candidate counterfactual (EX-4 machinery, resolving "occasionally fitter than parent")
+
+The aggregate above is *observational* — composed-gene carriers and disk-gene carriers are
+different organisms in different micro-contexts, so 0.829 vs. 1.067 is a correlation, not a
+causal read of any one gene. `ex4_fitness_counterfactual.rs` closes that with the exact
+counterfactual `ex2::run_with_overrides` was built for: take one organism that acquired a
+composed `sense_move` gene by mutation from a *disk-gene parent*, revert exactly that one
+swap so the *same* organism (same id, birth tick, position, energy — every tick before its
+birth is byte-identical between the two runs) instead inherits its parent's disk gene, replay
+the identical world, and compare that organism's own offspring with vs. without the composed
+gene. Direct children is the primary metric (the same one the aggregate used); transitive
+descendant count is a more sensitive secondary that also catches divergence the fork rippled
+downstream.
+
+Same extended run as above (seed `0x5eed_1234_c311_80ff`, 293-gene movement pool, 21,413
+births), 15 focal births sampled evenly across the 1,157 disk-parent→composed-child origins,
+one full GPU replay each (~25 s/replay, 384 s total):
+
+| Δ (composed − parent's disk gene) | mean | fitter | equal | worse |
+|---|---:|---:|---:|---:|
+| direct children | −0.600 | 0 | 12 | 3 |
+| transitive descendants | −5.800 | 0 | 11 | 4 |
+
+**Not one composed gene beat its specific parent, on either metric.** The 12/15 neutral on
+direct children are organisms that would have had ≈0–1 children either way (late,
+resource-limited, or short-lived); every organism actually *positioned to reproduce* lost by
+switching to the composed gene — org 9 (a tick-5 founder-child) went from 2 children / 9
+descendants on its parent's disk gene to 0/0 with a composed gene; org 7216 from 7/39 to 1/1;
+org 13920 was neutral on direct children (3 vs. 3) but shed 39 descendants (52 → 13). This is
+*uniform* purifying selection, not merely an unfavourable average, and the answer to the
+design doc's literal "occasionally fitter than a specific parent" criterion is, in this world
+and this sample, **no**.
+
+Two things this settles, both pointing the same way as the aggregate rather than against it:
+
+- **The counterfactual is *more* negative than the observational gap** (−0.600 vs. −0.238
+  direct children) because it isolates the causal switch away from the incumbent-fit disk
+  gene (every focal parent carried disk gene 1, the ancestral winner) instead of pooling
+  composed carriers that inherited the gene neutrally deep in a lineage. Conditioning on the
+  moment the gene actually enters makes its cost clearer, not weaker.
+- **The 29.6% adoption headline is a below-neutral standing frequency, not evidence of
+  exploitation.** A simple neutral-drift argument: the swap fires at 8 %/birth (`SWAP_MUTATE_PCT`)
+  and resamples `sense_move` uniformly over the pool, which is 250/293 ≈ 85 % composed, so
+  under *no* fitness difference the stationary composed fraction among births would sit near
+  85 %. Observed 29.6 % is far below that — mutation keeps injecting composed genes and
+  selection keeps pruning them back down. "Reachable by bytecode mutation, and structurally
+  impossible for the swap-only pool" stays true and is the real operator-(b) result; the
+  stronger reading "the ecology exploits them" does not survive the baseline.
+
+Caveats, in the usual spirit: n = 15 on a single seed, and only ~3–4 focal organisms were
+fecund enough to be individually informative, so the *direction* is unambiguous (0/15
+positive; every informative case negative) but a wider sweep would tighten the magnitude. The
+metric is in-context lineage fitness — it includes the ecological ripple the reverted
+organism's changed movement causes — which is the honest counterfactual but makes "fitter"
+world-conditional, not a context-free gene property.
 
 ### Reproduce it
 
@@ -635,6 +691,7 @@ cargo test -p cell80-life --test ex2_cpu_replay              # any platform
 cargo test -p cell80-life --test ex2_gpu_vs_cpu               # macOS (Metal) only
 cargo test -p cell80-life --lib composition                   # any platform
 cargo run -p cell80-life --release --bin ex2_mutation_report  # macOS (Metal) only, ~2 min
+cargo run -p cell80-life --release --bin ex4_fitness_counterfactual  # macOS (Metal) only, ~6 min
 cargo clippy -p cell80-life --all-targets
 ```
 
@@ -642,9 +699,10 @@ cargo clippy -p cell80-life --all-targets
 
 - Extend the promoter pool too (both roles, or one at a time with a deliberate
   single-role-extension mechanism), not just movement.
-- A per-composed-candidate fitness breakdown (using EX-4's lineage machinery directly on an
-  extended-pool run) to test "occasionally fitter than parent" at the individual level,
-  not just the population aggregate.
+- A wider per-candidate counterfactual sweep — the *Follow-up* above ran 15 origins on one
+  seed and found 0 fitter; more origins across more seeds would tighten the magnitude (the
+  direction is already unambiguous, and the machinery is now in
+  `ex4_fitness_counterfactual.rs`).
 - Include const-bearing pool members in the novelty comparison via a fingerprinting path
   that actually plants their const data, closing the stated gap.
 - A larger composition sweep (the doc's own kill/rescope condition didn't fire at
