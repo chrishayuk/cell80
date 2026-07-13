@@ -1,0 +1,37 @@
+{
+  "seed": 80,
+  "per_cell": 30,
+  "n_train": 6066,
+  "n_eval": 7282,
+  "n_value_cells": 249,
+  "n_axis_a_value_held": 24,
+  "n_packs": 28,
+  "axis_b_held_pairs": [
+    "eq|bit-encoding",
+    "eq|bucket-convert",
+    "eq|control-systems",
+    "eq|fixed-point",
+    "eq|money-bps",
+    "eq|percent",
+    "eq|running-stats",
+    "eq|sequences",
+    "eq|units",
+    "eq|verifier-ranker"
+  ],
+  "templates": [
+    "eq",
+    "arrow",
+    "io"
+  ],
+  "n_demos_per_context": 3,
+  "skipped_unclean": 7143,
+  "eval_buckets": {
+    "novel_cell|novel_comp": 40,
+    "novel_cell|seen_comp": 668,
+    "seen_cell|novel_comp": 520,
+    "seen_cell|seen_comp": 6054
+  },
+  "train_cells_covered": 222,
+  "train_per_cell_min": 5,
+  "train_per_cell_max": 30
+}

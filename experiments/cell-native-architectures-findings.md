@@ -1120,6 +1120,41 @@ the training loop itself (freeze policy for the base, W_f + new rows trainable),
 checkpoint-resume path, and argument-encoding in the call grammar (operands after the cell
 token) — the last is a step-4 corpus decision.
 
+### H1 factory — corpus generator (step 4, source 1) built
+
+No H1 factory existed (it was "spec'd" everywhere, never built); the building blocks did — the
+`CellHost` exact oracle, the `cell_eval/examples_gen.py` verified-I/O + sibling-dedup engine,
+`retrieval.jsonl`'s hand-authored queries, chuk-math-gym, and steps 2–3's grammar/axis-A. The
+factory that assembles them into `(context, <call><cell:NAME>args</call>, verified result)`
+rows is `cn1_corpus.py`.
+
+**Design decision (the scientific crux of gate (ii)), recorded:** each call's context is a
+small set of **behavioral I/O demonstrations** of the operation (`a b = r ; …`) plus a query.
+A cell's fingerprint *is* its behavior on the probe battery, so "demonstrated behavior →
+`W_f(fingerprint)` region" is the smoothest substrate for a held-out cell to inherit an
+address from its trained siblings — an arbitrary linguistic name could not transfer, a
+behavioral cue can. Every demonstration is the oracle's own output, so rows are verified by
+construction (`halt == returned` required; escalating draws dropped, `trapped_ops` carried).
+
+**Axes (never conflated):** axis A = the 24 held-out value cells never appear as a call target
+(train side); axis B = composition is (surface *template* × *pack*), with a stratified set of
+(template, pack) pairs held out so every template appears with other packs and every pack with
+other templates — a held-out (template, pack) is attributable to composition, not an unseen
+token. Three uniform templates (`eq` / `arrow` / `io`) that work for any cell, so the
+factorization needs no per-cell natural language (the library mostly lacks summaries — 0/120
+sampled value cells had one).
+
+**First generation (`--per-cell 30`, seed 80, ~2s, deterministic):** all **four eval buckets
+populated and disjoint** — seen×seen 6054 (the in-distribution held-out slice), seen-cell×
+novel-comp 520, novel-cell×seen-comp 668, novel×novel 40 — plus 6066 train rows. Coverage
+222/225 seen value cells; the 3 stragglers are the `units` pack (needs matching unit-code
+operands, not random u16 — a documented v1 gap). `cn1_corpus.py` + `cn1_corpus_stats.json` are
+committed; the corpus JSONLs are regenerable build products (not committed). Ratio/scale are
+CLI knobs; the real run raises `--per-cell` and can thin the seen×seen bucket. Still to add:
+source 2 (the CN-2 harvest, mix ratio reported then) and sibling-discrimination of the demos
+(so a held-out cell's context uniquely identifies it — the `examples_gen.py` `co_match` engine
+is the reusable primitive).
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
