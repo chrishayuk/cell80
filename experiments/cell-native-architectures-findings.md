@@ -1248,25 +1248,27 @@ descriptor-grounded corpus — identical contexts, so the descriptor's contribut
 for; the **only** difference is where a cell token's embedding row comes from (arm c: shared
 `W_f(fingerprint)`; arm b: a free learned row). Full rank distribution of the true cell among the
 790 masked candidates, on the **held-out** bucket (novel-cell × seen-comp, n=200; chance median
-rank ≈ 395), reloaded from the saved checkpoints (`cn1_eval_ckpt.py`):
+rank ≈ 395). **Faithful median rank** (training-time eval, live model):
 
-| | median rank | mean rank | in top-10% (rank<79) |
-|---|---|---|---|
-| **fingerprint — held-out cells** | **56** | 85 | **65%** |
-| **random — held-out cells** | **619** | 515 | **0%** |
-| fingerprint — seen cells (control) | 62 | 59 | 64% |
-| random — seen cells (control) | 45 | 46 | 87% |
+| | held-out median rank | seen median rank (control) |
+|---|---|---|
+| **fingerprint** | **56** | 62 |
+| **random** | **619** (worse than chance) | 45 |
 
 **This is the first genuine gate-(ii) positive in the programme.** On cells the model never saw
-called, fingerprint embeddings put **65% of them in the top 10%** of the whole 790-cell library
-(median rank 56); random embeddings put **0%** there (median rank 619 — *worse than chance*,
-because an untrained free row is actively suppressed as the trained rows rise). The control rules
-out a general arm difference: on *seen* cells the arms are comparable and random is if anything
-better (87% vs 64% top-10%). So the held-out gap is attributable specifically to the fingerprint
-projection — exactly the mechanism the pre-registration named as "the only mechanism by which
-unseen cells have meaningful addresses." The toy pilot could never reach this test (0.000/0.000
-capacity floor); here the contrast is large, tightly distributed (fingerprint held-out p25–p75 =
-47–96), and correctly signed.
+called, fingerprint embeddings rank them near the top of the 790-cell library (median 56);
+random embeddings rank them *worse than chance* (619 — an untrained free row is actively
+suppressed as the trained rows rise). The control rules out a general arm difference: on *seen*
+cells the arms are comparable (random 45, fingerprint 62). So the held-out gap is specifically the
+fingerprint projection — the mechanism the pre-registration named. The toy pilot could never reach
+this test (0.000/0.000 capacity floor).
+
+**Provenance note (do not quote top-10% fractions here as headline figures).** A top-10%
+(rank < 79) distribution was computed via `cn1_eval_ckpt.py`, but that path reloaded checkpoints
+that did **not** save the trained `norm` (the bug found later — see the norm-fix entry), so its
+absolute fractions are from a slightly-unfaithful model and are **parked**, not reported. The
+median ranks above are faithful (live-model training-time eval). Faithful top-10% fractions from a
+single code path arrive with the 3-seed runs (checkpoints now save the norm).
 
 **What is and isn't established (no overclaim).** This confirms the *mechanism* — behaviour-
 derived embeddings give unseen cells usable addresses — as a **ranking** signal. It does **not**

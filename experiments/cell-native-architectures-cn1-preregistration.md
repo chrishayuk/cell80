@@ -389,3 +389,36 @@ match, by construction.
 **Order:** the running swap answers top-1 (prior vs capacity); arm (d) and the synthesized-cell
 slice are added to the v11 and swap comparisons (same `W_?` machinery, one more arm); 3 seeds
 throughout. The paper's spine is **behaviour vs language as a tool address**, not "tools as tokens."
+
+## Amendment (2026-07-13): retire novel_novel; provenance discipline; strong description arm
+
+**Both CN-1 bugs were found by a consistency check, not a failing test** — the untied head (pilot)
+and the dropped `norm` (this build) each surfaced because *two routes to the same number
+disagreed* (arm-vs-arm signature; reload-vs-training-time rank). Standing method for this lane:
+compute load-bearing numbers by two paths and treat any disagreement as a defect.
+
+**Provenance discipline.** The faithful metric is the live-model training-time eval (median rank).
+The top-10% (rank<79) fractions were computed by a checkpoint-reload path that (until the norm fix)
+ran a slightly-unfaithful model; those fractions are **parked, not reported as headline figures**,
+until the 3-seed runs supply rank *and* fraction from one faithful path. Quote faithful ranks now.
+
+**Retire `novel_cell × novel_comp` (n=48) as a reported bucket.** It is not merely small — it is a
+**deterministically-selected, non-random subset** (axis-A cells that happen to intersect the fixed
+held-out (template, pack) pairs). That is a biased draw, so more seeds make the biased estimate
+*more precise*, not more correct. A valid novel_novel test would require **randomizing the axis-B
+(template, pack) held-out selection across seeds** (i.e. a different data split per seed), which is
+a different experiment. Absent that, novel_novel is uninterpretable by construction and is retired.
+The three well-powered buckets carry the result: seen×seen, seen×novel_comp (n=624, the composition
+axis for gate (i)), and **novel_cell×seen_comp (n=200) — the gate-(ii) signal**: fingerprint 43,
+shuffled 566, random 519, chance 395. The two null arms bracket chance from the wrong side;
+fingerprint is an order of magnitude better. That is the whole result and it does not need
+novel_novel to stand.
+
+**The description arm must be the STRONG version of the competing idea.** CoTools/description-routing
+is literally the state of the art for this claim, so arm (d) must not be a bag-of-name-words strawman:
+the address is a real sentence encoder (`bge-small`) over the **richest available** description of the
+cell (expanded operation words + typed signature + family), projected through the same `W_f`-shaped
+machinery. A weak description arm that loses proves nothing. Framing when it lands:
+fingerprint > description is the exciting outcome; **fingerprint ≈ description is still a strong
+result for us**, because the synthesized-cell ace (undocumented cells) is one no description method
+can address by construction — that arm must exist in the final table.
