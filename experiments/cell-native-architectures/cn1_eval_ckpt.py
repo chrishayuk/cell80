@@ -32,6 +32,8 @@ def reload_arm(arm, seed, device, unfreeze_top=12):
     blocks = model.base.layers[-unfreeze_top:]
     for i, blk in enumerate(blocks):
         blk.load_state_dict(ck[f"block_{i}"])
+    if "norm" in ck:
+        model.base.norm.load_state_dict(ck["norm"])
     model.eval()
     return model.to(device)  # run the eval forwards on the GPU (MPS), not CPU
 

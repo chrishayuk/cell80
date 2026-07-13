@@ -201,6 +201,8 @@ def main():
         state["w_f"] = model.w_f.state_dict()
     for i, blk in enumerate(model.base.layers[-args.unfreeze_top:] if args.unfreeze_top else []):
         state[f"block_{i}"] = {k: v.detach().cpu() for k, v in blk.state_dict().items()}
+    if args.unfreeze_top:
+        state["norm"] = {k: v.detach().cpu() for k, v in model.base.norm.state_dict().items()}
     torch.save(state, ckpt)
     print(f"  saved trainable state -> {ckpt.name}")
 
