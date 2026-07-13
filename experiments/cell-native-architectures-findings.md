@@ -1348,7 +1348,15 @@ fully crack top-1. The faithful number (norm saved, one path) + the shuffled/ran
 the within-base inversion check come from the resilient re-run now in flight. Nothing here is a
 verdict; it is the parked preliminary.
 
-### Top-k confusion analysis — the plateau is neighbourhood-resolution, and it reframes the claim
+### Top-k confusion analysis — the plateau, and a reframe that was later RETRACTED
+
+> **RETRACTED (2026-07-14):** the "neighbourhood-resolution / top-1 is mechanism-forbidden"
+> reading below was withdrawn. The confusions sit at ~0.44 agreement (loosely related, *not*
+> siblings), and a held-out cell has median 0 genuine near-duplicates (≥0.8) — so nothing
+> structurally forbids rank 1. The honest position: mechanism confirmed, usable level insufficient
+> (per-cell top-50 recall 0.25), top-1 not excluded, cause undetermined (capacity / fingerprint
+> resolution / corpus). See the pre-registration's RETRACTION amendment. The 6.7× enrichment and
+> the double dissociation stand; the *reframe* does not. Text kept below as the reasoning trail.
 
 The preliminary held-out plateau (median rank ~21, 88% top-10%, top-5 0.18, **top-1 0.000**) is a
 plateau *shape*, not a near-miss: if it were capacity the whole distribution would shift and top-1

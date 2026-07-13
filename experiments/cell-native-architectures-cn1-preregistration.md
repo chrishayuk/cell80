@@ -558,3 +558,43 @@ pipeline rests on the model emitting **examples, not intent** ("the thing where 
 not "a discount calculator"). That is CN-6 (behavioural-spec emission), untested. It is the one
 thing standing between a confirmed *mechanism* and a working *system*, and it moves to the top of
 the queue after the faithful arms + the library-scale curve.
+
+## RETRACTION (2026-07-14): the neighbourhood-bar reframe is withdrawn — the sibling data doesn't support it
+
+The gate-(ii′) / "top-1 is mechanism-forbidden" reframe registered above is **retracted**. It is
+left in place as a record of the reasoning trail (and of a goalpost-move caught and reversed on
+evidence), but it does **not** stand as the criterion. The correction:
+
+- The structural-ceiling argument claimed ranks 1–20 are near-identical siblings the true cell
+  "hides behind." The data says otherwise. Model-free proxy: at probe-agreement ≥ 0.8 a held-out
+  cell has **median 0, mean ~3** near-duplicates; exact duplicates essentially don't exist. The
+  model's *confusions* sit at **~0.44** agreement — "loosely related," not sibling. 6.7× chance is
+  real enrichment, but chance was 0.065, so 6.7× is still a small absolute similarity. **Nothing
+  structurally forbids rank 1** — the true cell typically has zero genuine near-duplicates.
+- The per-item median-21 measured the wrong unit and flattered. The honest usable-level number is
+  **per-cell top-50 recall 0.25** over 24 distinct held-out value cells — three quarters of new
+  cells are not found even in the top 50.
+
+**Honest registration (this supersedes gate (ii′)):**
+- **Mechanism: confirmed.** Fingerprint ≫ shuffled ≈ random on held-out; seen-cell control clean;
+  double dissociation intact; 6.7× behavioural-sibling enrichment intact. Behaviour-derived
+  geometry does something random geometry cannot.
+- **Usable level: insufficient.** Per-cell top-50 recall 0.25. The address places cells in roughly
+  the right region but does not resolve.
+- **Top-1: not structurally excluded.** The original bar is back in play; it was retired on a bad
+  argument.
+- **Cause of the insufficiency: undetermined**, among (a) model capacity, (b) **fingerprint
+  resolution** — the 20-probe battery may be too coarse to separate cells at ~0.44 agreement, and
+  (c) corpus. (b) is the interesting, cheap, newly-testable one: if near-duplicates are genuinely
+  rare in *true* behavioural space, a richer probe battery should push the ~0.44 confusions apart.
+  This is a *fingerprint-quality* experiment, not a model experiment — and we own the probe set.
+
+**Kept (independent of the retraction):** the scale-invariance point (absolute-vs-fractional
+held-out rank as the library grows — the retrained library-scale curve) and **CN-6 (emit examples,
+not intent) at the top of the queue.** Tier-2 execution also stands: when the true cell is in
+top-k, execution resolves it exactly, no false picks.
+
+**Next, in order:** (1) the **probe-richness sweep** — model-free: does a richer fingerprint
+separate the ~0.44 confusions? If it materially moves per-cell recall, the address can sharpen and
+top-1 returns as a live target. (2) The faithful arms (running). Then the library-scale curve and
+CN-6.
