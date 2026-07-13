@@ -129,8 +129,13 @@ def main():
         state["norm"] = {k: v.detach().cpu() for k, v in model.base.model.norm.state_dict().items()}
     torch.save(state, ckpt)
 
-    # eval: rank of the true cell among the 790 cell ids, per bucket
+    # eval on CPU: the checkpoint is already saved above, and the full-vocab LM-head matmul
+    # (hidden @ w.t(), V=49944) trips a hard MPSGraph shape-inference bug on some trained
+    # tensors ("mps_matmul incompatible dimensions ... Failed to infer result type") that aborts
+    # the process. CPU eval sidesteps it entirely; it is only ~800 single-example forwards.
     cell_ids = sorted(v for k, v in hf_map.items() if k.startswith("<cell:"))
+    device = "cpu"
+    model = model.to(device)
     cell_ids_t = torch.tensor(cell_ids, device=device)
     model.eval()
     eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
