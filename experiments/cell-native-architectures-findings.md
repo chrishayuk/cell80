@@ -1080,6 +1080,46 @@ committed. All axis-A held-out cells are in the vocabulary (held-out = never *ca
 training, not absent as a token — constrained decoding must be able to emit them, which is
 gate (ii)'s whole point).
 
+### Three-way-tied W_f + resize (step 2c) and constrained decoding (step 2b) — apparatus validated
+
+Both done and validated on the **real** v11 checkpoint (CPU, seconds, no training), before any
+corpus exists — the pilot's discipline, applied to the real build. `cn1_model.py` and
+`cn1_decode.py`, each with a structural self-test that passes.
+
+**`cn1_model.py` — the architectural core.** `resize_embedding` grows the pretrained tied
+embed/lm_head 71261 → 72052 rows; the self-test confirms all 71261 trained rows are preserved
+**byte-for-byte** and `lm_head.weight` re-ties to `embed.weight` (same storage). `CN1Model`
+overrides the forward so the effective embedding matrix — used for *both* the input lookup and
+the tied output head — has its cell-token rows (71262..72051) supplied by a shared MLP
+`W_f: fingerprint → d_model` (arm c) or by the base free params (arm b, the ablation).
+Fingerprints are encoded 40-d (20 scaled probe values + a 20-d "ran cleanly" mask, so a
+returned-0 and a trap/halt don't collapse to the same point). The self-test proves the four
+load-bearing properties: (1) trained rows preserved + tying after resize; (2) arm-c cell rows
+`== W_f(FP)` for a seen *and* a held-out cell, on the same matrix for input and output;
+(3) **the gate-(ii) mechanism** — a gradient step optimizing only a *seen* cell's row moved a
+*held-out* cell's row (W_f grad-norm ~77, held-out row moved ~2.3), because held-out cells have
+no free params and can only move through the shared projection the seen cells train; (4) arm-b
+cell rows are free base params, no W_f. A forward pass yields logits `(1, 5, 72052)`.
+
+**`cn1_decode.py` — constrained decoding.** Because each cell is one atomic token (step 2a),
+the LARQL `OpNameMask` port collapses to a **single-step mask over a fixed id set**: the one
+grammar transition is "the token after `<call>` must be a `<cell:*>` id", applied at the same
+`FnMut(generated_ids, &mut logits)` seam (dense logits → mask → pick). Self-test: after
+`<call>`, exactly the 790 cell ids stay finite and the argmax is always a cell id; **all 79
+axis-A held-out cells are in the allowed set** (emittable — without this gate (ii) is
+impossible, since the mask must measure *selection*, not vocabulary membership); and an
+end-to-end constrained `generate` on the real arm-c model emits a valid cell token after
+`<call>`. Step 2's smoke slice (harness runs end-to-end, gates deliberately not evaluated) is
+thereby satisfied.
+
+**Step 2 (2a tokenizer + 2b decoding + 2c model) and step 3 (axis-A) are complete and
+validated.** What remains before a training number: step 4 (CN-2 harvest + corpus generation,
+two factorized held-out axes), step 5 (eval batteries + G2-reachability classification), step 6
+(train arms, evaluate against the pre-registered gates). Also still to write on the model side:
+the training loop itself (freeze policy for the base, W_f + new rows trainable), a
+checkpoint-resume path, and argument-encoding in the call grammar (operands after the cell
+token) — the last is a step-4 corpus decision.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
