@@ -225,25 +225,35 @@ const STATE_CELLS: &[(&str, &str, &str, usize)] = &[
     ),
 ];
 
-fn render() -> String {
+fn render(dialect: rustmsl::Dialect) -> String {
+    let compile_one = |funcs: &[(String, cell80_core::ir::Func)],
+                       consts: &[(String, Vec<u8>)],
+                       entry: &str| match dialect {
+        rustmsl::Dialect::Msl => rustmsl::compile(funcs, consts, entry),
+        rustmsl::Dialect::Cuda => rustmsl::compile_cuda(funcs, consts, entry),
+    };
+    let compile_lib = |cells: &[rustmsl::LibraryCell]| match dialect {
+        rustmsl::Dialect::Msl => rustmsl::compile_library(cells),
+        rustmsl::Dialect::Cuda => rustmsl::compile_library_cuda(cells),
+    };
     let mut out = String::new();
 
     for (name, src) in VALUE_CELLS {
         let (funcs, consts) = lower(src);
-        let module = rustmsl::compile(&funcs, &consts, "run")
-            .unwrap_or_else(|e| panic!("msl compile failed for {name}: {e}"));
+        let module = compile_one(&funcs, &consts, "run")
+            .unwrap_or_else(|e| panic!("{dialect:?} compile failed for {name}: {e}"));
         render_module(&mut out, &format!("cell {name}"), &module);
     }
 
     for (name, src, entry, state_len) in STATE_CELLS {
         let (funcs, consts) = lower(src);
-        let module = rustmsl::compile_library(&[rustmsl::LibraryCell {
+        let module = compile_lib(&[rustmsl::LibraryCell {
             funcs: &funcs,
             consts: &consts,
             entry,
             state_len: *state_len,
         }])
-        .unwrap_or_else(|e| panic!("msl compile failed for {name}: {e}"));
+        .unwrap_or_else(|e| panic!("{dialect:?} compile failed for {name}: {e}"));
         render_module(&mut out, &format!("state {name}"), &module);
     }
 
@@ -266,7 +276,7 @@ fn render() -> String {
                 .unwrap()
                 .1,
         );
-        let module = rustmsl::compile_library(&[
+        let module = compile_lib(&[
             rustmsl::LibraryCell {
                 funcs: &f0,
                 consts: &c0,
@@ -286,7 +296,7 @@ fn render() -> String {
                 state_len: 0,
             },
         ])
-        .unwrap_or_else(|e| panic!("msl library fusion failed: {e}"));
+        .unwrap_or_else(|e| panic!("{dialect:?} library fusion failed: {e}"));
         render_module(&mut out, "library fusion_3", &module);
     }
 
@@ -335,7 +345,13 @@ fn check_golden(golden_path: &Path, got: &str) {
 #[test]
 fn msl_codegen_snapshot() {
     let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/codegen_msl.txt");
-    check_golden(&golden, &render());
+    check_golden(&golden, &render(rustmsl::Dialect::Msl));
+}
+
+#[test]
+fn cuda_codegen_snapshot() {
+    let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/codegen_cuda.txt");
+    check_golden(&golden, &render(rustmsl::Dialect::Cuda));
 }
 
 /// The interpreter kernel's MSL source — a portable builder (shared body +
@@ -345,4 +361,61 @@ fn msl_codegen_snapshot() {
 fn interp_kernel_snapshot() {
     let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/interp_msl.txt");
     check_golden(&golden, &rustmsl::interp::interp_source_msl());
+}
+
+#[test]
+fn interp_kernel_cuda_snapshot() {
+    let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/interp_cuda.txt");
+    check_golden(&golden, &rustmsl::interp::interp_source_cuda());
+}
+
+/// No dialect bleeds into the other: the emitted text is greppable for the
+/// tokens that only one runtime accepts. (The goldens catch drift; this
+/// catches category errors at a glance, with readable failures.)
+#[test]
+fn dialects_do_not_cross_contaminate() {
+    let msl = format!(
+        "{}\n{}",
+        render(rustmsl::Dialect::Msl),
+        rustmsl::interp::interp_source_msl()
+    );
+    let cuda = format!(
+        "{}\n{}",
+        render(rustmsl::Dialect::Cuda),
+        rustmsl::interp::interp_source_cuda()
+    );
+
+    for token in [
+        "__device__",
+        "__global__",
+        "__restrict__",
+        "__noinline__",
+        "blockIdx",
+        "__popc",
+    ] {
+        assert!(
+            !msl.contains(token),
+            "MSL output contains CUDA token {token}"
+        );
+    }
+    for token in [
+        "metal",
+        "[[buffer",
+        "thread Ctx&",
+        "as_type",
+        "kernel void",
+        "[[thread_position_in_grid]]",
+        "constant uint",
+    ] {
+        assert!(
+            !cuda.contains(token),
+            "CUDA output contains MSL token {token}"
+        );
+    }
+    assert!(cuda.contains("extern \"C\" __global__ void cell_main"));
+    assert!(cuda.contains("extern \"C\" __global__ void interp"));
+    assert!(
+        cuda.contains("if (tid >= "),
+        "CUDA kernel must guard the grid tail"
+    );
 }

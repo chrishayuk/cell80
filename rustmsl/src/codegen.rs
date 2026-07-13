@@ -94,13 +94,17 @@ pub struct CellMeta {
     pub state_len: usize,
 }
 
-/// A compiled MSL module: one translation unit (one kernel, [`KERNEL_NAME`])
-/// over one or more cells, the concatenated const blob to bind read-only at
-/// `buffer(2)`, and each cell's shape. The output grid is cell-major:
-/// thread `cell · n_inputs + input` writes quad `[r0, r1, r2, status,
-/// steps_lo, steps_hi]`.
+/// A compiled GPU module: one translation unit (one kernel, [`KERNEL_NAME`])
+/// in the requested [`Dialect`] over one or more cells, the concatenated
+/// const blob to bind read-only (MSL `buffer(2)` / the CUDA `cst` param),
+/// and each cell's shape. The output grid is cell-major: thread
+/// `cell · n_inputs + input` writes quad `[r0, r1, r2, status, steps_lo,
+/// steps_hi]`. The struct is dialect-neutral — only `source`'s text differs.
 #[derive(Clone, Debug)]
-pub struct MslModule {
+pub struct GpuModule {
+    /// Which surface syntax `source` is in — executors refuse a module
+    /// compiled for the other runtime with a typed error, not a compiler one.
+    pub dialect: Dialect,
     pub source: String,
     pub consts: Vec<u8>,
     pub cells: Vec<CellMeta>,
@@ -134,7 +138,7 @@ pub fn compile(
     funcs: &[(String, Func)],
     consts: &[(String, Vec<u8>)],
     entry: &str,
-) -> Result<MslModule, String> {
+) -> Result<GpuModule, String> {
     compile_library(&[LibraryCell {
         funcs,
         consts,
@@ -145,11 +149,31 @@ pub fn compile(
 
 /// Fuse many cells into one translation unit — the library × probe-set layout
 /// (E3): one launch runs every cell against every input triple.
-pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
+pub fn compile_library(cells: &[LibraryCell]) -> Result<GpuModule, String> {
     compile_library_dialect(Dialect::Msl, cells)
 }
 
-fn compile_library_dialect(dialect: Dialect, cells: &[LibraryCell]) -> Result<MslModule, String> {
+/// [`compile`] in the CUDA dialect — same walker, same tick placement, CUDA
+/// surface syntax. Run the result with `CudaBatch` (the `cuda` feature).
+pub fn compile_cuda(
+    funcs: &[(String, Func)],
+    consts: &[(String, Vec<u8>)],
+    entry: &str,
+) -> Result<GpuModule, String> {
+    compile_library_cuda(&[LibraryCell {
+        funcs,
+        consts,
+        entry,
+        state_len: 0,
+    }])
+}
+
+/// [`compile_library`] in the CUDA dialect.
+pub fn compile_library_cuda(cells: &[LibraryCell]) -> Result<GpuModule, String> {
+    compile_library_dialect(Dialect::Cuda, cells)
+}
+
+fn compile_library_dialect(dialect: Dialect, cells: &[LibraryCell]) -> Result<GpuModule, String> {
     if cells.is_empty() {
         return Err("msl: empty library".into());
     }
@@ -264,7 +288,8 @@ fn compile_library_dialect(dialect: Dialect, cells: &[LibraryCell]) -> Result<Ms
     g.prelude(max_slots, max_state);
     g.out.push_str(&funcs_text);
     g.kernel(&cases);
-    Ok(MslModule {
+    Ok(GpuModule {
+        dialect,
         source: g.out,
         consts: blob,
         cells: metas,
@@ -283,12 +308,21 @@ struct FrameInfo {
 /// body) is shared text, so a semantics fix lands in both dialects by
 /// construction.
 impl Dialect {
-    /// Translation-unit header: includes/`using` for MSL; scalar typedefs (the
-    /// walker's `uint`/`ushort`/`uchar` vocabulary) for CUDA.
+    /// Translation-unit header: includes/`using` for MSL; scalar typedefs
+    /// (the walker's `uint`/`ushort`/`uchar` vocabulary) for CUDA — NVRTC
+    /// includes nothing by default. CUDA's `min` is a macro: a function named
+    /// `min` could collide with a builtin, a macro can neither collide nor be
+    /// missing (the runtime-shift clamp is its only use, side-effect-free
+    /// temps both times).
     fn header(self) -> &'static str {
         match self {
             Dialect::Msl => "#include <metal_stdlib>\nusing namespace metal;",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => {
+                "typedef unsigned int uint;\n\
+                 typedef unsigned short ushort;\n\
+                 typedef unsigned char uchar;\n\
+                 #define min(a, b) (((a) < (b)) ? (a) : (b))"
+            }
         }
     }
 
@@ -296,37 +330,46 @@ impl Dialect {
     fn dev_const_ptr(self) -> &'static str {
         match self {
             Dialect::Msl => "device const uchar*",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => "const uchar*",
         }
     }
 
     /// The attribute `CELLFN` expands to — cell functions are pinned noinline
     /// on both targets (the shipped configuration is the battery-validated
-    /// one, not an inliner heuristic's).
+    /// one, not an inliner heuristic's; on CUDA it also caps NVRTC's appetite
+    /// on the fused megakernel).
     fn cellfn_attr(self) -> &'static str {
         match self {
             Dialect::Msl => "__attribute__((noinline))",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => "__device__ __noinline__",
         }
     }
 
     /// The two sign-extension helpers (`sx16`/`sx32`), whole lines — MSL
-    /// bit-casts via `as_type`, CUDA via value-preserving integer casts.
+    /// bit-casts via `as_type`, CUDA via value-preserving two's-complement
+    /// integer conversions (defined behavior under nvcc/NVRTC).
     fn sx_helpers(self) -> &'static str {
         match self {
             Dialect::Msl => {
                 "static int sx16(uint x) { return (int)as_type<short>((ushort)(x)); }\n\
                  static int sx32(uint x) { return as_type<int>(x); }"
             }
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => {
+                "static __device__ int sx16(uint x) { return (int)(short)(ushort)(x); }\n\
+                 static __device__ int sx32(uint x) { return (int)(x); }"
+            }
         }
     }
 
-    /// Prefix for the opaque noinline division helpers.
+    /// Prefix for the opaque noinline division helpers. The Metal
+    /// branch-inversion miscompile is not assumed to transfer to CUDA — the
+    /// helpers stay noinline there for uniformity (the shipped configuration
+    /// is the battery-validated one on both targets), and any CUDA-specific
+    /// quirk the cloud battery finds lands in this dialect's arms only.
     fn noinline_static(self) -> &'static str {
         match self {
             Dialect::Msl => "static __attribute__((noinline))",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => "static __device__ __noinline__",
         }
     }
 
@@ -334,7 +377,7 @@ impl Dialect {
     fn static_fn(self) -> &'static str {
         match self {
             Dialect::Msl => "static",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => "static __device__",
         }
     }
 
@@ -342,13 +385,15 @@ impl Dialect {
     fn thread_ref(self) -> &'static str {
         match self {
             Dialect::Msl => "thread Ctx&",
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => "Ctx&",
         }
     }
 
     /// A `__bits_*` intrinsic's expression template over `ARG` (a zero-
-    /// extended u16 in a `uint` temp). The zero guards pin the 16-bit answer
-    /// on both targets.
+    /// extended u16 in a `uint` temp — so CUDA's 32-bit `__clz` minus 16 is
+    /// exactly MSL's per-width `clz`). The zero guards pin the 16-bit answer
+    /// on both targets; `__ffs` is 1-based with `__ffs(0) == 0`, but the zero
+    /// case is guarded, so `- 1` is exact.
     fn bits_intrinsic(self, name: &str) -> Option<&'static str> {
         match self {
             Dialect::Msl => match name {
@@ -357,7 +402,16 @@ impl Dialect {
                 "__bits_trailing_zeros" => Some("(ARG == 0u) ? 16u : ctz(ARG)"),
                 _ => None,
             },
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => match name {
+                "__bits_count_ones" => Some("(uint)__popc((int)(ARG))"),
+                "__bits_leading_zeros" => {
+                    Some("(ARG == 0u) ? 16u : (uint)(__clz((int)(ARG)) - 16)")
+                }
+                "__bits_trailing_zeros" => {
+                    Some("(ARG == 0u) ? 16u : (uint)(__ffs((int)(ARG)) - 1)")
+                }
+                _ => None,
+            },
         }
     }
 }
@@ -1226,7 +1280,25 @@ impl Gen {
                      {{"
                 );
             }
-            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+            Dialect::Cuda => {
+                // `n_cells` is a compile-time constant, so the grid-tail
+                // guard needs no extra kernel parameter. The product fits
+                // u32: Metal's grid shares the same practical bound.
+                let n_cells = cases.len();
+                let _ = writeln!(
+                    o,
+                    "extern \"C\" __global__ void {KERNEL_NAME}(\n\
+                     \x20   const ushort* __restrict__ inp,\n\
+                     \x20   ushort* __restrict__ outp,\n\
+                     \x20   const uchar* __restrict__ cst,\n\
+                     \x20   uint n_inputs,\n\
+                     \x20   const uchar* __restrict__ stin,\n\
+                     \x20   uchar* stout)\n\
+                     {{\n\
+                     \x20   uint tid = blockIdx.x * blockDim.x + threadIdx.x;\n\
+                     \x20   if (tid >= {n_cells}u * n_inputs) return;"
+                );
+            }
         }
         let _ = writeln!(
             o,

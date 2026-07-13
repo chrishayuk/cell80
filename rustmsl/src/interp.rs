@@ -1095,6 +1095,40 @@ pub fn interp_source_msl() -> String {
     )
 }
 
+/// The interpreter kernel's CUDA source: typedefs + wrappers giving the
+/// shared body its MSL vocabulary (`popcount`/`clz`/`ctz` over
+/// `__popc`/`__clz`/`__ffs`; `min` as a macro so it can neither collide with
+/// a builtin nor be missing), the generated decoder-constant block, and the
+/// `__global__` signature with the one-block-per-cell / probes-across-lanes
+/// launch shape. `__clz(0) == 32`, so the body's unguarded `clz(x)-16u`
+/// trick transfers; the body guards `ctz`'s zero case itself.
+pub fn interp_source_cuda() -> String {
+    format!(
+        "\n\
+         typedef unsigned int uint;\n\
+         typedef unsigned short ushort;\n\
+         \n\
+         #define min(a, b) (((a) < (b)) ? (a) : (b))\n\
+         static __device__ uint popcount(uint x) {{ return (uint)__popc((int)x); }}\n\
+         static __device__ uint clz(uint x) {{ return (uint)__clz((int)x); }}\n\
+         static __device__ uint ctz(uint x) {{ return (uint)(__ffs((int)x) - 1); }}\n\
+         \n\
+         {consts}\
+         \n\
+         extern \"C\" __global__ void interp(\n\
+         \x20   const uint* __restrict__ code,\n\
+         \x20   const uint* __restrict__ cell_table,\n\
+         \x20   const ushort* __restrict__ probes,\n\
+         \x20   ushort* out,\n\
+         \x20   uint n_probes)\n\
+         {{\n\
+         \x20   uint cell = blockIdx.x;\n\
+         \x20   uint p = threadIdx.x;\n\
+         {KERNEL_BODY}",
+        consts = interp_const_block("constexpr uint"),
+    )
+}
+
 /// The interpreter kernel's shared body — everything after the per-dialect
 /// signature. Pure C over the dialect header's typedef/intrinsic vocabulary
 /// (`uint`/`ushort`, `popcount`/`clz`/`ctz`/`min`), byte-identical across

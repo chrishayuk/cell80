@@ -1,10 +1,10 @@
-//! The Metal executor (macOS): compile an [`MslModule`]'s source with fast-math
-//! **off**, then dispatch the `n_cells × n_inputs` grid and read back each
-//! thread's `[r0, r1, r2, status, steps_lo, steps_hi]` sextet. Buffers are
-//! `StorageModeShared` (unified memory — the Apple-Silicon path docs 14 leans
-//! on for G1/G3).
+//! The Metal executor (macOS): compile a [`GpuModule`]'s MSL source with
+//! fast-math **off**, then dispatch the `n_cells × n_inputs` grid and read
+//! back each thread's `[r0, r1, r2, status, steps_lo, steps_hi]` sextet.
+//! Buffers are `StorageModeShared` (unified memory — the Apple-Silicon path
+//! docs 14 leans on for G1/G3).
 
-use crate::codegen::{MslModule, IN_STRIDE, KERNEL_NAME, OUT_STRIDE};
+use crate::codegen::{Dialect, GpuModule, IN_STRIDE, KERNEL_NAME, OUT_STRIDE};
 use metal::{
     Buffer, CommandQueue, CompileOptions, ComputePipelineState, Device, MTLCommandBufferStatus,
     MTLResourceOptions, MTLSize,
@@ -26,7 +26,13 @@ pub struct GpuBatch {
 impl GpuBatch {
     /// Compile the module on the system Metal device. Fast-math is disabled —
     /// integer cells never depend on it, and E4's f32 bank will require it off.
-    pub fn new(module: &MslModule) -> Result<Self, String> {
+    pub fn new(module: &GpuModule) -> Result<Self, String> {
+        if module.dialect != Dialect::Msl {
+            return Err(format!(
+                "msl: module is {:?} dialect — GpuBatch runs MSL (use compile/compile_library)",
+                module.dialect
+            ));
+        }
         let device = Device::system_default().ok_or_else(|| "msl: no Metal device".to_string())?;
         let opts = CompileOptions::new();
         opts.set_fast_math_enabled(false);

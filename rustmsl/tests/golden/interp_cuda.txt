@@ -1,0 +1,167 @@
+
+typedef unsigned int uint;
+typedef unsigned short ushort;
+
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+static __device__ uint popcount(uint x) { return (uint)__popc((int)x); }
+static __device__ uint clz(uint x) { return (uint)__clz((int)x); }
+static __device__ uint ctz(uint x) { return (uint)(__ffs((int)x) - 1); }
+
+constexpr uint OP_STEP=0,OP_PUSHLIT=1,OP_PUSHVAR=2,OP_BIN=3,OP_SHIFTLIT=4,
+              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13,
+              OP_POPCNT=14,OP_CLZ=15,OP_CTZ=16,OP_BIN32=17,OP_SHIFT32=18,OP_CMP32=19,OP_SEXTHI=20;
+constexpr uint ST_OK=0u, ST_DIV0=1u, ST_HALT=2u, ST_FUEL=4u;
+constexpr uint FUEL=100000000u;
+#define MAX_LOCALS 64
+#define MAX_STACK  32
+
+extern "C" __global__ void interp(
+    const uint* __restrict__ code,
+    const uint* __restrict__ cell_table,
+    const ushort* __restrict__ probes,
+    ushort* out,
+    uint n_probes)
+{
+    uint cell = blockIdx.x;
+    uint p = threadIdx.x;
+    if (p >= n_probes) return;
+    uint code_off = cell_table[cell*3+0];
+    uint n_locals = cell_table[cell*3+1];
+    uint params   = cell_table[cell*3+2];
+
+    ushort slots[MAX_LOCALS];
+    for (uint i=0;i<MAX_LOCALS;i++) slots[i]=0;
+    for (uint i=0;i<params && i<3u;i++) slots[i]=probes[p*3+i];
+
+    ushort stack[MAX_STACK];
+    int sp=0;
+    uint steps=0u, status=ST_OK, pc=code_off, guard=0u;
+    ushort r0=0,r1=0,r2=0;
+    bool done=false;
+    while(!done){
+        if(++guard > 400000000u){ status=ST_FUEL; break; }
+        uint op = code[pc*2]; uint arg = code[pc*2+1];
+        switch(op){
+          case OP_STEP: steps+=arg; if(steps>=FUEL){status=ST_FUEL;done=true;} break;
+          case OP_PUSHLIT: stack[sp++]=(ushort)(arg & 0xFFFFu); break;
+          case OP_PUSHVAR: stack[sp++]=slots[arg]; break;
+          case OP_BIN: {
+             ushort b=stack[--sp]; ushort a=stack[--sp];
+             uint binop=arg&0xFFu; uint w=(arg>>8)&0xFFu; bool sw=(w==2u);
+             ushort res=0;
+             switch(binop){
+               case 0: res=a+b; break;
+               case 1: res=a-b; break;
+               case 2: res=a*b; break;
+               case 5: res=a|b; break;
+               case 6: res=a&b; break;
+               case 7: res=a^b; break;
+               case 3: case 4: {
+                  if(b==0u){ status=ST_DIV0; done=true; res=0; }
+                  else if(sw){ short sa=(short)a, sb=(short)b; res=(binop==3u)?(ushort)(sa/sb):(ushort)(sa%sb); }
+                  else { res=(binop==3u)?(a/b):(a%b); }
+                  break;
+               }
+             }
+             if(w==0u) res&=0xFFu;
+             stack[sp++]=res; break;
+          }
+          case OP_SHIFTLIT: {
+             ushort a=stack[--sp];
+             uint k=arg&0xFFFFu; bool left=((arg>>16)&1u)!=0u; bool sgn=((arg>>17)&1u)!=0u; uint w=(arg>>18)&0x3u;
+             ushort res;
+             if(left){ res=(k>=16u)?0:(ushort)(a<<k); }
+             else if(sgn){ short sa=(short)a; uint kk=min(k,15u); res=(ushort)(sa>>kk); }
+             else { res=(k>=16u)?0:(ushort)(a>>k); }
+             if(w==0u) res&=0xFFu;
+             stack[sp++]=res; break;
+          }
+          case OP_CMP: {
+             ushort b=stack[--sp]; ushort a=stack[--sp];
+             uint cmp=arg&0xFFu; bool sgn=((arg>>8)&1u)!=0u; bool r;
+             if(sgn && cmp<4u){ short sa=(short)a, sb=(short)b;
+                switch(cmp){case 0:r=sa<sb;break;case 1:r=sa<=sb;break;case 2:r=sa>sb;break;default:r=sa>=sb;break;}
+             } else {
+                switch(cmp){case 0:r=a<b;break;case 1:r=a<=b;break;case 2:r=a>b;break;case 3:r=a>=b;break;case 4:r=a==b;break;default:r=a!=b;break;}
+             }
+             stack[sp++]=r?1:0; break;
+          }
+          case OP_TRUNC: { ushort a=stack[--sp]; stack[sp++]=a&0xFFu; break; }
+          // u16 bit intrinsics: popcount is width-agnostic on the zero-extended
+          // value; clz/ctz must be forced to the 16-bit answer (uint clz is +16;
+          // uint ctz(0) is 32, but u16 wants 16).
+          case OP_POPCNT: { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)popcount(x); break; }
+          case OP_CLZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(clz(x)-16u); break; }
+          case OP_CTZ:    { uint x=(uint)stack[--sp]; stack[sp++]=(ushort)(x==0u?16u:ctz(x)); break; }
+          // 32-bit ops: a u32 is two stack entries (low, then high on top).
+          case OP_BIN32: {
+             uint bh=stack[--sp], bl=stack[--sp], ah=stack[--sp], al=stack[--sp];
+             uint a=al|(ah<<16), b=bl|(bh<<16);
+             uint binop=arg&0xFFu; bool sg=((arg>>8)&1u)!=0u; uint res=0u;
+             switch(binop){
+               case 0: res=a+b; break;
+               case 1: res=a-b; break;
+               case 2: res=a*b; break;
+               case 5: res=a|b; break;
+               case 6: res=a&b; break;
+               case 7: res=a^b; break;
+               case 3: case 4: {
+                  if(b==0u){ status=ST_DIV0; done=true; res=0u; }
+                  else if(sg){
+                     // guard MIN/-1 — 32-bit int div overflows (C UB), unlike 16-bit
+                     bool ov=(a==0x80000000u && b==0xFFFFFFFFu);
+                     if(binop==3u) res=ov?a:(uint)((int)a/(int)b);
+                     else res=ov?0u:(uint)((int)a%(int)b);
+                  } else { res=(binop==3u)?(a/b):(a%b); }
+                  break;
+               }
+             }
+             stack[sp++]=(ushort)(res&0xFFFFu); stack[sp++]=(ushort)(res>>16); break;
+          }
+          case OP_SHIFT32: {
+             uint ah=stack[--sp], al=stack[--sp]; uint a=al|(ah<<16);
+             uint k=arg&0xFFu; bool left=((arg>>16)&1u)!=0u; bool sg=((arg>>17)&1u)!=0u; uint res;
+             if(sg && !left){ int sa=(int)a; uint kk=min(k,31u); res=(uint)(sa>>kk); }
+             else if(k>=32u){ res=0u; }
+             else if(left){ res=a<<k; }
+             else { res=a>>k; }
+             stack[sp++]=(ushort)(res&0xFFFFu); stack[sp++]=(ushort)(res>>16); break;
+          }
+          case OP_CMP32: {
+             uint bh=stack[--sp], bl=stack[--sp], ah=stack[--sp], al=stack[--sp];
+             uint a=al|(ah<<16), b=bl|(bh<<16);
+             uint cmp=arg&0xFFu; bool sg=((arg>>8)&1u)!=0u; bool r;
+             if(sg && cmp<4u){ int sa=(int)a, sb=(int)b;
+                switch(cmp){case 0:r=sa<sb;break;case 1:r=sa<=sb;break;case 2:r=sa>sb;break;default:r=sa>=sb;break;}
+             } else {
+                switch(cmp){case 0:r=a<b;break;case 1:r=a<=b;break;case 2:r=a>b;break;case 3:r=a>=b;break;case 4:r=a==b;break;default:r=a!=b;break;}
+             }
+             stack[sp++]=r?1:0; break;
+          }
+          case OP_SEXTHI: {
+             ushort lo=stack[--sp]; stack[sp++]=lo;
+             stack[sp++]=((lo&0x8000u)!=0u)?(ushort)0xFFFFu:(ushort)0u; break;
+          }
+          case OP_STORE: slots[arg]=stack[--sp]; break;
+          case OP_POP: --sp; break;
+          case OP_DUP: { ushort v=stack[sp-1]; stack[sp++]=v; break; }
+          case OP_JMPZERO: { ushort v=stack[--sp]; if(v==0){ pc=code_off+arg; continue; } break; }
+          case OP_JMP: pc=code_off+arg; continue;
+          case OP_RET: {
+             uint arity=arg;
+             if(arity>=1u) r0=stack[0];
+             if(arity>=2u) r1=stack[1];
+             if(arity>=3u) r2=stack[2];
+             done=true; break;
+          }
+          case OP_HALT: { r0=stack[sp-1]; status=ST_HALT; done=true; break; }
+          default: done=true; break;
+        }
+        pc++;
+    }
+    uint base=(cell*n_probes+p)*6u;
+    out[base+0]=r0; out[base+1]=r1; out[base+2]=r2;
+    out[base+3]=(ushort)status;
+    out[base+4]=(ushort)(steps&0xFFFFu);
+    out[base+5]=(ushort)(steps>>16);
+}

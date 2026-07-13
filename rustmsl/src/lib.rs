@@ -19,10 +19,14 @@
 mod codegen;
 
 pub use codegen::{
-    compile, compile_library, CellMeta, Dialect, LibraryCell, MslModule, CONST_BASE, FUEL,
-    IN_STRIDE, KERNEL_NAME, OUT_STRIDE, SCRATCH, STATE_BASE, STATUS_DIV0, STATUS_FUEL, STATUS_HALT,
-    STATUS_OK, STATUS_OOW,
+    compile, compile_cuda, compile_library, compile_library_cuda, CellMeta, Dialect, GpuModule,
+    LibraryCell, CONST_BASE, FUEL, IN_STRIDE, KERNEL_NAME, OUT_STRIDE, SCRATCH, STATE_BASE,
+    STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK, STATUS_OOW,
 };
+
+/// The pre-rename name for [`GpuModule`] (the struct was always
+/// dialect-neutral); existing MSL callers compile unchanged.
+pub type MslModule = GpuModule;
 
 #[cfg(target_os = "macos")]
 mod runtime;
