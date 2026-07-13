@@ -40,6 +40,12 @@ def reload_arm(arm, seed, device, unfreeze_top=12):
 
 def rank_stats(model, items, cell_ids_t, tok, cap=200):
     device = next(model.parameters()).device
+    # RANDOM sample, not first-cap: cn1_corpus_eval.jsonl is grouped by cell, so items[:cap]
+    # over-weights whichever cells appear first (the first-N bug that inflated median rank 21->114
+    # and enrichment 6.73x->~2.7x). Shuffle with a fixed seed so the sample is representative and
+    # reproducible.
+    items = list(items)
+    __import__("random").Random(0).shuffle(items)
     ranks = []
     with torch.no_grad():
         for r in items[:cap]:

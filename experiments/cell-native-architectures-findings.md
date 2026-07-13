@@ -1279,6 +1279,29 @@ the fingerprint address is real and strong at the rank level, and converting it 
 stronger model (more capacity/steps/data), not a different mechanism. Also: one seed per arm; the
 pre-registered gate needs 3.
 
+### CORRECTION (2026-07-14): two headline numbers were first-N sampling artifacts
+
+> The eval harness scored the **first 200 items** of `cn1_corpus_eval.jsonl`, which is **grouped by
+> cell** — so it over-weighted whichever held-out cells appear first (and their ~12 repeats each).
+> Two headline numbers were inflated by this and are **corrected**:
+> - **Held-out median rank: ~21 → ~114 of 790** (robust random sample, n=150: median 114, mean 209).
+> - **Confusion enrichment: 6.73× → ~2.7× median / ~4.2× mean** vs the all-790 null (confusion
+>   agreement 0.14 median / 0.22 mean; null 0.053). Diagnosis (`cn1_null_diagnosis.py`): the
+>   agreement function is identical across routes (diff 0.0000), so this is population/sampling, not
+>   a broken metric; the two nulls (all-790 0.053, same-arity-value 0.147) are each correct for their
+>   population, and the confusions span types (37% same-arity, 18% state) so all-790 is a reasonable
+>   comparator.
+>
+> **What survives:** the arm *contrast* — fingerprint ≪ shuffled ≈ random on held-out — used the
+> *same items for all three arms*, so the double dissociation and the "fingerprint does what random
+> can't" conclusion **stand**. What was inflated is the *absolute* address quality (rank, enrichment
+> magnitude). Net: mechanism real, **usable level weaker than previously stated** (median rank ~114,
+> per-cell top-50 recall 0.25). Authoritative absolute numbers come from a **random-sampled** re-eval
+> of the faithful checkpoints; the in-flight training evals are contrast-valid but absolute-inflated
+> (first-N). Fourth consistency-check catch (random-vs-first-N), same shape as the previous three.
+> The tables below retain their original (first-N) numbers as the reasoning trail; read absolute
+> levels against this correction.
+
 ### The shuffled control + the double dissociation (the result that makes it strong)
 
 The one control a skeptic reaches for: is the held-out signal *behaviour*, or just a well-

@@ -611,3 +611,22 @@ earlier "~28% over-merge" is retracted (~3× inflated). Consequence: the probe-r
 much, and the plateau result (confusions genuinely ~0.245-similar) already says the information is
 there and the *model* isn't using it. Order held: **faithful arms (in flight) → library-scale
 curve → CN-6**; probe-richness retrain only if a cheaper cause is ruled out first.
+
+## Amendment (2026-07-14): first-N eval-sampling bug — median rank and enrichment corrected
+
+Prompted by the 0.065-vs-0.1625 null discrepancy: two routes to the same quantity disagreed, and
+chasing it exposed that the eval scored the **first 200 items** of a **cell-grouped** eval file —
+over-weighting whichever held-out cells come first. Corrections (robust random sample):
+- **held-out median rank ~21 → ~114 of 790** (n=150 random: median 114, mean 209);
+- **confusion enrichment 6.73× → ~2.7× median / ~4.2× mean** vs the all-790 null (agreement function
+  verified identical across routes, diff 0.0000; both nulls correct for their population; confusions
+  are 37% same-arity, 18% state, so all-790 is a reasonable comparator).
+
+**Survives:** the arm contrast (fingerprint ≪ shuffled ≈ random on held-out) used identical items
+across arms, so the double dissociation stands; only the *absolute* levels were inflated. **Net:
+mechanism real, usable level weaker (median rank ~114, per-cell top-50 recall 0.25).** Fix:
+`cn1_eval_ckpt.py` now shuffles (fixed seed) before capping; the in-flight training evals are left
+untouched so the running re-run's arms stay mutually consistent (contrast-valid), and authoritative
+*absolute* numbers come from a random-sampled re-eval of the faithful checkpoints post-run. This is
+the third ratio-vs-mismatched-population catch in the programme (after EX-2's drift baseline) and
+the fourth "is this number an artifact of how I measured it?" catch overall.
