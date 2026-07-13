@@ -1393,6 +1393,26 @@ consistency check, not a failing test (reload-crashes-where-fresh-doesn't; befor
 arm-vs-arm-signature and reload-vs-training-rank). Standing method for this lane: compute
 load-bearing numbers by two routes; a disagreement is the finding.
 
+### Probe-richness sweep (model-free) — the confusions are genuinely distinct, not spuriously merged
+
+Tests whether the 20-probe fingerprint is too coarse to separate the model's ~0.44 confusions, or
+whether those cells are truly that similar (`cn1_probe_richness.py`, execution only, no model).
+Mean agreement of each held-out value cell's coarse top-20 neighbourhood, as the probe battery
+grows: **20→0.344, 100→0.259, 500→0.247, 2000→0.245**; fraction of that neighbourhood still ≥0.7
+agreement: 0.119→0.085.
+
+- **The 20-probe battery over-merges by ~28%** (0.344 vs the ~0.245 stable value; partly top-20
+  selection regression). So there is real resolution the current fingerprint discards — a richer
+  battery gives a cleaner address, worth trying (cheap; we own the probe set).
+- **But it plateaus at ~0.245 by 100 probes** — the confusion cells are **genuinely** ~0.245-
+  similar (they differ on ~75% of inputs), not artifacts that dissolve under rich probing. So the
+  confusions are **behaviourally distinct**, which *confirms the retraction*: nothing structural
+  forbids rank 1 — the address can resolve these in principle.
+- **Net:** fingerprint resolution is a *contributing, tractable* cause (richer probes should help
+  modestly), not the whole story; capacity and/or corpus likely dominate the per-cell recall gap.
+  Whether a richer fingerprint actually moves the model's per-cell recall is a retrain experiment
+  (the model-free sweep only establishes the cells are separable in principle — they are).
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
