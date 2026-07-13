@@ -422,3 +422,45 @@ machinery. A weak description arm that loses proves nothing. Framing when it lan
 fingerprint > description is the exciting outcome; **fingerprint ≈ description is still a strong
 result for us**, because the synthesized-cell ace (undocumented cells) is one no description method
 can address by construction — that arm must exist in the final table.
+
+## Amendment (2026-07-13): how to read the swap, and both paper framings — BEFORE the number
+
+Registered before the SmolLM2 swap lands, so the reading is not written under the influence of
+the result.
+
+**Two numbers from the swap, in order.**
+1. **Held-out top-1 ≠ 0** — the prior-vs-capacity answer. Does the rank signal (fingerprint held-out
+   rank 43 on v11) convert to landing rank-1 on a base that has a code/math prior?
+2. **Does the seen-cell inversion replicate at the new base?** — the base-independence test, and the
+   one nobody thinks to check. On v11 the mechanism revealed itself as a *dissociation*: fingerprint
+   was WORSE than shuffled/random on seen top-1 (0.27 < 0.475 < 0.785) yet far better on held-out.
+   The pre-registered prediction applies **within the SmolLM2 base too**: fingerprint should
+   underperform shuffled on seen top-1 and outperform on held-out rank.
+
+**The trap (registered so it can't be explained away post-hoc).** SmolLM2 fingerprint showing a
+strong *seen* number (0.39 by step 3200 vs v11's 0.22 final) is **not by itself evidence for the
+mechanism** — the comparison is within-base, across-arms. If fingerprint instead *wins on both
+axes* at SmolLM2 (beats shuffled on seen AND held-out), that is **informative in the wrong
+direction**: it would suggest the base's prior is doing the addressing and the fingerprint is
+merely a decent initialization — which *weakens* the mechanism claim, not strengthens it. The
+dissociation, not the level, is the evidence.
+
+**Both paper framings, written before the result (so the title isn't chosen by the number):**
+
+- **Framing A — "behaviour beats language as a tool address."** Fires if fingerprint > description
+  on held-out (documented cells). Title ≈ *Behaviour as Address: executed-behaviour embeddings
+  outperform documentation for zero-shot tool invocation*. First figure: the held-out
+  rank/top-1 bar, fingerprint vs description vs the null arms, across bases. The synthesized-cell
+  arm is a strong supporting table (behaviour also works where description is blind).
+
+- **Framing B — "behaviour is a *language-free* address."** Fires if description ≥ fingerprint on
+  the documented library (live risk: clean names + structured signatures + strong encoder). Title ≈
+  *A Description-Free Address for Synthesized Tools: executed behaviour invokes cells that have no
+  documentation to route on*. First figure: the **synthesized-cell** result — behaviour addresses
+  undocumented cells at documented-cell rank quality while every description method sits at chance,
+  by construction. Here the synthesized-cell arm is not a supporting table, it is the whole paper,
+  and it is the case this library is *heading toward* as cost-discovery/synthesis mint cells with
+  behaviour and no prose. Still strong; a different paper, different first figure.
+
+Both framings keep the honest scope: mechanism (rank) is established; invocation (top-1) is what the
+swap tests; the synthesized-cell ace is the arm no description method can match either way.
