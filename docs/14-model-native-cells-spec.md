@@ -138,6 +138,28 @@ weakened**. Throughput is recorded as measured on the card, never
 extrapolated. Status: **built and golden-locked on macOS; unverified on
 silicon until the docs/16 session appends its results entry here.**
 
+**Pre-silicon addendum (same day): the CUDA text's semantics validated
+end-to-end by CPU emulation.** The emitted CUDA source is plain C++ once a
+small shim supplies the vocabulary (`rustmsl::cpu_emu`: attribute defines,
+`blockIdx`/`threadIdx` as serial loop variables, `__popc`/`__clz`/`__ffs`
+over host builtins — legitimate because every UB corner in the emitted text
+is explicitly guarded, so the host compiler is a fair executor of its
+semantics). Results, host clang 17 on the M-series box: the corner battery
+(runtime shifts, signed div/rem MIN/-1, bit intrinsics, trap folding incl.
+the full 10⁸-tick fuel burn, the do-while continue wrapper, typed state
+incl. trap-point partial state) — all green, values + status + steps + state
+bytes (`rustmsl/tests/cuda_text_semantics.rs`); the interp kernel's CUDA
+text vs `cpu_run` — green; and the **full library** through
+`cell80/tests/cuda_cpu_emu_battery.rs`: 249/249 value cells clean (243
+digest-identical to the blessed oracle transcripts — steps included),
+539/539 state cells clean (505 via transcript), and the 249-cell fused
+megakernel with 0 disagreements — the fused-scale shape where Metal's
+compiler bug lived. The Linux build (`x86_64-unknown-linux-gnu`,
+`--all-targets`, both feature states) cross-checks clean, so the box
+session cannot stall on a compile. **What remains unvalidated — and is
+exactly what the docs/16 session proves: NVRTC acceptance and NVIDIA
+codegen.** No CPU-emulation result is cited as silicon verification.
+
 Owed after the gate: `library_launch_cost` CUDA port (the E3 fixed-cost
 figure), `Body::Msl`/`Body::Cuda` cartridge variants + GPU `Target`
 descriptor entries, E4 f32, E5 residency (persistent megakernel / CUDA

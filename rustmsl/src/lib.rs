@@ -34,6 +34,13 @@ mod runtime;
 #[cfg(target_os = "macos")]
 pub use runtime::GpuBatch;
 
+/// CPU emulation of the CUDA dialect — the pre-silicon validation executor
+/// (compiles the emitted CUDA text with the host C++ compiler behind a
+/// shim). Validates the text's semantics against the same oracles the GPU
+/// batteries use; NVRTC acceptance and NVIDIA codegen remain the cloud
+/// gate's job (docs/16).
+pub mod cpu_emu;
+
 /// The CUDA executor — [`CudaBatch`](cuda::CudaBatch) for compiled modules,
 /// [`CudaInterpBatch`](cuda::CudaInterpBatch) for the bytecode-interpreter
 /// backend. Opt-in (`--features cuda`); builds without a CUDA toolkit

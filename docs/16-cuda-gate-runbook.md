@@ -26,6 +26,24 @@ toolkit itself is not required to *build*, only `libcuda`/`libnvrtc` to
   - the repo commit hash under test,
   - `rustc --version` (toolchain per workspace `rust-version = 1.85`).
 
+## 1b. Pre-flight (no GPU needed — run on any dev box first)
+
+Already-green as of the pre-registration commit, and re-runnable any time
+the dialect changes before the session:
+
+```sh
+cargo test -p rustmsl --release --test cuda_text_semantics
+cargo test -p cell80 --release --test cuda_cpu_emu_battery -- --ignored --nocapture
+cargo check --workspace --all-targets --target x86_64-unknown-linux-gnu
+```
+
+These run the emitted CUDA text through the host C++ compiler
+(`rustmsl::cpu_emu`) against the interpreter oracle — corners, full library,
+megakernel, interp kernel — so the box session starts from "semantics
+validated; only NVRTC acceptance and NVIDIA codegen left to prove". A CUDA
+failure on the box therefore points at the toolchain/hardware seam, not the
+dialect's semantics.
+
 ## 2. Setup
 
 ```sh
