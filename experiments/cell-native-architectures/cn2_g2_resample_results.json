@@ -1,0 +1,4090 @@
+{
+  "summary": {
+    "url": "http://localhost:8080",
+    "n_problems": 60,
+    "before": {
+      "n_spans": 127,
+      "n_mismatch": 2,
+      "n_escalated": 0,
+      "wrong_number_rate": 0.016,
+      "final_answer_accuracy": 0.883
+    },
+    "after": {
+      "n_spans": 127,
+      "n_mismatch": 0,
+      "n_escalated": 0,
+      "wrong_number_rate": 0.0,
+      "final_answer_accuracy": 0.883
+    },
+    "n_problems_corrected": 2,
+    "n_corrections_total": 2,
+    "finals_flipped_right": 0,
+    "finals_flipped_wrong": 0,
+    "t_baseline_total_s": 1049.2,
+    "t_correction_total_s": 50.1
+  },
+  "rows": [
+    {
+      "question": "Sam has 12 apples. He buys 7 more, then gives 5 to his friend. How many apples does Sam have now?",
+      "final_expected": 14,
+      "baseline_completion": "Sam starts with 12 apples.\n12 + 7 = 19\n19 - 5 = 14\nAnswer: 14",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 12,
+          "op": "add",
+          "b": 7,
+          "c": 19,
+          "line": "12 + 7 = 19",
+          "sym": "+",
+          "start": 27,
+          "end": 38,
+          "verdict": "match",
+          "cell80_answer": 19
+        },
+        {
+          "a": 19,
+          "op": "sub",
+          "b": 5,
+          "c": 14,
+          "line": "19 - 5 = 14",
+          "sym": "-",
+          "start": 39,
+          "end": 50,
+          "verdict": "match",
+          "cell80_answer": 14
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 12,
+          "op": "add",
+          "b": 7,
+          "c": 19,
+          "line": "12 + 7 = 19",
+          "sym": "+",
+          "start": 27,
+          "end": 38,
+          "verdict": "match",
+          "cell80_answer": 19
+        },
+        {
+          "a": 19,
+          "op": "sub",
+          "b": 5,
+          "c": 14,
+          "line": "19 - 5 = 14",
+          "sym": "-",
+          "start": 39,
+          "end": 50,
+          "verdict": "match",
+          "cell80_answer": 14
+        }
+      ],
+      "final_stated_before": 14.0,
+      "final_stated_after": 14.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 6.97,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A classroom has 8 rows of 6 desks each. How many desks are in the classroom?",
+      "final_expected": 48,
+      "baseline_completion": "The number of rows is 8.\nThe number of desks in each row is 6.\nTo find the total number of desks, we multiply the number of rows by the number of desks in each row.\n8 * 6 = 48\nAnswer: 48",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 6,
+          "c": 48,
+          "line": "8 * 6 = 48",
+          "sym": "*",
+          "start": 165,
+          "end": 175,
+          "verdict": "match",
+          "cell80_answer": 48
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 6,
+          "c": 48,
+          "line": "8 * 6 = 48",
+          "sym": "*",
+          "start": 165,
+          "end": 175,
+          "verdict": "match",
+          "cell80_answer": 48
+        }
+      ],
+      "final_stated_before": 48.0,
+      "final_stated_after": 48.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 8.43,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Maria earns $15 per hour and works 6 hours. She then spends $40 on groceries. How much money does she have left?",
+      "final_expected": 50,
+      "baseline_completion": "Maria earns $15 per hour.\nMaria works 6 hours.\nMaria's earnings are $15 * 6 = 90$.\nMaria spends $40 on groceries.\nMaria's earnings minus grocery expenses are $90 - 40 = 50$.\nAnswer: 50",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 15,
+          "op": "mul",
+          "b": 6,
+          "c": 90,
+          "line": "Maria's earnings are $15 * 6 = 90$.",
+          "sym": "*",
+          "start": 69,
+          "end": 80,
+          "verdict": "match",
+          "cell80_answer": 90
+        },
+        {
+          "a": 90,
+          "op": "sub",
+          "b": 40,
+          "c": 50,
+          "line": "Maria's earnings minus grocery expenses are $90 - 40 = 50$.",
+          "sym": "-",
+          "start": 159,
+          "end": 171,
+          "verdict": "match",
+          "cell80_answer": 50
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 15,
+          "op": "mul",
+          "b": 6,
+          "c": 90,
+          "line": "Maria's earnings are $15 * 6 = 90$.",
+          "sym": "*",
+          "start": 69,
+          "end": 80,
+          "verdict": "match",
+          "cell80_answer": 90
+        },
+        {
+          "a": 90,
+          "op": "sub",
+          "b": 40,
+          "c": 50,
+          "line": "Maria's earnings minus grocery expenses are $90 - 40 = 50$.",
+          "sym": "-",
+          "start": 159,
+          "end": 171,
+          "verdict": "match",
+          "cell80_answer": 50
+        }
+      ],
+      "final_stated_before": 50.0,
+      "final_stated_after": 50.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 9.16,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A baker makes 84 cookies and packs them into boxes of 12. How many boxes does he need?",
+      "final_expected": 7,
+      "baseline_completion": "First, we need to find out how many cookies are in each box.\nThe baker packs 12 cookies into each box.\nSo, 12 = 12\n\nNext, we need to find out how many boxes are needed to pack all 84 cookies.\nWe divide the total number of cookies by the number of cookies per box.\n84 / 12 = 7\n\nTherefore, the baker needs 7 boxes.\n\nAnswer: 7",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 84,
+          "op": "div",
+          "b": 12,
+          "c": 7,
+          "line": "84 / 12 = 7",
+          "sym": "/",
+          "start": 264,
+          "end": 275,
+          "verdict": "match",
+          "cell80_answer": 7
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 84,
+          "op": "div",
+          "b": 12,
+          "c": 7,
+          "line": "84 / 12 = 7",
+          "sym": "/",
+          "start": 264,
+          "end": 275,
+          "verdict": "match",
+          "cell80_answer": 7
+        }
+      ],
+      "final_stated_before": 7.0,
+      "final_stated_after": 7.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 10.87,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "There are 23 red marbles and 17 blue marbles in a jar. If 9 marbles are removed, how many marbles are left?",
+      "final_expected": 31,
+      "baseline_completion": "First, find the total number of marbles initially in the jar.\n23 + 17 = 40\n\nNext, subtract the number of marbles removed from the total.\n40 - 9 = 31\n\nAnswer: 31",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 23,
+          "op": "add",
+          "b": 17,
+          "c": 40,
+          "line": "23 + 17 = 40",
+          "sym": "+",
+          "start": 62,
+          "end": 74,
+          "verdict": "match",
+          "cell80_answer": 40
+        },
+        {
+          "a": 40,
+          "op": "sub",
+          "b": 9,
+          "c": 31,
+          "line": "40 - 9 = 31",
+          "sym": "-",
+          "start": 137,
+          "end": 148,
+          "verdict": "match",
+          "cell80_answer": 31
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 23,
+          "op": "add",
+          "b": 17,
+          "c": 40,
+          "line": "23 + 17 = 40",
+          "sym": "+",
+          "start": 62,
+          "end": 74,
+          "verdict": "match",
+          "cell80_answer": 40
+        },
+        {
+          "a": 40,
+          "op": "sub",
+          "b": 9,
+          "c": 31,
+          "line": "40 - 9 = 31",
+          "sym": "-",
+          "start": 137,
+          "end": 148,
+          "verdict": "match",
+          "cell80_answer": 31
+        }
+      ],
+      "final_stated_before": 31.0,
+      "final_stated_after": 31.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 8.59,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A train travels 60 miles per hour for 3 hours, then 40 miles per hour for 2 hours. How many miles does it travel in total?",
+      "final_expected": 260,
+      "baseline_completion": "First, calculate the distance traveled at 60 miles per hour for 3 hours.\n60 * 3 = 180\n\nNext, calculate the distance traveled at 40 miles per hour for 2 hours.\n40 * 2 = 80\n\nThen, add the two distances together.\n180 + 80 = 260\n\nAnswer: 260",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 60,
+          "op": "mul",
+          "b": 3,
+          "c": 180,
+          "line": "60 * 3 = 180",
+          "sym": "*",
+          "start": 73,
+          "end": 85,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 2,
+          "c": 80,
+          "line": "40 * 2 = 80",
+          "sym": "*",
+          "start": 159,
+          "end": 170,
+          "verdict": "match",
+          "cell80_answer": 80
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 80,
+          "c": 260,
+          "line": "180 + 80 = 260",
+          "sym": "+",
+          "start": 210,
+          "end": 224,
+          "verdict": "match",
+          "cell80_answer": 260
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 60,
+          "op": "mul",
+          "b": 3,
+          "c": 180,
+          "line": "60 * 3 = 180",
+          "sym": "*",
+          "start": 73,
+          "end": 85,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 2,
+          "c": 80,
+          "line": "40 * 2 = 80",
+          "sym": "*",
+          "start": 159,
+          "end": 170,
+          "verdict": "match",
+          "cell80_answer": 80
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 80,
+          "c": 260,
+          "line": "180 + 80 = 260",
+          "sym": "+",
+          "start": 210,
+          "end": 224,
+          "verdict": "match",
+          "cell80_answer": 260
+        }
+      ],
+      "final_stated_before": 260.0,
+      "final_stated_after": 260.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.01,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Tom had 90 dollars. He spent 25 dollars on a book and then earned 15 dollars mowing a lawn. How much money does Tom have now?",
+      "final_expected": 80,
+      "baseline_completion": "Tom started with 90 dollars.\n90 - 25 = 65\n65 + 15 = 80\nAnswer: 80",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 90,
+          "op": "sub",
+          "b": 25,
+          "c": 65,
+          "line": "90 - 25 = 65",
+          "sym": "-",
+          "start": 29,
+          "end": 41,
+          "verdict": "match",
+          "cell80_answer": 65
+        },
+        {
+          "a": 65,
+          "op": "add",
+          "b": 15,
+          "c": 80,
+          "line": "65 + 15 = 80",
+          "sym": "+",
+          "start": 42,
+          "end": 54,
+          "verdict": "match",
+          "cell80_answer": 80
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 90,
+          "op": "sub",
+          "b": 25,
+          "c": 65,
+          "line": "90 - 25 = 65",
+          "sym": "-",
+          "start": 29,
+          "end": 41,
+          "verdict": "match",
+          "cell80_answer": 65
+        },
+        {
+          "a": 65,
+          "op": "add",
+          "b": 15,
+          "c": 80,
+          "line": "65 + 15 = 80",
+          "sym": "+",
+          "start": 42,
+          "end": 54,
+          "verdict": "match",
+          "cell80_answer": 80
+        }
+      ],
+      "final_stated_before": 80.0,
+      "final_stated_after": 80.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 7.75,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A garden has 9 rows with 8 plants in each row. If 5 plants die, how many plants are left?",
+      "final_expected": 67,
+      "baseline_completion": "First, calculate the total number of plants in the garden.\n9 * 8 = 72\n\nNext, subtract the number of plants that died from the total number of plants.\n72 - 5 = 67\n\nAnswer: 67",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 8,
+          "c": 72,
+          "line": "9 * 8 = 72",
+          "sym": "*",
+          "start": 59,
+          "end": 69,
+          "verdict": "match",
+          "cell80_answer": 72
+        },
+        {
+          "a": 72,
+          "op": "sub",
+          "b": 5,
+          "c": 67,
+          "line": "72 - 5 = 67",
+          "sym": "-",
+          "start": 150,
+          "end": 161,
+          "verdict": "match",
+          "cell80_answer": 67
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 8,
+          "c": 72,
+          "line": "9 * 8 = 72",
+          "sym": "*",
+          "start": 59,
+          "end": 69,
+          "verdict": "match",
+          "cell80_answer": 72
+        },
+        {
+          "a": 72,
+          "op": "sub",
+          "b": 5,
+          "c": 67,
+          "line": "72 - 5 = 67",
+          "sym": "-",
+          "start": 150,
+          "end": 161,
+          "verdict": "match",
+          "cell80_answer": 67
+        }
+      ],
+      "final_stated_before": 67.0,
+      "final_stated_after": 67.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 8.73,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Jenny read 18 pages on Monday and twice as many pages on Tuesday. How many pages did she read in total over the two days?",
+      "final_expected": 54,
+      "baseline_completion": "First, we need to find out how many pages Jenny read on Tuesday.\nTwice the number of pages read on Monday is 2 * 18 = 36.\nSo, Jenny read 36 pages on Tuesday.\nNext, we need to find the total number of pages read over the two days.\nThe total number of pages read is 18 + 36 = 54.\nAnswer: 54",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 2,
+          "op": "mul",
+          "b": 18,
+          "c": 36,
+          "line": "Twice the number of pages read on Monday is 2 * 18 = 36.",
+          "sym": "*",
+          "start": 109,
+          "end": 120,
+          "verdict": "match",
+          "cell80_answer": 36
+        },
+        {
+          "a": 18,
+          "op": "add",
+          "b": 36,
+          "c": 54,
+          "line": "The total number of pages read is 18 + 36 = 54.",
+          "sym": "+",
+          "start": 264,
+          "end": 276,
+          "verdict": "match",
+          "cell80_answer": 54
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 2,
+          "op": "mul",
+          "b": 18,
+          "c": 36,
+          "line": "Twice the number of pages read on Monday is 2 * 18 = 36.",
+          "sym": "*",
+          "start": 109,
+          "end": 120,
+          "verdict": "match",
+          "cell80_answer": 36
+        },
+        {
+          "a": 18,
+          "op": "add",
+          "b": 36,
+          "c": 54,
+          "line": "The total number of pages read is 18 + 36 = 54.",
+          "sym": "+",
+          "start": 264,
+          "end": 276,
+          "verdict": "match",
+          "cell80_answer": 54
+        }
+      ],
+      "final_stated_before": 54.0,
+      "final_stated_after": 54.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.58,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A factory produces 144 toys and ships them in crates of 16. How many crates are needed?",
+      "final_expected": 9,
+      "baseline_completion": "First, we need to find out how many toys are in each crate.\nEach crate contains 16 toys.\n\nNext, we need to find out how many crates are needed to ship all 144 toys.\nWe can do this by dividing the total number of toys by the number of toys per crate.\n144 / 16 = 9\n\nTherefore, 9 crates are needed.\nAnswer: 9",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 144,
+          "op": "div",
+          "b": 16,
+          "c": 9,
+          "line": "144 / 16 = 9",
+          "sym": "/",
+          "start": 250,
+          "end": 262,
+          "verdict": "match",
+          "cell80_answer": 9
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 144,
+          "op": "div",
+          "b": 16,
+          "c": 9,
+          "line": "144 / 16 = 9",
+          "sym": "/",
+          "start": 250,
+          "end": 262,
+          "verdict": "match",
+          "cell80_answer": 9
+        }
+      ],
+      "final_stated_before": 9.0,
+      "final_stated_after": 9.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.15,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Liam has 50 dollars. He buys 3 notebooks at 6 dollars each. How much money does he have left?",
+      "final_expected": 32,
+      "baseline_completion": "Liam starts with 50 dollars.\n50 + 0 = 50\nHe buys 3 notebooks at 6 dollars each.\n3 * 6 = 18\nHe spends 18 dollars.\n50 - 18 = 32\nHe has 32 dollars left.\nAnswer: 32",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 50,
+          "op": "add",
+          "b": 0,
+          "c": 50,
+          "line": "50 + 0 = 50",
+          "sym": "+",
+          "start": 29,
+          "end": 40,
+          "verdict": "match",
+          "cell80_answer": 50
+        },
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 6,
+          "c": 18,
+          "line": "3 * 6 = 18",
+          "sym": "*",
+          "start": 80,
+          "end": 90,
+          "verdict": "match",
+          "cell80_answer": 18
+        },
+        {
+          "a": 50,
+          "op": "sub",
+          "b": 18,
+          "c": 32,
+          "line": "50 - 18 = 32",
+          "sym": "-",
+          "start": 113,
+          "end": 125,
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 50,
+          "op": "add",
+          "b": 0,
+          "c": 50,
+          "line": "50 + 0 = 50",
+          "sym": "+",
+          "start": 29,
+          "end": 40,
+          "verdict": "match",
+          "cell80_answer": 50
+        },
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 6,
+          "c": 18,
+          "line": "3 * 6 = 18",
+          "sym": "*",
+          "start": 80,
+          "end": 90,
+          "verdict": "match",
+          "cell80_answer": 18
+        },
+        {
+          "a": 50,
+          "op": "sub",
+          "b": 18,
+          "c": 32,
+          "line": "50 - 18 = 32",
+          "sym": "-",
+          "start": 113,
+          "end": 125,
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ],
+      "final_stated_before": 32.0,
+      "final_stated_after": 32.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 10.07,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "A pool holds 500 liters. It is filled at 25 liters per minute. How many minutes does it take to fill?",
+      "final_expected": 20,
+      "baseline_completion": "The pool holds 500 liters.\nThe filling rate is 25 liters per minute.\nTo find the time it takes to fill the pool, we divide the total volume by the filling rate.\n500 / 25 = 20\nTherefore, it takes 20 minutes to fill the pool.\n\nAnswer: 20",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 500,
+          "op": "div",
+          "b": 25,
+          "c": 20,
+          "line": "500 / 25 = 20",
+          "sym": "/",
+          "start": 161,
+          "end": 174,
+          "verdict": "match",
+          "cell80_answer": 20
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 500,
+          "op": "div",
+          "b": 25,
+          "c": 20,
+          "line": "500 / 25 = 20",
+          "sym": "/",
+          "start": 161,
+          "end": 174,
+          "verdict": "match",
+          "cell80_answer": 20
+        }
+      ],
+      "final_stated_before": 20.0,
+      "final_stated_after": 20.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 10.3,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "There are 14 boys and 19 girls in a class. Each student gets 3 pencils. How many pencils are given out in total?",
+      "final_expected": 99,
+      "baseline_completion": "First, find the total number of students in the class.\n14 + 19 = 33\n\nNext, find the total number of pencils given out.\n33 * 3 = 99\n\nAnswer: 99",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 14,
+          "op": "add",
+          "b": 19,
+          "c": 33,
+          "line": "14 + 19 = 33",
+          "sym": "+",
+          "start": 55,
+          "end": 67,
+          "verdict": "match",
+          "cell80_answer": 33
+        },
+        {
+          "a": 33,
+          "op": "mul",
+          "b": 3,
+          "c": 99,
+          "line": "33 * 3 = 99",
+          "sym": "*",
+          "start": 119,
+          "end": 130,
+          "verdict": "match",
+          "cell80_answer": 99
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 14,
+          "op": "add",
+          "b": 19,
+          "c": 33,
+          "line": "14 + 19 = 33",
+          "sym": "+",
+          "start": 55,
+          "end": 67,
+          "verdict": "match",
+          "cell80_answer": 33
+        },
+        {
+          "a": 33,
+          "op": "mul",
+          "b": 3,
+          "c": 99,
+          "line": "33 * 3 = 99",
+          "sym": "*",
+          "start": 119,
+          "end": 130,
+          "verdict": "match",
+          "cell80_answer": 99
+        }
+      ],
+      "final_stated_before": 99.0,
+      "final_stated_after": 99.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 9.25,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A shop had 120 shirts. It sold 45 in the morning and 38 in the afternoon. How many shirts are left?",
+      "final_expected": 37,
+      "baseline_completion": "First, calculate the total number of shirts sold.\n45 + 38 = 83\n\nNext, subtract the number of shirts sold from the initial number of shirts.\n120 - 83 = 37\n\nAnswer: 37",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 45,
+          "op": "add",
+          "b": 38,
+          "c": 83,
+          "line": "45 + 38 = 83",
+          "sym": "+",
+          "start": 50,
+          "end": 62,
+          "verdict": "match",
+          "cell80_answer": 83
+        },
+        {
+          "a": 120,
+          "op": "sub",
+          "b": 83,
+          "c": 37,
+          "line": "120 - 83 = 37",
+          "sym": "-",
+          "start": 140,
+          "end": 153,
+          "verdict": "match",
+          "cell80_answer": 37
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 45,
+          "op": "add",
+          "b": 38,
+          "c": 83,
+          "line": "45 + 38 = 83",
+          "sym": "+",
+          "start": 50,
+          "end": 62,
+          "verdict": "match",
+          "cell80_answer": 83
+        },
+        {
+          "a": 120,
+          "op": "sub",
+          "b": 83,
+          "c": 37,
+          "line": "120 - 83 = 37",
+          "sym": "-",
+          "start": 140,
+          "end": 153,
+          "verdict": "match",
+          "cell80_answer": 37
+        }
+      ],
+      "final_stated_before": 37.0,
+      "final_stated_after": 37.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 9.56,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Ana saves 12 dollars a week. After 5 weeks she spends 30 dollars on a gift. How much has she saved?",
+      "final_expected": 30,
+      "baseline_completion": "First, calculate the total amount Ana saves in 5 weeks.\n12 + 12 + 12 + 12 + 12 = 60\nNext, subtract the amount she spends on the gift.\n60 - 30 = 30\nAnswer: 30",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 60,
+          "op": "sub",
+          "b": 30,
+          "c": 30,
+          "line": "60 - 30 = 30",
+          "sym": "-",
+          "start": 134,
+          "end": 146,
+          "verdict": "match",
+          "cell80_answer": 30
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 60,
+          "op": "sub",
+          "b": 30,
+          "c": 30,
+          "line": "60 - 30 = 30",
+          "sym": "-",
+          "start": 134,
+          "end": 146,
+          "verdict": "match",
+          "cell80_answer": 30
+        }
+      ],
+      "final_stated_before": 30.0,
+      "final_stated_after": 30.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 10.13,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Carlos has 39 rows of 22 items in a warehouse. 245 items are sold, then 110 more are sold. How many items are left?",
+      "final_expected": 503,
+      "baseline_completion": "First, calculate the total number of items initially in the warehouse.\n39 * 22 = 858\n\nNext, calculate the total number of items sold.\n245 + 110 = 355\n\nThen, subtract the number of items sold from the initial number of items.\n858 - 355 = 503\n\nAnswer: 503",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 39,
+          "op": "mul",
+          "b": 22,
+          "c": 858,
+          "line": "39 * 22 = 858",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
+          "verdict": "match",
+          "cell80_answer": 858
+        },
+        {
+          "a": 245,
+          "op": "add",
+          "b": 110,
+          "c": 355,
+          "line": "245 + 110 = 355",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
+          "verdict": "match",
+          "cell80_answer": 355
+        },
+        {
+          "a": 858,
+          "op": "sub",
+          "b": 355,
+          "c": 503,
+          "line": "858 - 355 = 503",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
+          "verdict": "match",
+          "cell80_answer": 503
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 39,
+          "op": "mul",
+          "b": 22,
+          "c": 858,
+          "line": "39 * 22 = 858",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
+          "verdict": "match",
+          "cell80_answer": 858
+        },
+        {
+          "a": 245,
+          "op": "add",
+          "b": 110,
+          "c": 355,
+          "line": "245 + 110 = 355",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
+          "verdict": "match",
+          "cell80_answer": 355
+        },
+        {
+          "a": 858,
+          "op": "sub",
+          "b": 355,
+          "c": 503,
+          "line": "858 - 355 = 503",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
+          "verdict": "match",
+          "cell80_answer": 503
+        }
+      ],
+      "final_stated_before": 503.0,
+      "final_stated_after": 503.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.86,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Ivy reads 465 pages on Monday, 332 pages on Tuesday, and 297 pages on Wednesday. Over the next 6 weeks, Jordan reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 6564,
+      "baseline_completion": "First, we need to find the total number of pages Ivy reads in three days.\n465 + 332 + 297 = 1094\n\nNext, we need to find the total number of pages Jordan reads in a week.\nSince Jordan reads the same three-day total every week, Jordan reads 1094 pages per week.\n\nNow, we need to find the total number of pages Jordan reads over 6 weeks.\n6 weeks * 1094 pages/week = 6564 pages\n\nAnswer: 6564",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 6564.0,
+      "final_stated_after": 6564.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 15.29,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Ivy earns $28 per hour for the first 9 hours of a shift and $24 per hour for the next 5 hours. Ivy then pays $183 in expenses. How much money is left?",
+      "final_expected": 189,
+      "baseline_completion": "First, calculate the earnings for the first 9 hours.\n28 * 9 = 252\n\nNext, calculate the earnings for the next 5 hours.\n24 * 5 = 120\n\nThen, calculate the total earnings.\n252 + 120 = 372\n\nNext, subtract the expenses from the total earnings.\n372 - 183 = 189\n\nAnswer: 189",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 28,
+          "op": "mul",
+          "b": 9,
+          "c": 252,
+          "line": "28 * 9 = 252",
+          "sym": "*",
+          "start": 53,
+          "end": 65,
+          "verdict": "match",
+          "cell80_answer": 252
+        },
+        {
+          "a": 24,
+          "op": "mul",
+          "b": 5,
+          "c": 120,
+          "line": "24 * 5 = 120",
+          "sym": "*",
+          "start": 118,
+          "end": 130,
+          "verdict": "match",
+          "cell80_answer": 120
+        },
+        {
+          "a": 252,
+          "op": "add",
+          "b": 120,
+          "c": 372,
+          "line": "252 + 120 = 372",
+          "sym": "+",
+          "start": 168,
+          "end": 183,
+          "verdict": "match",
+          "cell80_answer": 372
+        },
+        {
+          "a": 372,
+          "op": "sub",
+          "b": 183,
+          "c": 189,
+          "line": "372 - 183 = 189",
+          "sym": "-",
+          "start": 238,
+          "end": 253,
+          "verdict": "match",
+          "cell80_answer": 189
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 28,
+          "op": "mul",
+          "b": 9,
+          "c": 252,
+          "line": "28 * 9 = 252",
+          "sym": "*",
+          "start": 53,
+          "end": 65,
+          "verdict": "match",
+          "cell80_answer": 252
+        },
+        {
+          "a": 24,
+          "op": "mul",
+          "b": 5,
+          "c": 120,
+          "line": "24 * 5 = 120",
+          "sym": "*",
+          "start": 118,
+          "end": 130,
+          "verdict": "match",
+          "cell80_answer": 120
+        },
+        {
+          "a": 252,
+          "op": "add",
+          "b": 120,
+          "c": 372,
+          "line": "252 + 120 = 372",
+          "sym": "+",
+          "start": 168,
+          "end": 183,
+          "verdict": "match",
+          "cell80_answer": 372
+        },
+        {
+          "a": 372,
+          "op": "sub",
+          "b": 183,
+          "c": 189,
+          "line": "372 - 183 = 189",
+          "sym": "-",
+          "start": 238,
+          "end": 253,
+          "verdict": "match",
+          "cell80_answer": 189
+        }
+      ],
+      "final_stated_before": 189.0,
+      "final_stated_after": 189.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 13.09,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "A factory makes 1215 parts. 225 are defective and discarded. The rest are packed into cartons of 11 parts each. How many crates are needed?",
+      "final_expected": 90,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n1215 - 225 = 990\nSo, 990 parts are not defective.\n\nNext, we need to find how many cartons are needed to pack the non-defective parts.\nEach carton holds 11 parts.\n990 / 11 = 90\nSo, 90 cartons are needed.\n\nAnswer: 90",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 1215,
+          "op": "sub",
+          "b": 225,
+          "c": 990,
+          "line": "1215 - 225 = 990",
+          "sym": "-",
+          "start": 67,
+          "end": 83,
+          "verdict": "match",
+          "cell80_answer": 990
+        },
+        {
+          "a": 990,
+          "op": "div",
+          "b": 11,
+          "c": 90,
+          "line": "990 / 11 = 90",
+          "sym": "/",
+          "start": 229,
+          "end": 242,
+          "verdict": "match",
+          "cell80_answer": 90
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 1215,
+          "op": "sub",
+          "b": 225,
+          "c": 990,
+          "line": "1215 - 225 = 990",
+          "sym": "-",
+          "start": 67,
+          "end": 83,
+          "verdict": "match",
+          "cell80_answer": 990
+        },
+        {
+          "a": 990,
+          "op": "div",
+          "b": 11,
+          "c": 90,
+          "line": "990 / 11 = 90",
+          "sym": "/",
+          "start": 229,
+          "end": 242,
+          "verdict": "match",
+          "cell80_answer": 90
+        }
+      ],
+      "final_stated_before": 90.0,
+      "final_stated_after": 90.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 12.86,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A school orders 33 boxes of 28 pencils each for one grade, and 21 boxes of 51 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1995,
+      "baseline_completion": "First, calculate the number of pencils ordered for the first grade.\n33 boxes * 28 pencils/box = 924 pencils\n\nNext, calculate the number of pencils ordered for the second grade.\n21 boxes * 51 pencils/box = 1071 pencils\n\nThen, add the number of pencils from both grades.\n924 + 1071 = 1995\n\nAnswer: 1995",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 924,
+          "op": "add",
+          "b": 1071,
+          "c": 1995,
+          "line": "924 + 1071 = 1995",
+          "sym": "+",
+          "start": 269,
+          "end": 286,
+          "verdict": "match",
+          "cell80_answer": 1995
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 924,
+          "op": "add",
+          "b": 1071,
+          "c": 1995,
+          "line": "924 + 1071 = 1995",
+          "sym": "+",
+          "start": 269,
+          "end": 286,
+          "verdict": "match",
+          "cell80_answer": 1995
+        }
+      ],
+      "final_stated_before": 1995.0,
+      "final_stated_after": 1995.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 12.84,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Wei has $736. Ivy buys 4 shirts at $31 each and 4 jackets at $73 each. How much money is left?",
+      "final_expected": 320,
+      "baseline_completion": "First, calculate the cost of the shirts.\n4 * 31 = 124\nNext, calculate the cost of the jackets.\n4 * 73 = 292\nThen, calculate the total cost of the shirts and jackets.\n124 + 292 = 416\nNow, subtract the total cost from Wei's money.\n736 - 416 = 320\nAnswer: 320",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 31,
+          "c": 124,
+          "line": "4 * 31 = 124",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 124
+        },
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 73,
+          "c": 292,
+          "line": "4 * 73 = 292",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 292
+        },
+        {
+          "a": 124,
+          "op": "add",
+          "b": 292,
+          "c": 416,
+          "line": "124 + 292 = 416",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 416
+        },
+        {
+          "a": 736,
+          "op": "sub",
+          "b": 416,
+          "c": 320,
+          "line": "736 - 416 = 320",
+          "sym": "-",
+          "start": 229,
+          "end": 244,
+          "verdict": "match",
+          "cell80_answer": 320
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 31,
+          "c": 124,
+          "line": "4 * 31 = 124",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 124
+        },
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 73,
+          "c": 292,
+          "line": "4 * 73 = 292",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 292
+        },
+        {
+          "a": 124,
+          "op": "add",
+          "b": 292,
+          "c": 416,
+          "line": "124 + 292 = 416",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 416
+        },
+        {
+          "a": 736,
+          "op": "sub",
+          "b": 416,
+          "c": 320,
+          "line": "736 - 416 = 320",
+          "sym": "-",
+          "start": 229,
+          "end": 244,
+          "verdict": "match",
+          "cell80_answer": 320
+        }
+      ],
+      "final_stated_before": 320.0,
+      "final_stated_after": 320.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 12.8,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Carlos has 68 rows of 31 items in a warehouse. 359 items are sold, then 144 more are sold. How many items are left?",
+      "final_expected": 1605,
+      "baseline_completion": "First, calculate the total number of items initially in the warehouse.\n68 * 31 = 2088\n\nNext, calculate the total number of items sold.\n359 + 144 = 499 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = ",
+      "final_completion": "First, calculate the total number of items initially in the warehouse.\n68 * 31 = 2108\n\nNext, calculate the total number of items sold.\n359 + 144 = 499 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 500 + 1 = 50",
+      "corrections": [
+        {
+          "refuted_line": "68 * 31 = 2088",
+          "claimed": 2088,
+          "verified": 2108,
+          "corrected_to": "68 * 31 = 2108"
+        }
+      ],
+      "spans_before": [
+        {
+          "a": 68,
+          "op": "mul",
+          "b": 31,
+          "c": 2088,
+          "line": "68 * 31 = 2088",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
+          "verdict": "mismatch",
+          "cell80_answer": 2108
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 68,
+          "op": "mul",
+          "b": 31,
+          "c": 2108,
+          "line": "68 * 31 = 2108",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
+          "verdict": "match",
+          "cell80_answer": 2108
+        }
+      ],
+      "final_stated_before": null,
+      "final_stated_after": null,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 34.52,
+      "t_correction_s": 36.55
+    },
+    {
+      "question": "Ivy reads 186 pages on Monday, 141 pages on Tuesday, and 251 pages on Wednesday. Over the next 4 weeks, Sofia reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 2312,
+      "baseline_completion": "First, we need to find the total number of pages Ivy reads in three days.\n186 + 141 + 251 = 578\n\nNext, we need to find the total number of pages Sofia reads in a week.\nSince Sofia reads the same three-day total every week, she reads 578 pages per week.\n\nNow, we need to find the total number of pages Sofia reads over 4 weeks.\n4 weeks * 578 pages/week = 2312 pages\n\nAnswer: 2312",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 2312.0,
+      "final_stated_after": 2312.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 15.12,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Omar earns $39 per hour for the first 7 hours of a shift and $40 per hour for the next 7 hours. Ivy then pays $226 in expenses. How much money is left?",
+      "final_expected": 327,
+      "baseline_completion": "Omar earns $39 per hour for the first 7 hours.\n39 * 7 = 273\nOmar earns $273 for the first 7 hours.\n\nOmar earns $40 per hour for the next 7 hours.\n40 * 7 = 280\nOmar earns $280 for the next 7 hours.\n\nTotal earnings for Omar = 273 + 280 = 553\nOmar earns $553.\n\nIvy pays $226 in expenses.\n553 - 226 = 327\nThe money left is $327.\n\nAnswer: 327",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 39,
+          "op": "mul",
+          "b": 7,
+          "c": 273,
+          "line": "39 * 7 = 273",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 273
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 7,
+          "c": 280,
+          "line": "40 * 7 = 280",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
+          "verdict": "match",
+          "cell80_answer": 280
+        },
+        {
+          "a": 273,
+          "op": "add",
+          "b": 280,
+          "c": 553,
+          "line": "Total earnings for Omar = 273 + 280 = 553",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
+          "verdict": "match",
+          "cell80_answer": 553
+        },
+        {
+          "a": 553,
+          "op": "sub",
+          "b": 226,
+          "c": 327,
+          "line": "553 - 226 = 327",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
+          "verdict": "match",
+          "cell80_answer": 327
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 39,
+          "op": "mul",
+          "b": 7,
+          "c": 273,
+          "line": "39 * 7 = 273",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 273
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 7,
+          "c": 280,
+          "line": "40 * 7 = 280",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
+          "verdict": "match",
+          "cell80_answer": 280
+        },
+        {
+          "a": 273,
+          "op": "add",
+          "b": 280,
+          "c": 553,
+          "line": "Total earnings for Omar = 273 + 280 = 553",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
+          "verdict": "match",
+          "cell80_answer": 553
+        },
+        {
+          "a": 553,
+          "op": "sub",
+          "b": 226,
+          "c": 327,
+          "line": "553 - 226 = 327",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
+          "verdict": "match",
+          "cell80_answer": 327
+        }
+      ],
+      "final_stated_before": 327.0,
+      "final_stated_after": 327.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 16.75,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "A factory makes 650 parts. 380 are defective and discarded. The rest are packed into boxes of 9 parts each. How many bags are needed?",
+      "final_expected": 30,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n650 - 380 = 270\n\nNext, we need to find how many bags are needed to pack the non-defective parts.\n270 / 9 = 30\n\nAnswer: 30",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 650,
+          "op": "sub",
+          "b": 380,
+          "c": 270,
+          "line": "650 - 380 = 270",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 270
+        },
+        {
+          "a": 270,
+          "op": "div",
+          "b": 9,
+          "c": 30,
+          "line": "270 / 9 = 30",
+          "sym": "/",
+          "start": 164,
+          "end": 176,
+          "verdict": "match",
+          "cell80_answer": 30
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 650,
+          "op": "sub",
+          "b": 380,
+          "c": 270,
+          "line": "650 - 380 = 270",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 270
+        },
+        {
+          "a": 270,
+          "op": "div",
+          "b": 9,
+          "c": 30,
+          "line": "270 / 9 = 30",
+          "sym": "/",
+          "start": 164,
+          "end": 176,
+          "verdict": "match",
+          "cell80_answer": 30
+        }
+      ],
+      "final_stated_before": 30.0,
+      "final_stated_after": 30.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 10.96,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A school orders 28 boxes of 31 pencils each for one grade, and 11 boxes of 54 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1462,
+      "baseline_completion": "First, calculate the number of pencils in the first order.\n28 * 31 = 868\n\nNext, calculate the number of pencils in the second order.\n11 * 54 = 594\n\nThen, add the number of pencils from both orders.\n868 + 594 = 1462\n\nAnswer: 1462",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 28,
+          "op": "mul",
+          "b": 31,
+          "c": 868,
+          "line": "28 * 31 = 868",
+          "sym": "*",
+          "start": 59,
+          "end": 72,
+          "verdict": "match",
+          "cell80_answer": 868
+        },
+        {
+          "a": 11,
+          "op": "mul",
+          "b": 54,
+          "c": 594,
+          "line": "11 * 54 = 594",
+          "sym": "*",
+          "start": 133,
+          "end": 146,
+          "verdict": "match",
+          "cell80_answer": 594
+        },
+        {
+          "a": 868,
+          "op": "add",
+          "b": 594,
+          "c": 1462,
+          "line": "868 + 594 = 1462",
+          "sym": "+",
+          "start": 198,
+          "end": 214,
+          "verdict": "match",
+          "cell80_answer": 1462
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 28,
+          "op": "mul",
+          "b": 31,
+          "c": 868,
+          "line": "28 * 31 = 868",
+          "sym": "*",
+          "start": 59,
+          "end": 72,
+          "verdict": "match",
+          "cell80_answer": 868
+        },
+        {
+          "a": 11,
+          "op": "mul",
+          "b": 54,
+          "c": 594,
+          "line": "11 * 54 = 594",
+          "sym": "*",
+          "start": 133,
+          "end": 146,
+          "verdict": "match",
+          "cell80_answer": 594
+        },
+        {
+          "a": 868,
+          "op": "add",
+          "b": 594,
+          "c": 1462,
+          "line": "868 + 594 = 1462",
+          "sym": "+",
+          "start": 198,
+          "end": 214,
+          "verdict": "match",
+          "cell80_answer": 1462
+        }
+      ],
+      "final_stated_before": 1462.0,
+      "final_stated_after": 1462.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 12.24,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Deshawn has $636. Priya buys 7 shirts at $50 each and 6 jackets at $60 each. How much money is left?",
+      "final_expected": -74,
+      "baseline_completion": "First, calculate the cost of the shirts.\n7 * 50 = 350\nNext, calculate the cost of the jackets.\n6 * 60 = 360\nThen, calculate the total cost of the shirts and jackets.\n350 + 360 = 710\nNow, subtract the total cost from the initial amount Deshawn has.\n636 - 710 = -74\nSince the result is negative, it means Deshawn is short of money.\nAnswer: -74",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 50,
+          "c": 350,
+          "line": "7 * 50 = 350",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 350
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 60,
+          "c": 360,
+          "line": "6 * 60 = 360",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 360
+        },
+        {
+          "a": 350,
+          "op": "add",
+          "b": 360,
+          "c": 710,
+          "line": "350 + 360 = 710",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 710
+        },
+        {
+          "a": 636,
+          "op": "sub",
+          "b": 710,
+          "c": -74,
+          "line": "636 - 710 = -74",
+          "sym": "-",
+          "start": 248,
+          "end": 263,
+          "verdict": "match",
+          "cell80_answer": -74
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 50,
+          "c": 350,
+          "line": "7 * 50 = 350",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 350
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 60,
+          "c": 360,
+          "line": "6 * 60 = 360",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 360
+        },
+        {
+          "a": 350,
+          "op": "add",
+          "b": 360,
+          "c": 710,
+          "line": "350 + 360 = 710",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 710
+        },
+        {
+          "a": 636,
+          "op": "sub",
+          "b": 710,
+          "c": -74,
+          "line": "636 - 710 = -74",
+          "sym": "-",
+          "start": 248,
+          "end": 263,
+          "verdict": "match",
+          "cell80_answer": -74
+        }
+      ],
+      "final_stated_before": -74.0,
+      "final_stated_after": -74.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.68,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Deshawn has 78 rows of 21 items in a warehouse. 69 items are sold, then 299 more are sold. How many items are left?",
+      "final_expected": 1270,
+      "baseline_completion": "First, calculate the total number of items in the warehouse.\n78 * 21 = 1638\n\nNext, subtract the first number of items sold from the total.\n1638 - 69 = 1569\n\nThen, add the second number of items sold.\n1569 + 299 = 1888\n\nFinally, state the number of items left.\n1888\n\nAnswer: 1888",
+      "final_completion": "First, calculate the total number of items in the warehouse.\n78 * 21 = 1638\n\nNext, subtract the first number of items sold from the total.\n1638 - 69 = 1569\n\nThen, add the second number of items sold.\n1569 + 299 = 1868\n\nFinally, state the number of items left.\n1868\n\nAnswer: 1868",
+      "corrections": [
+        {
+          "refuted_line": "1569 + 299 = 1888",
+          "claimed": 1888,
+          "verified": 1868,
+          "corrected_to": "1569 + 299 = 1868"
+        }
+      ],
+      "spans_before": [
+        {
+          "a": 78,
+          "op": "mul",
+          "b": 21,
+          "c": 1638,
+          "line": "78 * 21 = 1638",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1638
+        },
+        {
+          "a": 1638,
+          "op": "sub",
+          "b": 69,
+          "c": 1569,
+          "line": "1638 - 69 = 1569",
+          "sym": "-",
+          "start": 139,
+          "end": 155,
+          "verdict": "match",
+          "cell80_answer": 1569
+        },
+        {
+          "a": 1569,
+          "op": "add",
+          "b": 299,
+          "c": 1888,
+          "line": "1569 + 299 = 1888",
+          "sym": "+",
+          "start": 200,
+          "end": 217,
+          "verdict": "mismatch",
+          "cell80_answer": 1868
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 78,
+          "op": "mul",
+          "b": 21,
+          "c": 1638,
+          "line": "78 * 21 = 1638",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1638
+        },
+        {
+          "a": 1638,
+          "op": "sub",
+          "b": 69,
+          "c": 1569,
+          "line": "1638 - 69 = 1569",
+          "sym": "-",
+          "start": 139,
+          "end": 155,
+          "verdict": "match",
+          "cell80_answer": 1569
+        },
+        {
+          "a": 1569,
+          "op": "add",
+          "b": 299,
+          "c": 1868,
+          "line": "1569 + 299 = 1868",
+          "sym": "+",
+          "start": 200,
+          "end": 217,
+          "verdict": "match",
+          "cell80_answer": 1868
+        }
+      ],
+      "final_stated_before": 1888.0,
+      "final_stated_after": 1868.0,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 14.28,
+      "t_correction_s": 12.7
+    },
+    {
+      "question": "Ivy reads 400 pages on Monday, 95 pages on Tuesday, and 83 pages on Wednesday. Over the next 6 weeks, Wei reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 3468,
+      "baseline_completion": "First, we need to find the total number of pages Ivy reads in three days.\n400 + 95 + 83 = 400 + 178 = 578\n\nIvy reads a total of 578 pages in three days.\nWei reads that same three-day total every week.\nSo, Wei reads 578 pages per week.\nOver 6 weeks, Wei reads 6 * 578 pages.\n6 * 578 = 6 * (500 + 70 + 8) = 6 * 500 + 6 * 70 + 6 * 8 = 3000 + 420 + 48 = 3000 + 468 = 3468\n\nTherefore, Wei reads 3468 pages over 6 weeks.\nThe total number of pages read by Ivy and Wei over 6 weeks is 578 + 3468.\n578 + 3468 = 578 + 3000 + 468 = 3468 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578 = 4078 + 578",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": null,
+      "final_stated_after": null,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 44.53,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Wei earns $42 per hour for the first 9 hours of a shift and $33 per hour for the next 7 hours. Ivy then pays $305 in expenses. How much money is left?",
+      "final_expected": 304,
+      "baseline_completion": "Wei earns $42 per hour for the first 9 hours.\n9 * 42 = 378\nIvy then pays $305 in expenses.\n378 + 305 = 683\nAnswer: 683",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 42,
+          "c": 378,
+          "line": "9 * 42 = 378",
+          "sym": "*",
+          "start": 46,
+          "end": 58,
+          "verdict": "match",
+          "cell80_answer": 378
+        },
+        {
+          "a": 378,
+          "op": "add",
+          "b": 305,
+          "c": 683,
+          "line": "378 + 305 = 683",
+          "sym": "+",
+          "start": 91,
+          "end": 106,
+          "verdict": "match",
+          "cell80_answer": 683
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 42,
+          "c": 378,
+          "line": "9 * 42 = 378",
+          "sym": "*",
+          "start": 46,
+          "end": 58,
+          "verdict": "match",
+          "cell80_answer": 378
+        },
+        {
+          "a": 378,
+          "op": "add",
+          "b": 305,
+          "c": 683,
+          "line": "378 + 305 = 683",
+          "sym": "+",
+          "start": 91,
+          "end": 106,
+          "verdict": "match",
+          "cell80_answer": 683
+        }
+      ],
+      "final_stated_before": 683.0,
+      "final_stated_after": 683.0,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 16.72,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "A factory makes 449 parts. 53 are defective and discarded. The rest are packed into boxes of 9 parts each. How many bags are needed?",
+      "final_expected": 44,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n449 - 53 = 396\n\nNext, we need to find how many bags are needed to pack the remaining parts.\n396 / 9 = 44\n\nAnswer: 44",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 449,
+          "op": "sub",
+          "b": 53,
+          "c": 396,
+          "line": "449 - 53 = 396",
+          "sym": "-",
+          "start": 67,
+          "end": 81,
+          "verdict": "match",
+          "cell80_answer": 396
+        },
+        {
+          "a": 396,
+          "op": "div",
+          "b": 9,
+          "c": 44,
+          "line": "396 / 9 = 44",
+          "sym": "/",
+          "start": 159,
+          "end": 171,
+          "verdict": "match",
+          "cell80_answer": 44
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 449,
+          "op": "sub",
+          "b": 53,
+          "c": 396,
+          "line": "449 - 53 = 396",
+          "sym": "-",
+          "start": 67,
+          "end": 81,
+          "verdict": "match",
+          "cell80_answer": 396
+        },
+        {
+          "a": 396,
+          "op": "div",
+          "b": 9,
+          "c": 44,
+          "line": "396 / 9 = 44",
+          "sym": "/",
+          "start": 159,
+          "end": 171,
+          "verdict": "match",
+          "cell80_answer": 44
+        }
+      ],
+      "final_stated_before": 44.0,
+      "final_stated_after": 44.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 19.43,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "A school orders 15 boxes of 38 pencils each for one grade, and 20 boxes of 30 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1170,
+      "baseline_completion": "First, calculate the number of pencils in the first grade order.\n15 boxes * 38 pencils/box = 570 pencils\n\nNext, calculate the number of pencils in the second grade order.\n20 boxes * 30 pencils/box = 600 pencils\n\nFinally, calculate the total number of pencils ordered.\n570 pencils + 600 pencils = 1170 pencils\n\nAnswer: 1170",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 1170.0,
+      "final_stated_after": 1170.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 37.87,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Wei has $505. Ivy buys 4 shirts at $55 each and 5 jackets at $49 each. How much money is left?",
+      "final_expected": 40,
+      "baseline_completion": "First, calculate the cost of the shirts.\n4 * 55 = 220\nNext, calculate the cost of the jackets.\n5 * 49 = 245\nThen, calculate the total cost of the shirts and jackets.\n220 + 245 = 465\nNow, subtract the total cost from Wei's money.\n505 - 465 = 40\nAnswer: 40",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 55,
+          "c": 220,
+          "line": "4 * 55 = 220",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 220
+        },
+        {
+          "a": 5,
+          "op": "mul",
+          "b": 49,
+          "c": 245,
+          "line": "5 * 49 = 245",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 245
+        },
+        {
+          "a": 220,
+          "op": "add",
+          "b": 245,
+          "c": 465,
+          "line": "220 + 245 = 465",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 465
+        },
+        {
+          "a": 505,
+          "op": "sub",
+          "b": 465,
+          "c": 40,
+          "line": "505 - 465 = 40",
+          "sym": "-",
+          "start": 229,
+          "end": 243,
+          "verdict": "match",
+          "cell80_answer": 40
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 55,
+          "c": 220,
+          "line": "4 * 55 = 220",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 220
+        },
+        {
+          "a": 5,
+          "op": "mul",
+          "b": 49,
+          "c": 245,
+          "line": "5 * 49 = 245",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 245
+        },
+        {
+          "a": 220,
+          "op": "add",
+          "b": 245,
+          "c": 465,
+          "line": "220 + 245 = 465",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 465
+        },
+        {
+          "a": 505,
+          "op": "sub",
+          "b": 465,
+          "c": 40,
+          "line": "505 - 465 = 40",
+          "sym": "-",
+          "start": 229,
+          "end": 243,
+          "verdict": "match",
+          "cell80_answer": 40
+        }
+      ],
+      "final_stated_before": 40.0,
+      "final_stated_after": 40.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 47.65,
+      "t_correction_s": 0.06
+    },
+    {
+      "question": "Omar has 42 rows of 35 items in a warehouse. 324 items are sold, then 181 more are sold. How many items are left?",
+      "final_expected": 965,
+      "baseline_completion": "First, calculate the total number of items in the warehouse.\n42 * 35 = 1470\n\nNext, subtract the first number of items sold from the total.\n1470 - 324 = 1146\n\nThen, add the second number of items sold.\n1146 + 181 = 1327\n\nFinally, write the answer.\nAnswer: 1327",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 42,
+          "op": "mul",
+          "b": 35,
+          "c": 1470,
+          "line": "42 * 35 = 1470",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1470
+        },
+        {
+          "a": 1470,
+          "op": "sub",
+          "b": 324,
+          "c": 1146,
+          "line": "1470 - 324 = 1146",
+          "sym": "-",
+          "start": 139,
+          "end": 156,
+          "verdict": "match",
+          "cell80_answer": 1146
+        },
+        {
+          "a": 1146,
+          "op": "add",
+          "b": 181,
+          "c": 1327,
+          "line": "1146 + 181 = 1327",
+          "sym": "+",
+          "start": 201,
+          "end": 218,
+          "verdict": "match",
+          "cell80_answer": 1327
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 42,
+          "op": "mul",
+          "b": 35,
+          "c": 1470,
+          "line": "42 * 35 = 1470",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1470
+        },
+        {
+          "a": 1470,
+          "op": "sub",
+          "b": 324,
+          "c": 1146,
+          "line": "1470 - 324 = 1146",
+          "sym": "-",
+          "start": 139,
+          "end": 156,
+          "verdict": "match",
+          "cell80_answer": 1146
+        },
+        {
+          "a": 1146,
+          "op": "add",
+          "b": 181,
+          "c": 1327,
+          "line": "1146 + 181 = 1327",
+          "sym": "+",
+          "start": 201,
+          "end": 218,
+          "verdict": "match",
+          "cell80_answer": 1327
+        }
+      ],
+      "final_stated_before": 1327.0,
+      "final_stated_after": 1327.0,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 41.86,
+      "t_correction_s": 0.04
+    },
+    {
+      "question": "Nina reads 437 pages on Monday, 127 pages on Tuesday, and 207 pages on Wednesday. Over the next 4 weeks, Deshawn reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 3084,
+      "baseline_completion": "First, we need to find the total number of pages Nina reads in three days.\n437 + 127 + 207 = 771\n\nNina reads a total of 771 pages in three days.\nDeshawn reads that same three-day total every week.\nSo, Deshawn reads 771 pages per week.\nOver 4 weeks, Deshawn reads 4 * 771 pages.\n4 * 771 = 3084\n\nTherefore, Deshawn reads 3084 pages over those 4 weeks.\n\nAnswer: 3084",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 771,
+          "c": 3084,
+          "line": "4 * 771 = 3084",
+          "sym": "*",
+          "start": 278,
+          "end": 292,
+          "verdict": "match",
+          "cell80_answer": 3084
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 771,
+          "c": 3084,
+          "line": "4 * 771 = 3084",
+          "sym": "*",
+          "start": 278,
+          "end": 292,
+          "verdict": "match",
+          "cell80_answer": 3084
+        }
+      ],
+      "final_stated_before": 3084.0,
+      "final_stated_after": 3084.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 33.06,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Deshawn earns $42 per hour for the first 8 hours of a shift and $55 per hour for the next 4 hours. Wei then pays $226 in expenses. How much money is left?",
+      "final_expected": 330,
+      "baseline_completion": "Deshawn earns $42 per hour for the first 8 hours.\n42 * 8 = 336\nDeshawn earns $55 per hour for the next 4 hours.\n55 * 4 = 220\nDeshawn's total earnings are 336 + 220 = 556\nWei pays $226 in expenses.\n556 - 226 = 330\nAnswer: 330",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 42,
+          "op": "mul",
+          "b": 8,
+          "c": 336,
+          "line": "42 * 8 = 336",
+          "sym": "*",
+          "start": 50,
+          "end": 62,
+          "verdict": "match",
+          "cell80_answer": 336
+        },
+        {
+          "a": 55,
+          "op": "mul",
+          "b": 4,
+          "c": 220,
+          "line": "55 * 4 = 220",
+          "sym": "*",
+          "start": 112,
+          "end": 124,
+          "verdict": "match",
+          "cell80_answer": 220
+        },
+        {
+          "a": 336,
+          "op": "add",
+          "b": 220,
+          "c": 556,
+          "line": "Deshawn's total earnings are 336 + 220 = 556",
+          "sym": "+",
+          "start": 154,
+          "end": 169,
+          "verdict": "match",
+          "cell80_answer": 556
+        },
+        {
+          "a": 556,
+          "op": "sub",
+          "b": 226,
+          "c": 330,
+          "line": "556 - 226 = 330",
+          "sym": "-",
+          "start": 197,
+          "end": 212,
+          "verdict": "match",
+          "cell80_answer": 330
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 42,
+          "op": "mul",
+          "b": 8,
+          "c": 336,
+          "line": "42 * 8 = 336",
+          "sym": "*",
+          "start": 50,
+          "end": 62,
+          "verdict": "match",
+          "cell80_answer": 336
+        },
+        {
+          "a": 55,
+          "op": "mul",
+          "b": 4,
+          "c": 220,
+          "line": "55 * 4 = 220",
+          "sym": "*",
+          "start": 112,
+          "end": 124,
+          "verdict": "match",
+          "cell80_answer": 220
+        },
+        {
+          "a": 336,
+          "op": "add",
+          "b": 220,
+          "c": 556,
+          "line": "Deshawn's total earnings are 336 + 220 = 556",
+          "sym": "+",
+          "start": 154,
+          "end": 169,
+          "verdict": "match",
+          "cell80_answer": 556
+        },
+        {
+          "a": 556,
+          "op": "sub",
+          "b": 226,
+          "c": 330,
+          "line": "556 - 226 = 330",
+          "sym": "-",
+          "start": 197,
+          "end": 212,
+          "verdict": "match",
+          "cell80_answer": 330
+        }
+      ],
+      "final_stated_before": 330.0,
+      "final_stated_after": 330.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 23.54,
+      "t_correction_s": 0.04
+    },
+    {
+      "question": "A factory makes 671 parts. 255 are defective and discarded. The rest are packed into bags of 13 parts each. How many crates are needed?",
+      "final_expected": 32,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n671 - 255 = 416\n\nNext, we need to find how many bags are needed to pack the non-defective parts.\n416 / 13 = 32\n\nTherefore, 32 crates are needed.\n\nAnswer: 32",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 671,
+          "op": "sub",
+          "b": 255,
+          "c": 416,
+          "line": "671 - 255 = 416",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 416
+        },
+        {
+          "a": 416,
+          "op": "div",
+          "b": 13,
+          "c": 32,
+          "line": "416 / 13 = 32",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 671,
+          "op": "sub",
+          "b": 255,
+          "c": 416,
+          "line": "671 - 255 = 416",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 416
+        },
+        {
+          "a": 416,
+          "op": "div",
+          "b": 13,
+          "c": 32,
+          "line": "416 / 13 = 32",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ],
+      "final_stated_before": 32.0,
+      "final_stated_after": 32.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 18.3,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "A school orders 21 boxes of 39 pencils each for one grade, and 17 boxes of 41 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1516,
+      "baseline_completion": "First, calculate the number of pencils ordered for the first grade.\n21 boxes * 39 pencils/box = 819 pencils\n\nNext, calculate the number of pencils ordered for the second grade.\n17 boxes * 41 pencils/box = 697 pencils\n\nNow, add the number of pencils from both grades.\n819 + 697 = 1516 pencils\n\nAnswer: 1516",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 819,
+          "op": "add",
+          "b": 697,
+          "c": 1516,
+          "line": "819 + 697 = 1516 pencils",
+          "sym": "+",
+          "start": 267,
+          "end": 283,
+          "verdict": "match",
+          "cell80_answer": 1516
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 819,
+          "op": "add",
+          "b": 697,
+          "c": 1516,
+          "line": "819 + 697 = 1516 pencils",
+          "sym": "+",
+          "start": 267,
+          "end": 283,
+          "verdict": "match",
+          "cell80_answer": 1516
+        }
+      ],
+      "final_stated_before": 1516.0,
+      "final_stated_after": 1516.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 18.65,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Ivy has $1014. Priya buys 5 shirts at $48 each and 3 jackets at $64 each. How much money is left?",
+      "final_expected": 582,
+      "baseline_completion": "First, calculate the cost of the shirts.\n5 * 48 = 240\nNext, calculate the cost of the jackets.\n3 * 64 = 192\nThen, calculate the total cost of the shirts and jackets.\n240 + 192 = 432\nNow, subtract the total cost from Ivy's money.\n1014 - 432 = 582\nAnswer: 582",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 5,
+          "op": "mul",
+          "b": 48,
+          "c": 240,
+          "line": "5 * 48 = 240",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 240
+        },
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 64,
+          "c": 192,
+          "line": "3 * 64 = 192",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 192
+        },
+        {
+          "a": 240,
+          "op": "add",
+          "b": 192,
+          "c": 432,
+          "line": "240 + 192 = 432",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 432
+        },
+        {
+          "a": 1014,
+          "op": "sub",
+          "b": 432,
+          "c": 582,
+          "line": "1014 - 432 = 582",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
+          "verdict": "match",
+          "cell80_answer": 582
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 5,
+          "op": "mul",
+          "b": 48,
+          "c": 240,
+          "line": "5 * 48 = 240",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 240
+        },
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 64,
+          "c": 192,
+          "line": "3 * 64 = 192",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 192
+        },
+        {
+          "a": 240,
+          "op": "add",
+          "b": 192,
+          "c": 432,
+          "line": "240 + 192 = 432",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 432
+        },
+        {
+          "a": 1014,
+          "op": "sub",
+          "b": 432,
+          "c": 582,
+          "line": "1014 - 432 = 582",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
+          "verdict": "match",
+          "cell80_answer": 582
+        }
+      ],
+      "final_stated_before": 582.0,
+      "final_stated_after": 582.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 18.54,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "Omar has 81 rows of 14 items in a warehouse. 350 items are sold, then 247 more are sold. How many items are left?",
+      "final_expected": 537,
+      "baseline_completion": "First, calculate the total number of items initially in the warehouse.\n81 * 14 = 1134\n\nNext, calculate the total number of items sold.\n350 + 247 = 597\n\nThen, subtract the number of items sold from the initial number of items.\n1134 - 597 = 537\n\nAnswer: 537",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 81,
+          "op": "mul",
+          "b": 14,
+          "c": 1134,
+          "line": "81 * 14 = 1134",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
+          "verdict": "match",
+          "cell80_answer": 1134
+        },
+        {
+          "a": 350,
+          "op": "add",
+          "b": 247,
+          "c": 597,
+          "line": "350 + 247 = 597",
+          "sym": "+",
+          "start": 135,
+          "end": 150,
+          "verdict": "match",
+          "cell80_answer": 597
+        },
+        {
+          "a": 1134,
+          "op": "sub",
+          "b": 597,
+          "c": 537,
+          "line": "1134 - 597 = 537",
+          "sym": "-",
+          "start": 226,
+          "end": 242,
+          "verdict": "match",
+          "cell80_answer": 537
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 81,
+          "op": "mul",
+          "b": 14,
+          "c": 1134,
+          "line": "81 * 14 = 1134",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
+          "verdict": "match",
+          "cell80_answer": 1134
+        },
+        {
+          "a": 350,
+          "op": "add",
+          "b": 247,
+          "c": 597,
+          "line": "350 + 247 = 597",
+          "sym": "+",
+          "start": 135,
+          "end": 150,
+          "verdict": "match",
+          "cell80_answer": 597
+        },
+        {
+          "a": 1134,
+          "op": "sub",
+          "b": 597,
+          "c": 537,
+          "line": "1134 - 597 = 537",
+          "sym": "-",
+          "start": 226,
+          "end": 242,
+          "verdict": "match",
+          "cell80_answer": 537
+        }
+      ],
+      "final_stated_before": 537.0,
+      "final_stated_after": 537.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 16.2,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "Priya reads 190 pages on Monday, 291 pages on Tuesday, and 101 pages on Wednesday. Over the next 4 weeks, Carlos reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 2328,
+      "baseline_completion": "First, we need to find the total number of pages Priya reads in three days.\n190 + 291 + 101 = 582\n\nNext, we need to find the three-day total that Carlos reads each week.\nSince Carlos reads the same three-day total every week, we know that Carlos reads 582 pages per week.\n\nNow, we need to find the total number of weeks.\nThe problem states that Carlos reads that same three-day total over the next 4 weeks.\nSo, the number of weeks is 4.\n\nTo find the total number of pages Carlos reads over those 4 weeks, we multiply the weekly total by the number of weeks.\n582 * 4 = 2328\n\nTherefore, the total number of pages Carlos reads over those 4 weeks is 2328.\n\nAnswer: 2328",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 582,
+          "op": "mul",
+          "b": 4,
+          "c": 2328,
+          "line": "582 * 4 = 2328",
+          "sym": "*",
+          "start": 558,
+          "end": 572,
+          "verdict": "match",
+          "cell80_answer": 2328
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 582,
+          "op": "mul",
+          "b": 4,
+          "c": 2328,
+          "line": "582 * 4 = 2328",
+          "sym": "*",
+          "start": 558,
+          "end": 572,
+          "verdict": "match",
+          "cell80_answer": 2328
+        }
+      ],
+      "final_stated_before": 2328.0,
+      "final_stated_after": 2328.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 26.82,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Sofia earns $37 per hour for the first 9 hours of a shift and $40 per hour for the next 4 hours. Ivy then pays $452 in expenses. How much money is left?",
+      "final_expected": 41,
+      "baseline_completion": "Sofia earns $37 per hour for the first 9 hours.\n37 * 9 = 333\nSofia earns $333 for the first 9 hours.\n\nSofia earns $40 per hour for the next 4 hours.\n40 * 4 = 160\nSofia earns $160 for the next 4 hours.\n\nTotal earnings for Sofia = 333 + 160 = 493\nSofia earns $493.\n\nIvy pays $452 in expenses.\n452 - 493 = -41\nIvy pays $452 in expenses.\n\nSince the result is negative, it means that Sofia earned more than the expenses.\nThe money left is 493 - 452 = 41\nSofia has $41 left.\n\nAnswer: 41",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 37,
+          "op": "mul",
+          "b": 9,
+          "c": 333,
+          "line": "37 * 9 = 333",
+          "sym": "*",
+          "start": 48,
+          "end": 60,
+          "verdict": "match",
+          "cell80_answer": 333
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 4,
+          "c": 160,
+          "line": "40 * 4 = 160",
+          "sym": "*",
+          "start": 149,
+          "end": 161,
+          "verdict": "match",
+          "cell80_answer": 160
+        },
+        {
+          "a": 333,
+          "op": "add",
+          "b": 160,
+          "c": 493,
+          "line": "Total earnings for Sofia = 333 + 160 = 493",
+          "sym": "+",
+          "start": 229,
+          "end": 244,
+          "verdict": "match",
+          "cell80_answer": 493
+        },
+        {
+          "a": 452,
+          "op": "sub",
+          "b": 493,
+          "c": -41,
+          "line": "452 - 493 = -41",
+          "sym": "-",
+          "start": 291,
+          "end": 306,
+          "verdict": "match",
+          "cell80_answer": -41
+        },
+        {
+          "a": 493,
+          "op": "sub",
+          "b": 452,
+          "c": 41,
+          "line": "The money left is 493 - 452 = 41",
+          "sym": "-",
+          "start": 434,
+          "end": 448,
+          "verdict": "match",
+          "cell80_answer": 41
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 37,
+          "op": "mul",
+          "b": 9,
+          "c": 333,
+          "line": "37 * 9 = 333",
+          "sym": "*",
+          "start": 48,
+          "end": 60,
+          "verdict": "match",
+          "cell80_answer": 333
+        },
+        {
+          "a": 40,
+          "op": "mul",
+          "b": 4,
+          "c": 160,
+          "line": "40 * 4 = 160",
+          "sym": "*",
+          "start": 149,
+          "end": 161,
+          "verdict": "match",
+          "cell80_answer": 160
+        },
+        {
+          "a": 333,
+          "op": "add",
+          "b": 160,
+          "c": 493,
+          "line": "Total earnings for Sofia = 333 + 160 = 493",
+          "sym": "+",
+          "start": 229,
+          "end": 244,
+          "verdict": "match",
+          "cell80_answer": 493
+        },
+        {
+          "a": 452,
+          "op": "sub",
+          "b": 493,
+          "c": -41,
+          "line": "452 - 493 = -41",
+          "sym": "-",
+          "start": 291,
+          "end": 306,
+          "verdict": "match",
+          "cell80_answer": -41
+        },
+        {
+          "a": 493,
+          "op": "sub",
+          "b": 452,
+          "c": 41,
+          "line": "The money left is 493 - 452 = 41",
+          "sym": "-",
+          "start": 434,
+          "end": 448,
+          "verdict": "match",
+          "cell80_answer": 41
+        }
+      ],
+      "final_stated_before": 41.0,
+      "final_stated_after": 41.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 23.93,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "A factory makes 470 parts. 212 are defective and discarded. The rest are packed into boxes of 6 parts each. How many bags are needed?",
+      "final_expected": 43,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n470 - 212 = 258\n\nNext, we need to find the number of bags needed to pack the remaining parts.\n258 / 6 = 43\n\nAnswer: 43",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 470,
+          "op": "sub",
+          "b": 212,
+          "c": 258,
+          "line": "470 - 212 = 258",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 258
+        },
+        {
+          "a": 258,
+          "op": "div",
+          "b": 6,
+          "c": 43,
+          "line": "258 / 6 = 43",
+          "sym": "/",
+          "start": 161,
+          "end": 173,
+          "verdict": "match",
+          "cell80_answer": 43
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 470,
+          "op": "sub",
+          "b": 212,
+          "c": 258,
+          "line": "470 - 212 = 258",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 258
+        },
+        {
+          "a": 258,
+          "op": "div",
+          "b": 6,
+          "c": 43,
+          "line": "258 / 6 = 43",
+          "sym": "/",
+          "start": 161,
+          "end": 173,
+          "verdict": "match",
+          "cell80_answer": 43
+        }
+      ],
+      "final_stated_before": 43.0,
+      "final_stated_after": 43.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.83,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A school orders 12 boxes of 44 pencils each for one grade, and 20 boxes of 49 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1508,
+      "baseline_completion": "First, calculate the number of pencils in the first grade order.\n12 boxes * 44 pencils/box = 528 pencils\n\nNext, calculate the number of pencils in the second grade order.\n20 boxes * 49 pencils/box = 980 pencils\n\nFinally, calculate the total number of pencils ordered.\n528 pencils + 980 pencils = 1508 pencils\n\nAnswer: 1508",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 1508.0,
+      "final_stated_after": 1508.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.49,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Deshawn has $1051. Nina buys 9 shirts at $20 each and 6 jackets at $59 each. How much money is left?",
+      "final_expected": 517,
+      "baseline_completion": "First, calculate the cost of the shirts.\n9 * 20 = 180\nNext, calculate the cost of the jackets.\n6 * 59 = 354\nThen, calculate the total cost of the shirts and jackets.\n180 + 354 = 534\nNow, subtract the total cost from the initial amount.\n1051 - 534 = 517\nAnswer: 517",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 20,
+          "c": 180,
+          "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 59,
+          "c": 354,
+          "line": "6 * 59 = 354",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 354
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 354,
+          "c": 534,
+          "line": "180 + 354 = 534",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 534
+        },
+        {
+          "a": 1051,
+          "op": "sub",
+          "b": 534,
+          "c": 517,
+          "line": "1051 - 534 = 517",
+          "sym": "-",
+          "start": 236,
+          "end": 252,
+          "verdict": "match",
+          "cell80_answer": 517
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 20,
+          "c": 180,
+          "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 59,
+          "c": 354,
+          "line": "6 * 59 = 354",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 354
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 354,
+          "c": 534,
+          "line": "180 + 354 = 534",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 534
+        },
+        {
+          "a": 1051,
+          "op": "sub",
+          "b": 534,
+          "c": 517,
+          "line": "1051 - 534 = 517",
+          "sym": "-",
+          "start": 236,
+          "end": 252,
+          "verdict": "match",
+          "cell80_answer": 517
+        }
+      ],
+      "final_stated_before": 517.0,
+      "final_stated_after": 517.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.51,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Jordan has 70 rows of 17 items in a warehouse. 301 items are sold, then 100 more are sold. How many items are left?",
+      "final_expected": 789,
+      "baseline_completion": "First, calculate the total number of items in the warehouse.\n70 * 17 = 1190\n\nNext, subtract the number of items sold in the first transaction.\n1190 - 301 = 889\n\nThen, subtract the number of items sold in the second transaction.\n889 - 100 = 789\n\nAnswer: 789",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 70,
+          "op": "mul",
+          "b": 17,
+          "c": 1190,
+          "line": "70 * 17 = 1190",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1190
+        },
+        {
+          "a": 1190,
+          "op": "sub",
+          "b": 301,
+          "c": 889,
+          "line": "1190 - 301 = 889",
+          "sym": "-",
+          "start": 143,
+          "end": 159,
+          "verdict": "match",
+          "cell80_answer": 889
+        },
+        {
+          "a": 889,
+          "op": "sub",
+          "b": 100,
+          "c": 789,
+          "line": "889 - 100 = 789",
+          "sym": "-",
+          "start": 228,
+          "end": 243,
+          "verdict": "match",
+          "cell80_answer": 789
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 70,
+          "op": "mul",
+          "b": 17,
+          "c": 1190,
+          "line": "70 * 17 = 1190",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
+          "verdict": "match",
+          "cell80_answer": 1190
+        },
+        {
+          "a": 1190,
+          "op": "sub",
+          "b": 301,
+          "c": 889,
+          "line": "1190 - 301 = 889",
+          "sym": "-",
+          "start": 143,
+          "end": 159,
+          "verdict": "match",
+          "cell80_answer": 889
+        },
+        {
+          "a": 889,
+          "op": "sub",
+          "b": 100,
+          "c": 789,
+          "line": "889 - 100 = 789",
+          "sym": "-",
+          "start": 228,
+          "end": 243,
+          "verdict": "match",
+          "cell80_answer": 789
+        }
+      ],
+      "final_stated_before": 789.0,
+      "final_stated_after": 789.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 13.47,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Jordan reads 399 pages on Monday, 307 pages on Tuesday, and 64 pages on Wednesday. Over the next 8 weeks, Omar reads that same three-day total every week. How many pages in total over those 8 weeks?",
+      "final_expected": 6160,
+      "baseline_completion": "First, we need to calculate the total number of pages Jordan reads in three days.\n399 + 307 + 64 = 769 + 64 = 770 + 6 - 6 + 6 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + 64 = 770 - 1 = 769 + ",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": null,
+      "final_stated_after": null,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 38.08,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Omar earns $20 per hour for the first 9 hours of a shift and $38 per hour for the next 8 hours. Ivy then pays $175 in expenses. How much money is left?",
+      "final_expected": 309,
+      "baseline_completion": "Omar earns $20 per hour for the first 9 hours.\n9 * 20 = 180\nOmar earns $180 for the first 9 hours.\n\nOmar earns $38 per hour for the next 8 hours.\n8 * 38 = 304\nOmar earns $304 for the next 8 hours.\n\nTotal earnings for Omar = 180 + 304 = 484\nOmar earns $484.\n\nIvy pays $175 in expenses.\n484 - 175 = 309\nMoney left = 309\n\nAnswer: 309",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 20,
+          "c": 180,
+          "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 38,
+          "c": 304,
+          "line": "8 * 38 = 304",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
+          "verdict": "match",
+          "cell80_answer": 304
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 304,
+          "c": 484,
+          "line": "Total earnings for Omar = 180 + 304 = 484",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
+          "verdict": "match",
+          "cell80_answer": 484
+        },
+        {
+          "a": 484,
+          "op": "sub",
+          "b": 175,
+          "c": 309,
+          "line": "484 - 175 = 309",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
+          "verdict": "match",
+          "cell80_answer": 309
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 20,
+          "c": 180,
+          "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 180
+        },
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 38,
+          "c": 304,
+          "line": "8 * 38 = 304",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
+          "verdict": "match",
+          "cell80_answer": 304
+        },
+        {
+          "a": 180,
+          "op": "add",
+          "b": 304,
+          "c": 484,
+          "line": "Total earnings for Omar = 180 + 304 = 484",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
+          "verdict": "match",
+          "cell80_answer": 484
+        },
+        {
+          "a": 484,
+          "op": "sub",
+          "b": 175,
+          "c": 309,
+          "line": "484 - 175 = 309",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
+          "verdict": "match",
+          "cell80_answer": 309
+        }
+      ],
+      "final_stated_before": 309.0,
+      "final_stated_after": 309.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 17.78,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "A factory makes 751 parts. 311 are defective and discarded. The rest are packed into crates of 11 parts each. How many cartons are needed?",
+      "final_expected": 40,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n751 - 311 = 440\n\nNext, we need to find the number of cartons needed to pack the remaining parts.\n440 / 11 = 40\n\nAnswer: 40",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 751,
+          "op": "sub",
+          "b": 311,
+          "c": 440,
+          "line": "751 - 311 = 440",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 440
+        },
+        {
+          "a": 440,
+          "op": "div",
+          "b": 11,
+          "c": 40,
+          "line": "440 / 11 = 40",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
+          "verdict": "match",
+          "cell80_answer": 40
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 751,
+          "op": "sub",
+          "b": 311,
+          "c": 440,
+          "line": "751 - 311 = 440",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 440
+        },
+        {
+          "a": 440,
+          "op": "div",
+          "b": 11,
+          "c": 40,
+          "line": "440 / 11 = 40",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
+          "verdict": "match",
+          "cell80_answer": 40
+        }
+      ],
+      "final_stated_before": 40.0,
+      "final_stated_after": 40.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.4,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A school orders 19 boxes of 32 pencils each for one grade, and 20 boxes of 53 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1668,
+      "baseline_completion": "First, calculate the number of pencils ordered for the first grade.\n19 boxes * 32 pencils/box = 608 pencils\n\nNext, calculate the number of pencils ordered for the second grade.\n20 boxes * 53 pencils/box = 1060 pencils\n\nFinally, calculate the total number of pencils ordered.\n608 pencils + 1060 pencils = 1668 pencils\n\nAnswer: 1668",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 1668.0,
+      "final_stated_after": 1668.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.1,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Wei has $1190. Omar buys 9 shirts at $39 each and 4 jackets at $42 each. How much money is left?",
+      "final_expected": 671,
+      "baseline_completion": "First, calculate the cost of the shirts.\n9 * 39 = 351\nNext, calculate the cost of the jackets.\n4 * 42 = 168\nThen, calculate the total cost of the shirts and jackets.\n351 + 168 = 519\nNow, subtract the total cost from Wei's money.\n1190 - 519 = 671\nAnswer: 671",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 39,
+          "c": 351,
+          "line": "9 * 39 = 351",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 351
+        },
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 42,
+          "c": 168,
+          "line": "4 * 42 = 168",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 168
+        },
+        {
+          "a": 351,
+          "op": "add",
+          "b": 168,
+          "c": 519,
+          "line": "351 + 168 = 519",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 519
+        },
+        {
+          "a": 1190,
+          "op": "sub",
+          "b": 519,
+          "c": 671,
+          "line": "1190 - 519 = 671",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
+          "verdict": "match",
+          "cell80_answer": 671
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 39,
+          "c": 351,
+          "line": "9 * 39 = 351",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 351
+        },
+        {
+          "a": 4,
+          "op": "mul",
+          "b": 42,
+          "c": 168,
+          "line": "4 * 42 = 168",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 168
+        },
+        {
+          "a": 351,
+          "op": "add",
+          "b": 168,
+          "c": 519,
+          "line": "351 + 168 = 519",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 519
+        },
+        {
+          "a": 1190,
+          "op": "sub",
+          "b": 519,
+          "c": 671,
+          "line": "1190 - 519 = 671",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
+          "verdict": "match",
+          "cell80_answer": 671
+        }
+      ],
+      "final_stated_before": 671.0,
+      "final_stated_after": 671.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.37,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Carlos has 24 rows of 29 items in a warehouse. 209 items are sold, then 268 more are sold. How many items are left?",
+      "final_expected": 219,
+      "baseline_completion": "First, calculate the total number of items initially in the warehouse.\n24 * 29 = 696\n\nNext, calculate the total number of items sold.\n209 + 268 = 477\n\nThen, subtract the number of items sold from the initial number of items.\n696 - 477 = 219\n\nAnswer: 219",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 24,
+          "op": "mul",
+          "b": 29,
+          "c": 696,
+          "line": "24 * 29 = 696",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
+          "verdict": "match",
+          "cell80_answer": 696
+        },
+        {
+          "a": 209,
+          "op": "add",
+          "b": 268,
+          "c": 477,
+          "line": "209 + 268 = 477",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
+          "verdict": "match",
+          "cell80_answer": 477
+        },
+        {
+          "a": 696,
+          "op": "sub",
+          "b": 477,
+          "c": 219,
+          "line": "696 - 477 = 219",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
+          "verdict": "match",
+          "cell80_answer": 219
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 24,
+          "op": "mul",
+          "b": 29,
+          "c": 696,
+          "line": "24 * 29 = 696",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
+          "verdict": "match",
+          "cell80_answer": 696
+        },
+        {
+          "a": 209,
+          "op": "add",
+          "b": 268,
+          "c": 477,
+          "line": "209 + 268 = 477",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
+          "verdict": "match",
+          "cell80_answer": 477
+        },
+        {
+          "a": 696,
+          "op": "sub",
+          "b": 477,
+          "c": 219,
+          "line": "696 - 477 = 219",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
+          "verdict": "match",
+          "cell80_answer": 219
+        }
+      ],
+      "final_stated_before": 219.0,
+      "final_stated_after": 219.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 13.02,
+      "t_correction_s": 0.02
+    },
+    {
+      "question": "Deshawn reads 323 pages on Monday, 155 pages on Tuesday, and 180 pages on Wednesday. Over the next 8 weeks, Omar reads that same three-day total every week. How many pages in total over those 8 weeks?",
+      "final_expected": 5264,
+      "baseline_completion": "First, we need to find the total number of pages read in three days.\n323 + 155 + 180 = 658\n\nNext, we need to find the total number of pages read per week.\nSince Omar reads the same three-day total every week, he reads 658 pages per week.\n\nNow, we need to find the total number of weeks.\nThe number of weeks is 8.\n\nFinally, we need to find the total number of pages read over 8 weeks.\nTotal pages = Pages per week * Number of weeks\nTotal pages = 658 * 8\n\n658 * 8 = (600 * 8) + (50 * 8) + (8 * 8)\n= 4800 + 400 + 64\n= 5264\n\nAnswer: 5264",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 5264.0,
+      "final_stated_after": 5264.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 22.37,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Omar earns $31 per hour for the first 9 hours of a shift and $38 per hour for the next 7 hours. Ivy then pays $219 in expenses. How much money is left?",
+      "final_expected": 326,
+      "baseline_completion": "Omar earns $31 per hour for the first 9 hours.\n9 * 31 = 279\nOmar earns $279 for the first 9 hours.\nOmar earns $38 per hour for the next 7 hours.\n7 * 38 = 266\nOmar earns $266 for the next 7 hours.\nTotal earnings for Omar = 279 + 266 = 545\nIvy pays $219 in expenses.\n545 - 219 = 326\nAnswer: 326",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 31,
+          "c": 279,
+          "line": "9 * 31 = 279",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 279
+        },
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 38,
+          "c": 266,
+          "line": "7 * 38 = 266",
+          "sym": "*",
+          "start": 145,
+          "end": 157,
+          "verdict": "match",
+          "cell80_answer": 266
+        },
+        {
+          "a": 279,
+          "op": "add",
+          "b": 266,
+          "c": 545,
+          "line": "Total earnings for Omar = 279 + 266 = 545",
+          "sym": "+",
+          "start": 222,
+          "end": 237,
+          "verdict": "match",
+          "cell80_answer": 545
+        },
+        {
+          "a": 545,
+          "op": "sub",
+          "b": 219,
+          "c": 326,
+          "line": "545 - 219 = 326",
+          "sym": "-",
+          "start": 265,
+          "end": 280,
+          "verdict": "match",
+          "cell80_answer": 326
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 9,
+          "op": "mul",
+          "b": 31,
+          "c": 279,
+          "line": "9 * 31 = 279",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
+          "verdict": "match",
+          "cell80_answer": 279
+        },
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 38,
+          "c": 266,
+          "line": "7 * 38 = 266",
+          "sym": "*",
+          "start": 145,
+          "end": 157,
+          "verdict": "match",
+          "cell80_answer": 266
+        },
+        {
+          "a": 279,
+          "op": "add",
+          "b": 266,
+          "c": 545,
+          "line": "Total earnings for Omar = 279 + 266 = 545",
+          "sym": "+",
+          "start": 222,
+          "end": 237,
+          "verdict": "match",
+          "cell80_answer": 545
+        },
+        {
+          "a": 545,
+          "op": "sub",
+          "b": 219,
+          "c": 326,
+          "line": "545 - 219 = 326",
+          "sym": "-",
+          "start": 265,
+          "end": 280,
+          "verdict": "match",
+          "cell80_answer": 326
+        }
+      ],
+      "final_stated_before": 326.0,
+      "final_stated_after": 326.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 16.73,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "A factory makes 580 parts. 228 are defective and discarded. The rest are packed into pallets of 8 parts each. How many cartons are needed?",
+      "final_expected": 44,
+      "baseline_completion": "First, we need to find the number of parts that are not defective.\n580 - 228 = 352\n\nNext, we need to find the number of pallets needed.\n352 / 8 = 44\n\nTherefore, 44 cartons are needed.\n\nAnswer: 44",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 580,
+          "op": "sub",
+          "b": 228,
+          "c": 352,
+          "line": "580 - 228 = 352",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 352
+        },
+        {
+          "a": 352,
+          "op": "div",
+          "b": 8,
+          "c": 44,
+          "line": "352 / 8 = 44",
+          "sym": "/",
+          "start": 136,
+          "end": 148,
+          "verdict": "match",
+          "cell80_answer": 44
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 580,
+          "op": "sub",
+          "b": 228,
+          "c": 352,
+          "line": "580 - 228 = 352",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
+          "verdict": "match",
+          "cell80_answer": 352
+        },
+        {
+          "a": 352,
+          "op": "div",
+          "b": 8,
+          "c": 44,
+          "line": "352 / 8 = 44",
+          "sym": "/",
+          "start": 136,
+          "end": 148,
+          "verdict": "match",
+          "cell80_answer": 44
+        }
+      ],
+      "final_stated_before": 44.0,
+      "final_stated_after": 44.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 11.92,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "A school orders 30 boxes of 52 pencils each for one grade, and 21 boxes of 33 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 2253,
+      "baseline_completion": "First, calculate the number of pencils in the first order.\n30 boxes * 52 pencils/box = 1560 pencils\n\nNext, calculate the number of pencils in the second order.\n21 boxes * 33 pencils/box = 693 pencils\n\nThen, add the number of pencils from both orders.\n1560 + 693 = 2253\n\nAnswer: 2253",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 1560,
+          "op": "add",
+          "b": 693,
+          "c": 2253,
+          "line": "1560 + 693 = 2253",
+          "sym": "+",
+          "start": 251,
+          "end": 268,
+          "verdict": "match",
+          "cell80_answer": 2253
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 1560,
+          "op": "add",
+          "b": 693,
+          "c": 2253,
+          "line": "1560 + 693 = 2253",
+          "sym": "+",
+          "start": 251,
+          "end": 268,
+          "verdict": "match",
+          "cell80_answer": 2253
+        }
+      ],
+      "final_stated_before": 2253.0,
+      "final_stated_after": 2253.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 14.3,
+      "t_correction_s": 0.01
+    },
+    {
+      "question": "Nina has $480. Ivy buys 8 shirts at $37 each and 6 jackets at $73 each. How much money is left?",
+      "final_expected": -254,
+      "baseline_completion": "First, calculate the cost of the shirts.\n8 * 37 = 296\nNext, calculate the cost of the jackets.\n6 * 73 = 438\nThen, calculate the total cost of the shirts and jackets.\n296 + 438 = 734\nNow, subtract the total cost from Nina's money.\n480 - 734 = -254\nSince the result is negative, Nina does not have enough money.\nHowever, the problem asks how much money is left. Since the result is negative, it means Nina is short.\nThe amount of money left is -254.\nSince we are looking for how much money is left, and the result is negative, we can interpret this as Nina owing money.\nBut the question asks how much money is left.\nWe can say that Nina is short by $254.\nHowever, the question asks how much money is left.\nWe can interpret this as the amount of money Nina has left after the purchases.\nSince the result is negative, Nina has $254 less than she started with.\nSo, Nina has -254 dollars left.\nBut the question asks how much money is left.\nWe can interpret this as the amount of money Nina has left after the purchases.\nSince the result is negative, Nina is short.\nThe amount of money left is -254.\nSince the question asks how much money is left, we should express the result as a positive number.\nHowever, the problem asks how much money is left.\nThe amount of money left is 480 - (8 * 37) - (6 * 73)\n480 - 296 - 438\n480 - (296 + 438)\n48",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 37,
+          "c": 296,
+          "line": "8 * 37 = 296",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 296
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 73,
+          "c": 438,
+          "line": "6 * 73 = 438",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 438
+        },
+        {
+          "a": 296,
+          "op": "add",
+          "b": 438,
+          "c": 734,
+          "line": "296 + 438 = 734",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 734
+        },
+        {
+          "a": 480,
+          "op": "sub",
+          "b": 734,
+          "c": -254,
+          "line": "480 - 734 = -254",
+          "sym": "-",
+          "start": 230,
+          "end": 246,
+          "verdict": "match",
+          "cell80_answer": -254
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 37,
+          "c": 296,
+          "line": "8 * 37 = 296",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
+          "verdict": "match",
+          "cell80_answer": 296
+        },
+        {
+          "a": 6,
+          "op": "mul",
+          "b": 73,
+          "c": 438,
+          "line": "6 * 73 = 438",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
+          "verdict": "match",
+          "cell80_answer": 438
+        },
+        {
+          "a": 296,
+          "op": "add",
+          "b": 438,
+          "c": 734,
+          "line": "296 + 438 = 734",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
+          "verdict": "match",
+          "cell80_answer": 734
+        },
+        {
+          "a": 480,
+          "op": "sub",
+          "b": 734,
+          "c": -254,
+          "line": "480 - 734 = -254",
+          "sym": "-",
+          "start": 230,
+          "end": 246,
+          "verdict": "match",
+          "cell80_answer": -254
+        }
+      ],
+      "final_stated_before": null,
+      "final_stated_after": null,
+      "final_correct_before": false,
+      "final_correct_after": false,
+      "t_baseline_s": 38.92,
+      "t_correction_s": 0.03
+    },
+    {
+      "question": "Wei has 39 rows of 39 items in a warehouse. 326 items are sold, then 275 more are sold. How many items are left?",
+      "final_expected": 920,
+      "baseline_completion": "First, calculate the total number of items in the warehouse.\n39 rows * 39 items/row = 1521 items\n\nNext, calculate the total number of items sold.\n326 items + 275 items = 601 items\n\nThen, subtract the number of items sold from the total number of items to find the number of items left.\n1521 items - 601 items = 920 items\n\nAnswer: 920",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 920.0,
+      "final_stated_after": 920.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 15.81,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Jordan reads 335 pages on Monday, 184 pages on Tuesday, and 182 pages on Wednesday. Over the next 6 weeks, Deshawn reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 4206,
+      "baseline_completion": "First, we need to find the total number of pages Jordan reads in three days.\n335 + 184 + 182 = 701\n\nNext, we need to find the three-day total for each week. Since Deshawn reads that same three-day total every week, Deshawn reads 701 pages per week.\n\nNow, we need to find the total number of pages Deshawn reads over 6 weeks.\n6 weeks * 701 pages/week = 4206 pages\n\nAnswer: 4206",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [],
+      "spans_after": [],
+      "final_stated_before": 4206.0,
+      "final_stated_after": 4206.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 19.55,
+      "t_correction_s": 0.0
+    },
+    {
+      "question": "Priya earns $39 per hour for the first 8 hours of a shift and $24 per hour for the next 7 hours. Deshawn then pays $99 in expenses. How much money is left?",
+      "final_expected": 381,
+      "baseline_completion": "First, calculate Priya's earnings for the first 8 hours.\n8 * 39 = 312\nNext, calculate Priya's earnings for the next 7 hours.\n7 * 24 = 168\nThen, calculate Priya's total earnings.\n312 + 168 = 480\nNext, calculate the total expenses.\n99\nFinally, calculate the money left.\n480 - 99 = 381\nAnswer: 381",
+      "final_completion": null,
+      "corrections": [],
+      "spans_before": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 39,
+          "c": 312,
+          "line": "8 * 39 = 312",
+          "sym": "*",
+          "start": 57,
+          "end": 69,
+          "verdict": "match",
+          "cell80_answer": 312
+        },
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 24,
+          "c": 168,
+          "line": "7 * 24 = 168",
+          "sym": "*",
+          "start": 125,
+          "end": 137,
+          "verdict": "match",
+          "cell80_answer": 168
+        },
+        {
+          "a": 312,
+          "op": "add",
+          "b": 168,
+          "c": 480,
+          "line": "312 + 168 = 480",
+          "sym": "+",
+          "start": 178,
+          "end": 193,
+          "verdict": "match",
+          "cell80_answer": 480
+        },
+        {
+          "a": 480,
+          "op": "sub",
+          "b": 99,
+          "c": 381,
+          "line": "480 - 99 = 381",
+          "sym": "-",
+          "start": 268,
+          "end": 282,
+          "verdict": "match",
+          "cell80_answer": 381
+        }
+      ],
+      "spans_after": [
+        {
+          "a": 8,
+          "op": "mul",
+          "b": 39,
+          "c": 312,
+          "line": "8 * 39 = 312",
+          "sym": "*",
+          "start": 57,
+          "end": 69,
+          "verdict": "match",
+          "cell80_answer": 312
+        },
+        {
+          "a": 7,
+          "op": "mul",
+          "b": 24,
+          "c": 168,
+          "line": "7 * 24 = 168",
+          "sym": "*",
+          "start": 125,
+          "end": 137,
+          "verdict": "match",
+          "cell80_answer": 168
+        },
+        {
+          "a": 312,
+          "op": "add",
+          "b": 168,
+          "c": 480,
+          "line": "312 + 168 = 480",
+          "sym": "+",
+          "start": 178,
+          "end": 193,
+          "verdict": "match",
+          "cell80_answer": 480
+        },
+        {
+          "a": 480,
+          "op": "sub",
+          "b": 99,
+          "c": 381,
+          "line": "480 - 99 = 381",
+          "sym": "-",
+          "start": 268,
+          "end": 282,
+          "verdict": "match",
+          "cell80_answer": 381
+        }
+      ],
+      "final_stated_before": 381.0,
+      "final_stated_after": 381.0,
+      "final_correct_before": true,
+      "final_correct_after": true,
+      "t_baseline_s": 18.57,
+      "t_correction_s": 0.03
+    }
+  ]
+}

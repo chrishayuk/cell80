@@ -181,9 +181,16 @@ _OPERATOR_CHARS = set("+-*/x×")
 
 
 def extract_spans(text: str):
+    # Each span also carries `sym` (the operator as the model wrote it) and
+    # `start`/`end` (absolute character offsets of the matched equation in
+    # `text`) - the G2 resample harness (cn2_g2_resample.py) needs both to
+    # truncate a completion at a refuted claim and re-assert the verified one.
     spans = []
-    for raw_line in text.splitlines():
+    offset = 0
+    for raw_line in text.splitlines(keepends=True):
         line = raw_line.strip()
+        line_start = offset + (len(raw_line) - len(raw_line.lstrip()))
+        offset += len(raw_line)
         for m in SPAN_RE.finditer(line):
             # Reject a chain continuation: "437 + 127 + 207 = 771" partially
             # matches as the two-operand substring "127 + 207 = 771" - that
@@ -217,7 +224,11 @@ def extract_spans(text: str):
             a_s, op_s, b_s, c_s = m.groups()
             if "." in a_s or "." in b_s or "." in c_s:
                 continue  # cell80 plan IR here is integer-only; skip fractional spans
-            spans.append({"a": int(a_s), "op": OP_MAP.get(op_s.lower(), op_s), "b": int(b_s), "c": int(c_s), "line": line})
+            spans.append({
+                "a": int(a_s), "op": OP_MAP.get(op_s.lower(), op_s), "b": int(b_s), "c": int(c_s),
+                "line": line, "sym": op_s,
+                "start": line_start + m.start(), "end": line_start + m.end(),
+            })
     return spans
 
 

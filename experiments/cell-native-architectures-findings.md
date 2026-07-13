@@ -19,9 +19,14 @@ novel claim. The harder novelty/held-out question went through two corpus
 redesigns and is still untested: both found a distinct, real reason the test
 couldn't ask its own question (an unprocessed input token, then an
 unprocessed input *combination*) — see `## CN-1 slice-0` below for exactly
-what a properly compositional corpus needs. CN-2 through one wave
-(60-problem verified-decoding battery;
-injection/resampling not yet built). Both experiments are defined in
+what a properly compositional corpus needs. **CN-2: G2 complete at the
+harness level** — measurement (60-problem battery, wrong-number baseline
+0.016 after the plan-IR i32 signed lane closed the verifier's last coverage
+hole), then the correction loop (truncate at a cell80-refuted claim, assert
+the verified equation, deterministically continue): scoped wrong-number
+rate **0.016 → 0.000 at ~4.8% overhead**, residue 100% non-arithmetic
+(unscoped claims / wrong plans), per the pre-registered null. In-decoder
+version couples to CN-1. All experiments are defined in
 `cell-native-architectures.md`. Kicked off 2026-07-12. Code lives in
 `cell-native-architectures/`.
 
@@ -836,6 +841,80 @@ time, and cell80 can finally say so. The only remaining non-matches are the
 now stands on a battery with no verifier coverage holes. CN-2 is ready for
 the G2 build proper (verified decoding *with* resampling on mismatch).
 
+## CN-2 G2 — the correction loop: scoped wrong numbers go to zero, and the
+## residue is exactly the pre-registered null
+
+**Script:** `cell-native-architectures/cn2_g2_resample.py` (harness-level
+slice of the G2 design — correction between requests, not yet inside
+LARQL's decode loop). Baseline pass as before; then, for any span cell80
+refutes, the completion is **truncated at the refuted claim, the verified
+equation is asserted in its place** (the model's own notation, cell80's
+number), and the model **continues from the corrected prefix** via
+`/v1/completions` with the Gemma chat template rendered byte-identically to
+the chat route (system turn + user turn + open model turn + partial). Greedy
+decoding end to end, so the whole pipeline — baseline, refutation,
+correction, continuation — is deterministic. Loop until no refuted span
+remains (cap 4; never hit).
+
+**Result** (60 problems, `--max-tokens 400` matching the committed
+baseline, `larql-server --infer-timeout-secs 300` — note `larql serve`
+does *not* forward that flag, run the server binary directly):
+
+```json
+{
+  "before": { "n_spans": 127, "n_mismatch": 2,
+              "wrong_number_rate": 0.016, "final_answer_accuracy": 0.883 },
+  "after":  { "n_spans": 127, "n_mismatch": 0,
+              "wrong_number_rate": 0.0,   "final_answer_accuracy": 0.883 },
+  "n_corrections_total": 2,
+  "t_baseline_total_s": 1049.2, "t_correction_total_s": 50.1
+}
+```
+
+- **Wrong-number rate 0.016 → 0.000.** Both genuinely wrong claims
+  (`68 * 31 = 2088` → 2108, `1569 + 299 = 1888` → 1868) were caught,
+  corrected, and the corrected continuations verify clean — no correction
+  cascades, no new wrong spans introduced. Cost: **~4.8% wall-clock
+  overhead** (50s on 1049s), two extra requests over the whole battery.
+- **The baseline reproduced the committed run to the token.** 56/60
+  completions byte-identical two days and two server restarts apart; the 4
+  divergent rows are pure prefix-extensions (same greedy stream, the older
+  run just stopped earlier), with spans and finals unchanged. An earlier
+  same-day run at `--max-tokens 120` produced 14 prefix-truncations of the
+  same streams and *zero* token-level divergence — worth stating as a
+  measured property: LARQL greedy decoding is reproducible across restarts,
+  which is what makes "resample deterministically from a corrected prefix"
+  a meaningful operation at all.
+- **Neither corrected problem's final answer flipped — and the dissection
+  is the finding.** Problem 21: after `68 * 31` is fixed, the model's
+  *other* error (`359 + 144 = 499`, should be 503) sits at the head of a
+  degenerate repetition chain (`499 + 1 = 500 + 1 = 500 + 1 = …` to the
+  token limit) that the extractor rightly refuses to read as standalone
+  claims — an **unscoped** wrong number, invisible to the span grammar by
+  construction. Problem 27: after correction, *every arithmetic step
+  verifies* and the final is still wrong because the model solved a
+  different problem than the question asks — a **wrong plan**, which
+  arithmetic verification cannot and should not touch. One artifact worth
+  recording from the 120-token run: truncation can *forge* a
+  standalone-looking claim out of a chain fragment (`… 500 + 1 = 50` cut
+  mid-number matched as a claim and got "corrected"); at the correct token
+  budget the artifact disappears, but an in-decoder G2 should treat an
+  unterminated trailing equation as unverifiable, not as a claim.
+
+**Read against the gate.** The G2 gate asks for a significant wrong-number
+reduction at negligible overhead: **the scoped wrong-number rate went to
+zero at ~4.8% wall-clock** (and the spec's per-token latency budget is not
+even touched — correction fires on 2 of 60 problems). The pre-registered
+kill-side observation also landed on schedule: the residual final-answer
+errors are 100% non-arithmetic ("models' wrong numbers are mostly
+unscoped / mostly plans") — on *this* battery the model's scoped arithmetic
+was already 98.4% right, so correction's headline value is the **guarantee**
+(every arithmetic claim in the output is now exactly right, signed by an
+executed cell) rather than an accuracy lift. The natural next steps are the
+in-decoder version (span grammar at decode time, the CN-1 error-correction
+layer) and a battery seeded with harder arithmetic where the scoped
+wrong-number rate is high enough for accuracy to move.
+
 ## Wave 1 status: both experiments have real, well-powered first results
 
 CN-0's 5× rerun and CN-2's 60-problem rerun (above) are both done. Neither
@@ -858,8 +937,12 @@ measurement apparatus itself before treating its numbers as science.
    qualitatively different from the other three families', not just a
    smaller-N version of the same gap.
 3. ~~CN-2: fix the plan-IR's unsigned-only limitation~~ **Done** (the i32
-   signed lane, section above): all 3 escalations became verified matches,
-   agreement 0.984, zero coverage holes left in the verifier. CN-2 is now
-   ready for the real G2 build (verified decoding *with* resampling on
-   mismatch) — slice-0/rerun only measured, never corrected.
+   signed lane): all 3 escalations became verified matches, agreement
+   0.984, zero coverage holes left in the verifier. ~~Then the real G2
+   build~~ **Done too** (the correction loop, section above): scoped
+   wrong-number rate 0.016 → 0.000 at ~4.8% overhead; the residue is
+   unscoped claims and wrong plans, per the pre-registered null. Still
+   open for CN-2: the in-decoder span grammar (couples to CN-1), and a
+   harder battery where scoped arithmetic errors are frequent enough for
+   final-answer accuracy to move.
 4. Wave 2 (CN-1's H1 factory, CN-3's prosthetic) hasn't been scoped yet.

@@ -25,6 +25,9 @@
           "b": 7,
           "c": 19,
           "line": "12 + 7 = 19",
+          "sym": "+",
+          "start": 27,
+          "end": 38,
           "verdict": "match",
           "cell80_answer": 19
         },
@@ -34,6 +37,9 @@
           "b": 5,
           "c": 14,
           "line": "19 - 5 = 14",
+          "sym": "-",
+          "start": 39,
+          "end": 50,
           "verdict": "match",
           "cell80_answer": 14
         }
@@ -52,6 +58,9 @@
           "b": 6,
           "c": 48,
           "line": "8 * 6 = 48",
+          "sym": "*",
+          "start": 165,
+          "end": 175,
           "verdict": "match",
           "cell80_answer": 48
         }
@@ -70,6 +79,9 @@
           "b": 6,
           "c": 90,
           "line": "Maria's earnings are $15 * 6 = 90$.",
+          "sym": "*",
+          "start": 69,
+          "end": 80,
           "verdict": "match",
           "cell80_answer": 90
         },
@@ -79,6 +91,9 @@
           "b": 40,
           "c": 50,
           "line": "Maria's earnings minus grocery expenses are $90 - 40 = 50$.",
+          "sym": "-",
+          "start": 159,
+          "end": 171,
           "verdict": "match",
           "cell80_answer": 50
         }
@@ -97,6 +112,9 @@
           "b": 12,
           "c": 7,
           "line": "84 / 12 = 7",
+          "sym": "/",
+          "start": 264,
+          "end": 275,
           "verdict": "match",
           "cell80_answer": 7
         }
@@ -115,6 +133,9 @@
           "b": 17,
           "c": 40,
           "line": "23 + 17 = 40",
+          "sym": "+",
+          "start": 62,
+          "end": 74,
           "verdict": "match",
           "cell80_answer": 40
         },
@@ -124,6 +145,9 @@
           "b": 9,
           "c": 31,
           "line": "40 - 9 = 31",
+          "sym": "-",
+          "start": 137,
+          "end": 148,
           "verdict": "match",
           "cell80_answer": 31
         }
@@ -142,6 +166,9 @@
           "b": 3,
           "c": 180,
           "line": "60 * 3 = 180",
+          "sym": "*",
+          "start": 73,
+          "end": 85,
           "verdict": "match",
           "cell80_answer": 180
         },
@@ -151,6 +178,9 @@
           "b": 2,
           "c": 80,
           "line": "40 * 2 = 80",
+          "sym": "*",
+          "start": 159,
+          "end": 170,
           "verdict": "match",
           "cell80_answer": 80
         },
@@ -160,6 +190,9 @@
           "b": 80,
           "c": 260,
           "line": "180 + 80 = 260",
+          "sym": "+",
+          "start": 210,
+          "end": 224,
           "verdict": "match",
           "cell80_answer": 260
         }
@@ -178,6 +211,9 @@
           "b": 25,
           "c": 65,
           "line": "90 - 25 = 65",
+          "sym": "-",
+          "start": 29,
+          "end": 41,
           "verdict": "match",
           "cell80_answer": 65
         },
@@ -187,6 +223,9 @@
           "b": 15,
           "c": 80,
           "line": "65 + 15 = 80",
+          "sym": "+",
+          "start": 42,
+          "end": 54,
           "verdict": "match",
           "cell80_answer": 80
         }
@@ -205,6 +244,9 @@
           "b": 8,
           "c": 72,
           "line": "9 * 8 = 72",
+          "sym": "*",
+          "start": 59,
+          "end": 69,
           "verdict": "match",
           "cell80_answer": 72
         },
@@ -214,6 +256,9 @@
           "b": 5,
           "c": 67,
           "line": "72 - 5 = 67",
+          "sym": "-",
+          "start": 150,
+          "end": 161,
           "verdict": "match",
           "cell80_answer": 67
         }
@@ -232,6 +277,9 @@
           "b": 18,
           "c": 36,
           "line": "Twice the number of pages read on Monday is 2 * 18 = 36.",
+          "sym": "*",
+          "start": 109,
+          "end": 120,
           "verdict": "match",
           "cell80_answer": 36
         },
@@ -241,6 +289,9 @@
           "b": 36,
           "c": 54,
           "line": "The total number of pages read is 18 + 36 = 54.",
+          "sym": "+",
+          "start": 264,
+          "end": 276,
           "verdict": "match",
           "cell80_answer": 54
         }
@@ -259,6 +310,9 @@
           "b": 16,
           "c": 9,
           "line": "144 / 16 = 9",
+          "sym": "/",
+          "start": 250,
+          "end": 262,
           "verdict": "match",
           "cell80_answer": 9
         }
@@ -277,6 +331,9 @@
           "b": 0,
           "c": 50,
           "line": "50 + 0 = 50",
+          "sym": "+",
+          "start": 29,
+          "end": 40,
           "verdict": "match",
           "cell80_answer": 50
         },
@@ -286,6 +343,9 @@
           "b": 6,
           "c": 18,
           "line": "3 * 6 = 18",
+          "sym": "*",
+          "start": 80,
+          "end": 90,
           "verdict": "match",
           "cell80_answer": 18
         },
@@ -295,6 +355,9 @@
           "b": 18,
           "c": 32,
           "line": "50 - 18 = 32",
+          "sym": "-",
+          "start": 113,
+          "end": 125,
           "verdict": "match",
           "cell80_answer": 32
         }
@@ -313,6 +376,9 @@
           "b": 25,
           "c": 20,
           "line": "500 / 25 = 20",
+          "sym": "/",
+          "start": 161,
+          "end": 174,
           "verdict": "match",
           "cell80_answer": 20
         }
@@ -331,6 +397,9 @@
           "b": 19,
           "c": 33,
           "line": "14 + 19 = 33",
+          "sym": "+",
+          "start": 55,
+          "end": 67,
           "verdict": "match",
           "cell80_answer": 33
         },
@@ -340,6 +409,9 @@
           "b": 3,
           "c": 99,
           "line": "33 * 3 = 99",
+          "sym": "*",
+          "start": 119,
+          "end": 130,
           "verdict": "match",
           "cell80_answer": 99
         }
@@ -358,6 +430,9 @@
           "b": 38,
           "c": 83,
           "line": "45 + 38 = 83",
+          "sym": "+",
+          "start": 50,
+          "end": 62,
           "verdict": "match",
           "cell80_answer": 83
         },
@@ -367,6 +442,9 @@
           "b": 83,
           "c": 37,
           "line": "120 - 83 = 37",
+          "sym": "-",
+          "start": 140,
+          "end": 153,
           "verdict": "match",
           "cell80_answer": 37
         }
@@ -385,6 +463,9 @@
           "b": 30,
           "c": 30,
           "line": "60 - 30 = 30",
+          "sym": "-",
+          "start": 134,
+          "end": 146,
           "verdict": "match",
           "cell80_answer": 30
         }
@@ -403,6 +484,9 @@
           "b": 22,
           "c": 858,
           "line": "39 * 22 = 858",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
           "verdict": "match",
           "cell80_answer": 858
         },
@@ -412,6 +496,9 @@
           "b": 110,
           "c": 355,
           "line": "245 + 110 = 355",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
           "verdict": "match",
           "cell80_answer": 355
         },
@@ -421,6 +508,9 @@
           "b": 355,
           "c": 503,
           "line": "858 - 355 = 503",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
           "verdict": "match",
           "cell80_answer": 503
         }
@@ -447,6 +537,9 @@
           "b": 9,
           "c": 252,
           "line": "28 * 9 = 252",
+          "sym": "*",
+          "start": 53,
+          "end": 65,
           "verdict": "match",
           "cell80_answer": 252
         },
@@ -456,6 +549,9 @@
           "b": 5,
           "c": 120,
           "line": "24 * 5 = 120",
+          "sym": "*",
+          "start": 118,
+          "end": 130,
           "verdict": "match",
           "cell80_answer": 120
         },
@@ -465,6 +561,9 @@
           "b": 120,
           "c": 372,
           "line": "252 + 120 = 372",
+          "sym": "+",
+          "start": 168,
+          "end": 183,
           "verdict": "match",
           "cell80_answer": 372
         },
@@ -474,6 +573,9 @@
           "b": 183,
           "c": 189,
           "line": "372 - 183 = 189",
+          "sym": "-",
+          "start": 238,
+          "end": 253,
           "verdict": "match",
           "cell80_answer": 189
         }
@@ -492,6 +594,9 @@
           "b": 225,
           "c": 990,
           "line": "1215 - 225 = 990",
+          "sym": "-",
+          "start": 67,
+          "end": 83,
           "verdict": "match",
           "cell80_answer": 990
         },
@@ -501,6 +606,9 @@
           "b": 11,
           "c": 90,
           "line": "990 / 11 = 90",
+          "sym": "/",
+          "start": 229,
+          "end": 242,
           "verdict": "match",
           "cell80_answer": 90
         }
@@ -519,6 +627,9 @@
           "b": 1071,
           "c": 1995,
           "line": "924 + 1071 = 1995",
+          "sym": "+",
+          "start": 269,
+          "end": 286,
           "verdict": "match",
           "cell80_answer": 1995
         }
@@ -537,6 +648,9 @@
           "b": 31,
           "c": 124,
           "line": "4 * 31 = 124",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 124
         },
@@ -546,6 +660,9 @@
           "b": 73,
           "c": 292,
           "line": "4 * 73 = 292",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 292
         },
@@ -555,6 +672,9 @@
           "b": 292,
           "c": 416,
           "line": "124 + 292 = 416",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 416
         },
@@ -564,6 +684,9 @@
           "b": 416,
           "c": 320,
           "line": "736 - 416 = 320",
+          "sym": "-",
+          "start": 229,
+          "end": 244,
           "verdict": "match",
           "cell80_answer": 320
         }
@@ -582,6 +705,9 @@
           "b": 31,
           "c": 2088,
           "line": "68 * 31 = 2088",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
           "verdict": "mismatch",
           "cell80_answer": 2108
         }
@@ -608,6 +734,9 @@
           "b": 7,
           "c": 273,
           "line": "39 * 7 = 273",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
           "verdict": "match",
           "cell80_answer": 273
         },
@@ -617,6 +746,9 @@
           "b": 7,
           "c": 280,
           "line": "40 * 7 = 280",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
           "verdict": "match",
           "cell80_answer": 280
         },
@@ -626,6 +758,9 @@
           "b": 280,
           "c": 553,
           "line": "Total earnings for Omar = 273 + 280 = 553",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
           "verdict": "match",
           "cell80_answer": 553
         },
@@ -635,6 +770,9 @@
           "b": 226,
           "c": 327,
           "line": "553 - 226 = 327",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
           "verdict": "match",
           "cell80_answer": 327
         }
@@ -653,6 +791,9 @@
           "b": 380,
           "c": 270,
           "line": "650 - 380 = 270",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
           "verdict": "match",
           "cell80_answer": 270
         },
@@ -662,6 +803,9 @@
           "b": 9,
           "c": 30,
           "line": "270 / 9 = 30",
+          "sym": "/",
+          "start": 164,
+          "end": 176,
           "verdict": "match",
           "cell80_answer": 30
         }
@@ -680,6 +824,9 @@
           "b": 31,
           "c": 868,
           "line": "28 * 31 = 868",
+          "sym": "*",
+          "start": 59,
+          "end": 72,
           "verdict": "match",
           "cell80_answer": 868
         },
@@ -689,6 +836,9 @@
           "b": 54,
           "c": 594,
           "line": "11 * 54 = 594",
+          "sym": "*",
+          "start": 133,
+          "end": 146,
           "verdict": "match",
           "cell80_answer": 594
         },
@@ -698,6 +848,9 @@
           "b": 594,
           "c": 1462,
           "line": "868 + 594 = 1462",
+          "sym": "+",
+          "start": 198,
+          "end": 214,
           "verdict": "match",
           "cell80_answer": 1462
         }
@@ -716,6 +869,9 @@
           "b": 50,
           "c": 350,
           "line": "7 * 50 = 350",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 350
         },
@@ -725,6 +881,9 @@
           "b": 60,
           "c": 360,
           "line": "6 * 60 = 360",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 360
         },
@@ -734,6 +893,9 @@
           "b": 360,
           "c": 710,
           "line": "350 + 360 = 710",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 710
         },
@@ -743,6 +905,9 @@
           "b": 710,
           "c": -74,
           "line": "636 - 710 = -74",
+          "sym": "-",
+          "start": 248,
+          "end": 263,
           "verdict": "match",
           "cell80_answer": -74
         }
@@ -761,6 +926,9 @@
           "b": 21,
           "c": 1638,
           "line": "78 * 21 = 1638",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
           "verdict": "match",
           "cell80_answer": 1638
         },
@@ -770,6 +938,9 @@
           "b": 69,
           "c": 1569,
           "line": "1638 - 69 = 1569",
+          "sym": "-",
+          "start": 139,
+          "end": 155,
           "verdict": "match",
           "cell80_answer": 1569
         },
@@ -779,6 +950,9 @@
           "b": 299,
           "c": 1888,
           "line": "1569 + 299 = 1888",
+          "sym": "+",
+          "start": 200,
+          "end": 217,
           "verdict": "mismatch",
           "cell80_answer": 1868
         }
@@ -805,6 +979,9 @@
           "b": 42,
           "c": 378,
           "line": "9 * 42 = 378",
+          "sym": "*",
+          "start": 46,
+          "end": 58,
           "verdict": "match",
           "cell80_answer": 378
         },
@@ -814,6 +991,9 @@
           "b": 305,
           "c": 683,
           "line": "378 + 305 = 683",
+          "sym": "+",
+          "start": 91,
+          "end": 106,
           "verdict": "match",
           "cell80_answer": 683
         }
@@ -832,6 +1012,9 @@
           "b": 53,
           "c": 396,
           "line": "449 - 53 = 396",
+          "sym": "-",
+          "start": 67,
+          "end": 81,
           "verdict": "match",
           "cell80_answer": 396
         },
@@ -841,6 +1024,9 @@
           "b": 9,
           "c": 44,
           "line": "396 / 9 = 44",
+          "sym": "/",
+          "start": 159,
+          "end": 171,
           "verdict": "match",
           "cell80_answer": 44
         }
@@ -867,6 +1053,9 @@
           "b": 55,
           "c": 220,
           "line": "4 * 55 = 220",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 220
         },
@@ -876,6 +1065,9 @@
           "b": 49,
           "c": 245,
           "line": "5 * 49 = 245",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 245
         },
@@ -885,6 +1077,9 @@
           "b": 245,
           "c": 465,
           "line": "220 + 245 = 465",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 465
         },
@@ -894,6 +1089,9 @@
           "b": 465,
           "c": 40,
           "line": "505 - 465 = 40",
+          "sym": "-",
+          "start": 229,
+          "end": 243,
           "verdict": "match",
           "cell80_answer": 40
         }
@@ -912,6 +1110,9 @@
           "b": 35,
           "c": 1470,
           "line": "42 * 35 = 1470",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
           "verdict": "match",
           "cell80_answer": 1470
         },
@@ -921,6 +1122,9 @@
           "b": 324,
           "c": 1146,
           "line": "1470 - 324 = 1146",
+          "sym": "-",
+          "start": 139,
+          "end": 156,
           "verdict": "match",
           "cell80_answer": 1146
         },
@@ -930,6 +1134,9 @@
           "b": 181,
           "c": 1327,
           "line": "1146 + 181 = 1327",
+          "sym": "+",
+          "start": 201,
+          "end": 218,
           "verdict": "match",
           "cell80_answer": 1327
         }
@@ -948,6 +1155,9 @@
           "b": 771,
           "c": 3084,
           "line": "4 * 771 = 3084",
+          "sym": "*",
+          "start": 278,
+          "end": 292,
           "verdict": "match",
           "cell80_answer": 3084
         }
@@ -966,6 +1176,9 @@
           "b": 8,
           "c": 336,
           "line": "42 * 8 = 336",
+          "sym": "*",
+          "start": 50,
+          "end": 62,
           "verdict": "match",
           "cell80_answer": 336
         },
@@ -975,6 +1188,9 @@
           "b": 4,
           "c": 220,
           "line": "55 * 4 = 220",
+          "sym": "*",
+          "start": 112,
+          "end": 124,
           "verdict": "match",
           "cell80_answer": 220
         },
@@ -984,6 +1200,9 @@
           "b": 220,
           "c": 556,
           "line": "Deshawn's total earnings are 336 + 220 = 556",
+          "sym": "+",
+          "start": 154,
+          "end": 169,
           "verdict": "match",
           "cell80_answer": 556
         },
@@ -993,6 +1212,9 @@
           "b": 226,
           "c": 330,
           "line": "556 - 226 = 330",
+          "sym": "-",
+          "start": 197,
+          "end": 212,
           "verdict": "match",
           "cell80_answer": 330
         }
@@ -1011,6 +1233,9 @@
           "b": 255,
           "c": 416,
           "line": "671 - 255 = 416",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
           "verdict": "match",
           "cell80_answer": 416
         },
@@ -1020,6 +1245,9 @@
           "b": 13,
           "c": 32,
           "line": "416 / 13 = 32",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
           "verdict": "match",
           "cell80_answer": 32
         }
@@ -1038,6 +1266,9 @@
           "b": 697,
           "c": 1516,
           "line": "819 + 697 = 1516 pencils",
+          "sym": "+",
+          "start": 267,
+          "end": 283,
           "verdict": "match",
           "cell80_answer": 1516
         }
@@ -1056,6 +1287,9 @@
           "b": 48,
           "c": 240,
           "line": "5 * 48 = 240",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 240
         },
@@ -1065,6 +1299,9 @@
           "b": 64,
           "c": 192,
           "line": "3 * 64 = 192",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 192
         },
@@ -1074,6 +1311,9 @@
           "b": 192,
           "c": 432,
           "line": "240 + 192 = 432",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 432
         },
@@ -1083,6 +1323,9 @@
           "b": 432,
           "c": 582,
           "line": "1014 - 432 = 582",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
           "verdict": "match",
           "cell80_answer": 582
         }
@@ -1101,6 +1344,9 @@
           "b": 14,
           "c": 1134,
           "line": "81 * 14 = 1134",
+          "sym": "*",
+          "start": 71,
+          "end": 85,
           "verdict": "match",
           "cell80_answer": 1134
         },
@@ -1110,6 +1356,9 @@
           "b": 247,
           "c": 597,
           "line": "350 + 247 = 597",
+          "sym": "+",
+          "start": 135,
+          "end": 150,
           "verdict": "match",
           "cell80_answer": 597
         },
@@ -1119,6 +1368,9 @@
           "b": 597,
           "c": 537,
           "line": "1134 - 597 = 537",
+          "sym": "-",
+          "start": 226,
+          "end": 242,
           "verdict": "match",
           "cell80_answer": 537
         }
@@ -1137,6 +1389,9 @@
           "b": 4,
           "c": 2328,
           "line": "582 * 4 = 2328",
+          "sym": "*",
+          "start": 558,
+          "end": 572,
           "verdict": "match",
           "cell80_answer": 2328
         }
@@ -1155,6 +1410,9 @@
           "b": 9,
           "c": 333,
           "line": "37 * 9 = 333",
+          "sym": "*",
+          "start": 48,
+          "end": 60,
           "verdict": "match",
           "cell80_answer": 333
         },
@@ -1164,6 +1422,9 @@
           "b": 4,
           "c": 160,
           "line": "40 * 4 = 160",
+          "sym": "*",
+          "start": 149,
+          "end": 161,
           "verdict": "match",
           "cell80_answer": 160
         },
@@ -1173,6 +1434,9 @@
           "b": 160,
           "c": 493,
           "line": "Total earnings for Sofia = 333 + 160 = 493",
+          "sym": "+",
+          "start": 229,
+          "end": 244,
           "verdict": "match",
           "cell80_answer": 493
         },
@@ -1182,6 +1446,9 @@
           "b": 493,
           "c": -41,
           "line": "452 - 493 = -41",
+          "sym": "-",
+          "start": 291,
+          "end": 306,
           "verdict": "match",
           "cell80_answer": -41
         },
@@ -1191,6 +1458,9 @@
           "b": 452,
           "c": 41,
           "line": "The money left is 493 - 452 = 41",
+          "sym": "-",
+          "start": 434,
+          "end": 448,
           "verdict": "match",
           "cell80_answer": 41
         }
@@ -1209,6 +1479,9 @@
           "b": 212,
           "c": 258,
           "line": "470 - 212 = 258",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
           "verdict": "match",
           "cell80_answer": 258
         },
@@ -1218,6 +1491,9 @@
           "b": 6,
           "c": 43,
           "line": "258 / 6 = 43",
+          "sym": "/",
+          "start": 161,
+          "end": 173,
           "verdict": "match",
           "cell80_answer": 43
         }
@@ -1244,6 +1520,9 @@
           "b": 20,
           "c": 180,
           "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 180
         },
@@ -1253,6 +1532,9 @@
           "b": 59,
           "c": 354,
           "line": "6 * 59 = 354",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 354
         },
@@ -1262,6 +1544,9 @@
           "b": 354,
           "c": 534,
           "line": "180 + 354 = 534",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 534
         },
@@ -1271,6 +1556,9 @@
           "b": 534,
           "c": 517,
           "line": "1051 - 534 = 517",
+          "sym": "-",
+          "start": 236,
+          "end": 252,
           "verdict": "match",
           "cell80_answer": 517
         }
@@ -1289,6 +1577,9 @@
           "b": 17,
           "c": 1190,
           "line": "70 * 17 = 1190",
+          "sym": "*",
+          "start": 61,
+          "end": 75,
           "verdict": "match",
           "cell80_answer": 1190
         },
@@ -1298,6 +1589,9 @@
           "b": 301,
           "c": 889,
           "line": "1190 - 301 = 889",
+          "sym": "-",
+          "start": 143,
+          "end": 159,
           "verdict": "match",
           "cell80_answer": 889
         },
@@ -1307,6 +1601,9 @@
           "b": 100,
           "c": 789,
           "line": "889 - 100 = 789",
+          "sym": "-",
+          "start": 228,
+          "end": 243,
           "verdict": "match",
           "cell80_answer": 789
         }
@@ -1333,6 +1630,9 @@
           "b": 20,
           "c": 180,
           "line": "9 * 20 = 180",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
           "verdict": "match",
           "cell80_answer": 180
         },
@@ -1342,6 +1642,9 @@
           "b": 38,
           "c": 304,
           "line": "8 * 38 = 304",
+          "sym": "*",
+          "start": 146,
+          "end": 158,
           "verdict": "match",
           "cell80_answer": 304
         },
@@ -1351,6 +1654,9 @@
           "b": 304,
           "c": 484,
           "line": "Total earnings for Omar = 180 + 304 = 484",
+          "sym": "+",
+          "start": 224,
+          "end": 239,
           "verdict": "match",
           "cell80_answer": 484
         },
@@ -1360,6 +1666,9 @@
           "b": 175,
           "c": 309,
           "line": "484 - 175 = 309",
+          "sym": "-",
+          "start": 285,
+          "end": 300,
           "verdict": "match",
           "cell80_answer": 309
         }
@@ -1378,6 +1687,9 @@
           "b": 311,
           "c": 440,
           "line": "751 - 311 = 440",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
           "verdict": "match",
           "cell80_answer": 440
         },
@@ -1387,6 +1699,9 @@
           "b": 11,
           "c": 40,
           "line": "440 / 11 = 40",
+          "sym": "/",
+          "start": 164,
+          "end": 177,
           "verdict": "match",
           "cell80_answer": 40
         }
@@ -1413,6 +1728,9 @@
           "b": 39,
           "c": 351,
           "line": "9 * 39 = 351",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 351
         },
@@ -1422,6 +1740,9 @@
           "b": 42,
           "c": 168,
           "line": "4 * 42 = 168",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 168
         },
@@ -1431,6 +1752,9 @@
           "b": 168,
           "c": 519,
           "line": "351 + 168 = 519",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 519
         },
@@ -1440,6 +1764,9 @@
           "b": 519,
           "c": 671,
           "line": "1190 - 519 = 671",
+          "sym": "-",
+          "start": 229,
+          "end": 245,
           "verdict": "match",
           "cell80_answer": 671
         }
@@ -1458,6 +1785,9 @@
           "b": 29,
           "c": 696,
           "line": "24 * 29 = 696",
+          "sym": "*",
+          "start": 71,
+          "end": 84,
           "verdict": "match",
           "cell80_answer": 696
         },
@@ -1467,6 +1797,9 @@
           "b": 268,
           "c": 477,
           "line": "209 + 268 = 477",
+          "sym": "+",
+          "start": 134,
+          "end": 149,
           "verdict": "match",
           "cell80_answer": 477
         },
@@ -1476,6 +1809,9 @@
           "b": 477,
           "c": 219,
           "line": "696 - 477 = 219",
+          "sym": "-",
+          "start": 225,
+          "end": 240,
           "verdict": "match",
           "cell80_answer": 219
         }
@@ -1502,6 +1838,9 @@
           "b": 31,
           "c": 279,
           "line": "9 * 31 = 279",
+          "sym": "*",
+          "start": 47,
+          "end": 59,
           "verdict": "match",
           "cell80_answer": 279
         },
@@ -1511,6 +1850,9 @@
           "b": 38,
           "c": 266,
           "line": "7 * 38 = 266",
+          "sym": "*",
+          "start": 145,
+          "end": 157,
           "verdict": "match",
           "cell80_answer": 266
         },
@@ -1520,6 +1862,9 @@
           "b": 266,
           "c": 545,
           "line": "Total earnings for Omar = 279 + 266 = 545",
+          "sym": "+",
+          "start": 222,
+          "end": 237,
           "verdict": "match",
           "cell80_answer": 545
         },
@@ -1529,6 +1874,9 @@
           "b": 219,
           "c": 326,
           "line": "545 - 219 = 326",
+          "sym": "-",
+          "start": 265,
+          "end": 280,
           "verdict": "match",
           "cell80_answer": 326
         }
@@ -1547,6 +1895,9 @@
           "b": 228,
           "c": 352,
           "line": "580 - 228 = 352",
+          "sym": "-",
+          "start": 67,
+          "end": 82,
           "verdict": "match",
           "cell80_answer": 352
         },
@@ -1556,6 +1907,9 @@
           "b": 8,
           "c": 44,
           "line": "352 / 8 = 44",
+          "sym": "/",
+          "start": 136,
+          "end": 148,
           "verdict": "match",
           "cell80_answer": 44
         }
@@ -1574,6 +1928,9 @@
           "b": 693,
           "c": 2253,
           "line": "1560 + 693 = 2253",
+          "sym": "+",
+          "start": 251,
+          "end": 268,
           "verdict": "match",
           "cell80_answer": 2253
         }
@@ -1592,6 +1949,9 @@
           "b": 37,
           "c": 296,
           "line": "8 * 37 = 296",
+          "sym": "*",
+          "start": 41,
+          "end": 53,
           "verdict": "match",
           "cell80_answer": 296
         },
@@ -1601,6 +1961,9 @@
           "b": 73,
           "c": 438,
           "line": "6 * 73 = 438",
+          "sym": "*",
+          "start": 95,
+          "end": 107,
           "verdict": "match",
           "cell80_answer": 438
         },
@@ -1610,6 +1973,9 @@
           "b": 438,
           "c": 734,
           "line": "296 + 438 = 734",
+          "sym": "+",
+          "start": 166,
+          "end": 181,
           "verdict": "match",
           "cell80_answer": 734
         },
@@ -1619,6 +1985,9 @@
           "b": 734,
           "c": -254,
           "line": "480 - 734 = -254",
+          "sym": "-",
+          "start": 230,
+          "end": 246,
           "verdict": "match",
           "cell80_answer": -254
         }
@@ -1653,6 +2022,9 @@
           "b": 39,
           "c": 312,
           "line": "8 * 39 = 312",
+          "sym": "*",
+          "start": 57,
+          "end": 69,
           "verdict": "match",
           "cell80_answer": 312
         },
@@ -1662,6 +2034,9 @@
           "b": 24,
           "c": 168,
           "line": "7 * 24 = 168",
+          "sym": "*",
+          "start": 125,
+          "end": 137,
           "verdict": "match",
           "cell80_answer": 168
         },
@@ -1671,6 +2046,9 @@
           "b": 168,
           "c": 480,
           "line": "312 + 168 = 480",
+          "sym": "+",
+          "start": 178,
+          "end": 193,
           "verdict": "match",
           "cell80_answer": 480
         },
@@ -1680,6 +2058,9 @@
           "b": 99,
           "c": 381,
           "line": "480 - 99 = 381",
+          "sym": "-",
+          "start": 268,
+          "end": 282,
           "verdict": "match",
           "cell80_answer": 381
         }
