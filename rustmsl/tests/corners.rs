@@ -16,10 +16,47 @@
 //! `[r0, r1, r2, status]` quad plus the step count agree. Seeded xorshift
 //! inputs — no `rand`, fully reproducible (the `cell_fuzz` discipline).
 
-#![cfg(target_os = "macos")]
+#![cfg(any(target_os = "macos", feature = "cuda"))]
 
 use cell80_core::{Interp, Target};
-use rustmsl::{steps_of, GpuBatch, STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK};
+use rustmsl::{steps_of, STATUS_DIV0, STATUS_FUEL, STATUS_HALT, STATUS_OK};
+
+/// Compile-and-run on whichever GPU backend this build has: Metal on macOS,
+/// CUDA elsewhere under `--features cuda`. The battery text is identical on
+/// both — this seam guard runs wherever a backend exists.
+#[cfg(target_os = "macos")]
+mod exec {
+    pub fn compile_library(cells: &[rustmsl::LibraryCell]) -> Result<rustmsl::GpuModule, String> {
+        rustmsl::compile_library(cells)
+    }
+    pub fn run(module: &rustmsl::GpuModule, inputs: &[[u16; 3]]) -> Result<Vec<[u16; 6]>, String> {
+        rustmsl::GpuBatch::new(module)?.run(inputs)
+    }
+    pub fn run_with_state(
+        module: &rustmsl::GpuModule,
+        inputs: &[[u16; 3]],
+        state_in: &[u8],
+    ) -> Result<(Vec<[u16; 6]>, Vec<u8>), String> {
+        rustmsl::GpuBatch::new(module)?.run_with_state(inputs, state_in)
+    }
+}
+
+#[cfg(all(not(target_os = "macos"), feature = "cuda"))]
+mod exec {
+    pub fn compile_library(cells: &[rustmsl::LibraryCell]) -> Result<rustmsl::GpuModule, String> {
+        rustmsl::compile_library_cuda(cells)
+    }
+    pub fn run(module: &rustmsl::GpuModule, inputs: &[[u16; 3]]) -> Result<Vec<[u16; 6]>, String> {
+        rustmsl::CudaBatch::new(module)?.run(inputs)
+    }
+    pub fn run_with_state(
+        module: &rustmsl::GpuModule,
+        inputs: &[[u16; 3]],
+        state_in: &[u8],
+    ) -> Result<(Vec<[u16; 6]>, Vec<u8>), String> {
+        rustmsl::CudaBatch::new(module)?.run_with_state(inputs, state_in)
+    }
+}
 
 /// The `cell_fuzz` xorshift — fixed seeds, no `rand`, fully reproducible.
 struct Rng(u64);
@@ -67,11 +104,15 @@ fn check(src: &str, inputs: &[[u16; 3]]) {
     let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
         .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
     let consts = lowered.const_data();
-    let module = rustmsl::compile(&lowered.funcs, &consts, "run")
-        .unwrap_or_else(|e| panic!("msl compile failed: {e}\nsrc: {src}"));
-    let gpu = GpuBatch::new(&module)
-        .unwrap_or_else(|e| panic!("gpu pipeline failed: {e}\nmsl:\n{}", module.source));
-    let got = gpu.run(inputs).expect("gpu run");
+    let module = exec::compile_library(&[rustmsl::LibraryCell {
+        funcs: &lowered.funcs,
+        consts: &consts,
+        entry: "run",
+        state_len: 0,
+    }])
+    .unwrap_or_else(|e| panic!("gpu compile failed: {e}\nsrc: {src}"));
+    let got = exec::run(&module, inputs)
+        .unwrap_or_else(|e| panic!("gpu run failed: {e}\nsource:\n{}", module.source));
     let n_args = module.cells[0].params;
     for (i, (args, gpu_out)) in inputs.iter().zip(&got).enumerate() {
         let mut interp = Interp::new(
@@ -340,15 +381,13 @@ fn check_state(src: &str, entry: &str, state_len: usize, inputs: &[[u16; 3]], se
     let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
         .unwrap_or_else(|e| panic!("lower failed: {e}\nsrc: {src}"));
     let consts = lowered.const_data();
-    let module = rustmsl::compile_library(&[rustmsl::LibraryCell {
+    let module = exec::compile_library(&[rustmsl::LibraryCell {
         funcs: &lowered.funcs,
         consts: &consts,
         entry,
         state_len,
     }])
-    .unwrap_or_else(|e| panic!("msl compile failed: {e}\nsrc: {src}"));
-    let gpu = GpuBatch::new(&module)
-        .unwrap_or_else(|e| panic!("gpu pipeline failed: {e}\nmsl:\n{}", module.source));
+    .unwrap_or_else(|e| panic!("gpu compile failed: {e}\nsrc: {src}"));
 
     // Random initial state blocks — any bit pattern is a valid scalar field.
     let mut rng = Rng(seed);
@@ -356,7 +395,8 @@ fn check_state(src: &str, entry: &str, state_len: usize, inputs: &[[u16; 3]], se
     for b in state_in.iter_mut() {
         *b = rng.next() as u8;
     }
-    let (got, state_out) = gpu.run_with_state(inputs, &state_in).expect("gpu run");
+    let (got, state_out) = exec::run_with_state(&module, inputs, &state_in)
+        .unwrap_or_else(|e| panic!("gpu run failed: {e}\nsource:\n{}", module.source));
 
     let n_args = module.cells[0].params;
     for (i, (args, gpu_out)) in inputs.iter().zip(&got).enumerate() {

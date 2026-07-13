@@ -39,11 +39,20 @@ name = "cell80"
 name = "cell"
 harness = false
 
-# The MSL battery (tests/msl_battery.rs) runs the library's straight-line
-# integer cells on the GPU against the reference interpreter — macOS only.
-[target.'cfg(target_os = "macos")'.dev-dependencies]
+# The GPU batteries: tests/msl_battery.rs (macOS/Metal) and
+# tests/cuda_battery.rs (`--features cuda`, NVIDIA boxes) run the library's
+# cells on the GPU against the reference interpreter. rustmsl's codegen is
+# portable, so the dep is unconditional; its Metal leg is cfg'd inside it.
+[dev-dependencies]
 rustmsl = { path = "../rustmsl", version = "0.8.0" }
+
+[features]
+# The CUDA gate (docs/16 runbook): builds everywhere (dynamic loading), runs
+# on a box with an NVIDIA driver. Off by default — never in macOS CI's graph.
+cuda = ["rustmsl/cuda"]
+
 # gpu_interp_proto drives a custom bytecode-interpreter kernel + note-3 threadgroup
 # dispatch directly (the megakernel-alternative under test) — lower-level than
 # rustmsl's GpuBatch exposes, so the example needs Metal directly.
+[target.'cfg(target_os = "macos")'.dev-dependencies]
 metal = "0.29"
