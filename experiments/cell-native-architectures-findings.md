@@ -981,6 +981,349 @@ its numbers were trustworthy. Worth internalizing for whoever runs CN-1/
 CN-3 next: a slice-0 pilot's job is exactly this — finding the bugs in the
 measurement apparatus itself before treating its numbers as science.
 
+## CN-1 real build — infrastructure map (step 2) and the axis-A held-out draw (step 3)
+
+The real build is pre-registered (`cell-native-architectures-cn1-preregistration.md`). This
+section records the two things done before any training spend: the cross-repo infrastructure
+map that turns the pre-registration's "in-scope engineering" into a concrete assembly list,
+and the axis-A held-out draw — committed, per the pre-registration's order of operations,
+**before** any corpus exists.
+
+### Infrastructure map — three repos, what exists vs. what must be written
+
+- **`tiny-model/model` (TinyModel v11).** PyTorch, not MLX — the pre-registration's "MLX"
+  tag was wrong and is corrected there. 115M params, dim 512, 20 layers, vocab 71261, and
+  **weight tying is native** (`model.py:136`, `self.lm_head.weight = self.embed.weight`;
+  `tie_embeddings: true` in config) — so the pilot's hard-won precondition holds for free.
+  Trained on ~24M TinyStories tokens on an M3 via MPS, so from-scratch/continue training on
+  the M3 is realistic per the repo's own design. **Must be written:** an embedding-resize
+  utility (none exists; `load_state_dict` is `strict=True`), a checkpoint-resume path (the
+  trainer only trains from random init), and an autoregressive generate loop (there is no
+  decode loop at all — `forward()` returns raw logits and stops).
+- **`tiny-model/tokenizer` (v11.vocab.bin).** The format's reader *and* writer are both
+  public in `v11-core` (`Vocab::load` / `Vocab::save`); IDs are `u32` with **no runtime
+  ceiling** (the 72000 cap is a builder-truncation knob only). So the ~790 cell tokens +
+  call delimiters go in by **append-only re-serialization** at the tail (ids from 71260 up),
+  leaving every existing row — and every trained embedding — untouched. The PyO3 binding
+  (`v11.Tokenizer`) derives `vocab_size` from `vocab.len()`, so a larger artifact loads with
+  zero binding changes. Atomicity of the new tokens comes from longest-match (no per-piece
+  `is_special` flag exists); add both the plain and `▁`-prefixed form of each name.
+- **`larql` (constrained decoding).** `OpNameMask` (`crates/larql-inference/src/experts/mask.rs`)
+  is the port target: not a token trie but a per-step logit mask that re-derives grammar
+  state from the decoded text and admits only tokens whose surface continues a valid op-name
+  prefix (the closing `"` is unmasked only once `so_far` is a complete name). The entire
+  coupling to the sampler is one closure, `FnMut(&[u32] generated_ids, &mut Vec<f32> logits)`,
+  applied after **dense** LM-head scoring and before sampling. Reimplementing that single
+  seam in the TinyModel generate loop carries the whole pattern. (There is no "span grammar /
+  G2" subsystem in larql — that machinery is cell80-side, `cn2_g2_resample.py` lineage,
+  exactly as the pre-registration assumes.)
+
+### Library dump — `dump_library` (all 790 cells, not 249)
+
+`cell80/examples/dump_library.rs` walks the library via `discover_cell_files` and emits one
+JSONL row per cell — `name`, `pack`, `family_hash` (the identity-grade SHA-256 over
+canonical source; `source_hash` is non-cryptographic and is not used as identity), `arity`,
+`ret`, and the `DEFAULT_PROBES` fingerprint — into `cn1_library.jsonl`. One artifact feeds
+both the axis-A draw and `W_f` later. A naive `Cartridge::compile` auto-detects only
+`run`/`main` entries and silently dropped **541 of 790** cells (state cells and non-`run`
+entries); the fix was to compile through the canonical CLI/admission path, newly exposed as
+`cell80::library_cartridge` (was `pub(crate)`), which parses each cell's `//!` metadata
+including its declared entry. Result: **790/790 dumped, 0 skipped**, all names unique, all
+790 `family_hash`es distinct (no behavioural-duplicate collisions), across 42 packs. Arity:
+541 arity-0 state cells, 92 unary, 104 binary, 53 ternary — i.e. **249 value cells** are the
+natural call targets for an arithmetic-shaped corpus.
+
+### Axis-A held-out draw — `cn1_axis_a_draw.py` → `cn1_axis_a_heldout.json`
+
+Deterministic (seed 80, cells sorted by name within pack, `random.Random(seed).sample`), so
+the exact set reproduces from `cn1_library.jsonl` + the script; verified identical on rerun.
+Stratified by pack: `round(0.10 * size)` per pack, clamped to `[0, size-1]` so **no pack is
+wholly held out**; 7 small packs (size < 5) contribute 0 held-out and serve only as seen
+siblings. **Result: 79/790 = 10.0% overall held out**, of which 24 are value cells
+(24/249 = 9.6%): **7 unary, 12 binary, 5 ternary**, plus 55 state cells. Arity is recorded
+per held-out cell because gate (ii) is only *testable* on cells the corpus would otherwise
+invoke — the 24 value cells — while the draw still honors the frozen "10% of the vocabulary"
+text over all 790 (a held-out state cell simply yields an empty eval bucket, which is honest,
+not a bug). The full 79-cell list with `family_hash`es is committed in
+`cn1_axis_a_heldout.json`; this is the pre-registered record, timestamped before corpus
+generation. These cells never appear as a call target in either corpus source; their
+fingerprints (already in `cn1_library.jsonl`) are what `W_f` must turn into a usable address.
+
+### Tokenizer extension (step 2a) — 792 atomic tokens appended, atomicity verified
+
+Done and verified, non-destructively. Two new reusable examples in the tiny-model tokenizer
+workspace (`v11-core/examples/`): `append_user_tokens` (append-only re-serialize via the
+public `Vocab::save`, self-checking that every added token encodes to one id) and
+`check_call_encoding` (the contextual check). The base `v11.vocab.bin`
+(sha256 `873f44de…905b`, 71260 pieces) is **untouched**; the extended artifact
+`v11-cells.vocab.bin` is written into the experiment dir.
+
+**Token design (recorded so the corpus, `W_f`, and the mask agree):** one atomic token per
+cell, natural surface `<cell:NAME>` (angle-bracket + colon-namespaced so it is not word-like
+and cannot arise from ordinary text; NAME unique across all 790), plus two delimiters
+`<call>` / `</call>`. Corpus form is space-delimited — `... <call> <cell:NAME> <args> </call>` —
+so each is its own `▁`-prefixed chunk. **The crucial detail the pilot's toy vocab hid:** the
+pretokenizer prepends `▁` (U+2581) to every whitespace-delimited run, so the *stored piece*
+must be `▁<cell:NAME>` while the *corpus text* is the natural `<cell:NAME>`; the tool owns
+that `▁` and the self-check encodes the natural form. Because each cell is **one** token,
+constrained decoding (step 2b) is a single-step mask over a fixed id set — no per-character
+op-name FSM as in LARQL, whose op names span multiple subword tokens.
+
+**Result:** 792 tokens appended (2 delimiters + 790 cells), vocab 71260 → 72052, **contiguous
+ids 71260..72051** (`<call>`=71260, `</call>`=71261, cells 71262..72051), map 1:1 with the
+library (no missing/extra). Standalone self-check: all 792 → one id. Contextual check (cell
+token embedded in word-problem lines with digit operands and delimiters): every cell token
+stays exactly one id, delimiters one id each. The authoritative `{surface → id}` map is
+`cn1_cell_token_map.json` (committed); `v11-cells.vocab.bin` is a build product, regenerable
+from the pinned base vocab + `cn1_cell_tokens.txt` via `append_user_tokens`, so it is not
+committed. All axis-A held-out cells are in the vocabulary (held-out = never *called* in
+training, not absent as a token — constrained decoding must be able to emit them, which is
+gate (ii)'s whole point).
+
+### Three-way-tied W_f + resize (step 2c) and constrained decoding (step 2b) — apparatus validated
+
+Both done and validated on the **real** v11 checkpoint (CPU, seconds, no training), before any
+corpus exists — the pilot's discipline, applied to the real build. `cn1_model.py` and
+`cn1_decode.py`, each with a structural self-test that passes.
+
+**`cn1_model.py` — the architectural core.** `resize_embedding` grows the pretrained tied
+embed/lm_head 71261 → 72052 rows; the self-test confirms all 71261 trained rows are preserved
+**byte-for-byte** and `lm_head.weight` re-ties to `embed.weight` (same storage). `CN1Model`
+overrides the forward so the effective embedding matrix — used for *both* the input lookup and
+the tied output head — has its cell-token rows (71262..72051) supplied by a shared MLP
+`W_f: fingerprint → d_model` (arm c) or by the base free params (arm b, the ablation).
+Fingerprints are encoded 40-d (20 scaled probe values + a 20-d "ran cleanly" mask, so a
+returned-0 and a trap/halt don't collapse to the same point). The self-test proves the four
+load-bearing properties: (1) trained rows preserved + tying after resize; (2) arm-c cell rows
+`== W_f(FP)` for a seen *and* a held-out cell, on the same matrix for input and output;
+(3) **the gate-(ii) mechanism** — a gradient step optimizing only a *seen* cell's row moved a
+*held-out* cell's row (W_f grad-norm ~77, held-out row moved ~2.3), because held-out cells have
+no free params and can only move through the shared projection the seen cells train; (4) arm-b
+cell rows are free base params, no W_f. A forward pass yields logits `(1, 5, 72052)`.
+
+**`cn1_decode.py` — constrained decoding.** Because each cell is one atomic token (step 2a),
+the LARQL `OpNameMask` port collapses to a **single-step mask over a fixed id set**: the one
+grammar transition is "the token after `<call>` must be a `<cell:*>` id", applied at the same
+`FnMut(generated_ids, &mut logits)` seam (dense logits → mask → pick). Self-test: after
+`<call>`, exactly the 790 cell ids stay finite and the argmax is always a cell id; **all 79
+axis-A held-out cells are in the allowed set** (emittable — without this gate (ii) is
+impossible, since the mask must measure *selection*, not vocabulary membership); and an
+end-to-end constrained `generate` on the real arm-c model emits a valid cell token after
+`<call>`. Step 2's smoke slice (harness runs end-to-end, gates deliberately not evaluated) is
+thereby satisfied.
+
+**Step 2 (2a tokenizer + 2b decoding + 2c model) and step 3 (axis-A) are complete and
+validated.** What remains before a training number: step 4 (CN-2 harvest + corpus generation,
+two factorized held-out axes), step 5 (eval batteries + G2-reachability classification), step 6
+(train arms, evaluate against the pre-registered gates). Also still to write on the model side:
+the training loop itself (freeze policy for the base, W_f + new rows trainable), a
+checkpoint-resume path, and argument-encoding in the call grammar (operands after the cell
+token) — the last is a step-4 corpus decision.
+
+### H1 factory — corpus generator (step 4, source 1) built
+
+No H1 factory existed (it was "spec'd" everywhere, never built); the building blocks did — the
+`CellHost` exact oracle, the `cell_eval/examples_gen.py` verified-I/O + sibling-dedup engine,
+`retrieval.jsonl`'s hand-authored queries, chuk-math-gym, and steps 2–3's grammar/axis-A. The
+factory that assembles them into `(context, <call><cell:NAME>args</call>, verified result)`
+rows is `cn1_corpus.py`.
+
+**Design decision (the scientific crux of gate (ii)), recorded:** each call's context is a
+small set of **behavioral I/O demonstrations** of the operation (`a b = r ; …`) plus a query.
+A cell's fingerprint *is* its behavior on the probe battery, so "demonstrated behavior →
+`W_f(fingerprint)` region" is the smoothest substrate for a held-out cell to inherit an
+address from its trained siblings — an arbitrary linguistic name could not transfer, a
+behavioral cue can. Every demonstration is the oracle's own output, so rows are verified by
+construction (`halt == returned` required; escalating draws dropped, `trapped_ops` carried).
+
+**Axes (never conflated):** axis A = the 24 held-out value cells never appear as a call target
+(train side); axis B = composition is (surface *template* × *pack*), with a stratified set of
+(template, pack) pairs held out so every template appears with other packs and every pack with
+other templates — a held-out (template, pack) is attributable to composition, not an unseen
+token. Three uniform templates (`eq` / `arrow` / `io`) that work for any cell, so the
+factorization needs no per-cell natural language (the library mostly lacks summaries — 0/120
+sampled value cells had one).
+
+**First generation (`--per-cell 30`, seed 80, ~2s, deterministic):** all **four eval buckets
+populated and disjoint** — seen×seen 6054 (the in-distribution held-out slice), seen-cell×
+novel-comp 520, novel-cell×seen-comp 668, novel×novel 40 — plus 6066 train rows. Coverage
+222/225 seen value cells; the 3 stragglers are the `units` pack (needs matching unit-code
+operands, not random u16 — a documented v1 gap). `cn1_corpus.py` + `cn1_corpus_stats.json` are
+committed; the corpus JSONLs are regenerable build products (not committed). Ratio/scale are
+CLI knobs; the real run raises `--per-cell` and can thin the seen×seen bucket. Still to add:
+source 2 (the CN-2 harvest, mix ratio reported then) and sibling-discrimination of the demos
+(so a held-out cell's context uniquely identifies it — the `examples_gen.py` `co_match` engine
+is the reusable primitive).
+
+### Training harness (step 6 apparatus) + the smoke-slice finding that stops the spend
+
+The training loop (`cn1_train.py`) is built and runs end-to-end on M3/MPS: freeze policy knob,
+both arms, loss supervised at the cell-token position (predict the cell from the prefix ending
+in `<call>` — full-sequence CE is swamped by irreducible loss on digit/format tokens the frozen
+base can't improve). Two MPS/mechanics issues found and fixed along the way: `index_copy` is
+unimplemented on MPS (rewrote the effective-matrix assembly as a `torch.cat` of contiguous
+slices — cell tokens are a tail range), and device-safety in the generate loop.
+
+**Then the smoke run surfaced a real, load-bearing design finding — exactly what the step-2
+smoke slice is for — and it stops the training spend until resolved.** Trained on the
+behavioral-demonstration corpus, both a fully-frozen base and a top-4-unfrozen base **collapse
+to predicting a single cell regardless of context** (cell-accuracy ≈ 0.005, loss plateaus just
+under `ln(790)`). `cn1_probe_separation.py` isolates the mechanism rigorously: the base's hidden
+state at the `<call>` position has **cosine 0.982 within a cell (same operation, different
+operands) vs. 0.985 between different cells — separation −0.003**. The base collapses every
+arithmetic-demonstration context to essentially one point; different operations are no more
+distinct than the same operation on different operands.
+
+**What this means (a corpus/representation finding, not a training bug).** My corpus design
+grounded each call in behavioral I/O demonstrations — principled for gate (ii) (the fingerprint
+*is* behavior, so demonstrated-behavior → `W_f(fingerprint)` is the smoothest transfer path) —
+but it made the base task **few-shot function identification**: infer which of 249 functions the
+demos show, with no surface cue, since operands are re-randomized every example. A TinyStories
+base neither represents arithmetic demonstrations discriminatively (probe above) nor learns to
+in 200 smoke steps, so there is no context signal for *any* embedding strategy (W_f or free
+rows) to condition on — gate (ii) is not even reachable, for the same structural reason the toy
+pilot's was: no substrate the address could modulate. The apparatus is validated; the corpus
+grounding and the model's representation capacity are mismatched.
+
+**The design fork this forces (before the real spend), and the recommendation.** Behavioral
+grounding alone is too hard; a pure name/descriptor cue transfers to held-out cells no better
+than the pilot's iteration-1 (novel token, no address). The resolution has to give seen cells a
+*learnable* context→cell signal while keeping a held-out→fingerprint transfer path — i.e. a
+**compositional descriptor** (operation-attribute words drawn from a controlled vocabulary,
+composed per cell) that (a) lets the model learn description→cell on seen cells and (b) lets a
+held-out cell's description, built from attribute words seen with other cells, land in the
+fingerprint region `W_f` maps that behavior to. That is the pilot's compositional-grid lesson at
+real scale, and it needs either synthesized per-cell descriptors (the library lacks summaries —
+0/120 sampled) or a training phase that first teaches the base to *read* demonstrations. This is
+a genuine scientific choice about corpus grounding, surfaced here — deliberately — before a
+GPU-hour is spent, which is the entire point of pre-registering a smoke slice.
+
+**Resolution chosen and validated: compositional descriptors.** The corpus now grounds each call
+in a compositional operation *description* built from the cell's own snake_case name-words +
+pack, expanded through a controlled abbreviation vocabulary (`sat`→saturating, `mul`→multiply,
+`i16`→signed, …) so words recur heavily across the library (`op multiply saturating kind safe
+arith`). Seen cells get a learnable description→cell signal; a held-out cell's description reuses
+words seen with other cells, and `W_f(fingerprint)` places it near its behavioral siblings —
+both transfer paths available (`cn1_corpus.py --grounding descriptor`, the default; `behavioral`
+kept for the ablation).
+
+The frozen-base separation probe still reads ≈0 *with* descriptors (+0.004) — but that measures
+the frozen, anisotropic representation (all hidden states sit at cosine ~0.98); it is pessimistic
+because it can't see what a *trained* model extracts. The decisive test is learnability, and it
+passes: **a controlled diagnostic (10 cells, ~90 examples each, top-6 unfrozen) climbs from
+cell-accuracy 0.08 → ~0.40 and loss 5.47 → 3.12 in 400 steps**, learning distinctive cells
+(`rotr16`) cleanly (constrained HITs); confusion is confined to behaviorally-and-lexically
+near-identical siblings (`leading_zeros`/`leading_ones`/`trailing_ones`). That root-causes the
+earlier collapse: it was **data density** — ~6 examples/cell over 225 cells against a 790-way
+output — not the harness or the approach. The behavioral-only corpus could not do even this
+(separation ≈0 *and* no discriminative token to attend to); descriptors supply the signal.
+
+**First full-library run (arm fingerprint, one seed — NOT a gate verdict).** 790-cell descriptor
+corpus (~108 train examples/seen cell), top-8 unfrozen, 5000 steps (~23 min M3). Loss 6.78 →
+~4.2 (chance `ln 790 = 6.67`), training cell-acc ~0.12. Constrained top-1 per eval bucket:
+
+| bucket | top-1 |
+|---|---|
+| seen-cell × seen-comp (in-distribution) | 0.220 |
+| seen-cell × novel-comp | 0.165 |
+| **novel-cell × seen-comp** (gate (ii) signal) | **0.000** |
+| **novel-cell × novel-comp** (gate (ii) signal) | **0.000** |
+
+Read carefully, and NOT as a gate verdict: the model **does** learn seen cells (0.22 is ~170×
+the 1/790 chance) and **does** generalize to novel *compositions* of seen cells (0.165) — so
+unlike the toy pilot it reached hidden states the embeddings influence. But held-out **cells**
+score top-1 0.000. Three reasons this is not yet gate (ii)'s answer: (a) top-1 is blunt — a
+held-out cell landing at rank 3 of 790 still scores 0, and rank was not measured (the harness now
+reports top-5 + median rank, and saves the checkpoint — both gaps this run exposed); (b)
+in-distribution accuracy is only 0.22, so the model is under-powered — asking it to place unseen
+cells when it is 22% on seen ones is premature; (c) one arm, one seed, no random-init baseline
+(gate (ii) is a *contrast*). A stronger, better-instrumented run (denser corpus ~180/cell,
+top-12, 8000 steps, rank metrics) is in flight to disambiguate "no transfer" from "partial
+transfer below top-1", followed by the random arm.
+
+### Gate (ii) mechanism CONFIRMED — the fingerprint-vs-random contrast on held-out cells
+
+The decisive A/B: both arms trained identically (dense corpus, top-12, 8000 steps) on the SAME
+descriptor-grounded corpus — identical contexts, so the descriptor's contribution is controlled
+for; the **only** difference is where a cell token's embedding row comes from (arm c: shared
+`W_f(fingerprint)`; arm b: a free learned row). Full rank distribution of the true cell among the
+790 masked candidates, on the **held-out** bucket (novel-cell × seen-comp, n=200; chance median
+rank ≈ 395), reloaded from the saved checkpoints (`cn1_eval_ckpt.py`):
+
+| | median rank | mean rank | in top-10% (rank<79) |
+|---|---|---|---|
+| **fingerprint — held-out cells** | **56** | 85 | **65%** |
+| **random — held-out cells** | **619** | 515 | **0%** |
+| fingerprint — seen cells (control) | 62 | 59 | 64% |
+| random — seen cells (control) | 45 | 46 | 87% |
+
+**This is the first genuine gate-(ii) positive in the programme.** On cells the model never saw
+called, fingerprint embeddings put **65% of them in the top 10%** of the whole 790-cell library
+(median rank 56); random embeddings put **0%** there (median rank 619 — *worse than chance*,
+because an untrained free row is actively suppressed as the trained rows rise). The control rules
+out a general arm difference: on *seen* cells the arms are comparable and random is if anything
+better (87% vs 64% top-10%). So the held-out gap is attributable specifically to the fingerprint
+projection — exactly the mechanism the pre-registration named as "the only mechanism by which
+unseen cells have meaningful addresses." The toy pilot could never reach this test (0.000/0.000
+capacity floor); here the contrast is large, tightly distributed (fingerprint held-out p25–p75 =
+47–96), and correctly signed.
+
+**What is and isn't established (no overclaim).** This confirms the *mechanism* — behaviour-
+derived embeddings give unseen cells usable addresses — as a **ranking** signal. It does **not**
+clear the pre-registered gate-(ii) *bar*, which is top-1 (`(c) ≥ 0.5`): held-out top-1/top-5 are
+0.000 for both arms, because the whole model is under-powered (even *seen* cells are only ~0.065
+top-1 / ~0.24 top-10%). So the honest verdict is **"mechanism confirmed, invocation not yet"**:
+the fingerprint address is real and strong at the rank level, and converting it to top-1 needs a
+stronger model (more capacity/steps/data), not a different mechanism. Also: one seed per arm; the
+pre-registered gate needs 3.
+
+### The shuffled control + the double dissociation (the result that makes it strong)
+
+The one control a skeptic reaches for: is the held-out signal *behaviour*, or just a well-
+conditioned shared projection / name-similarity? Arm **(s) shuffled** — identical `W_f`, identical
+geometry, but each cell assigned a *different* cell's fingerprint (seeded derangement) — answers
+it. Run at a fixed config across all three arms (top-16, LR linear decay, 8000 steps, dense
+corpus, seed 80). Median rank of the true cell among 790:
+
+| arm | seen top-1 | seen rank | **held-out rank** (novel-cell × seen-comp) |
+|---|---|---|---|
+| fingerprint | 0.27 | 72 | **43** |
+| shuffled | 0.475 | 2 | **566** (worse than chance) |
+| random | 0.785 | 0 | **519** (worse than chance) |
+
+Two things line up, and together they are decisive:
+
+1. **Held-out transfer is behavioural.** Scrambling the behaviour↔cell correspondence collapses
+   held-out ranking from 43 to 566 — from ~9× better than chance to *worse* than chance, alongside
+   random's 519. So the address signal is specifically the fingerprint↔behaviour correspondence,
+   not the projection layer and not name-similarity. The pre-registered "behavioural" outcome.
+2. **A double dissociation kills the "better init" alternative.** On *seen* cells the ordering
+   **inverts**: fingerprint is *worst* (top-1 0.27, rank 72), shuffled better (0.475, rank 2),
+   random best (0.785, rank 0) — a clean monotonic pattern along the "freedom to memorize" axis
+   (behavioural constraint < arbitrary projection < fully-free rows). The skeptic's default
+   ("fingerprint just has a better-conditioned init / the shared projection aids optimization")
+   predicts fingerprint ≥ shuffled *everywhere*; the seen-cell inversion is the opposite. What
+   remains is the mechanism the hypothesis names: **behavioural geometry constrains similar cells
+   to similar rows — costing rank-1 precision on seen cells, buying an address for unseen ones.**
+   Generalization traded against memorization, along the axis the hypothesis predicts. The
+   inversion was not designed; it is a prediction the hypothesis makes that nobody wrote down
+   first — now **pre-registered before the 3-seed run** so replication is confirmatory.
+
+The LR-decay/top-16 config also lifted seen top-1 4× (0.065 → 0.27) over the un-decayed top-12
+run, while held-out top-1 stayed pinned at 0.000 — the exact pattern the base swap exists to
+disambiguate (ceiling vs. no-prior). Flagged and **not yet reported as a result:** the
+`novel_cell × novel_comp` bucket (n=48) shows a sign flip (shuffled 292, *better* than chance,
+vs 566 worse on seen-comp) — under-powered, to be resolved by 3 seeds / larger n before it enters
+the findings.
+
+**Status of the CN-1 real build:** the **gate-(ii) mechanism is confirmed with a controlled,
+double-dissociated, mechanistically-explained positive** — behaviour-as-address is real, not a
+hypothesis. Owed before it is a *gate*: 3 seeds (the registered inversion prediction), and top-1
+on a base with a relevant prior (the SmolLM2 swap — running). Also owed for the full programme:
+gate (i) vs the prompted baseline, step-5 eval batteries + G2-reachability, gate (iii), and the
+CN-2 harvest (source 2). The v11 result stands as written — "mechanism confirmed, invocation not
+yet."
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —

@@ -42,7 +42,7 @@ pub use admission::{admit, AdmissionReport, RefusalReason, DUPLICATE_AGREEMENT};
 pub use cartridge::{
     Body, Cartridge, CartridgeOpts, Manifest, Rv32Body, RV32_TARGET, Z80_CELL_TARGET,
 };
-pub use cli::{parse_args, run_cli, USAGE};
+pub use cli::{library_cartridge, parse_args, run_cli, USAGE};
 pub use config::{CellConfig, DivByZero};
 pub use discover::{discover_cell_files, find_cell_file};
 pub use facts::{Fact, FactFailure, FactInput, ImportPolicy, ImportReport};
