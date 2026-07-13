@@ -1024,7 +1024,7 @@ mod gpu {
         flat
     }
 
-    const KERNEL: &str = r#"
+    pub(super) const KERNEL: &str = r#"
 #include <metal_stdlib>
 using namespace metal;
 
@@ -1338,6 +1338,14 @@ kernel void interp(
 
 #[cfg(target_os = "macos")]
 pub use gpu::InterpBatch;
+
+/// The interpreter kernel's MSL source — the snapshot/golden surface. macOS-
+/// gated only until the dialect split turns this into a portable builder over
+/// a shared kernel body; the returned bytes must not change when it does.
+#[cfg(target_os = "macos")]
+pub fn interp_source_msl() -> String {
+    gpu::KERNEL.to_string()
+}
 
 #[cfg(test)]
 mod tests {
