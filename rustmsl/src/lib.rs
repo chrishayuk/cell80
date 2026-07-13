@@ -34,6 +34,17 @@ mod runtime;
 #[cfg(target_os = "macos")]
 pub use runtime::GpuBatch;
 
+/// The CUDA executor — [`CudaBatch`](cuda::CudaBatch) for compiled modules,
+/// [`CudaInterpBatch`](cuda::CudaInterpBatch) for the bytecode-interpreter
+/// backend. Opt-in (`--features cuda`); builds without a CUDA toolkit
+/// (dynamic loading) and fails construction, not compilation, on a box
+/// without one.
+#[cfg(feature = "cuda")]
+mod cuda;
+
+#[cfg(feature = "cuda")]
+pub use cuda::{toolchain_info, CudaBatch, CudaInterpBatch};
+
 /// The bytecode-interpreter backend — the library × probe-set body of the
 /// two-body design (this crate's `compile_library`/`GpuBatch` are the single
 /// cell × N-inputs body). Bytecode, linearizer and CPU reference VM build

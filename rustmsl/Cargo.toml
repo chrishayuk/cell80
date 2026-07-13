@@ -18,10 +18,25 @@ categories = ["compilers"]
 # The target-independent core: typed IR, passes, the reference IR interpreter.
 cell80-core = { version = "0.8.0", path = "../cell80-core" }
 
-# The GPU runtime leg exists only where Metal does; the codegen (IR→MSL text)
-# builds and is testable everywhere.
+# The Metal runtime leg exists only where Metal does; the codegen (IR→MSL/CUDA
+# text) builds and is testable everywhere.
 [target.'cfg(target_os = "macos")'.dependencies]
 metal = "0.29"
+
+# The CUDA runtime leg (CudaBatch/CudaInterpBatch) is opt-in (`--features
+# cuda`) and NOT platform-cfg'd — CUDA hosts are Linux/Windows. Bound
+# dynamic-loading: builds with no CUDA toolkit installed and dlopens
+# libcuda/libnvrtc at run time on the box that has them. The driver-API
+# surface is pinned to CUDA 12.6 (the gate runbook pins the box image to
+# match — docs 14, R8).
+[dependencies.cudarc]
+version = "0.19.8"
+optional = true
+default-features = false
+features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12060"]
+
+[features]
+cuda = ["dep:cudarc"]
 
 [dev-dependencies]
 # Lower dialect snippets for the R1 corner battery (interpreter ≡ GPU).
