@@ -630,3 +630,31 @@ untouched so the running re-run's arms stay mutually consistent (contrast-valid)
 *absolute* numbers come from a random-sampled re-eval of the faithful checkpoints post-run. This is
 the third ratio-vs-mismatched-population catch in the programme (after EX-2's drift baseline) and
 the fourth "is this number an artifact of how I measured it?" catch overall.
+
+## Amendment (2026-07-14): the usable-level target (execution-derived), and the queue reorder
+
+Written BEFORE the faithful arms land, so the mechanism is judged against a target specified from
+the architecture — not one reverse-engineered from the result. Prior write-ups judged against
+per-cell top-50 recall (0.25), an **arbitrary** bar never derived from anything. The correct target
+comes from the two-tier design's economics (`cn1_usable_target.py`):
+
+**Usable target:** the model narrows to top-K, the runtime EXECUTES those K to resolve. Execution is
+~µs/cell, so the requirement is *is the true cell within the number of candidates executable per
+token, K_exec?* At 117 tok/s (8.5 ms/token) and 32 probes/candidate: **K_exec ≈ 260 (CPU, ~1 µs/eval)
+to ~100,000 (GPU, 3.7×10⁸ eval/s).** K_exec is fixed by hardware and token rate, **not by library
+size.** So:
+- **The deciding metric is top-K_exec recall + whether ABSOLUTE rank stays ≤ K_exec as the library
+  grows** — NOT per-cell top-50 recall (retired as an unspecified standard).
+- **Current median absolute rank = 114 (random-sampled, 790 cells) already clears K_exec** (114 <
+  260 even on CPU). So at today's scale the address is *already usable* — and per-cell recall 0.25
+  was measuring the wrong thing (arbitrary k, and at 790 you can execute far more than 50).
+- The address only earns its keep when library ≫ K_exec. At 10⁶ cells: if absolute rank stays ~114
+  → usable (114 ≪ K_exec); if rank stays fractional at 14.4% → 144,000 candidates → **unusable on
+  CPU, marginal on GPU.**
+
+**Consequence — the queue is reordered.** Scale-invariance (the retrained library-scale curve,
+114→788, measuring ABSOLUTE held-out rank vs library size) moves from third to **second, right after
+the faithful arms**: it is the cheapest decisive experiment with the biggest consequence, and if
+rank is fractional the capacity/corpus question is moot and CN-6 is premature. New order:
+**faithful arms → library-scale curve (absolute vs fractional) → CN-6.** The mechanism is confirmed
+(the matched-item contrast); its usability is now a single, well-specified, scale question.
