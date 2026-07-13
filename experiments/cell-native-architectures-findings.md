@@ -1198,11 +1198,31 @@ real scale, and it needs either synthesized per-cell descriptors (the library la
 a genuine scientific choice about corpus grounding, surfaced here — deliberately — before a
 GPU-hour is spent, which is the entire point of pre-registering a smoke slice.
 
-**Status of the CN-1 real build:** the full apparatus (steps 2–3 and the step-4/6 machinery) is
-built and mechanically validated; the pre-registered *training run* is **paused on the corpus-
-grounding design decision above**, not started. No gate has been evaluated. Steps 4 (final
-corpus), 5 (eval batteries + G2-reachability), and 6 (the trained run) resume once the grounding
-is chosen.
+**Resolution chosen and validated: compositional descriptors.** The corpus now grounds each call
+in a compositional operation *description* built from the cell's own snake_case name-words +
+pack, expanded through a controlled abbreviation vocabulary (`sat`→saturating, `mul`→multiply,
+`i16`→signed, …) so words recur heavily across the library (`op multiply saturating kind safe
+arith`). Seen cells get a learnable description→cell signal; a held-out cell's description reuses
+words seen with other cells, and `W_f(fingerprint)` places it near its behavioral siblings —
+both transfer paths available (`cn1_corpus.py --grounding descriptor`, the default; `behavioral`
+kept for the ablation).
+
+The frozen-base separation probe still reads ≈0 *with* descriptors (+0.004) — but that measures
+the frozen, anisotropic representation (all hidden states sit at cosine ~0.98); it is pessimistic
+because it can't see what a *trained* model extracts. The decisive test is learnability, and it
+passes: **a controlled diagnostic (10 cells, ~90 examples each, top-6 unfrozen) climbs from
+cell-accuracy 0.08 → ~0.40 and loss 5.47 → 3.12 in 400 steps**, learning distinctive cells
+(`rotr16`) cleanly (constrained HITs); confusion is confined to behaviorally-and-lexically
+near-identical siblings (`leading_zeros`/`leading_ones`/`trailing_ones`). That root-causes the
+earlier collapse: it was **data density** — ~6 examples/cell over 225 cells against a 790-way
+output — not the harness or the approach. The behavioral-only corpus could not do even this
+(separation ≈0 *and* no discriminative token to attend to); descriptors supply the signal.
+
+**Status of the CN-1 real build:** apparatus complete and validated end-to-end; grounding chosen
+and shown learnable. What remains is a **scale run** — a full-library corpus with adequate
+per-cell density and enough steps, both arms × 3 seeds, then evaluation against the gates. That
+is the pre-registered training spend (hours of MPS compute), now unblocked. No gate has been
+evaluated yet.
 
 ## Immediate next steps (not yet done)
 

@@ -73,7 +73,36 @@ def _t_io(args, out):
 TEMPLATES = {"eq": _t_eq, "arrow": _t_arrow, "io": _t_io}
 TEMPLATE_NAMES = list(TEMPLATES)
 
-N_DEMOS = 3  # behavioral demonstrations per context
+N_DEMOS = 2  # behavioral demonstrations per context (reinforce; descriptor is the learnable cue)
+
+# Compositional descriptor vocabulary: the context carries an operation *description* built from
+# a controlled set of attribute words, so (a) seen cells are learnable (description -> cell) and
+# (b) a held-out cell's description reuses words seen with OTHER cells and, being behaviorally
+# similar to its siblings, lands in the region W_f maps that fingerprint to. Cell names are
+# already compositional snake_case (add_sat, mul_checked, smallest_prime_factor), so the words
+# recur heavily across the library. Common abbreviations expand to shared attribute words to
+# maximize reuse (mul appears in mul_sat, mul_checked, mul_i16 -> all share "multiply").
+ABBREV = {
+    "sat": "saturating", "gt": "greater than", "ge": "at least", "lt": "less than",
+    "le": "at most", "eq": "equal", "ne": "not equal", "sub": "subtract", "add": "add",
+    "mul": "multiply", "div": "divide", "mod": "modulo", "rem": "remainder", "abs": "absolute",
+    "neg": "negate", "min": "minimum", "max": "maximum", "avg": "average", "sqrt": "square root",
+    "pow": "power", "exp": "exponent", "log": "logarithm", "gcd": "gcd", "lcm": "lcm",
+    "i16": "signed", "u16": "unsigned", "i32": "signed wide", "u32": "unsigned wide",
+    "bcd": "binary coded decimal", "rotl": "rotate left", "rotr": "rotate right",
+    "shl": "shift left", "shr": "shift right", "popcount": "population count", "clz": "leading zeros",
+    "ctz": "trailing zeros", "lerp": "interpolate", "clamp": "clamp", "pct": "percent",
+    "is": "is", "has": "has", "to": "to", "of": "of",
+}
+
+
+def describe(name: str, pack: str) -> str:
+    """A compositional operation description from the cell's name-words + pack. Deterministic."""
+    words = []
+    for tok in name.split("_"):
+        words.append(ABBREV.get(tok, tok))
+    kind = pack.replace("-", " ")
+    return f"op {' '.join(words)} kind {kind}"
 
 
 def load_meta():
@@ -117,10 +146,12 @@ class Oracle:
         return r  # {result, halt, trapped_ops, ...}
 
 
-def make_example(name, arity, template, rng, oracle, safe=False):
-    """One row: N_DEMOS behavioral demos + a query, target is the call, plus verified result.
-    Returns None if any draw doesn't cleanly return (halt != returned) — an unclean example is
-    not a usable demonstration of the behavior."""
+def make_example(name, arity, template, rng, oracle, pack, grounding="descriptor", safe=False):
+    """One row: a context + a query, target is the call, plus verified result. Grounding:
+      - "descriptor": compositional operation description + N_DEMOS behavioral demos + query
+        (the chosen design — descriptor is the learnable cue, demos reinforce the behavior).
+      - "behavioral": demos + query only (the original; kept for the ablation/probe).
+    Returns None if any draw doesn't cleanly return (halt != returned)."""
     render = TEMPLATES[template]
     demos = []
     total_trapped = 0
@@ -134,7 +165,10 @@ def make_example(name, arity, template, rng, oracle, safe=False):
     *demo_pairs, (q_args, q_out) = demos
     demo_text = " ; ".join(render(a, o) for a, o in demo_pairs)
     query_text = render(q_args, None)  # query shows inputs, not the answer
-    context = f"{demo_text} ; {query_text}"
+    if grounding == "descriptor":
+        context = f"{describe(name, pack)} ; {demo_text} ; {query_text}"
+    else:
+        context = f"{demo_text} ; {query_text}"
     call = f"<call> <cell:{name}> {' '.join(str(a) for a in q_args)} </call>"
     return {
         "cell": name,
@@ -168,10 +202,14 @@ def main():
     ap.add_argument("--per-cell", type=int, default=40, help="training examples per seen cell (summed over templates)")
     ap.add_argument("--seed", type=int, default=80)
     ap.add_argument("--eval-per-cell", type=int, default=12)
+    ap.add_argument("--grounding", choices=["descriptor", "behavioral"], default="descriptor")
+    ap.add_argument("--max-cells", type=int, default=0, help="restrict to first N value cells (0=all) — learnability diagnostic")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
     by_name, held_cells, tok_map, value = load_meta()
+    if args.max_cells:
+        value = value[: args.max_cells]
     value_names = [r["name"] for r in value]
     packs = {r["pack"] for r in value}
     oracle = Oracle(value_names)
@@ -185,7 +223,7 @@ def main():
     per_cell_written = Counter()
     skipped_unclean = 0
 
-    def gen_n(name, arity, template, n, dest_list, tag, per_cell_key=None):
+    def gen_n(name, arity, template, pack, n, dest_list, tag, per_cell_key=None):
         """Generate n clean rows for (name, template) into dest_list, tagging with `tag`
         (a (bucket_cell, bucket_comp) pair or None for train). Falls back to safe operands if
         random draws keep escalating, so escalation-prone cells still get covered."""
@@ -194,7 +232,7 @@ def main():
         while made < n and attempts < n * 8 + 8:
             attempts += 1
             safe = attempts > n * 3  # first try varied regimes, then fall back to safe operands
-            ex = make_example(name, arity, template, rng, oracle, safe=safe)
+            ex = make_example(name, arity, template, rng, oracle, pack, grounding=args.grounding, safe=safe)
             if ex is None:
                 skipped_unclean += 1
                 continue
@@ -219,11 +257,11 @@ def main():
             if cell_held or comp_held:
                 bc = "novel_cell" if cell_held else "seen_cell"
                 bk = "novel_comp" if comp_held else "seen_comp"
-                gen_n(name, arity, template, args.eval_per_cell, eval_rows, (bc, bk))
+                gen_n(name, arity, template, pack, args.eval_per_cell, eval_rows, (bc, bk))
             else:
                 # seen×seen: reserve a held-out eval slice, rest to train
-                gen_n(name, arity, template, args.eval_per_cell, eval_rows, ("seen_cell", "seen_comp"))
-                gen_n(name, arity, template, n_per_template, train_rows, None, per_cell_key=name)
+                gen_n(name, arity, template, pack, args.eval_per_cell, eval_rows, ("seen_cell", "seen_comp"))
+                gen_n(name, arity, template, pack, n_per_template, train_rows, None, per_cell_key=name)
 
     rng.shuffle(train_rows)
     OUT_TRAIN.write_text("\n".join(json.dumps(r) for r in train_rows) + "\n")
