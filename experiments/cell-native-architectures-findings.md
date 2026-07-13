@@ -1049,6 +1049,37 @@ not a bug). The full 79-cell list with `family_hash`es is committed in
 generation. These cells never appear as a call target in either corpus source; their
 fingerprints (already in `cn1_library.jsonl`) are what `W_f` must turn into a usable address.
 
+### Tokenizer extension (step 2a) — 792 atomic tokens appended, atomicity verified
+
+Done and verified, non-destructively. Two new reusable examples in the tiny-model tokenizer
+workspace (`v11-core/examples/`): `append_user_tokens` (append-only re-serialize via the
+public `Vocab::save`, self-checking that every added token encodes to one id) and
+`check_call_encoding` (the contextual check). The base `v11.vocab.bin`
+(sha256 `873f44de…905b`, 71260 pieces) is **untouched**; the extended artifact
+`v11-cells.vocab.bin` is written into the experiment dir.
+
+**Token design (recorded so the corpus, `W_f`, and the mask agree):** one atomic token per
+cell, natural surface `<cell:NAME>` (angle-bracket + colon-namespaced so it is not word-like
+and cannot arise from ordinary text; NAME unique across all 790), plus two delimiters
+`<call>` / `</call>`. Corpus form is space-delimited — `... <call> <cell:NAME> <args> </call>` —
+so each is its own `▁`-prefixed chunk. **The crucial detail the pilot's toy vocab hid:** the
+pretokenizer prepends `▁` (U+2581) to every whitespace-delimited run, so the *stored piece*
+must be `▁<cell:NAME>` while the *corpus text* is the natural `<cell:NAME>`; the tool owns
+that `▁` and the self-check encodes the natural form. Because each cell is **one** token,
+constrained decoding (step 2b) is a single-step mask over a fixed id set — no per-character
+op-name FSM as in LARQL, whose op names span multiple subword tokens.
+
+**Result:** 792 tokens appended (2 delimiters + 790 cells), vocab 71260 → 72052, **contiguous
+ids 71260..72051** (`<call>`=71260, `</call>`=71261, cells 71262..72051), map 1:1 with the
+library (no missing/extra). Standalone self-check: all 792 → one id. Contextual check (cell
+token embedded in word-problem lines with digit operands and delimiters): every cell token
+stays exactly one id, delimiters one id each. The authoritative `{surface → id}` map is
+`cn1_cell_token_map.json` (committed); `v11-cells.vocab.bin` is a build product, regenerable
+from the pinned base vocab + `cn1_cell_tokens.txt` via `append_user_tokens`, so it is not
+committed. All axis-A held-out cells are in the vocabulary (held-out = never *called* in
+training, not absent as a token — constrained decoding must be able to emit them, which is
+gate (ii)'s whole point).
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
