@@ -1,85 +1,74 @@
 #!/usr/bin/env python3
-"""CN-1 slice-0 pilot — cell tokens with fingerprint embeddings, toy scale
+"""CN-1 slice-0 pilot, iteration 3 — cell tokens with fingerprint embeddings, toy scale
 (`experiments/cell-native-architectures.md`'s CN-1, following CN-0's gate not being met and
 CN-3 scoping out for Gemma-class models: the redirect to depth 1).
 
-Full CN-1 needs TinyModel v11 + its tokenizer, the H1 factory (three corpus sources,
-strict-improvement filter, admission-style dedup), a ~800-cell vocabulary, and ported
-constrained decoding — real infrastructure work across five repos. This pilot tests the one
-question that actually decides whether that investment is worth making: does a small model
-learn to associate a problem with the *right* cell-identity token at all, and does
-fingerprint-init give it an addressing advantage over random-init specifically on cells
-never invoked during training (the only mechanism by which an unseen cell could have a
-meaningful address — CN-1's own novelty gate, in miniature).
+Iteration 1 held out `is_ge`/`argmax3`, each with its OWN never-trained input token: both
+scored 0.000 for both embedding-init arms, because the model never processed that token at
+all, regardless of embedding placement. Iteration 2 tried recombining already-trained
+tokens ("discount"+"->", "discount"+"?") into a never-seen-together sequence: STILL 0.000
+for both arms — a deeper failure than iteration 1's. Both failures are "the model can't
+reach a hidden state where the embedding could matter" wearing different clothes: iteration
+1's token was never processed; iteration 2's *combination* was never processed, even though
+each token was. Neither is a fingerprint result — both are capacity/compositional-
+generalization results, and a from-scratch toy model may simply have none to speak of.
 
-**A scope adjustment found during research, not assumed going in**: TinyModel v11
-(`~/chris-source/tiny-model`) is PyTorch, not MLX, and its tokenizer loads a pre-built,
-immutable `.vocab.bin` with no `add_tokens` API -- extending it means rebuilding the vocab
-and recompiling a Rust/PyO3 extension, a real detour for a pilot. This script builds a
-small, self-contained MLX transformer + toy vocabulary from scratch instead -- trivial to
-add cell tokens to, since the vocab is defined here, not loaded from a fixed file. The real
-TinyModel v11 integration is deferred to the full CN-1 build.
+**Iteration 3, the last one (pre-registered, hard stop either way):** a genuine 3x2
+compositional GRID -- CATEGORY in {cat1,cat2,cat3} x VARIANT in {var1,var2}, each
+combination mapping to one of 6 pilot cells, template `"{a} {cat} {b} {var} ->"` uniform
+across the whole grid. Train on 5 of 6 combinations with many examples each, so every
+category AND every variant token gets heavy exposure across MULTIPLE partners (a genuine
+basis for learning that category and variant compose independently to select a cell, not
+just memorizing 5 point facts). Hold out exactly 1 combination entirely.
 
-Corpus: `chuk_math_gym`'s arithmetic generator (VERY_EASY difficulty) for the three
-arithmetic cells (add_sat/sub_sat/mul_sat), filtered to simple `a op b` expressions (VERY_EASY
-still occasionally chains 2-3 operators; anything not matching a single binary op is
-discarded, not force-parsed) and cross-checked against its own independently-computed
-`gold_answer`. The four non-arithmetic pilot cells (is_gt/is_ge/discount_percent/argmax3)
-have no independent domain generator to check against, so their own cell80 execution *is*
-the label (there's no separate ground truth for "is 12 >= 7" to diverge from). Every
-example, regardless of source, is verified against a REAL cell80 run via `cell80-py`'s
-`CellHost` before being admitted -- the exact-oracle discipline, not trusting either
-chuk_math_gym's arithmetic or hand-written Python to match cell80's own execution.
+**Pre-registered bar, stated before this iteration was run:**
+PASS: fingerprint-init's accuracy on the held-out combination exceeds 0.5, while
+      random-init's stays <=0.25 (near the ~1/6 chance level for 6 candidate cells) -- a
+      clear qualitative gap, not noise.
+FAIL: both arms land in the same range (both near-chance, or both similarly elevated) --
+      gate (ii) is not demonstrated at toy scale. Per the user's own fork: a FAIL here means
+      toy scale cannot test this question at all (no model with any compositional
+      generalization to modulate), not "redesign the corpus a third time." The real CN-1
+      build (TinyModel v11 + the H1 factory's actual training spend) is where gate (ii)
+      gets tested next, not another toy iteration.
 
 Run: python3 cn1_pilot.py
 """
 from __future__ import annotations
 
 import json
-import re
 import subprocess
-import sys
 import time
 from pathlib import Path
-
-sys.path.insert(0, str(Path.home() / "chris-source/chuk-math/src"))
 
 import cell80_py
 import mlx.core as mx
 import mlx.nn as nn
 import mlx.optimizers as optim
 import numpy as np
-from chuk_math_gym.domains.arithmetic.generator import ArithmeticGenerator
-from chuk_math_gym.schemas.problem import DifficultyLevel
 
 CELLS_DIR = Path(__file__).resolve().parent.parent.parent / "cell80" / "cells"
 DUMP_FINGERPRINTS = (
     Path(__file__).resolve().parent.parent.parent / "target" / "release" / "examples" / "dump_fingerprints"
 )
 
-# Pilot cells: 5 trained-on, 2 held out entirely (never invoked in the training corpus) --
-# the direct toy analogue of CN-1's novelty gate. Arity per cell (for calling CellHost.run).
-# Second iteration, after the first attempt (holding out `is_ge` with its own `>=` token,
-# `argmax3` with its own `max` token) found BOTH scored 0.000 regardless of embedding
-# strategy -- because each held-out cell's defining input token never appeared in training
-# at all, so the model had no hidden state to work from, full stop. This iteration's
-# held-out cells (`mul_sat`, `is_ge`) instead use TEMPLATES that recombine tokens already
-# trained elsewhere ("discount"/"->"/"?") in a never-seen-together combination -- every
-# individual token has real gradient signal; only the specific input-to-cell association is
-# withheld, the constraint the first iteration derived. `argmax3` moved to trained (so "max"
-# gets real gradient signal too, instead of being a second untestable held-out case).
-TRAIN_CELLS = {
-    "add_sat": 2,
-    "sub_sat": 2,
-    "argmax3": 3,
-    "is_gt": 2,
-    "discount_percent": 2,
-}
-HELD_OUT_CELLS = {
-    "mul_sat": 2,
-    "is_ge": 2,
-}
-ALL_CELLS = {**TRAIN_CELLS, **HELD_OUT_CELLS}
+CATEGORIES = ["cat1", "cat2", "cat3"]
+VARIANTS = ["var1", "var2"]
+
+# The 3x2 grid: every (category, variant) pair maps to one distinct pilot cell, all arity-2.
+# Assignment is arbitrary (the category/variant tokens are synthetic slot labels, not
+# semantically meaningful words) -- the point is uniform template structure across all 6, so
+# category and variant are independently learnable factors, not per-cell idiosyncrasies.
+CELL_GRID = {
+    ("cat1", "var1"): "add_sat",
+    ("cat1", "var2"): "sub_sat",
+    ("cat2", "var1"): "is_gt",
+    ("cat2", "var2"): "is_ge",
+    ("cat3", "var1"): "discount_percent",
+    ("cat3", "var2"): "mul_sat",  # HELD OUT: never trained, both its category (cat3) and
+}                                  # variant (var2) tokens are heavily trained via other cells.
+HELD_OUT_COMBO = ("cat3", "var2")
+ALL_CELLS = list(CELL_GRID.values())
 
 N_PER_CELL = 300
 SEED = 7
@@ -110,76 +99,21 @@ def run_cell(host, handles, name, args):
     return host.run(handles[name], list(args))["result"]
 
 
-# ---- corpus: arithmetic cells via chuk_math_gym, verified against cell80 ----
-
-SIMPLE_EXPR = re.compile(r"^(\d+)\s*([+\-*])\s*(\d+)$")
-OP_TO_CELL = {"+": "add_sat", "-": "sub_sat"}
-
-# Per-cell prompt template. The two held-out cells (`mul_sat`, `is_ge`) deliberately do NOT
-# get a novel operator symbol -- they REUSE tokens already trained elsewhere ("discount" via
-# discount_percent's own training, "->" via add_sat/sub_sat, "?" via is_gt) in a combination
-# never seen during training. Every individual token has real gradient signal; only the
-# specific input-to-cell ASSOCIATION is held out -- the constraint the first pilot iteration
-# found the hard way (an unseen operator token like the original `>=` gives the model no
-# hidden state to work from at all, regardless of embedding placement).
-TEMPLATES = {
-    "add_sat": lambda a, b: f"{a} + {b} ->",
-    "sub_sat": lambda a, b: f"{a} - {b} ->",
-    "is_gt": lambda a, b: f"{a} > {b} ?",
-    "discount_percent": lambda a, b: f"{a} discount {b % 100} % ->",
-    "argmax3": lambda a, b, c: f"max {a} {b} {c} ->",
-    "mul_sat": lambda a, b: f"{a} discount {b} ->",  # "discount"+"->" recombined, never seen
-    "is_ge": lambda a, b: f"{a} discount {b} ?",  # "discount"+"?" recombined, never seen
-}
+def template(cat, var, a, b):
+    return f"{a} {cat} {b} {var} ->"
 
 
-def arithmetic_examples(host, handles, n_per_op, rng):
-    """chuk_math_gym VERY_EASY problems, filtered to a single binary op (VERY_EASY still
-    occasionally chains 2-3 operators; anything else is discarded, not force-parsed), then
-    verified against a real cell80 run -- if chuk_math_gym's gold_answer and cell80's own
-    add_sat/sub_sat disagree (e.g. saturation at the u16 boundary), the example is discarded,
-    not silently trusted either way. (`mul_sat` is generated directly, not via chuk_math_gym
-    -- it's a held-out cell now, rendered with a deliberately recombined template, not its
-    "natural" `a * b ->` one; see `direct_examples`.)
+def grid_examples(host, handles, cat, var, n, rng):
+    """cell80's own execution IS the label -- there's no separate ground truth for any of
+    these 6 cells to diverge from; the grid's job is testing compositional generalization
+    over the (category, variant) -> cell association, not verifying arithmetic.
     """
-    gen = ArithmeticGenerator()
-    by_cell = {c: [] for c in OP_TO_CELL.values()}
-    seed = int(rng.integers(0, 2**31))
-    tries = 0
-    while any(len(v) < n_per_op for v in by_cell.values()) and tries < n_per_op * len(OP_TO_CELL) * 20:
-        tries += 1
-        seed += 1
-        problem, _ = gen.generate(seed=seed, difficulty=DifficultyLevel.VERY_EASY)
-        m = SIMPLE_EXPR.match(problem.expression.strip())
-        if not m:
-            continue
-        a, op, b = int(m.group(1)), m.group(2), int(m.group(3))
-        if op not in OP_TO_CELL:
-            continue  # "*" -- mul_sat is held-out now, generated directly (see main())
-        cell = OP_TO_CELL[op]
-        if len(by_cell[cell]) >= n_per_op or a > 65535 or b > 65535:
-            continue
-        gold = int(problem.gold_answer)
-        if gold < 0 or gold > 65535:
-            continue
-        result = run_cell(host, handles, cell, [a, b])
-        if result != gold:
-            continue  # disagreement between chuk_math_gym and cell80 -- discard, don't force
-        by_cell[cell].append((a, b, result, TEMPLATES[cell](a, b)))
-    return by_cell
-
-
-def direct_examples(host, handles, cell, arity, n, rng):
-    """Cells with no independent domain generator (or, for `mul_sat`, deliberately not using
-    one -- see `TEMPLATES`) -- cell80's own execution IS the label (there's no separate spec
-    for "is 12 >= 7" or "12 discount 7" to diverge from).
-    """
+    cell = CELL_GRID[(cat, var)]
     out = []
     for _ in range(n):
-        args = [int(rng.integers(1, 100)) for _ in range(arity)]
-        result = run_cell(host, handles, cell, args)
-        text = TEMPLATES[cell](*args)
-        out.append((*args, result, text))
+        a, b = int(rng.integers(1, 100)), int(rng.integers(1, 100))
+        result = run_cell(host, handles, cell, [a, b])
+        out.append((a, b, result, template(cat, var, a, b), cell))
     return out
 
 
@@ -188,8 +122,8 @@ def direct_examples(host, handles, cell, arity, n, rng):
 def build_vocab():
     vocab = ["<pad>", "<bos>", "<eos>"]
     vocab += [str(d) for d in range(10)]  # digit-by-digit number encoding
-    vocab += ["+", "-", "*", ">", ">=", "discount", "%", "max", "->", "?", "<call>", "</call>"]
-    vocab += list(ALL_CELLS.keys())
+    vocab += CATEGORIES + VARIANTS + ["->", "<call>", "</call>"]
+    vocab += ALL_CELLS
     stoi = {t: i for i, t in enumerate(vocab)}
     return vocab, stoi
 
@@ -199,8 +133,8 @@ def tokenize_number(n, stoi):
 
 
 def tokenize_example(text, cell_name, stoi):
-    """`text` is e.g. "12 + 7 ->"; split on whitespace, numbers go digit-by-digit, symbols
-    are single tokens. Target: <call> CELL_TOKEN </call>.
+    """`text` is e.g. "12 cat1 7 var1 ->"; split on whitespace, numbers go digit-by-digit,
+    everything else is a single token. Target: <call> CELL_TOKEN </call>.
     """
     ids = [stoi["<bos>"]]
     for piece in text.split():
@@ -231,12 +165,10 @@ class Block(nn.Module):
 
 
 class ToyTransformer(nn.Module):
-    """Tied embeddings/output projection (`head`'s weight IS `embed`'s weight, matching
-    TinyModel v11's own `self.lm_head.weight = self.embed.weight` -- Gemma-style). This
-    tying is not a detail: it's the *only* mechanism by which a fingerprint-placed embedding
-    could give a held-out cell a non-zero prediction probability without ever training on
-    it -- an untied output head has no reason to reflect the embedding-space geometry at
-    all, and would silently make the fingerprint-vs-random comparison meaningless.
+    """Tied embeddings/output projection (matching TinyModel v11's own `lm_head.weight =
+    embed.weight` -- Gemma-style). Iteration 1's own finding, restated: this tying is the
+    only mechanism by which a fingerprint-placed embedding could influence a prediction at
+    all -- an untied output head has no reason to reflect embedding-space geometry.
     """
 
     def __init__(self, vocab_size, dim, n_layers, n_heads, ffn_dim, max_len=32):
@@ -296,23 +228,19 @@ def train_arm(vocab, stoi, train_seqs, init_embeddings, epochs, lr):
     return model
 
 
-def eval_cell_accuracy(model, examples_by_cell, stoi):
+def eval_accuracy(model, examples, stoi):
     """Accuracy of the argmax next-token prediction at the CELL_TOKEN position, given
     everything up to and including <call> as the prompt -- not full generation.
     """
-    out = {}
-    for cell, examples in examples_by_cell.items():
-        correct = 0
-        for ex in examples:
-            *args, result, text = ex
-            ids, call_pos = tokenize_example(text, cell, stoi)
-            prompt = mx.array([ids[:call_pos]])
-            logits = model(prompt)
-            pred = int(mx.argmax(logits[0, -1]).item())
-            if pred == stoi[cell]:
-                correct += 1
-        out[cell] = correct / len(examples) if examples else float("nan")
-    return out
+    correct = 0
+    for a, b, result, text, cell in examples:
+        ids, call_pos = tokenize_example(text, cell, stoi)
+        prompt = mx.array([ids[:call_pos]])
+        logits = model(prompt)
+        pred = int(mx.argmax(logits[0, -1]).item())
+        if pred == stoi[cell]:
+            correct += 1
+    return correct / len(examples) if examples else float("nan")
 
 
 def main():
@@ -322,47 +250,37 @@ def main():
     print("== loading cell80-py CellHost (the exact oracle) ==", flush=True)
     host, handles = cell_host()
 
-    print("== generating toy corpus ==", flush=True)
-    arith = arithmetic_examples(host, handles, N_PER_CELL, rng)
-    corpus = dict(arith)
-    for cell, arity in list(TRAIN_CELLS.items()) + list(HELD_OUT_CELLS.items()):
-        if cell in corpus:
-            continue
-        corpus[cell] = direct_examples(host, handles, cell, arity, N_PER_CELL, rng)
-    for cell, examples in corpus.items():
-        print(f"  {cell:<18} {len(examples)} examples", flush=True)
-
+    print("== generating toy corpus (3x2 compositional grid) ==", flush=True)
+    train_seqs = []
+    test_by_combo = {}
     vocab, stoi = build_vocab()
     print(f"vocab size: {len(vocab)}", flush=True)
 
-    # Train/test split per trained-on cell; held-out cells are NEVER in the training set.
-    train_seqs = []
-    test_by_cell = {}
-    for cell in TRAIN_CELLS:
-        examples = corpus[cell]
-        idx = rng.permutation(len(examples))
-        n_test = max(1, len(examples) // 5)
-        te_idx, tr_idx = idx[:n_test], idx[n_test:]
-        for i in tr_idx:
-            *args, result, text = examples[i]
-            ids, _ = tokenize_example(text, cell, stoi)
-            train_seqs.append(ids)
-        test_by_cell[cell] = [examples[i] for i in te_idx]
-    for cell in HELD_OUT_CELLS:
-        test_by_cell[cell] = corpus[cell]  # entirely held out -- zero training examples
+    for cat in CATEGORIES:
+        for var in VARIANTS:
+            cell = CELL_GRID[(cat, var)]
+            examples = grid_examples(host, handles, cat, var, N_PER_CELL, rng)
+            print(f"  {cat} x {var} -> {cell:<18} {len(examples)} examples", flush=True)
+            if (cat, var) == HELD_OUT_COMBO:
+                test_by_combo[(cat, var)] = examples  # ALL held out, zero training
+                continue
+            idx = rng.permutation(len(examples))
+            n_test = max(1, len(examples) // 5)
+            te_idx, tr_idx = idx[:n_test], idx[n_test:]
+            for i in tr_idx:
+                a, b, result, text, c = examples[i]
+                ids, _ = tokenize_example(text, c, stoi)
+                train_seqs.append(ids)
+            test_by_combo[(cat, var)] = [examples[i] for i in te_idx]
 
     print(f"\ntraining examples: {len(train_seqs)}", flush=True)
 
     print("\n== computing fingerprints (dump_fingerprints subprocess) ==", flush=True)
-    names = list(ALL_CELLS.keys())
     proc = subprocess.run(
-        [str(DUMP_FINGERPRINTS), *names], capture_output=True, text=True, check=True
+        [str(DUMP_FINGERPRINTS), *ALL_CELLS], capture_output=True, text=True, check=True
     )
     fingerprints = json.loads(proc.stdout)
 
-    # Project each cell's fingerprint (a vector of Option<u16>, None -> 0) into EMBED_DIM via
-    # a FIXED random projection (same matrix for every cell, not learned) -- deterministic,
-    # not trained, matching "embedding rows projected from behavioural fingerprint" plainly.
     proj_rng = np.random.default_rng(SEED + 1)
     fp_len = len(next(iter(fingerprints.values())))
     projection = proj_rng.normal(0, 1.0 / np.sqrt(fp_len), size=(fp_len, EMBED_DIM))
@@ -371,7 +289,7 @@ def main():
         raw = np.array([0 if v is None else v for v in fingerprints[cell]], dtype=np.float32)
         return raw @ projection
 
-    base_scale = 0.02  # matches a typical small nn.Embedding init scale
+    base_scale = 0.02
     random_init = proj_rng.normal(0, base_scale, size=(len(vocab), EMBED_DIM)).astype(np.float32)
     fingerprint_init = random_init.copy()
     for cell in ALL_CELLS:
@@ -381,40 +299,64 @@ def main():
 
     print(f"\n== arm (b): random-init cell embeddings ({time.time()-t0:.1f}s) ==", flush=True)
     model_b = train_arm(vocab, stoi, train_seqs, random_init, EPOCHS, LR)
-    acc_b = eval_cell_accuracy(model_b, test_by_cell, stoi)
 
     print(f"\n== arm (c): fingerprint-init cell embeddings ({time.time()-t0:.1f}s) ==", flush=True)
     model_c = train_arm(vocab, stoi, train_seqs, fingerprint_init, EPOCHS, LR)
-    acc_c = eval_cell_accuracy(model_c, test_by_cell, stoi)
 
     print(f"\n== results ({time.time()-t0:.1f}s total) ==")
-    print(f"{'cell':<18} {'held?':<10} {'(b) random':>12} {'(c) fingerprint':>16}")
-    for cell in list(TRAIN_CELLS) + list(HELD_OUT_CELLS):
-        held = "held-out" if cell in HELD_OUT_CELLS else "trained"
-        print(f"{cell:<18} {held:<10} {acc_b[cell]:>12.3f} {acc_c[cell]:>16.3f}")
+    print(f"{'combo':<16} {'held?':<10} {'(b) random':>12} {'(c) fingerprint':>16}")
+    acc_b_by_combo, acc_c_by_combo = {}, {}
+    for cat in CATEGORIES:
+        for var in VARIANTS:
+            examples = test_by_combo[(cat, var)]
+            acc_b_by_combo[(cat, var)] = eval_accuracy(model_b, examples, stoi)
+            acc_c_by_combo[(cat, var)] = eval_accuracy(model_c, examples, stoi)
+            held = "held-out" if (cat, var) == HELD_OUT_COMBO else "trained"
+            print(
+                f"{cat}+{var:<10} {held:<10} {acc_b_by_combo[(cat,var)]:>12.3f} "
+                f"{acc_c_by_combo[(cat,var)]:>16.3f}"
+            )
 
-    trained_b = np.mean([acc_b[c] for c in TRAIN_CELLS])
-    trained_c = np.mean([acc_c[c] for c in TRAIN_CELLS])
-    held_b = np.mean([acc_b[c] for c in HELD_OUT_CELLS])
-    held_c = np.mean([acc_c[c] for c in HELD_OUT_CELLS])
-    print(f"\n{'mean (trained cells)':<24} {trained_b:>12.3f} {trained_c:>16.3f}")
-    print(f"{'mean (held-out cells)':<24} {held_b:>12.3f} {held_c:>16.3f}")
+    trained_combos = [k for k in CELL_GRID if k != HELD_OUT_COMBO]
+    trained_b = np.mean([acc_b_by_combo[k] for k in trained_combos])
+    trained_c = np.mean([acc_c_by_combo[k] for k in trained_combos])
+    held_b = acc_b_by_combo[HELD_OUT_COMBO]
+    held_c = acc_c_by_combo[HELD_OUT_COMBO]
+    print(f"\n{'mean (trained combos)':<24} {trained_b:>12.3f} {trained_c:>16.3f}")
+    print(f"{'held-out combo':<24} {held_b:>12.3f} {held_c:>16.3f}")
+
+    # The pre-registered bar, stated before this iteration was run (see module docstring).
+    passed = held_c > 0.5 and held_b <= 0.25
     print(
-        f"\nfingerprint - random, held-out: {held_c - held_b:+.3f} "
-        "(the toy analogue of CN-1's novelty gate: positive here is the only evidence "
-        "a fingerprint-derived address does something a random one couldn't)"
+        f"\n== pre-registered gate (ii) verdict: {'PASS' if passed else 'FAIL'} ==\n"
+        f"   bar: fingerprint-init > 0.5 AND random-init <= 0.25 on the held-out combo\n"
+        f"   actual: fingerprint-init={held_c:.3f}, random-init={held_b:.3f}"
     )
+    if passed:
+        print(
+            "   Gate (ii) demonstrated at toy scale: a fingerprint-placed embedding gave a "
+            "never-trained cell a meaningful address a random one couldn't."
+        )
+    else:
+        print(
+            "   Gate (ii) NOT demonstrated. Per the pre-registered fork: this is the last toy "
+            "iteration -- the real CN-1 build (TinyModel v11 + the H1 factory's actual "
+            "training spend) is where gate (ii) gets tested next, not a fourth corpus redesign."
+        )
 
     results = {
         "vocab_size": len(vocab),
         "n_per_cell": N_PER_CELL,
         "epochs": EPOCHS,
-        "acc_random_init": acc_b,
-        "acc_fingerprint_init": acc_c,
+        "held_out_combo": list(HELD_OUT_COMBO),
+        "held_out_cell": CELL_GRID[HELD_OUT_COMBO],
+        "acc_random_by_combo": {f"{k[0]}+{k[1]}": v for k, v in acc_b_by_combo.items()},
+        "acc_fingerprint_by_combo": {f"{k[0]}+{k[1]}": v for k, v in acc_c_by_combo.items()},
         "mean_trained_random": trained_b,
         "mean_trained_fingerprint": trained_c,
-        "mean_held_out_random": held_b,
-        "mean_held_out_fingerprint": held_c,
+        "held_out_random": held_b,
+        "held_out_fingerprint": held_c,
+        "gate_ii_pass": passed,
     }
     out_path = Path(__file__).resolve().parent / "cn1_pilot_results.json"
     out_path.write_text(json.dumps(results, indent=2))

@@ -82,26 +82,32 @@ transfer to embedding space; depth-2 routing still stands on F2, but the "comput
 vocabulary" claim dies.
 **Cost.** The programme's first real training spend. M3/MLX.
 
-**Status: slice-0 pilot done, two iterations (toy scale, not the pre-registered build) —
-the headline is architectural, not a number.** A small MLX transformer trained from scratch
-(not TinyModel v11 — its tokenizer's immutable `.vocab.bin` has no `add_tokens` API, a real
-detour deferred past the pilot) first ran **untied** (output projection separate from input
-embeddings) and both arms silently scored 0.000 everywhere — read correctly as "the harness
-is broken," not "the hypothesis is false," before any number was trusted. **Weight tying is
-therefore stated as a result, not a footnote: a fingerprint-placed embedding can only
-influence a prediction in a model whose output projection shares weights with its input
-embeddings** — a real precondition on the whole "the embedding is the behaviour" hypothesis,
-and a related constraint worth checking before CN-4's design hardens (its result-projection
-needs to land somewhere the model can actually read). Given tying, gate (i)'s core claim is
-supported at toy scale (fingerprint-init 0.993–1.000 vs. random-init's more variable,
-sometimes much worse 0.640 mean) — held loosely, as an init-quality/convergence-speed effect,
-not CN-1's novel claim. **Gate (ii) — the one that matters — went through two corpus
-redesigns and is still untested**, for two distinct, real reasons: iteration 1's held-out
-cell had a defining input token absent from training entirely (no processed representation
-to work from, regardless of embedding placement); iteration 2 recombined only already-trained
-tokens into a novel *combination* and still scored 0.000 for both arms — the specific
-sequence was itself effectively novel to a model this small, trained this briefly. Full
-account, including the compositional-coverage requirement a real test needs:
+**Status: slice-0 pilot done, three iterations, concluded (toy scale, not the pre-registered
+build) — the headline is architectural, not a number.** A small MLX transformer trained
+from scratch (not TinyModel v11 — its tokenizer's immutable `.vocab.bin` has no
+`add_tokens` API, a real detour deferred past the pilot) first ran **untied** (output
+projection separate from input embeddings) and both arms silently scored 0.000 everywhere —
+read correctly as "the harness is broken," not "the hypothesis is false," before any number
+was trusted. **Weight tying is therefore stated as a result, not a footnote: a
+fingerprint-placed embedding can only influence a prediction in a model whose output
+projection shares weights with its input embeddings** — a real precondition on the whole
+"the embedding is the behaviour" hypothesis, and a related constraint worth checking before
+CN-4's design hardens (its result-projection needs to land somewhere the model can actually
+read). Given tying, gate (i)'s core claim is supported at toy scale (fingerprint-init
+0.993–1.000 vs. random-init's more variable, sometimes much worse 0.640 mean) — held
+loosely, as an init-quality/convergence-speed effect, not CN-1's novel claim. **Gate (ii) —
+the one that matters — got a genuine, pre-registered test in iteration 3 and came back a
+clean FAIL.** Iteration 1's held-out cell had a defining input token absent from training
+entirely; iteration 2 recombined only already-trained tokens into a novel *combination* and
+still scored 0.000. Iteration 3 built a genuine 3x2 compositional grid (heavy, multi-partner
+exposure to every category/variant token — a real basis for learning composition as a rule)
+and pre-registered the bar *before* running it: fingerprint-init > 0.5 and random-init <=
+0.25 on the held-out combination. Both arms scored exactly 0.000 — a clean, pre-registered
+FAIL, meaning no compositional generalization exists at toy scale for any embedding strategy
+to modulate. Per the fork agreed in advance, gate (ii) now moves to the real build (a real
+model, the real H1 factory's compositional-coverage corpus, a real training spend), not a
+fourth toy iteration — this pilot's job (harness validated, tying precondition found, corpus
+requirements mapped, gate (ii)'s first real test run and closed) is done. Full account:
 `cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
 
 ---

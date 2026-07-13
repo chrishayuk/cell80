@@ -8,18 +8,22 @@ representative, narrative lacking the information), and the mechanism that
 survives (a fast-forming, flat, non-computational numeral encoding) gives a
 principled reason for the scope-out, not just a failed number. Full verdict
 and programme redirect (CN-1 next, not CN-3) in `## CN-0, read against the
-gate, after two waves` below. **CN-1: a slice-0 toy pilot, two iterations** —
-the pilot's real headline is architectural: weight tying (embeddings ↔ output
-projection) is a load-bearing precondition of the whole fingerprint-embedding
-hypothesis, not a debugging footnote, found by two arms silently reading
-0.000 everywhere before any number was trusted. Given tying, fingerprint-init
-cleanly beats random-init on trained cells (0.993-1.000 vs. a variable,
-sometimes much worse mean) — held loosely, as an init-quality effect, not the
-novel claim. The harder novelty/held-out question went through two corpus
-redesigns and is still untested: both found a distinct, real reason the test
-couldn't ask its own question (an unprocessed input token, then an
-unprocessed input *combination*) — see `## CN-1 slice-0` below for exactly
-what a properly compositional corpus needs. **CN-2: G2 complete at the
+gate, after two waves` below. **CN-1: a slice-0 toy pilot, three iterations,
+concluded** — the pilot's real headline is architectural: weight tying
+(embeddings ↔ output projection) is a load-bearing precondition of the whole
+fingerprint-embedding hypothesis, not a debugging footnote, found by two arms
+silently reading 0.000 everywhere before any number was trusted. Given
+tying, fingerprint-init cleanly beats random-init on trained cells
+(0.993-1.000 vs. a variable, sometimes much worse mean) — held loosely, as
+an init-quality effect, not the novel claim. The harder novelty/held-out
+question (gate ii) got a genuine, pre-registered test in iteration 3 (a
+compositional grid, bar stated before the run: fingerprint-init > 0.5 /
+random-init <= 0.25 on a held-out combination) and came back a clean FAIL —
+both arms at exactly 0.000 — closing the toy-scale question rather than
+leaving it open: no compositional generalization to modulate at toy scale,
+full stop. Per the pre-registered fork, gate (ii) now moves to the real
+build, not a fourth toy iteration — see `## CN-1 slice-0` below for all
+three iterations' diagnoses. **CN-2: G2 complete at the
 harness level** — measurement (60-problem battery, wrong-number baseline
 0.016 after the plan-IR i32 signed lane closed the verifier's last coverage
 hole), then the correction loop (truncate at a cell80-refuted claim, assert
@@ -421,12 +425,18 @@ carries the practical claim forward untouched.
 weight tying is a load-bearing precondition of the whole fingerprint-embedding hypothesis,
 not an implementation detail — and it's stated here as a claim. On trained cells,
 fingerprint-init cleanly beats random-init given tied weights (0.993-1.000 vs. a variable,
-sometimes much worse mean), but that result should travel with its caveats: toy scale,
-trained cells, an effect closer to "a good initialization converges faster" than the novel
-"embedding is the behaviour" claim. That harder claim — a fingerprint-placed embedding gives
-an unseen cell a meaningful address — went through two corpus redesigns and is still
-untested: both attempts found a real, distinct reason the test couldn't ask its own
-question, not a negative answer to it.**
+sometimes much worse mean), but that result travels with its caveat stated up front: toy
+scale, trained cells, an effect closer to "a good initialization converges faster" than the
+novel "embedding is the behaviour" claim. That harder claim — a fingerprint-placed embedding
+gives an unseen cell a meaningful address — went through three iterations: the first two
+each found a distinct reason the harness couldn't ask its own question; the third, run
+against a bar pre-registered *before* the run (fingerprint-init > 0.5, random-init <= 0.25
+on a properly-designed held-out combination), came back a clean, pre-registered **FAIL** —
+both arms scored exactly 0.000. Per the fork stated in advance, that FAIL is itself the
+answer: a from-scratch toy model this small has no compositional generalization to speak
+of, so there is no substrate on which any embedding strategy could show an advantage. Gate
+(ii) is not decided by this pilot — it moves to the real build, exactly as pre-registered,
+with a hard stop on further toy iterations.**
 
 CN-1's full spec is "the programme's first real training spend" across five repos (TinyModel
 v11, the H1 factory, an ~800-cell vocabulary, ported constrained decoding). Research before
@@ -446,15 +456,13 @@ discipline.
   `DEFAULT_PROBES` as JSON, called from Python via `subprocess`. The one new piece of Rust
   needed — `cell80-py` has no `Fingerprint` binding, so this is the pilot's stand-in for one,
   not the eventual shape.
-- **`experiments/cell-native-architectures/cn1_pilot.py`** — 7 pilot cells split 5
-  trained/2 held-out (the exact split changed between iterations — see below). Corpus:
-  `chuk_math_gym`'s `ArithmeticGenerator` (`VERY_EASY` difficulty) for the arithmetic cells,
-  filtered to simple `a op b` expressions (VERY_EASY still occasionally chains 2-3 operators;
-  anything else discarded, not force-parsed) and cross-checked against `cell80-py`'s
-  `CellHost` — a disagreement between `chuk_math_gym`'s independently-computed `gold_answer`
-  and cell80's own execution discards the example, never trusting either side. The
-  non-arithmetic cells have no independent domain generator, so cell80's own execution *is*
-  the label — there's no separate spec for "is 12 >= 7" to diverge from. A small causal
+- **`experiments/cell-native-architectures/cn1_pilot.py`** — rewritten across three
+  iterations as each one's diagnosis reshaped the corpus design (iterations 1-2 used
+  `chuk_math_gym`'s `ArithmeticGenerator` for the arithmetic cells, cross-checked against
+  `cell80-py`'s `CellHost`; iteration 3's compositional grid, the final shape, generates all
+  6 cells directly via `CellHost` — no independent domain generator needed once the corpus
+  is a synthetic grid, since cell80's own execution *is* the label either way, and there's
+  no separate spec for "is 12 >= 7" to diverge from). A small causal
   transformer (3 layers, dim 64) trained from scratch, comparing (b) random-init vs. (c)
   fingerprint-init cell-token embedding rows (a fixed linear projection of each cell's
   fingerprint vector, not learned) on the identical corpus/split.
@@ -515,6 +523,33 @@ place — the bottleneck moved from the output side (which iteration 1 diagnosed
 side (which iteration 2 diagnosed), and neither is what CN-1's own gate (ii) is actually
 about.
 
+**Iteration 3, pre-registered, the last one.** Both prior failures are "the model can't reach
+a hidden state where the embedding could matter" wearing different clothes — neither is a
+fingerprint result, both are capacity/compositional-generalization results. **Bar stated
+before this run, not after:** PASS if fingerprint-init's accuracy on a held-out combination
+exceeds 0.5 while random-init's stays <=0.25 (near the ~1/6 chance level for 6 candidate
+cells); FAIL if both land in the same range. Design: a genuine 3x2 compositional grid —
+`CATEGORY in {cat1,cat2,cat3} x VARIANT in {var1,var2}`, each combination mapping to one of
+6 pilot cells (`add_sat`, `sub_sat`, `is_gt`, `is_ge`, `discount_percent`, `mul_sat`),
+template `"{a} {cat} {b} {var} ->"` uniform across the whole grid. Trained on 5 of 6
+combinations with 300 examples each — every category and every variant token gets heavy
+exposure across *multiple* partners, a genuine basis for learning that category and variant
+compose independently to select a cell, not memorizing 5 point facts. Held out exactly 1
+combination (`cat3+var2` = `mul_sat`) entirely.
+
+| combo | held? | (b) random-init | (c) fingerprint-init |
+|---|---|---:|---:|
+| cat1+var1 (add_sat), cat1+var2 (sub_sat), cat2+var1 (is_gt), cat2+var2 (is_ge), cat3+var1 (discount_percent) | trained | mean 0.993 | mean 1.000 |
+| cat3+var2 (mul_sat) | held-out | **0.000** | **0.000** |
+
+**Pre-registered verdict: FAIL.** Trained combinations hit 0.993-1.000 for both arms — the
+model clearly learned the compositional *structure* well enough to place every trained
+combination correctly — but the held-out combination scores exactly 0.000 regardless of
+embedding strategy. Per the fork agreed before running this: a FAIL here means toy scale
+cannot test gate (ii) at all — there is no compositional generalization capacity in a model
+this small, trained this briefly, for any embedding placement to modulate — not "try a
+fourth corpus." Stopping here, as pre-registered.
+
 ### What this shows
 
 - **On trained cells, fingerprint-init is a clean, consistent win at equal training budget —
@@ -535,58 +570,67 @@ about.
   result-projection needs to land somewhere the model can actually read, and that's worth
   checking before CN-4's design hardens, not after.
 
-### What this does *not* show — and why, precisely, across two attempts
+### What this does *not* show — and why, precisely, across three attempts
 
 - **The held-out/novelty question — CN-1's actual gate (ii), the part that matters — is
-  untested, not failed.** Two independently-diagnosed reasons, not one: (1) a held-out cell's
-  own defining input token can be entirely absent from training, giving the model no
-  processed representation of that token at all, regardless of embedding placement
-  (iteration 1); (2) even when every individual token is familiar, the specific *combination*
-  can still be effectively novel to a model this small, trained this briefly, on this little
-  data — so the model still never produces a hidden state resembling the held-out input,
-  regardless of embedding placement (iteration 2). Both are the harness failing to ask the
-  question, at two different levels, not the hypothesis failing to answer it.
-- **A concrete, sharper requirement for the real H1 factory than "share vocabulary."** Iteration
-  2's finding tightens the constraint from iteration 1's: it is not enough for a held-out
-  cell's tokens to be individually familiar. The corpus needs genuine **compositional**
-  coverage — multiple examples of a shared prefix/suffix combining flexibly with different
-  endings during training — so the model has actually learned to generalize by recombination
-  before a held-out cell asks it to do so on a novel combination. Untested this pass; the next
-  natural iteration (see below).
+  decided as "not testable at toy scale," which is a real, pre-registered answer, not a
+  loose end.** Three independently-diagnosed reasons, each sharper than the last: (1) a
+  held-out cell's own defining input token can be entirely absent from training, giving the
+  model no processed representation of that token at all (iteration 1); (2) even when every
+  individual token is familiar, the specific *combination* can still be effectively novel
+  (iteration 2); (3) even a properly-designed compositional grid — heavy, multi-partner
+  exposure to every individual category and variant token, a genuine basis for learning
+  composition as a rule — still could not get either arm above 0.000 on the one held-out
+  combination (iteration 3, against a bar pre-registered before the run). All three are the
+  harness/model failing to reach a decision point the embedding could influence, not the
+  fingerprint hypothesis failing an available test — but iteration 3's pre-registered FAIL is
+  the one that closes the loop: it rules out "just need a better corpus" as the explanation
+  and points at model capacity/scale directly, which no amount of further toy-corpus
+  redesign can fix.
+- **A concrete, real requirement for the real H1 factory, regardless of how gate (ii)
+  eventually lands.** Iteration 2 found "share vocabulary" isn't enough — the corpus needs
+  genuine compositional coverage (multiple prefix/suffix combinations recombining flexibly)
+  for a held-out combination to be a fair test at all. Iteration 3 confirms that requirement
+  is necessary but shows it may not be sufficient at small model scale — the real H1 factory
+  and a real (non-toy) model are where this actually gets decided.
 - **This is 2 arms of 3, next-token argmax of 3, from-scratch of the real thing.** Arm (a)
   (the prompted `cell_solve` baseline) isn't meaningfully testable with a from-scratch toy
   model with no prompting ability. Evaluation is next-token accuracy at the cell-call
   position, not full constrained generation (porting LARQL's `generate_constrained`/
   `OpNameMask` pattern into MLX is real work, not attempted here). The toy model is trained
   from scratch, not TinyModel v11 — the real tokenizer/vocab-extension problem is untouched.
-- **N=7 pilot cells, one seed, one architecture size** — not a systematic sweep.
+- **N=6-7 pilot cells, one seed, one architecture size, one training budget** — not a
+  systematic sweep, and per the pre-registered stop, not extended further at toy scale.
 
 ### Reproduce it
 
 ```
 cargo build --release -p cell80 --example dump_fingerprints
-python3 experiments/cell-native-architectures/cn1_pilot.py   # ~25-30s on M3, no GPU training wait
+python3 experiments/cell-native-architectures/cn1_pilot.py   # ~10-15s on M3, no GPU training wait
 ```
 
-### What would raise confidence further
+### What would raise confidence further — at the real build, not another toy iteration
 
-- **Build genuine compositional coverage into the corpus**, not just shared vocabulary: train
-  on several prefix/suffix combinations that recombine flexibly (e.g. multiple "X `<word>` Y
-  `<suffix>`" patterns pairing different words with different suffixes), so the model has an
-  actual opportunity to have learned *recombination itself* as a pattern, then hold out one
-  combination it's never seen assembled. This is the concrete next iteration, not a restart —
-  the first two attempts each earned a specific, named reason the test still couldn't ask its
-  question.
-- Scale N and epochs to see whether random-init eventually catches up to fingerprint-init on
-  trained cells (does fingerprint-init only give a *training-speed* advantage, or a ceiling
-  the random arm never reaches even given much more budget) — this is the number that decides
-  whether "fingerprints are a useful init" is worth much beyond a toy result.
-- Add arm (a) via a simple prompted baseline (even a toy from-scratch model can be given a
-  fixed in-context example set to "prompt" from, as a rough proxy).
-- Extend to the real TinyModel v11 + a rebuilt `.vocab.bin` once the pilot's own corpus
-  design (compositional coverage, above) can actually pose the novelty question — there is no
-  value in porting to the real model before the measurement itself can ask what it's meant to
-  answer.
+Per the pre-registered fork: this pilot's job is done. It validated the harness (weight
+tying), found and named a real corpus requirement (compositional coverage), and used that
+requirement to run gate (ii)'s first real test — which came back a clean FAIL, closing the
+toy-scale question rather than leaving it open. What's next belongs to the real CN-1 build,
+not a fourth corpus redesign:
+
+- **Test gate (ii) with a real model at the scale CN-1 was always specified for**
+  (TinyModel v11 or comparable, a real H1 factory corpus with genuine compositional
+  coverage, a real training spend) — a model with actual capacity may show the
+  compositional generalization this toy one didn't, and that's the honest next test, not a
+  repeat of this one at larger toy scale.
+- Scale N and epochs on the *trained-cell* question specifically (still open, and cheap to
+  answer even at toy scale): does fingerprint-init only give a *training-speed* advantage,
+  or a ceiling the random arm never reaches even given much more budget?
+- Add arm (a) via a simple prompted baseline once a real model is in play (even a toy
+  from-scratch model can be given a fixed in-context example set to "prompt" from, as a
+  rough proxy, if a toy-scale check is wanted first).
+- Keep the weight-tying and compositional-coverage findings in view when scoping the H1
+  factory and CN-4's design — both are real constraints this pilot found for the cost of a
+  toy, not open questions to re-derive later.
 
 ## CN-2 slice-0 — verified decoding, real result obtained
 

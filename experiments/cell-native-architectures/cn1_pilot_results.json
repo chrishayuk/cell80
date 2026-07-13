@@ -1,27 +1,31 @@
 {
-  "vocab_size": 32,
+  "vocab_size": 27,
   "n_per_cell": 300,
   "epochs": 60,
-  "acc_random_init": {
-    "add_sat": 1.0,
-    "sub_sat": 1.0,
-    "argmax3": 1.0,
-    "is_gt": 1.0,
-    "discount_percent": 0.9833333333333333,
-    "mul_sat": 0.0,
-    "is_ge": 0.0
+  "held_out_combo": [
+    "cat3",
+    "var2"
+  ],
+  "held_out_cell": "mul_sat",
+  "acc_random_by_combo": {
+    "cat1+var1": 1.0,
+    "cat1+var2": 1.0,
+    "cat2+var1": 0.9666666666666667,
+    "cat2+var2": 1.0,
+    "cat3+var1": 1.0,
+    "cat3+var2": 0.0
   },
-  "acc_fingerprint_init": {
-    "add_sat": 1.0,
-    "sub_sat": 1.0,
-    "argmax3": 1.0,
-    "is_gt": 1.0,
-    "discount_percent": 1.0,
-    "mul_sat": 0.0,
-    "is_ge": 0.0
+  "acc_fingerprint_by_combo": {
+    "cat1+var1": 1.0,
+    "cat1+var2": 1.0,
+    "cat2+var1": 1.0,
+    "cat2+var2": 1.0,
+    "cat3+var1": 1.0,
+    "cat3+var2": 0.0
   },
-  "mean_trained_random": 0.9966666666666667,
+  "mean_trained_random": 0.9933333333333334,
   "mean_trained_fingerprint": 1.0,
-  "mean_held_out_random": 0.0,
-  "mean_held_out_fingerprint": 0.0
+  "held_out_random": 0.0,
+  "held_out_fingerprint": 0.0,
+  "gate_ii_pass": false
 }
