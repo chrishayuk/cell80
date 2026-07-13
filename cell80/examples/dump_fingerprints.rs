@@ -31,8 +31,8 @@ fn main() {
     for (i, name) in names.iter().enumerate() {
         let path = cell80::find_cell_file(&cells_dir(), name)
             .unwrap_or_else(|e| panic!("finding `{name}`: {e}"));
-        let src = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
+        let src =
+            fs::read_to_string(&path).unwrap_or_else(|e| panic!("reading {}: {e}", path.display()));
         let cart = Cartridge::compile(
             &src,
             CellConfig::sandboxed(),
