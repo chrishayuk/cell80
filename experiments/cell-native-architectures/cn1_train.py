@@ -74,7 +74,7 @@ def set_trainable(model, arm, unfreeze_top=0):
     for p in model.parameters():
         p.requires_grad_(False)
     trainable = []
-    if arm == "fingerprint":
+    if arm in ("fingerprint", "shuffled"):
         for p in model.w_f.parameters():
             p.requires_grad_(True)
             trainable.append(p)
@@ -125,7 +125,8 @@ def batches(data, bs, pad_id, device, rng):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", choices=["fingerprint", "random"], default="fingerprint")
+    ap.add_argument("--arm", choices=["fingerprint", "shuffled", "random"], default="fingerprint")
+    ap.add_argument("--seed", type=int, default=80)
     ap.add_argument("--steps", type=int, default=300)
     ap.add_argument("--bs", type=int, default=16)
     ap.add_argument("--lr", type=float, default=1e-3)
@@ -136,10 +137,11 @@ def main():
     args = ap.parse_args()
 
     device = args.device or ("mps" if torch.backends.mps.is_available() else "cpu")
-    rng = __import__("random").Random(80)
+    rng = __import__("random").Random(args.seed)
+    torch.manual_seed(args.seed)  # seeds W_f init / free-row init so seeds are distinct runs
     t0 = time.time()
 
-    print(f"== building model (arm {args.arm}) on {device} ==", flush=True)
+    print(f"== building model (arm {args.arm}, seed {args.seed}) on {device} ==", flush=True)
     model, names, held = cn1_model.build(args.arm)
     model = model.to(device)
     trainable, n_trainable = set_trainable(model, args.arm, unfreeze_top=args.unfreeze_top)
@@ -153,6 +155,9 @@ def main():
     print(f"  train sequences: {len(data)} (from {len(rows)} rows)")
 
     opt = torch.optim.Adam([p for p in trainable if p.requires_grad], lr=args.lr)
+    # Linear LR decay to 0 over the run — the top-12/lr-1e-3 run regressed late (top-1 0.22->0.065),
+    # a hot-LR instability; decaying stabilizes the endpoint so top-1 is a fair capacity readout.
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: max(0.0, 1.0 - s / max(1, args.steps)))
 
     # Loss is supervised at the CELL-TOKEN position only: predict the cell id from the prefix
     # ending in <call>. The base is frozen, so full-sequence CE is dominated by irreducible
@@ -173,6 +178,7 @@ def main():
             opt.zero_grad()
             loss.backward()
             opt.step()
+            sched.step()
             losses.append(float(loss))
             accs.append(float((pred_logits.argmax(-1) == targets).float().mean()))
             step += 1
@@ -189,9 +195,9 @@ def main():
 
     # Save the trainable state so the run can be re-probed (rank metrics, small-candidate masks)
     # without retraining — a gap the first run exposed.
-    ckpt = HERE / f"cn1_ckpt_{args.arm}.pt"
-    state = {"arm": args.arm, "embed": model.base.embed.weight.detach().cpu()}
-    if args.arm == "fingerprint":
+    ckpt = HERE / f"cn1_ckpt_{args.arm}_s{args.seed}.pt"
+    state = {"arm": args.arm, "seed": args.seed, "embed": model.base.embed.weight.detach().cpu()}
+    if args.arm in ("fingerprint", "shuffled"):
         state["w_f"] = model.w_f.state_dict()
     for i, blk in enumerate(model.base.layers[-args.unfreeze_top:] if args.unfreeze_top else []):
         state[f"block_{i}"] = {k: v.detach().cpu() for k, v in blk.state_dict().items()}
@@ -248,7 +254,7 @@ def main():
         print(f"  {'|'.join(bucket):<24} top1 {m['top1']:.3f}  top5 {m['top5']:.3f}  "
               f"med.rank {m['median_rank']:>3}/790  (n={m['n']}){tag}")
 
-    out_path = HERE / f"cn1_train_result_{args.arm}.json"
+    out_path = HERE / f"cn1_train_result_{args.arm}_s{args.seed}.json"
     out_path.write_text(json.dumps(results, indent=2))
     print(f"\nwrote {out_path.name}  (one arm/seed — not a gate verdict; the pre-registered run needs both arms x 3 seeds)")
 

@@ -19,12 +19,15 @@ import cn1_decode
 HERE = Path(__file__).resolve().parent
 
 
-def reload_arm(arm, unfreeze_top=12):
+def reload_arm(arm, seed, unfreeze_top=12):
     model, names, held = cn1_model.build(arm)  # cpu
-    ck = torch.load(HERE / f"cn1_ckpt_{arm}.pt", map_location="cpu")
+    ckpt_path = HERE / f"cn1_ckpt_{arm}_s{seed}.pt"
+    if not ckpt_path.exists():  # fall back to the pre-seed-suffix naming (first runs)
+        ckpt_path = HERE / f"cn1_ckpt_{arm}.pt"
+    ck = torch.load(ckpt_path, map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
-    if arm == "fingerprint":
+    if arm in ("fingerprint", "shuffled"):
         model.w_f.load_state_dict(ck["w_f"])
     blocks = model.base.layers[-unfreeze_top:]
     for i, blk in enumerate(blocks):
@@ -58,7 +61,14 @@ def rank_stats(model, items, cell_ids_t, tok, cap=200):
 
 
 def main():
+    import argparse
+
     import v11
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--seed", type=int, default=80)
+    ap.add_argument("--arms", nargs="+", default=["fingerprint", "shuffled", "random"])
+    a = ap.parse_args()
 
     tok = v11.Tokenizer.from_file(str(HERE / "v11-cells.vocab.bin"))
     _, _, cell_ids, _ = cn1_decode.load_call_grammar()
@@ -68,8 +78,12 @@ def main():
     seen = [r for r in eval_rows if r["bucket_cell"] == "seen_cell" and r["bucket_comp"] == "seen_comp"]
 
     print(f"held-out (novel_cell x seen_comp): {len(held)} items;  chance median rank ~395/790\n")
-    for arm in ["fingerprint", "random"]:
-        m = reload_arm(arm)
+    for arm in a.arms:
+        try:
+            m = reload_arm(arm, a.seed)
+        except FileNotFoundError:
+            print(f"arm {arm}: no checkpoint yet, skipping")
+            continue
         hs = rank_stats(m, held, cell_ids_t, tok)
         ss = rank_stats(m, seen, cell_ids_t, tok)
         print(f"arm {arm}:")

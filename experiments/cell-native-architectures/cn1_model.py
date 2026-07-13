@@ -92,7 +92,7 @@ class CN1Model(nn.Module):
 
     def __init__(self, base, cell_first_id: int, fp_feats: torch.Tensor, arm: str):
         super().__init__()
-        assert arm in ("fingerprint", "random")
+        assert arm in ("fingerprint", "shuffled", "random")
         self.base = base
         self.arm = arm
         self.dim = base.dim
@@ -102,7 +102,11 @@ class CN1Model(nn.Module):
         # FP is frozen data, not a parameter — a held-out cell's features must be identical
         # whether or not it was ever called.
         self.register_buffer("fp_feats", fp_feats)
-        if arm == "fingerprint":
+        # arm "shuffled" = the control: same W_f, same geometry, same SET of fingerprint vectors,
+        # but each cell is assigned a DIFFERENT cell's fingerprint (permuted at build time). If
+        # held-out ranking survives the shuffle, the signal is the projection layer, not the
+        # behaviour; if it collapses toward random, behaviour is doing independent work.
+        if arm in ("fingerprint", "shuffled"):
             self.w_f = Wf(fp_feats.shape[1], self.dim)
 
     def effective_embed_weight(self) -> torch.Tensor:
@@ -172,12 +176,32 @@ def load_fingerprint_features():
     return feats, cell_first_id, names, held
 
 
+SHUFFLE_SEED = 1234  # fixed derangement for the "shuffled" control arm
+
+
+def _derangement(n, seed):
+    """A seeded permutation with NO fixed points, so no cell keeps its own fingerprint."""
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(n)
+    for i in range(n):
+        if perm[i] == i:
+            j = (i + 1) % n
+            perm[i], perm[j] = perm[j], perm[i]
+    assert not any(perm[i] == i for i in range(n)), "derangement has a fixed point"
+    return perm
+
+
 def build(arm: str):
     from tiny_model_v11.loader import load_from_artifacts
 
     base, cfg = load_from_artifacts(str(TINY_MODEL / "model" / "v11"), device="cpu")
     resize_embedding(base, EXTENDED_VOCAB)
     feats, cell_first_id, names, held = load_fingerprint_features()
+    if arm == "shuffled":
+        perm = _derangement(feats.shape[0], SHUFFLE_SEED)
+        feats = feats[perm.tolist()]  # each cell now carries a DIFFERENT cell's fingerprint
     model = CN1Model(base, cell_first_id, feats, arm)
     return model, names, held
 

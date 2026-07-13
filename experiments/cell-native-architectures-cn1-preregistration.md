@@ -225,3 +225,44 @@ verify the harness end-to-end on a smoke slice with gates *not* evaluated. 3. Dr
 record axis-A cells. 4. Run the CN-2 harvest battery; generate the corpus; record the mix
 ratio and coverage stats. 5. Generate eval batteries; classify G2-reachability from arms
 (P)/(G) transcripts. 6. Train arms; evaluate; write findings against this document.
+
+## Amendment (2026-07-13): two controls pre-registered before the stronger run
+
+The first full run produced a positive gate-(ii) *mechanism* signal (fingerprint held-out
+median rank 56/790, 65% in the top 10%; random 619, 0%; seen-cell control comparable, ruling
+out a general arm difference). Before spending on a stronger run, two controls are pre-registered
+here — as hypotheses with their falsifying outcomes stated first — because they are exactly where
+a skeptic goes.
+
+**Control 1 — the shuffled-fingerprint arm (is the signal behaviour, or just the projection?).**
+The fingerprint arm's held-out advantage is controlled for *contexts* (both arms share the
+descriptor corpus) but not for *information*: descriptors come from cell names, fingerprints from
+behaviour, and behaviourally-similar cells often have similar names, so name-similarity could leak
+through. New arm **(s) shuffled**: identical `W_f` and geometry, but each cell is assigned a
+*different* cell's fingerprint (a fixed seeded derangement, `SHUFFLE_SEED=1234`, no cell keeps its
+own). Trained and evaluated exactly like arm (c).
+- **Pre-registered reading:** the signal is genuinely behavioural **iff** shuffled held-out
+  ranking collapses toward random — concretely, shuffled held-out top-10% fraction ≤ 0.15 (vs
+  fingerprint's 0.65) and median rank closer to random's than to fingerprint's. If instead
+  shuffled stays high (≈ fingerprint), the effect is the shared projection layer / name geometry,
+  **not** behaviour, and the headline must be restated as "a structured shared projection gives
+  unseen cells addresses" — a weaker, still-real claim. This is the one control that would let a
+  reviewer dismiss the behavioural reading, so it runs alongside (c) and (b) at one fixed config.
+
+**Control 2 — the capacity hypothesis (why is top-1 zero?), stated as a hypothesis not an
+assumption.** The mechanism is confirmed as a *ranking* signal; held-out top-1 is 0.000 because
+the model is under-powered (seen top-1 ≈ 0.06–0.22). The plan "convert rank→top-1 with more
+capacity" is a **hypothesis**, pre-registered as: *top-1 rises with training/model capacity at
+fixed mechanism.*
+- **Pre-registered outcomes:** (a) if a stronger run raises seen top-1 **and** moves fingerprint
+  held-out top-1 from 0 to non-zero (with shuffled/random still ~0), the hypothesis holds and gate
+  (ii) approaches its pre-registered bar. (b) If seen top-1 rises but fingerprint held-out top-1
+  stays 0, then **rank-without-top-1 is a ceiling, not an artifact** — a distinct and important
+  finding (the address is findable but not winnable), which no amount of the same scaling fixes.
+- **Honest scope of this run:** it varies *optimization* capacity on the fixed 115M base
+  (unfreeze depth, steps, LR decay for the late-run instability the top-12 run showed). True
+  *model*-capacity scaling (a larger base) is future work (CUDA), and outcome (b) would motivate
+  it specifically.
+
+Both controls run at one fixed config across arms (c)/(s)/(b) so the comparison is clean; then 3
+seeds per surviving arm for the gate proper.
