@@ -28,7 +28,10 @@ use cell80::{
 };
 use cell80_life::ex2::GenePools;
 use cell80_life::ex3::{self, RunConfig3, StartingGenome3};
-use cell80_life::genes::{self, CompiledGene, EngineKind};
+// The qualified `genes::` path is only used inside the macOS GPU block below.
+#[cfg(target_os = "macos")]
+use cell80_life::genes;
+use cell80_life::genes::{CompiledGene, EngineKind};
 use cell80_life::history::Species;
 use cell80_life::lineage::GenomeFields;
 use cell80_life::load_starting_genome;

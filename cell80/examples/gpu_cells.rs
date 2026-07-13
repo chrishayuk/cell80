@@ -250,7 +250,7 @@ mod macos {
                 "  ok={} → st={} state={:?}  {:<22} {}",
                 ok,
                 outs[0][0],
-                &next,
+                next,
                 label,
                 if agree {
                     "(interpreter agrees)"

@@ -147,8 +147,11 @@ mod macos {
 
         // child_id -> its own sense_move; founders (id < initial_organisms) carry the starting
         // genome's (disk) gene.
-        let sense_of: HashMap<u32, u16> =
-            baseline.births.iter().map(|b| (b.child_id, b.sense_move)).collect();
+        let sense_of: HashMap<u32, u16> = baseline
+            .births
+            .iter()
+            .map(|b| (b.child_id, b.sense_move))
+            .collect();
         let parent_sense = |parent_id: u32| -> u16 {
             if (parent_id as usize) < cfg.initial_organisms {
                 starting2.sense_move
@@ -164,7 +167,8 @@ mod macos {
             .births
             .iter()
             .filter(|b| {
-                (b.sense_move as usize) >= base_len && (parent_sense(b.parent_id) as usize) < base_len
+                (b.sense_move as usize) >= base_len
+                    && (parent_sense(b.parent_id) as usize) < base_len
             })
             .collect();
         println!(
@@ -179,7 +183,8 @@ mod macos {
         // Sample up to N, evenly spread across the run (deterministic — no RNG in this binary).
         let n_target = 15usize;
         let step = (focal.len() / n_target).max(1);
-        let sampled: Vec<&BirthEvent> = focal.iter().step_by(step).take(n_target).copied().collect();
+        let sampled: Vec<&BirthEvent> =
+            focal.iter().step_by(step).take(n_target).copied().collect();
         println!(
             "   testing {} focal births (every {}th of {}), one counterfactual replay each\n",
             sampled.len(),
@@ -196,7 +201,8 @@ mod macos {
         for &fb in sampled.iter() {
             let mut ov = Overrides::new();
             ov.insert(fb.child_id, Role::Sense.skip_override());
-            let cf = ex2::run_with_overrides(EngineKind::Gpu, &cfg, &starting2, &extended_genes, &ov);
+            let cf =
+                ex2::run_with_overrides(EngineKind::Gpu, &cfg, &starting2, &extended_genes, &ov);
 
             let composed_k = direct_children(&baseline.births, fb.child_id) as i64; // baseline: has composed gene
             let disk_k = direct_children(&cf.births, fb.child_id) as i64; // counterfactual: reverted to disk
