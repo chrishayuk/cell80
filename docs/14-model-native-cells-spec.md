@@ -88,6 +88,61 @@ E1+F1 spike on Metal (a weekend) → E2/E3 → **F2 gate** → G1 → H1/H2 → 
 
 ## 6. Ledger
 
+### 2026-07-13 — CUDA E1–E3 + interp backend: built, golden-locked, gate PRE-REGISTERED (WS-E CUDA slice)
+
+**Shipped the CUDA backend** ("second — critical path for WS-H3", §2 target
+matrix), on the sequencing this doc set (§3: CUDA E1–E3 before H3), as one
+walker with two dialects: `rustmsl::codegen` grew a `Dialect { Msl, Cuda }`
+seam (11 dialect points — headers, address-space qualifiers, `CELLFN`/div-
+helper noinline attributes, `sx16`/`sx32`, window-helper prefixes,
+`__bits_*` intrinsics over `__popc`/`__clz`/`__ffs`, and the kernel
+signature with a grid-tail guard) while every tick placement, mask, guard,
+and the whole kernel body stay shared text — a semantics fix lands in both
+dialects by construction. The refactor was locked byte-identical first
+(M0/M1: MSL emission goldens over a 27-snippet corpus + the interp kernel,
+then the seam, then the CUDA arms). The interp backend's `KERNEL` split the
+same way: one shared body, per-dialect headers, decoder constants
+*generated* from the Rust-side opcodes (the "kept in lockstep" comment
+deleted as a failure mode). Q6 resolved as leaned: **NVRTC** (cudarc 0.19.8,
+dynamic-loading, driver API pinned `cuda-12060`), `--fmad=false` pinned now
+so E4 inherits it (R8), `--gpu-architecture` queried from the device — the
+gate always compiles on the box it runs on. `MslModule` → `GpuModule`
+(carries its `Dialect`; executors refuse the wrong runtime typed), alias
+kept. Executors: `CudaBatch` mirrors `GpuBatch` exactly; `CudaInterpBatch`
+mirrors `InterpBatch` over the same `bytecode::pack`. The noinline dodge is
+kept on CUDA **for uniformity, not by assumption** — the Metal miscompile is
+not presumed to transfer; whatever NVRTC-specific quirks exist, the battery
+below is what finds them, and fixes land in the Cuda arms only.
+
+**The battery is shared, so the gates cannot drift**: the msl_battery
+harness extracted to `cell80/tests/battery_common/` (discovery, schedules,
+fanned-out oracle, transcript book, the battery loops themselves) behind a
+`Backend` vtable; `cuda_battery.rs` is the same sweeps on `CudaBatch`. The
+oracle transcripts are backend-independent by construction (key, src hash,
+seed, oracle digest — all interpreter-side), so the CUDA gate *reads* the
+book the Metal gate blessed and never writes it. `corners.rs` and a new
+`interp_parity.rs` (first direct `InterpBatch` coverage outside examples)
+run on whichever backend the build has.
+
+**PRE-REGISTERED GATE (before any CUDA silicon runs this code).** On a
+pinned cloud box (docs/16 runbook: CUDA 12.6 image, Ampere+, every
+toolchain version recorded): (i) `rustmsl --features cuda` suite green —
+corners, interp parity, goldens; (ii) the library battery, value + state +
+fused megakernel, **bit-exact values + trap status + IR-step counts (+
+final state bytes)** against `cell80_core::Interp`, same floors as Metal
+(≥ 230 value, ≥ 300 state compiled), same named exclusions
+(`STATE_OOW_DEFECTS`), same transcripts and seeds; (iii) the 10⁶-input
+value and state gates. Any mismatch is a filed defect fixed in the CUDA
+dialect arms or excluded by name with a reason — **the gate is never
+weakened**. Throughput is recorded as measured on the card, never
+extrapolated. Status: **built and golden-locked on macOS; unverified on
+silicon until the docs/16 session appends its results entry here.**
+
+Owed after the gate: `library_launch_cost` CUDA port (the E3 fixed-cost
+figure), `Body::Msl`/`Body::Cuda` cartridge variants + GPU `Target`
+descriptor entries, E4 f32, E5 residency (persistent megakernel / CUDA
+Graphs), E6 cross-target battery automation.
+
 ### 2026-07-12 — The interpreter backend: the megakernel's wall priced, and the fix that scales (WS-E/F)
 
 **Priced the megakernel launch — and found a wall.** `compile_library`'s
