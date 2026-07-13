@@ -92,6 +92,19 @@ with `UPDATE_GOLDEN=1`** — blessing is a macOS/Metal activity; the CUDA
 battery never writes the book (enforced in code, stated here for the
 operator).
 
+**Transcript-coverage note (as of 2026-07-13):** the book fully covers the
+value cells at the 10⁶ schedule (a handful of entries are stale — cells
+modified since blessing — and will grade live), but only 116 of ~539 state
+cells have `@st1000000` entries; the library grew past the original
+blessing run. A local re-blessing (`UPDATE_GOLDEN=1`, the msl_battery 10⁶
+gates on a Mac) was started 2026-07-13 and parked after ~8 CPU-hours in the
+stale-value heavy tail — it saves per cell and can resume any time. Budget
+accordingly: either finish the blessing on a Mac before the session (the
+CUDA 10⁶ gates then cost GPU dispatch + digest compares), or accept that
+the box live-grades ~420 state cells at 10⁶ pairs on its own cores (hours
+of rented CPU). The gate's verdict is identical either way — only the wall
+clock and the bill differ.
+
 ## 6. Throughput figure
 
 docs/14 (E3) wants the CUDA number **measured on the first available card,
