@@ -71,11 +71,12 @@ def generate_constrained(model, prompt_ids, mask: CellCallMask, max_new=8, greed
     dense logits -> mask_fn -> pick. Greedy by default (deterministic, like the CN-2 baseline).
     Truncates the growing sequence to the model's max_seq window."""
     max_seq = model.base.rope_freqs.shape[0]
+    device = next(model.parameters()).device
     generated = list(prompt_ids)
     for _ in range(max_new):
         window = generated[-max_seq:]
-        ids = torch.tensor([window], dtype=torch.long)
-        logits = model(ids)[0, -1]  # (vocab,)
+        ids = torch.tensor([window], dtype=torch.long, device=device)
+        logits = model(ids)[0, -1].float().cpu()  # (vocab,)
         logits = mask.apply(generated, logits)
         nxt = int(torch.argmax(logits)) if greedy else int(torch.multinomial(torch.softmax(logits, -1), 1))
         generated.append(nxt)

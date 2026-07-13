@@ -106,17 +106,24 @@ class CN1Model(nn.Module):
             self.w_f = Wf(fp_feats.shape[1], self.dim)
 
     def effective_embed_weight(self) -> torch.Tensor:
-        """The (V, dim) matrix used for input lookup and output projection — three-way tied."""
+        """The (V, dim) matrix used for input lookup and output projection — three-way tied.
+
+        Cell tokens are a contiguous tail range, so the effective matrix is assembled by
+        `torch.cat` of [pretrained+delimiter rows | W_f(FP) cell rows | any rows above]. cat of
+        contiguous slices is autograd-clean (gradient flows to w_f via cell_rows, to the base
+        params elsewhere; the base's own cell rows get no gradient, as intended) and — unlike
+        index_copy — is implemented on MPS.
+        """
         w = self.base.embed.weight
         if self.arm == "random":
             return w
         cell_rows = self.w_f(self.fp_feats)  # (n_cells, dim)
-        w_eff = w.clone()
-        # index_copy keeps autograd clean: gradient flows to w_f (via cell_rows) at these rows
-        # and to the base params elsewhere; the base's own cell rows get no gradient (dead), as
-        # intended for arm c.
-        w_eff = w_eff.index_copy(0, self.cell_ids.to(w.device), cell_rows)
-        return w_eff
+        lo = self.cell_first_id
+        hi = lo + cell_rows.shape[0]
+        parts = [w[:lo], cell_rows]
+        if hi < w.shape[0]:
+            parts.append(w[hi:])
+        return torch.cat(parts, dim=0)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         w = self.effective_embed_weight()

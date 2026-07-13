@@ -1155,6 +1155,55 @@ source 2 (the CN-2 harvest, mix ratio reported then) and sibling-discrimination 
 (so a held-out cell's context uniquely identifies it — the `examples_gen.py` `co_match` engine
 is the reusable primitive).
 
+### Training harness (step 6 apparatus) + the smoke-slice finding that stops the spend
+
+The training loop (`cn1_train.py`) is built and runs end-to-end on M3/MPS: freeze policy knob,
+both arms, loss supervised at the cell-token position (predict the cell from the prefix ending
+in `<call>` — full-sequence CE is swamped by irreducible loss on digit/format tokens the frozen
+base can't improve). Two MPS/mechanics issues found and fixed along the way: `index_copy` is
+unimplemented on MPS (rewrote the effective-matrix assembly as a `torch.cat` of contiguous
+slices — cell tokens are a tail range), and device-safety in the generate loop.
+
+**Then the smoke run surfaced a real, load-bearing design finding — exactly what the step-2
+smoke slice is for — and it stops the training spend until resolved.** Trained on the
+behavioral-demonstration corpus, both a fully-frozen base and a top-4-unfrozen base **collapse
+to predicting a single cell regardless of context** (cell-accuracy ≈ 0.005, loss plateaus just
+under `ln(790)`). `cn1_probe_separation.py` isolates the mechanism rigorously: the base's hidden
+state at the `<call>` position has **cosine 0.982 within a cell (same operation, different
+operands) vs. 0.985 between different cells — separation −0.003**. The base collapses every
+arithmetic-demonstration context to essentially one point; different operations are no more
+distinct than the same operation on different operands.
+
+**What this means (a corpus/representation finding, not a training bug).** My corpus design
+grounded each call in behavioral I/O demonstrations — principled for gate (ii) (the fingerprint
+*is* behavior, so demonstrated-behavior → `W_f(fingerprint)` is the smoothest transfer path) —
+but it made the base task **few-shot function identification**: infer which of 249 functions the
+demos show, with no surface cue, since operands are re-randomized every example. A TinyStories
+base neither represents arithmetic demonstrations discriminatively (probe above) nor learns to
+in 200 smoke steps, so there is no context signal for *any* embedding strategy (W_f or free
+rows) to condition on — gate (ii) is not even reachable, for the same structural reason the toy
+pilot's was: no substrate the address could modulate. The apparatus is validated; the corpus
+grounding and the model's representation capacity are mismatched.
+
+**The design fork this forces (before the real spend), and the recommendation.** Behavioral
+grounding alone is too hard; a pure name/descriptor cue transfers to held-out cells no better
+than the pilot's iteration-1 (novel token, no address). The resolution has to give seen cells a
+*learnable* context→cell signal while keeping a held-out→fingerprint transfer path — i.e. a
+**compositional descriptor** (operation-attribute words drawn from a controlled vocabulary,
+composed per cell) that (a) lets the model learn description→cell on seen cells and (b) lets a
+held-out cell's description, built from attribute words seen with other cells, land in the
+fingerprint region `W_f` maps that behavior to. That is the pilot's compositional-grid lesson at
+real scale, and it needs either synthesized per-cell descriptors (the library lacks summaries —
+0/120 sampled) or a training phase that first teaches the base to *read* demonstrations. This is
+a genuine scientific choice about corpus grounding, surfaced here — deliberately — before a
+GPU-hour is spent, which is the entire point of pre-registering a smoke slice.
+
+**Status of the CN-1 real build:** the full apparatus (steps 2–3 and the step-4/6 machinery) is
+built and mechanically validated; the pre-registered *training run* is **paused on the corpus-
+grounding design decision above**, not started. No gate has been evaluated. Steps 4 (final
+corpus), 5 (eval batteries + G2-reachability), and 6 (the trained run) resume once the grounding
+is chosen.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
