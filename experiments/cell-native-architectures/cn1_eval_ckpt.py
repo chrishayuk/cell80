@@ -19,28 +19,29 @@ import cn1_decode
 HERE = Path(__file__).resolve().parent
 
 
-def reload_arm(arm, seed, unfreeze_top=12):
-    model, names, held = cn1_model.build(arm)  # cpu
+def reload_arm(arm, seed, device, unfreeze_top=12):
+    model, names, held = cn1_model.build(arm)  # loads on cpu
     ckpt_path = HERE / f"cn1_ckpt_{arm}_s{seed}.pt"
     if not ckpt_path.exists():  # fall back to the pre-seed-suffix naming (first runs)
         ckpt_path = HERE / f"cn1_ckpt_{arm}.pt"
     ck = torch.load(ckpt_path, map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
-    if arm in ("fingerprint", "shuffled"):
+    if arm in ("fingerprint", "shuffled", "description"):
         model.w_f.load_state_dict(ck["w_f"])
     blocks = model.base.layers[-unfreeze_top:]
     for i, blk in enumerate(blocks):
         blk.load_state_dict(ck[f"block_{i}"])
     model.eval()
-    return model
+    return model.to(device)  # run the eval forwards on the GPU (MPS), not CPU
 
 
 def rank_stats(model, items, cell_ids_t, tok, cap=200):
+    device = next(model.parameters()).device
     ranks = []
     with torch.no_grad():
         for r in items[:cap]:
-            ids = torch.tensor([[2] + tok.encode(r["context"] + " <call>")])
+            ids = torch.tensor([[2] + tok.encode(r["context"] + " <call>")], device=device)
             logits = model(ids)[0, -1]
             cl = logits[cell_ids_t]
             order = torch.argsort(cl, descending=True)
@@ -68,11 +69,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=80)
     ap.add_argument("--arms", nargs="+", default=["fingerprint", "shuffled", "random"])
+    ap.add_argument("--device", default=None)
     a = ap.parse_args()
 
+    device = a.device or ("mps" if torch.backends.mps.is_available() else "cpu")
+    print(f"eval device: {device}")
     tok = v11.Tokenizer.from_file(str(HERE / "v11-cells.vocab.bin"))
     _, _, cell_ids, _ = cn1_decode.load_call_grammar()
-    cell_ids_t = torch.tensor(sorted(cell_ids))
+    cell_ids_t = torch.tensor(sorted(cell_ids), device=device)
     eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     buckets = {
         "seen_x_seen": ("seen_cell", "seen_comp"),
@@ -86,7 +90,7 @@ def main():
     print("chance median rank ~395/790\n")
     for arm in a.arms:
         try:
-            m = reload_arm(arm, a.seed)
+            m = reload_arm(arm, a.seed, device)
         except FileNotFoundError:
             print(f"arm {arm}: no checkpoint yet, skipping")
             continue
