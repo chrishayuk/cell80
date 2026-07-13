@@ -112,7 +112,13 @@ advance, gate (ii) now moves to the real build (a real model, the real H1 factor
 compositional-coverage corpus, a real training spend), not a fourth toy iteration — this
 pilot's job (harness validated, tying precondition found, corpus requirements mapped, gate
 (ii)'s first real test run and closed) is done. Full account:
-`cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
+`cell-native-architectures-findings.md`'s `## CN-1 slice-0` section. **The real build is
+pre-registered:** `cell-native-architectures-cn1-preregistration.md` — three-way tying
+(input embedding = output head = fingerprint projection, so held-out cells are emittable,
+not just readable), corpus partly harvested from CN-2's verified-decoding traces, two
+factorized held-out axes (cells vs. compositions), the shortcut band split by
+G2-reachability, and a new gate (iii) requiring the trained reflex to beat the
+G2-at-inference baseline where the span grammar can't reach.
 
 ---
 
@@ -250,7 +256,8 @@ for Gemma-class models** (see CN-0/CN-3's own status notes above). CN-2: one wav
 Wave 2: **CN-1** (first training spend) — now the programme's next experiment, not
 contingent on CN-3. **Slice-0 toy pilot done** (see CN-1's own status note above); the real
 build (TinyModel v11 + a rebuilt tokenizer, the full H1 factory, ~800 cells, constrained
-decoding) is still ahead.
+decoding) is pre-registered (`cell-native-architectures-cn1-preregistration.md`) and still
+ahead.
 Wave 3: **CN-4/5** and **CN-6**, informed by wave 2's gates. **CN-7** last.
 CUDA enters only at H3-scale RL and organ training beyond TinyModel — on the spine, not
 on wave 1's critical path.
