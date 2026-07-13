@@ -1,10 +1,22 @@
 # CN-1 real build — results write-up: behaviour vs. language as a tool address
 
-**Status (2026-07-13):** mechanism confirmed with a controlled, double-dissociated positive; the
-mandatory description baseline and top-1 base-swap are in progress. This document consolidates the
-full arc; the running lab record is `cell-native-architectures-findings.md`, the frozen design is
-`cell-native-architectures-cn1-preregistration.md` (+ amendments), and the scripts and result
-JSONs are under `cell-native-architectures/`.
+**Status (2026-07-14, superseding 07-13):** **mechanism confirmed; usable level deflated on
+correction; scale-invariance is now the deciding experiment.** The headline is now: *behaviour-as-
+address works as a mechanism (the matched-item arm contrast — fingerprint ≪ shuffled ≈ random on
+held-out, plus the seen-cell inversion — is robust and novel), and its usability is a single, well-
+specified scale question.* Two headline **numbers were corrected downward** after a first-N
+eval-sampling bug (the eval read the first 200 items of a cell-grouped file): held-out median rank
+**~21 → ~114 of 790**; enrichment **6.73× → ~2.7× median** vs the all-790 null. And the bar itself
+was corrected: per-cell top-50 recall (0.25) was an **arbitrary** standard; the execution-derived
+target is *absolute rank ≤ K_exec* (~260 CPU / ~100k GPU executable candidates per token), which
+rank-114 **already clears at 790** — so the deciding metric is whether absolute rank stays bounded
+as the library grows (the retrained library-scale curve), not per-cell recall. **This is a
+different, more honest paper than 07-13's:** a confirmed mechanism, currently at a level whose
+usefulness at scale is exactly one experiment away from being decided. The reasoning trail
+(including the retracted neighbourhood reframe and the inflated numbers) is preserved in the
+findings and pre-registration. This document consolidates the arc; lab record is
+`cell-native-architectures-findings.md`, frozen design + all corrections in
+`cell-native-architectures-cn1-preregistration.md`.
 
 ## 1. The question — corrected against the literature
 
