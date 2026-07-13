@@ -266,3 +266,43 @@ fixed mechanism.*
 
 Both controls run at one fixed config across arms (c)/(s)/(b) so the comparison is clean; then 3
 seeds per surviving arm for the gate proper.
+
+## Amendment refinement (2026-07-13, same day): the capacity hypothesis is confounded on v11
+
+Control 2 above ("top-1 rises with capacity at fixed mechanism") is **not cleanly falsifiable on
+v11**, and the amendment as first written overstated it. v11 is pretrained on TinyStories — it has
+never seen arithmetic, tool-call syntax, or any structured symbolic invocation. So seen-cell top-1
+≈ 6% is primarily a **prior-mismatch** number, not a capacity number: the task is wholly
+out-of-distribution for a model whose world is children's stories. If v11 is scaled (more steps,
+more unfrozen layers, more data) and top-1 stays low, "rank-without-top-1 is a ceiling" is **not**
+a licensed conclusion — the rival explanation "this base has no relevant prior" is fully alive and
+untested. Two confounded variables (capacity, prior relevance) with one knob.
+
+**The clean discriminator is a base swap, not a scale-up.** A small model pretrained on code/math
+— SmolLM2-135M (size-matched to v11's 115M), or Qwen2.5-0.5B (prior + modest capacity) — is the
+same order of magnitude but has actually seen structured symbolic text. If a code/math-pretrained
+~135M base converts rank→top-1 where the 115M TinyStories base does not, the binding constraint is
+**prior, not parameters** — a far more useful and de-risking finding than "more of the same helps
+a bit," and it tells you whether the CUDA path is buying a prior or buying capacity *before* the
+spend. Revised control-2 outcomes:
+- code/math base moves fingerprint held-out top-1 off zero while v11 does not → constraint is
+  **prior**; scale a code/math base, not v11.
+- neither base converts rank→top-1 despite the fingerprint rank signal → rank-without-top-1 is a
+  genuine ceiling across priors — the strong, still-important null.
+- Scaling v11 harder is deprioritized to **last**: it is the one arm where a null is
+  uninterpretable.
+
+**Two riders on the swap.** (1) **Re-check weight tying on any candidate base** — the pilot's
+precondition (`lm_head.weight == embed.weight`, or the fingerprint row is inert) holds *natively*
+in v11 but is not universal; a base with an untied head would silently null the fingerprint arm.
+(2) **A frozen-trunk variant** (train only `W_f` + the head, unfreeze zero transformer blocks):
+the current run unfreezes top-16 of 20, a large capacity-to-data ratio; if the fingerprint
+advantage survives with almost no model adaptation, the mechanism claim is cleaner and stronger
+(behaviour-as-address without retraining the network) than after adapting most of it.
+
+**Run order (revised):** shuffled-fingerprint control (running — validates the existing headline)
+→ frozen-trunk variant (does the mechanism need trunk adaptation?) → base swap to a code/math
+~135M model (the honest prior-vs-capacity test) → 3 seeds on whichever base carries the signal.
+Scaling v11 harder is last. The existing v11 result stands exactly as written — "mechanism
+confirmed, invocation not yet" is true on v11 and stays true regardless of the swap; the swap
+tells you *why* invocation hasn't arrived, not whether the address exists.
