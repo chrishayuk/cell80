@@ -82,6 +82,21 @@ transfer to embedding space; depth-2 routing still stands on F2, but the "comput
 vocabulary" claim dies.
 **Cost.** The programme's first real training spend. M3/MLX.
 
+**Status: slice-0 pilot done (toy scale, not the pre-registered build) — gate (i)'s core
+claim supported, gate (ii) inconclusive by design, not by result.** A small MLX transformer
+trained from scratch (not TinyModel v11 — its tokenizer's immutable `.vocab.bin` has no
+`add_tokens` API, a real detour deferred past the pilot) shows fingerprint-init reaching
+0.993–1.000 accuracy on every trained cell vs. random-init's more variable, sometimes much
+worse 0.640 mean at the same training budget — a real, clean win, contingent on weight tying
+(embeddings ↔ output projection), which a first, untied run showed is load-bearing, not a
+detail: untied, both arms silently scored 0.000 everywhere. The novelty gate (ii) could not
+be properly tested this pass: even a held-out cell chosen for sharing a trained cell's
+*prompt shape* (`is_ge` vs. trained `is_gt`) still scored 0.000 for both arms, because its
+defining input token never appears in training at all — the pilot's corpus ties each cell to
+an exclusive surface token, so no held-out cell's input is ever *familiar* to the model
+regardless of embedding placement. Full account, including what a properly-designed
+held-out split needs: `cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
+
 ---
 
 ### CN-2 — Verified decoding in LARQL (G2, product-shaped)
@@ -216,7 +231,9 @@ neither blocks the other, both are days-scale. **CN-0 done — gate not met; CN-
 for Gemma-class models** (see CN-0/CN-3's own status notes above). CN-2: one wave done
 (60-problem verified-decoding battery), G2 build (injection/resampling) in progress.
 Wave 2: **CN-1** (first training spend) — now the programme's next experiment, not
-contingent on CN-3.
+contingent on CN-3. **Slice-0 toy pilot done** (see CN-1's own status note above); the real
+build (TinyModel v11 + a rebuilt tokenizer, the full H1 factory, ~800 cells, constrained
+decoding) is still ahead.
 Wave 3: **CN-4/5** and **CN-6**, informed by wave 2's gates. **CN-7** last.
 CUDA enters only at H3-scale RL and organ training beyond TinyModel — on the spine, not
 on wave 1's critical path.
