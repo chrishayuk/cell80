@@ -20,7 +20,7 @@ mod tests;
 // The crate-facing surface (`lib.rs` re-exports `parse_args`/`run_cli`/`USAGE`;
 // `crate::admission` walks directories through `library_cartridge`; `dispatch`
 // stays reachable as `cli::serve::dispatch` for an MCP server / socket daemon).
-pub(crate) use meta::library_cartridge;
+pub use meta::library_cartridge;
 pub use parse::parse_args;
 
 // Shared vocabulary for the submodules: each starts with `use super::*;`, so the

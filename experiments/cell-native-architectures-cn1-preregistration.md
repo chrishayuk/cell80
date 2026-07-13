@@ -48,10 +48,17 @@ for the cost of a toy. They are **preconditions** of this build, not open questi
 
 ## Architecture, fixed now
 
-**Model.** TinyModel v11 (the pre-registered scale for CN-1), MLX, M3. The immutable
-`.vocab.bin` tokenizer is rebuilt to admit new tokens — this is in-scope engineering, the
-detour the pilot deferred. ~800 cell-identity tokens + call-grammar delimiters; result
-tokens spliced by the runtime at zero decode cost.
+**Model.** TinyModel v11 (the pre-registered scale for CN-1), **PyTorch on M3/MPS** (the
+model is PyTorch, not MLX — the pilot's toy was MLX, TinyModel v11 is not; corrected here
+after the infra map). 115M params, dim 512, 20 layers, vocab 71261, and **weight tying is
+native** (`model.py:136`, `lm_head.weight = embed.weight`) — the pilot's precondition holds
+for free. The `v11.vocab.bin` tokenizer is extended by append-only re-serialization (its
+`Vocab::save` writer is public; `u32` ids, no runtime ceiling), adding ~790 cell-identity
+tokens + call-grammar delimiters at the tail so existing rows and trained embeddings are
+untouched — this is in-scope engineering, the detour the pilot deferred. Result tokens
+spliced by the runtime at zero decode cost. **Must be written** (none exist in-repo): an
+embedding-resize utility (`load_state_dict` is `strict=True`), a checkpoint-resume path, and
+the autoregressive generate loop that hosts constrained decoding.
 
 **Three-way tying (the pilot's precondition, sharpened by one step).** The pilot proved
 input/output tying is necessary. Library-size invariance requires more: the *output head*
@@ -204,9 +211,11 @@ matched-parameter, always).
 
 H1 factory (corpus + strict-improvement filter, exact oracle) · CN-2 harness
 (`cn2_g2_resample.py` lineage) as the harvest engine and the gate (iii) reachability
-classifier · `dump_fingerprints` for the probe-battery fingerprints · LARQL
-`generate_constrained`/`OpNameMask` pattern ported to MLX for constrained decoding (real
-work, in scope, the pilot's named deferral) · reference interpreter for in-line splice
+classifier · `dump_library` (all 790 cells' identity + probe-battery fingerprints in one
+JSONL, superseding the per-name `dump_fingerprints`) for `W_f`'s inputs · LARQL's
+`OpNameMask` closure seam (`FnMut(ids, &mut logits)`, applied after dense LM-head scoring,
+before sampling) ported into the TinyModel PyTorch generate loop for constrained decoding
+(real work, in scope, the pilot's named deferral) · reference interpreter for in-line splice
 verification. Harness: `experiments/cell-native-architectures/`.
 
 ## Order of operations (so no number is seen before its bar is fixed)

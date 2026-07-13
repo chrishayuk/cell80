@@ -1,0 +1,668 @@
+{
+  "_provenance": {
+    "script": "cn1_axis_a_draw.py",
+    "library": "cn1_library.jsonl",
+    "seed": 80,
+    "holdout_fraction": 0.1,
+    "rule": "per pack: round(0.10*size) clamped to [0, size-1]; cells sorted by name; random.Random(seed).sample",
+    "note": "Drawn and committed BEFORE corpus generation and training (pre-registration step 3)."
+  },
+  "n_library": 790,
+  "n_held": 79,
+  "held_fraction_overall": 0.1,
+  "n_value_cells": 249,
+  "n_held_value": 24,
+  "held_value_fraction": 0.0964,
+  "held_by_arity": {
+    "0": 55,
+    "1": 7,
+    "2": 12,
+    "3": 5
+  },
+  "per_pack": {
+    "agentic-runtime": {
+      "size": 22,
+      "held": 2
+    },
+    "bit-encoding": {
+      "size": 18,
+      "held": 2
+    },
+    "bit-mask": {
+      "size": 27,
+      "held": 3
+    },
+    "bounds": {
+      "size": 17,
+      "held": 2
+    },
+    "bucket-convert": {
+      "size": 9,
+      "held": 1
+    },
+    "calendrical-checksum": {
+      "size": 16,
+      "held": 2
+    },
+    "checked-arithmetic": {
+      "size": 41,
+      "held": 4
+    },
+    "combinatorics": {
+      "size": 26,
+      "held": 3
+    },
+    "control-systems": {
+      "size": 5,
+      "held": 0
+    },
+    "day-count": {
+      "size": 5,
+      "held": 0
+    },
+    "distance": {
+      "size": 13,
+      "held": 1
+    },
+    "excel-datetime": {
+      "size": 12,
+      "held": 1
+    },
+    "excel-financial": {
+      "size": 51,
+      "held": 5
+    },
+    "excel-mathstat": {
+      "size": 27,
+      "held": 3
+    },
+    "fixed-point": {
+      "size": 14,
+      "held": 1
+    },
+    "fractions": {
+      "size": 31,
+      "held": 3
+    },
+    "geometry": {
+      "size": 20,
+      "held": 2
+    },
+    "hashing": {
+      "size": 15,
+      "held": 2
+    },
+    "matrix": {
+      "size": 9,
+      "held": 1
+    },
+    "money-bps": {
+      "size": 16,
+      "held": 2
+    },
+    "number-theory": {
+      "size": 75,
+      "held": 8
+    },
+    "numerical-primitives": {
+      "size": 4,
+      "held": 0
+    },
+    "packing-bcd": {
+      "size": 17,
+      "held": 2
+    },
+    "percent": {
+      "size": 19,
+      "held": 2
+    },
+    "physics": {
+      "size": 7,
+      "held": 1
+    },
+    "predicates": {
+      "size": 29,
+      "held": 3
+    },
+    "ranking-stats": {
+      "size": 36,
+      "held": 4
+    },
+    "running-stats": {
+      "size": 22,
+      "held": 2
+    },
+    "safe-arith": {
+      "size": 14,
+      "held": 1
+    },
+    "scoring-choice": {
+      "size": 19,
+      "held": 2
+    },
+    "sequences": {
+      "size": 21,
+      "held": 2
+    },
+    "signed-deltas": {
+      "size": 17,
+      "held": 2
+    },
+    "softfloat": {
+      "size": 2,
+      "held": 0
+    },
+    "spatial-grid": {
+      "size": 19,
+      "held": 2
+    },
+    "stateful-rng": {
+      "size": 6,
+      "held": 1
+    },
+    "statistics": {
+      "size": 10,
+      "held": 1
+    },
+    "trig": {
+      "size": 21,
+      "held": 2
+    },
+    "units": {
+      "size": 5,
+      "held": 0
+    },
+    "validation": {
+      "size": 5,
+      "held": 0
+    },
+    "vector": {
+      "size": 12,
+      "held": 1
+    },
+    "verifier-ranker": {
+      "size": 31,
+      "held": 3
+    },
+    "weather": {
+      "size": 5,
+      "held": 0
+    }
+  },
+  "held_out_cells": [
+    {
+      "name": "epsilon_greedy_pick3",
+      "pack": "agentic-runtime",
+      "family_hash": "cea3dc61cfbb0e540f9733c6b1032feff9887587c77e231ae861aa38c79930cf",
+      "arity": 0
+    },
+    {
+      "name": "jittered_backoff_next",
+      "pack": "agentic-runtime",
+      "family_hash": "f2c06519aafb7437264bbad8f8cfa2aaf3d6d5dba7e0f6a7c2bfc42628408751",
+      "arity": 0
+    },
+    {
+      "name": "swap_bytes",
+      "pack": "bit-encoding",
+      "family_hash": "30144722022b6be0cbbd9afa4cb083c3516ce28bf7986f38b3c3b48da6c100c1",
+      "arity": 1
+    },
+    {
+      "name": "trailing_zeros_u32",
+      "pack": "bit-encoding",
+      "family_hash": "f44e59f80cc85644591d2fb002202061ea6e1e5bdc3b5d8b4b3f93784eebd74b",
+      "arity": 0
+    },
+    {
+      "name": "mask_clear",
+      "pack": "bit-mask",
+      "family_hash": "71b94beb3f0db5d507d20bfb4c13c1d0758ebb3b28d8cd3d2ca1585fa3abeb1b",
+      "arity": 2
+    },
+    {
+      "name": "mask_has_all",
+      "pack": "bit-mask",
+      "family_hash": "5bacf06bdf79b7ffdf599c2e885ac113ecfcfa52c1a69501d688ee42667b8061",
+      "arity": 2
+    },
+    {
+      "name": "mask_overlap_count",
+      "pack": "bit-mask",
+      "family_hash": "c0d71004f80bcf0129b6063c633adced740e1c8025e38384b5ffecd84ba310a2",
+      "arity": 2
+    },
+    {
+      "name": "between_exclusive",
+      "pack": "bounds",
+      "family_hash": "01ddf1cc3c6916dea76a3b0e672c833ad8ade6ffbd4da73e55bf496c5d1a2ae1",
+      "arity": 3
+    },
+    {
+      "name": "snap_down",
+      "pack": "bounds",
+      "family_hash": "98d26bf3ebae5388e24bfc2603b582f9417327e1dae20aff4106329d730eaae2",
+      "arity": 2
+    },
+    {
+      "name": "permille_to_byte",
+      "pack": "bucket-convert",
+      "family_hash": "76eb664580c6a316d1cd6cf33596d7f4e8a78260a368eaa5b45a2d041ca20753",
+      "arity": 1
+    },
+    {
+      "name": "luhn_check",
+      "pack": "calendrical-checksum",
+      "family_hash": "a3af7e40a99080de80cd7e696a659ab8c0c703592dc60b15357e77d03ff00a5e",
+      "arity": 1
+    },
+    {
+      "name": "luhn_check_digit_u32",
+      "pack": "calendrical-checksum",
+      "family_hash": "025dcd4b718cf8865177b53af90db137268449dce430831d1f946c0207b1c43e",
+      "arity": 0
+    },
+    {
+      "name": "add_checked_u32",
+      "pack": "checked-arithmetic",
+      "family_hash": "18058470757a8adaf82d444679cdd6f301b65ca809595a4aa98871de0a5a3621",
+      "arity": 0
+    },
+    {
+      "name": "is_coprime_u32",
+      "pack": "checked-arithmetic",
+      "family_hash": "d088c4039eaf910fca9f0fe55fea4500714f79b997a9d054373dfc55c4c1f331",
+      "arity": 0
+    },
+    {
+      "name": "mul_add_checked_u32",
+      "pack": "checked-arithmetic",
+      "family_hash": "7363d68a14617493901de2560516603c964ae4fb5ab97f51d4237cb60d0089d4",
+      "arity": 0
+    },
+    {
+      "name": "sub4_checked_u32",
+      "pack": "checked-arithmetic",
+      "family_hash": "d81566420d32986b2a4a86948dd1f396a6d8baab7cdbc01ecd1d09830121ffa9",
+      "arity": 0
+    },
+    {
+      "name": "distinct_partitions",
+      "pack": "combinatorics",
+      "family_hash": "b3381ddd633dc3d895adee87c5926c29514c96c2e1940b3cf585abac2fee51bf",
+      "arity": 0
+    },
+    {
+      "name": "eulerian_number",
+      "pack": "combinatorics",
+      "family_hash": "130aa8305a74ec3044ee5351b4701558f948ce38dc0963d77982e1185205a436",
+      "arity": 0
+    },
+    {
+      "name": "narayana_number",
+      "pack": "combinatorics",
+      "family_hash": "0980b0eaccd0eba14731b700ac953cd38f74a5a245e4cd4b8e6af37136ea59de",
+      "arity": 0
+    },
+    {
+      "name": "manhattan",
+      "pack": "distance",
+      "family_hash": "fcfc9d746a7d74b3cab1c3234810c661e4752cafb6b062d880e36d6a8acde7d2",
+      "arity": 0
+    },
+    {
+      "name": "excel_datedif",
+      "pack": "excel-datetime",
+      "family_hash": "26ec2b781f9af05098ffd7af8f56226b263d85cf2f2428beaca5fcf5990a1e7b",
+      "arity": 0
+    },
+    {
+      "name": "excel_cumipmt",
+      "pack": "excel-financial",
+      "family_hash": "ec54c85e2f8096a52766b8186d71a87e0db8b264a653b0d62785983905d5ff31",
+      "arity": 0
+    },
+    {
+      "name": "excel_cumprinc",
+      "pack": "excel-financial",
+      "family_hash": "f1be9135f927b7eedb733902374dab4b066eb0fc2029767aba88b75e544adbf7",
+      "arity": 0
+    },
+    {
+      "name": "excel_db",
+      "pack": "excel-financial",
+      "family_hash": "ab466b5bd7010def0440dbe0111fc593b24ae169b42230b002a258ab027df70a",
+      "arity": 0
+    },
+    {
+      "name": "excel_oddfprice",
+      "pack": "excel-financial",
+      "family_hash": "200355d8ef7a472f4ca2d6fbacf39a8230cfd98917c3c0a1e5edf0fd55eb0639",
+      "arity": 0
+    },
+    {
+      "name": "excel_rate",
+      "pack": "excel-financial",
+      "family_hash": "374b50a814129bd5c435ca7879a0fabf71c2e77cf23ec3e1caab976c533b0608",
+      "arity": 0
+    },
+    {
+      "name": "excel_floor_precise",
+      "pack": "excel-mathstat",
+      "family_hash": "c6cd4c5b3465f9755ecb3c5fac5af0b8359ed87f97a9909ff79b2af7ba981e9e",
+      "arity": 0
+    },
+    {
+      "name": "excel_median",
+      "pack": "excel-mathstat",
+      "family_hash": "2c311613248f9904a81bd579259d6d30fabd1c0124e6c8787c92da92e74171e1",
+      "arity": 0
+    },
+    {
+      "name": "excel_roundup",
+      "pack": "excel-mathstat",
+      "family_hash": "2a66672c7c5750371e36515eb760e3c20eca73bf86c51718dc76ace36ed0d8eb",
+      "arity": 0
+    },
+    {
+      "name": "q_bilerp",
+      "pack": "fixed-point",
+      "family_hash": "904b587fd3243c2355d3d8128fba4d903da041edd68441a7818099c5d49e61ac",
+      "arity": 0
+    },
+    {
+      "name": "frac_div_whole",
+      "pack": "fractions",
+      "family_hash": "4b7b931e1964db73b65950d0e87d18516e7cd71674cf100a1305d5b0953ad2df",
+      "arity": 0
+    },
+    {
+      "name": "frac_is_improper",
+      "pack": "fractions",
+      "family_hash": "818d7e8ab03481d18cb96f2aa02e6d7dbdb2012fa643c1d53e53ff261ef5fc40",
+      "arity": 0
+    },
+    {
+      "name": "frac_scale",
+      "pack": "fractions",
+      "family_hash": "a5955848af5609568b7197d975789f829e5c3d9c8547f70d2b4c5a601bf9471e",
+      "arity": 0
+    },
+    {
+      "name": "geom_circle_circumference_approx",
+      "pack": "geometry",
+      "family_hash": "7e7300a4961eb27d1a3576515a78b756d0d53e6d5f9ab8aab4ae4a9c26a4305f",
+      "arity": 1
+    },
+    {
+      "name": "point_line_dist_sq",
+      "pack": "geometry",
+      "family_hash": "74c81924fa71d26400ad7e1cebb5bdb1342ec0b0c7e9d8fbb8d2f431130cb04c",
+      "arity": 0
+    },
+    {
+      "name": "crc16_step",
+      "pack": "hashing",
+      "family_hash": "5686997355c08638191c1319c7366191af917f5abce520d0e54b0c191c52300a",
+      "arity": 2
+    },
+    {
+      "name": "fnv1a_step",
+      "pack": "hashing",
+      "family_hash": "d084d71dacf24b006d18384d21761a293f4112fb1aade65639a4bf842f79a4be",
+      "arity": 2
+    },
+    {
+      "name": "matrix_apply_2x2",
+      "pack": "matrix",
+      "family_hash": "cf63dc5dd18efd45c46708615448ead2883fa7d482b295b5142303765379c317",
+      "arity": 0
+    },
+    {
+      "name": "bps_change_between",
+      "pack": "money-bps",
+      "family_hash": "ced751c129dab20cd85fee5f6a6c115ab35a5c752cb06b0759d2989cb853c0fb",
+      "arity": 0
+    },
+    {
+      "name": "bps_increase_between",
+      "pack": "money-bps",
+      "family_hash": "bdcd00fac3e3c543b0fbe9a60f220f44f067e2c837102628606f6be4da7dca34",
+      "arity": 0
+    },
+    {
+      "name": "crt_solve_pair",
+      "pack": "number-theory",
+      "family_hash": "493cf5cac4bfe52c50d75474a2ae2dedb18003f25d1b380f4b062384b2d8008b",
+      "arity": 0
+    },
+    {
+      "name": "divisor_power_sum",
+      "pack": "number-theory",
+      "family_hash": "fb5d01e5ab098cc4f972febcf2937d048ce433395770028d0d85e7be64381554",
+      "arity": 0
+    },
+    {
+      "name": "is_square_u32",
+      "pack": "number-theory",
+      "family_hash": "82c37e9357f0c875d8212b31e3d1754a64a41d2789623d7a9b42b43456899f51",
+      "arity": 0
+    },
+    {
+      "name": "isqrt",
+      "pack": "number-theory",
+      "family_hash": "1aa8df0ecb38d90a72e0e2b855485f469ea686e9849b9903788ef2a5e5956f3a",
+      "arity": 1
+    },
+    {
+      "name": "jacobi_symbol",
+      "pack": "number-theory",
+      "family_hash": "120af9e860cb1751bd528f59bc2919cb1741b0ab37fa2d085bf61e16a57ac71e",
+      "arity": 2
+    },
+    {
+      "name": "mobius_function",
+      "pack": "number-theory",
+      "family_hash": "03c5658803191658f357cdd04697aa4e4a6bebd39dfc31a403c75efbd203f460",
+      "arity": 1
+    },
+    {
+      "name": "pow_small",
+      "pack": "number-theory",
+      "family_hash": "bf84f00b6a30b78eb7de246a0cf104969eafecebf9b314af9fd8a9c7e36d59e3",
+      "arity": 2
+    },
+    {
+      "name": "square_pyramidal_number",
+      "pack": "number-theory",
+      "family_hash": "3f0ef40c2ae0bc98413e3e617a86702e5a31444b451c4ce80c4856f042f83169",
+      "arity": 0
+    },
+    {
+      "name": "bcd_sub",
+      "pack": "packing-bcd",
+      "family_hash": "0a51feff078b687d8dbce444ca209269803ac3829d291c04bbc29d3e1108dd20",
+      "arity": 0
+    },
+    {
+      "name": "unpack_bytes4",
+      "pack": "packing-bcd",
+      "family_hash": "c82b3f0eda91b07cc3c1191fc43955e601698638e46b8748385763771a212a3d",
+      "arity": 0
+    },
+    {
+      "name": "permille",
+      "pack": "percent",
+      "family_hash": "3934c96b882c9a9afce742798bdd2f6f9257661135b603cbc1726e98ea5260a8",
+      "arity": 2
+    },
+    {
+      "name": "scale_percent_u32",
+      "pack": "percent",
+      "family_hash": "14e4c2ffc2540a8d7dec5317538f00b8afaae8f17869e7e7ed41f57159403f24",
+      "arity": 0
+    },
+    {
+      "name": "kinetic_energy_f32",
+      "pack": "physics",
+      "family_hash": "fe11cc464d8ea7d4fc8ec0a846b92dc6ea85e990d832508dbe76e6ef81f1f282",
+      "arity": 0
+    },
+    {
+      "name": "eq",
+      "pack": "predicates",
+      "family_hash": "c8ee82c50e428cc102470cc9c4907625c6d9f547ce67bce14b0ae4dc8f15f2bb",
+      "arity": 2
+    },
+    {
+      "name": "is_lt_i16",
+      "pack": "predicates",
+      "family_hash": "7b26c027f157bdc3d5c5f659abac65de2f0c01f135da53295d2aabdb84764d56",
+      "arity": 2
+    },
+    {
+      "name": "is_zero_u32",
+      "pack": "predicates",
+      "family_hash": "b16efc45a8412be8f96b899a6b1e6bf18f2f18c2a2c519919eb63ad9f16d1356",
+      "arity": 0
+    },
+    {
+      "name": "max4",
+      "pack": "ranking-stats",
+      "family_hash": "de0b1f584640eb2fef2681d8b68b2fc3c3f4937bb50b0b12d485f4f859cf28b3",
+      "arity": 0
+    },
+    {
+      "name": "median3",
+      "pack": "ranking-stats",
+      "family_hash": "f9587b5f3e5e4280b74e134c57d2bf28c4d458811edfc4fe84ba4b9dd42b96bf",
+      "arity": 3
+    },
+    {
+      "name": "median4_u32",
+      "pack": "ranking-stats",
+      "family_hash": "59c5f42aaf7bf280b0b379c04a3f2a7c062b46a425c03c3a009336d873002193",
+      "arity": 0
+    },
+    {
+      "name": "range3_u32",
+      "pack": "ranking-stats",
+      "family_hash": "f9d97b3b01f0a7e5a043aec4dbcc5396d2128bb0a2f06eb37a52207a9daa94de",
+      "arity": 0
+    },
+    {
+      "name": "running_min_max_step",
+      "pack": "running-stats",
+      "family_hash": "46ebdaa4bb74fe681087fbf25b05f7d0f2a586d8dcfb0b0cdba0cdcb409ba34d",
+      "arity": 0
+    },
+    {
+      "name": "zscore_q8",
+      "pack": "running-stats",
+      "family_hash": "1f6c94acd759d57df64e1c9c4c50cea1e5a4e70f93e5c525f1f77af4e684f3af",
+      "arity": 3
+    },
+    {
+      "name": "square",
+      "pack": "safe-arith",
+      "family_hash": "5585ed7a2d4f658092f5dfee4c8506249cb879709d0e7583f085b07f17382a7b",
+      "arity": 1
+    },
+    {
+      "name": "choose_best2",
+      "pack": "scoring-choice",
+      "family_hash": "48bfb29d3447643c5fbe4df35a2ba9637f82571ba14f29b227563fcc2bd8f953",
+      "arity": 0
+    },
+    {
+      "name": "weighted_sum3",
+      "pack": "scoring-choice",
+      "family_hash": "53f51d207e65011f6954e58c0b038734db860c407a2ce25c4c09e08fce70b849",
+      "arity": 0
+    },
+    {
+      "name": "arithmetic_first_term",
+      "pack": "sequences",
+      "family_hash": "2b1cf91dd872e696f00573105edce80de8597d8e3dbf39807f449143969c07a2",
+      "arity": 0
+    },
+    {
+      "name": "geometric_series_term_count",
+      "pack": "sequences",
+      "family_hash": "d0bb0277af0fdeb0abe4ea2873d38501b48955ba1ce2e432016ec2558fa54eb1",
+      "arity": 0
+    },
+    {
+      "name": "apply_delta_clamped",
+      "pack": "signed-deltas",
+      "family_hash": "18536fbacef2bd6cf29d30e8043c0266564bd0a46e787429b4beed03d9ee6495",
+      "arity": 3
+    },
+    {
+      "name": "clamp_i16",
+      "pack": "signed-deltas",
+      "family_hash": "eed501f906643889b9af0f50d19f68ec2be2d51cdfe05c9bd352889565212038",
+      "arity": 3
+    },
+    {
+      "name": "aabb_center",
+      "pack": "spatial-grid",
+      "family_hash": "9965a65c2fee6d889976595a0b83f1ea93e788bfcc1df63e9e9b7c33856b55ce",
+      "arity": 0
+    },
+    {
+      "name": "aabb_from_points",
+      "pack": "spatial-grid",
+      "family_hash": "234de173a253addbf7f3d7e0dda2f3fe20703821baad4268a228f68d0972feda",
+      "arity": 0
+    },
+    {
+      "name": "counter_step_u32",
+      "pack": "stateful-rng",
+      "family_hash": "3e620f55aad6ef3090bfe31654cf249af9b23f29df1bd338773f4a15d8bf0cb8",
+      "arity": 0
+    },
+    {
+      "name": "correlation",
+      "pack": "statistics",
+      "family_hash": "b18ae882a4859ea5a7d040cdc5c059e9b736e40080a32eabf875e2221c053360",
+      "arity": 0
+    },
+    {
+      "name": "atanh_f32",
+      "pack": "trig",
+      "family_hash": "8af8899c62bb34d8c20f70e8f6e37cb796393029aea22dba78d6527d8ff67c43",
+      "arity": 0
+    },
+    {
+      "name": "tan_f32",
+      "pack": "trig",
+      "family_hash": "4dfcd111e9cce70216fd9b61df8d80ed31ae0ef7b48ade84c7eb869a288aa106",
+      "arity": 0
+    },
+    {
+      "name": "norm2_sq",
+      "pack": "vector",
+      "family_hash": "9430ed895ecd3ab204a70ee78fac525bf7ddc1e0f052511d65e016360710d53f",
+      "arity": 2
+    },
+    {
+      "name": "agree3_u32",
+      "pack": "verifier-ranker",
+      "family_hash": "4e3fca6a3f9dba7da6d46b2266e48c35eeb751a1aa1d7b09ce517e85769bf090",
+      "arity": 0
+    },
+    {
+      "name": "parts_sum_to_total4_u32",
+      "pack": "verifier-ranker",
+      "family_hash": "575158a9b3f9c4f5fb96c4a526293ea9fe67008dc83df1b17a320c46bdddf1ec",
+      "arity": 0
+    },
+    {
+      "name": "remainder_equals_u32",
+      "pack": "verifier-ranker",
+      "family_hash": "1fd9c79f3590346361228313845e9648acd83e30ed74be2de3d60eb06607bbf2",
+      "arity": 0
+    }
+  ]
+}

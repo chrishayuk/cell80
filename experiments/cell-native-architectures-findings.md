@@ -981,6 +981,74 @@ its numbers were trustworthy. Worth internalizing for whoever runs CN-1/
 CN-3 next: a slice-0 pilot's job is exactly this — finding the bugs in the
 measurement apparatus itself before treating its numbers as science.
 
+## CN-1 real build — infrastructure map (step 2) and the axis-A held-out draw (step 3)
+
+The real build is pre-registered (`cell-native-architectures-cn1-preregistration.md`). This
+section records the two things done before any training spend: the cross-repo infrastructure
+map that turns the pre-registration's "in-scope engineering" into a concrete assembly list,
+and the axis-A held-out draw — committed, per the pre-registration's order of operations,
+**before** any corpus exists.
+
+### Infrastructure map — three repos, what exists vs. what must be written
+
+- **`tiny-model/model` (TinyModel v11).** PyTorch, not MLX — the pre-registration's "MLX"
+  tag was wrong and is corrected there. 115M params, dim 512, 20 layers, vocab 71261, and
+  **weight tying is native** (`model.py:136`, `self.lm_head.weight = self.embed.weight`;
+  `tie_embeddings: true` in config) — so the pilot's hard-won precondition holds for free.
+  Trained on ~24M TinyStories tokens on an M3 via MPS, so from-scratch/continue training on
+  the M3 is realistic per the repo's own design. **Must be written:** an embedding-resize
+  utility (none exists; `load_state_dict` is `strict=True`), a checkpoint-resume path (the
+  trainer only trains from random init), and an autoregressive generate loop (there is no
+  decode loop at all — `forward()` returns raw logits and stops).
+- **`tiny-model/tokenizer` (v11.vocab.bin).** The format's reader *and* writer are both
+  public in `v11-core` (`Vocab::load` / `Vocab::save`); IDs are `u32` with **no runtime
+  ceiling** (the 72000 cap is a builder-truncation knob only). So the ~790 cell tokens +
+  call delimiters go in by **append-only re-serialization** at the tail (ids from 71260 up),
+  leaving every existing row — and every trained embedding — untouched. The PyO3 binding
+  (`v11.Tokenizer`) derives `vocab_size` from `vocab.len()`, so a larger artifact loads with
+  zero binding changes. Atomicity of the new tokens comes from longest-match (no per-piece
+  `is_special` flag exists); add both the plain and `▁`-prefixed form of each name.
+- **`larql` (constrained decoding).** `OpNameMask` (`crates/larql-inference/src/experts/mask.rs`)
+  is the port target: not a token trie but a per-step logit mask that re-derives grammar
+  state from the decoded text and admits only tokens whose surface continues a valid op-name
+  prefix (the closing `"` is unmasked only once `so_far` is a complete name). The entire
+  coupling to the sampler is one closure, `FnMut(&[u32] generated_ids, &mut Vec<f32> logits)`,
+  applied after **dense** LM-head scoring and before sampling. Reimplementing that single
+  seam in the TinyModel generate loop carries the whole pattern. (There is no "span grammar /
+  G2" subsystem in larql — that machinery is cell80-side, `cn2_g2_resample.py` lineage,
+  exactly as the pre-registration assumes.)
+
+### Library dump — `dump_library` (all 790 cells, not 249)
+
+`cell80/examples/dump_library.rs` walks the library via `discover_cell_files` and emits one
+JSONL row per cell — `name`, `pack`, `family_hash` (the identity-grade SHA-256 over
+canonical source; `source_hash` is non-cryptographic and is not used as identity), `arity`,
+`ret`, and the `DEFAULT_PROBES` fingerprint — into `cn1_library.jsonl`. One artifact feeds
+both the axis-A draw and `W_f` later. A naive `Cartridge::compile` auto-detects only
+`run`/`main` entries and silently dropped **541 of 790** cells (state cells and non-`run`
+entries); the fix was to compile through the canonical CLI/admission path, newly exposed as
+`cell80::library_cartridge` (was `pub(crate)`), which parses each cell's `//!` metadata
+including its declared entry. Result: **790/790 dumped, 0 skipped**, all names unique, all
+790 `family_hash`es distinct (no behavioural-duplicate collisions), across 42 packs. Arity:
+541 arity-0 state cells, 92 unary, 104 binary, 53 ternary — i.e. **249 value cells** are the
+natural call targets for an arithmetic-shaped corpus.
+
+### Axis-A held-out draw — `cn1_axis_a_draw.py` → `cn1_axis_a_heldout.json`
+
+Deterministic (seed 80, cells sorted by name within pack, `random.Random(seed).sample`), so
+the exact set reproduces from `cn1_library.jsonl` + the script; verified identical on rerun.
+Stratified by pack: `round(0.10 * size)` per pack, clamped to `[0, size-1]` so **no pack is
+wholly held out**; 7 small packs (size < 5) contribute 0 held-out and serve only as seen
+siblings. **Result: 79/790 = 10.0% overall held out**, of which 24 are value cells
+(24/249 = 9.6%): **7 unary, 12 binary, 5 ternary**, plus 55 state cells. Arity is recorded
+per held-out cell because gate (ii) is only *testable* on cells the corpus would otherwise
+invoke — the 24 value cells — while the draw still honors the frozen "10% of the vocabulary"
+text over all 790 (a held-out state cell simply yields an empty eval bucket, which is honest,
+not a bug). The full 79-cell list with `family_hash`es is committed in
+`cn1_axis_a_heldout.json`; this is the pre-registered record, timestamped before corpus
+generation. These cells never appear as a call target in either corpus source; their
+fingerprints (already in `cn1_library.jsonl`) are what `W_f` must turn into a usable address.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —

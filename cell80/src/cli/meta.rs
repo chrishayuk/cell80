@@ -92,7 +92,7 @@ pub(super) fn parse_meta(
 /// Build a cartridge from a library `.rs` (id = file stem, metadata from the `//!` header)
 /// or load a `.cell`. Returns `None` for any other extension. `pub(crate)` so the admission
 /// gate (`crate::admission`) walks a directory the same way `cmd_index`/`host_from_dir` do.
-pub(crate) fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>> {
+pub fn library_cartridge(path: &std::path::Path) -> Option<Result<Cartridge, String>> {
     match path.extension().and_then(|e| e.to_str()) {
         Some("rs") => Some((|| {
             let src =
