@@ -92,7 +92,7 @@ class CN1Model(nn.Module):
 
     def __init__(self, base, cell_first_id: int, fp_feats: torch.Tensor, arm: str):
         super().__init__()
-        assert arm in ("fingerprint", "shuffled", "random")
+        assert arm in ("fingerprint", "shuffled", "random", "description")
         self.base = base
         self.arm = arm
         self.dim = base.dim
@@ -106,7 +106,7 @@ class CN1Model(nn.Module):
         # but each cell is assigned a DIFFERENT cell's fingerprint (permuted at build time). If
         # held-out ranking survives the shuffle, the signal is the projection layer, not the
         # behaviour; if it collapses toward random, behaviour is doing independent work.
-        if arm in ("fingerprint", "shuffled"):
+        if arm in ("fingerprint", "shuffled", "description"):
             self.w_f = Wf(fp_feats.shape[1], self.dim)
 
     def effective_embed_weight(self) -> torch.Tensor:
@@ -159,8 +159,14 @@ def resize_embedding(base, new_vocab: int) -> None:
 
 # ---- load helpers ------------------------------------------------------------------
 
-def load_fingerprint_features():
-    """Returns (fp_feats tensor (n_cells,40), cell_first_id, cell_names in id order, held_set)."""
+DESC_FEATURES = HERE / "cn1_desc_features.json"
+
+
+def load_fingerprint_features(kind="fingerprint"):
+    """Returns (feats, cell_first_id, cell_names in id order, held_set).
+    kind="fingerprint": behavioural fingerprint (40-d) — the behaviour address (arm c/s).
+    kind="description": bge-small sentence-encoding of the descriptor (384-d) — the *language*
+      address (arm d, the mandatory CoTools-style baseline)."""
     lib = {json.loads(l)["name"]: json.loads(l) for l in LIBRARY.read_text().splitlines() if l.strip()}
     tok_map = json.loads(TOKEN_MAP.read_text())
     held = {h["name"] for h in json.loads(AXIS_A.read_text())["held_out_cells"]}
@@ -172,7 +178,11 @@ def load_fingerprint_features():
     ids = [i for _, i in cell_entries]
     assert ids == list(range(cell_first_id, cell_first_id + len(ids))), "cell ids must be contiguous"
     names = [n for n, _ in cell_entries]
-    feats = torch.tensor([encode_fingerprint(lib[n]["fingerprint"]) for n in names], dtype=torch.float32)
+    if kind == "description":
+        desc = json.loads(DESC_FEATURES.read_text())
+        feats = torch.tensor([desc[n] for n in names], dtype=torch.float32)
+    else:
+        feats = torch.tensor([encode_fingerprint(lib[n]["fingerprint"]) for n in names], dtype=torch.float32)
     return feats, cell_first_id, names, held
 
 
@@ -198,7 +208,8 @@ def build(arm: str):
 
     base, cfg = load_from_artifacts(str(TINY_MODEL / "model" / "v11"), device="cpu")
     resize_embedding(base, EXTENDED_VOCAB)
-    feats, cell_first_id, names, held = load_fingerprint_features()
+    kind = "description" if arm == "description" else "fingerprint"
+    feats, cell_first_id, names, held = load_fingerprint_features(kind=kind)
     if arm == "shuffled":
         perm = _derangement(feats.shape[0], SHUFFLE_SEED)
         feats = feats[perm.tolist()]  # each cell now carries a DIFFERENT cell's fingerprint

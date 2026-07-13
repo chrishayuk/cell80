@@ -338,3 +338,54 @@ seen_comp` shuffled is 566 (*worse* than chance). That sign flip between the two
 either means something or means n=48 is too small to report; it is under-powered and must be
 resolved (larger bucket and/or the full rank distribution across seeds) before it enters the
 findings as anything other than "underpowered, unresolved."
+
+## Amendment (2026-07-13): the mandatory description baseline, and the literature gap
+
+A literature pass relocates this experiment and imposes a required arm. **Corrected novelty
+claim:** "cells as vocabulary / tools as tokens" is **not** novel — ToolkenGPT (learn an embedding
+per "toolken") and ToolGen (each tool a unique token) established it; we must not claim it. Worse
+for a naive reading, the field already documented our *random* arm: ToolkenGPT "cannot use unseen
+tools without retraining and embedding updates" and "exhibited a strong bias toward a small subset
+of tools it had memorized." Our random/shuffled held-out collapse (rank 519/566, worse than
+chance) reproduces that documented failure — external corroboration — and locates it mechanistically.
+
+**The gap the claim actually sits in.** Two literatures have never been connected:
+- *Tool-learning* solves unseen-tool generalization exclusively through **language about the tool**
+  — documentation/description comprehension (GenTool, TOOLVERIFIER, Re-Invoke, RaTA-Tool; SOTA
+  **CoTools** selects from natural-language tool descriptions over a frozen LLM; Tool2Vec is
+  usage/query-derived — still language, not behaviour).
+- *Program-embedding* learns representations from **execution traces** (DYPRO, LiGer, Trex, sem2vec)
+  on the premise that syntactically similar programs behave differently — but only for program
+  analysis, **never as an LLM's token embedding.**
+Our conjunction — *executed behaviour as the tool token's address, giving unseen tools zero-shot
+addresses* — is the unoccupied intersection. The precondition for it (exhaustive, cheap execution
+of the whole library to compute every address) is exactly what the GPU interpreter buys; it is not
+a footnote to this result, it is what makes it possible.
+
+**Required arm (d) — description embedding, a STRONG baseline (mandatory, not optional).** Because
+CoTools/description-routing is the state of the art for *this exact claim*, the central question is
+now **does behaviour beat language as a tool address?** Arm (d): each cell token's row =
+`W_d(sentence_encoder(descriptor/doc))` — same three-way-tied machinery as the fingerprint arm, but
+the address is derived from the cell's *description text* (encoded with a real sentence encoder,
+`bge-small-en-v1.5`, cached) instead of its behavioural fingerprint. Registered outcomes, on
+held-out cells:
+- **fingerprint > description** → "for programs, *what it does* addresses better than *what it's
+  called*" — novel, defensible, lands in the gap.
+- **≈ equal** → "behaviour is a *description-free* address — needs no docs, no naming discipline,
+  and is computable for machine-synthesized cells that arrive with behaviour and no prose" — still
+  valuable, and exactly this library's case.
+- **description > fingerprint** → honest, much weaker result, and **this is the outcome to
+  pre-register against because it is live**: our cells have decent names and a sentence encoder is a
+  very strong prior. Registering it now means we cannot quietly drop the description arm if it wins.
+
+**The killer experiment (the synthesized-cell ace).** A cell minted by cost-discovery or evolution
+has **no documentation** — so description-based routing (every literature method) is structurally
+blind to it, while behaviour-based routing still computes an address. Pre-registered: a held-out
+slice of **description-stripped cells** (name + docstring removed, only behaviour available); the
+prediction is fingerprint addresses them at the same rank quality as documented cells while arm (d)
+falls to chance. If it holds, it is the one experiment no description method in the literature can
+match, by construction.
+
+**Order:** the running swap answers top-1 (prior vs capacity); arm (d) and the synthesized-cell
+slice are added to the v11 and swap comparisons (same `W_?` machinery, one more arm); 3 seeds
+throughout. The paper's spine is **behaviour vs language as a tool address**, not "tools as tokens."

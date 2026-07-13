@@ -29,7 +29,7 @@ def set_trainable(model, arm, base_rows, cell_first_id, unfreeze_top=0):
     for p in model.parameters():
         p.requires_grad_(False)
     trainable = []
-    if arm in ("fingerprint", "shuffled"):
+    if arm in ("fingerprint", "shuffled", "description"):
         for p in model.w_f.parameters():
             p.requires_grad_(True); trainable.append(p)
     if unfreeze_top > 0:
@@ -52,7 +52,7 @@ def set_trainable(model, arm, base_rows, cell_first_id, unfreeze_top=0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arm", choices=["fingerprint", "shuffled", "random"], default="fingerprint")
+    ap.add_argument("--arm", choices=["fingerprint", "shuffled", "random", "description"], default="fingerprint")
     ap.add_argument("--seed", type=int, default=80)
     ap.add_argument("--steps", type=int, default=8000)
     ap.add_argument("--bs", type=int, default=16)
@@ -121,7 +121,7 @@ def main():
 
     ckpt = HERE / f"cn1_ckpt_hf_{args.arm}_s{args.seed}.pt"
     state = {"arm": args.arm, "seed": args.seed, "embed": model.base.get_input_embeddings().weight.detach().cpu()}
-    if args.arm in ("fingerprint", "shuffled"):
+    if args.arm in ("fingerprint", "shuffled", "description"):
         state["w_f"] = model.w_f.state_dict()
     for i, blk in enumerate(model.base.model.layers[-args.unfreeze_top:] if args.unfreeze_top else []):
         state[f"block_{i}"] = {k: v.detach().cpu() for k, v in blk.state_dict().items()}

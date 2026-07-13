@@ -1277,12 +1277,52 @@ the fingerprint address is real and strong at the rank level, and converting it 
 stronger model (more capacity/steps/data), not a different mechanism. Also: one seed per arm; the
 pre-registered gate needs 3.
 
-**Status of the CN-1 real build:** apparatus complete and validated; grounding learnable; and the
-**gate-(ii) mechanism is confirmed** (fingerprint held-out median rank 56 vs random 619, 65% vs
-0% in the top 10%) — the programme's first real evidence that fingerprints transfer to unseen
-cells, though not yet at the top-1 bar. Remaining: push the model to convert rank→top-1, 3 seeds
-per arm, gate (i) vs the prompted baseline, proper eval batteries (step 5) + G2-reachability,
-gate (iii), and CN-2 harvest (source 2).
+### The shuffled control + the double dissociation (the result that makes it strong)
+
+The one control a skeptic reaches for: is the held-out signal *behaviour*, or just a well-
+conditioned shared projection / name-similarity? Arm **(s) shuffled** — identical `W_f`, identical
+geometry, but each cell assigned a *different* cell's fingerprint (seeded derangement) — answers
+it. Run at a fixed config across all three arms (top-16, LR linear decay, 8000 steps, dense
+corpus, seed 80). Median rank of the true cell among 790:
+
+| arm | seen top-1 | seen rank | **held-out rank** (novel-cell × seen-comp) |
+|---|---|---|---|
+| fingerprint | 0.27 | 72 | **43** |
+| shuffled | 0.475 | 2 | **566** (worse than chance) |
+| random | 0.785 | 0 | **519** (worse than chance) |
+
+Two things line up, and together they are decisive:
+
+1. **Held-out transfer is behavioural.** Scrambling the behaviour↔cell correspondence collapses
+   held-out ranking from 43 to 566 — from ~9× better than chance to *worse* than chance, alongside
+   random's 519. So the address signal is specifically the fingerprint↔behaviour correspondence,
+   not the projection layer and not name-similarity. The pre-registered "behavioural" outcome.
+2. **A double dissociation kills the "better init" alternative.** On *seen* cells the ordering
+   **inverts**: fingerprint is *worst* (top-1 0.27, rank 72), shuffled better (0.475, rank 2),
+   random best (0.785, rank 0) — a clean monotonic pattern along the "freedom to memorize" axis
+   (behavioural constraint < arbitrary projection < fully-free rows). The skeptic's default
+   ("fingerprint just has a better-conditioned init / the shared projection aids optimization")
+   predicts fingerprint ≥ shuffled *everywhere*; the seen-cell inversion is the opposite. What
+   remains is the mechanism the hypothesis names: **behavioural geometry constrains similar cells
+   to similar rows — costing rank-1 precision on seen cells, buying an address for unseen ones.**
+   Generalization traded against memorization, along the axis the hypothesis predicts. The
+   inversion was not designed; it is a prediction the hypothesis makes that nobody wrote down
+   first — now **pre-registered before the 3-seed run** so replication is confirmatory.
+
+The LR-decay/top-16 config also lifted seen top-1 4× (0.065 → 0.27) over the un-decayed top-12
+run, while held-out top-1 stayed pinned at 0.000 — the exact pattern the base swap exists to
+disambiguate (ceiling vs. no-prior). Flagged and **not yet reported as a result:** the
+`novel_cell × novel_comp` bucket (n=48) shows a sign flip (shuffled 292, *better* than chance,
+vs 566 worse on seen-comp) — under-powered, to be resolved by 3 seeds / larger n before it enters
+the findings.
+
+**Status of the CN-1 real build:** the **gate-(ii) mechanism is confirmed with a controlled,
+double-dissociated, mechanistically-explained positive** — behaviour-as-address is real, not a
+hypothesis. Owed before it is a *gate*: 3 seeds (the registered inversion prediction), and top-1
+on a base with a relevant prior (the SmolLM2 swap — running). Also owed for the full programme:
+gate (i) vs the prompted baseline, step-5 eval batteries + G2-reachability, gate (iii), and the
+CN-2 harvest (source 2). The v11 result stands as written — "mechanism confirmed, invocation not
+yet."
 
 ## Immediate next steps (not yet done)
 

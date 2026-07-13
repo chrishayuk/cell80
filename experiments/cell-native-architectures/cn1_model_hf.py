@@ -56,7 +56,7 @@ def load_base_and_extend():
 class CN1ModelHF(nn.Module):
     def __init__(self, base, tok, cell_first_id, fp_feats, arm):
         super().__init__()
-        assert arm in ("fingerprint", "shuffled", "random")
+        assert arm in ("fingerprint", "shuffled", "random", "description")
         self.base = base
         self.arm = arm
         self.tok = tok
@@ -64,7 +64,7 @@ class CN1ModelHF(nn.Module):
         self.cell_first_id = cell_first_id
         n_cells = fp_feats.shape[0]
         self.register_buffer("fp_feats", fp_feats)
-        if arm in ("fingerprint", "shuffled"):
+        if arm in ("fingerprint", "shuffled", "description"):
             self.w_f = Wf(fp_feats.shape[1], self.dim)
 
     @property
@@ -92,7 +92,8 @@ class CN1ModelHF(nn.Module):
 
 def build_hf(arm):
     base, tok, cell_first_id, n_added, base_rows = load_base_and_extend()
-    feats, _, names, held = load_fingerprint_features()  # order = library order = token order
+    kind = "description" if arm == "description" else "fingerprint"
+    feats, _, names, held = load_fingerprint_features(kind=kind)  # order = library order = token order
     if arm == "shuffled":
         perm = _derangement(feats.shape[0], SHUFFLE_SEED)
         feats = feats[perm.tolist()]
