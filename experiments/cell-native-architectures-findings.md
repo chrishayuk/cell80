@@ -550,6 +550,18 @@ cannot test gate (ii) at all — there is no compositional generalization capaci
 this small, trained this briefly, for any embedding placement to modulate — not "try a
 fourth corpus." Stopping here, as pre-registered.
 
+**A precision that must not blur, for any future reader: this FAIL is not evidence against
+the fingerprint hypothesis, and must never be cited as such.** Both arms reading *exactly*
+0.000 is the signature of a floor, not a comparison — there is no difference between the
+arms to interpret, in either direction, because neither arm reached a hidden state the
+embedding could have influenced at all. "Gate (ii) FAIL" here means "this pilot found gate
+(ii) untestable at this scale," full stop — not "fingerprint-init failed to beat random-init
+on held-out cells." The verdict is recorded exactly as pre-registered (a FAIL against the
+stated bar, honestly written down rather than reinterpreted after the fact), but the
+*mechanism* — zero compositional capacity, not a losing comparison — is what any citation of
+this result must carry forward. A model with genuine capacity may still show gate (ii)'s
+claim clean; this pilot has not spoken to that either way.
+
 ### What this shows
 
 - **On trained cells, fingerprint-init is a clean, consistent win at equal training budget —

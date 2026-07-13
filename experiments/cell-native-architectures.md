@@ -104,10 +104,14 @@ exposure to every category/variant token — a real basis for learning compositi
 and pre-registered the bar *before* running it: fingerprint-init > 0.5 and random-init <=
 0.25 on the held-out combination. Both arms scored exactly 0.000 — a clean, pre-registered
 FAIL, meaning no compositional generalization exists at toy scale for any embedding strategy
-to modulate. Per the fork agreed in advance, gate (ii) now moves to the real build (a real
-model, the real H1 factory's compositional-coverage corpus, a real training spend), not a
-fourth toy iteration — this pilot's job (harness validated, tying precondition found, corpus
-requirements mapped, gate (ii)'s first real test run and closed) is done. Full account:
+to modulate. **This is not evidence against the fingerprint hypothesis** — exactly-0.000 on
+both arms is a floor, not a comparison: neither arm reached a hidden state the embedding
+could influence, so there was nothing for either init strategy to be judged on. The verdict
+is "gate (ii) untestable at this scale," not "fingerprint-init lost." Per the fork agreed in
+advance, gate (ii) now moves to the real build (a real model, the real H1 factory's
+compositional-coverage corpus, a real training spend), not a fourth toy iteration — this
+pilot's job (harness validated, tying precondition found, corpus requirements mapped, gate
+(ii)'s first real test run and closed) is done. Full account:
 `cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
 
 ---
