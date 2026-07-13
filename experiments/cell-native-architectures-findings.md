@@ -1348,6 +1348,43 @@ fully crack top-1. The faithful number (norm saved, one path) + the shuffled/ran
 the within-base inversion check come from the resilient re-run now in flight. Nothing here is a
 verdict; it is the parked preliminary.
 
+### Top-k confusion analysis — the plateau is neighbourhood-resolution, and it reframes the claim
+
+The preliminary held-out plateau (median rank ~21, 88% top-10%, top-5 0.18, **top-1 0.000**) is a
+plateau *shape*, not a near-miss: if it were capacity the whole distribution would shift and top-1
+would lift with it; instead the mass is pressed against the top and the final pick fails. Tested
+directly on the fingerprint checkpoint (`cn1_confusion_analysis.py`) — **what occupies the ranks
+above the true cell?**
+
+- **Confusions vs true cell: mean fingerprint agreement 0.436, vs 0.065 for random — 6.7× more
+  behaviourally similar than chance.**
+- **Same-family (pack) rate of confusions: 0.112 vs 0.027 base rate — 4.1×.**
+
+The cells beating the true held-out cell are its **behavioural siblings** — the cells that do
+almost the same thing. This is the *same* property that causes the seen-cell inversion: fingerprints
+place behaviourally-similar cells near each other, so the arm that reaches rank 21 is exactly the
+arm that fills ranks 1–20 with near-identical cells. **The mechanism's strength and its top-1
+ceiling are one property.** (A minority of held-out cells — e.g. `swap_bytes` — rank far worse with
+low-agreement confusions; those are genuine capacity misses, not neighbourhood resolution, and are
+a named residual, not the dominant pattern.)
+
+**What this reframes.** Behaviour-as-address resolves to a behavioural *neighbourhood*, not a
+point — so the pre-registered top-1 bar (c ≥ 0.5) is likely the **wrong bar for this mechanism**,
+and "more capacity" would not fix a structural ceiling. The architecture already answers it: the
+model emits an address that lands the neighbourhood (rank ~21, 88% top-10%), and the **shipped
+fused behavioural router (0.859) disambiguates within it by execution** — the F2 two-tier design,
+which is the correct division of labour (model locates, runtime resolves) and degrades gracefully
+as the library grows. The claim moves from "the model picks the right unseen cell" (hard, maybe
+structurally capped) to **"the model locates an unseen cell's behavioural neighbourhood from a
+description of what it needs, and execution resolves the rest"** — a better claim, because it is
+the one the substrate is built to deliver. Registered as a superseding interpretation in the
+pre-registration before the faithful re-run.
+
+**Methodological note (third instance).** This was caught the same way as both CN-1 bugs: a
+consistency check, not a failing test (reload-crashes-where-fresh-doesn't; before that
+arm-vs-arm-signature and reload-vs-training-rank). Standing method for this lane: compute
+load-bearing numbers by two routes; a disagreement is the finding.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —

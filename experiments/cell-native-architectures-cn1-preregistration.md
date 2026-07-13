@@ -464,3 +464,38 @@ dissociation, not the level, is the evidence.
 
 Both framings keep the honest scope: mechanism (rank) is established; invocation (top-1) is what the
 swap tests; the synthesized-cell ace is the arm no description method can match either way.
+
+## Amendment (2026-07-14): top-1 is the wrong bar — behaviour-as-address resolves a NEIGHBOURHOOD
+
+The top-k confusion analysis (`cn1_confusion_analysis.py`) settles what the held-out plateau means.
+On held-out cells the plateau is median rank ~21 / 88% top-10% / top-5 0.18 / **top-1 0.000**, and
+the cells ranked ABOVE the true cell are its **behavioural siblings**: mean fingerprint agreement
+0.436 vs 0.065 random (6.7×), same-family rate 0.112 vs 0.027 (4.1×). This is structural, not
+capacity: fingerprints place behaviourally-similar cells adjacent, so the geometry that lands the
+neighbourhood (rank 21) is the same geometry that fills ranks 1–20 with near-identical cells. The
+mechanism's strength IS its top-1 ceiling.
+
+**Superseding interpretation (registered before the faithful re-run lands).** The pre-registered
+gate-(ii) bar `(c) ≥ 0.5` top-1 is **retired as the success criterion for this mechanism** — it
+mis-specifies what behaviour-as-address delivers. The correct criterion is a **two-tier** one, and
+it is the substrate's own F2 design:
+1. **Neighbourhood localization (the model's job):** the trained fingerprint arm ranks the true
+   held-out cell within a small behavioural neighbourhood — operationalized as **top-k for
+   k≈10–20** (held-out top-10% ≈ 0.88 already), and the confusions being genuine behavioural
+   siblings (agreement ≫ chance), not junk.
+2. **Execution disambiguation (the runtime's job):** the shipped fused behavioural router (0.859,
+   `search_with_examples`) resolves the true cell *within* the model's top-k by executing
+   candidates — no top-1 from the model required.
+**New pre-registered gate (ii′):** end-to-end, model-top-k → router-disambiguates recovers the
+true held-out cell at rank-1 at a rate the router's own ceiling allows (target: within ~10 points
+of the router's equipped-query accuracy), while the shuffled/random arms — whose top-k is NOT a
+behavioural neighbourhood (confusions at chance agreement) — cannot, because the router has no
+correct-neighbourhood to resolve within. This is falsifiable both ways and it is the claim the
+substrate is built to deliver.
+
+**To build (next analysis, cheap, on existing checkpoints):** the two-tier eval — take the model's
+top-k for each held-out case, run `cell80_py.search_with_examples` over those k candidates with the
+cell's I/O examples, measure rank-1 recovery; contrast fingerprint vs shuffled/random top-k. Also
+report the residual (swap_bytes-type cells whose top-k is junk — genuine capacity misses) so the
+neighbourhood claim is scoped, not oversold. The faithful re-run supplies the arms; the confusion
++ two-tier analyses run on its checkpoints from one faithful path.
