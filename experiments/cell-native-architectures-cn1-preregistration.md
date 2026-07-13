@@ -306,3 +306,35 @@ advantage survives with almost no model adaptation, the mechanism claim is clean
 Scaling v11 harder is last. The existing v11 result stands exactly as written — "mechanism
 confirmed, invocation not yet" is true on v11 and stays true regardless of the swap; the swap
 tells you *why* invocation hasn't arrived, not whether the address exists.
+
+## Amendment (2026-07-13): the seen-cell inversion, pre-registered as a prediction before seeds
+
+Seed 80 (top-16, LR decay) produced a **double dissociation** the hypothesis predicts but nobody
+wrote down first: the shuffled control BEAT fingerprint on seen cells (top-1 0.475 vs 0.27, median
+rank 2 vs 72) while COLLAPSING on held-out cells (median rank 566, worse than chance, vs
+fingerprint's 43). The mechanism: behavioural geometry constrains rows to be similar for similar
+cells — which costs rank-1 precision on seen cells and buys an address for unseen ones. An
+arbitrary structured projection is free to memorize seen cells better yet transfers nothing. This
+kills the skeptic's default ("fingerprint just has a better-conditioned init / the shared
+projection helps optimization") — that predicts fingerprint ≥ shuffled *everywhere*; the seen-cell
+inversion is the opposite.
+
+Because this is currently a one-seed post-hoc story — and this project distrusts those (the EX-2
+adoption number, the arms-race timeline) — the prediction is **registered here before the 3-seed
+run**, so replication is confirmatory not narrative:
+
+> **Prediction (pre-registered):** in all three seeds, on the same base, at a fixed config,
+> (a) fingerprint **underperforms** shuffled on **seen-cell top-1**, and
+> (b) fingerprint **outperforms** shuffled on **held-out median rank** (novel_cell × seen_comp),
+> with shuffled held-out rank at or worse than chance (≥ ~395).
+>
+> If (a) and (b) both replicate in 3/3 seeds → mechanism confirmed by a prediction that could have
+> failed. If either fails to replicate → the seed-80 dissociation was an artifact, and the
+> behavioural reading weakens accordingly.
+
+**Also flagged for examination, not yet reported as a result:** the `novel_cell × novel_comp`
+bucket (n=48) shows shuffled median rank 292 — *better* than chance — where on `novel_cell ×
+seen_comp` shuffled is 566 (*worse* than chance). That sign flip between the two novel buckets
+either means something or means n=48 is too small to report; it is under-powered and must be
+resolved (larger bucket and/or the full rank distribution across seeds) before it enters the
+findings as anything other than "underpowered, unresolved."

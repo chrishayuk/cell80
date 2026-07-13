@@ -74,21 +74,25 @@ def main():
     _, _, cell_ids, _ = cn1_decode.load_call_grammar()
     cell_ids_t = torch.tensor(sorted(cell_ids))
     eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
-    held = [r for r in eval_rows if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp"]
-    seen = [r for r in eval_rows if r["bucket_cell"] == "seen_cell" and r["bucket_comp"] == "seen_comp"]
-
-    print(f"held-out (novel_cell x seen_comp): {len(held)} items;  chance median rank ~395/790\n")
+    buckets = {
+        "seen_x_seen": ("seen_cell", "seen_comp"),
+        "seen_x_novel": ("seen_cell", "novel_comp"),
+        "HELDOUT_x_seen": ("novel_cell", "seen_comp"),
+        "HELDOUT_x_novel": ("novel_cell", "novel_comp"),
+    }
+    grouped = {k: [r for r in eval_rows if (r["bucket_cell"], r["bucket_comp"]) == v] for k, v in buckets.items()}
+    for k, v in grouped.items():
+        print(f"{k}: {len(v)} items")
+    print("chance median rank ~395/790\n")
     for arm in a.arms:
         try:
             m = reload_arm(arm, a.seed)
         except FileNotFoundError:
             print(f"arm {arm}: no checkpoint yet, skipping")
             continue
-        hs = rank_stats(m, held, cell_ids_t, tok)
-        ss = rank_stats(m, seen, cell_ids_t, tok)
         print(f"arm {arm}:")
-        print(f"  HELD-OUT  {hs}")
-        print(f"  seen      {ss}")
+        for k, items in grouped.items():
+            print(f"  {k:<16} {rank_stats(m, items, cell_ids_t, tok)}")
 
 
 if __name__ == "__main__":
