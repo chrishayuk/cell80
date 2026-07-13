@@ -1218,11 +1218,33 @@ earlier collapse: it was **data density** — ~6 examples/cell over 225 cells ag
 output — not the harness or the approach. The behavioral-only corpus could not do even this
 (separation ≈0 *and* no discriminative token to attend to); descriptors supply the signal.
 
+**First full-library run (arm fingerprint, one seed — NOT a gate verdict).** 790-cell descriptor
+corpus (~108 train examples/seen cell), top-8 unfrozen, 5000 steps (~23 min M3). Loss 6.78 →
+~4.2 (chance `ln 790 = 6.67`), training cell-acc ~0.12. Constrained top-1 per eval bucket:
+
+| bucket | top-1 |
+|---|---|
+| seen-cell × seen-comp (in-distribution) | 0.220 |
+| seen-cell × novel-comp | 0.165 |
+| **novel-cell × seen-comp** (gate (ii) signal) | **0.000** |
+| **novel-cell × novel-comp** (gate (ii) signal) | **0.000** |
+
+Read carefully, and NOT as a gate verdict: the model **does** learn seen cells (0.22 is ~170×
+the 1/790 chance) and **does** generalize to novel *compositions* of seen cells (0.165) — so
+unlike the toy pilot it reached hidden states the embeddings influence. But held-out **cells**
+score top-1 0.000. Three reasons this is not yet gate (ii)'s answer: (a) top-1 is blunt — a
+held-out cell landing at rank 3 of 790 still scores 0, and rank was not measured (the harness now
+reports top-5 + median rank, and saves the checkpoint — both gaps this run exposed); (b)
+in-distribution accuracy is only 0.22, so the model is under-powered — asking it to place unseen
+cells when it is 22% on seen ones is premature; (c) one arm, one seed, no random-init baseline
+(gate (ii) is a *contrast*). A stronger, better-instrumented run (denser corpus ~180/cell,
+top-12, 8000 steps, rank metrics) is in flight to disambiguate "no transfer" from "partial
+transfer below top-1", followed by the random arm.
+
 **Status of the CN-1 real build:** apparatus complete and validated end-to-end; grounding chosen
-and shown learnable. What remains is a **scale run** — a full-library corpus with adequate
-per-cell density and enough steps, both arms × 3 seeds, then evaluation against the gates. That
-is the pre-registered training spend (hours of MPS compute), now unblocked. No gate has been
-evaluated yet.
+and shown learnable; first full run done (seen cells learn + compose; held-out top-1 zero, rank
+unmeasured). Remaining: the rank-instrumented stronger run, the random arm, 3 seeds, proper eval
+batteries (step 5) + G2-reachability, and CN-2 harvest (source 2). No gate evaluated.
 
 ## Immediate next steps (not yet done)
 

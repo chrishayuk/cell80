@@ -187,27 +187,70 @@ def main():
 
     print(f"\n== trained {step} steps, final loss {sum(losses[-25:])/min(25,len(losses)):.4f} ({time.time()-t0:.0f}s) ==")
 
-    # Smoke eval: does the trained arm emit a sensible cell token under constraint on a couple
-    # of held-out-from-this-check contexts? (Not a gate — a pipeline sanity check.)
+    # Save the trainable state so the run can be re-probed (rank metrics, small-candidate masks)
+    # without retraining — a gap the first run exposed.
+    ckpt = HERE / f"cn1_ckpt_{args.arm}.pt"
+    state = {"arm": args.arm, "embed": model.base.embed.weight.detach().cpu()}
+    if args.arm == "fingerprint":
+        state["w_f"] = model.w_f.state_dict()
+    for i, blk in enumerate(model.base.layers[-args.unfreeze_top:] if args.unfreeze_top else []):
+        state[f"block_{i}"] = {k: v.detach().cpu() for k, v in blk.state_dict().items()}
+    torch.save(state, ckpt)
+    print(f"  saved trainable state -> {ckpt.name}")
+
+    # Eval per held-out bucket. top-1 alone is blunt (a held-out cell that lands at rank 3 of 790
+    # still scores 0), so we also report top-5 and the median RANK of the true cell among the 790
+    # masked candidates: rank << 395 (chance) is partial fingerprint transfer even when top-1 is
+    # 0. The novel_cell buckets are the gate-(ii) signal for THIS arm; four buckets × arms × seeds
+    # are what the pre-registered gates need. One arm/seed here — not a gate verdict.
     call_open, _, cell_ids, cell_set = cn1_decode.load_call_grammar()
-    mask = cn1_decode.CellCallMask(call_open, cell_ids)
-    tok_map = json.loads((HERE / "cn1_cell_token_map.json").read_text())
-    id_to_name = {v: k[len("<cell:"):-1] for k, v in tok_map.items() if k.startswith("<cell:")}
-    print("\n== constrained-decode sanity (trained model, seen cells) ==")
-    seen_examples = [r for r in rows if r["cell"] not in held][:5]
-    hits = 0
+    cell_ids_t = torch.tensor(sorted(cell_ids), device=device)
     model.eval()
-    for r in seen_examples:
-        # feed the context up to and including <call>, let the model pick the cell
-        prefix_text = r["context"] + " <call>"
-        ids = [2] + tok.encode(prefix_text)
-        out = cn1_decode.generate_constrained(model, ids, mask, max_new=1)
-        pred = out[-1]
-        ok = pred == r["cell_id"]
-        hits += ok
-        print(f"  want <cell:{r['cell']}> got <cell:{id_to_name.get(pred,'?')}>  {'HIT' if ok else 'miss'}")
-    print(f"  constrained top-1 on {len(seen_examples)} seen contexts: {hits}/{len(seen_examples)}")
-    print("\n(smoke run — no gate evaluated; validates that the training harness learns the format and emits cells)")
+    eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    by_bucket = {}
+    for r in eval_rows:
+        by_bucket.setdefault((r["bucket_cell"], r["bucket_comp"]), []).append(r)
+
+    @torch.no_grad()
+    def bucket_metrics(items, cap=200):
+        items = items[:cap]
+        top1 = top5 = 0
+        ranks = []
+        for r in items:
+            ids = torch.tensor([[2] + tok.encode(r["context"] + " <call>")], device=device)
+            logits = model(ids)[0, -1]
+            cell_logits = logits[cell_ids_t]  # (790,) restricted to the allowed cell set
+            order = torch.argsort(cell_logits, descending=True)
+            ranked_ids = cell_ids_t[order]
+            true = r["cell_id"]
+            pos = int((ranked_ids == true).nonzero().flatten()[0])  # 0-based rank
+            ranks.append(pos)
+            top1 += pos == 0
+            top5 += pos < 5
+        ranks.sort()
+        return {
+            "top1": round(top1 / len(items), 4),
+            "top5": round(top5 / len(items), 4),
+            "median_rank": ranks[len(ranks) // 2],
+            "n": len(items),
+        }
+
+    print(f"\n== eval by bucket (arm {args.arm}); chance median_rank ~395 of 790 ==")
+    results = {"arm": args.arm, "steps": args.steps, "unfreeze_top": args.unfreeze_top,
+               "final_train_acc": round(sum(accs[-40:]) / min(40, len(accs)), 4), "buckets": {}}
+    for bucket in [("seen_cell", "seen_comp"), ("seen_cell", "novel_comp"),
+                   ("novel_cell", "seen_comp"), ("novel_cell", "novel_comp")]:
+        if bucket not in by_bucket:
+            continue
+        m = bucket_metrics(by_bucket[bucket])
+        results["buckets"]["|".join(bucket)] = m
+        tag = "  <- gate (ii) signal" if bucket[0] == "novel_cell" else ""
+        print(f"  {'|'.join(bucket):<24} top1 {m['top1']:.3f}  top5 {m['top5']:.3f}  "
+              f"med.rank {m['median_rank']:>3}/790  (n={m['n']}){tag}")
+
+    out_path = HERE / f"cn1_train_result_{args.arm}.json"
+    out_path.write_text(json.dumps(results, indent=2))
+    print(f"\nwrote {out_path.name}  (one arm/seed — not a gate verdict; the pre-registered run needs both arms x 3 seeds)")
 
 
 if __name__ == "__main__":

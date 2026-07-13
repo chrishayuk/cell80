@@ -1,0 +1,23 @@
+{
+  "arm": "fingerprint",
+  "steps": 5000,
+  "unfreeze_top": 8,
+  "buckets": {
+    "seen_cell|seen_comp": {
+      "acc": 0.22,
+      "n": 200
+    },
+    "seen_cell|novel_comp": {
+      "acc": 0.165,
+      "n": 200
+    },
+    "novel_cell|seen_comp": {
+      "acc": 0.0,
+      "n": 200
+    },
+    "novel_cell|novel_comp": {
+      "acc": 0.0,
+      "n": 48
+    }
+  }
+}
