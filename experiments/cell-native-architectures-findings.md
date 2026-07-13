@@ -1241,10 +1241,48 @@ cells when it is 22% on seen ones is premature; (c) one arm, one seed, no random
 top-12, 8000 steps, rank metrics) is in flight to disambiguate "no transfer" from "partial
 transfer below top-1", followed by the random arm.
 
-**Status of the CN-1 real build:** apparatus complete and validated end-to-end; grounding chosen
-and shown learnable; first full run done (seen cells learn + compose; held-out top-1 zero, rank
-unmeasured). Remaining: the rank-instrumented stronger run, the random arm, 3 seeds, proper eval
-batteries (step 5) + G2-reachability, and CN-2 harvest (source 2). No gate evaluated.
+### Gate (ii) mechanism CONFIRMED — the fingerprint-vs-random contrast on held-out cells
+
+The decisive A/B: both arms trained identically (dense corpus, top-12, 8000 steps) on the SAME
+descriptor-grounded corpus — identical contexts, so the descriptor's contribution is controlled
+for; the **only** difference is where a cell token's embedding row comes from (arm c: shared
+`W_f(fingerprint)`; arm b: a free learned row). Full rank distribution of the true cell among the
+790 masked candidates, on the **held-out** bucket (novel-cell × seen-comp, n=200; chance median
+rank ≈ 395), reloaded from the saved checkpoints (`cn1_eval_ckpt.py`):
+
+| | median rank | mean rank | in top-10% (rank<79) |
+|---|---|---|---|
+| **fingerprint — held-out cells** | **56** | 85 | **65%** |
+| **random — held-out cells** | **619** | 515 | **0%** |
+| fingerprint — seen cells (control) | 62 | 59 | 64% |
+| random — seen cells (control) | 45 | 46 | 87% |
+
+**This is the first genuine gate-(ii) positive in the programme.** On cells the model never saw
+called, fingerprint embeddings put **65% of them in the top 10%** of the whole 790-cell library
+(median rank 56); random embeddings put **0%** there (median rank 619 — *worse than chance*,
+because an untrained free row is actively suppressed as the trained rows rise). The control rules
+out a general arm difference: on *seen* cells the arms are comparable and random is if anything
+better (87% vs 64% top-10%). So the held-out gap is attributable specifically to the fingerprint
+projection — exactly the mechanism the pre-registration named as "the only mechanism by which
+unseen cells have meaningful addresses." The toy pilot could never reach this test (0.000/0.000
+capacity floor); here the contrast is large, tightly distributed (fingerprint held-out p25–p75 =
+47–96), and correctly signed.
+
+**What is and isn't established (no overclaim).** This confirms the *mechanism* — behaviour-
+derived embeddings give unseen cells usable addresses — as a **ranking** signal. It does **not**
+clear the pre-registered gate-(ii) *bar*, which is top-1 (`(c) ≥ 0.5`): held-out top-1/top-5 are
+0.000 for both arms, because the whole model is under-powered (even *seen* cells are only ~0.065
+top-1 / ~0.24 top-10%). So the honest verdict is **"mechanism confirmed, invocation not yet"**:
+the fingerprint address is real and strong at the rank level, and converting it to top-1 needs a
+stronger model (more capacity/steps/data), not a different mechanism. Also: one seed per arm; the
+pre-registered gate needs 3.
+
+**Status of the CN-1 real build:** apparatus complete and validated; grounding learnable; and the
+**gate-(ii) mechanism is confirmed** (fingerprint held-out median rank 56 vs random 619, 65% vs
+0% in the top 10%) — the programme's first real evidence that fingerprints transfer to unseen
+cells, though not yet at the top-1 bar. Remaining: push the model to convert rank→top-1, 3 seeds
+per arm, gate (i) vs the prompted baseline, proper eval batteries (step 5) + G2-reachability,
+gate (iii), and CN-2 harvest (source 2).
 
 ## Immediate next steps (not yet done)
 
