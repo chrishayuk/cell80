@@ -1401,9 +1401,15 @@ Mean agreement of each held-out value cell's coarse top-20 neighbourhood, as the
 grows: **20→0.344, 100→0.259, 500→0.247, 2000→0.245**; fraction of that neighbourhood still ≥0.7
 agreement: 0.119→0.085.
 
-- **The 20-probe battery over-merges by ~28%** (0.344 vs the ~0.245 stable value; partly top-20
-  selection regression). So there is real resolution the current fingerprint discards — a richer
-  battery gives a cleaner address, worth trying (cheap; we own the probe set).
+- **[CORRECTED]** The sweep's 0.344→0.245 drop was mostly **winner's curse**, not over-merge: the
+  top-20 was selected *by* the noisy 20-probe estimate, so re-measuring less noisily must fall. The
+  bias control (`cn1_probe_bias_control.py`, 3000 *random* same-arity pairs, chosen by nothing) is
+  decisive: 20-probe agreement 0.1625 vs an independent rich battery 0.1293 — **mean over-merge
+  +0.033, median +0.018.** So the battery genuinely runs high, but only by ~3 points; of the
+  sweep's −0.099 drop, ~0.033 is real bias and ~0.066 was selection regression. The original
+  "~28% over-merge" is **retracted** as ~3× inflated. A richer address would sharpen only
+  *modestly* — so the probe-richness retrain is defensible but **low priority**; capacity/corpus
+  likely dominate the per-cell recall gap.
 - **But it plateaus at ~0.245 by 100 probes** — the confusion cells are **genuinely** ~0.245-
   similar (they differ on ~75% of inputs), not artifacts that dissolve under rich probing. So the
   confusions are **behaviourally distinct**, which *confirms the retraction*: nothing structural

@@ -598,3 +598,16 @@ top-k, execution resolves it exactly, no false picks.
 separate the ~0.44 confusions? If it materially moves per-cell recall, the address can sharpen and
 top-1 returns as a live target. (2) The faithful arms (running). Then the library-scale curve and
 CN-6.
+
+## Amendment (2026-07-14): probe-bias control — over-merge is real but modest (retrain deprioritized)
+
+The winner's-curse control ran before any probe-richness retrain (the pre-planned "is this win an
+artifact of how I measured?" instrument, same shape as the P=0 lane and the permutation null). On
+3000 *random* same-arity cell pairs (no selection): 20-probe agreement 0.1625 vs independent rich
+(1980 probes) 0.1293 — **mean over-merge +0.033, median +0.018.** So the 20-probe battery genuinely
+runs high, but modestly; the sweep's larger 0.344→0.245 drop was mostly selection regression. The
+earlier "~28% over-merge" is retracted (~3× inflated). Consequence: the probe-richness retrain is
+**defensible but low priority** — a ~3-point address bias is unlikely to move per-cell recall
+much, and the plateau result (confusions genuinely ~0.245-similar) already says the information is
+there and the *model* isn't using it. Order held: **faithful arms (in flight) → library-scale
+curve → CN-6**; probe-richness retrain only if a cheaper cause is ruled out first.
