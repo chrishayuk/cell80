@@ -1326,6 +1326,28 @@ gate (i) vs the prompted baseline, step-5 eval batteries + G2-reachability, gate
 CN-2 harvest (source 2). The v11 result stands as written — "mechanism confirmed, invocation not
 yet."
 
+### SmolLM2 swap — preliminary read (PARKED: norm-less reload), and an MPS crash lesson
+
+The first swap run trained the fingerprint arm to completion (step 8000, checkpoint saved) then
+**crashed in the eval**: the full-vocab LM-head matmul on MPS (`hidden @ w.t()`, V=49944) hits a
+hard MPSGraph shape-inference bug on the trained tensors (a fresh model dodges it; weights are
+finite, not NaN). `set -e` + a monolithic queue meant that one crash destroyed the whole batch —
+shuffled/random/seeds never ran. Fixes: HF eval moved to **CPU** (checkpoint saved first anyway;
+~800 single-example forwards), and the runner hardened (no `set -e`, each run independent). Both
+CN-1 infra bugs so far — the pilot's untied head and this one — were caught by *consistency
+checks*, not failing tests; here it was reload-crashes-where-fresh-doesn't.
+
+**Preliminary SmolLM2 fingerprint (CPU eval of the saved checkpoint — PARKED, because that
+checkpoint predates the norm-save; norm moved v11 shuffled 313→566, so treat as directional):**
+held-out (novel_cell × seen_comp, n=200): **top-1 0.000, top-5 0.180, median rank 21, 88% in
+top-10%**; seen: top-1 0.360, median 9. Read directionally against v11 (held-out median 43,
+top-5 0): the code/math prior **sharpens held-out ranking** (median 21 vs 43; 88% vs ~65% top-10%)
+and **top-5 goes 0 → 0.18** — the rank signal is starting to climb toward the top — but **top-1
+still hasn't converted**. Right at the prior-vs-capacity boundary: prior clearly helps, doesn't yet
+fully crack top-1. The faithful number (norm saved, one path) + the shuffled/random control arms +
+the within-base inversion check come from the resilient re-run now in flight. Nothing here is a
+verdict; it is the parked preliminary.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
