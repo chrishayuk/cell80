@@ -59,23 +59,25 @@ DUMP_FINGERPRINTS = (
 
 # Pilot cells: 5 trained-on, 2 held out entirely (never invoked in the training corpus) --
 # the direct toy analogue of CN-1's novelty gate. Arity per cell (for calling CellHost.run).
-# Two different held-out cases, deliberately: `is_ge` shares near-identical input structure
-# with the trained `is_gt` ("X > Y ?" vs "X >= Y ?") -- the one case where a fingerprint-
-# placed embedding near `is_gt`'s could plausibly be reached by a hidden state the model
-# actually learned to produce. `argmax3` shares no trained cell's input structure at all
-# (different arity, different prompt vocabulary) -- a deliberate negative control: even a
-# well-organized embedding space has nothing to generalize *from* if the model never
-# produces a hidden state resembling that input at all.
+# Second iteration, after the first attempt (holding out `is_ge` with its own `>=` token,
+# `argmax3` with its own `max` token) found BOTH scored 0.000 regardless of embedding
+# strategy -- because each held-out cell's defining input token never appeared in training
+# at all, so the model had no hidden state to work from, full stop. This iteration's
+# held-out cells (`mul_sat`, `is_ge`) instead use TEMPLATES that recombine tokens already
+# trained elsewhere ("discount"/"->"/"?") in a never-seen-together combination -- every
+# individual token has real gradient signal; only the specific input-to-cell association is
+# withheld, the constraint the first iteration derived. `argmax3` moved to trained (so "max"
+# gets real gradient signal too, instead of being a second untestable held-out case).
 TRAIN_CELLS = {
     "add_sat": 2,
     "sub_sat": 2,
-    "mul_sat": 2,
+    "argmax3": 3,
     "is_gt": 2,
     "discount_percent": 2,
 }
 HELD_OUT_CELLS = {
+    "mul_sat": 2,
     "is_ge": 2,
-    "argmax3": 3,
 }
 ALL_CELLS = {**TRAIN_CELLS, **HELD_OUT_CELLS}
 
@@ -111,15 +113,34 @@ def run_cell(host, handles, name, args):
 # ---- corpus: arithmetic cells via chuk_math_gym, verified against cell80 ----
 
 SIMPLE_EXPR = re.compile(r"^(\d+)\s*([+\-*])\s*(\d+)$")
-OP_TO_CELL = {"+": "add_sat", "-": "sub_sat", "*": "mul_sat"}
+OP_TO_CELL = {"+": "add_sat", "-": "sub_sat"}
+
+# Per-cell prompt template. The two held-out cells (`mul_sat`, `is_ge`) deliberately do NOT
+# get a novel operator symbol -- they REUSE tokens already trained elsewhere ("discount" via
+# discount_percent's own training, "->" via add_sat/sub_sat, "?" via is_gt) in a combination
+# never seen during training. Every individual token has real gradient signal; only the
+# specific input-to-cell ASSOCIATION is held out -- the constraint the first pilot iteration
+# found the hard way (an unseen operator token like the original `>=` gives the model no
+# hidden state to work from at all, regardless of embedding placement).
+TEMPLATES = {
+    "add_sat": lambda a, b: f"{a} + {b} ->",
+    "sub_sat": lambda a, b: f"{a} - {b} ->",
+    "is_gt": lambda a, b: f"{a} > {b} ?",
+    "discount_percent": lambda a, b: f"{a} discount {b % 100} % ->",
+    "argmax3": lambda a, b, c: f"max {a} {b} {c} ->",
+    "mul_sat": lambda a, b: f"{a} discount {b} ->",  # "discount"+"->" recombined, never seen
+    "is_ge": lambda a, b: f"{a} discount {b} ?",  # "discount"+"?" recombined, never seen
+}
 
 
 def arithmetic_examples(host, handles, n_per_op, rng):
     """chuk_math_gym VERY_EASY problems, filtered to a single binary op (VERY_EASY still
     occasionally chains 2-3 operators; anything else is discarded, not force-parsed), then
     verified against a real cell80 run -- if chuk_math_gym's gold_answer and cell80's own
-    add_sat/sub_sat/mul_sat disagree (e.g. saturation at the u16 boundary), the example is
-    discarded, not silently trusted either way.
+    add_sat/sub_sat disagree (e.g. saturation at the u16 boundary), the example is discarded,
+    not silently trusted either way. (`mul_sat` is generated directly, not via chuk_math_gym
+    -- it's a held-out cell now, rendered with a deliberately recombined template, not its
+    "natural" `a * b ->` one; see `direct_examples`.)
     """
     gen = ArithmeticGenerator()
     by_cell = {c: [] for c in OP_TO_CELL.values()}
@@ -133,6 +154,8 @@ def arithmetic_examples(host, handles, n_per_op, rng):
         if not m:
             continue
         a, op, b = int(m.group(1)), m.group(2), int(m.group(3))
+        if op not in OP_TO_CELL:
+            continue  # "*" -- mul_sat is held-out now, generated directly (see main())
         cell = OP_TO_CELL[op]
         if len(by_cell[cell]) >= n_per_op or a > 65535 or b > 65535:
             continue
@@ -142,26 +165,20 @@ def arithmetic_examples(host, handles, n_per_op, rng):
         result = run_cell(host, handles, cell, [a, b])
         if result != gold:
             continue  # disagreement between chuk_math_gym and cell80 -- discard, don't force
-        by_cell[cell].append((a, b, result, f"{a} {op} {b} ->"))
+        by_cell[cell].append((a, b, result, TEMPLATES[cell](a, b)))
     return by_cell
 
 
 def direct_examples(host, handles, cell, arity, n, rng):
-    """The four non-arithmetic pilot cells have no independent domain generator -- cell80's
-    own execution IS the label (there's no separate spec for "is 12 >= 7" to diverge from).
+    """Cells with no independent domain generator (or, for `mul_sat`, deliberately not using
+    one -- see `TEMPLATES`) -- cell80's own execution IS the label (there's no separate spec
+    for "is 12 >= 7" or "12 discount 7" to diverge from).
     """
     out = []
     for _ in range(n):
         args = [int(rng.integers(1, 100)) for _ in range(arity)]
         result = run_cell(host, handles, cell, args)
-        if cell == "argmax3":
-            text = f"max {args[0]} {args[1]} {args[2]} ->"
-        elif cell == "discount_percent":
-            text = f"{args[0]} discount {args[1] % 100} % ->"
-        elif cell == "is_gt":
-            text = f"{args[0]} > {args[1]} ?"
-        else:  # is_ge
-            text = f"{args[0]} >= {args[1]} ?"
+        text = TEMPLATES[cell](*args)
         out.append((*args, result, text))
     return out
 

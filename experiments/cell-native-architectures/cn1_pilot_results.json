@@ -4,24 +4,24 @@
   "epochs": 60,
   "acc_random_init": {
     "add_sat": 1.0,
-    "sub_sat": 0.9666666666666667,
-    "mul_sat": 1.0,
+    "sub_sat": 1.0,
+    "argmax3": 1.0,
     "is_gt": 1.0,
-    "discount_percent": 1.0,
-    "is_ge": 0.0,
-    "argmax3": 0.0
+    "discount_percent": 0.9833333333333333,
+    "mul_sat": 0.0,
+    "is_ge": 0.0
   },
   "acc_fingerprint_init": {
     "add_sat": 1.0,
-    "sub_sat": 0.9833333333333333,
-    "mul_sat": 1.0,
+    "sub_sat": 1.0,
+    "argmax3": 1.0,
     "is_gt": 1.0,
     "discount_percent": 1.0,
-    "is_ge": 0.0,
-    "argmax3": 0.0
+    "mul_sat": 0.0,
+    "is_ge": 0.0
   },
-  "mean_trained_random": 0.9933333333333334,
-  "mean_trained_fingerprint": 0.9966666666666667,
+  "mean_trained_random": 0.9966666666666667,
+  "mean_trained_fingerprint": 1.0,
   "mean_held_out_random": 0.0,
   "mean_held_out_fingerprint": 0.0
 }

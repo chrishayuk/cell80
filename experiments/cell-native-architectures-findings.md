@@ -8,12 +8,19 @@ representative, narrative lacking the information), and the mechanism that
 survives (a fast-forming, flat, non-computational numeral encoding) gives a
 principled reason for the scope-out, not just a failed number. Full verdict
 and programme redirect (CN-1 next, not CN-3) in `## CN-0, read against the
-gate, after two waves` below. **CN-1: a slice-0 toy pilot done** — fingerprint-
-init cleanly beats random-init on trained cells (0.993-1.000 vs. a variable,
-sometimes much worse mean), contingent on a weight-tying bug caught and fixed
-mid-pilot; the novelty/held-out question is inconclusive by corpus design, not
-by result — see `## CN-1 slice-0` below for exactly why and what a proper test
-needs. CN-2 through one wave (60-problem verified-decoding battery;
+gate, after two waves` below. **CN-1: a slice-0 toy pilot, two iterations** —
+the pilot's real headline is architectural: weight tying (embeddings ↔ output
+projection) is a load-bearing precondition of the whole fingerprint-embedding
+hypothesis, not a debugging footnote, found by two arms silently reading
+0.000 everywhere before any number was trusted. Given tying, fingerprint-init
+cleanly beats random-init on trained cells (0.993-1.000 vs. a variable,
+sometimes much worse mean) — held loosely, as an init-quality effect, not the
+novel claim. The harder novelty/held-out question went through two corpus
+redesigns and is still untested: both found a distinct, real reason the test
+couldn't ask its own question (an unprocessed input token, then an
+unprocessed input *combination*) — see `## CN-1 slice-0` below for exactly
+what a properly compositional corpus needs. CN-2 through one wave
+(60-problem verified-decoding battery;
 injection/resampling not yet built). Both experiments are defined in
 `cell-native-architectures.md`. Kicked off 2026-07-12. Code lives in
 `cell-native-architectures/`.
@@ -405,10 +412,16 @@ carries the practical claim forward untouched.
 
 ## CN-1 slice-0 — a toy pilot, not the pre-registered build
 
-**TL;DR: a real, clean win on the question CN-1 is actually named for (fingerprint-init vs.
-random-init, given identical training), and an honest inconclusive on the harder novelty
-question — because the pilot's own corpus design didn't let that question be asked
-properly, a limitation caught and named, not glossed over.**
+**TL;DR: the pilot's most important output is an architectural result, not an incident —
+weight tying is a load-bearing precondition of the whole fingerprint-embedding hypothesis,
+not an implementation detail — and it's stated here as a claim. On trained cells,
+fingerprint-init cleanly beats random-init given tied weights (0.993-1.000 vs. a variable,
+sometimes much worse mean), but that result should travel with its caveats: toy scale,
+trained cells, an effect closer to "a good initialization converges faster" than the novel
+"embedding is the behaviour" claim. That harder claim — a fingerprint-placed embedding gives
+an unseen cell a meaningful address — went through two corpus redesigns and is still
+untested: both attempts found a real, distinct reason the test couldn't ask its own
+question, not a negative answer to it.**
 
 CN-1's full spec is "the programme's first real training spend" across five repos (TinyModel
 v11, the H1 factory, an ~800-cell vocabulary, ported constrained decoding). Research before
@@ -428,84 +441,113 @@ discipline.
   `DEFAULT_PROBES` as JSON, called from Python via `subprocess`. The one new piece of Rust
   needed — `cell80-py` has no `Fingerprint` binding, so this is the pilot's stand-in for one,
   not the eventual shape.
-- **`experiments/cell-native-architectures/cn1_pilot.py`** — 7 pilot cells (`add_sat`,
-  `sub_sat`, `mul_sat`, `is_gt`, `discount_percent` trained; `is_ge`, `argmax3` held out
-  entirely). Corpus: `chuk_math_gym`'s `ArithmeticGenerator` (`VERY_EASY` difficulty) for the
-  three arithmetic cells, filtered to simple `a op b` expressions (VERY_EASY still
-  occasionally chains 2-3 operators; anything else discarded, not force-parsed) and
-  cross-checked against `cell80-py`'s `CellHost` — a disagreement between `chuk_math_gym`'s
-  independently-computed `gold_answer` and cell80's own execution discards the example,
-  never trusting either side. The non-arithmetic cells (`is_gt`/`discount_percent`/`argmax3`
-  trained or held out) have no independent domain generator, so cell80's own execution *is*
+- **`experiments/cell-native-architectures/cn1_pilot.py`** — 7 pilot cells split 5
+  trained/2 held-out (the exact split changed between iterations — see below). Corpus:
+  `chuk_math_gym`'s `ArithmeticGenerator` (`VERY_EASY` difficulty) for the arithmetic cells,
+  filtered to simple `a op b` expressions (VERY_EASY still occasionally chains 2-3 operators;
+  anything else discarded, not force-parsed) and cross-checked against `cell80-py`'s
+  `CellHost` — a disagreement between `chuk_math_gym`'s independently-computed `gold_answer`
+  and cell80's own execution discards the example, never trusting either side. The
+  non-arithmetic cells have no independent domain generator, so cell80's own execution *is*
   the label — there's no separate spec for "is 12 >= 7" to diverge from. A small causal
   transformer (3 layers, dim 64) trained from scratch, comparing (b) random-init vs. (c)
   fingerprint-init cell-token embedding rows (a fixed linear projection of each cell's
   fingerprint vector, not learned) on the identical corpus/split.
 
-### A real bug found mid-pilot, before trusting any number
+### The architectural result: weight tying is a precondition, not a debugging footnote
 
 The first full run tied nothing: the toy model's output projection was a separate learned
 `nn.Linear`, not tied to the input embeddings. Result: both arms scored exactly 0.000 on
-every cell, trained or held out. Not a finding — a broken measurement. **Weight tying
-(`logits = hidden @ embed.weight^T`, matching TinyModel v11's own `lm_head.weight =
-embed.weight`) is not a detail; it is the *only* mechanism by which a fingerprint-placed
-embedding could influence a prediction at all** (untied, the output head has no reason to
-reflect embedding-space geometry). Fixed before any result was treated as real — the same
-"a slice-0 pilot's job is finding bugs in the apparatus" discipline CN-0's own wave 1 named
-explicitly.
+every cell, trained or held out. **Stated as a claim, because that's what it is: a
+fingerprint-initialized cell embedding can only influence a prediction in a model whose
+output projection shares weights with its input embeddings — the fingerprint has to be
+*reachable from the output side* to steer anything.** Untied, the output head has no reason
+to reflect embedding-space geometry at all, so a fingerprint-placed vector is invisible to
+every downstream prediction regardless of how well it's placed. This is a real, non-obvious
+precondition on the entire "the embedding is the behaviour" hypothesis — it constrains which
+model architectures CN-1's approach can ever work in (tied-weight only) — not an incident to
+footnote. It is also a small vindication of reading the signature correctly: two arms both
+reading exactly 0.000 is the signature of a broken harness, not a false hypothesis, and it
+was read that way before a single number was trusted, not written up as a null result. Fixed
+by tying `logits = hidden @ embed.weight^T` (matching TinyModel v11's own `lm_head.weight =
+embed.weight`) before any further result was treated as real.
 
 ### Receipts (post-fix, N=300/cell, 60 epochs, identical corpus/split for both arms)
 
+**Iteration 1** — held out `is_ge` (shares `is_gt`'s prompt *shape*: "X > Y ?" vs "X >= Y ?")
+and `argmax3` (shares no trained cell's structure at all — arity 3, disjoint vocabulary):
+
 | cell | held? | (b) random-init | (c) fingerprint-init |
 |---|---|---:|---:|
-| add_sat | trained | 1.000 | 1.000 |
-| sub_sat | trained | 0.967 | 0.983 |
-| mul_sat | trained | 1.000 | 1.000 |
-| is_gt | trained | 1.000 | 1.000 |
-| discount_percent | trained | 1.000 | 1.000 |
+| add_sat, sub_sat, mul_sat, is_gt, discount_percent | trained | mean 0.993 | mean 0.997 |
 | is_ge | held-out | 0.000 | 0.000 |
 | argmax3 | held-out | 0.000 | 0.000 |
-| **mean, trained** | | **0.993** | **0.997** |
-| **mean, held-out** | | **0.000** | **0.000** |
 
-A first run (before the held-out set was reconsidered) held out `discount_percent`/`argmax3`
-— both structurally unlike anything trained (different arity, disjoint prompt vocabulary):
-trained-cell means were (b) 0.640 / (c) 1.000, held-out both 0.000. The re-run above swaps in
-`is_ge` as one held-out cell specifically because it shares near-identical input structure
-with the trained `is_gt` ("X > Y ?" vs. "X >= Y ?") — the one case where a fingerprint-placed
-embedding near `is_gt`'s could plausibly be reached by a hidden state the model actually
-learned to produce.
+(An even earlier run, before the held-out set was reconsidered at all, held out
+`discount_percent`/`argmax3` — trained-cell means (b) 0.640 / (c) 1.000, held-out both
+0.000 — the first evidence that fingerprint-init's trained-cell advantage is real and not
+small.)
+
+**Iteration 2** — `is_ge`'s defining input token (`>=`) never appeared anywhere in training,
+so the model had never processed it once; redesigned the held-out cells (`mul_sat`, `is_ge`)
+to use templates that **recombine tokens already trained elsewhere** ("discount" via
+`discount_percent`, "->" via `add_sat`/`sub_sat`, "?" via `is_gt") in a sequence never seen
+together, and moved `argmax3` to trained (so "max" gets real gradient signal too, rather
+than being a second untestable held-out case):
+
+| cell | held? | (b) random-init | (c) fingerprint-init |
+|---|---|---:|---:|
+| add_sat, sub_sat, argmax3, is_gt, discount_percent | trained | mean 0.997 | mean 1.000 |
+| mul_sat ("`a discount b ->`") | held-out | 0.000 | 0.000 |
+| is_ge ("`a discount b ?`") | held-out | 0.000 | 0.000 |
+
+**Still 0.000 for both arms, even with every individual token pre-trained.** This is a
+different, deeper finding than iteration 1's: it's not that an input token was unprocessed —
+it's that the specific **combination** ("discount" immediately followed by "->", never seen
+together) is itself effectively novel to the model. A well-placed target embedding doesn't
+help if the model never produces a hidden state resembling that novel sequence in the first
+place — the bottleneck moved from the output side (which iteration 1 diagnosed) to the input
+side (which iteration 2 diagnosed), and neither is what CN-1's own gate (ii) is actually
+about.
 
 ### What this shows
 
-- **On trained cells, fingerprint-init is a clean, consistent win at equal training budget.**
-  Random-init's per-cell accuracy is noticeably more variable and sometimes much worse at
-  this same budget (0.640 mean in the first run, individual cells as low as 0.233-0.333);
-  fingerprint-init reaches 0.993-1.000 on every trained cell in both runs. A well-organized,
-  behaviourally-derived starting geometry is a materially easier optimization landscape for
-  gradient descent than an unstructured random one — the core, narrower claim CN-1 is named
-  for holds up at toy scale.
-- **Weight tying is a load-bearing architectural requirement for the fingerprint hypothesis,
-  not an implementation nicety** — this pilot would have silently reported a null result
-  (both arms at 0.000 everywhere) had the bug not been caught before the first result was
-  trusted. Any future CN-1 work — toy or real — should verify tying explicitly, not assume it.
+- **On trained cells, fingerprint-init is a clean, consistent win at equal training budget —
+  held loosely, for a stated reason.** Random-init's per-cell accuracy is noticeably more
+  variable and sometimes much worse at this same budget (0.640 mean in the earliest run,
+  individual cells as low as 0.233-0.333); fingerprint-init reaches 0.993-1.000 on every
+  trained cell across both iterations. At toy scale, on cells the model *is* trained on, this
+  is close to what any structured initialization would give over an unstructured one — a
+  convergence-speed effect as much as a semantic one. It supports "fingerprints are a useful
+  init," which is real but is not CN-1's novel claim.
+- **Weight tying is load-bearing, confirmed by exactly the failure signature that should
+  raise suspicion.** Both arms silently reading 0.000 everywhere is diagnostic in itself —
+  it says "the harness is broken," not "the hypothesis is false" — and treating it that way
+  (rather than writing up a null) is what let the real result surface. Any future CN-1 work,
+  toy or real, needs to verify tying explicitly, and — per the design's own logic — the same
+  reachability requirement extends to CN-4 (the routed organ): if a fingerprint-derived
+  representation needs to be reachable from where the model reads results, the organ's
+  result-projection needs to land somewhere the model can actually read, and that's worth
+  checking before CN-4's design hardens, not after.
 
-### What this does *not* show — and why, precisely
+### What this does *not* show — and why, precisely, across two attempts
 
-- **The held-out/novelty question is inconclusive, not answered.** Even `is_ge`, chosen
-  specifically for sharing `is_gt`'s prompt *shape*, still scored 0.000 for both arms —
-  because `is_ge`'s defining input token (`>=`) is held out along with its cell-call target:
-  it **never appears in any training example at all**, so the model has never processed that
-  input token through its layers once, regardless of how the corresponding cell's *output*
-  embedding was initialized. The mechanism the novelty gate needs — a fingerprint-placed
-  embedding reached by a hidden state the model actually learned to produce for a *familiar*
-  input — was never actually exercised, because this pilot's corpus ties each cell to its own
-  exclusive surface token. **Testing the real novelty question needs a corpus where a
-  held-out cell shares its entire *input* vocabulary with trained cells, with only the
-  specific input-to-cell *association* withheld** — a more careful corpus design than this
-  toy pilot attempted, and a concrete, actionable gap for whoever builds the real H1 factory
-  (which must be able to construct exactly this kind of held-out-family split, per CN-1's
-  own pre-registered gate).
+- **The held-out/novelty question — CN-1's actual gate (ii), the part that matters — is
+  untested, not failed.** Two independently-diagnosed reasons, not one: (1) a held-out cell's
+  own defining input token can be entirely absent from training, giving the model no
+  processed representation of that token at all, regardless of embedding placement
+  (iteration 1); (2) even when every individual token is familiar, the specific *combination*
+  can still be effectively novel to a model this small, trained this briefly, on this little
+  data — so the model still never produces a hidden state resembling the held-out input,
+  regardless of embedding placement (iteration 2). Both are the harness failing to ask the
+  question, at two different levels, not the hypothesis failing to answer it.
+- **A concrete, sharper requirement for the real H1 factory than "share vocabulary."** Iteration
+  2's finding tightens the constraint from iteration 1's: it is not enough for a held-out
+  cell's tokens to be individually familiar. The corpus needs genuine **compositional**
+  coverage — multiple examples of a shared prefix/suffix combining flexibly with different
+  endings during training — so the model has actually learned to generalize by recombination
+  before a held-out cell asks it to do so on a novel combination. Untested this pass; the next
+  natural iteration (see below).
 - **This is 2 arms of 3, next-token argmax of 3, from-scratch of the real thing.** Arm (a)
   (the prompted `cell_solve` baseline) isn't meaningfully testable with a from-scratch toy
   model with no prompting ability. Evaluation is next-token accuracy at the cell-call
@@ -518,24 +560,28 @@ learned to produce.
 
 ```
 cargo build --release -p cell80 --example dump_fingerprints
-python3 experiments/cell-native-architectures/cn1_pilot.py   # ~25s on M3, no GPU training wait
+python3 experiments/cell-native-architectures/cn1_pilot.py   # ~25-30s on M3, no GPU training wait
 ```
 
 ### What would raise confidence further
 
-- **Redesign the held-out split so a novel cell's input tokens are all already familiar** —
-  e.g. train on `is_gt`/`is_ge` both using a shared "compare" input template differing only
-  in a template slot, holding out a *third* comparison cell that reuses the same slot
-  vocabulary, so the model has an actual opportunity to generalize by embedding proximity.
-  This is the single next step that would make the novelty question answerable at all.
+- **Build genuine compositional coverage into the corpus**, not just shared vocabulary: train
+  on several prefix/suffix combinations that recombine flexibly (e.g. multiple "X `<word>` Y
+  `<suffix>`" patterns pairing different words with different suffixes), so the model has an
+  actual opportunity to have learned *recombination itself* as a pattern, then hold out one
+  combination it's never seen assembled. This is the concrete next iteration, not a restart —
+  the first two attempts each earned a specific, named reason the test still couldn't ask its
+  question.
 - Scale N and epochs to see whether random-init eventually catches up to fingerprint-init on
   trained cells (does fingerprint-init only give a *training-speed* advantage, or a ceiling
-  the random arm never reaches even given much more budget).
+  the random arm never reaches even given much more budget) — this is the number that decides
+  whether "fingerprints are a useful init" is worth much beyond a toy result.
 - Add arm (a) via a simple prompted baseline (even a toy from-scratch model can be given a
   fixed in-context example set to "prompt" from, as a rough proxy).
 - Extend to the real TinyModel v11 + a rebuilt `.vocab.bin` once the pilot's own corpus
-  design (the point above) is fixed — there is no value in porting to the real model before
-  the measurement itself can ask the question it's meant to answer.
+  design (compositional coverage, above) can actually pose the novelty question — there is no
+  value in porting to the real model before the measurement itself can ask what it's meant to
+  answer.
 
 ## CN-2 slice-0 — verified decoding, real result obtained
 

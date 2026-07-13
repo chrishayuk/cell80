@@ -82,20 +82,27 @@ transfer to embedding space; depth-2 routing still stands on F2, but the "comput
 vocabulary" claim dies.
 **Cost.** The programme's first real training spend. M3/MLX.
 
-**Status: slice-0 pilot done (toy scale, not the pre-registered build) — gate (i)'s core
-claim supported, gate (ii) inconclusive by design, not by result.** A small MLX transformer
-trained from scratch (not TinyModel v11 — its tokenizer's immutable `.vocab.bin` has no
-`add_tokens` API, a real detour deferred past the pilot) shows fingerprint-init reaching
-0.993–1.000 accuracy on every trained cell vs. random-init's more variable, sometimes much
-worse 0.640 mean at the same training budget — a real, clean win, contingent on weight tying
-(embeddings ↔ output projection), which a first, untied run showed is load-bearing, not a
-detail: untied, both arms silently scored 0.000 everywhere. The novelty gate (ii) could not
-be properly tested this pass: even a held-out cell chosen for sharing a trained cell's
-*prompt shape* (`is_ge` vs. trained `is_gt`) still scored 0.000 for both arms, because its
-defining input token never appears in training at all — the pilot's corpus ties each cell to
-an exclusive surface token, so no held-out cell's input is ever *familiar* to the model
-regardless of embedding placement. Full account, including what a properly-designed
-held-out split needs: `cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
+**Status: slice-0 pilot done, two iterations (toy scale, not the pre-registered build) —
+the headline is architectural, not a number.** A small MLX transformer trained from scratch
+(not TinyModel v11 — its tokenizer's immutable `.vocab.bin` has no `add_tokens` API, a real
+detour deferred past the pilot) first ran **untied** (output projection separate from input
+embeddings) and both arms silently scored 0.000 everywhere — read correctly as "the harness
+is broken," not "the hypothesis is false," before any number was trusted. **Weight tying is
+therefore stated as a result, not a footnote: a fingerprint-placed embedding can only
+influence a prediction in a model whose output projection shares weights with its input
+embeddings** — a real precondition on the whole "the embedding is the behaviour" hypothesis,
+and a related constraint worth checking before CN-4's design hardens (its result-projection
+needs to land somewhere the model can actually read). Given tying, gate (i)'s core claim is
+supported at toy scale (fingerprint-init 0.993–1.000 vs. random-init's more variable,
+sometimes much worse 0.640 mean) — held loosely, as an init-quality/convergence-speed effect,
+not CN-1's novel claim. **Gate (ii) — the one that matters — went through two corpus
+redesigns and is still untested**, for two distinct, real reasons: iteration 1's held-out
+cell had a defining input token absent from training entirely (no processed representation
+to work from, regardless of embedding placement); iteration 2 recombined only already-trained
+tokens into a novel *combination* and still scored 0.000 for both arms — the specific
+sequence was itself effectively novel to a model this small, trained this briefly. Full
+account, including the compositional-coverage requirement a real test needs:
+`cell-native-architectures-findings.md`'s `## CN-1 slice-0` section.
 
 ---
 
