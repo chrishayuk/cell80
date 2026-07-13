@@ -338,10 +338,9 @@ fn msl_codegen_snapshot() {
     check_golden(&golden, &render());
 }
 
-/// The fixed interpreter kernel's source. macOS-gated only until the M1 split
-/// makes `interp_source_msl` a portable builder — the golden bytes must not
-/// change when that happens.
-#[cfg(target_os = "macos")]
+/// The interpreter kernel's MSL source — a portable builder (shared body +
+/// generated constant block + the Metal signature) whose bytes are locked to
+/// the pre-split kernel string.
 #[test]
 fn interp_kernel_snapshot() {
     let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/interp_msl.txt");

@@ -116,6 +116,16 @@ pub struct LibraryCell<'a> {
     pub state_len: usize,
 }
 
+/// The emitted GPU dialect. One walker emits both: every tick placement,
+/// mask, guard, and trap is shared text; only surface syntax (headers,
+/// address-space qualifiers, kernel signatures, intrinsic spellings)
+/// dialects. The set is closed by design — WGSL/ROCm are out of scope.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Dialect {
+    Msl,
+    Cuda,
+}
+
 /// Compile one **value** cell (the one-cell × N-inputs layout). Refuses (with
 /// a typed error) anything outside the E1+E2 fragment: recursion,
 /// ports-by-policy, f32 (E4). State cells go through [`compile_library`] with
@@ -136,10 +146,15 @@ pub fn compile(
 /// Fuse many cells into one translation unit — the library × probe-set layout
 /// (E3): one launch runs every cell against every input triple.
 pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
+    compile_library_dialect(Dialect::Msl, cells)
+}
+
+fn compile_library_dialect(dialect: Dialect, cells: &[LibraryCell]) -> Result<MslModule, String> {
     if cells.is_empty() {
         return Err("msl: empty library".into());
     }
     let mut g = Gen {
+        dialect,
         frames: HashMap::new(),
         consts: HashMap::new(),
         prefix: String::new(),
@@ -207,11 +222,8 @@ pub fn compile_library(cells: &[LibraryCell]) -> Result<MslModule, String> {
         let entry_base = g.frames[cell.entry].base;
 
         for (name, _) in cell.funcs {
-            let _ = writeln!(
-                g.out,
-                "static CELLFN void {}(thread Ctx& c);",
-                g.mangle(name)
-            );
+            let tref = g.dialect.thread_ref();
+            let _ = writeln!(g.out, "static CELLFN void {}({tref} c);", g.mangle(name));
         }
         for (name, f) in cell.funcs {
             g.gen_fn(name, f).map_err(&tag)?;
@@ -266,7 +278,92 @@ struct FrameInfo {
     wide_second: bool,
 }
 
+/// The dialect points — every place the two outputs differ. Everything the
+/// walker emits between these (ticks, masks, guards, traps, the whole kernel
+/// body) is shared text, so a semantics fix lands in both dialects by
+/// construction.
+impl Dialect {
+    /// Translation-unit header: includes/`using` for MSL; scalar typedefs (the
+    /// walker's `uint`/`ushort`/`uchar` vocabulary) for CUDA.
+    fn header(self) -> &'static str {
+        match self {
+            Dialect::Msl => "#include <metal_stdlib>\nusing namespace metal;",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// The read-only const-blob pointer's type inside `Ctx`.
+    fn dev_const_ptr(self) -> &'static str {
+        match self {
+            Dialect::Msl => "device const uchar*",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// The attribute `CELLFN` expands to — cell functions are pinned noinline
+    /// on both targets (the shipped configuration is the battery-validated
+    /// one, not an inliner heuristic's).
+    fn cellfn_attr(self) -> &'static str {
+        match self {
+            Dialect::Msl => "__attribute__((noinline))",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// The two sign-extension helpers (`sx16`/`sx32`), whole lines — MSL
+    /// bit-casts via `as_type`, CUDA via value-preserving integer casts.
+    fn sx_helpers(self) -> &'static str {
+        match self {
+            Dialect::Msl => {
+                "static int sx16(uint x) { return (int)as_type<short>((ushort)(x)); }\n\
+                 static int sx32(uint x) { return as_type<int>(x); }"
+            }
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// Prefix for the opaque noinline division helpers.
+    fn noinline_static(self) -> &'static str {
+        match self {
+            Dialect::Msl => "static __attribute__((noinline))",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// Prefix for the plain (inlinable) window helpers `rd8`/`wr8`/….
+    fn static_fn(self) -> &'static str {
+        match self {
+            Dialect::Msl => "static",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// The by-reference `Ctx` parameter type.
+    fn thread_ref(self) -> &'static str {
+        match self {
+            Dialect::Msl => "thread Ctx&",
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+
+    /// A `__bits_*` intrinsic's expression template over `ARG` (a zero-
+    /// extended u16 in a `uint` temp). The zero guards pin the 16-bit answer
+    /// on both targets.
+    fn bits_intrinsic(self, name: &str) -> Option<&'static str> {
+        match self {
+            Dialect::Msl => match name {
+                "__bits_count_ones" => Some("popcount(ARG)"),
+                "__bits_leading_zeros" => Some("(ARG == 0u) ? 16u : (clz(ARG) - 16u)"),
+                "__bits_trailing_zeros" => Some("(ARG == 0u) ? 16u : ctz(ARG)"),
+                _ => None,
+            },
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
+    }
+}
+
 struct Gen {
+    dialect: Dialect,
     frames: HashMap<String, FrameInfo>,
     consts: HashMap<String, u16>,
     /// Per-cell function-name prefix (`c0_`, `c1_`, …) — cells share one
@@ -285,6 +382,13 @@ impl Gen {
     fn prelude(&mut self, n_slots: u16, n_state: usize) {
         let n_slots = n_slots.max(1);
         let n_state = n_state.max(1);
+        let header = self.dialect.header();
+        let devc = self.dialect.dev_const_ptr();
+        let cellfn = self.dialect.cellfn_attr();
+        let sx = self.dialect.sx_helpers();
+        let ni = self.dialect.noinline_static();
+        let sfn = self.dialect.static_fn();
+        let tref = self.dialect.thread_ref();
         let o = &mut self.out;
         // The slot file is an array *member*, not a thread pointer: passing a
         // struct holding a `thread ushort*` into non-inlined functions
@@ -295,13 +399,12 @@ impl Gen {
         let _ = writeln!(
             o,
             "// generated by rustmsl — do not edit; semantics are the cell80-core interpreter's\n\
-             #include <metal_stdlib>\n\
-             using namespace metal;\n\
+             {header}\n\
              \n\
              struct Ctx {{\n\
              \x20   ushort slots[{n_slots}];\n\
              \x20   uchar state[{n_state}];\n\
-             \x20   device const uchar* cst;\n\
+             \x20   {devc} cst;\n\
              \x20   uint cst_len;\n\
              \x20   uint slot_bytes;\n\
              \x20   uint state_len;\n\
@@ -318,11 +421,10 @@ impl Gen {
              #define TICK if (--c.fuel == 0u) {{ c.trap = {fuel_trap}u; return; }}\n\
              // Cell functions are pinned noinline: the shipped configuration is\n\
              // exactly the battery-validated one, not an inliner heuristic's.\n\
-             #define CELLFN __attribute__((noinline))\n\
+             #define CELLFN {cellfn}\n\
              \n\
              // Sign-extend a masked 16-bit lane / bit-cast a 32-bit lane to signed.\n\
-             static int sx16(uint x) {{ return (int)as_type<short>((ushort)(x)); }}\n\
-             static int sx32(uint x) {{ return as_type<int>(x); }}\n\
+             {sx}\n\
              \n\
              // Division rides opaque value-taking helpers: Metal's backend\n\
              // miscompiles a divide feeding a branch that guards stores through\n\
@@ -330,17 +432,17 @@ impl Gen {
              // E3 megakernel battery on `mul_sat`, minimised to a 10-line repro).\n\
              // The call boundary blocks the faulty fusion; zero-checks stay at\n\
              // the call site (the trap), and the signed MIN/-1 wrap lives here.\n\
-             static __attribute__((noinline)) uint udiv(uint a, uint b) {{ return a / b; }}\n\
-             static __attribute__((noinline)) uint urem(uint a, uint b) {{ return a % b; }}\n\
-             static __attribute__((noinline)) uint sdiv16(uint a, uint b) {{ return ((uint)(sx16(a) / sx16(b))) & 0xFFFFu; }}\n\
-             static __attribute__((noinline)) uint srem16(uint a, uint b) {{ return ((uint)(sx16(a) % sx16(b))) & 0xFFFFu; }}\n\
-             static __attribute__((noinline)) uint sdiv32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? a : (uint)(sx32(a) / sx32(b)); }}\n\
-             static __attribute__((noinline)) uint srem32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? 0u : (uint)(sx32(a) % sx32(b)); }}\n\
+             {ni} uint udiv(uint a, uint b) {{ return a / b; }}\n\
+             {ni} uint urem(uint a, uint b) {{ return a % b; }}\n\
+             {ni} uint sdiv16(uint a, uint b) {{ return ((uint)(sx16(a) / sx16(b))) & 0xFFFFu; }}\n\
+             {ni} uint srem16(uint a, uint b) {{ return ((uint)(sx16(a) % sx16(b))) & 0xFFFFu; }}\n\
+             {ni} uint sdiv32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? a : (uint)(sx32(a) / sx32(b)); }}\n\
+             {ni} uint srem32(uint a, uint b) {{ return (a == 0x80000000u && b == 0xFFFFFFFFu) ? 0u : (uint)(sx32(a) % sx32(b)); }}\n\
              \n\
              // Byte-routed window emulation: consts (read-only), the slot file,\n\
              // the state struct, else zero on read and a trap on write (the\n\
              // pre-registered E1 weakening).\n\
-             static uint rd8(thread Ctx& c, uint a) {{\n\
+             {sfn} uint rd8({tref} c, uint a) {{\n\
              \x20   a &= 0xFFFFu;\n\
              \x20   if (a >= 0x{cb:X}u && a < 0x{cb:X}u + c.cst_len) return (uint)c.cst[a - 0x{cb:X}u];\n\
              \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + c.slot_bytes) {{\n\
@@ -350,7 +452,7 @@ impl Gen {
              \x20   if (a >= 0x{sb:X}u && a < 0x{sb:X}u + c.state_len) return (uint)c.state[a - 0x{sb:X}u];\n\
              \x20   return 0u;\n\
              }}\n\
-             static void wr8(thread Ctx& c, uint a, uint v) {{\n\
+             {sfn} void wr8({tref} c, uint a, uint v) {{\n\
              \x20   a &= 0xFFFFu;\n\
              \x20   if (a >= 0x{sc:X}u && a < 0x{sc:X}u + c.slot_bytes) {{\n\
              \x20       uint o = a - 0x{sc:X}u;\n\
@@ -365,10 +467,10 @@ impl Gen {
              \x20   }}\n\
              \x20   c.trap = {oow}u;\n\
              }}\n\
-             static uint rd16(thread Ctx& c, uint a) {{ return rd8(c, a) | (rd8(c, a + 1u) << 8u); }}\n\
-             static void wr16(thread Ctx& c, uint a, uint v) {{ wr8(c, a, v); wr8(c, a + 1u, v >> 8u); }}\n\
-             static uint rd32(thread Ctx& c, uint a) {{ return rd16(c, a) | (rd16(c, a + 2u) << 16u); }}\n\
-             static void wr32(thread Ctx& c, uint a, uint v) {{ wr16(c, a, v); wr16(c, a + 2u, v >> 16u); }}\n",
+             {sfn} uint rd16({tref} c, uint a) {{ return rd8(c, a) | (rd8(c, a + 1u) << 8u); }}\n\
+             {sfn} void wr16({tref} c, uint a, uint v) {{ wr8(c, a, v); wr8(c, a + 1u, v >> 8u); }}\n\
+             {sfn} uint rd32({tref} c, uint a) {{ return rd16(c, a) | (rd16(c, a + 2u) << 16u); }}\n\
+             {sfn} void wr32({tref} c, uint a, uint v) {{ wr16(c, a, v); wr16(c, a + 2u, v >> 16u); }}\n",
             cb = CONST_BASE,
             sc = SCRATCH,
             sb = STATE_BASE,
@@ -756,14 +858,10 @@ impl Gen {
         args: &[Expr],
         ind: usize,
     ) -> Result<CallVal, String> {
-        // The bit-method kernels are reserved names lowered as calls — Metal has
-        // them native; the u16 semantics ride explicit masks/guards.
-        if let Some(text) = match name {
-            "__bits_count_ones" => Some("popcount(ARG)".to_string()),
-            "__bits_leading_zeros" => Some("(ARG == 0u) ? 16u : (clz(ARG) - 16u)".to_string()),
-            "__bits_trailing_zeros" => Some("(ARG == 0u) ? 16u : ctz(ARG)".to_string()),
-            _ => None,
-        } {
+        // The bit-method kernels are reserved names lowered as calls — both
+        // targets have them native; the u16 semantics ride explicit
+        // masks/guards in the dialect's template.
+        if let Some(text) = self.dialect.bits_intrinsic(name) {
             let t = self.e16(fr, &args[0], ind)?;
             return Ok(CallVal::Operand(text.replace("ARG", &t)));
         }
@@ -1073,7 +1171,8 @@ impl Gen {
             }
         };
         let m = self.mangle(name);
-        self.line(0, &format!("static CELLFN void {m}(thread Ctx& c) {{"));
+        let tref = self.dialect.thread_ref();
+        self.line(0, &format!("static CELLFN void {m}({tref} c) {{"));
         // The shared return regs zero at entry so a void path reads as absent.
         self.line(1, "c.r0 = 0u; c.r1 = 0u; c.r2 = 0u; c.rw = 0u; c.rn = 0u;");
         self.stmts(&info, &f.body, 1)
@@ -1107,19 +1206,31 @@ impl Gen {
     /// args (a state cell's param 0 is the `&mut self` pointer), runs its
     /// entry, latches its result shape, and writes its state back.
     fn kernel(&mut self, cases: &[(usize, usize, u32, u16, usize, CellMeta)]) {
+        let dialect = self.dialect;
         let o = &mut self.out;
+        // The signature (and, on CUDA, the launch-index computation with its
+        // grid-tail guard — Metal's exact dispatch has no tail) is the only
+        // dialected part of the kernel; the dispatch body below is shared.
+        match dialect {
+            Dialect::Msl => {
+                let _ = writeln!(
+                    o,
+                    "kernel void {KERNEL_NAME}(\n\
+                     \x20   device const ushort* inp [[buffer(0)]],\n\
+                     \x20   device ushort* outp [[buffer(1)]],\n\
+                     \x20   device const uchar* cst [[buffer(2)]],\n\
+                     \x20   constant uint& n_inputs [[buffer(3)]],\n\
+                     \x20   device const uchar* stin [[buffer(4)]],\n\
+                     \x20   device uchar* stout [[buffer(5)]],\n\
+                     \x20   uint tid [[thread_position_in_grid]])\n\
+                     {{"
+                );
+            }
+            Dialect::Cuda => todo!("CUDA dialect lands in M2"),
+        }
         let _ = writeln!(
             o,
-            "kernel void {KERNEL_NAME}(\n\
-             \x20   device const ushort* inp [[buffer(0)]],\n\
-             \x20   device ushort* outp [[buffer(1)]],\n\
-             \x20   device const uchar* cst [[buffer(2)]],\n\
-             \x20   constant uint& n_inputs [[buffer(3)]],\n\
-             \x20   device const uchar* stin [[buffer(4)]],\n\
-             \x20   device uchar* stout [[buffer(5)]],\n\
-             \x20   uint tid [[thread_position_in_grid]])\n\
-             {{\n\
-             \x20   uint cell = tid / n_inputs;\n\
+            "\x20   uint cell = tid / n_inputs;\n\
              \x20   uint idx = tid % n_inputs;\n\
              \x20   Ctx c = {{}};\n\
              \x20   c.fuel = {FUEL}u;\n\

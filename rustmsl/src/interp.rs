@@ -877,36 +877,39 @@ pub fn cpu_run(prog: &CellProgram, args: &[u16]) -> VmOut {
         pc += 1;
     }
 }
-/// The GPU library-dispatch backend (macOS/Metal). Lives here so the bytecode
-/// and linearizer above stay buildable everywhere.
-#[cfg(target_os = "macos")]
-mod gpu {
-    use super::{CellProgram, Inst, IN_STRIDE, OUT_STRIDE};
+/// The bytecode wire format — shared by every GPU executor (Metal today,
+/// CUDA next), so there is exactly one `encode()`: a second implementation
+/// would be a correctness bug the battery could only misattribute to a GPU.
+pub(crate) mod bytecode {
+    use super::{CellProgram, Inst};
     use cell80_core::ir::{BinOp, Cmp, Width};
-    use metal::{Buffer, CommandQueue, ComputePipelineState, Device, MTLResourceOptions, MTLSize};
 
-    // Opcodes — kept in lockstep with the MSL decoder below.
-    const OP_STEP: u32 = 0;
-    const OP_PUSHLIT: u32 = 1;
-    const OP_PUSHVAR: u32 = 2;
-    const OP_BIN: u32 = 3;
-    const OP_SHIFTLIT: u32 = 4;
-    const OP_CMP: u32 = 5;
-    const OP_TRUNC: u32 = 6;
-    const OP_STORE: u32 = 7;
-    const OP_POP: u32 = 8;
-    const OP_JMPZERO: u32 = 9;
-    const OP_JMP: u32 = 10;
-    const OP_RET: u32 = 11;
-    const OP_DUP: u32 = 12;
-    const OP_HALT: u32 = 13;
-    const OP_POPCNT: u32 = 14;
-    const OP_CLZ: u32 = 15;
-    const OP_CTZ: u32 = 16;
-    const OP_BIN32: u32 = 17;
-    const OP_SHIFT32: u32 = 18;
-    const OP_CMP32: u32 = 19;
-    const OP_SEXTHI: u32 = 20;
+    // Opcodes — the kernel decoder's constant block is *generated* from
+    // these (`interp_const_block`), so the two cannot drift.
+    pub(crate) const OP_STEP: u32 = 0;
+    pub(crate) const OP_PUSHLIT: u32 = 1;
+    pub(crate) const OP_PUSHVAR: u32 = 2;
+    pub(crate) const OP_BIN: u32 = 3;
+    pub(crate) const OP_SHIFTLIT: u32 = 4;
+    pub(crate) const OP_CMP: u32 = 5;
+    pub(crate) const OP_TRUNC: u32 = 6;
+    pub(crate) const OP_STORE: u32 = 7;
+    pub(crate) const OP_POP: u32 = 8;
+    pub(crate) const OP_JMPZERO: u32 = 9;
+    pub(crate) const OP_JMP: u32 = 10;
+    pub(crate) const OP_RET: u32 = 11;
+    pub(crate) const OP_DUP: u32 = 12;
+    pub(crate) const OP_HALT: u32 = 13;
+    pub(crate) const OP_POPCNT: u32 = 14;
+    pub(crate) const OP_CLZ: u32 = 15;
+    pub(crate) const OP_CTZ: u32 = 16;
+    pub(crate) const OP_BIN32: u32 = 17;
+    pub(crate) const OP_SHIFT32: u32 = 18;
+    pub(crate) const OP_CMP32: u32 = 19;
+    pub(crate) const OP_SEXTHI: u32 = 20;
+
+    /// Kernel slot-array bound — cells needing more locals are skipped at build.
+    pub(crate) const MAX_LOCALS: usize = 64;
 
     fn binop_code(op: BinOp) -> u32 {
         match op {
@@ -1024,28 +1027,81 @@ mod gpu {
         flat
     }
 
-    pub(super) const KERNEL: &str = r#"
-#include <metal_stdlib>
-using namespace metal;
+    /// Encode a program set into the concatenated code + per-cell offset
+    /// table, skipping (and counting) cells over the kernel's local bound.
+    pub(crate) fn pack(progs: &[CellProgram]) -> (Vec<u32>, Vec<u32>, usize) {
+        let (mut code, mut table, mut skipped) = (Vec::new(), Vec::new(), 0usize);
+        for prog in progs {
+            if prog.n_locals > MAX_LOCALS {
+                skipped += 1;
+                continue;
+            }
+            table.push((code.len() / 2) as u32); // code offset in instructions
+            code.extend_from_slice(&encode(prog));
+            table.push(prog.n_locals as u32);
+            table.push(prog.params as u32);
+        }
+        (code, table, skipped)
+    }
+}
 
-constant uint OP_STEP=0,OP_PUSHLIT=1,OP_PUSHVAR=2,OP_BIN=3,OP_SHIFTLIT=4,
-              OP_CMP=5,OP_TRUNC=6,OP_STORE=7,OP_POP=8,OP_JMPZERO=9,OP_JMP=10,OP_RET=11,OP_DUP=12,OP_HALT=13,
-              OP_POPCNT=14,OP_CLZ=15,OP_CTZ=16,OP_BIN32=17,OP_SHIFT32=18,OP_CMP32=19,OP_SEXTHI=20;
-constant uint ST_OK=0u, ST_DIV0=1u, ST_HALT=2u, ST_FUEL=4u;
-constant uint FUEL=100000000u;
-#define MAX_LOCALS 64
-#define MAX_STACK  32
+/// The decoder's constant block, generated from the Rust-side opcode/status/
+/// budget constants so the kernel and [`bytecode`]'s encoder cannot drift.
+/// `decl` is the dialect's constant-declaration prefix.
+fn interp_const_block(decl: &str) -> String {
+    use bytecode::{
+        MAX_LOCALS, OP_BIN, OP_BIN32, OP_CLZ, OP_CMP, OP_CMP32, OP_CTZ, OP_DUP, OP_HALT, OP_JMP,
+        OP_JMPZERO, OP_POP, OP_POPCNT, OP_PUSHLIT, OP_PUSHVAR, OP_RET, OP_SEXTHI, OP_SHIFT32,
+        OP_SHIFTLIT, OP_STEP, OP_STORE, OP_TRUNC,
+    };
+    format!(
+        "{decl} OP_STEP={OP_STEP},OP_PUSHLIT={OP_PUSHLIT},OP_PUSHVAR={OP_PUSHVAR},OP_BIN={OP_BIN},OP_SHIFTLIT={OP_SHIFTLIT},\n\
+         \x20             OP_CMP={OP_CMP},OP_TRUNC={OP_TRUNC},OP_STORE={OP_STORE},OP_POP={OP_POP},OP_JMPZERO={OP_JMPZERO},OP_JMP={OP_JMP},OP_RET={OP_RET},OP_DUP={OP_DUP},OP_HALT={OP_HALT},\n\
+         \x20             OP_POPCNT={OP_POPCNT},OP_CLZ={OP_CLZ},OP_CTZ={OP_CTZ},OP_BIN32={OP_BIN32},OP_SHIFT32={OP_SHIFT32},OP_CMP32={OP_CMP32},OP_SEXTHI={OP_SEXTHI};\n\
+         {decl} ST_OK={ok}u, ST_DIV0={div0}u, ST_HALT={halt}u, ST_FUEL={fuel}u;\n\
+         {decl} FUEL={budget}u;\n\
+         #define MAX_LOCALS {MAX_LOCALS}\n\
+         #define MAX_STACK  {STACK_CAP}\n",
+        ok = crate::STATUS_OK,
+        div0 = crate::STATUS_DIV0,
+        halt = crate::STATUS_HALT,
+        fuel = crate::STATUS_FUEL,
+        budget = crate::FUEL,
+    )
+}
 
-kernel void interp(
-    const device uint*   code       [[buffer(0)]],
-    const device uint*   cell_table  [[buffer(1)]],
-    const device ushort* probes     [[buffer(2)]],
-    device ushort*       out        [[buffer(3)]],
-    constant uint&       n_probes    [[buffer(4)]],
-    uint cell [[threadgroup_position_in_grid]],
-    uint p    [[thread_position_in_threadgroup]])
-{
-    if (p >= n_probes) return;
+/// The interpreter kernel's MSL source: the Metal header + the generated
+/// decoder-constant block + the `[[buffer]]`-bound signature over the shared
+/// [`KERNEL_BODY`]. The bytes are golden-locked (`tests/codegen_snapshot.rs`).
+pub fn interp_source_msl() -> String {
+    format!(
+        "\n\
+         #include <metal_stdlib>\n\
+         using namespace metal;\n\
+         \n\
+         {consts}\
+         \n\
+         kernel void interp(\n\
+         \x20   const device uint*   code       [[buffer(0)]],\n\
+         \x20   const device uint*   cell_table  [[buffer(1)]],\n\
+         \x20   const device ushort* probes     [[buffer(2)]],\n\
+         \x20   device ushort*       out        [[buffer(3)]],\n\
+         \x20   constant uint&       n_probes    [[buffer(4)]],\n\
+         \x20   uint cell [[threadgroup_position_in_grid]],\n\
+         \x20   uint p    [[thread_position_in_threadgroup]])\n\
+         {{\n\
+         {KERNEL_BODY}",
+        consts = interp_const_block("constant uint"),
+    )
+}
+
+/// The interpreter kernel's shared body — everything after the per-dialect
+/// signature. Pure C over the dialect header's typedef/intrinsic vocabulary
+/// (`uint`/`ushort`, `popcount`/`clz`/`ctz`/`min`), byte-identical across
+/// dialects so an opcode-semantics fix lands in both by construction. Note
+/// div is a `switch` arm over the operand stack — the compiled backend's
+/// noinline-helper dodge was never needed here.
+const KERNEL_BODY: &str = r#"    if (p >= n_probes) return;
     uint code_off = cell_table[cell*3+0];
     uint n_locals = cell_table[cell*3+1];
     uint params   = cell_table[cell*3+2];
@@ -1188,8 +1244,13 @@ kernel void interp(
 }
 "#;
 
-    /// Kernel slot-array bound — cells needing more locals are skipped at build.
-    const MAX_LOCALS: usize = 64;
+/// The GPU library-dispatch backend (macOS/Metal). Lives here so the bytecode
+/// and linearizer above stay buildable everywhere.
+#[cfg(target_os = "macos")]
+mod gpu {
+    use super::bytecode::pack;
+    use super::{CellProgram, IN_STRIDE, OUT_STRIDE};
+    use metal::{Buffer, CommandQueue, ComputePipelineState, Device, MTLResourceOptions, MTLSize};
 
     /// A whole library compiled for GPU dispatch: the fixed interpreter kernel
     /// plus the concatenated bytecode + per-cell offset table for a set of
@@ -1210,33 +1271,16 @@ kernel void interp(
         /// Build from linearized cells. Cells whose local count exceeds the
         /// kernel bound are skipped; the count of skipped cells is returned
         /// alongside the batch. `n_cells()` reflects the admitted cells.
-        /// Encode a program set into the concatenated code + per-cell offset
-        /// table, skipping (and counting) cells over the kernel's local bound.
-        fn pack(progs: &[CellProgram]) -> (Vec<u32>, Vec<u32>, usize) {
-            let (mut code, mut table, mut skipped) = (Vec::new(), Vec::new(), 0usize);
-            for prog in progs {
-                if prog.n_locals > MAX_LOCALS {
-                    skipped += 1;
-                    continue;
-                }
-                table.push((code.len() / 2) as u32); // code offset in instructions
-                code.extend_from_slice(&encode(prog));
-                table.push(prog.n_locals as u32);
-                table.push(prog.params as u32);
-            }
-            (code, table, skipped)
-        }
-
         pub fn new(progs: &[CellProgram]) -> Result<(Self, usize), String> {
             let device =
                 Device::system_default().ok_or_else(|| "msl: no Metal device".to_string())?;
-            let (code, table, skipped) = Self::pack(progs);
+            let (code, table, skipped) = pack(progs);
             let n_cells = table.len() / 3;
             let opts = metal::CompileOptions::new();
             opts.set_fast_math_enabled(false);
             opts.set_language_version(metal::MTLLanguageVersion::V3_1);
             let lib = device
-                .new_library_with_source(KERNEL, &opts)
+                .new_library_with_source(&super::interp_source_msl(), &opts)
                 .map_err(|e| format!("msl interp: kernel compile failed: {e}"))?;
             let func = lib
                 .get_function("interp", None)
@@ -1281,7 +1325,7 @@ kernel void interp(
         /// generation), avoiding a kernel recompile. Returns cells skipped for
         /// exceeding the local-slot bound.
         pub fn reload(&mut self, progs: &[CellProgram]) -> usize {
-            let (code, table, skipped) = Self::pack(progs);
+            let (code, table, skipped) = pack(progs);
             let mk = |v: &[u32]| {
                 let bytes: &[u32] = if v.is_empty() { &[0] } else { v };
                 self.device.new_buffer_with_data(
@@ -1338,14 +1382,6 @@ kernel void interp(
 
 #[cfg(target_os = "macos")]
 pub use gpu::InterpBatch;
-
-/// The interpreter kernel's MSL source — the snapshot/golden surface. macOS-
-/// gated only until the dialect split turns this into a portable builder over
-/// a shared kernel body; the returned bytes must not change when it does.
-#[cfg(target_os = "macos")]
-pub fn interp_source_msl() -> String {
-    gpu::KERNEL.to_string()
-}
 
 #[cfg(test)]
 mod tests {
