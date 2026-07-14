@@ -1642,10 +1642,29 @@ extraction (examples from the task, the equipped-query 0.859 case) — noted as 
 real-world path; pure generation (bootstrap) carries the model's empirical error rate, which the
 gate must measure against the (a) tolerance band rather than assume.
 
-**So stage 2 is now well-posed, not launched:** train the model to emit *easy/extracted* example
-sets from the descriptor corpus; measure end-to-end P@1 on held-out/post-freeze cells against the
-0.58–0.88 router band; the null is interpretable because the router's error-tolerance is mapped up
-front.
+**(c) Discriminativeness of canonical examples (`cn6_canonical_check.py`, model-free).** A model
+demonstrating a pattern emits *canonical* inputs (0,1,2,10,100) — exactly where cells agree — and
+stages 1/1b used *random* inputs. With oracle-correct outputs (isolating discriminativeness from
+error), router P@1 by input pool: **tiny(0..10) 0.625, round(0..100) 0.583, random(0..300) 0.667,
+wide(0..65535) 0.750.** Monotonic — canonical inputs discriminate ~15–22% *worse* than varied/large
+ones, confirming the concern, but it is a **degradation, not a collapse** (0.58–0.63, above chance).
+The fix is a design element: **steer the model to emit varied/large-input examples** (the corpus
+targets use wide inputs; a discriminating prompt), which recovers to ~0.75.
+
+**The honest band, corrected twice.** Model errors are the *plausible-wrong* kind (off-by-one,
+sibling), which hurt more than random — so the noise band is its **lower half, ~0.58–0.79**, not
+0.58–0.88. And canonical inputs cost a further ~15% *unless steered*. Net realistic CN-6 ceiling:
+**~0.60–0.75 with varied-input steering + the router's error tolerance; ~0.50 if the model emits
+canonical demos unsteered.** Grade stage 2 against ~0.60–0.75, not the oracle 0.75.
+
+**Consolidated stage-2 design (three checks in):** (i) emitted examples are *easy/extracted*, never
+the hard target (dissolves the circularity); (ii) the corpus/prompt **steers toward varied/large
+inputs** (discriminativeness); (iii) grade end-to-end P@1 against the **~0.60–0.75** band (the
+router's mapped tolerance to model error). **Build both arms** — generation (headline; the "delegate
+by demonstrating" claim; covers unequipped queries) and extraction (deployment; the equipped-query
+0.859 path; the honest fallback) — machinery identical, only the corpus differs. If forced to one:
+generation, because a null there is informative and extraction almost certainly works if generation
+does. Now buildable with an interpretable target.
 
 ## Immediate next steps (not yet done)
 
