@@ -125,13 +125,43 @@ def main():
         return
 
     if args.ckpt_hf:
-        import torch, cn1_model_hf
-        ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{args.arm}.jsonl").read_text().splitlines() if l.strip()]
-        model, tok, _, _, cfi, _ = cn1_model_hf.build_hf("random")  # any arm; we only generate text
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
         ck = torch.load(args.ckpt_hf, map_location="cpu")
-        model.base.load_state_dict(ck["base"]) if "base" in ck else None
-        # (full CN-6 generation wiring is added when the trained checkpoint exists)
-        print("model-generation eval: wire after cn6_train produces a checkpoint")
+        arm = ck.get("arm", args.arm)
+        tok = AutoTokenizer.from_pretrained("HuggingFaceTB/SmolLM2-135M")
+        tok.add_tokens(["<call>", "</call>"], special_tokens=True)
+        close_id = tok.convert_tokens_to_ids("</call>")
+        model = AutoModelForCausalLM.from_pretrained("HuggingFaceTB/SmolLM2-135M", dtype=torch.float32)
+        model.resize_token_embeddings(ck["vocab"])
+        model.load_state_dict(ck["base"])
+        device = "cpu"  # generation on CPU dodges the MPSGraph LM-head bug (small n)
+        model.to(device).eval()
+        ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{arm}.jsonl").read_text().splitlines() if l.strip()]
+
+        @torch.no_grad()
+        def gen_spec(context):
+            ids = torch.tensor([[tok.bos_token_id] + tok.encode(context + " <call>", add_special_tokens=False)], device=device)
+            for _ in range(48):
+                nxt = int(model(input_ids=ids).logits[0, -1].argmax())
+                ids = torch.cat([ids, torch.tensor([[nxt]], device=device)], 1)
+                if nxt == close_id:
+                    break
+            gen = tok.decode(ids[0].tolist())
+            seg = gen.split("<call>", 1)[-1].split("</call>", 1)[0]
+            return seg
+
+        # one row per held-out cell (dedup) — the cell is the unit
+        seen, ranks, corr = {}, [], []
+        for r in ev:
+            seen.setdefault(r["cell"], r)
+        for cell, r in seen.items():
+            pairs = parse_spec(gen_spec(r["context"]))
+            corr.append(correctness(cell, pairs))
+            rk = route_rank(cell, pairs)
+            ranks.append(rk if rk is not None else len(value))
+        print(f"CN-6 {arm} — model-generated specs, held-out cells:")
+        report("held-out", ranks, corr)
         return
 
     print("pass --oracle (ceiling/smoke) or --ckpt-hf PATH (trained model)")
