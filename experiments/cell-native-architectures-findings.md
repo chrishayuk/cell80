@@ -1677,6 +1677,29 @@ equipped-query 0.859 path). If forced to one, **generation**, because its null i
 extraction almost certainly works if generation does. No fork flip; the checks left the original
 framing standing, at a properly-powered ceiling.
 
+### CN-6 stage 2 — corpus + resolution eval harness (graded on P@5, CIs baked in)
+
+Built and validated before the training spend. Two corpora (`cn6_corpus.py`): **generation** (target
+= a fresh example set the model must produce from the descriptor — genuinely hard, e.g.
+`op lcm ... <call> 728 943 = 31144 ; …` requires computing lcm) and **extraction** (demos in context,
+target copies them). ~13k train rows each, 24 held-out cells eval-only.
+
+The eval (`cn6_eval.py`) grades on **end-to-end resolution, not router P@1** — the two-tier pipeline
+needs the true cell in an *executable* top-k, which execution then confirms exactly — and every
+number ships with a Wilson CI (the terrain is noisy: n=24 held cells, five sampling catches so far).
+**Oracle ceiling** (correct examples, validates parse→route→resolution + gives the powered bar):
+
+| | resolve@1 | resolve@5 | resolve@10 |
+|---|---|---|---|
+| all value cells (n=243) | 0.514 [.45,.58] | **0.749 [.69,.80]** | **0.835 [.78,.88]** |
+| held-out only (n=24) | 0.625 [.43,.79] | 0.792 [.60,.91] | 0.833 [.64,.93] |
+
+So the **operating ceiling is resolve@5 ≈ 0.75 / resolve@10 ≈ 0.84** (all-cells, tight); resolve@1
+(0.51) is not the metric. Stage 2's gate: does the model's *emitted* spec resolve near this ceiling,
+with emitted-example *correctness* reported alongside (a spec can fail by being wrong or by being
+non-discriminating — correctness separates them). Remaining: `cn6_train.py` (train the base to emit
+specs, both arms), then the model-generation eval against this ceiling.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
