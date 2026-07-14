@@ -723,3 +723,26 @@ expansion past ~2,500 cells** (fingerprint-perturbed clones, or cost-discovery/c
 Folding (b) in here would produce an ambiguous result later; it stays open, with two-tier/CN-6 its
 likely route. So the honest scope of this run: **the curve decides whether the mechanism has a
 future (a); (b) remains a named, separate question.**
+
+## Amendment (2026-07-14): curve verdict is UNDERPOWERED, not FAIL — and the resolving experiment
+
+Correcting the record before it propagates: the library-scale curve gave α = 0.624, but with 6
+points over <1 decade the fit is **α = 0.624, SE 0.088, 95% CI [0.38, 0.87]** (4 df, residual
+s=0.149). **The pre-registered threshold α < 0.54 sits inside the interval, so the experiment cannot
+distinguish pass from fail. Verdict: UNDERPOWERED, not FAIL.** Registering an unsupported FAIL is the
+same error as an unsupported PASS (the sixth "is this number an artifact of how I measured it?"
+catch). The non-monotonic N=175 point (rank 32 < N=114's 34) is the noise floor.
+
+**What stands (not underpowered):** α < 1 with confidence (upper CI 0.87 < 1.0) → the geometry holds
+**sublinearly**; and lift-over-chance grows monotonically 1.7×→4.1×. The mechanism gets relatively
+stronger as the library grows. Envelope across the CI: ~68k (α=0.87) to ~22M (α=0.38) cells — even
+the pessimistic end is ~10⁵, 130× the current library. This decides "millions vs hundreds of
+thousands," not "works vs doesn't."
+
+**The resolving experiment — synthetic library expansion to ~10⁴ cells.** 114→790 is 0.84 decades;
+reaching ~5–10k cells halves the CI **and** carries the library past the ~2,500 softmax/token-vocab
+ceiling — so **one build answers both hypothesis (a) (pin α) and hypothesis (b) (does token-as-address
+survive the bottleneck).** Build: expand the library with fingerprint-perturbed clones and/or the
+composition/cost-discovery output, retrain the curve out to 10⁴, refit α with a tight CI, and read
+where token-as-address degrades. This is now the **highest-value next experiment** — more informative
+than CN-6, whose premise depends on how this lands. CN-6 (spec emission) follows, gated on it.

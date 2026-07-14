@@ -1497,7 +1497,20 @@ norm-fix). The *contrast* and the *inversion replication* are matched-item and s
   scale curve). (Swap/SmolLM2 authoritative re-eval is pending an HF checkpoint-eval; the v11
   faithful number is the solid one.)
 
-### Library-scale curve (hypothesis a) — pre-registered FAIL (marginal), usable to ~4×10⁵ cells
+### Library-scale curve (hypothesis a) — UNDERPOWERED (not FAIL); threshold sits inside the CI
+
+> **VERDICT CORRECTION (2026-07-14):** an earlier revision of this section called this a
+> "pre-registered FAIL." That was wrong, and registering an unsupported FAIL is the same error as
+> claiming an unsupported PASS (the sixth catch, same shape). The point estimate is α = 0.624, but
+> **SE(α) = 0.088 and the 95% CI is [0.38, 0.87]** (6 points, 4 df, residual s = 0.149) — the
+> threshold **α < 0.54 sits comfortably inside the interval**, so the experiment **cannot decide
+> pass from fail. Verdict: UNDERPOWERED.** The non-monotonicity (rank at N=175 is 32, *below* N=114's
+> 34) is the noise floor announcing itself. What *is* established: **α < 1 with confidence** (upper
+> CI 0.87 < 1.0 → sublinear growth confirmed) and **lift over chance grows monotonically 1.7×→4.1×**
+> — the mechanism gets relatively stronger as the library grows. Envelope across the CI: α=0.38 →
+> usable to ~22M cells; α=0.62 → ~390k; α=0.87 → ~68k — so even the pessimistic end is ~10⁵ cells
+> (130× the current library). This decides whether the pitch says "millions" or "hundreds of
+> thousands," not whether the thing works.
 
 The deciding experiment (`cn1_scale_curve.py`; W_f-only retrain on the frozen seed-81 transformer,
 validated to reproduce the full-model rank: 96 vs ~98 at N=790). Held-out median rank vs library
@@ -1512,29 +1525,34 @@ size N (each holding the 24 axis-A cells in, retrained on the subset's seen cell
 | 640 | 87 | 320 | 3.7× |
 | 790 | 96 | 395 | 4.1× |
 
-**Log-log fit: rank(N) ≈ 98·(N/790)^α, α = 0.624. Pre-registered threshold α < 0.54: FAIL.**
-Extrapolated rank(10⁶) ≈ 8,462 > GPU K_exec 4,718. By the registered criterion, behaviour-as-address
-as a *standalone* addresser does **not** scale to 10⁶ within the executable window.
+**Log-log fit: rank(N) ≈ 98·(N/790)^α, α = 0.624 [95% CI 0.38–0.87]. Threshold α < 0.54 is INSIDE
+the CI → the experiment cannot decide (UNDERPOWERED; see the verdict-correction note above).** The
+point extrapolation is rank(10⁶) ≈ 8,462 vs GPU K_exec 4,718 (factor 1.8, well inside what a ±0.09
+SE on α produces: α=0.54→4,718, α=0.70→~15,000, both in the interval).
 
-**But it is a marginal fail with a real envelope, and the geometry does hold sublinearly:**
+**What is established (independent of the underpowered pass/fail): the geometry holds sublinearly:**
 - **Lift over chance grows with library size (1.7× → 4.1×)** — the hoped-for shape: absolute rank
   grows sublinearly (α < 1) while chance grows linearly, so the mechanism gets *relatively* stronger
   as the library grows. It is genuinely doing behavioural work at every scale tested.
-- **Usable envelope (GPU @ 4.8% overhead): up to ~3.9×10⁵ cells** (rank(10⁴)≈478, rank(10⁵)≈2,010,
-  crossover at ~393k, rank(10⁶)≈8,462). So the mechanism scales to **hundreds of thousands** of
-  cells, not millions — a large, real operating range, just short of the 10⁶ pitch target.
-- **Caveats (do not over-read the FAIL):** a 6-point fit over <1 decade (114→790) extrapolated 3+
-  orders of magnitude — wide α uncertainty; and a small-N training-amount confound (fewer seen cells
-  trained at small N; direction on α ambiguous). The verdict is honest and registered, but the
-  extrapolation is the load-bearing assumption.
+- **Usable envelope spans the CI: ~68k (α=0.87) to ~22M (α=0.38) cells, point estimate ~390k**
+  (GPU @ 4.8%). So *even the pessimistic end of the interval is ~10⁵ cells — 130× the current
+  library.* Whether it reaches 10⁶ standalone is the undecided question; that nothing is blocked for
+  a long time either way is not.
+- **Why underpowered:** 6 points over <1 decade (114→790) extrapolated 3+ orders of magnitude — the
+  non-monotonic N=175 point is the noise floor, SE(α)=0.088, CI [0.38,0.87]. Plus a small-N
+  training-amount confound (fewer seen cells trained at small N; α direction ambiguous).
 
 **What it means for the programme.** Hypothesis (a) — behavioural geometry holding as the library
-grows — is **qualifiedly held**: sublinear and lift-improving, but α too high (0.62 > 0.54) for a
-standalone 10⁶ address. So beyond ~10⁵–10⁶ cells the mechanism needs a **second-stage prune** or the
-**two-tier / CN-6** route (spec emission, no per-cell token) — which is exactly where hypothesis (b)
-(the softmax/token-vocabulary bottleneck, untestable here) was already pointing. The honest headline
-is now: *behaviour-as-address is a confirmed mechanism with a usable range of ~10⁵ cells; it does not
-reach 10⁶ standalone, and the path past that is the two-tier design the substrate already ships.*
+grows — is **neither confirmed nor refuted; the curve as built cannot decide it.** What stands: the
+geometry holds **sublinearly** (α < 1 with confidence, CI nowhere near 1) and lift grows monotonically
+(1.7×→4.1×) — the mechanism gets relatively stronger with scale. **The resolution is another decade
+of N (~5–10k cells)** to halve the CI *and* reach the softmax ceiling — which requires **synthetic
+library expansion** (fingerprint-perturbed clones, or composition/cost-discovery output), the **same
+build hypothesis (b) needs. One build answers both**, and it is more informative than CN-6, whose
+premise depends on how this lands. The honest headline: *behaviour-as-address is a confirmed
+mechanism whose scaling exponent is measured but not yet pinned (α = 0.62 [0.38, 0.87]); the next
+experiment is synthetic expansion to 10⁴ cells, which decides both the exponent and the token-vocab
+ceiling.*
 
 ## Immediate next steps (not yet done)
 
