@@ -1442,6 +1442,38 @@ agreement: 0.119→0.085.
   Whether a richer fingerprint actually moves the model's per-cell recall is a retrain experiment
   (the model-free sweep only establishes the cells are separable in principle — they are).
 
+### Faithful arms: the pre-registered inversion REPLICATES 3/3 seeds; the swap dissociates too
+
+All nine runs completed (resilient runner + CPU-eval fix held; no failures). Numbers are first-N
+eval as-run (contrast-valid across arms, absolute-inflated — authoritative random-sampled absolutes
+pending), seen-top1 / held-out-median-rank:
+
+| | seed 80 | seed 81 | seed 82 |
+|---|---|---|---|
+| fingerprint | 0.27 / 43 | 0.295 / 44 | 0.285 / 44 |
+| shuffled | 0.475 / 566 | 0.43 / 432 | 0.49 / 345 |
+| random | 0.785 / 519 | 0.745 / 447 | 0.76 / 331 |
+
+**The pre-registered prediction holds in all three seeds:** (a) fingerprint underperforms shuffled
+on **seen top-1** (0.27<0.475, 0.295<0.43, 0.285<0.49) *and* (b) outperforms it on **held-out rank**
+(43<566, 44<432, 44<345) — and fingerprint beats random on held-out in every seed too. The
+fingerprint held-out rank is strikingly stable (43/44/44). This is the confirmatory outcome: a
+prediction the mechanism made *before* the data, which could have failed, held across seeds. The
+double dissociation is not a one-seed artifact.
+
+**The SmolLM2 base swap replicates the dissociation at a different base** (first-N eval): seen top-1
+fp 0.36 < shuf 0.52 < **rand 1.0** (random memorizes seen cells *perfectly* — the extreme of the
+freedom-to-memorize axis); held-out rank fp **20** ≪ shuf 272 < rand 404. So the mechanism is
+**base-independent** — the inversion and the held-out advantage reproduce on a code/math-pretrained
+Llama, not just the TinyStories base. Held-out top-1 is still 0 on SmolLM2 (the retired bar); seen
+top-1 rose modestly (0.27→0.36) — the prior helps but does not crack top-1, consistent with the
+K_exec reframe that top-1 was never the target.
+
+**Caveat (unchanged):** absolute ranks here are first-N-inflated; the authoritative absolute levels
+(to read against K_exec) come from the random-sampled checkpoint re-eval (`cn1_eval_ckpt.py`, now
+shuffled; seeds 81/82 checkpoints have the saved norm and are faithful; seed 80's predate the
+norm-fix). The *contrast* and the *inversion replication* are matched-item and stand regardless.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
