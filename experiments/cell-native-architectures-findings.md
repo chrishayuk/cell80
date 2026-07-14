@@ -1474,6 +1474,29 @@ K_exec reframe that top-1 was never the target.
 shuffled; seeds 81/82 checkpoints have the saved norm and are faithful; seed 80's predate the
 norm-fix). The *contrast* and the *inversion replication* are matched-item and stand regardless.
 
+### Authoritative random-sampled re-eval (v11 seed 81, faithful) — and it clears K_exec at 790
+
+`cn1_eval_ckpt.py` (now random-sampled, norm loaded) on the seed-81 faithful checkpoints. Held-out
+(novel_cell × seen_comp, n=200), median rank / mean / % in top-10%:
+
+| arm | held-out median | mean | top-10% | seen median (control) |
+|---|---|---|---|---|
+| fingerprint | **98** | 187 | **0.38** | 29 |
+| shuffled | 498 | 481 | 0.045 | 25 |
+| random | 539 | 520 | 0.0 | 2 |
+
+- **The contrast is robust under authoritative sampling:** fingerprint held-out median 98 ≪ shuffled
+  498 ≈ random 539; 38% of held-out cells in the top-10% vs 4.5% vs 0%. The seen control holds (all
+  comparable, random best at 2 — the freedom-to-memorize extreme). The corrected absolute median is
+  ~98 (first-N had inflated it to 44; consistent with the ~114 robust proxy).
+- **Read against the execution-derived target:** median 98 < **K_exec ≈ 260 (CPU)**, and p75 = 227
+  < 260 — so at 790 cells the fingerprint places **most** held-out cells inside the per-token
+  executable budget. **The mechanism already clears the usable bar at today's scale.** What it does
+  as the library grows — absolute rank flat (usable) vs fractional 12.4% (→ ~124k at 10⁶, unusable
+  on CPU) — is the single remaining question, and it is exactly the next experiment (the library-
+  scale curve). (Swap/SmolLM2 authoritative re-eval is pending an HF checkpoint-eval; the v11
+  faithful number is the solid one.)
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
