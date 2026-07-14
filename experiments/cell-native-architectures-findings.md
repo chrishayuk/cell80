@@ -1611,11 +1611,41 @@ library-size-invariant: the runtime doesn't care whether a cell was in training.
 the fused router to 0.859, so **0.75 is a floor.** (Caveat: 249-cell library, not the full 790; P@1
 would soften over more cells but the held-out/seen parity is the load-bearing fact.)
 
-**So CN-6 reduces to the model side.** The runtime tier is confirmed; what remains is the training
-experiment — *can the model emit discriminating I/O examples given a need*, so the pipeline is
-`model emits examples → router resolves by execution → result splices`, working for cells never in
-the token vocabulary (held-out and post-freeze alike). That is the next build, now de-risked: it
-routes into a ~0.75–0.86 resolution ceiling that is known to hold for unseen cells.
+**Correction: 0.75 is a CEILING, not a floor.** The stage-1 examples came from an *oracle* (we ran
+the true cell). A deployed model won't have the cell — that's the point of retrieval — so the real
+question is whether a *model's imperfect* examples still resolve. Two prerequisites, done before any
+training spend:
+
+**(a) Noise sensitivity (`cn6_noise_check.py`, model-free).** Corrupt j of 6 examples and watch P@1:
+
+| corruption | clean | 1 of 6 | 2 of 6 |
+|---|---|---|---|
+| random | 0.875 | 0.792 | 0.750 |
+| off-by-one | 0.875 | 0.792 | 0.583 |
+| sibling | 0.875 | 0.708 | 0.667 |
+
+`route` **degrades gracefully — no cliff** (it ranks by degree of match, already tolerant), so the
+router does **not** need majority/confidence changes as a prerequisite. But **plausible-wrong errors
+(off-by-one, sibling — the realistic model failures) hurt more than random**, because a near-miss
+output pulls resolution toward a *different* cell that really produces it. The real ceiling CN-6
+routes into is **~0.58–0.88, set by the model's own error rate**, not the oracle's 0.875.
+
+**(b) The circularity, resolved in the design.** To emit a *correct* (input,output) pair the model
+must compute the function — but if it can, why does it need the cell? CN-6's design must answer this,
+and the noise result makes the answer clean: **the emitted examples are EASY instances (small-case
+bootstrap) or EXTRACTED from the task context — never the hard target computation the cell is for.**
+The model demonstrates the *pattern* cheaply (2+2=4, or copies (200,15)→170 from the problem); the
+cell does the *hard instance* (4823×9917) exactly. The circularity dissolves because the value is
+"cheap pattern demonstration → exact hard computation," and the router's demonstrated tolerance (a)
+covers the model's occasional slips on the easy cases. The **stronger** deployment variant is
+extraction (examples from the task, the equipped-query 0.859 case) — noted as the primary
+real-world path; pure generation (bootstrap) carries the model's empirical error rate, which the
+gate must measure against the (a) tolerance band rather than assume.
+
+**So stage 2 is now well-posed, not launched:** train the model to emit *easy/extracted* example
+sets from the descriptor corpus; measure end-to-end P@1 on held-out/post-freeze cells against the
+0.58–0.88 router band; the null is interpretable because the router's error-tolerance is mapped up
+front.
 
 ## Immediate next steps (not yet done)
 
