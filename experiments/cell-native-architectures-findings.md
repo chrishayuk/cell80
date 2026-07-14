@@ -1727,11 +1727,32 @@ delegates only where it can already compute — not a defect in the pipeline (ex
 runtime resolves fine). A larger/math-stronger base would lift generation's correctness and with it
 its resolution; the cap is the base model, measured.
 
-**So the "gap between demo and working system" is closed for the deployment case.** CN-6 confirms:
-the model emitting/lifting *examples* (not intent) resolves cells library-size-invariantly, at the
-router ceiling, for held-out cells, with no per-cell token — via extraction today, and via
-generation once the base can compute the examples. The honest boundary is now measured: **equipped
-(extraction) works; unequipped (generation) is bounded by the base model's arithmetic.**
+**Precision, before this travels (the summary above is slightly generous):**
+- **The extraction model-side contribution is *copying*, not *specifying*.** Correctness 0.979 = it
+  lifts pairs already in the prompt; the *router* (training-independent) does all the resolution
+  (0.875 ≈ the 0.83 oracle ceiling). So the honest model-side claim is thin: "the model copies I/O
+  pairs from context," not "the model learned to specify the computation it needs." It invites the
+  fair question *why is the model in the loop at all if the examples are already there* — you could
+  route straight from the context. The model's residual contribution is deciding **that** a cell is
+  wanted and **which** pairs to lift — real but small.
+- **The deployment envelope is narrower than "works today."** Extraction needs the task to *carry*
+  I/O examples (few-shot prompts, spreadsheets, worked examples). Most real queries don't — "compute
+  the compound interest on this loan" has no worked pair. **The general case is the *unequipped*
+  one — exactly where generation failed.** So CN-6's success case is the case where the answer was
+  partly given; the case that matters most is still open.
+- **Keep the retraction straight.** What was retracted (correctly) is the *width/discriminativeness*
+  "bind" — the powered data says input width doesn't matter, and generation did **not** fail for
+  that reason. What bit is the **original circularity** (to emit a correct example you must compute
+  the function), which was live from the start and is what the correctness-0.097 data confirms. A
+  reader must not conclude the retracted argument was vindicated; a different one was.
+- **"Generation works once the base can compute" is a CONJECTURE, not a result.** Plausible
+  (correctness scales with model size; discriminativeness is now measured flat, so correctness is
+  the only remaining blocker) — but untested. **The deciding experiment (a swap, not a redesign):
+  run the generation arm on a base that can do easy arithmetic** (Qwen2.5-1.5B/3B or similar —
+  something that gets `lcm(4,6)=12`). If correctness climbs *and* resolution tracks it toward the
+  ~0.83 ceiling → the unequipped case works and CN-6 is done properly. If correctness climbs but
+  resolution doesn't → something else is wrong, learned cheaply. This is now the most informative
+  unrun experiment in the lane.
 
 ## Immediate next steps (not yet done)
 
