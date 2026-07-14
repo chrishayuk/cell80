@@ -658,3 +658,38 @@ the faithful arms**: it is the cheapest decisive experiment with the biggest con
 rank is fractional the capacity/corpus question is moot and CN-6 is premature. New order:
 **faithful arms → library-scale curve (absolute vs fractional) → CN-6.** The mechanism is confirmed
 (the matched-item contrast); its usability is now a single, well-specified, scale question.
+
+## Amendment (2026-07-14): third dissociation (seed-invariance); GPU-in-the-loop; per-cell recall; two-hypothesis curve
+
+**Third dissociation — the fingerprint address is seed-INVARIANT.** Held-out rank across seeds
+80/81/82: fingerprint **43/44/44 (std 0.47)**, shuffled 566/432/345 (std 91), random 519/447/331
+(std 77). The fingerprint arm is **~193× less seed-variant** than the nulls. Predicted by the
+mechanism and nothing else: the fingerprint row is *computed* (a deterministic function of behaviour,
+identical regardless of init), while a random/scrambled row is a product of the seed, so its held-out
+position is noise. Near-zero seed-variance is the geometry showing through — a third, free
+dissociation, and the kind that makes a reviewer believe the mechanism over the number.
+
+**K_exec re-derived at CN-2's overhead standard (4.8%, not 100%).** A full-budget K_exec doubles
+inference latency; CN-2 accepted ~4.8%. At 4.8%: **GPU K_exec ≈ 4,718; CPU K_exec ≈ 13.** So the
+honest usability claim, per **per-CELL** recall (the unit the scale claim rests on — "can a NEW cell
+be found") on the faithful seed-81 checkpoint (24 held-out value cells, per-cell median rank 90):
+
+| K_exec | context | per-cell recall |
+|---|---|---|
+| 13 | CPU @ 4.8% | 0.125 |
+| 98 | median rank | 0.583 |
+| 266 | CPU @ 100% (2× latency) | 0.833 |
+| 4,718 | **GPU @ 4.8%** | **1.000** |
+
+**Refined claim: usable on GPU at 790 (per-cell recall 1.0 within the 4.8%-overhead budget); CPU only
+with a large latency premium (0.125 at a G2 budget, 0.833 at 2× latency).** GPU-in-the-loop is a real
+architectural dependency, not a footnote — pinned here.
+
+**The library-scale curve pre-registers TWO hypotheses, not one** (raised earlier, now written down).
+It tests: **(a) does behavioural GEOMETRY hold as the library grows** — absolute held-out rank flat
+(scale-invariant, usable) vs fractional (~12% → unusable at 10⁶); and **(b) does the TOKEN-vocabulary
+mechanism survive** — the softmax-routing bottleneck (measured) predicts token-as-address degrades
+past ~2,500 candidates. Falsification map: if (a) holds and (b) fails, that is **not** a defeat — it
+is evidence that *behaviour-as-address survives while token-as-address does not*, which routes to CN-6
+(spec emission, no per-cell token) with a measured reason. Writing both down so a curve degradation
+is not ambiguous between "the geometry broke" and "the softmax vocabulary broke."
