@@ -24,6 +24,8 @@ BASE = "HuggingFaceTB/SmolLM2-135M"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", choices=["generation", "extraction"], default="generation")
+    ap.add_argument("--base", default=BASE, help="HF base model id (e.g. meta-llama/Llama-3.2-1B)")
+    ap.add_argument("--input-max", type=int, default=1000, help="pick the corpus regenerated at this input range")
     ap.add_argument("--steps", type=int, default=6000)
     ap.add_argument("--bs", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
@@ -32,16 +34,17 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--device", default=None)
     args = ap.parse_args()
+    TAG = "" if args.input_max == 1000 else f"_i{args.input_max}"
     device = args.device or ("mps" if torch.backends.mps.is_available() else "cpu")
     rng = __import__("random").Random(80)
     torch.manual_seed(80)
     t0 = time.time()
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(BASE)
+    tok = AutoTokenizer.from_pretrained(args.base)
     tok.add_tokens(["<call>", "</call>"], special_tokens=True)
     call_id = tok.convert_tokens_to_ids("<call>")
-    model = AutoModelForCausalLM.from_pretrained(BASE, dtype=torch.float32)
+    model = AutoModelForCausalLM.from_pretrained(args.base, dtype=torch.float32)
     model.resize_token_embeddings(len(tok))
     model.to(device)
 
@@ -57,7 +60,7 @@ def main():
     trainable = [p for p in model.parameters() if p.requires_grad]
     print(f"== CN-6 {args.arm} on {device} | trainable {sum(p.numel() for p in trainable):,} ==", flush=True)
 
-    rows = [json.loads(l) for l in (HERE / f"cn6_corpus_train_{args.arm}.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in (HERE / f"cn6_corpus_train_{args.arm}{TAG}.jsonl").read_text().splitlines() if l.strip()]
     if args.smoke:
         rows = rows[:800]
     data = []
@@ -99,8 +102,10 @@ def main():
             if step >= args.steps:
                 break
 
-    ckpt = HERE / f"cn6_ckpt_{args.arm}.pt"
-    torch.save({"arm": args.arm, "base": model.state_dict(), "call_id": call_id, "vocab": len(tok)}, ckpt)
+    tag = "" if args.base == "HuggingFaceTB/SmolLM2-135M" else "_" + args.base.split("/")[-1].replace(".", "").lower()
+    ckpt = HERE / f"cn6_ckpt_{args.arm}{tag}.pt"
+    torch.save({"arm": args.arm, "base_id": args.base, "input_max": args.input_max,
+                "base": model.state_dict(), "call_id": call_id, "vocab": len(tok)}, ckpt)
     print(f"saved {ckpt.name} ({time.time()-t0:.0f}s)")
 
 

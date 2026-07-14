@@ -34,10 +34,10 @@ def spec_str(pairs):
     return " ; ".join(f"{' '.join(map(str, a))} = {o}" for a, o in pairs)
 
 
-def moderate_args(arity, rng):
-    # varied but plausibly-computable inputs (0..1000) — the powered check found no width penalty,
+def moderate_args(arity, rng, hi=1000):
+    # inputs in [0,hi]; small hi => computable by a real base — the powered check found no width penalty,
     # so we don't force tiny; we do avoid the 0..65535 tail the model can't compute in the gen arm.
-    return [rng.randint(0, 1000) for _ in range(arity)]
+    return [rng.randint(0, hi) for _ in range(arity)]
 
 
 def main():
@@ -45,9 +45,11 @@ def main():
     ap.add_argument("--arm", choices=["generation", "extraction"], default="generation")
     ap.add_argument("--per-cell", type=int, default=60)
     ap.add_argument("--seed", type=int, default=80)
+    ap.add_argument("--input-max", type=int, default=1000)
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
+    TAG = "" if args.input_max == 1000 else f"_i{args.input_max}"
     lib = {json.loads(l)["name"]: json.loads(l) for l in LIBRARY.read_text().splitlines() if l.strip()}
     held = {h["name"] for h in json.loads(AXIS_A.read_text())["held_out_cells"]}
     value = [n for n, r in lib.items() if r["arity"] >= 1]
@@ -60,7 +62,7 @@ def main():
         need = N_EX * 2 if args.arm == "extraction" else N_EX
         while len(pairs) < need and tries < need * 10:
             tries += 1
-            a = moderate_args(arity, rng)
+            a = moderate_args(arity, rng, args.input_max)
             r = oracle.run(name, a)
             if r.get("halt") == "returned":
                 pairs.append((a, r["result"]))
@@ -90,8 +92,8 @@ def main():
             made += 1
 
     rng.shuffle(train)
-    (HERE / f"cn6_corpus_train_{args.arm}.jsonl").write_text("\n".join(json.dumps(r) for r in train) + "\n")
-    (HERE / f"cn6_corpus_eval_{args.arm}.jsonl").write_text("\n".join(json.dumps(r) for r in evalr) + "\n")
+    (HERE / f"cn6_corpus_train_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in train) + "\n")
+    (HERE / f"cn6_corpus_eval_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in evalr) + "\n")
     print(f"arm {args.arm}: train {len(train)} rows | held-out eval {len(evalr)} rows "
           f"({len({r['cell'] for r in evalr})} held cells)")
     print("sample:", train[0]["text"][:130])

@@ -64,6 +64,10 @@ def main():
     ap.add_argument("--ckpt-hf", default=None)
     ap.add_argument("--arm", default="generation")
     ap.add_argument("--k", type=int, nargs="+", default=[1, 5, 10])
+    ap.add_argument("--input-max", type=int, default=1000, help="oracle-mode: draw example inputs in [0,this]")
+    ap.add_argument("--sample", type=float, default=0.0, help="ckpt-hf: temperature (>0 => sample, tests decode-collapse)")
+    ap.add_argument("--nsample", type=int, default=1, help="ckpt-hf: union pairs from this many sampled specs")
+    ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
     lib = {json.loads(l)["name"]: json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()}
@@ -114,12 +118,12 @@ def main():
             a = lib[name]["arity"]; out = []; t = 0
             while len(out) < k and t < k * 12:
                 t += 1
-                args_ = [rng.randint(0, 1000) for _ in range(a)]
+                args_ = [rng.randint(0, args.input_max) for _ in range(a)]
                 r = host.run(handles[name], args_)
                 if r.get("halt") == "returned":
                     out.append((args_, r["result"]))
             return out
-        print("ORACLE ceiling (correct examples — validates pipeline + powered ceiling):")
+        print(f"ORACLE ceiling (correct examples, inputs 0..{args.input_max} — pipeline + powered bar):")
         report("all value cells", [r for r in (route_rank(n, oracle_pairs(n)) for n in value) if r is not None])
         report("held-out only", [r for r in (route_rank(n, oracle_pairs(n)) for n in held_val) if r is not None])
         return
@@ -129,39 +133,77 @@ def main():
         from transformers import AutoModelForCausalLM, AutoTokenizer
         ck = torch.load(args.ckpt_hf, map_location="cpu")
         arm = ck.get("arm", args.arm)
-        tok = AutoTokenizer.from_pretrained("HuggingFaceTB/SmolLM2-135M")
+        base_id = ck.get("base_id", "HuggingFaceTB/SmolLM2-135M")
+        imax = ck.get("input_max", 1000)
+        etag = "" if imax == 1000 else f"_i{imax}"
+        tok = AutoTokenizer.from_pretrained(base_id)
         tok.add_tokens(["<call>", "</call>"], special_tokens=True)
         close_id = tok.convert_tokens_to_ids("</call>")
-        model = AutoModelForCausalLM.from_pretrained("HuggingFaceTB/SmolLM2-135M", dtype=torch.float32)
+        model = AutoModelForCausalLM.from_pretrained(base_id, dtype=torch.float32)
         model.resize_token_embeddings(ck["vocab"])
         model.load_state_dict(ck["base"])
         device = "cpu"  # generation on CPU dodges the MPSGraph LM-head bug (small n)
         model.to(device).eval()
-        ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{arm}.jsonl").read_text().splitlines() if l.strip()]
+        print(f"  base {base_id} | input-max {imax}", flush=True)
+        ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{arm}{etag}.jsonl").read_text().splitlines() if l.strip()]
+
+        T = args.sample
+        torch.manual_seed(args.seed)
+
+        def pick(lg):
+            return int(torch.multinomial(torch.softmax(lg / T, -1), 1)) if T > 0 else int(lg.argmax())
 
         @torch.no_grad()
         def gen_spec(context):
-            ids = torch.tensor([[tok.bos_token_id] + tok.encode(context + " <call>", add_special_tokens=False)], device=device)
-            for _ in range(48):
-                nxt = int(model(input_ids=ids).logits[0, -1].argmax())
-                ids = torch.cat([ids, torch.tensor([[nxt]], device=device)], 1)
-                if nxt == close_id:
+            prompt = [tok.bos_token_id] + tok.encode(context + " <call>", add_special_tokens=False)
+            out = model(input_ids=torch.tensor([prompt], device=device), use_cache=True)
+            past = out.past_key_values
+            toks = [pick(out.logits[0, -1])]
+            for _ in range(47):
+                if toks[-1] == close_id:
                     break
-            gen = tok.decode(ids[0].tolist())
+                out = model(input_ids=torch.tensor([[toks[-1]]], device=device), past_key_values=past, use_cache=True)
+                past = out.past_key_values
+                toks.append(pick(out.logits[0, -1]))
+            gen = tok.decode(prompt + toks)
             seg = gen.split("<call>", 1)[-1].split("</call>", 1)[0]
             return seg
 
+        def cell_pairs(context):
+            # union distinct pairs across nsample sampled specs (nsample=1 => single spec)
+            seen_p, pairs = set(), []
+            for _ in range(max(1, args.nsample)):
+                for a, o in parse_spec(gen_spec(context)):
+                    key = (tuple(a), o)
+                    if key not in seen_p:
+                        seen_p.add(key); pairs.append((a, o))
+            return pairs
+
+        print(f"  decode: {'greedy' if T == 0 else f'sample T={T}'} | nsample {args.nsample}", flush=True)
         # one row per held-out cell (dedup) — the cell is the unit
-        seen, ranks, corr = {}, [], []
+        seen, ranks, corr, per, ndist = {}, [], [], [], []
         for r in ev:
             seen.setdefault(r["cell"], r)
         for cell, r in seen.items():
-            pairs = parse_spec(gen_spec(r["context"]))
-            corr.append(correctness(cell, pairs))
+            pairs = cell_pairs(r["context"])
+            c = correctness(cell, pairs)
             rk = route_rank(cell, pairs)
-            ranks.append(rk if rk is not None else len(value))
+            rk = rk if rk is not None else len(value)
+            corr.append(c); ranks.append(rk); per.append((cell, c, rk))
+            ndist.append(len({tuple(a) for a, _ in pairs}))
+        print(f"  mean distinct inputs / spec: {sum(ndist)/len(ndist):.2f}", flush=True)
         print(f"CN-6 {arm} — model-generated specs, held-out cells:")
         report("held-out", ranks, corr)
+        # per-cell: separates arithmetic failure (correctness) from non-discrimination (rank | correct)
+        print("\n  per cell (correctness | rank | resolves@5):")
+        for cell, c, rk in sorted(per, key=lambda x: -x[1]):
+            print(f"      {cell:<26} corr {c:.2f}  rank {rk:>3}  {'Y' if rk < 5 else '.'}")
+        # among cells the model computed correctly, does the spec resolve? (isolates discrimination)
+        good = [(c, rk) for _, c, rk in per if c >= 0.99]
+        if good:
+            res = sum(rk < 5 for _, rk in good) / len(good)
+            print(f"\n  resolve@5 | fully-correct spec (n={len(good)}): {res:.3f}"
+                  f"  — the discrimination ceiling the model actually hit")
         return
 
     print("pass --oracle (ceiling/smoke) or --ckpt-hf PATH (trained model)")

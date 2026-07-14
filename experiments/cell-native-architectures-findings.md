@@ -1754,6 +1754,91 @@ its resolution; the cap is the base model, measured.
   resolution doesn't → something else is wrong, learned cheaply. This is now the most informative
   unrun experiment in the lane.
 
+### CN-6 stage 2 DECIDING RESULT — the conjecture is not confirmed at 1B; generation is computation-limited, and that is the point
+
+The pre-stated deciding experiment (line above) was a *swap, not a redesign*: run the generation
+arm on a base that can actually do easy arithmetic, regenerate the corpus with small (0..20) inputs
+the base can compute, and ask whether correctness climbs *and resolution tracks it toward the ~0.83
+ceiling*. Base chosen: **Llama-3.2-1B** (10/10 on an easy-arithmetic probe; standard arch; M3-fits).
+gemma-4-E2B is likely stronger but is `model_type: gemma4` — nested text config, 262k vocab — a heavy
+non-standard fine-tune; Llama-1B clears the precondition, so it decides the question. Fine-tuned
+light-touch (top-6 layers + tied embeddings, lr 2e-4, 3000 steps), eval on the same 24 held-out cells.
+
+**First: the comparison bar had to be re-measured at 0..20.** The old 0.83 ceiling used 0..1000
+inputs. Oracle-correct examples at 0..20 (leave-one-out): all-cells resolve@5 0.711 [.65,.76],
+**held-out 0.833 [.64,.93]** — *identical* to the 0..1000 ceiling. Shrinking inputs to what the base
+can compute costs nothing at the ceiling (consistent with the powered width-null). So the bar stands.
+
+**The result — correctness climbed, resolution did not move.** (held-out n=24, Wilson CIs)
+
+| base / inputs | emitted-example correctness | resolve@5 | vs ceiling 0.833 |
+|---|---|---|---|
+| SmolLM2-135M / 0..1000 (orig) | 0.097 | 0.042 [.01,.20] | floor |
+| SmolLM2-135M / 0..20 (control) | 0.167 | 0.000 [.00,.14] | floor |
+| **Llama-3.2-1B / 0..20** | **0.306** | **0.083 [.02,.26]** | floor |
+
+This is the pre-registered **"correctness climbs but resolution doesn't"** branch — *"something else
+is wrong, learned cheaply."* Here is the something else, in three verified pieces.
+
+**(1) The decode-collapse was a symptom, not the cause — proven by a diversity sweep.** Greedy
+generation collapses onto one token: it emits `15 = 45 ; 15 = 45 ; 15 = 45` (repeated input; and
+15×3, not 15²). The tempting read is "just a decoding artifact — sample and it'll resolve." It is not.
+Sampling *does* diversify inputs, and resolution *does not follow*:
+
+| decode | mean distinct inputs/spec | correctness | resolve@5 |
+|---|---|---|---|
+| greedy | 2.08 | 0.306 | 0.083 [.02,.26] |
+| sample T=0.7 ×1 | 2.92 | 0.215 | 0.083 [.02,.26] |
+| sample T=0.8 ×3 (union) | 8.58 | 0.204 | 0.042 [.01,.20] |
+| sample T=1.0 ×3 (union) | 8.33 | 0.194 | 0.125 [.04,.31] |
+
+4× more input diversity leaves resolve@5 statistically flat (~0.08; every CI overlaps, all far below
+0.833). Diversity and correctness **trade off one-for-one** — sampling varies the inputs but then the
+base can't compute the varied outputs, so correctness drops and net resolution is pinned. Unioning
+many sampled specs (nsample 3) *lowers* resolution: the extra pairs are mostly wrong and poison the
+router — the exact plausible-wrong penalty measured in the noise-sensitivity check. **Resolution is
+computation-limited, not decode-limited.** The greedy `15,15,15` is the model repeating the few
+canonical pairs it actually knows; forced to vary, it fabricates.
+
+**(2) The correctness climb is real and base-driven, but nowhere near enough.** The control isolates
+it: at fixed 0..20, SmolLM2→Llama moves correctness 0.167→0.306 (+0.14; the base is the lever), while
+input-range alone moves SmolLM2 0.097→0.167 (+0.07, within noise on n=24). So a compute-capable base
+*does* emit more correct examples — the conjecture's first clause holds. But 0.306 is far too low:
+**12/24 held-out cells sit at correctness 0.00.** The held-out slice (axis-A, a structural draw) is
+dominated by *specialized* functions — `jacobi_symbol`, `crc16_step`, `mobius_function`, `isqrt`,
+`fnv1a_step`, `zscore_q8`, `norm2_sq` — which are **not the easy arithmetic Llama aced**. The
+conjecture quietly assumed the targets were base-computable; for a random library slice they mostly
+are not. `isqrt(19)` → the model emits 0; `square(15)` → 45. This is a base-capability ceiling,
+measured, not a pipeline defect.
+
+**(3) Even where the base computes correctly, discrimination isn't guaranteed.** Among Llama's four
+fully-correct specs, resolution is 2/4 (0.50, n=4 — directional only): `median3` and `between_exclusive`
+emit distinct correct examples and resolve at rank 4; `luhn_check` and `mobius_function` are computed
+*correctly* but emit low-entropy outputs ({0,1}, {−1,0,1}) on small inputs that dozens of cells share,
+so they land at rank 49 / rank 20. A residual correct-but-non-discriminating tail survives even past
+the computation wall.
+
+**Verdict.** The conjecture *"generation works once the base can compute"* is **not confirmed** at 1B,
+and the experiment says why cheaply: to write a *resolving* spec the model must **compute the target
+function** — the very work cells exist to offload — so free-form generation inherits the base's
+capability ceiling, and (residually) a discrimination penalty on low-entropy functions. Where the base
+computes, it mostly resolves (2/4); but a small base computes too little of a real library for the arm
+to be useful, and no decoding trick buys the missing correctness. This does not *refute* the thesis —
+it **sharpens** it. The two invocation paths that work do so precisely because they never ask the model
+to compute: **extraction** (0.875) copies I/O pairs already present and lets the training-independent
+router resolve; **CN-1's fingerprint address** projects *behaviour* to a token, so the model narrows by
+identity, not by re-deriving the function. Free-form spec *generation* is the path that re-imports the
+computation problem, and it fails exactly there. That is a clean boundary, and it is the CN-6 result:
+**delegate by pointing (identity) or by carrying (examples), not by re-computing (generation).**
+
+Open only as a scaling footnote, not a live claim: a math-specialist or tool-augmented base, or a
+held-out set filtered to base-computable functions, would raise generation's correctness and with it
+its resolution on that subset — but it cannot escape the structural point that generation must compute
+what identity/extraction merely reference. Apparatus: `cn6_corpus.py --input-max`, `cn6_train.py
+--base/--input-max`, `cn6_eval.py --sample/--nsample/--input-max` (KV-cached greedy/sampled decode,
+per-cell correctness|rank split, fully-correct discrimination bar), `cn6_inspect.py` (per-example
+oracle diff). Six configs, one held-out set, every number with its CI.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
