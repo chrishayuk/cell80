@@ -693,3 +693,33 @@ past ~2,500 candidates. Falsification map: if (a) holds and (b) fails, that is *
 is evidence that *behaviour-as-address survives while token-as-address does not*, which routes to CN-6
 (spec emission, no per-cell token) with a measured reason. Writing both down so a curve degradation
 is not ambiguous between "the geometry broke" and "the softmax vocabulary broke."
+
+## Amendment (2026-07-14): the library-scale curve — estimand is the EXPONENT, threshold α < 0.54
+
+Pre-registered before the first retrain. "Absolute vs fractional" was ill-posed: rank is bounded by
+N (at N=114 chance median is 57, so median-98 is impossible there) — the curve MUST grow; the only
+question is how fast. The estimand is the **growth exponent** of a log-log fit:
+
+> **rank(N) ≈ 98 · (N/790)^α**   (α=1 fully fractional, α=0 absolute, interesting in between)
+
+**Pass threshold, computed now:** the mechanism is usable at 10⁶ cells iff extrapolated rank stays
+inside the GPU executable window K_exec(GPU, 4.8%) = 4,718:
+> 98 · (10⁶/790)^α < 4718  ⟹  98 · 1266^α < 4718  ⟹ **α < 0.54.**
+Far more forgiving than the binary framing: **even square-root growth passes** (α=0.5 → rank ≈ 3,490
+at 10⁶, inside the window). Registered target: **α < 0.54.**
+
+**Design (fixed now):** 6–7 log-spaced sizes N ∈ [114 … 790]; at each N a nested random subset that
+**always holds the axis-A held-out value cells in** (they are eval-only at every N); **retrain** the
+fingerprint arm on the corpus restricted to the subset's seen cells (post-hoc mask-only subsampling
+is trivially fractional and is NOT used); eval held-out median rank **among the N cells**. Record
+**chance-median (N/2) alongside** the fingerprint rank at each N, so the curve shows *lift over
+chance* — sublinear rank growth while chance grows linearly is the hoped-for shape.
+
+**Scope — this curve tests hypothesis (a) ONLY.** It answers "does behavioural GEOMETRY hold as the
+library grows" (the α fit). It **cannot** test hypothesis (b) — the softmax/token-vocabulary
+bottleneck sits at ~2,500 candidates and the curve tops out at 788, never reaching it. (b) is
+**untestable within this experiment** and is owed to a separate build requiring **synthetic library
+expansion past ~2,500 cells** (fingerprint-perturbed clones, or cost-discovery/composition output).
+Folding (b) in here would produce an ambiguous result later; it stays open, with two-tier/CN-6 its
+likely route. So the honest scope of this run: **the curve decides whether the mechanism has a
+future (a); (b) remains a named, separate question.**
