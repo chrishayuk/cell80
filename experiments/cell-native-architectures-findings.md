@@ -1642,43 +1642,40 @@ extraction (examples from the task, the equipped-query 0.859 case) — noted as 
 real-world path; pure generation (bootstrap) carries the model's empirical error rate, which the
 gate must measure against the (a) tolerance band rather than assume.
 
-**(c) Discriminativeness of canonical examples (`cn6_canonical_check.py`, model-free).** A model
-demonstrating a pattern emits *canonical* inputs (0,1,2,10,100) — exactly where cells agree — and
-stages 1/1b used *random* inputs. With oracle-correct outputs (isolating discriminativeness from
-error), router P@1 by input pool: **tiny(0..10) 0.625, round(0..100) 0.583, random(0..300) 0.667,
-wide(0..65535) 0.750.** Monotonic — canonical inputs discriminate ~15–22% *worse* than varied/large
-ones, confirming the concern, but it is a **degradation, not a collapse** (0.58–0.63, above chance).
-The fix is a design element: **steer the model to emit varied/large-input examples** (the corpus
-targets use wide inputs; a discriminating prompt), which recovers to ~0.75.
+**(c) Discriminativeness of canonical examples (`cn6_canonical_check.py`, model-free).**
 
-**The honest band, corrected twice.** Model errors are the *plausible-wrong* kind (off-by-one,
-sibling), which hurt more than random — so the noise band is its **lower half, ~0.58–0.79**, not
-0.58–0.88. And canonical inputs cost a further ~15% *unless steered*. Net realistic CN-6 ceiling:
-**~0.60–0.75 with varied-input steering + the router's error tolerance; ~0.50 if the model emits
-canonical demos unsteered.** Grade stage 2 against ~0.60–0.75, not the oracle 0.75.
+> **RETRACTED then RE-RUN AT POWER (2026-07-14).** A first pass at **n=24** read a width gradient
+> (tiny 0.625 → wide 0.750) as a ~15–22% "canonical inputs discriminate worse" effect, and a whole
+> **compute-vs-discriminate "bind"** (wide=discriminating but uncomputable; canonical=computable but
+> non-discriminating) that flipped the fork to *extraction-primary*. **Both were n=24 noise.** Two
+> grounds, both correct: (i) at n=24, SE≈0.10, so wide−round was ~1.2σ — and it wasn't even monotone
+> (tiny beat round); (ii) the bind conflated input *width* with computational *difficulty*, which are
+> orthogonal (`is_even(65534)`, `max3(1000,2000,3000)` are wide **and** trivial).
 
-**The bind the three checks together expose (this sharpens the fork).** Generation faces a vice:
-*discriminating* examples need **wide** inputs (0.75), but the model can only *compute* **easy**
-inputs correctly (the circularity's own resolution). For a **held-out** cell the model can compute
-*neither* — wide inputs it gets wrong (→ plausible-wrong band ~0.58), canonical inputs it may get
-right but they don't discriminate (~0.60). So "steer to wide inputs" does **not** rescue generation
-for held-out cells; it re-introduces the compute problem. **Generation is therefore likely capped
-around ~0.55–0.65 on held-out cells by construction** — the very cells CN-6 exists to serve. It
-should still work on *seen* cells (memorized), and its null on held-out is *informative* (it
-measures the cap).
+**Powered re-run — leave-one-out over all 249 value cells** (resolution is training-independent, so
+discriminativeness is a library property; n=249 collapses the bars). Router P@1 by input pool, ±SE:
+**tiny(0..10) 0.546±.032 · round(0..100) 0.620±.031 · mid(0..1000) 0.600±.032 · wide(0..65535)
+0.662±.031.** wide−round = **+0.042, z = +1.0 — not significant**, and not monotone (round > mid). So
+**there is no width–discriminativeness gradient**; the only hint is the *tiniest* pool (single
+digits) sitting a little low. **The bind is dissolved, generation is not capped, and extraction
+should NOT become primary on this evidence.** (Fourth "artifact of how I sampled" catch in CN-6
+alone; the α-curve error class, avoided this time before it redirected the spend.)
 
-**Extraction is the only arm that escapes the bind.** Its examples come from the *task context* —
-already correct, and potentially wide/discriminating — with no computation required. So for
-held-out/post-freeze cells, extraction can supply both correctness *and* discrimination that
-generation structurally cannot. This elevates extraction from "deployment fallback" to **the arm
-most likely to clear the band on the cells that matter.**
+**What the powered check DOES establish:** the router's rank-1 resolution over the full 249-cell
+library from 6 oracle examples is **~0.62 P@1** (≈0.83 P@5 from stage 1) — roughly flat across input
+scales. That is the real ceiling CN-6 grades against — set by the inherent difficulty of resolving
+1-of-249 from 6 pairs, not by input width — and it rises with more/better examples. Combined with the
+noise result (plausible-wrong errors, the LLM kind, degrade gracefully): the honest generation
+ceiling is **~0.55–0.62 base P@1** (or ~0.83 P@5, which the two-tier execution stage then resolves),
+no width penalty.
 
-**Consolidated stage-2 design (three checks in):** (i) emitted examples are easy/extracted, never
-the hard target; (ii) grade end-to-end P@1 against the **~0.60–0.75** band; (iii) **extraction is
-now the primary arm** (correct+discriminating for held-out cells), generation the informative
-control (measures the compute-vs-discriminate cap). Machinery identical, only the corpus differs —
-still build both, but with extraction as the load-bearing test, not generation. A design decision
-worth the user's call before the spend, since the checks flipped which arm is primary.
+**Consolidated stage-2 design (restored to the honest fork):** (i) emitted examples are
+easy/extracted, never the hard target (dissolves the circularity); (ii) grade end-to-end P@1/P@5
+against the **~0.62 / ~0.83** router ceiling; (iii) **build both arms as co-equal** — generation
+(headline: "delegate by demonstrating"; covers unequipped queries) and extraction (deployment: the
+equipped-query 0.859 path). If forced to one, **generation**, because its null is informative and
+extraction almost certainly works if generation does. No fork flip; the checks left the original
+framing standing, at a properly-powered ceiling.
 
 ## Immediate next steps (not yet done)
 

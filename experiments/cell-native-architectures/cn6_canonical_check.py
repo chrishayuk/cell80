@@ -22,11 +22,13 @@ import cell80_py
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
 
+import math
+
 POOLS = {
-    "tiny (0..10)":      [0, 1, 2, 3, 4, 5, 10],
-    "round (0..100)":    [0, 1, 2, 3, 5, 10, 20, 50, 100],
-    "random (0..300)":   None,          # baseline — stage-1 regime
-    "wide (0..65535)":   "wide",        # what a discriminating prompt would ask for
+    "tiny (0..10)":      (0, 10),
+    "round (0..100)":    (0, 100),
+    "mid (0..1000)":     (0, 1000),
+    "wide (0..65535)":   (0, 65535),
 }
 
 
@@ -43,15 +45,10 @@ def main():
         except Exception:
             pass
     value = [n for n in value if n in handles]
-    held_val = [n for n in value if n in held]
     rng = random.Random(0)
 
     def draw(pool):
-        if pool is None:
-            return rng.randint(0, 300)
-        if pool == "wide":
-            return rng.randint(0, 65535)
-        return rng.choice(pool)
+        return rng.randint(pool[0], pool[1])
 
     def examples(name, pool, k=6):
         a = lib[name]["arity"]
@@ -65,8 +62,11 @@ def main():
         return out
 
     def p1(pool):
-        hits = uniq = tot = 0
-        for n in held_val:
+        # LEAVE-ONE-OUT over ALL value cells (n~249), not just the 24 held-out — router resolution
+        # is training-independent, so discriminativeness is a library property; testing on all of
+        # them collapses the error bars (n=24 gave SE~0.10, useless for a ~0.1 effect).
+        hits = tot = 0
+        for n in value:
             ex = examples(n, pool)
             if len(ex) < 6:
                 continue
@@ -74,39 +74,24 @@ def main():
             ranked = host.route(ex, limit=len(value))
             names = [r.get("id") if isinstance(r, dict) else r for r in ranked]
             hits += (names[0] == n) if names else 0
-            # how many cells match the examples as well as #1? (a proxy for non-discrimination:
-            # canonical examples that many cells satisfy => ties at the top)
-            if names:
-                uniq += (names.count(names[0]) if False else 1)  # placeholder; ties measured below
-        return hits / tot, tot
+        p = hits / tot
+        se = math.sqrt(p * (1 - p) / tot)
+        return p, se, tot
 
-    def top_ties(pool, k=6, probe=8):
-        """mean number of DISTINCT cells that reproduce the true cell's outputs on the example inputs
-        (>1 => the examples don't uniquely identify the cell — non-discriminating)."""
-        vals = []
-        for n in held_val:
-            ex = examples(n, pool, k)
-            if len(ex) < k:
-                continue
-            matches = 0
-            for c in value:
-                ok = True
-                for args, out in ex:
-                    r = host.run(handles[c], list(args))
-                    if not (r.get("halt") == "returned" and r["result"] == out):
-                        ok = False; break
-                matches += ok
-            vals.append(matches)
-        return sum(vals) / len(vals) if vals else 0.0
-
-    print(f"held-out value cells: {len(held_val)} | library {len(value)}\n")
-    print(f"{'input pool':<20}{'router P@1':>12}{'mean #cells matching all 6':>30}")
+    print(f"value cells (leave-one-out): {len(value)} | library {len(value)}\n")
+    print(f"{'input pool':<20}{'router P@1':>12}{'±SE':>8}{'n':>6}")
+    res = {}
     for label, pool in POOLS.items():
-        acc, tot = p1(pool)
-        ties = top_ties(pool)
-        print(f"{label:<20}{acc:>12.3f}{ties:>30.2f}")
-    print("\nreading: if router P@1 collapses on tiny/round vs random/wide, canonical examples are")
-    print("non-discriminating (many cells match them) => GENERATION is broken independent of the model.")
+        p, se, tot = p1(pool)
+        res[label] = (p, se)
+        print(f"{label:<20}{p:>12.3f}{se:>8.3f}{tot:>6}")
+    # is the width effect significant? wide vs round, difference / SE-of-difference
+    (pw, sw), (pr, sr) = res["wide (0..65535)"], res["round (0..100)"]
+    d = pw - pr; sd = math.sqrt(sw * sw + sr * sr)
+    print(f"\nwide − round = {d:+.3f}  (SE-of-diff {sd:.3f}, z = {d/sd:+.1f})")
+    print(f"  monotonic in width? tiny {res['tiny (0..10)'][0]:.3f} <= round {res['round (0..100)'][0]:.3f}"
+          f" <= mid {res['mid (0..1000)'][0]:.3f} <= wide {res['wide (0..65535)'][0]:.3f}")
+    print("reading: |z|>2 and monotone => width effect is real; else it was n=24 noise.")
 
 
 if __name__ == "__main__":
