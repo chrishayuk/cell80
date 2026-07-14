@@ -1657,14 +1657,28 @@ sibling), which hurt more than random — so the noise band is its **lower half,
 **~0.60–0.75 with varied-input steering + the router's error tolerance; ~0.50 if the model emits
 canonical demos unsteered.** Grade stage 2 against ~0.60–0.75, not the oracle 0.75.
 
-**Consolidated stage-2 design (three checks in):** (i) emitted examples are *easy/extracted*, never
-the hard target (dissolves the circularity); (ii) the corpus/prompt **steers toward varied/large
-inputs** (discriminativeness); (iii) grade end-to-end P@1 against the **~0.60–0.75** band (the
-router's mapped tolerance to model error). **Build both arms** — generation (headline; the "delegate
-by demonstrating" claim; covers unequipped queries) and extraction (deployment; the equipped-query
-0.859 path; the honest fallback) — machinery identical, only the corpus differs. If forced to one:
-generation, because a null there is informative and extraction almost certainly works if generation
-does. Now buildable with an interpretable target.
+**The bind the three checks together expose (this sharpens the fork).** Generation faces a vice:
+*discriminating* examples need **wide** inputs (0.75), but the model can only *compute* **easy**
+inputs correctly (the circularity's own resolution). For a **held-out** cell the model can compute
+*neither* — wide inputs it gets wrong (→ plausible-wrong band ~0.58), canonical inputs it may get
+right but they don't discriminate (~0.60). So "steer to wide inputs" does **not** rescue generation
+for held-out cells; it re-introduces the compute problem. **Generation is therefore likely capped
+around ~0.55–0.65 on held-out cells by construction** — the very cells CN-6 exists to serve. It
+should still work on *seen* cells (memorized), and its null on held-out is *informative* (it
+measures the cap).
+
+**Extraction is the only arm that escapes the bind.** Its examples come from the *task context* —
+already correct, and potentially wide/discriminating — with no computation required. So for
+held-out/post-freeze cells, extraction can supply both correctness *and* discrimination that
+generation structurally cannot. This elevates extraction from "deployment fallback" to **the arm
+most likely to clear the band on the cells that matter.**
+
+**Consolidated stage-2 design (three checks in):** (i) emitted examples are easy/extracted, never
+the hard target; (ii) grade end-to-end P@1 against the **~0.60–0.75** band; (iii) **extraction is
+now the primary arm** (correct+discriminating for held-out cells), generation the informative
+control (measures the compute-vs-discriminate cap). Machinery identical, only the corpus differs —
+still build both, but with extraction as the load-bearing test, not generation. A design decision
+worth the user's call before the spend, since the checks flipped which arm is primary.
 
 ## Immediate next steps (not yet done)
 
