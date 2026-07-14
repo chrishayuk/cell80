@@ -24,10 +24,13 @@ reaches median rank **98/790** (38% in the top 10%) versus the controls' worse-t
 mechanism is confirmed three independent ways — a **double dissociation** (fingerprint is *worse* on
 seen cells, far *better* on held-out), a pre-registered prediction that **replicated 3/3 seeds and
 across two base models**, and near-zero **seed-variance** (the address is computed, not learned). The
-usable operating range, derived from execution economics, is **~10⁵ cells today**; whether it reaches
-10⁶ is governed by a scaling exponent we measured but could not yet pin (α = 0.62, 95% CI
-[0.38, 0.87] — underpowered, not failed). Several headline numbers deflated under scrutiny; the
-mechanism did not.
+usable operating range, derived from execution economics, is **hundreds of thousands of cells today**
+(~10⁵). Whether it reaches 10⁶ is governed by a scaling exponent we measured with two independent
+methods that agree: **α ≈ 0.65** (retrained curve 0.62 [0.38, 0.87]; synthetic-expansion curve to
+10⁴ cells 0.67 [0.53, 0.82]) — **sublinear with confidence** (the address gets relatively stronger as
+the library grows), but near the edge of the threshold for a standalone 10⁶ address, which therefore
+routes to the two-tier design. Several headline numbers deflated under scrutiny; the mechanism did
+not.
 
 ---
 
@@ -157,15 +160,39 @@ library sizes (114→790, holding axis-A cells in, `W_f`-only retrain on the fro
 | 640 | 87 | 320 | 3.7× |
 | 790 | 96 | 395 | 4.1× |
 
-Log-log fit `rank(N) = 98·(N/790)^α`: **α = 0.624, SE 0.088, 95% CI [0.38, 0.87].** The
-pre-registered usability threshold (α < 0.54, for rank(10⁶) < GPU K_exec) sits **inside** the
-interval — the experiment is **underpowered**, and cannot decide pass from fail (the non-monotonic
-N=175 point is the noise floor). What *is* established, independent of that: **α < 1 with confidence**
-(upper CI 0.87 < 1.0) — the geometry holds **sublinearly** — and **lift over chance grows
-monotonically, 1.7×→4.1×**: the mechanism gets relatively stronger as the library grows. The usable
-envelope across the CI is ~68k (α=0.87) to ~22M (α=0.38) cells; even the pessimistic end is ~10⁵,
-130× the current library. So the open question is "millions vs hundreds of thousands," not "works vs
-doesn't."
+Log-log fit `rank(N) = 98·(N/790)^α`: **α = 0.624, SE 0.088, 95% CI [0.38, 0.87].** With six points
+over less than a decade, the pre-registered threshold (α < 0.54, for rank(10⁶) < GPU K_exec) sits
+*inside* the interval — this curve alone is **underpowered** (the non-monotonic N=175 point is the
+noise floor). So we extended it.
+
+**A second decade, a second method.** We grew the library to 10⁴ cells with 9,210 *density-matched*
+synthetic cells (fingerprint clones with 30% of probes resampled from per-probe marginals — synthetic
+nearest-real agreement median 0.70 ≈ the real library's, slightly denser, i.e. conservative), and
+measured held-out rank among N with the **fixed** seed-81 `W_f` (a different method — the deployment
+model of "a library grows with synthesized cells the model was not retrained on"; N=790 reproduces
+the retrained rank, 86 vs ~96, validating the path):
+
+| N | rank | lift | N | rank | lift |
+|---|---|---|---|---|---|
+| 790 | 86 | 4.6× | 5,000 | 245 | 10.2× |
+| 1,500 | 113 | 6.6× | 8,000 | 386 | 10.4× |
+| 3,000 | 162 | 9.3× | 10,000 | 462 | 10.8× |
+
+**α = 0.673, SE 0.053, 95% CI [0.53, 0.82]** — and it **agrees with the retrained curve's 0.624**.
+Two methods (retrain-per-N; fixed-`W_f` with structured distractors) converging on ~0.65 is the
+cross-check that makes the exponent trustworthy, and the extra decade cut SE from 0.088 to 0.053.
+
+What this establishes:
+- **Sublinear, with confidence** (upper CI 0.82 < 1); **lift over chance grows monotonically
+  1.7×→10.8×** across the full 114→10⁴ range — the address gets relatively stronger at every scale.
+- **The verdict shifted from "undecided" to "leaning against a standalone 10⁶":** the threshold
+  α < 0.54 now sits at the *lower edge* of the CI (0.53); extrapolated rank(10⁶) ≈ 8.5k–10.5k vs GPU
+  K_exec 4,718 (~2× over). Not a clean fail — 0.53 barely passes — but no longer symmetric.
+- **Usable envelope (GPU @ 4.8%): ~3×10⁵–4×10⁵ cells** on both methods — hundreds of thousands, short
+  of millions for a *standalone* address.
+- **No softmax cliff** in the fixed-`W_f` regime — rank grows as a smooth power law straight through
+  the ~2,500-candidate mark. But this does **not** test the *learned*-routing bottleneck (the address
+  here is fixed, not a softmax retrained over 10⁴ tokens); that remains owed (§5).
 
 ## 4. Limitations, and the correction trail
 
@@ -183,27 +210,38 @@ Each is recorded in place with its correction; the reasoning trail, including a 
 sampling issues) never did.
 
 Other honest limits: results are at TinyModel/SmolLM2 scale; the description baseline (CoTools-style)
-is built but not yet run head-to-head; the scaling fit is <1 decade extrapolated far; and per-cell
-recall carries a small-N training-amount confound.
+is built but not yet run head-to-head; the exponent is a two-decade extrapolation to 10⁶; and
+per-cell recall carries a small-N training-amount confound.
 
 ## 5. What's next
 
-**One build answers the two open questions.** Extending the library to ~10⁴ cells via **synthetic
-expansion** (fingerprint-perturbed clones and/or composition/cost-discovery output) simultaneously
-(a) halves the α confidence interval — pinning whether behaviour-as-address reaches millions — and
-(b) carries the library past the ~2,500-candidate softmax/token-vocabulary ceiling, testing whether
-*token*-as-address survives at all. If the geometry holds but the token vocabulary breaks, that is
-the measured reason to move to spec-emission (CN-6, emit examples not intent — which the execution
-tier resolves), rather than an ambiguous guess. CN-6 is gated on this build. The description baseline
-runs alongside, turning "behaviour works" into "behaviour vs. language, head to head."
+**Hypothesis (a) is now largely answered** by the synthetic decade (§3.5): the geometry holds
+sublinearly with α ≈ 0.65 [0.53, 0.82], usable to ~10⁵ cells, with a standalone 10⁶ address at the
+edge. What remains open, and in priority order:
+
+1. **The learned-routing bottleneck — hypothesis (b), still owed.** The synthetic curve used a
+   *fixed* address; it does not test whether a model *retrained* with a softmax over ~10⁴ cell tokens
+   still routes. That needs the retrain-with-10⁴-tokens build. If the geometry holds but the learned
+   vocabulary breaks, that is the measured reason to move to **spec-emission (CN-6** — emit examples,
+   not intent, which the execution tier resolves), rather than an ambiguous guess. CN-6 is gated here.
+2. **Behaviour vs. language, head to head.** The strong description baseline (`W_d(bge-small(doc))`)
+   is built but unrun. The sharp version is the **synthesized-cell** case: an undocumented cell is
+   structurally invisible to description-routing but still has a behavioural address — the one
+   comparison no description method can match by construction.
+3. **The two-tier pipeline at scale.** Beyond the standalone-address envelope, the runtime executes
+   the model's top-k to resolve (and *verifies* — a wrong pick is detected, a total miss is a synthesis
+   work-order). Measuring end-to-end recovery under the K_exec budget is what turns "confirmed
+   mechanism" into "working system."
 
 ## 6. Bottom line
 
 Behaviour-derived embeddings give a language model a **computed, zero-shot address** for tools it has
 never invoked — confirmed by a double dissociation, a forecast that held across seeds and bases, and
 near-zero seed-variance, and situated in a genuine gap between the tool-learning and program-embedding
-literatures. It is **usable today for ~10⁵ cells on GPU**; whether it reaches 10⁶ standalone is one
-well-specified experiment away. The result survived an unusually adversarial internal review with its
-mechanism intact and its numbers corrected — which is the strongest thing that can be said about a
-first result: it is real, its envelope is measured rather than assumed, and it knows exactly what it
-does not yet know.
+literatures. Its scaling is now **measured, not assumed**: the address grows sublinearly (α ≈ 0.65,
+confirmed by two independent methods across two decades of library size), usable to **hundreds of
+thousands of cells on GPU**, with a standalone million-cell address at the edge of the budget and the
+tail routed to the two-tier design. The result survived an unusually adversarial internal review with
+its mechanism intact and its numbers corrected six times over — which is the strongest thing that can
+be said about a first result: it is real, its envelope is measured rather than assumed, and it knows
+exactly what it does not yet know (learned routing at scale, and behaviour-vs-language head to head).
