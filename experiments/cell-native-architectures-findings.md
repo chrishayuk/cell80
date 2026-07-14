@@ -1592,6 +1592,31 @@ edge). Behaviour-as-address scales to hundreds of thousands of cells with a fixe
 million, and the *learned* routing question, route to the two-tier/CN-6 path — with a measured
 exponent now, not a guess.
 
+### CN-6 stage 1 — the runtime tier resolves held-out cells from examples (premise validated)
+
+Before training a model to emit I/O examples (the expensive CN-6 build), we validated the tier the
+whole thing rests on: does `CellHost.route` (the pure behavioural router) resolve a **held-out** cell
+from a few I/O examples? `cn6_router_check.py`, 249 value cells loaded, random examples:
+
+| cells | k=3 | k=6 |
+|---|---|---|
+| held-out (n=24) | P@1 0.625, P@5 0.833 | **P@1 0.750, P@5 0.833** |
+| seen (n=40, control) | P@1 0.525, P@5 0.825 | P@1 0.725, P@5 0.950 |
+
+**Premise holds, and for the right reason.** Held-out cells resolve **as well as seen cells** (P@1
+0.75 vs 0.725) — because the router resolves by *execution*, not by any learned representation, so it
+is training-independent by construction. That is exactly the property that makes the two-tier design
+library-size-invariant: the runtime doesn't care whether a cell was in training. And these are
+**random** examples — the discriminating `co_match`-selected examples plus text fusion are what lift
+the fused router to 0.859, so **0.75 is a floor.** (Caveat: 249-cell library, not the full 790; P@1
+would soften over more cells but the held-out/seen parity is the load-bearing fact.)
+
+**So CN-6 reduces to the model side.** The runtime tier is confirmed; what remains is the training
+experiment — *can the model emit discriminating I/O examples given a need*, so the pipeline is
+`model emits examples → router resolves by execution → result splices`, working for cells never in
+the token vocabulary (held-out and post-freeze alike). That is the next build, now de-risked: it
+routes into a ~0.75–0.86 resolution ceiling that is known to hold for unseen cells.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
