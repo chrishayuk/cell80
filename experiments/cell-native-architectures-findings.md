@@ -1554,6 +1554,44 @@ mechanism whose scaling exponent is measured but not yet pinned (α = 0.62 [0.38
 experiment is synthetic expansion to 10⁴ cells, which decides both the exponent and the token-vocab
 ceiling.*
 
+### Synthetic scale curve to 10⁴ — α tightens to [0.53, 0.82], two methods agree, sublinear robust
+
+Extended the library 790 → 10⁴ with 9,210 **density-matched** synthetic cells (fingerprint clones,
+30% of probes resampled from per-probe marginals; synthetic nearest-real agreement median 0.70 ≈ real
+0.70–0.75, slightly denser on the mean → conservative). Held-out rank among N using the **fixed
+seed-81 W_f** (`cn1_synth_scale.py`; N=790 reproduces the seed-81 rank, 86 vs ~96 — path validated):
+
+| N | rank | chance | lift | N | rank | chance | lift |
+|---|---|---|---|---|---|---|---|
+| 790 | 86 | 395 | 4.6× | 5,000 | 245 | 2,500 | 10.2× |
+| 1,500 | 113 | 750 | 6.6× | 8,000 | 386 | 4,000 | 10.4× |
+| 3,000 | 162 | 1,500 | 9.3× | 10,000 | 462 | 5,000 | 10.8× |
+
+**α = 0.673, SE 0.053, 95% CI [0.53, 0.82]** over the synthetic decade — **consistent with the
+retrained real-curve α = 0.624 [0.38, 0.87]** (two different methods — retrain-per-N vs fixed-W_f
+with structured distractors — agree, which is the reassuring cross-check). The extra decade cut SE
+from 0.088 to 0.053.
+
+Reads:
+- **Sublinear is now firmly established** (upper CI 0.82 < 1); **lift over chance keeps growing
+  (4.6× → 10.8×)** through 10⁴ — the mechanism gets relatively stronger at every scale tested.
+- **The pass threshold α < 0.54 now sits at the *lower edge* of the CI (0.53)** — so the picture has
+  shifted from "undecided" to "leaning past the 10⁶ GPU window": point estimate α ≈ 0.62–0.67,
+  extrapolated rank(10⁶) ≈ 8.5k–10.5k vs GPU K_exec 4,718 (~2× over). Not a clean fail (0.53 barely
+  passes), but no longer symmetric around the threshold.
+- **Usable envelope (GPU @ 4.8%): ~300k cells** at α=0.673 (≈390k at 0.62) — both methods land at
+  "hundreds of thousands," short of millions standalone.
+- **No softmax cliff** in the fixed-W_f regime: rank grows as a smooth power law through the
+  ~2,500-candidate mark, no discontinuity. **But this does NOT test hypothesis (b)** — the address is
+  fixed, not a *learned* softmax over 10⁴ tokens; the learned-routing bottleneck still needs the
+  retrain-with-10⁴-tokens build and remains owed.
+
+**Net:** the two-method agreement + the tighter synthetic CI converge on **α ≈ 0.65, sublinear,
+usable to ~10⁵–10⁶⁻ cells, reaching full 10⁶ standalone is borderline-unlikely** (threshold at the CI
+edge). Behaviour-as-address scales to hundreds of thousands of cells with a fixed address; the full
+million, and the *learned* routing question, route to the two-tier/CN-6 path — with a measured
+exponent now, not a guess.
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —

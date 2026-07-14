@@ -1,0 +1,42 @@
+{
+  "points": [
+    {
+      "N": 790,
+      "median_rank": 86,
+      "chance": 395.0,
+      "lift": 4.59
+    },
+    {
+      "N": 1500,
+      "median_rank": 113,
+      "chance": 750.0,
+      "lift": 6.64
+    },
+    {
+      "N": 3000,
+      "median_rank": 162,
+      "chance": 1500.0,
+      "lift": 9.26
+    },
+    {
+      "N": 5000,
+      "median_rank": 245,
+      "chance": 2500.0,
+      "lift": 10.2
+    },
+    {
+      "N": 8000,
+      "median_rank": 386,
+      "chance": 4000.0,
+      "lift": 10.36
+    },
+    {
+      "N": 10000,
+      "median_rank": 462,
+      "chance": 5000.0,
+      "lift": 10.82
+    }
+  ],
+  "alpha": 0.6730690421714759,
+  "SE": 0.05321629254741395
+}
