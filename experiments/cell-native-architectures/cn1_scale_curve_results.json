@@ -1,0 +1,53 @@
+{
+  "points": [
+    {
+      "N": 114,
+      "median_rank": 34,
+      "chance_median": 57.0,
+      "lift": 1.68,
+      "n_seen_trained": 31,
+      "n_train_rows": 5610
+    },
+    {
+      "N": 175,
+      "median_rank": 32,
+      "chance_median": 87.5,
+      "lift": 2.73,
+      "n_seen_trained": 46,
+      "n_train_rows": 8382
+    },
+    {
+      "N": 270,
+      "median_rank": 45,
+      "chance_median": 135.0,
+      "lift": 3.0,
+      "n_seen_trained": 73,
+      "n_train_rows": 13207
+    },
+    {
+      "N": 415,
+      "median_rank": 76,
+      "chance_median": 207.5,
+      "lift": 2.73,
+      "n_seen_trained": 124,
+      "n_train_rows": 22617
+    },
+    {
+      "N": 640,
+      "median_rank": 87,
+      "chance_median": 320.0,
+      "lift": 3.68,
+      "n_seen_trained": 177,
+      "n_train_rows": 31791
+    },
+    {
+      "N": 790,
+      "median_rank": 96,
+      "chance_median": 395.0,
+      "lift": 4.11,
+      "n_seen_trained": 225,
+      "n_train_rows": 40235
+    }
+  ],
+  "alpha": 0.6241261753087528
+}

@@ -1497,6 +1497,45 @@ norm-fix). The *contrast* and the *inversion replication* are matched-item and s
   scale curve). (Swap/SmolLM2 authoritative re-eval is pending an HF checkpoint-eval; the v11
   faithful number is the solid one.)
 
+### Library-scale curve (hypothesis a) — pre-registered FAIL (marginal), usable to ~4×10⁵ cells
+
+The deciding experiment (`cn1_scale_curve.py`; W_f-only retrain on the frozen seed-81 transformer,
+validated to reproduce the full-model rank: 96 vs ~98 at N=790). Held-out median rank vs library
+size N (each holding the 24 axis-A cells in, retrained on the subset's seen cells):
+
+| N | held-out rank | chance (N/2) | lift over chance |
+|---|---|---|---|
+| 114 | 34 | 57 | 1.7× |
+| 175 | 32 | 88 | 2.7× |
+| 270 | 45 | 135 | 3.0× |
+| 415 | 76 | 208 | 2.7× |
+| 640 | 87 | 320 | 3.7× |
+| 790 | 96 | 395 | 4.1× |
+
+**Log-log fit: rank(N) ≈ 98·(N/790)^α, α = 0.624. Pre-registered threshold α < 0.54: FAIL.**
+Extrapolated rank(10⁶) ≈ 8,462 > GPU K_exec 4,718. By the registered criterion, behaviour-as-address
+as a *standalone* addresser does **not** scale to 10⁶ within the executable window.
+
+**But it is a marginal fail with a real envelope, and the geometry does hold sublinearly:**
+- **Lift over chance grows with library size (1.7× → 4.1×)** — the hoped-for shape: absolute rank
+  grows sublinearly (α < 1) while chance grows linearly, so the mechanism gets *relatively* stronger
+  as the library grows. It is genuinely doing behavioural work at every scale tested.
+- **Usable envelope (GPU @ 4.8% overhead): up to ~3.9×10⁵ cells** (rank(10⁴)≈478, rank(10⁵)≈2,010,
+  crossover at ~393k, rank(10⁶)≈8,462). So the mechanism scales to **hundreds of thousands** of
+  cells, not millions — a large, real operating range, just short of the 10⁶ pitch target.
+- **Caveats (do not over-read the FAIL):** a 6-point fit over <1 decade (114→790) extrapolated 3+
+  orders of magnitude — wide α uncertainty; and a small-N training-amount confound (fewer seen cells
+  trained at small N; direction on α ambiguous). The verdict is honest and registered, but the
+  extrapolation is the load-bearing assumption.
+
+**What it means for the programme.** Hypothesis (a) — behavioural geometry holding as the library
+grows — is **qualifiedly held**: sublinear and lift-improving, but α too high (0.62 > 0.54) for a
+standalone 10⁶ address. So beyond ~10⁵–10⁶ cells the mechanism needs a **second-stage prune** or the
+**two-tier / CN-6** route (spec emission, no per-cell token) — which is exactly where hypothesis (b)
+(the softmax/token-vocabulary bottleneck, untestable here) was already pointing. The honest headline
+is now: *behaviour-as-address is a confirmed mechanism with a usable range of ~10⁵ cells; it does not
+reach 10⁶ standalone, and the path past that is the two-tier design the substrate already ships.*
+
 ## Immediate next steps (not yet done)
 
 1. Root-cause `spin_pool`'s remaining concurrency bug (bug 3) for real —
