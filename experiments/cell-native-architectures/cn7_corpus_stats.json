@@ -1,0 +1,33 @@
+{
+ "s3": {
+  "rows": 9752,
+  "tokens": 799277,
+  "loss_tokens": 652186,
+  "masked_tokens": 147091
+ },
+ "s1": {
+  "rows": 90000,
+  "tokens": 1662749,
+  "loss_tokens": 1662749,
+  "masked_tokens": 0
+ },
+ "s4": {
+  "rows": 15402,
+  "tokens": 3396401,
+  "loss_tokens": 3396401,
+  "masked_tokens": 0
+ },
+ "s2": {
+  "rows": 25000,
+  "tokens": 1688901,
+  "loss_tokens": 1590414,
+  "masked_tokens": 98487
+ },
+ "_total": {
+  "rows": 140154,
+  "tokens": 7547328,
+  "replay_frac": 0.45001370021284354,
+  "seed": 80,
+  "s3_cells": 225
+ }
+}
