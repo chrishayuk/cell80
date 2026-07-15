@@ -31,6 +31,30 @@ fn gpu_run(progs: &[CellProgram], probes: &[[u16; 3]]) -> Vec<[u16; 6]> {
     batch.run(probes).expect("cuda interp run")
 }
 
+/// Probe for a usable GPU backend before running. On macOS this is Metal,
+/// always available. Off macOS this file only compiles under `--features
+/// cuda` (the file's own `#![cfg]`), and `CudaInterpBatch::new` initializes
+/// cudarc's driver context on first use: with the dynamic-loading feature
+/// (the only supported mode), a missing driver shared library is a real
+/// `panic!()` deep inside cudarc's lazy symbol-table init, not a
+/// `Result::Err` — so every CI runner without an NVIDIA GPU hard-panics on
+/// the first call unless this probes first (same pattern as
+/// `cell80/tests/cuda_battery.rs` and `rustmsl/tests/corners.rs`).
+fn gpu_available() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {})); // expected on CI; don't spam stderr
+        let ok = std::panic::catch_unwind(rustmsl::toolchain_info).is_ok();
+        std::panic::set_hook(prev_hook);
+        ok
+    }
+}
+
 /// Lower + linearize a snippet's `run` (the interp backend's front door).
 fn cell(src: &str) -> CellProgram {
     let file: syn::File =
@@ -100,6 +124,10 @@ fn check_one(src: &str, prog: &CellProgram, probe: &[u16; 3], got: &[u16; 6]) {
 /// all cells × all probes in one GPU dispatch, cell-major readback.
 #[test]
 fn interp_kernel_matches_cpu_vm() {
+    if !gpu_available() {
+        eprintln!("interp_parity: no GPU backend available, skipping");
+        return;
+    }
     let sources = [
         "fn run(x: u16, y: u16) -> u16 { (x + y) * (x ^ y) - (x & y) }",
         "fn run(x: u16, y: u16) -> u16 { let a = (x as u8) as u16; let b = (y as u8) as u16; (a * b) & 0xFFFF }",

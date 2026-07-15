@@ -96,9 +96,38 @@ fn interp_quad(res: Result<Vec<u16>, String>) -> [u16; 4] {
     }
 }
 
+/// Probe for a usable GPU backend before running a case. On macOS this is
+/// Metal, always available. Off macOS this build only exists under
+/// `--features cuda` (the file's own `#![cfg]`), and `CudaBatch::new`
+/// initializes cudarc's driver context on first use: with the
+/// dynamic-loading feature (the only supported mode), a missing driver
+/// shared library is a real `panic!()` deep inside cudarc's lazy
+/// symbol-table init (`cudarc::panic_no_lib_found`), not a `Result::Err` —
+/// so every CI runner without an NVIDIA GPU hard-panics on the very first
+/// case unless this probes first. `catch_unwind` is the only way to turn
+/// that into a graceful skip (same pattern as `cell80/tests/cuda_battery.rs`).
+fn gpu_available() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let prev_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {})); // expected on CI; don't spam stderr
+        let ok = std::panic::catch_unwind(rustmsl::toolchain_info).is_ok();
+        std::panic::set_hook(prev_hook);
+        ok
+    }
+}
+
 /// Lower `src`, run every input triple on interpreter and GPU, assert the
 /// quads and step counts agree bit for bit.
 fn check(src: &str, inputs: &[[u16; 3]]) {
+    if !gpu_available() {
+        eprintln!("corners: no GPU backend available, skipping");
+        return;
+    }
     let file: syn::File =
         syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
     let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
@@ -376,6 +405,10 @@ fn runaway_loop_is_a_fuel_trap_on_both_sides() {
 /// fresh interpreter (state planted at 0xB000) and once as one GPU batch with
 /// per-thread state, and assert sextets AND final state bytes agree.
 fn check_state(src: &str, entry: &str, state_len: usize, inputs: &[[u16; 3]], seed: u64) {
+    if !gpu_available() {
+        eprintln!("corners: no GPU backend available, skipping");
+        return;
+    }
     let file: syn::File =
         syn::parse_str(src).unwrap_or_else(|e| panic!("parse failed: {e}\nsrc: {src}"));
     let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
