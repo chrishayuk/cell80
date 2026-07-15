@@ -377,6 +377,31 @@ the decision spine, the species definitions, the mask property, and the
 grading protocol (CN-6 stage-2 eval at 0..20, resolve@5, Wilson CIs) are
 unchanged. The 24-cell classification is frozen as of this commit.
 
+### 8.6 P-d1′ statistic pinned mid-re-baseline (2026-07-16, seeds 80/81 evaluated, seed 82 in
+training with NO eval printed)
+
+Written before seed 82's numbers exist, so the threshold cannot be accused of
+being chosen after seeing the spread. Known at time of writing: s80
+novel|seen = 105, s81 = 108; s81's training dynamics ran visibly hotter and
+its seen-cell metrics are sharper across the board.
+
+- **B9′ = the median over the 3 seeds of the novel_cell|seen_comp median
+  rank** (random-sampled n=200 protocol). **P-d1′ = B9′ + 32.** Median-of-
+  seeds, matching the v0.1 "B9 + noise allowance" spirit.
+- **B10′ is computed per bucket, not pooled**: the invariance claim rides on
+  novel|seen ONLY. novel|novel (n=48) is reported alongside as its own line —
+  s80→s81 swung 286→71 there, and the reading (a stable address, noisily
+  READ under composition shift through the seed-dependent association
+  machinery) is recorded as a hypothesis, not folded into the headline
+  invariance statistic. Small-n caveat stands: a 48-item median has wide
+  sampling error on its own, so the swing is suggestive, not established.
+- Two directional expectations pinned for seed 82, zero cost if wrong:
+  (i) novel|seen lands within a few ranks of 105–108 while novel|novel may
+  land anywhere; (ii) the seen-cell ordering novel_comp ≥ seen_comp on top1
+  (s81: 0.455 vs 0.360) — if it reproduces, the pointing path reads
+  descriptors compositionally rather than recalling training pairs, a free
+  generalisation result the mismatched stack could not have shown.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
