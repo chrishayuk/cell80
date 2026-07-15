@@ -1,0 +1,14 @@
+{
+ "cn7_ckpt_fp_fingerprint_s80.pt": {
+  "bytes": 399906958,
+  "git_head": "04daa8d",
+  "manifested": "2026-07-15T23:45:42+00:00",
+  "sha256": "20314607ba0b2dab95c90b5d269e52748b88a4311d4347491c5b691e87fbcd23"
+ },
+ "cn7_fp_rebaseline_fingerprint_s80.json": {
+  "bytes": 630,
+  "git_head": "04daa8d",
+  "manifested": "2026-07-15T23:45:42+00:00",
+  "sha256": "1c4119f7545859e8c5dfc5167bf00703de80fa8f9a7eec5d4871b86ee2522fe7"
+ }
+}
