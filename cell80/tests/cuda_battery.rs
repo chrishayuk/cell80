@@ -25,6 +25,26 @@ mod battery_common;
 use battery_common::*;
 use rustmsl::CudaBatch;
 
+/// Probe for a usable CUDA device before running a battery. `cudarc`'s
+/// dynamic-loading path (`--features cuda`'s only supported mode — no CUDA
+/// toolkit needed to *build*) doesn't return a `Result` when the driver
+/// shared library isn't found: `CudaContext::new`/`rustmsl::toolchain_info`
+/// panic deep inside cudarc's lazy symbol-table init
+/// (`cudarc::panic_no_lib_found`, `driver/sys/mod.rs`), which is the correct
+/// behavior for a real CUDA host missing its driver but means every CI
+/// runner (none of which have an NVIDIA GPU) panics on the very first call.
+/// `catch_unwind` is the only way to turn that into a graceful skip; the two
+/// pre-registered `*_one_million_cuda` gates stay `#[ignore]`d for the box
+/// run regardless, so this doesn't touch gate semantics, only these three
+/// CI-speed batteries.
+fn cuda_available() -> bool {
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {})); // the probe panic is expected on CI; don't spam stderr
+    let ok = std::panic::catch_unwind(rustmsl::toolchain_info).is_ok();
+    std::panic::set_hook(prev_hook);
+    ok
+}
+
 /// The CUDA backend: CUDA dialect + `CudaBatch`. Never blesses transcripts.
 const CUDA: Backend = Backend {
     label: "cuda",
@@ -51,6 +71,10 @@ fn cuda_run_with_state(
 /// inputs each. The full pre-registered gate is [`gate_one_million_cuda`].
 #[test]
 fn e1_e2_battery_cuda() {
+    if !cuda_available() {
+        eprintln!("cuda_battery: no CUDA device available, skipping");
+        return;
+    }
     println!(
         "cuda toolchain: {}",
         rustmsl::toolchain_info().unwrap_or_else(|e| e)
@@ -75,6 +99,10 @@ fn gate_one_million_cuda() {
 /// scale would surface, the analogue of the Metal branch-inversion find.
 #[test]
 fn library_megakernel_matches_interpreter_cuda() {
+    if !cuda_available() {
+        eprintln!("cuda_battery: no CUDA device available, skipping");
+        return;
+    }
     megakernel_battery(&CUDA);
 }
 
@@ -82,6 +110,10 @@ fn library_megakernel_matches_interpreter_cuda() {
 /// pairs per cell. The full gate is [`state_gate_one_million_cuda`].
 #[test]
 fn state_cells_battery_cuda() {
+    if !cuda_available() {
+        eprintln!("cuda_battery: no CUDA device available, skipping");
+        return;
+    }
     let n = std::env::var("CELL80_CUDA_FUZZ_N")
         .ok()
         .and_then(|v| v.parse().ok())
