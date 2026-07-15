@@ -50,14 +50,14 @@ mod macos {
         let mut trp = 0u64;
         let mut table = vec![0u16; DOMAIN];
         let mut total = true;
-        for v in 0..DOMAIN {
+        for (v, slot) in table.iter_mut().enumerate() {
             let f = r
                 .run_fast(Some(&entry), &[v as u16], cell80::DEFAULT_CYCLES)
                 .ok()?;
             cyc += f.cycles;
             trp += f.trapped_ops;
             if matches!(f.halt, Halt::Returned) {
-                table[v] = f.result;
+                *slot = f.result;
             } else {
                 total = false;
             }
@@ -78,7 +78,9 @@ mod macos {
         let mut n = 0u64;
         for a in 0..=255u16 {
             for b in 0..=255u16 {
-                let f = r.run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES).ok()?;
+                let f = r
+                    .run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES)
+                    .ok()?;
                 cyc += f.cycles;
                 trp += f.trapped_ops;
                 n += 1;
@@ -186,7 +188,10 @@ mod macos {
     }
 
     fn compose_source(e: &Expr, sources: &HashMap<String, String>) -> Option<String> {
-        let mut inliner = Inliner { sources, counter: 0 };
+        let mut inliner = Inliner {
+            sources,
+            counter: 0,
+        };
         let mut prelude = Vec::new();
         let tail = inliner.inline(e, &mut prelude)?;
         Some(format!(
@@ -206,8 +211,10 @@ mod macos {
         let composed = compose_source(&candidate_expr, &sources).expect("compose_source");
         println!("composed candidate source: {composed}");
 
-        let cand_cart = z80_compile("stage2_recheck_candidate", &composed).expect("candidate compiles");
-        let ref_cart = z80_compile("stage2_recheck_reference", is_weekend_src).expect("reference compiles");
+        let cand_cart =
+            z80_compile("stage2_recheck_candidate", &composed).expect("candidate compiles");
+        let ref_cart =
+            z80_compile("stage2_recheck_reference", is_weekend_src).expect("reference compiles");
 
         let (cand_cyc, cand_trp, cand_table, cand_total) =
             z80_profile_unary(&cand_cart).expect("candidate profiles");

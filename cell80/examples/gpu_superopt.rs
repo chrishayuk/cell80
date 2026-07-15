@@ -18,7 +18,9 @@
 
 #[cfg(not(target_os = "macos"))]
 fn main() {
-    println!("gpu_superopt needs macOS (Metal) — the codegen builds everywhere, the executor doesn't");
+    println!(
+        "gpu_superopt needs macOS (Metal) — the codegen builds everywhere, the executor doesn't"
+    );
 }
 
 #[cfg(target_os = "macos")]
@@ -203,17 +205,24 @@ mod macos {
         let mut trp = 0u64;
         let mut table = vec![0u16; DOMAIN];
         let mut total = true;
-        for v in 0..DOMAIN {
-            let f = r.run_fast(Some(&entry), &[v as u16], cell80::DEFAULT_CYCLES).ok()?;
+        for (v, slot) in table.iter_mut().enumerate() {
+            let f = r
+                .run_fast(Some(&entry), &[v as u16], cell80::DEFAULT_CYCLES)
+                .ok()?;
             cyc += f.cycles;
             trp += f.trapped_ops;
             if matches!(f.halt, Halt::Returned) {
-                table[v] = f.result;
+                *slot = f.result;
             } else {
                 total = false;
             }
         }
-        Some((cyc as f64 / DOMAIN as f64, trp as f64 / DOMAIN as f64, table, total))
+        Some((
+            cyc as f64 / DOMAIN as f64,
+            trp as f64 / DOMAIN as f64,
+            table,
+            total,
+        ))
     }
     /// Same, for a binary cell, over the u8xu8 grid (cost-discovery's own P-measurement
     /// grid — arity-2 full-domain-on-CPU is exactly what that programme deferred).
@@ -225,7 +234,9 @@ mod macos {
         let mut n = 0u64;
         for a in 0..=255u16 {
             for b in 0..=255u16 {
-                let f = r.run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES).ok()?;
+                let f = r
+                    .run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES)
+                    .ok()?;
                 cyc += f.cycles;
                 trp += f.trapped_ops;
                 n += 1;
@@ -393,7 +404,10 @@ mod macos {
     /// generalizing `cost-discovery`'s `confirm.rs` technique to an arbitrary tree
     /// instead of one hand-picked winner.
     fn compose_source(e: &Expr, sources: &HashMap<String, String>) -> Option<String> {
-        let mut inliner = Inliner { sources, counter: 0 };
+        let mut inliner = Inliner {
+            sources,
+            counter: 0,
+        };
         let mut prelude = Vec::new();
         let tail = inliner.inline(e, &mut prelude)?;
         Some(format!(
@@ -449,7 +463,11 @@ mod macos {
             if funcs.len() == 1 {
                 if let Ok(p) = linearize(&funcs, "run") {
                     if p.n_locals <= 64 {
-                        cells.push(Cell { name: name.clone(), arity, src: src.clone() });
+                        cells.push(Cell {
+                            name: name.clone(),
+                            arity,
+                            src: src.clone(),
+                        });
                         pool.push((name.clone(), funcs[0].1.clone()));
                         sources.insert(name, src);
                     }
@@ -464,8 +482,7 @@ mod macos {
         );
 
         // Linearize pool ONCE; slot 0 is the candidate.
-        let mut all: Vec<(String, Func)> =
-            vec![(CANDIDATE.to_string(), cand_func(&Expr::Var(0)))];
+        let mut all: Vec<(String, Func)> = vec![(CANDIDATE.to_string(), cand_func(&Expr::Var(0)))];
         all.extend(pool.iter().cloned());
         let seed = cand_prog(&mut all, &Expr::Var(0)).expect("seed");
         let (mut batch, _) = InterpBatch::new(&[seed]).expect("metal");
@@ -485,21 +502,26 @@ mod macos {
         let mut targets: Vec<Target> = Vec::new();
         let mut n_partial = 0usize;
         for c in &cells {
-            let Some(cart) = z80_compile(&c.name, &c.src) else { continue };
+            let Some(cart) = z80_compile(&c.name, &c.src) else {
+                continue;
+            };
             if c.arity == 1 {
-                let Some((cyc, trp, table, total)) = z80_profile_unary(&cart) else { continue };
+                let Some((cyc, trp, table, total)) = z80_profile_unary(&cart) else {
+                    continue;
+                };
                 trapped_by_cell.insert(c.name.clone(), trp);
                 if total {
                     // IR-step mean cost via the GPU path (needed for the stage-1
                     // "worth confirming" filter) — tabulate this one target alone.
-                    let solo = vec![pool[cells.iter().position(|x| x.name == c.name).unwrap()].clone()];
+                    let solo =
+                        vec![pool[cells.iter().position(|x| x.name == c.name).unwrap()].clone()];
                     if let Ok(prog) = linearize(&solo, &c.name) {
                         batch.reload(std::slice::from_ref(&prog));
-                        let full_domain: Vec<[u16; 3]> = (0..=u16::MAX).map(|v| [v, 0, 0]).collect();
+                        let full_domain: Vec<[u16; 3]> =
+                            (0..=u16::MAX).map(|v| [v, 0, 0]).collect();
                         let out = batch.run(&full_domain);
                         let mut steps = 0u64;
-                        for k in 0..DOMAIN {
-                            let o = out[k];
+                        for o in out.iter().take(DOMAIN) {
                             steps += o[4] as u64 | ((o[5] as u64) << 16);
                         }
                         targets.push(Target {
@@ -514,7 +536,9 @@ mod macos {
                     n_partial += 1;
                 }
             } else {
-                let Some((_cyc, trp)) = z80_profile_binary(&cart) else { continue };
+                let Some((_cyc, trp)) = z80_profile_binary(&cart) else {
+                    continue;
+                };
                 trapped_by_cell.insert(c.name.clone(), trp);
             }
         }
@@ -541,7 +565,11 @@ mod macos {
             let mut pop: Vec<(Expr, Option<CellProgram>)> = Vec::with_capacity(POP);
             for _ in 0..POP {
                 let e = rand_tree(&mut rng, MAX_DEPTH, &cells);
-                let p = if is_self(&e) { None } else { cand_prog(&mut all, &e) };
+                let p = if is_self(&e) {
+                    None
+                } else {
+                    cand_prog(&mut all, &e)
+                };
                 pop.push((e, p));
             }
             let mut best: Option<(Expr, CellProgram, f64)> = None; // cheapest IR-repriced verified-correct
@@ -589,8 +617,9 @@ mod macos {
                     .iter()
                     .zip(&slot)
                     .map(|((e, _), s)| match s {
-                        Some(bi) => exact(*bi) as i64 * 1_000_000_000
-                            - repriced_est(*bi, e).round() as i64,
+                        Some(bi) => {
+                            exact(*bi) as i64 * 1_000_000_000 - repriced_est(*bi, e).round() as i64
+                        }
                         None => -1,
                     })
                     .collect();
@@ -668,14 +697,21 @@ mod macos {
                     } else {
                         mutate(&elite[rng.below(en)].0, &mut rng, &cells)
                     };
-                    let cp = if is_self(&ce) { None } else { cand_prog(&mut all, &ce) };
+                    let cp = if is_self(&ce) {
+                        None
+                    } else {
+                        cand_prog(&mut all, &ce)
+                    };
                     next.push((ce, cp));
                 }
                 pop = next;
             }
 
             match best {
-                None => println!("no hit [+{cex} cex, {gens} gens, {:.1}s]", t0.elapsed().as_secs_f64()),
+                None => println!(
+                    "no hit [+{cex} cex, {gens} gens, {:.1}s]",
+                    t0.elapsed().as_secs_f64()
+                ),
                 Some((e, _, ir_cost)) => {
                     if ir_cost >= target_ir_repriced {
                         println!(
@@ -698,7 +734,9 @@ mod macos {
                         println!("real-Z80 compile failed");
                         continue;
                     };
-                    let Some((cand_cyc, cand_trp, cand_table, cand_total)) = z80_profile_unary(&cart) else {
+                    let Some((cand_cyc, cand_trp, cand_table, cand_total)) =
+                        z80_profile_unary(&cart)
+                    else {
                         println!("real-Z80 profile failed");
                         continue;
                     };
@@ -722,7 +760,11 @@ mod macos {
                     println!(
                         "    Z80 raw (P_T=0): {cand_p0:.1} vs {target_p0:.1} ({:.2}x) {}",
                         target_p0 / cand_p0,
-                        if wins_p0 { "survives" } else { "repricing-dependent" }
+                        if wins_p0 {
+                            "survives"
+                        } else {
+                            "repricing-dependent"
+                        }
                     );
                     if wins_repriced && wins_p0 {
                         confirmed_wins.push((
@@ -736,7 +778,9 @@ mod macos {
                     } else if wins_repriced {
                         println!("    ==> repricing-dependent, NOT counted (P_T=0 sensitivity lane failed it)");
                     } else {
-                        println!("    ==> stage 2 REJECTED (this session's next_pow2 outcome, exactly)");
+                        println!(
+                            "    ==> stage 2 REJECTED (this session's next_pow2 outcome, exactly)"
+                        );
                     }
                 }
             }
@@ -749,7 +793,11 @@ mod macos {
         );
         println!(
             "{}",
-            if confirmed_wins.len() >= 5 { "sweep gate: PASS" } else { "sweep gate: FAIL (or below the pre-registered bar)" }
+            if confirmed_wins.len() >= 5 {
+                "sweep gate: PASS"
+            } else {
+                "sweep gate: FAIL (or below the pre-registered bar)"
+            }
         );
         for (name, base, cost, ratio, chain) in &confirmed_wins {
             println!("  {name:<24} {chain}  {base:.1} -> {cost:.1} ({ratio:.2}x)");

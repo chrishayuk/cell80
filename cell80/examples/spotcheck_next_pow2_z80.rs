@@ -30,7 +30,9 @@ fn measure_p() -> f64 {
         let mut sum = 0u64;
         for a in 0..=255u16 {
             for b in 0..=255u16 {
-                let f = r.run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES).unwrap();
+                let f = r
+                    .run_fast(Some(&entry), &[a, b], cell80::DEFAULT_CYCLES)
+                    .unwrap();
                 assert!(matches!(f.halt, Halt::Returned));
                 sum += f.cycles;
             }
@@ -101,15 +103,15 @@ fn main() {
             .run_fast(Some(&comp_entry), &[x], cell80::DEFAULT_CYCLES)
             .unwrap();
         if !matches!(rf.halt, Halt::Returned) || !matches!(cf.halt, Halt::Returned) {
-            panic!("non-Returned halt at x={x}: ref={:?} comp={:?}", rf.halt, cf.halt);
+            panic!(
+                "non-Returned halt at x={x}: ref={:?} comp={:?}",
+                rf.halt, cf.halt
+            );
         }
         if rf.result != cf.result {
             mismatches += 1;
             if mismatches <= 5 {
-                println!(
-                    "MISMATCH x={x} ref={} comp={}",
-                    rf.result, cf.result
-                );
+                println!("MISMATCH x={x} ref={} comp={}", rf.result, cf.result);
             }
         }
         ref_total += rf.cycles;
@@ -134,7 +136,11 @@ fn main() {
     println!(
         "RAW domain-mean ratio (ref/comp): {:.3}x {}",
         ref_mean / comp_mean,
-        if ref_mean > comp_mean { "(composed wins)" } else { "(reference wins)" }
+        if ref_mean > comp_mean {
+            "(composed wins)"
+        } else {
+            "(reference wins)"
+        }
     );
     println!(
         "fraction of domain where reference is cheaper-or-equal (raw): {:.2}% ({}/{})",
@@ -155,6 +161,10 @@ fn main() {
     println!(
         "REPRICED domain-mean ratio (ref/comp): {:.3}x {}",
         ref_repriced / comp_repriced,
-        if ref_repriced > comp_repriced { "(composed wins)" } else { "(reference wins)" }
+        if ref_repriced > comp_repriced {
+            "(composed wins)"
+        } else {
+            "(reference wins)"
+        }
     );
 }

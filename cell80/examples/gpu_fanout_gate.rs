@@ -241,12 +241,14 @@ mod macos {
             }
         }
         let n_un = cells.iter().filter(|c| c.arity == 1).count();
-        println!("C0 fan-out gate — vocabulary pool: {} cells ({n_un} unary, {} binary)\n",
-            cells.len(), cells.len() - n_un);
+        println!(
+            "C0 fan-out gate — vocabulary pool: {} cells ({n_un} unary, {} binary)\n",
+            cells.len(),
+            cells.len() - n_un
+        );
 
         // Linearize pool ONCE; slot 0 is the candidate (mirrors gpu_discover.rs).
-        let mut all: Vec<(String, Func)> =
-            vec![(CANDIDATE.to_string(), cand_func(&Expr::Var(0)))];
+        let mut all: Vec<(String, Func)> = vec![(CANDIDATE.to_string(), cand_func(&Expr::Var(0)))];
         all.extend(pool.iter().cloned());
         let seed = cand_prog(&mut all, &Expr::Var(0)).expect("seed");
         let (mut batch, _) = InterpBatch::new(&[seed]).expect("metal");
@@ -335,12 +337,17 @@ mod macos {
             print!("[{}/{n_targets}] {} ... ", ti + 1, target.name);
             use std::io::Write;
             std::io::stdout().flush().ok();
-            let is_self = |e: &Expr| matches!(target.kind, TargetKind::Library) && calls(e, &target.name);
+            let is_self =
+                |e: &Expr| matches!(target.kind, TargetKind::Library) && calls(e, &target.name);
             let mut probes = base_probes.clone();
             let mut pop: Vec<(Expr, Option<CellProgram>)> = Vec::with_capacity(POP);
             for _ in 0..POP {
                 let e = rand_tree(&mut rng, MAX_DEPTH, &cells);
-                let p = if is_self(&e) { None } else { cand_prog(&mut all, &e) };
+                let p = if is_self(&e) {
+                    None
+                } else {
+                    cand_prog(&mut all, &e)
+                };
                 pop.push((e, p));
             }
             let mut best: Option<(Expr, CellProgram, f64)> = None; // cheapest verified-correct so far
@@ -435,8 +442,7 @@ mod macos {
                                 let mean_cost = total_steps as f64 / nfd as f64;
                                 let (e, p) = &pop[idx];
                                 let sp = p.as_ref().unwrap();
-                                let better =
-                                    best.as_ref().is_none_or(|(_, _, c)| mean_cost < *c);
+                                let better = best.as_ref().is_none_or(|(_, _, c)| mean_cost < *c);
                                 if better {
                                     best = Some((e.clone(), sp.clone(), mean_cost));
                                     improved = true;
@@ -490,7 +496,11 @@ mod macos {
                     } else {
                         mutate(&elite[rng.below(en)].0, &mut rng, &cells)
                     };
-                    let cp = if is_self(&ce) { None } else { cand_prog(&mut all, &ce) };
+                    let cp = if is_self(&ce) {
+                        None
+                    } else {
+                        cand_prog(&mut all, &ce)
+                    };
                     next.push((ce, cp));
                 }
                 pop = next;
@@ -540,8 +550,11 @@ mod macos {
         println!("\n=== C0 gate summary ===");
         println!(
             "canary gate: {}",
-            if canary_pass { "PASS — fan-out construction found for x*3" }
-            else { "FAIL — no fan-out construction found for x*3 within budget" }
+            if canary_pass {
+                "PASS — fan-out construction found for x*3"
+            } else {
+                "FAIL — no fan-out construction found for x*3 within budget"
+            }
         );
         println!(
             "sweep gate: {} strictly-cheaper full-domain hits (bar: >= 6 to materially exceed cost-discovery's 4)",

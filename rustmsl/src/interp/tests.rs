@@ -207,7 +207,7 @@ fn interp_batch_matches_cpu_run_beyond_one_threadgroup() {
     let lowered = rustz80::lower_program_full(&file, &rustz80::PreludeConfig::default())
         .unwrap_or_else(|e| panic!("lower failed: {e}"));
     let prog = linearize(&lowered.funcs, "run").expect("linearizes");
-    let (batch, _skipped) = InterpBatch::new(&[prog.clone()]).expect("metal device");
+    let (batch, _skipped) = InterpBatch::new(std::slice::from_ref(&prog)).expect("metal device");
     let probes: Vec<[u16; IN_STRIDE]> = (0..=u16::MAX).map(|v| [v, 0, 0]).collect();
     let out = batch.run(&probes);
     let np = probes.len();

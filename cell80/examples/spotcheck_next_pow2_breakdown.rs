@@ -25,8 +25,14 @@ fn compile(id: &str, src: &str) -> cell80::Cartridge {
 fn cost(cart: &cell80::Cartridge, args: &[u16]) -> (u16, u64, u64) {
     let mut r = Runner::new(cart.z80().unwrap());
     let entry = cart.manifest.entry.clone();
-    let f = r.run_fast(Some(&entry), args, cell80::DEFAULT_CYCLES).unwrap();
-    assert!(matches!(f.halt, Halt::Returned), "non-Returned: {:?}", f.halt);
+    let f = r
+        .run_fast(Some(&entry), args, cell80::DEFAULT_CYCLES)
+        .unwrap();
+    assert!(
+        matches!(f.halt, Halt::Returned),
+        "non-Returned: {:?}",
+        f.halt
+    );
     (f.result, f.cycles, f.trapped_ops)
 }
 

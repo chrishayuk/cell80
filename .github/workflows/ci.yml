@@ -9,6 +9,14 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # experiments/* are exploratory research crates, not the shipped library — excluded
+  # from clippy/test so a WIP/broken experiment never blocks CI. Keep in sync with the
+  # workspace `members` list in the root Cargo.toml.
+  EXCLUDE_EXPERIMENTS: >-
+    --exclude cell80-life
+    --exclude cell-synth-evolve
+    --exclude evolved-cells
+    --exclude cell-cost-discovery
 
 jobs:
   rust:
@@ -32,8 +40,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all -- --check
       # Lint every target — warnings fail the build. `--all-features` covers the cell VM.
+      # `experiments/*` crates are exploratory research code (pre-registered
+      # experiments, one-off search harnesses) — excluded from both gates below so a
+      # WIP/broken experiment never blocks CI on the shipped library. They still build
+      # under a plain `cargo check --workspace` locally; they're just not a gate.
       - name: clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features ${{ env.EXCLUDE_EXPERIMENTS }} -- -D warnings
       # The RV32 emission adversary (docs 13 §6 risk 2): GNU gas independently
       # re-encodes every instruction shape; without it the rustrv32 encoder is
       # self-refereed. Linux-only (the binutils cross package), and *required*
@@ -44,7 +56,7 @@ jobs:
       - name: test
         env:
           RV32_GAS_REQUIRED: ${{ matrix.os == 'ubuntu-latest' && '1' || '' }}
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace --all-features ${{ env.EXCLUDE_EXPERIMENTS }}
       # The comparison benchmark is its own workspace (keeps wasmtime out of the lib build).
       - name: cell-bench builds
         run: cargo build --manifest-path cell-bench/Cargo.toml
