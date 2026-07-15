@@ -114,6 +114,11 @@ def main():
     torch.manual_seed(args.seed)
     t0 = time.time()
 
+    ckpt_path = HERE / f"cn7_ckpt_fp_{args.arm}_s{args.seed}.pt"
+    if ckpt_path.exists() and not args.smoke:
+        raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
+                         f"checkpoint is never overwritten (CN-6 §8.3 lesson). Rename or move it first.")
+
     cell_ids = json.load(open(HERE / "cn7_token_map.json"))["cells"]
     print(f"== CN-7 fp re-baseline (arm {args.arm}, seed {args.seed}) on {device}, SP id space ==", flush=True)
     model, names, held = build(args.arm, cell_ids)
@@ -162,7 +167,9 @@ def main():
             if step >= args.steps:
                 break
 
-    ckpt = HERE / f"cn7_ckpt_fp_{args.arm}_s{args.seed}.pt"
+    ckpt = ckpt_path
+    while ckpt.exists():  # never overwrite, even in a race or smoke rerun
+        ckpt = ckpt.with_name(ckpt.stem + "+.pt")
     state = {"arm": args.arm, "seed": args.seed, "embed": model.base.embed.weight.detach().cpu(),
              "unfreeze_top": args.unfreeze_top}
     if args.arm in ("fingerprint", "shuffled"):

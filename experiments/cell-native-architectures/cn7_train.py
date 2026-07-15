@@ -73,6 +73,12 @@ def main():
     torch.manual_seed(args.seed)
     t0 = time.time()
 
+    stem = "cn7_ckpt_midtrain_attn" if args.attention_only else "cn7_ckpt_midtrain"
+    ckpt_path = HERE / (stem + ("_smoke" if args.smoke else "") + ".pt")
+    if ckpt_path.exists() and not args.smoke:
+        raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
+                         f"checkpoint is never overwritten (CN-6 §8.3 lesson). Rename or move it first.")
+
     tokmap = json.load(open(HERE / "cn7_token_map.json"))
     vocab = tokmap["vocab"]
     from tiny_model_v11.loader import load_from_artifacts
@@ -159,7 +165,9 @@ def main():
     print(f"== done: {step} steps, {seen_tokens/1e6:.2f}M tokens | "
           f"val NLL {nll0:.4f} -> {nll1:.4f} ({(nll1/nll0-1)*100:+.1f}%) ({time.time()-t0:.0f}s) ==", flush=True)
 
-    ckpt = HERE / ("cn7_ckpt_midtrain_attn.pt" if args.attention_only else "cn7_ckpt_midtrain.pt")
+    ckpt = ckpt_path
+    while ckpt.exists():  # never overwrite, even in a race or smoke rerun
+        ckpt = ckpt.with_name(ckpt.stem + "+.pt")
     torch.save({"arm": arm, "vocab": vocab, "seed": args.seed, "tokens": seen_tokens,
                 "pre_val_nll": nll0, "post_val_nll": nll1, "val_log": log,
                 "state": base.state_dict()}, ckpt)

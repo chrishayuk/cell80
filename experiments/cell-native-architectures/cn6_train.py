@@ -104,6 +104,8 @@ def main():
 
     tag = "" if args.base == "HuggingFaceTB/SmolLM2-135M" else "_" + args.base.split("/")[-1].replace(".", "").lower()
     ckpt = HERE / f"cn6_ckpt_{args.arm}{tag}.pt"
+    while ckpt.exists():  # never overwrite a result-bearing checkpoint (the input-max clobber, §8.3)
+        ckpt = ckpt.with_name(ckpt.stem + "+.pt")
     torch.save({"arm": args.arm, "base_id": args.base, "input_max": args.input_max,
                 "base": model.state_dict(), "call_id": call_id, "vocab": len(tok)}, ckpt)
     print(f"saved {ckpt.name} ({time.time()-t0:.0f}s)")
