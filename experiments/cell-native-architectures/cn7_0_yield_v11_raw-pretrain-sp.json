@@ -1,0 +1,658 @@
+{
+ "substrate": "v11:raw-pretrain-sp",
+ "protocol": {
+  "nsample": 2,
+  "temp": 0.7,
+  "seed": 80,
+  "budget": 48,
+  "prompting": "cn6-stage2-generation"
+ },
+ "summary": {
+  "within": {
+   "cells": 9,
+   "signed": 0,
+   "parsed": 0,
+   "yield": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  "beyond": {
+   "cells": 15,
+   "signed": 0,
+   "parsed": 0,
+   "yield": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "per_cell": {
+  "apply_delta_clamped": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": "s. He was very excited and wanted to go on an adventure. He put on his coat and ran out of the woods. He saw a big tree ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. She was very careful not to think of the other sides. He only had a few minutes and he didn't want to get too close -",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. She was carrying a hose with her to the top of the hill. When she reached the top of the hill, she looked down and sa",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "between_exclusive": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to go on an adventure. He grabbed his backpack and ran out of the car. He was so excite",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "- to do something - whenever she doesn't know what to do,\" she said. Sophie was so excited and she ran to find a big tre",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "and was eager to see the world from above. He was so excited! He quickly ran to the sky and saw the birds swimming in th",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "clamp_i16": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": "s. He was very excited and wanted to go on an adventure. He grabbed his shoes and ran out of the house. He was so excite",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "y. Every morning Lizzy would open the door of the house. She would check the door and see what it wanted. \"Mommy,\" she s",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "y. He wanted to make sure everything was so rich, he could use his paws to weigh in the ground. He was so happy with his",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "crc16_step": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to explore. He asked his mom, \"Mom, can I go on an adventure?\" His mom smiled and said,",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "y. He was curious about something new and he wanted to explore. He looked around and saw a group of ducks swimming in th",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He heard a beautiful sound coming from the kitchen. He followed the sound and saw a big, juicy, juicy apple and it loo",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "eq": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": "s. He was very excited to go to the park. He was so excited to go and play. He ran around the park and saw a big tree. H",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "'s home to help with the answers. He was so excited, he quickly ran to the office and got it to the office. He was a bit",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s to the park. He thinks about what he will do. One day, he finds a big brown, brown cat. He looks at it and says, \"Hell",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "fnv1a_step": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and couldn't wait to see what was inside. He asked his mom, \"What is this?\" His mom smiled and sai",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. He was very excited and wanted to do something. He asked his mom for help. \"Mommy, can I help you wash your hands wit",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "and she was very excited to go on an adventure. She hopped and crawled until she reached the top. She was not sure if sh",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "geom_circle_circumference_approx": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was so excited to see what was on the wall. He ran to the door and opened it. Inside, he saw a big, colorful door. ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He was so excited and couldn't help but smile. He ran around the park and started jumping. The spot was very pretty, a",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "day. He was so excited he wanted to try it out. He was so excited and tried to count to three times. But he couldn't do ",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "is_lt_i16": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the bottle and ran to the kitchen. He saw a big bowl of water",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. He was very flexible and liked to try your best. He was so excited when he started talking to all the other animals. ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". She was playing in the park came across a post. She picked up a pen and started to read it. She read the post and it w",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "isqrt": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He is very excited. He likes to play with his friends. He runs to the kitchen and sees a big bowl of flour. He wants t",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He thinks it will be fun to make something different. He thinks it is perfect! He is going to make a sand castle. \"Mom",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. He is a very good boy and he loves to work. He likes to sort the things from his friends and make them happy. He is v",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "jacobi_symbol": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to show his friends. He grabbed the pencil and started to play. He was having so much f",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. He was so excited to see what it was. So he reached up and touched it with his hands. It was a match! He was so happy",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "t to his neighbour's house. He was very excited but he was very curious. \"Can I please measure the pictures?\" he asked. ",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "luhn_check": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to explore. He asked his mom, \"Mom, can I go for a walk?\" His mom said, \"Yes, but be ca",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s in the woods. The wind blew hard and the ball went outside. Alex was so excited to see the ball. He looked in the tree",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He was so excited. He couldn't wait to see what was - \"I have a surprise for you!\" His mom smiled and said, \"Let's go ",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "mask_clear": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to show his friends. He grabbed his mask and ran outside. He was so excited to see all ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s to his grandma's house. His mom and dad were very worried. They told him to keep going, but Tim didn't listen to her. ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "ly. The mask was wearing a special mask and it was very special. Suddenly, the mask started to glow and it filled the ai",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "mask_has_all": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He has a big mask and a big smile. He likes to wear a mask and a mask. He likes to wear his mask and pretend he is a p",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He has a big helmet and a hat. He is very naughty and does not care. He thinks he will not care about what he does. On",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He does not know what to do. His mom says it is a skeleton. The skeleton is a skeleton. He has a friend on his head. T",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "mask_overlap_count": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the mask and ran to the door. He opened the door and saw a bi",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "'s outfit, off the door, and off. He was so excited, he couldn't wait to write his new favourite songs. He grabbed the s",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "-ray! He was curious, so he wanted to be like the biggest monster. He shouted to the other sizes, \"I want to count to te",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "median3": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": "s. He was very excited and wanted to go on an adventure. He grabbed his backpack and ran out of the house. He was so exc",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s in the sun. He loved to jump through the sky and watch the clouds. One day, his mom said to him, \"Let's go for a walk.",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He loved to move around his house. One day, he saw something he had never seen before. It was a colorful car, with a m",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "mobius_function": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the pencil and started to pull it. He was so excited that he ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s. He always smiles when he is older and enjoyed his work. They were very competitive, but the other kids were not as go",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "d. He was a gifted boy and he was only three years old. One day, he was out in the backyard using the popcorn. He was so",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "norm2_sq": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to go on an adventure. He grabbed his hat and ran out of the woods. He was so excited t",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "and delighted to see all the wonderful things around his house. He was always so excited when he saw something! One day,",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s and friendly habits. She always asked her mom to make her some soup for the toast. \"This toast is delicious,\" said her",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "permille": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". She was very excited to go to the park. She was so excited to go and play on the swings. She ran to the swing and star",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "off with a smile on her cheek. She was always so proud of herself! One day she was playing in the park when she saw a bi",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "'s name. He was a very happy 3 year old boy. One day, he was in the park with his mom. They were having a great time pla",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "permille_to_byte": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was so excited to see what was inside the bucket. He grabbed the bucket and started to dig. He dug and dug until he",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "his body to the top of the hill. His friends were happy and they all clapped and cheered. They had so much fun that day,",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "y to the top of the hill. He was so excited to jump up and down, but he just couldn't stop. As the sun started to set, h",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "pow_small": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the handle and started to pull it. He was so excited to see w",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s, and one as a beautiful moment, the toddlers started to learn something new, so they decided to play a game. They took",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". It was a very special day, but it was always too late. The little boy was feeling very worried and so he decided to tr",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "snap_down": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the handle and started to pull it. He was so excited to see w",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". He was very excited and he wanted to go and play. He lay down on the couch and closed his eyes. He yawned and felt a l",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "was very important. The 3 year old was worried they would do something special. They packed their bags and got in the ca",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "square": {
+   "stratum": "within",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited to go on an adventure. He packed his bag with some food and set off. He walked and walked until he",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "the tree. It was so distant, and it felt like it was always ready to spend so much time. All the animals had a great tim",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": ". The boy was only three years old. So he asked his mom to help him. His mom said, \"Yes, I can help you.\" The boy starte",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "swap_bytes": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": ". He was very excited and wanted to try it out. He grabbed the trophy and started to play with it. He was so happy that ",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "and Steve was so excited to see it. He grabbed the cord and ran to his house. He liked to see the chain and pretend he w",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "t. His mom was very happy and gave him a big hug. His mom was so proud of him. She gave him a big hug and said, \u00e2\u20ac\u0153I",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  },
+  "zscore_q8": {
+   "stratum": "beyond",
+   "parsed_pairs": 0,
+   "signed_pairs": 0,
+   "yield": 0.0,
+   "emissions": [
+    {
+     "temp": 0.0,
+     "raw": "s. He was a very happy 3 year old boy. He was so excited to go outside and play. He ran to the door and saw a big, color",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "s from the store. He had a big bag full of laundry in his hands and was very excited. He had never seen anything like it",
+     "parsed": 0,
+     "signed": 0
+    },
+    {
+     "temp": 0.7,
+     "raw": "by an old house. She was going to the fair, but then something amazing happened. A big dog stopped in front of the town ",
+     "parsed": 0,
+     "signed": 0
+    }
+   ]
+  }
+ }
+}

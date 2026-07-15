@@ -1,0 +1,30 @@
+  substrate: raw TinyModel v11, original SP mapping (8599 trained ids)
+  apply_delta_clamped              [within] parsed   0  signed   0  yield 0.000
+  between_exclusive                [within] parsed   0  signed   0  yield 0.000
+  clamp_i16                        [within] parsed   0  signed   0  yield 0.000
+  crc16_step                       [beyond] parsed   0  signed   0  yield 0.000
+  eq                               [within] parsed   0  signed   0  yield 0.000
+  fnv1a_step                       [beyond] parsed   0  signed   0  yield 0.000
+  geom_circle_circumference_approx [beyond] parsed   0  signed   0  yield 0.000
+  is_lt_i16                        [within] parsed   0  signed   0  yield 0.000
+  isqrt                            [within] parsed   0  signed   0  yield 0.000
+  jacobi_symbol                    [beyond] parsed   0  signed   0  yield 0.000
+  luhn_check                       [beyond] parsed   0  signed   0  yield 0.000
+  mask_clear                       [beyond] parsed   0  signed   0  yield 0.000
+  mask_has_all                     [beyond] parsed   0  signed   0  yield 0.000
+  mask_overlap_count               [beyond] parsed   0  signed   0  yield 0.000
+  median3                          [within] parsed   0  signed   0  yield 0.000
+  mobius_function                  [beyond] parsed   0  signed   0  yield 0.000
+  norm2_sq                         [beyond] parsed   0  signed   0  yield 0.000
+  permille                         [beyond] parsed   0  signed   0  yield 0.000
+  permille_to_byte                 [beyond] parsed   0  signed   0  yield 0.000
+  pow_small                        [beyond] parsed   0  signed   0  yield 0.000
+  snap_down                        [within] parsed   0  signed   0  yield 0.000
+  square                           [within] parsed   0  signed   0  yield 0.000
+  swap_bytes                       [beyond] parsed   0  signed   0  yield 0.000
+  zscore_q8                        [beyond] parsed   0  signed   0  yield 0.000
+
+CN-7.0 yield — substrate v11:raw-pretrain-sp | greedy + 2 samples @ T=0.7 per cell
+  within  (9 cells): signed 0/0 parsed  ->  per-pair yield 0.000 [0.000,0.000]
+  beyond  (15 cells): signed 0/0 parsed  ->  per-pair yield 0.000 [0.000,0.000]
+saved cn7_0_yield_v11_raw-pretrain-sp.json

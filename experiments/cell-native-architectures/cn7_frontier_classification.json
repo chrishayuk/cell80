@@ -1,0 +1,45 @@
+{
+  "_provenance": {
+    "preregistration": "experiments/cell-native-architectures-cn7-preregistration.md §3.1",
+    "status": "FROZEN 2026-07-15 — borderline calls confirmed by Chris (freeze-as-drafted), committed before any midtrain per prereg commitment 1; no stratum moves after this commit",
+    "date": "2026-07-15",
+    "held_out_source": "cn1_axis_a_heldout.json (24 value cells, arity >= 1)",
+    "semantics_source": "each cell's .rs read under cell80/cells/ on 2026-07-15; per-cell op noted below",
+    "small_instances": "inputs drawn 0..20 per argument — the B4 deciding-run range (cn6 _i20 corpus); 7.3 grades at this range",
+    "decision_rule": "WITHIN iff computing f on inputs <=20 uses only Tier A op KINDS (1-2 digit add/sub, mult <= 2dx1d/times tables, comparison/ordering, parity, small modulus, counting) for the bulk of the input domain. Anything requiring binary/digit decomposition, multi-digit multiplication or division as the CORE op, factorization, or checksum structure is BEYOND. Borderlines flagged and decided at freeze time; under-teach governs the CURRICULUM (S1 teaches only strict Tier A), not this grading list.",
+    "cn6_percell_source": "cn6_eval_llama.log per-cell table (Llama-3.2-1B, 0..20 inputs, greedy) — the B4 run"
+  },
+  "counts": {"within": 9, "beyond": 15},
+  "borderline_register": [
+    {"cell": "square", "call": "within", "tension": "n<=12 is strict times table; 13..20 needs 2dx2d which Tier A excludes (~38% of the 0..20 domain). Kept WITHIN: single application of the defining Tier A op kind; expect the untaught tail to cap its per-pair correctness and report it per-cell, not silently."},
+    {"cell": "isqrt", "call": "within", "tension": "search/iteration flavour (like the prereg's gcd example), but verification is squares <=25 + comparison, all times-table. A B11 zero cell that is Tier-A-reducible — the sharpest rescue candidate the bottleneck thesis has."},
+    {"cell": "norm2_sq", "call": "beyond", "tension": "op kind is Tier A (square + add) but composition needs two squares incl. the 2dx2d tail AND 3-digit addition (100+100 already at x=y=10); majority of the 0..20x0..20 domain exceeds tier. Kept BEYOND."},
+    {"cell": "snap_down", "call": "within", "tension": "(x/step)*step = x - x%step; small modulus is Tier A and the reconstruction multiply has product <= x <= 20 (times table). Division-by-step is implicit in small modulus."}
+  ],
+  "cells": {
+    "between_exclusive": {"stratum": "within", "pack": "bounds", "arity": 3, "op": "(lo < x) && (x < hi)", "why": "two comparisons + conjunction; pure Tier A", "cn6_llama_i20": {"corr": 1.0, "rank": 4, "resolved5": true}},
+    "median3": {"stratum": "within", "pack": "ranking-stats", "arity": 3, "op": "middle of three (min/max/sum trick)", "why": "ordering three small ints; comparison-only", "cn6_llama_i20": {"corr": 1.0, "rank": 4, "resolved5": true}},
+    "eq": {"stratum": "within", "pack": "predicates", "arity": 2, "op": "(a == b) as u16", "why": "equality comparison", "cn6_llama_i20": {"corr": 0.33, "rank": 35, "resolved5": false}},
+    "is_lt_i16": {"stratum": "within", "pack": "predicates", "arity": 2, "op": "(a < b) as u16, i16 view", "why": "comparison; 0..20 inputs are positive in i16 view so no reinterpretation burden", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "clamp_i16": {"stratum": "within", "pack": "signed-deltas", "arity": 3, "op": "clamp(x, lo, hi)", "why": "two comparisons + select", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "apply_delta_clamped": {"stratum": "within", "pack": "signed-deltas", "arity": 3, "op": "value + delta, clamped to [0, cap]", "why": "1-2 digit add/sub + comparisons at 0..20", "cn6_llama_i20": {"corr": 0.33, "rank": 17, "resolved5": false}},
+    "snap_down": {"stratum": "within", "pack": "bounds", "arity": 2, "op": "(x / step) * step, step!=0 guard", "why": "x - x%step: small modulus + times-table reconstruction (product <= x <= 20); borderline, see register", "cn6_llama_i20": {"corr": 0.67, "rank": 31, "resolved5": false}},
+    "isqrt": {"stratum": "within", "pack": "number-theory", "arity": 1, "op": "floor(sqrt(n))", "why": "n<=20 -> result <=4; verify k*k<=n<(k+1)^2 with squares <=25 (times table) + comparison; borderline, see register", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "square": {"stratum": "within", "pack": "safe-arith", "arity": 1, "op": "n*n (n<=255 guard)", "why": "single small multiplication; 13..20 tail exceeds strict tier, see register", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "swap_bytes": {"stratum": "beyond", "pack": "bit-encoding", "arity": 1, "op": "(x << 8) | (x >> 8)", "why": "byte manipulation (excluded class); on 0..20 equals x*256 — multi-digit multiplication", "cn6_llama_i20": {"corr": 0.33, "rank": 134, "resolved5": false}},
+    "mask_clear": {"stratum": "beyond", "pack": "bit-mask", "arity": 2, "op": "x & !mask", "why": "bitwise; needs binary decomposition", "cn6_llama_i20": {"corr": 0.67, "rank": 79, "resolved5": false}},
+    "mask_has_all": {"stratum": "beyond", "pack": "bit-mask", "arity": 2, "op": "((x & mask) == mask) as u16", "why": "bitwise; needs binary decomposition", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "mask_overlap_count": {"stratum": "beyond", "pack": "bit-mask", "arity": 2, "op": "popcount(a & b)", "why": "bitwise + popcount; counting is Tier A but over binary decomposition, which is not", "cn6_llama_i20": {"corr": 0.33, "rank": 132, "resolved5": false}},
+    "permille_to_byte": {"stratum": "beyond", "pack": "bucket-convert", "arity": 1, "op": "pm * 51 / 200", "why": "multi-digit multiplication + division as the core op", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "luhn_check": {"stratum": "beyond", "pack": "calendrical-checksum", "arity": 1, "op": "Luhn checksum over decimal digits", "why": "checksum / digit manipulation — explicitly excluded in §3.1", "cn6_llama_i20": {"corr": 1.0, "rank": 49, "resolved5": false}},
+    "geom_circle_circumference_approx": {"stratum": "beyond", "pack": "geometry", "arity": 1, "op": "(r * 1608) >> 8", "why": "multi-digit multiplication by a 4-digit constant + shift", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "crc16_step": {"stratum": "beyond", "pack": "hashing", "arity": 2, "op": "CRC16 polynomial step", "why": "checksum / bitwise — explicitly excluded", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "fnv1a_step": {"stratum": "beyond", "pack": "hashing", "arity": 2, "op": "FNV-1a hash step (xor + big multiply)", "why": "hash; multi-digit multiplication mod 2^16", "cn6_llama_i20": {"corr": 0.33, "rank": 107, "resolved5": false}},
+    "jacobi_symbol": {"stratum": "beyond", "pack": "number-theory", "arity": 2, "op": "Jacobi symbol (a/n)", "why": "number-theoretic predicate — explicitly excluded", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "mobius_function": {"stratum": "beyond", "pack": "number-theory", "arity": 1, "op": "Möbius mu(n)", "why": "factorization-based number theory — excluded class", "cn6_llama_i20": {"corr": 1.0, "rank": 20, "resolved5": false}},
+    "pow_small": {"stratum": "beyond", "pack": "number-theory", "arity": 2, "op": "base^exp, saturating at 65535", "why": "repeated multi-digit multiplication with saturation logic; kin of the excluded modular exponentiation", "cn6_llama_i20": {"corr": 0.33, "rank": 118, "resolved5": false}},
+    "permille": {"stratum": "beyond", "pack": "percent", "arity": 2, "op": "part * 1000 / whole (u32 path, saturate)", "why": "multi-digit multiplication + division as the core op", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "zscore_q8": {"stratum": "beyond", "pack": "running-stats", "arity": 3, "op": "((value - mean) << 8) / stddev, Q8 fixed point", "why": "multi-digit multiply (x256) + division", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}},
+    "norm2_sq": {"stratum": "beyond", "pack": "vector", "arity": 2, "op": "x*x + y*y", "why": "two squares incl. 2dx2d tail + 3-digit addition; borderline, see register", "cn6_llama_i20": {"corr": 0.0, "rank": 249, "resolved5": false}}
+  }
+}

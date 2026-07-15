@@ -1,6 +1,6 @@
 # CN-7: Numeracy Midtrain with Cells as Validator
 
-**Pre-registration v0.1 — Predictions pinned before any training**
+**Pre-registration v0.1 (amended v0.2 pre-7.1 — see §8) — Predictions pinned before any training**
 
 Chris Hay | CN Programme | July 2026
 
@@ -289,3 +289,90 @@ off-by-one pairs poison the router hardest).
 4. Every number reported has two routes to it where feasible (signature
    audit, mask audit, per-stratum counts alongside rates) — the CN-1
    lesson, institutionalised.
+
+---
+
+## 8. v0.2 amendments (2026-07-15, before the 7.1 freeze; v0.1 text above unchanged)
+
+Made after CN-7.0 ran and before any corpus generation or training. Thresholds
+in §4 are untouched; what changes is provenance labeling, the substrate's id
+space, and the P-d baselines. Decisions confirmed by CH.
+
+### 8.1 The v11 tokenizer discovery (found wiring CN-7.0)
+
+TinyModel v11's committed tokenizer artifacts (`tiny-model/tokenizer/v11/…`)
+are a **different piece→id mapping** than the one the checkpoint was trained
+with. Under the committed mapping v11 scores NLL 18.0 on TinyStories — worse
+than uniform (11.2); under the original SP tokenizer (recovered at
+`chris-experiments/compilation/15_v11_model/v11_tokenizer/v11.model`, the path
+recorded in `training_results.json`) it scores **NLL 0.66** with fluent greedy
+continuations. `artifacts/train_mask.pt` (8,599 of 71,261 ids) marks the
+trained rows; decode must mask to it. The SP vocab has no `<call>`/`</call>`.
+
+Consequence for the record: the CN-1 lane encoded through the committed
+(wrong) mapping — **29.8% of its context tokens hit trained rows** (chance
+12.1%, matched ~100%). CN-1's arm contrasts stand (all arms shared the
+substrate), but B9/B10 are measurements of a mostly-untrained-embedding stack,
+and any "leverages the v11 pretrain" framing of CN-1 is retracted. This is the
+fifth catch of the "two routes disagree" family in this programme.
+
+### 8.2 Substrate decision: SP id space + re-baseline
+
+CN-7.2 midtrains v11 **in the original SP id space** (cell tokens and
+delimiters appended above 71,261), so the real pretrain is preserved and S4/P-e
+are meaningful (pre-midtrain TinyStories NLL 0.66 is the P-e reference).
+Before the midtrain, the CN-1 fingerprint finetune is re-run on unmodified v11
+under the SP mapping (seed-81 protocol, 3 seeds) to establish **B9′/B10′**;
+**P-d1/P-d2 grade against B9′/B10′**, not B9/B10. P-d1's threshold becomes
+median rank ≤ B9′ + 32 (the same ~"B9 + noise allowance" margin v0.1 used),
+frozen the moment B9′ exists and before the midtrain starts.
+
+### 8.3 Provenance corrections to §2
+
+- **B1/B2/B7/B8** were measured on **SmolLM2-135M** (CN-6 stage-2 arms), not
+  on v11 — v0.1's "v11" label was wrong. No emission protocol had ever run on
+  v11 before CN-7.0. B1–B4 therefore serve as **cross-model floors** (the
+  floor was base-independent: SmolLM2 and Llama-3.2-1B both pinned at it).
+- **B4's** CI upper bound is **0.26** (findings: 0.083 [.02, .26]), not 0.31.
+- **v11's pretrain is 24M tokens** (16M + 8M phase 3;
+  `training_results.json`), not ~100M; §1's "at ~100M" and 7.2's "against
+  v11's ~100M pretrain" read accordingly. The 10–20M midtrain is the same
+  order as the pretrain, which strengthens the replay-ratio rationale.
+- The on-disk `cn6_ckpt_generation.pt` is the **0..20 retrain** (the base-swap
+  control overwrote the 0..1000 original — `cn6_train.py`'s checkpoint tag
+  ignores `--input-max`). B1/B2 stand as recorded in the findings; any future
+  re-measurement of the SmolLM2 arm is on the 0..20 substrate (overall
+  correctness 0.166).
+
+### 8.4 CN-7.0 results (both substrates; prediction graded honestly)
+
+Frozen classification: **9 within / 15 beyond** (`cn7_frontier_classification.json`,
+borderline register inside; square and isqrt WITHIN, norm2_sq BEYOND).
+
+| Substrate | Within-frontier yield | Beyond-frontier yield |
+|---|---|---|
+| SmolLM2 CN-6 gen arm, 0..20 retrain (greedy + 8 samples @ T=0.7) | **0.289 [0.236, 0.349]** (70/242) | **0.079 [0.057, 0.109]** (32/405) |
+| Raw v11, SP mapping | 0 parsed pairs | 0 parsed pairs |
+
+- The v0.1 prediction (Tier A 0.05–0.15, beyond ≤ 0.01) **missed high on both
+  strata** on the emission-finetuned substrate: sampling at T=0.7 and the
+  0..20 retrain lift yields above the greedy-B2-derived band, and the beyond
+  excess is concentrated in bitwise cells with seen siblings (mask_clear
+  0.407, mask_has_all 0.259) plus low-entropy-output luck. The within/beyond
+  **separation (3.7×, non-overlapping CIs) is the directional confirmation**;
+  cross-check: overall signed rate 102/647 = 0.158 ≈ the 0.166 correctness the
+  findings recorded for this substrate (two routes agree).
+- Raw v11 has never seen the emission grammar (no `<call>` in the SP vocab):
+  its in-format floor is **zero parsed pairs**, which is the number the S3
+  species must move. CN-7.6's yield gate reads against the midtrained model,
+  as v0.1 already specified.
+- Yield outliers worth carrying into 7.3 expectations: is_lt_i16 0.963,
+  clamp_i16 0.630, snap_down 0.370, isqrt 0.296 (within); zscore_q8, permille,
+  fnv1a_step, geom_circle at 0.000 (beyond).
+
+### 8.5 What v0.2 does NOT change
+
+All §4 thresholds (P-a1…P-e, 7.3 strata predictions, 7.4 probes, 7.6 gate),
+the decision spine, the species definitions, the mask property, and the
+grading protocol (CN-6 stage-2 eval at 0..20, resolve@5, Wilson CIs) are
+unchanged. The 24-cell classification is frozen as of this commit.
