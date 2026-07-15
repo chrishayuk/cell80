@@ -61,6 +61,8 @@ mod physics;
 mod predicates;
 #[path = "library/ranking-stats.rs"]
 mod ranking_stats;
+#[path = "library/raw-arith.rs"]
+mod raw_arith;
 #[path = "library/running-stats.rs"]
 mod running_stats;
 #[path = "library/safe-arith.rs"]

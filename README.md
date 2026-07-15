@@ -130,7 +130,7 @@ memory, filed.
 
 ## The library
 
-The seed library has grown to **790 cells across 42 packs** — math, statistics,
+The seed library has grown to **794 cells across 43 packs** — math, statistics,
 Excel-shaped financial functions, an owned f32 softfloat surface (bit-identical to
 rustc), calendars and checksums, sliding-window and state-machine families — each behind
 an **admission gate with behavioural fingerprints** that catches the duplicates

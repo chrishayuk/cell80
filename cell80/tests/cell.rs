@@ -792,7 +792,7 @@ fn cli_index_and_search_the_seed_library() {
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir.clone()]).unwrap();
     assert!(listing.contains("manhattan") && listing.contains("Pts::run() -> u16"));
-    assert!(listing.contains("range_check") && listing.contains("790 cells"));
+    assert!(listing.contains("range_check") && listing.contains("794 cells"));
 
     // search surfaces the most relevant cell first (line 0 is the header). A bare "grid
     // distance" now hits the whole distance family (manhattan/chebyshev/euclid_sq), so the
@@ -856,7 +856,7 @@ fn cli_index_without_gate_is_unchanged() {
     // Locks the existing no-flag contract: `--gate` must be strictly additive.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let listing = cell::run_cli(&["index".into(), dir]).unwrap();
-    assert!(listing.contains("manhattan") && listing.contains("790 cells"));
+    assert!(listing.contains("manhattan") && listing.contains("794 cells"));
     assert!(!listing.contains("REFUSED"));
 }
 
@@ -867,7 +867,7 @@ fn cli_index_json_lists_every_manifest() {
     let out = cell::run_cli(&["index".into(), dir, "--json".into()]).unwrap();
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     let cells = v["cells"].as_array().unwrap();
-    assert_eq!(cells.len(), 790, "got: {out}");
+    assert_eq!(cells.len(), 794, "got: {out}");
     let manhattan = cells.iter().find(|c| c["id"] == "manhattan").unwrap();
     assert_eq!(manhattan["signature"], "Pts::run() -> u16");
     assert!(manhattan["tags"]
@@ -1030,13 +1030,27 @@ fn cli_index_gate_over_the_real_library() {
     // `excel_stdev_p`/`excel_stdev_s` now well under 1.0) — see the new
     // `f32_bit_pattern_arrays_probe_as_floats_not_subnormals` regression test in
     // `cell80/src/fingerprint.rs` for the isolated repro.
+    // 790→794: a new raw-arith pack (add, sub, shl, shr) — the raw wrapping/unchecked
+    // arithmetic primitives no prior pack shipped (everything two-argument was either
+    // checked/escalating or saturating). Found missing by `experiments/
+    // cell-fanout-gate-preregistration.md`'s x*3 canary: `(x<<1)+x` needs a raw add and
+    // a variable-amount shift, and neither existed. 4 authored, 2 back-and-forth: the
+    // gate first refused `add_sat` and `sub_i16` (both pre-existing, already-landed
+    // cells) as behavioural duplicates of the new `add`/`sub` — a probe-bank
+    // coincidence, not a true duplicate (add_sat saturates on overflow, add wraps;
+    // sub_i16 escalates when the true difference doesn't fit i16, sub always wraps),
+    // the exact same class of false positive as the historical luhn_check/is_zero and
+    // excel_oddlyield cases. Fixed the same way: widened DEFAULT_PROBES with
+    // `[65535, 1]` (overflows a plain add) and `[32767, 32768]` (i16::MAX minus
+    // i16::MIN, which overflows i16 but not a wrapping u16 subtract). 794 admitted,
+    // 0 refused.
     let dir = format!("{}/cells", env!("CARGO_MANIFEST_DIR"));
     let retrieval = format!(
         "{}/../cell-eval/datasets/retrieval.jsonl",
         env!("CARGO_MANIFEST_DIR")
     );
     let out = cell::run_cli(&["index".into(), dir, "--gate".into(), retrieval]).unwrap();
-    assert!(out.contains("790 admitted, 0 refused"), "got: {out}");
+    assert!(out.contains("794 admitted, 0 refused"), "got: {out}");
 }
 
 #[test]

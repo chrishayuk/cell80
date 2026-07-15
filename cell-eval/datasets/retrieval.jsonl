@@ -1814,3 +1814,11 @@
 {"id": "excel_xirr-direct-1", "query": "Excel XIRR: internal rate of return for a cash-flow stream on irregular, non-periodic dates", "expected": "excel_xirr", "category": "direct"}
 {"id": "excel_xirr-para-1", "query": "solve for the yield that zeroes a net-present-value schedule when the cash flows land on arbitrary calendar dates instead of even periods", "expected": "excel_xirr", "category": "paraphrase"}
 {"id": "excel_xirr-adversarial-1", "query": "root-find the discount rate for a cash-flow stream using real calendar day offsets and a fractional-year exponent per flow, not whole-period indices (distinct from IRR's period-indexed secant and from XNPV's single non-iterative evaluation at a given rate)", "expected": "excel_xirr", "category": "adversarial"}
+{"id": "add-direct-1", "query": "raw wrapping add, no saturation or overflow check", "expected": "add", "category": "direct"}
+{"id": "add-para-1", "query": "add two 16-bit values and let it wrap past 65535 instead of clamping or erroring", "expected": "add", "category": "paraphrase"}
+{"id": "sub-direct-1", "query": "raw wrapping subtract, no floor or overflow check", "expected": "sub", "category": "direct"}
+{"id": "sub-para-1", "query": "subtract two 16-bit values and let it wrap past zero instead of clamping or erroring", "expected": "sub", "category": "paraphrase"}
+{"id": "shl-direct-1", "query": "shift left by a runtime variable amount", "expected": "shl", "category": "direct"}
+{"id": "shl-para-1", "query": "left-shift a 16-bit value by a bit count that's itself a variable, not a fixed literal", "expected": "shl", "category": "paraphrase"}
+{"id": "shr-direct-1", "query": "logical shift right by a runtime variable amount", "expected": "shr", "category": "direct"}
+{"id": "shr-para-1", "query": "right-shift a 16-bit value by a bit count that's itself a variable, zero-filled from the top", "expected": "shr", "category": "paraphrase"}

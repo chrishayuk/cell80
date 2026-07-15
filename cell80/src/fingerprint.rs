@@ -69,6 +69,15 @@ pub const DEFAULT_PROBES: &[[u16; 3]] = &[
     // and a true duplicate stays 1.0 on every probe) — the same root-cause fix
     // as signed-deltas' negative-i16 row.
     [2, 0, 1],
+    // Overflow separators (raw-arith pack, 2026-07-14): every earlier row's
+    // first two columns sum/subtract without crossing a u16/i16 boundary, so a
+    // raw wrapping op and its checked/saturating sibling agreed on every probe —
+    // agreement 1.0, gate refused the landed `add_sat`/`sub_i16` as duplicates of
+    // the new `add`/`sub`. `[65535, 1, 0]` overflows a plain add (wraps to 0 vs
+    // add_sat's clamp to 65535); `[32767, 32768, 0]` is i16::MAX minus i16::MIN,
+    // whose true difference doesn't fit i16 (sub_i16 escalates; sub just wraps).
+    [65535, 1, 0],
+    [32767, 32768, 0],
 ];
 
 /// A cell's behavioural fingerprint: one entry per probe — for a value cell the

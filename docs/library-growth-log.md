@@ -1606,3 +1606,33 @@ parent") — if a few composed candidates are strongly advantageous while most a
 neutral-to-worse, the mean hides exactly that distribution, and EX-4's lineage machinery
 (already built, already proven) can answer it directly: per-composed-candidate fitness
 against its own parent lineage, not the aggregate.
+
+### The raw-arith pack — a vocabulary gap found by a failed experiment (790 → 794, 2026-07-14)
+
+`experiments/cell-fanout-gate-preregistration.md`'s x·3 canary (`(x<<1)+x`, the textbook
+motivating example for fan-out composition) came back `NOT FOUND` across four independent
+search runs. Root-caused by direct inspection, not just inference from the search: the
+library had **no standalone free-fn cell doing raw wrapping `add`/`sub`, and no
+general-purpose variable-amount `shl`/`shr`** — every two-argument arithmetic cell was
+either checked/escalating (`add_checked_u32`, `sub_i16`) or saturating (`add_sat`,
+`sub_sat`), and the library's only variable-amount shifts (`bit_is_set`, `set_bit`,
+`clear_bit`, `toggle_bit`) use one internally at a fixed bit position rather than exposing
+it as a general two-argument primitive. `x*3` needs wraparound past 21845; nothing in the
+vocabulary produced unconstrained wrapping arithmetic from two free operands, so the
+canary was infeasible from the shipped primitive set regardless of search grammar — a
+real, actionable finding in its own right (`cell-fanout-gate-findings.md` §1).
+
+New pack `raw-arith` (4 cells: `add`, `sub`, `shl`, `shr`) closes the gap. Runtime-variable
+shifts are already a proven, shipped `rustz80` feature (`ShiftVar`, `docs/library-growth.md`'s
+"bit/rotate/encoding cells are one-liners" note) — `shl`/`shr` are the general-purpose
+two-argument siblings the bit-mask pack's fixed-position shifts never exposed. The gate
+first refused `add_sat` and `sub_i16` — both pre-existing, already-landed cells — as
+behavioural duplicates of the new `add`/`sub` (agreement 1.00 on `DEFAULT_PROBES`): a
+probe-bank coincidence, the same class of false positive as the historical
+`luhn_check`/`is_zero` and `excel_oddlyield` cases, not a true duplicate (`add_sat`
+saturates on overflow, `add` wraps; `sub_i16` escalates when the true difference doesn't
+fit `i16`, `sub` always wraps — verified directly by running both cells at the
+discriminating inputs before touching the probe bank). Fixed the same way as those prior
+cases: widened `DEFAULT_PROBES` with `[65535, 1]` (overflows a plain add) and
+`[32767, 32768]` (i16::MAX minus i16::MIN — overflows `i16` but not a wrapping `u16`
+subtract). 794 admitted, 0 refused.

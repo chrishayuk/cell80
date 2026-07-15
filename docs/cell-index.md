@@ -1,6 +1,6 @@
 # Cell index — every landed cell, by pack
 
-*Generated from `cell80/cells` (790 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
+*Generated from `cell80/cells` (794 cells) by `cell80/scripts/gen_cell_index.py`. Regenerate after any cell is added/removed:*
 
 ```
 cargo run -q -p cell80 --bin cell80 -- index cell80/cells --json \
@@ -724,6 +724,15 @@ See `docs/library-growth.md` for the packs' purpose, the contribution rule, and 
 | `sum3` | `run(a: u16, b: u16, c: u16) -> u16` | Sum of three values (saturating at 65535). |
 | `sum4` | `Sum4::run() -> u16` | Sum of four values (saturating at 65535) — the four-operand sibling of sum3. |
 | `unanimous3` | `run(a: u16, b: u16, c: u16) -> u16` | Returns 1 if all three values are equal, else 0 -- the strict all-agree sibling of majority3's weaker at-least-two-agree threshold. |
+
+## raw-arith (4)
+
+| id | signature | summary |
+|---|---|---|
+| `add` | `run(a: u16, b: u16) -> u16` | Raw wrapping add: a + b, wrapping past 65535 -- unlike add_sat (clamps) or add_checked_u32 (escalates), this never traps or clamps. |
+| `shl` | `run(a: u16, b: u16) -> u16` | Raw shift left by a runtime amount: a << b (a shift of 16 or more saturates to 0, matching Rust u16 wrapping-shift semantics) -- the general-purpose two-argument sibling the bit-mask pack's set_bit/clear_bit/toggle_bit only use internally at a fixed bit position. |
+| `shr` | `run(a: u16, b: u16) -> u16` | Raw logical shift right by a runtime amount: a >> b, zero-filled (a shift of 16 or more saturates to 0) -- the general-purpose two-argument sibling the bit-mask pack's bit_is_set only uses internally at a fixed bit position. |
+| `sub` | `run(a: u16, b: u16) -> u16` | Raw wrapping subtract: a - b, wrapping past 0 instead of saturating or checking -- unlike sub_sat (floors at 0) or sub_checked_u32 (escalates), this never traps or clamps. |
 
 ## running-stats (22)
 
