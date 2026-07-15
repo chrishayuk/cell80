@@ -376,3 +376,59 @@ All §4 thresholds (P-a1…P-e, 7.3 strata predictions, 7.4 probes, 7.6 gate),
 the decision spine, the species definitions, the mask property, and the
 grading protocol (CN-6 stage-2 eval at 0..20, resolve@5, Wilson CIs) are
 unchanged. The 24-cell classification is frozen as of this commit.
+
+---
+
+## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
+
+Added while no midtrained checkpoint exists (re-baseline seed 81 mid-training;
+B10′ unknown). This section ADDS a measurement with its own pinned directional
+predictions; it moves no §4 threshold and gates nothing.
+
+**Frame.** Hinton & van Camp '93 (MDL-of-weights): generalization comes from
+keeping the information in the weights far below the information in the
+outputs. The CN-7 mask is that principle enforced structurally rather than by
+penalty — beyond-tier answers contribute zero bits to the weights, not few;
+cells are where the incompressible bits live; W_f compresses a function to an
+address. Under this frame the seed-80 dissociation reads naturally: seen-cell
+addressing is stored association (bits in weights — substrate-sensitive),
+novel-cell addressing is computed from behaviour through a data-determined
+geometry (few stored bits — substrate-immune, and predicted seed-invariant).
+Caution carried into any writeup: the bits-back accounting does not transfer
+literally to autoregressive LMs; what transfers is the inequality
+(weight-bits ≪ verified-output-bits), which this architecture satisfies by
+construction. Lineage for related work: Hinton–van Camp '93 → bits-back /
+variational → compression-as-intelligence; the architectural move here is
+giving the incompressible bits somewhere else to live and verifying them there.
+
+**Protocol (measurement-only, eval-cost).** On the midtrained checkpoint
+(7.2 arm) and, when 7.5 runs, on the no-mask control: add iid Gaussian noise
+to every trained tensor at relative scale σ·std(tensor),
+σ ∈ {0.005, 0.01, 0.02, 0.04, 0.08}, 3 noise draws per σ. At each point
+measure: P-a1/P-a2 drill correctness (200-item probes), beyond-tier
+correctness with no cell access (the 7.4 leak metric), call-grammar validity
+and call-rate on S2-style beyond steps, held-out fingerprint median rank
+(on the fingerprint-finetuned ckpt), TinyStories val NLL. The readable signal
+is ORDERINGS of degradation (which capability dies first), not absolute σ —
+noise-fragility also reflects basin sharpness, so absolute values are
+confounded; orderings within one checkpoint share the confound and cancel it.
+
+**Pinned directional predictions.**
+
+- N1: Tier-A drill correctness (canonical and narrative) is more noise-robust
+  than any beyond-tier competence 7.4 finds: σ½(TierA) > σ½(beyond-tier).
+- N2: if 7.4 finds a leak (beyond-tier correctness > 0.05 unassisted), it is
+  a noise-fragile island — it dies at σ below the Tier-A half-life. A
+  noise-ROBUST leak would falsify the memorisation reading and demand the
+  interpretability track.
+- N3 (7.5 contrast): the no-mask arm's beyond-tier trained-instance
+  correctness is more fragile than that same arm's Tier-A correctness; the
+  two arms' Tier-A robustness is comparable. "The mask kept the weights
+  simple" becomes measured, not asserted.
+- N4 (riskiest, stated anyway): call-grammar validity is the most
+  noise-robust capability measured — it is the shortest program in the mix.
+
+**Tier-admission footnote (programme doc, not a change here).** "Below the
+cheapest cell" and "compresses well in weights" should pick out the same
+Tier A; where they disagree, the compression criterion is probably the better
+judge. To revisit at the next tier-frontier revision, not in CN-7.
