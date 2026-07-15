@@ -1,0 +1,34 @@
+{
+  "arm": "fingerprint",
+  "seed": 81,
+  "steps": 8000,
+  "unfreeze_top": 16,
+  "id_space": "sp-v11-original",
+  "final_train_acc": 0.3781,
+  "buckets": {
+    "seen_cell|seen_comp": {
+      "top1": 0.36,
+      "top5": 0.58,
+      "median_rank": 3,
+      "n": 200
+    },
+    "seen_cell|novel_comp": {
+      "top1": 0.455,
+      "top5": 0.61,
+      "median_rank": 2,
+      "n": 200
+    },
+    "novel_cell|seen_comp": {
+      "top1": 0.015,
+      "top5": 0.045,
+      "median_rank": 108,
+      "n": 200
+    },
+    "novel_cell|novel_comp": {
+      "top1": 0.0,
+      "top5": 0.0208,
+      "median_rank": 71,
+      "n": 48
+    }
+  }
+}
