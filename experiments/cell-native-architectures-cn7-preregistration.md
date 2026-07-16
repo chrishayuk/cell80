@@ -427,6 +427,41 @@ Per-seed novel|seen median ranks: **105 / 108 / 93** (s80/s81/s82).
   median rank 1–5 of 790 — versus ~0.27–0.30 / rank ~60s on the mismatched
   stack. The pointing path's substrate sensitivity is confirmed in triplicate.
 
+### 8.8 P-e improvement decomposition — registered mid-midtrain (step ~11,700 of ~17,500,
+checkpoint not yet saved; P-e readings through step 10,000 known: 1.6994 → 1.6177)
+
+P-e is not passing but IMPROVING (−4.8% at step 10k). Before that becomes a
+"mixed curriculum subsidizes fluency" claim, the mundane rival — continued
+pretraining on an unconverged 24M-token base, where ~6.75M more TinyStories
+tokens push val NLL down with zero cross-species transfer — must be ruled out.
+Registered before the checkpoint exists:
+
+- **Power check, already run (its result is data, disclosed here): the
+  digit-form transfer story is dead on arrival.** Only 7 of 8,725 val
+  sentences contain a digit — TinyStories spells numbers as words — so the
+  observed gain lives almost entirely on digit-free prose and cannot be
+  digit-regularity transfer. Any surviving transfer story must cross surface
+  forms (S1/S2 drill digits → word-number prose), a strictly weaker prior.
+- **The powered split**: sentence-level (boundaries at '.'), strict cardinal
+  number-words (one…twelve, twenty, hundred) — 541 sentences vs 8,184
+  without. Decompose the pre→post val NLL gain over both slices.
+  Transfer story predicts the cardinal slice gains MORE (relative), and the
+  deck shows word-number/counting continuations handled more fluently while
+  digit-free prose stays near-identical to R0. Continued-pretraining story
+  predicts uniform gains (and any deck drift broad, not number-localised).
+  Stated lean at registration time, given the power-check result:
+  continued-pretraining is now the favourite.
+- **CN-7.5 arbitrates for free**: identical replay fraction → an identical
+  P-e trajectory implicates replay volume; a materially different one
+  implicates the mask/species interaction.
+- **Honesty ledger**: the P-e bound (+5%) was frozen against an undertrained
+  floor, which made this gate EASIER than its spirit intended — a bound meant
+  to cap forgetting was set where mere continued exposure improves the
+  metric. Passing is passing and the threshold does not move, but the bias
+  direction is recorded so the trivial pass is not over-read. The asterisk
+  expires as the ladder consumes tokens: if P-e is still improving by the
+  third rung on a converged base, the transfer reading gets real.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
