@@ -1,0 +1,26 @@
+{
+ "pre": "raw_v11",
+ "post": "cn7_ckpt_midtrain_attn.pt",
+ "buckets": {
+  "novel_cell|seen_comp": {
+   "n": 200,
+   "rsa_pearson": 0.5941,
+   "rsa_spearman": 0.5759,
+   "procrustes_residual": 0.6833,
+   "linear_cka": 0.7561
+  },
+  "seen_cell|seen_comp": {
+   "n": 200,
+   "rsa_pearson": 0.5815,
+   "rsa_spearman": 0.5618,
+   "procrustes_residual": 0.6866,
+   "linear_cka": 0.7658
+  }
+ },
+ "pooled": {
+  "rsa_pearson": 0.5865,
+  "rsa_spearman": 0.5697,
+  "procrustes_residual": 0.7232,
+  "linear_cka": 0.759
+ }
+}

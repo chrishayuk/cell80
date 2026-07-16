@@ -1,0 +1,30 @@
+  apply_delta_clamped              [within] pairs 5  corr 0.00  rank 249
+  between_exclusive                [within] pairs 4  corr 0.00  rank 249
+  clamp_i16                        [within] pairs 4  corr 0.00  rank 249
+  crc16_step                       [beyond] pairs 4  corr 0.00  rank 249
+  eq                               [within] pairs 4  corr 0.25  rank  70
+  fnv1a_step                       [beyond] pairs 5  corr 0.00  rank 249
+  geom_circle_circumference_approx [beyond] pairs 4  corr 0.00  rank 249
+  is_lt_i16                        [within] pairs 4  corr 0.00  rank 249
+  isqrt                            [within] pairs 5  corr 0.00  rank 249
+  jacobi_symbol                    [beyond] pairs 5  corr 0.00  rank 249
+  luhn_check                       [beyond] pairs 5  corr 0.00  rank 249
+  mask_clear                       [beyond] pairs 4  corr 0.00  rank 249
+  mask_has_all                     [beyond] pairs 4  corr 0.25  rank  84
+  mask_overlap_count               [beyond] pairs 5  corr 0.00  rank 249
+  median3                          [within] pairs 4  corr 0.25  rank  53
+  mobius_function                  [beyond] pairs 5  corr 0.80  rank  31
+  norm2_sq                         [beyond] pairs 4  corr 0.00  rank 249
+  permille                         [beyond] pairs 4  corr 0.00  rank 249
+  permille_to_byte                 [beyond] pairs 5  corr 0.40  rank  45
+  pow_small                        [beyond] pairs 4  corr 0.00  rank 249
+  snap_down                        [within] pairs 4  corr 0.00  rank 249
+  square                           [within] pairs 4  corr 0.00  rank 249
+  swap_bytes                       [beyond] pairs 5  corr 0.00  rank 249
+  zscore_q8                        [beyond] pairs 4  corr 0.00  rank 249
+
+  within  (9 cells): pair-corr 0.053 [0.015,0.173] (2/38)  r@1 0.000 (0/9)  r@5 0.000 (0/9)  r@10 0.000 (0/9)
+  beyond  (15 cells): pair-corr 0.104 [0.052,0.200] (7/67)  r@1 0.000 (0/15)  r@5 0.000 (0/15)  r@10 0.000 (0/15)
+
+  P-b (within-frontier pair correctness >= 0.83): 0.053 -> FAIL
+wrote cn7_eval_cn7_ckpt_midtrain_attn.json (63s)

@@ -1,0 +1,55 @@
+{
+ "tag": "cn7_ckpt_midtrain_attn",
+ "gen_tokens": 60,
+ "decode": "greedy, legality-masked",
+ "rows": [
+  {
+   "prompt": "Once upon a time, there was a little girl who",
+   "continuation": "loved to play outside. One day, she saw a big, shiny ball in the grass. She wanted to play with it, but it was too high for her to reach. She asked her mom, \"Mommy, can I play with the ball?\" Her mom"
+  },
+  {
+   "prompt": "Tom and his dog ran to the",
+   "continuation": "house. Tom had a big bag with a picture of a dog on it. Tom had a hat and a hat. He was a dog. Tom had a dog. The dog was brown and furry. Tom and Spot were happy. They liked to play with the dog. T"
+  },
+  {
+   "prompt": "One sunny day, Lily found a shiny",
+   "continuation": "coin. She was so happy and excited. She wanted to show her mom the coin. She ran to the kitchen and saw the coin on the table. She reached for it and tried to grab it. But the coin was too heavy and it fell down. Lil"
+  },
+  {
+   "prompt": "The big red truck stopped in front of",
+   "continuation": "110. The truck brought 30 crates with 60 apples in each crate. The counting machine worked it out: 30 60 apples in all. Everyone cheered. The truck was proud."
+  },
+  {
+   "prompt": "Mia was sad because her",
+   "continuation": "mom had a surprise for her. She had a surprise for her. She was going to mail a letter to her grandma. Mia was so excited! She put the letter in the mailbox and opened it. Inside was a big, shiny, shiny jewel. Mia was"
+  },
+  {
+   "prompt": "In the garden, a small bird",
+   "continuation": "named Tim, was flying in the sky. Tim was very happy because he could fly high in the sky. Tim saw a big tree with a hole in it. He wanted to climb the tree and see what was on the other side. Tim climbed the tree and"
+  },
+  {
+   "prompt": "Ben looked up at the sky and saw",
+   "continuation": "a big, blue cloud in the sky. He wanted to touch it, but he was scared. \"Mom, can I touch the cloud?\" Ben asked. \"No, Ben, it is too high and too high. It might fall and hurt you,\""
+  },
+  {
+   "prompt": "The old cat liked to sleep on",
+   "continuation": "the soft bed. He liked to sleep and sleep with his toys. He had a big bed, a bed, and a bed. He liked to sleep with his toys and sleep. One day, he saw a big box in his room. He wanted to see what"
+  },
+  {
+   "prompt": "Every morning, Sam would count his",
+   "continuation": "marbles. He counted them and then he counted them. He counted them and then he counted them. He counted them and made funny faces. He was very proud of his marbles. He had a lot of fun. But then, he heard a"
+  },
+  {
+   "prompt": "Anna opened the box and inside was",
+   "continuation": "100. Anna opened it and found 100 coins. Anna found more. Anna found more. Anna found more. Anna found more. Anna found more coins. Anna found more. Anna found more. Anna found more coins. Anna found more. Anna found"
+  },
+  {
+   "prompt": "It was raining, so the children",
+   "continuation": "were having a great time. They were having a great time playing in the rain. Suddenly, the sky became dark and the sky was dark. The children were scared. They were scared. They did not know what to do"
+  },
+  {
+   "prompt": "The little fish swam far away from",
+   "continuation": "the pond. He was so excited to see the fish. He had never seen a fish before. He was so excited to see it. He ran to the pond and started to swim. He was so happy. He splashed and splashed in the water."
+  }
+ ]
+}
