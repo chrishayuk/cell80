@@ -555,6 +555,47 @@ Registered before the checkpoint exists:
   collapsing toward the in-tier value level — memorisation of trained
   instances entering exactly where the mask forbade it.
 
+### 8.10 Fallback verdict (2026-07-16): branch (1) — substrate competition, confirmed
+bidirectionally
+
+Attention-only arm, full panel:
+
+| | full-model arm | attention-only arm |
+|---|---|---|
+| s1 answer NLL (fresh) | 0.051 | 0.308 (6× weaker; mul 0.375, mod 0.610) |
+| P-a canonical / narrative | 0.552† / 0.965 | 0.230 / **0.620 — P-a2 FAILS on real arithmetic** |
+| P-b | 0.111 FAIL | 0.053 FAIL |
+| P-e | −6.6% PASS | −3.5% PASS (half the subsidy — consistent with §8.8) |
+| mask (N5 family) | held (injected 11.0) | held (injected 9.56; s3 masked 3.80, in-band) |
+| geometry drift vs raw | RSA 0.638 / Procr 0.716 | RSA 0.587 / Procr 0.723 — **EQUAL** |
+| **P-d1′ (≤137)** | **208 FAIL — kill fired** | **98 PASS — at the pre-midtrain level (B9′ 105, B9 98)** |
+
+†instrument-confounded, 0.910 arithmetic-only (§8.9).
+
+**Findings.** (1) Branch (3) is dead: arithmetic wants FFN capacity — frozen-FFN
+starves it (0.051 → 0.308 fresh-instance; P-a2 fails outright). (2) Branch (1)
+is confirmed in both directions: FFN training installs numeracy and breaks
+computed addressing (105 → 208); FFN freezing protects addressing perfectly
+(98) and fails the numeracy gates. **At 115M under this recipe, in-weights
+numeracy and fingerprint addressing compete for the same substrate.**
+(3) The geometry instrument earned its keep by ELIMINATING its own headline
+story: both arms drifted the measured emission-position geometry equally, yet
+addressing survived only where FFNs were frozen — so global drift magnitude is
+not the operative variable; the damage is specifically what the fingerprint
+protocol cannot re-fit through FFN changes. Recoverability, not motion.
+(4) Neither arm reaches a graded 7.3: the 7.2 gate did its job twice.
+Seen-cell addressing improved in BOTH arms (median rank 1–3) — association is
+robust to everything; it is only the computed address that is fragile, and
+only to FFN plasticity.
+
+**R1 disposition.** 7.3 remains unrun-as-graded on both arms (recorded 0.000
+on the full arm). CN-7.5 (no-mask control, full-model arm — the arm whose
+11-nat signature it tests) launched 2026-07-16 as the last registered spend.
+R2 prescriptions accumulated by the instruments: raise S3 fraction (0.77→
+undertrained), add S1 EOS supervision, and either budget the FFN trade
+explicitly or route numeracy around weights entirely — the broker reading,
+which this rung's own failure mode now argues for from the inside.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe

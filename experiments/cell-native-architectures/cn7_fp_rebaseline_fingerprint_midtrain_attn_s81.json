@@ -1,0 +1,35 @@
+{
+  "arm": "fingerprint",
+  "seed": 81,
+  "steps": 8000,
+  "base_ckpt": "cn7_ckpt_midtrain_attn.pt",
+  "unfreeze_top": 16,
+  "id_space": "sp-v11-original",
+  "final_train_acc": 0.3594,
+  "buckets": {
+    "seen_cell|seen_comp": {
+      "top1": 0.365,
+      "top5": 0.57,
+      "median_rank": 3,
+      "n": 200
+    },
+    "seen_cell|novel_comp": {
+      "top1": 0.405,
+      "top5": 0.595,
+      "median_rank": 1,
+      "n": 200
+    },
+    "novel_cell|seen_comp": {
+      "top1": 0.0,
+      "top5": 0.025,
+      "median_rank": 98,
+      "n": 200
+    },
+    "novel_cell|novel_comp": {
+      "top1": 0.0,
+      "top5": 0.1667,
+      "median_rank": 173,
+      "n": 48
+    }
+  }
+}

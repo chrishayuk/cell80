@@ -63,6 +63,7 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--warmup", type=int, default=200)
     ap.add_argument("--attention-only", action="store_true", help="fallback arm: freeze FFN")
+    ap.add_argument("--no-mask", action="store_true", help="CN-7.5 control: injected/beyond-tier answers carry loss")
     ap.add_argument("--seed", type=int, default=80)
     ap.add_argument("--val-every", type=int, default=2000)
     ap.add_argument("--smoke", action="store_true")
@@ -74,6 +75,8 @@ def main():
     t0 = time.time()
 
     stem = "cn7_ckpt_midtrain_attn" if args.attention_only else "cn7_ckpt_midtrain"
+    if args.no_mask:
+        stem += "_nomask"
     ckpt_path = HERE / (stem + ("_smoke" if args.smoke else "") + ".pt")
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
@@ -141,7 +144,10 @@ def main():
             lm = torch.zeros((len(chunk), m))
             for k, r in enumerate(chunk):
                 ids[k, :len(r["ids"])] = torch.tensor(r["ids"])
-                lm[k, :len(r["ids"])] = torch.tensor(r["loss"], dtype=torch.float32)
+                if args.no_mask:  # CN-7.5: every in-row token carries loss, incl. injected answers
+                    lm[k, :len(r["ids"])] = 1.0
+                else:
+                    lm[k, :len(r["ids"])] = torch.tensor(r["loss"], dtype=torch.float32)
             ids, lm = ids.to(device), lm.to(device)
             lg = base(ids)[:, :-1]
             tgt = ids[:, 1:]
