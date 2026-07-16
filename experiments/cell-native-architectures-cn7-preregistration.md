@@ -779,6 +779,59 @@ any replicate runs:
   frozen FFN"; the mask itself stays — the boundary is the programme, and
   §8.14 just re-proved the weights cannot replace it off-range.
 
+### 8.15 The replicate arbitrates (2026-07-16): the 208 does not reproduce
+
+**Masked-full fp, seed 82: held-out rank 93** (seen buckets 3/1, strong).
+Damage table, updated: attn {98} · no-mask {108, s82 running} ·
+masked-full **{208, 93}**. The §8.13 interaction hypothesis
+(squeeze-as-damage-vector) is **unsupported**: the masked arm's addressing
+survived at the invariant level on the second seed. §8.13 recorded itself
+as a possible near-miss; it was one.
+
+- **What actually happened to P-d1′**: the seed-81 kill-criterion firing
+  was procedurally correct (the registered protocol was seed-81) and
+  inferentially unlucky. FFN training does not deterministically destroy
+  addressing — on present evidence (n=2) it makes the fingerprint
+  finetune's outcome HIGH-VARIANCE across seeds ({93, 208} vs the frozen
+  configuration's tight {98} + pre-midtrain {105, 108, 93}). The method
+  lesson is recorded with the result: single-seed gates inherit seed
+  variance; P-d gates in any future registration are multi-seed or
+  variance-aware.
+- **The ~100 invariant strengthens again**: it is now the MODE of every
+  configuration tested — six of seven runs across broken tokenizer,
+  three trajectories, attention-retrained, full-FFN-masked (s82), and
+  full-FFN-unmasked bases land at 93–108; the one excursion (208) did not
+  replicate.
+- **What survives untouched**: §8.14's rule verdict — option (iii) rests
+  on the cliff and the permutation null, not on P-d — and the numeracy
+  side of the §8.10 trade (frozen FFN starves arithmetic: 0.051 vs 0.308,
+  multi-instrument). The FFN-policy statement softens from "required to
+  protect addressing" to "buys low-variance addressing at a measured
+  numeracy cost that §8.14 renders moot (the numeracy purchasable is a
+  non-extrapolating surface)".
+- **Registered-then-mooted, kept for the record**: the
+  prediction-under-enforced-ignorance mechanism and its within-run
+  trajectory test (geometry damage tracking squeeze magnitude across
+  intermediate checkpoints). Testable in principle; R1 saved no
+  intermediate checkpoints (R2 trainer gets --save-every if anyone
+  revives it); on present evidence there is no stable damage for it to
+  explain.
+- **Corrected-abstract watch**: the middle clause ("enforcing the tool
+  boundary in the loss while training the FFN destroys tool addressing")
+  is retracted with the interaction hypothesis. The honest clause is
+  smaller: "single training runs can lose tool addressing to seed
+  variance when the FFN is plastic." The first and third clauses stand
+  pending nothing: the tier is a capability boundary for algorithms, and
+  frozen-FFN-behind-explicit-mask remains the configuration that
+  preserves everything worth preserving — now justified by variance and
+  §8.14's economics rather than by a destruction mechanism.
+
+Scoreboard through §8.15: eighteen graded registrations, seven wrong —
+and every wrong one caught by an instrument that was registered before
+the belief it killed. The evening's last lesson is the first one
+institutionalised: two routes to every number, and no number believed on
+one seed.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
