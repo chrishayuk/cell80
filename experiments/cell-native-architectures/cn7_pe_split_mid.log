@@ -1,0 +1,17 @@
+  raw: cardinal 1.7078 (n=9357)  plain 1.6931 (n=100858)
+  mid: cardinal 1.6035 (n=9357)  plain 1.5852 (n=100858)
+{
+ "cardinal": {
+  "pre": 1.7078,
+  "post": 1.6035,
+  "rel_gain": 0.0611,
+  "tokens": 9357
+ },
+ "plain": {
+  "pre": 1.6931,
+  "post": 1.5852,
+  "rel_gain": 0.0637,
+  "tokens": 100858
+ }
+}
+wrote cn7_pe_split_cn7_ckpt_midtrain.json (189s)

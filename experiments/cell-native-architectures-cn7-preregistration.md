@@ -462,6 +462,43 @@ Registered before the checkpoint exists:
   expires as the ladder consumes tokens: if P-e is still improving by the
   third rung on a converged base, the transfer reading gets real.
 
+### 8.9 Panel gradings as they land (2026-07-16, post-checkpoint; disclosures included)
+
+- **P-e: PASS, improving** — val NLL 1.6994 → 1.5868 (−6.6%), bound never
+  approached. **§8.8 split GRADED: the continued-pretraining story wins.**
+  Cardinal-word slice gained +6.11%, plain prose +6.37% — uniform, no
+  number-localised transfer; deck corollary consistent (register unchanged,
+  no numeral-localised fluency shift). The "curriculum subsidizes fluency"
+  claim is hereby NOT made; the correct sentence is "45% replay on an
+  unconverged base is rehearsal-as-subsidy for trivial reasons" (§8.8's
+  asterisk stands, expires as the base converges).
+- **N5 (role-NLL leak signature): s3 CONFIRMED, s2 letter missed in the safe
+  direction.** Fresh-instance s1|answer 4.49 → 0.051 (rule acquired);
+  s3|value_in_tier 4.04 → 0.77 vs value_masked 4.14 → 4.35 (asymmetry created
+  exactly where loss was allowed; masked at floor). s2|injected did NOT stay
+  within 1 nat — it was squeezed 4.23 → 11.0: the model now has sharp,
+  WRONG expectations for beyond-tier answers (the plausible-wrong signature,
+  visible in NLL space before 7.3 runs). No leak on any reading.
+- **P-a2 (narrative): PASS** — generation probe 0.965 [0.942, 0.979]
+  (n=400). The B12 paraphrase cliff is not just closed but inverted.
+- **P-a1 (canonical): FAIL as generation-instrumented (0.552), 0.910 on
+  arithmetic-only argmax. DISCLOSURE: the second instrument was chosen after
+  seeing the first fail.** Diagnosis (mechanical, reproduced): canonical
+  drill rows carried no termination supervision (no EOS in S1 rows — a
+  corpus format gap, filed for the next rung), so the model runs on with
+  digits after the correct answer ("3 x 10 = " → "300 3…" = correct "30" +
+  run-on), and the probe parser reads the run-on as a wrong answer. BOS/
+  boundary variants ruled out (54/49/49 per 100). Teacher-forced arithmetic:
+  canonical 0.910 (weak ops: mod 0.72, mul 0.76), narrative 0.970.
+  **Gate handling**: P-a1 is recorded as instrument-confounded, not passed.
+  The panel's proceed/stop decision transfers to P-b, which is measured in
+  the actual 7.3 grammar — where separators ARE supervised (S3 rows end in
+  " </call>"), so the termination confound is absent from the format that
+  matters. If P-b fails, 7.3 does not run as a graded experiment.
+- Weak-op note carried into 7.3 expectations: mod and mul are the real
+  canonical residuals; within-frontier cells snap_down (mod-shaped) and
+  square/isqrt (mul-shaped) are the likely drag points.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
