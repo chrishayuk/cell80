@@ -596,6 +596,72 @@ undertrained), add S1 EOS supervision, and either budget the FFN trade
 explicitly or route numeracy around weights entirely — the broker reading,
 which this rung's own failure mode now argues for from the inside.
 
+### 8.11 CN-7.5 first readings + the R2 decision rule, FROZEN before the deciding probes
+(2026-07-16; the noise probe (§9) and the off-distribution probe are built/being built but
+have NOT run at commit time)
+
+**Two registered arbiters fired:**
+- **§8.8, second arbitration: replay volume confirmed.** The no-mask arm's
+  P-e trajectory (−6.5%) is identical-within-noise to the masked arm's
+  (−6.6%) — the pinned "identical replay → identical trajectory" signature.
+  Continued-pretraining wins twice; the cardinal-word split stands as
+  confirmatory; the cross-species-transfer story is closed.
+- **7.5 prediction (a): graded WRONG in the interesting direction.** The
+  11.0-nat mask signature collapsed on cue (s2 injected 11.01 → 0.40; s3
+  masked 4.35 → 0.97) — but on FRESH instances (seed 981), which is
+  within-distribution generalisation, not the predicted instance
+  memorisation. The honest sentence: **a 115M model CAN learn beyond-tier
+  arithmetic given gradient; the boundary the masked arm respected was the
+  mask's, not capacity's.** Clean split of the thesis: the mask is now
+  PROVEN as a boundary instrument (by ablation), while the assumption that
+  the tier frontier tracked a capacity frontier is overturned pending the
+  two probes. The frontier was policy. Whether it needed to be is what
+  7.4n and the off-distribution probe decide. (Caveat kept in view:
+  within-distribution learnability is the weakest form — bounded ranges, a
+  few dozen functions, single-digit tokenization, ~245k exposures.)
+
+**The R2 decision rule, frozen now because hindsight will pretend the fork
+was obvious:**
+- **If** 7.4n shows the no-mask beyond-tier competence is noise-fragile
+  (dies below the Tier-A half-life) **or** the off-distribution probe
+  collapses → **option (iii)**: consolidate on pointing + carrying +
+  in-tier weights; retire emission-by-computing; **FFN-frozen adopted as
+  ladder policy regardless** (it protects the geometry and costs nothing
+  R1 measured that (iii) still needs). The crammed-distribution result
+  would mean weights fake arithmetic in-range while cells remain the only
+  trustworthy path — the broker wins with evidence, not ideology.
+- **If** the competence is noise-robust **and** extrapolates → the tier
+  CONCEPT is rewritten, not the mix ratio: multi-digit arithmetic
+  compresses at 115M after all, and "below the cheapest cell" becomes a
+  pure economics boundary (verification + editability still favour cells;
+  capacity no longer does). Programme-doc change, new registration.
+- Option (i)'s re-anchor idea is not bought blind either way: the
+  fingerprint-stability read (geometry instrument) prices it — if the
+  emission-position geometry moved (it did: RSA ~0.6), re-fitting W_f
+  longer is fighting drift with capacity; a re-anchor experiment needs its
+  own registration with that prior stated.
+- Precision on what (iii) retires: emission-by-computing only — already
+  demoted by CN-6, failed revival in R1. It KEEPS in-tier weights
+  (passed), pointing (best-ever), carrying (never threatened), and the
+  7.6 loop as the eventual route if signed yield ever clears the
+  (now entropy-corrected) gate by other means. Consolidation, not retreat.
+
+**Off-distribution probe: the discriminating SHAPE, frozen.** Crammed
+distributions fail abruptly at the training-range boundary (fine at
+max-trained-digits, cliff one digit past — and the cliff's location is the
+training range echoed back, doubling as a corpus-consistency check);
+compressed circuits degrade gracefully with carry depth. The failure
+PROFILE, not the rate, is the verdict. Saturated instances (u16 clamp)
+are excluded from grading — a constant answer is trivially learnable and
+would fake robustness.
+
+**Dose-response expectation (registered before the no-mask fp run
+prints):** no-mask had MORE FFN change than masked-full, so if geometry
+damage scales with FFN change, its P-d1′ lands ≥ 208 — giving a
+three-point dose-response curve (FFN frozen: 98; masked-trained: 208;
+unmasked-trained: ?) — as close to a causal gradient as this gets without
+surgery.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe

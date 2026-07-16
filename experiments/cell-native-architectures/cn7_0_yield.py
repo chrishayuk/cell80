@@ -228,7 +228,7 @@ def main():
 
     per_cell = {}
     for name in sorted(contexts):
-        parsed, signed, emissions = 0, 0, []
+        parsed, signed, emissions, all_pairs = 0, 0, [], []
         for i in range(1 + args.nsample):
             temp = 0.0 if i == 0 else args.temp
             seg = gen(contexts[name], temp)
@@ -236,11 +236,30 @@ def main():
             oks = sign(name, pairs)
             parsed += len(pairs)
             signed += sum(oks)
+            all_pairs.extend(pairs)
             emissions.append({"temp": temp, "raw": seg.strip()[:120], "parsed": len(pairs), "signed": sum(oks)})
         y = signed / parsed if parsed else 0.0
+        # permutation null: signing rate when THIS cell's emitted answers are shuffled against
+        # its emitted inputs — the chance-of-signing baseline a raw yield must beat
+        # ([[frequency-needs-drift-baseline]]: never read a frequency without its null)
+        null = 0.0
+        if all_pairs:
+            truths = []
+            for a, _ in all_pairs:
+                try:
+                    r = host.run(handles[name], list(a))
+                    truths.append(r["result"] if r.get("halt") == "returned" else None)
+                except Exception:
+                    truths.append(None)
+            answers = [o for _, o in all_pairs]
+            hits = sum(1 for t in truths for o in answers if t is not None and t == o)
+            null = hits / (len(truths) * len(answers))
         per_cell[name] = {"stratum": strata[name]["stratum"], "parsed_pairs": parsed,
-                          "signed_pairs": signed, "yield": y, "emissions": emissions}
-        print(f"  {name:<32} [{strata[name]['stratum']:<6}] parsed {parsed:>3}  signed {signed:>3}  yield {y:.3f}", flush=True)
+                          "signed_pairs": signed, "yield": y, "null": round(null, 4),
+                          "excess": round(y - null, 4),
+                          "pairs": [[a, o] for a, o in all_pairs], "emissions": emissions}
+        print(f"  {name:<32} [{strata[name]['stratum']:<6}] parsed {parsed:>3}  signed {signed:>3}  "
+              f"yield {y:.3f}  null {null:.3f}  excess {y-null:+.3f}", flush=True)
 
     print(f"\nCN-7.0 yield — substrate {tag} | greedy + {args.nsample} samples @ T={args.temp} per cell")
     summary = {}
@@ -249,8 +268,11 @@ def main():
         k = sum(c["signed_pairs"] for c in cells)
         n = sum(c["parsed_pairs"] for c in cells)
         p, lo, hi = wilson(k, n)
-        summary[st] = {"cells": len(cells), "signed": k, "parsed": n, "yield": p, "ci95": [lo, hi]}
-        print(f"  {st:<7} ({len(cells)} cells): signed {k}/{n} parsed  ->  per-pair yield {p:.3f} [{lo:.3f},{hi:.3f}]")
+        e_null = sum(c["null"] * c["parsed_pairs"] for c in cells) / max(1, n)
+        summary[st] = {"cells": len(cells), "signed": k, "parsed": n, "yield": p, "ci95": [lo, hi],
+                       "null": round(e_null, 4), "excess": round(p - e_null, 4)}
+        print(f"  {st:<7} ({len(cells)} cells): signed {k}/{n} parsed  ->  per-pair yield {p:.3f} [{lo:.3f},{hi:.3f}]"
+              f"  null {e_null:.3f}  EXCESS {p - e_null:+.3f}")
 
     out = HERE / (args.out or f"cn7_0_yield_{tag.replace(':', '_').replace('.', '')}.json")
     out.write_text(json.dumps({"substrate": tag, "protocol": {"nsample": args.nsample, "temp": args.temp,
