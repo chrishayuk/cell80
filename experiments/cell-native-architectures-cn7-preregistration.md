@@ -832,6 +832,54 @@ the belief it killed. The evening's last lesson is the first one
 institutionalised: two routes to every number, and no number believed on
 one seed.
 
+### 8.16 Correction to §8.15's economics, the third configuration, and the ~100 as
+problem-intrinsic (2026-07-16; no-mask s82 replicate still training at commit time)
+
+- **§8.15's "numeracy cost mooted by §8.14" CONFLATED two purchases and is
+  corrected here.** §8.14's cliff moots BEYOND-tier numeracy only. The
+  attention arm's failure was IN-TIER (P-a canonical 0.230/narrative 0.620;
+  s1 answers 0.308) — Tier A itself, a FINITE domain where in-range
+  learning is exactly the deliverable and extrapolation is not required.
+  The frozen FFN's Tier-A cost is real and un-mooted. The R2 configuration
+  space is therefore not closed by §8.14.
+- **Third configuration, registered for the R2 prereg**: plastic-masked FFN
+  + multi-seed W_f fitting protocol. The s82 result localises the variance
+  in the FINETUNE, not the base (same masked base, two W_f fits: {93,
+  208}); a fit is a 50-minute job. Fit 2–3 seeds, gate each against
+  P-d1′, keep a passer. For science this is selection and is DECLARED as
+  such (the gate must be multi-seed by construction and the selection
+  step reported); for building the broker it is ordinary engineering,
+  no different from rerunning a diverged job. If it holds, this
+  configuration occupies the good corner: Tier-A numeracy in weights AND
+  addressing at the invariant level, variance managed by cheap retries
+  rather than avoided by starvation.
+- **The ~100 as R1's headline discovery, upgraded to a hypothesis about
+  the PROBLEM**: mode of six of seven runs across broken tokenizer, three
+  trajectories, retrained attention, masked- and unmasked-FFN bases;
+  seed-invariant where measured tightly. Candidate reading: W_f's
+  held-out ceiling is intrinsic to the behaviour→embedding problem on
+  THIS cell library, not to any training configuration — which reopens
+  the α/scale question as a question about library geometry, and
+  promotes the external-address-table architecture to the lever that
+  matters. Registered as hypothesis, not finding; discriminating
+  experiments (library-subset geometry sweeps) belong to a future
+  registration.
+- **Abstract, third form** (§8.12 v1 retracted, §8.15 v2 narrowed):
+  "At 115M parameters, arithmetic beyond a small tier is learnable only
+  as a non-extrapolating in-range surface; tool-addressing
+  generalisation sits at an invariant level that survives every training
+  configuration tested, with FFN plasticity adding variance rather than
+  damage; and a frozen FFN behind an explicit mask — or a plastic one
+  behind a multi-seed addressing gate — preserves everything worth
+  preserving."
+- **Writeup directive: protect the chronology.** The 208 firing the kill,
+  the fallback producing the attention-arm data anyway, the replicate
+  dissolving the mechanism — all within twelve hours, every step
+  committed before its outcome was known. The sequence is the finding:
+  the method surviving its own false alarm is the strongest
+  demonstration it has. Cleaned-up papers erase exactly this; this one
+  will not.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
