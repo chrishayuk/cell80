@@ -662,6 +662,48 @@ three-point dose-response curve (FFN frozen: 98; masked-trained: 208;
 unmasked-trained: ?) — as close to a causal gradient as this gets without
 surgery.
 
+### 8.12 R1 closing frame (2026-07-16; noise/off-dist/corrected-yield probes still unrun)
+
+- **The ~100 ceiling is an invariant of the frozen FFN.** Held-out rank
+  ≈100 has now been returned by: the mismatched-tokenizer stack (B9 98),
+  the healthy stack across three divergent trajectories (105/108/93), and
+  a base whose ATTENTION was retrained on 15M tokens of a different
+  curriculum (98). Invariant to tokenizer mapping, seed, trajectory
+  temperature, and attention weights; sensitive to exactly one thing —
+  FFN training — in both doses tested. The no-mask fp run (expected ≥208)
+  completes the dose-response curve.
+- **The drift story, graded WRONG as stated** (it was mine): equal global
+  drift with opposite P-d1′ outcomes means the damage is specific
+  structure invisible to RSA/Procrustes/CKA. Recoverability-not-motion.
+  Interpretability handoff: something in the FFN that global similarity
+  measures cannot see is load-bearing for behaviour→address.
+- **R2 is over-determined, not forked.** Every arm that bought arithmetic
+  sold the geometry; the arm that kept the geometry could not buy
+  arithmetic. A measured constraint surface with no point in the good
+  corner at 115M → option (iii) + FFN-frozen policy is the only
+  consistent configuration at this scale. The probes decide the TIER
+  CONCEPT (capacity vs economics boundary) and v12 sizing (how many
+  parameters before the good corner exists) — not R2.
+- **The mask's job description, amended by its own ablation**: not
+  capacity protection (7.5 killed that) but GEOMETRY protection — keeping
+  gradient off content that would otherwise recruit the FFN. The thesis
+  exits stronger and more specific than it entered: division of labour is
+  not imposed on a tiny model; it is what a tiny model IS, and the mask
+  respects a boundary the parameter budget draws anyway.
+- **Registered prediction for the permutation-null yield recompute (before
+  it runs)**: excess-over-null ≈ 0 within CI on every cell, including the
+  flattering ones (mobius_function, is_lt_i16) — the entire 0.110/0.135
+  sampled yield is signing-by-chance; the honest free-running number is
+  zero.
+- R-next drill note: the word-number cliff confirmed with structure
+  (digit-narrative 0.965 → word-number canonical 0.552 = real surface gap,
+  partial transfer); the digit↔word bridge goes in any future drill mix.
+- Abstract sentence banked for the writeup: "At 115M parameters, we could
+  teach the model arithmetic or preserve its ability to address tools it
+  had never seen, but not both; the constraint is FFN-mediated, invisible
+  to representational similarity, and indifferent to everything else we
+  varied."
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
