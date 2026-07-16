@@ -478,6 +478,15 @@ confounded; orderings within one checkpoint share the confound and cancel it.
 - N4 (riskiest, stated anyway): call-grammar validity is the most
   noise-robust capability measured — it is the shortest program in the mix.
 
+**N5 (added 2026-07-16, still pre-checkpoint; NLL-domain leak signature).** The
+fresh-instance role-NLL instrument (`cn7_species_nll.py`, R0 floor committed:
+s1|answer 4.49, s3|value_in_tier 4.04 vs value_masked 4.14 — symmetric before
+training) predicts: post-midtrain, s3|value_in_tier collapses while
+s3|value_masked and s2|injected stay within ~1 nat of their R0 floor. A large
+drop on masked/injected spans without corresponding 7.4 generation competence
+would indicate the model is learning beyond-tier answer DISTRIBUTIONS through
+context (a soft leak the generation probe alone would miss).
+
 **Tier-admission footnote (programme doc, not a change here).** "Below the
 cheapest cell" and "compresses well in weights" should pick out the same
 Tier A; where they disagree, the compression criterion is probably the better

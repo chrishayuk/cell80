@@ -1,0 +1,66 @@
+{
+ "tag": "r0_raw_v11",
+ "fresh_seed": 981,
+ "nll": {
+  "s1|answer": {
+   "nll": 4.4926,
+   "tokens": 1635
+  },
+  "s1|scaffold": {
+   "nll": 5.1435,
+   "tokens": 8059
+  },
+  "s1:add|answer": {
+   "nll": 4.7014,
+   "tokens": 495
+  },
+  "s1:min3|answer": {
+   "nll": 3.0155,
+   "tokens": 164
+  },
+  "s1:mod|answer": {
+   "nll": 3.704,
+   "tokens": 152
+  },
+  "s1:mul|answer": {
+   "nll": 4.6157,
+   "tokens": 199
+  },
+  "s1:parity|answer": {
+   "nll": 7.887,
+   "tokens": 76
+  },
+  "s1:sub|answer": {
+   "nll": 4.1666,
+   "tokens": 399
+  },
+  "s1:succ|answer": {
+   "nll": 5.2013,
+   "tokens": 150
+  },
+  "s2|call": {
+   "nll": 6.1086,
+   "tokens": 4040
+  },
+  "s2|injected": {
+   "nll": 4.2323,
+   "tokens": 1598
+  },
+  "s2|story": {
+   "nll": 4.7493,
+   "tokens": 21000
+  },
+  "s3|grammar": {
+   "nll": 6.2662,
+   "tokens": 28054
+  },
+  "s3|value_in_tier": {
+   "nll": 4.04,
+   "tokens": 711
+  },
+  "s3|value_masked": {
+   "nll": 4.1403,
+   "tokens": 6590
+  }
+ }
+}
