@@ -143,9 +143,48 @@ def v11_sampler():
     return gen, "v11:raw-pretrain-sp"
 
 
+def v11_ckpt_sampler(ckpt_name):
+    """Midtrained v11 (SP space + cn7 vocab), legality-masked decode — the 7.6 gate input."""
+    import cn1_model
+    from cn1_model import resize_embedding
+    from cn7_corpus import Enc as CN7Enc
+    from cn7_deck import decode_mask
+    from tiny_model_v11.loader import load_from_artifacts
+    import json as _json
+    tokmap = _json.load(open(HERE / "cn7_token_map.json"))
+    enc = CN7Enc(tokmap["cells"])
+    base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
+    ck = torch.load(HERE / ckpt_name, map_location="cpu")
+    resize_embedding(base, ck["vocab"])
+    base.load_state_dict(ck["state"])
+    base.eval()
+    neg = torch.full((ck["vocab"],), float("-inf"))
+    neg[decode_mask(ck["vocab"])] = 0.0
+    CALL, CLOSE = 71261, 71262
+    print(f"  substrate: {ckpt_name} (midtrained v11, SP space)", flush=True)
+
+    @torch.no_grad()
+    def gen(context, temp):
+        ids = enc.seg_ids(context) + [CALL]
+        toks = []
+        for _ in range(GEN_BUDGET + 1):
+            logits = base(torch.tensor([ids + toks]))[0, -1] + neg
+            if temp > 0:
+                nxt = int(torch.multinomial(torch.softmax(logits / temp, -1), 1))
+            else:
+                nxt = int(logits.argmax())
+            if nxt in (CLOSE, 3):
+                break
+            toks.append(nxt)
+        return enc.sp.decode([t for t in toks if t < 71261])
+
+    return gen, f"v11:{Path(ckpt_name).stem}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt-hf", default=None)
+    ap.add_argument("--ckpt-v11", default=None, help="midtrained v11 checkpoint (7.6 gate input)")
     ap.add_argument("--v11", action="store_true")
     ap.add_argument("--nsample", type=int, default=8)
     ap.add_argument("--temp", type=float, default=0.7)
@@ -170,10 +209,12 @@ def main():
 
     if args.ckpt_hf:
         gen, tag = hf_sampler(HERE / args.ckpt_hf)
+    elif args.ckpt_v11:
+        gen, tag = v11_ckpt_sampler(args.ckpt_v11)
     elif args.v11:
         gen, tag = v11_sampler()
     else:
-        raise SystemExit("pass --ckpt-hf PATH or --v11")
+        raise SystemExit("pass --ckpt-hf PATH, --ckpt-v11 PATH, or --v11")
 
     def sign(name, pairs):
         ok = []
