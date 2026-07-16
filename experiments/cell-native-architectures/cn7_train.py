@@ -128,6 +128,10 @@ def main():
 
     seen_tokens, step, losses = 0, 0, []
     log = []
+    # per-species loss decomposition (accumulated as tensors; synced only at log time) — the
+    # blend alone can't distinguish "drill saturated, rest is maintenance" from "still absorbing",
+    # and the saturation point is the empirical anchor for later runs' token budgets.
+    spec_acc = {}
     base.train()
     done = False
     while not done:
@@ -148,11 +152,24 @@ def main():
             torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             opt.step(); sched.step()
             losses.append(float(loss))
+            ce_rows = (ce.reshape(w.shape) * w).sum(1).detach()
+            w_rows = w.sum(1).detach()
+            groups = {}
+            for k, r in enumerate(chunk):
+                groups.setdefault(r["species"], []).append(k)
+            for sp_name, idx in groups.items():
+                acc = spec_acc.setdefault(sp_name, [torch.zeros((), device=device),
+                                                    torch.zeros((), device=device)])
+                acc[0] += ce_rows[idx].sum()
+                acc[1] += w_rows[idx].sum()
             seen_tokens += int(ids.numel())
             step += 1
             if step % 100 == 0:
+                per = "  ".join(f"{sp_}:{float(a[0])/max(1.0,float(a[1])):.3f}"
+                                for sp_, a in sorted(spec_acc.items()))
+                spec_acc = {}
                 print(f"  step {step:>6} ({seen_tokens/1e6:.2f}M tok)  loss {sum(losses[-100:])/100:.4f}"
-                      f"  ({time.time()-t0:.0f}s)", flush=True)
+                      f"  [{per}]  ({time.time()-t0:.0f}s)", flush=True)
             if step % args.val_every == 0:
                 nv = val_nll(base, val, device)
                 log.append({"step": step, "tokens": seen_tokens, "val_nll": nv})
