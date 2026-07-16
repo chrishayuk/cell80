@@ -1,0 +1,55 @@
+{
+ "tag": "cn7_ckpt_midtrain",
+ "gen_tokens": 60,
+ "decode": "greedy, legality-masked",
+ "rows": [
+  {
+   "prompt": "Once upon a time, there was a little girl who",
+   "continuation": "loved to play outside. She had a big, red ball that she loved to play with. One day, she was playing with her ball when she saw a big, scary dog. The dog was barking and running around. The little girl was scared and ran away. T"
+  },
+  {
+   "prompt": "Tom and his dog ran to the",
+   "continuation": "park. Tom had a big bag of marbles. He liked them very much. He liked them very much. He liked them very much. He wanted to show them to his friends. He ran to the park with his bag. He saw a big tree with"
+  },
+  {
+   "prompt": "One sunny day, Lily found a shiny",
+   "continuation": "coin on the ground. She picked it up and showed it to her mom. \"Look, Mommy! I found a coin!\" Lily said. Her mom smiled and said, \"That's a coin, Lily. It"
+  },
+  {
+   "prompt": "The big red truck stopped in front of",
+   "continuation": "the town. It was very big and had a loud horn. The horn was loud and loud. The people on the street were scared. They ran to the truck and asked for help. The truck driver said, \"Don't worry, kids"
+  },
+  {
+   "prompt": "Mia was sad because her",
+   "continuation": "mommy was in the kitchen. She had a big bag of vegetables in her bag. Mia asked her mommy, \"What is vegetables?\" Mommy said, \"The vegetables are for you, Mia. They are very good"
+  },
+  {
+   "prompt": "In the garden, a small bird",
+   "continuation": "and a bird, were singing a song. The bird was singing a song. The bird was singing a song. It sang a happy song. The bird sang a song about the bird. The bird sang a song. The bird sang a song. The bird sang"
+  },
+  {
+   "prompt": "Ben looked up at the sky and saw",
+   "continuation": "the stars. He was so excited! He wanted to touch them and see what they were doing. He ran to the window and looked around. He saw a big, red bird flying in the sky. He was so excited. He wanted to touch"
+  },
+  {
+   "prompt": "The old cat liked to sleep on",
+   "continuation": "the soft bed. He had a soft bed, a soft bed, and a soft bed. He liked to sleep with his toys and sleep. One day, he saw a big box in the corner of his room. He wanted to see what was inside. He opened the"
+  },
+  {
+   "prompt": "Every morning, Sam would count his",
+   "continuation": "marbles. He was very happy and excited to count them. One day, Sam found a big, shiny marbles. He was so excited! He picked up the marbles and started to count them. He counted one, two, three, four, five. He"
+  },
+  {
+   "prompt": "Anna opened the box and inside was",
+   "continuation": "a beautiful princess. Anna had a beautiful dress with flowers and a big smile. Anna loved to pretend that she was a princess and she could be a princess. She had a big crown and a crown and a crown. She pretended to be a princess and a princess. She had"
+  },
+  {
+   "prompt": "It was raining, so the children",
+   "continuation": "were having lots of fun. They were having a great time. Suddenly, the sky was dark and the sky was dark. The children were scared. They didn't know what to do. They looked around and saw a"
+  },
+  {
+   "prompt": "The little fish swam far away from",
+   "continuation": "home. It was a very special day. The little fish was looking for something special. He saw a big, shiny rock. He wanted to take it home. He tried to reach for it, but it was too high. He tried and tried, but he"
+  }
+ ]
+}
