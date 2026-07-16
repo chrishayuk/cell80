@@ -119,7 +119,7 @@ def main():
     torch.manual_seed(args.seed)
     t0 = time.time()
 
-    mid = "_mid" if args.base_ckpt else ""
+    mid = "_" + Path(args.base_ckpt).stem.replace("cn7_ckpt_", "") if args.base_ckpt else ""
     ckpt_path = HERE / f"cn7_ckpt_fp_{args.arm}{mid}_s{args.seed}.pt"
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
