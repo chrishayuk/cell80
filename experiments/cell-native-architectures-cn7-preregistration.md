@@ -522,6 +522,38 @@ Registered before the checkpoint exists:
   **Action, per the registered fallback: attention-only midtrain (FFN
   frozen), same corpus, same 15M tokens, then re-panel.** Launched
   2026-07-16.
+- **Fallback outcome branches, stated BEFORE the attention-only panel runs**
+  (the first two were implicit; the third was not, and it is the best case
+  for the broker architecture):
+  (1) attention-only preserves P-d1′ but loses material numeracy →
+  capacity/plasticity competition at 115M; ladder must budget the trade.
+  (2) attention-only also fails P-d1′ → the damage is not FFN-mediated;
+  the midtrain objective itself (S3 descriptor→spec training) overwrites
+  what the fingerprint finetune needs.
+  (3) attention-only preserves P-d1′ AND lands numeracy near the full arm
+  (0.91/0.97) → no competition existed; **FFN plasticity was simply a
+  hazard** — the skills fit in attention (v10a redux, one level up), and
+  FFN-frozen becomes ladder POLICY, not fallback. In broker terms: the
+  knowledge-band FFN is not merely prunable, it should never have been
+  trainable.
+- **Disambiguation instrument, registered before the fallback reports
+  (`cn7_geometry.py`)**: cell-side fingerprints are frozen by construction
+  (W_f's INPUTS cannot move), so drift-vs-capacity is decided in the TARGET
+  space — the hidden-state geometry at the emission position that W_f(FP)
+  must project into. Measure pre- vs post-midtrain hidden states on the
+  fixed eval contexts (the B9′ bucket + seen bucket, same Random(0)
+  items): RSA (pairwise-distance correlation), orthogonal Procrustes
+  residual, linear-CKA, per bucket. Reading: geometry moved → drift story
+  (sharpened number representations broke the smooth geometry W_f
+  generalisation rides on — plausibly the SAME sharpening that pushed seen
+  addressing to rank 1); geometry stable → W_f fit/trainability failure
+  from the midtrained init. Interacts with branch (3): if attention-only
+  preserves P-d1′, knowing whether IT moved the geometry separates
+  "attention training is safe" from "geometry didn't move this time."
+- **CN-7.5 watch-number (from the N5 s2 result): the 11.0-nat injected-span
+  NLL.** The no-mask control's most direct signature is that number
+  collapsing toward the in-tier value level — memorisation of trained
+  instances entering exactly where the mask forbade it.
 
 ---
 
