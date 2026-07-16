@@ -1860,3 +1860,83 @@ oracle diff). Six configs, one held-out set, every number with its CI.
    harder battery where scoped arithmetic errors are frequent enough for
    final-answer accuracy to move.
 4. Wave 2 (CN-1's H1 factory, CN-3's prosthetic) hasn't been scoped yet.
+
+## CN-7 R1 — numeracy midtrain with cells as validator: the mask holds, the panel fires twice, and the substrate trade is measured
+
+Pre-registration: `cell-native-architectures-cn7-preregistration.md` (v0.1 pinned
+85fcbab before any training; amendments §8, each committed before the
+measurement it governs existed). One day end-to-end, 2026-07-15/16. Every
+checkpoint sha256-manifested and write-protected (`cn7_ckpt_manifest.json`);
+overwrite guards added to all CN trainers after the §8.3 lesson — and the
+guard caught a real name collision mid-run (dcaf303).
+
+**Substrate repair first (§8.1).** Wiring CN-7.0 exposed that TinyModel v11's
+committed tokenizer artifacts are a different piece→id mapping than the
+checkpoint was trained with (NLL 18.0 — worse than uniform — through the
+committed mapping; 0.66 through the recovered SP model). CN-1 had encoded
+through the wrong mapping (29.8% trained-row hits). CN-7 moved to the original
+SP id space and re-baselined: **B9′ = 105** (per-seed 105/108/93 across three
+visibly different trajectories; novel|seen std 7.9 vs novel|novel std 137 —
+the invariance dissociation, reproduced on a healthy stack), so CN-1's
+held-out level was never a substrate artifact; and seen-cell addressing
+jumped to median rank 1–5 of 790 (top1 0.31–0.46), which WAS substrate-starved.
+
+**CN-7.1 (7.55M tok/epoch, 45.0% replay): both audits clean.** 188,520
+corpus claims re-derived from row text by independent parsers and re-executed
+against cells — 100% signed; zero beyond-tier answer tokens carry loss; no
+held-out cell appears anywhere. The audit's first run flagged 5 failures that
+were bugs in the AUDIT (canonical/narrative disambiguation) — the two-routes
+design surfacing its own defects, as intended.
+
+**The midtrain worked wherever it was allowed to.** Fresh-instance
+(seed-981) role-NLL: s1 answers 4.49 → **0.051** (succ 0.0002, parity 0.0006,
+add 0.012; residuals mul 0.138, mod 0.274); call grammar 6.11 → 0.0002;
+P-e improved 6.6% (bound never approached; §8.8 split graded: gains uniform
+across cardinal-word vs plain sentences → continued pretraining on an
+unconverged 24M-token base, NOT cross-species transfer — the digit-split
+power check had already killed the digit-form story, 7/8,725 val sentences);
+deck register unchanged; narrative probe 0.965 (B12's cliff inverted).
+
+**The mask held, with a behavioural signature.** Three instruments:
+s3 masked values stayed AT floor (4.14 → 4.35) while in-tier twins collapsed
+(4.04 → 0.77); s2 injected spans were actively SQUEEZED away from floor
+(4.23 → **11.0 nats**) — after 15M tokens containing those exact spans, the
+model treats its own training data's injected values as e^-11-improbable:
+not absence of gradient but presence of maximal surprise. The
+call-is-the-abstention thesis now has a number; CN-7.5 (running) watches it
+collapse when the mask is removed.
+
+**Both failure gates fired, and the gate design converted failures into
+mechanism.** P-b failed (0.111): free-running emission mode-collapses to a
+template echo ("10 10 = 1", arity-adapted) on seen AND held-out descriptors —
+not a composition failure; s3 values were undertrained (0.77 nats ≈ p 0.46;
+S3 was 11% of the mix). 7.3 ran recorded-not-graded (0/9, 0/15); the sampled
+yield (0.110/0.135, unstratified, binary-output luck) left the 7.6 STaR gate
+unmet. Then P-d1′ failed (held-out rank **208** vs threshold 137) and the
+kill criterion fired: the full-model midtrain broke computed addressing while
+association simultaneously improved to its best-ever (rank 1).
+
+**The fallback resolved the mechanism (§8.10).** Attention-only arm, same
+corpus/tokens: P-d1′ **98 — at the pre-midtrain level** — while fresh-instance
+numeracy landed 6× weaker (0.308; P-a2 fails outright at 0.620). Both arms
+warped the measured emission-position geometry EQUALLY (RSA 0.59/0.64,
+Procrustes ~0.72, uniform across buckets), so drift magnitude is not the
+operative variable; what kills the fingerprint pathway is specifically FFN
+changes the fp protocol cannot re-fit. **At 115M under this recipe,
+in-weights numeracy and computed cell-addressing compete for the same
+substrate: FFN training installs arithmetic and breaks addressing; FFN
+freezing protects addressing perfectly and starves arithmetic.** Association
+is robust to everything — only the computed address is fragile, and only to
+FFN plasticity. Three pre-stated branches; branch (3) (FFN-freezing-as-free-
+policy) is dead.
+
+**R1 disposition.** No graded 7.3 on either arm — the 7.2 gate did its job
+twice, which is the panel working, not the experiment failing. Open: CN-7.5
+no-mask control (running; the 11-nat watch-number), CN-7.4n noise probe
+(registered, N1–N4), 3-seed P-d2′ if the ladder continues. R2 prescriptions,
+all instrument-derived: raise S3 fraction, add S1 EOS supervision, and either
+budget the FFN trade explicitly or route numeracy around weights entirely.
+The rung's own arc is the programme's thesis performed by the programme: the
+model that tried to hold everything in weights broke the delegation path it
+needed most, and the recovery was to freeze the parts that store and let the
+interface adapt.
