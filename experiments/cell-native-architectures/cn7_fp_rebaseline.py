@@ -56,11 +56,15 @@ class SpEnc:
         return ids
 
 
-def build(arm: str, cell_ids: dict):
+def build(arm: str, cell_ids: dict, base_ckpt: str | None = None):
     from tiny_model_v11.loader import load_from_artifacts
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
     vocab = CELL_FIRST_ID + len(cell_ids)
     resize_embedding(base, vocab)
+    if base_ckpt:  # P-d re-run on the MIDTRAINED base (prereg CN-7.2): same protocol, new substrate
+        ck = torch.load(HERE / base_ckpt, map_location="cpu")
+        assert ck["vocab"] == vocab, "midtrain ckpt vocab mismatch"
+        base.load_state_dict(ck["state"])
     feats, _, names, held = load_fingerprint_features(kind="fingerprint")
     by_name = {n: feats[i] for i, n in enumerate(names)}
     order = sorted(cell_ids, key=cell_ids.get)
@@ -100,6 +104,7 @@ def set_trainable(model, arm, unfreeze_top):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", default="fingerprint", choices=["fingerprint", "shuffled", "random"])
+    ap.add_argument("--base-ckpt", default=None, help="midtrained base checkpoint (P-d panel re-run)")
     ap.add_argument("--seed", type=int, default=81)
     ap.add_argument("--steps", type=int, default=8000)
     ap.add_argument("--bs", type=int, default=16)
@@ -114,14 +119,15 @@ def main():
     torch.manual_seed(args.seed)
     t0 = time.time()
 
-    ckpt_path = HERE / f"cn7_ckpt_fp_{args.arm}_s{args.seed}.pt"
+    mid = "_mid" if args.base_ckpt else ""
+    ckpt_path = HERE / f"cn7_ckpt_fp_{args.arm}{mid}_s{args.seed}.pt"
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
                          f"checkpoint is never overwritten (CN-6 §8.3 lesson). Rename or move it first.")
 
     cell_ids = json.load(open(HERE / "cn7_token_map.json"))["cells"]
     print(f"== CN-7 fp re-baseline (arm {args.arm}, seed {args.seed}) on {device}, SP id space ==", flush=True)
-    model, names, held = build(args.arm, cell_ids)
+    model, names, held = build(args.arm, cell_ids, args.base_ckpt)
     model = model.to(device)
     trainable = set_trainable(model, args.arm, args.unfreeze_top)
     print(f"  trainable params: {sum(p.numel() for p in trainable if p.requires_grad):,}", flush=True)
@@ -207,7 +213,7 @@ def main():
         return {"top1": round(top1 / len(items), 4), "top5": round(top5 / len(items), 4),
                 "median_rank": ranks[len(ranks) // 2], "n": len(items)}
 
-    results = {"arm": args.arm, "seed": args.seed, "steps": args.steps,
+    results = {"arm": args.arm, "seed": args.seed, "steps": args.steps, "base_ckpt": args.base_ckpt,
                "unfreeze_top": args.unfreeze_top, "id_space": "sp-v11-original",
                "final_train_acc": round(sum(accs[-40:]) / min(40, len(accs)), 4), "buckets": {}}
     print(f"== eval (random-sampled buckets, chance median ~395/790) ==", flush=True)
@@ -221,7 +227,7 @@ def main():
         print(f"  {'|'.join(bucket):<24} top1 {m['top1']:.3f}  top5 {m['top5']:.3f}  "
               f"med.rank {m['median_rank']:>3}/790  (n={m['n']}){tag}", flush=True)
 
-    out = HERE / f"cn7_fp_rebaseline_{args.arm}_s{args.seed}.json"
+    out = HERE / f"cn7_fp_rebaseline_{args.arm}{mid}_s{args.seed}.json"
     out.write_text(json.dumps(results, indent=2))
     print(f"wrote {out.name} ({time.time()-t0:.0f}s total)")
 

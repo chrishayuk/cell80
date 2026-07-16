@@ -17,6 +17,12 @@
   "manifested": "2026-07-16T06:49:16+00:00",
   "sha256": "326b43a537de03ec0256bf2f3f808302727ab02c4f9aef5cc77bce15792b19a1"
  },
+ "cn7_ckpt_midtrain.pt": {
+  "bytes": 462355218,
+  "git_head": "40490c4",
+  "manifested": "2026-07-16T09:41:10+00:00",
+  "sha256": "fe4d9a08141d49ce535a47b92c95f8cc0c06ea3b506319af04a5d3a60fc29c4a"
+ },
  "cn7_fp_rebaseline_fingerprint_s80.json": {
   "bytes": 630,
   "git_head": "04daa8d",
@@ -34,5 +40,11 @@
   "git_head": "5faaca6",
   "manifested": "2026-07-16T06:49:16+00:00",
   "sha256": "931f9ab7f619c6944b3ac88310dadc58a04f2b9c485db126e333a966ff95ebc5"
+ },
+ "cn7_midtrain_run.log": {
+  "bytes": 9172,
+  "git_head": "40490c4",
+  "manifested": "2026-07-16T09:41:10+00:00",
+  "sha256": "0178f4190f5488e9db05baf2c24bf52feaee9e6dcf8a16383b97b1b349765e8b"
  }
 }
