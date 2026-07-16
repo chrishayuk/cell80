@@ -41,6 +41,12 @@
   "manifested": "2026-07-16T13:58:28+00:00",
   "sha256": "6f6f9c28ed5533be00e445e020b942aea97e6b92e206e14eb16bea3b1933665d"
  },
+ "cn7_ckpt_midtrain_nomask.pt": {
+  "bytes": 462356655,
+  "git_head": "1baab5c",
+  "manifested": "2026-07-16T20:27:49+00:00",
+  "sha256": "ab64ee50957b2908c8e128e070176acb8269bd3de32efe27b8c76133f9f8fbd8"
+ },
  "cn7_fp_attn_run.log": {
   "bytes": 5113,
   "git_head": "afd81b0",
@@ -82,6 +88,12 @@
   "git_head": "9fa1b46",
   "manifested": "2026-07-16T13:58:28+00:00",
   "sha256": "b3340b2770e33a6e9050189d5dc863902063d6417403d0f5f4866ac1d65710c6"
+ },
+ "cn7_midtrain_nomask_run.log": {
+  "bytes": 16559,
+  "git_head": "1baab5c",
+  "manifested": "2026-07-16T20:27:49+00:00",
+  "sha256": "e73fe8af721d99c3902eec3532115b64f21645f29ec60fcbcbfbf9fd502633f5"
  },
  "cn7_midtrain_run.log": {
   "bytes": 9172,
