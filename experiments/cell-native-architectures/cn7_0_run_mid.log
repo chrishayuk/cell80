@@ -1,0 +1,30 @@
+  substrate: cn7_ckpt_midtrain.pt (midtrained v11, SP space)
+  apply_delta_clamped              [within] parsed  34  signed   1  yield 0.029
+  between_exclusive                [within] parsed  34  signed   2  yield 0.059
+  clamp_i16                        [within] parsed  35  signed   6  yield 0.171
+  crc16_step                       [beyond] parsed  36  signed   0  yield 0.000
+  eq                               [within] parsed  36  signed   7  yield 0.194
+  fnv1a_step                       [beyond] parsed  36  signed   1  yield 0.028
+  geom_circle_circumference_approx [beyond] parsed  36  signed   1  yield 0.028
+  is_lt_i16                        [within] parsed  36  signed  14  yield 0.389
+  isqrt                            [within] parsed  45  signed   1  yield 0.022
+  jacobi_symbol                    [beyond] parsed  45  signed   0  yield 0.000
+  luhn_check                       [beyond] parsed  45  signed  13  yield 0.289
+  mask_clear                       [beyond] parsed  36  signed   2  yield 0.056
+  mask_has_all                     [beyond] parsed  36  signed  13  yield 0.361
+  mask_overlap_count               [beyond] parsed  45  signed  12  yield 0.267
+  median3                          [within] parsed  27  signed   2  yield 0.074
+  mobius_function                  [beyond] parsed  45  signed  20  yield 0.444
+  norm2_sq                         [beyond] parsed  36  signed   0  yield 0.000
+  permille                         [beyond] parsed  36  signed   1  yield 0.028
+  permille_to_byte                 [beyond] parsed  45  signed   6  yield 0.133
+  pow_small                        [beyond] parsed  29  signed   3  yield 0.103
+  snap_down                        [within] parsed  36  signed   2  yield 0.056
+  square                           [within] parsed  36  signed   0  yield 0.000
+  swap_bytes                       [beyond] parsed  44  signed   0  yield 0.000
+  zscore_q8                        [beyond] parsed  36  signed   7  yield 0.194
+
+CN-7.0 yield — substrate v11:cn7_ckpt_midtrain | greedy + 8 samples @ T=0.7 per cell
+  within  (9 cells): signed 35/319 parsed  ->  per-pair yield 0.110 [0.080,0.149]
+  beyond  (15 cells): signed 79/586 parsed  ->  per-pair yield 0.135 [0.110,0.165]
+saved cn7_0_yield_v11_cn7_ckpt_midtrain.json
