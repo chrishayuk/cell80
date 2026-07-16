@@ -1,0 +1,142 @@
+{
+ "ckpt": "cn7_ckpt_midtrain_nomask.pt",
+ "sigmas": [
+  0.0,
+  0.005,
+  0.01,
+  0.02,
+  0.04,
+  0.08
+ ],
+ "draws": 3,
+ "results": [
+  {
+   "tier_a": 0.0389,
+   "grammar": 0.0003,
+   "beyond": 0.9185,
+   "fluency": 1.5529,
+   "sigma": 0.0,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.0389,
+   "grammar": 0.0003,
+   "beyond": 0.9193,
+   "fluency": 1.5532,
+   "sigma": 0.005,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.039,
+   "grammar": 0.0003,
+   "beyond": 0.9181,
+   "fluency": 1.553,
+   "sigma": 0.005,
+   "draw": 1
+  },
+  {
+   "tier_a": 0.0389,
+   "grammar": 0.0003,
+   "beyond": 0.9191,
+   "fluency": 1.553,
+   "sigma": 0.005,
+   "draw": 2
+  },
+  {
+   "tier_a": 0.039,
+   "grammar": 0.0003,
+   "beyond": 0.9204,
+   "fluency": 1.5537,
+   "sigma": 0.01,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.0391,
+   "grammar": 0.0003,
+   "beyond": 0.9178,
+   "fluency": 1.5533,
+   "sigma": 0.01,
+   "draw": 1
+  },
+  {
+   "tier_a": 0.039,
+   "grammar": 0.0003,
+   "beyond": 0.9199,
+   "fluency": 1.5534,
+   "sigma": 0.01,
+   "draw": 2
+  },
+  {
+   "tier_a": 0.0391,
+   "grammar": 0.0003,
+   "beyond": 0.9231,
+   "fluency": 1.5556,
+   "sigma": 0.02,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.0393,
+   "grammar": 0.0003,
+   "beyond": 0.9178,
+   "fluency": 1.5548,
+   "sigma": 0.02,
+   "draw": 1
+  },
+  {
+   "tier_a": 0.0391,
+   "grammar": 0.0003,
+   "beyond": 0.9223,
+   "fluency": 1.555,
+   "sigma": 0.02,
+   "draw": 2
+  },
+  {
+   "tier_a": 0.0396,
+   "grammar": 0.0003,
+   "beyond": 0.9314,
+   "fluency": 1.5623,
+   "sigma": 0.04,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.0401,
+   "grammar": 0.0003,
+   "beyond": 0.92,
+   "fluency": 1.5608,
+   "sigma": 0.04,
+   "draw": 1
+  },
+  {
+   "tier_a": 0.0397,
+   "grammar": 0.0003,
+   "beyond": 0.9302,
+   "fluency": 1.5612,
+   "sigma": 0.04,
+   "draw": 2
+  },
+  {
+   "tier_a": 0.0416,
+   "grammar": 0.0004,
+   "beyond": 0.9601,
+   "fluency": 1.588,
+   "sigma": 0.08,
+   "draw": 0
+  },
+  {
+   "tier_a": 0.0429,
+   "grammar": 0.0004,
+   "beyond": 0.9334,
+   "fluency": 1.5856,
+   "sigma": 0.08,
+   "draw": 1
+  },
+  {
+   "tier_a": 0.0423,
+   "grammar": 0.0003,
+   "beyond": 0.9598,
+   "fluency": 1.5862,
+   "sigma": 0.08,
+   "draw": 2
+  }
+ ]
+}

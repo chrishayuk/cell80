@@ -746,6 +746,39 @@ any replicate runs:
   verification economics). That choice is philosophical as much as
   empirical, and it is Chris's, not an instrument's.
 
+### 8.14 The frozen rule fires (2026-07-16): option (iii); the tier boundary is real
+
+- **Permutation-null yield (§8.12 prediction: CONFIRMED)**: within excess
+  −0.002, beyond +0.007. The entire sampled yield was signing-by-chance;
+  the honest free-running emission number is zero. 7.6 stays shut.
+- **CN-7.4n (N1–N4)**: no capability died at any σ ≤ 0.08 in either arm —
+  Tier-A 0.038→0.045, grammar flat at 0.0002–0.0004, no-mask beyond-tier
+  0.918→0.960. N4 held (grammar most robust, trivially); N1/N2/N3's
+  ordering questions returned "all robust in this range" — the probe's σ
+  range was too conservative to produce half-lives, and fragility turned
+  out not to be the discriminator anyway.
+- **Off-distribution probe: THE CLIFF, exactly as frozen.** No-mask arm
+  in-range: add 0.85 / round_to_multiple 1.00 / sub 0.75 exact. One digit
+  past training range: **0.00 exact on every cell** (NLL 0.1→3.7–5.4;
+  worse at B2). Cliff location = the training ranges echoed back
+  (consistency check passes). Masked control: 10–13 nats all bands.
+- **The dissociation the two probes bought jointly**: the no-mask arm's
+  beyond-tier competence is a NOISE-ROBUST IN-RANGE INTERPOLATOR WITH ZERO
+  ALGORITHMIC CONTENT. Crammed ≠ fragile — robust storage of a
+  distribution is not a circuit; the failure PROFILE, not fragility, was
+  the discriminator (as §8.11 froze it).
+- **Rule verdict: option (iii) + FFN-frozen ladder policy.** The tier
+  concept is NOT rewritten as pure economics: 115M memorizes the in-range
+  surface of multi-digit arithmetic but does not compress the algorithm.
+  "Below the cheapest cell" survives as a capability boundary for
+  algorithmic content; in-range interpolation is learnable and worthless
+  (cells cover the full domain at zero marginal cost, verified). The
+  broker wins with evidence.
+- FFN-policy footnote pending the §8.13 replicates: if masked×FFN
+  interaction replicates, the precise policy is "the mask requires a
+  frozen FFN"; the mask itself stays — the boundary is the programme, and
+  §8.14 just re-proved the weights cannot replace it off-range.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe
