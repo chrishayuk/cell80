@@ -1,0 +1,22 @@
+{
+ "b": {
+  "rows": 51031,
+  "tokens": 6000004
+ },
+ "aex": {
+  "rows": 51031,
+  "tokens": 882500
+ },
+ "atok": {
+  "rows": 346962,
+  "tokens": 6000009
+ },
+ "_audit": {
+  "two_route": "PASS",
+  "cell_signed_instances": 397993,
+  "range": "PASS",
+  "identity": "PASS",
+  "b0_dedup": "PASS"
+ },
+ "_seed": 800
+}

@@ -195,6 +195,7 @@ def main():
     ap.add_argument("--raw", action="store_true", help="R0 floor: raw v11, no finetune")
     ap.add_argument("--format", required=True, choices=["trace", "answer"])
     ap.add_argument("--tf-n", type=int, default=60)
+    ap.add_argument("--limit", type=int, default=None, help="smoke: cap problems per band")
     ap.add_argument("--device", default=None)
     args = ap.parse_args()
     assert args.raw != bool(args.ckpt), "exactly one of --ckpt / --raw"
@@ -215,6 +216,8 @@ def main():
     out = {"ckpt": args.ckpt or "raw_v11", "format": args.format, "bands": {}}
 
     for band, probs in evalsets.items():
+        if args.limit:
+            probs = probs[:args.limit]
         prompts = [f"{a} + {b} =" for a, b in probs]
         gens = generate(base, sp, prompts, device)
         exact, trunc, strata, fe_hist = 0, 0, {}, {}
