@@ -498,6 +498,30 @@ Registered before the checkpoint exists:
 - Weak-op note carried into 7.3 expectations: mod and mul are the real
   canonical residuals; within-frontier cells snap_down (mod-shaped) and
   square/isqrt (mul-shaped) are the likely drag points.
+- **P-b: FAIL (0.111 [0.044, 0.253] within-frontier; greedy).** Diagnosis is
+  mechanical and committed: free-running emission collapses to a
+  template-echo mode ("10 10 = 1"-shaped, arity-adapted, answer echoing an
+  input) on held-out AND seen descriptors alike — not a composition failure;
+  teacher-forced knowledge intact (0.91/0.97). Cause per the role-NLL:
+  S3 in-tier values undertrained at 0.77 nats (~p 0.46/token; S3 was 11% of
+  the mix) — a weak conditional survives teacher forcing and mode-collapses
+  under greedy. **7.3 ran and is RECORDED-NOT-GRADED** (resolve@5 0/9 within,
+  0/15 beyond) — the uninformative outcome the gate exists to name, and it
+  did its job. Sampled yield on this checkpoint (7.6 gate input): within
+  0.110 [0.080, 0.149] / beyond 0.135 [0.110, 0.165] — no stratification,
+  within-number carried by binary-output luck (is_lt_i16 0.389, eq 0.194),
+  square/isqrt/snap_down ~dead. **CN-7.6 gate (≥0.30): NOT met; the loop
+  waits.**
+- **P-d1′: FAIL — KILL CRITERION FIRES.** Seed-81 fingerprint finetune on
+  the midtrained base: held-out (novel|seen) median rank **208** vs
+  threshold 137 (pre-midtrain B9′ = 105; novel|novel 557 ≈ chance). Seen-cell
+  addressing simultaneously IMPROVED (median rank 1, top5 0.60/0.67 — best
+  yet): the full-model midtrain sharpened association and damaged W_f
+  generalisation, the exact FFN-vs-attention tension §4 flagged going in.
+  Remaining full-model fp seeds stopped (criterion needs no more precision).
+  **Action, per the registered fallback: attention-only midtrain (FFN
+  frozen), same corpus, same 15M tokens, then re-panel.** Launched
+  2026-07-16.
 
 ---
 
