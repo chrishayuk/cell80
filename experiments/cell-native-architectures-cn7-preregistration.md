@@ -944,3 +944,20 @@ context (a soft leak the generation probe alone would miss).
 cheapest cell" and "compresses well in weights" should pick out the same
 Tier A; where they disagree, the compression criterion is probably the better
 judge. To revisit at the next tier-frontier revision, not in CN-7.
+
+### 8.17 R1 CLOSED (2026-07-16): the variance reading is final
+
+No-mask s82: **159** (seen buckets 2/1, strong; one PASS one FAIL against
+137 within the same arm). Final table — frozen-FFN: {105, 108, 93} + {98},
+spread ≤15; plastic-FFN: {93, 208} + {108, 159}, spread 51–115, mask-
+irrelevant. **FFN plasticity multiplies W_f-fit variance ~an order of
+magnitude; the ~100 invariant is where tight configurations sit.** §8.16's
+multi-seed W_f gate is thereby NECESSARY for any plastic-FFN recipe, not
+prudent. Single-seed P-d gates are formally retired from this programme.
+
+R1 closes: nineteen graded registrations, eight wrong, every wrong one
+executed by an instrument registered before the belief existed. The broker
+loop ran end-to-end (cn7_broker.py): model parses prose, emits the call,
+the cell answers exactly, the model narrates the verified number. The
+chapter's last transcript: "<call> ⟨safe_div⟩ 157 16 </call> 9 sweets.
+The children smiled."
