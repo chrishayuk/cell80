@@ -402,6 +402,31 @@ its seen-cell metrics are sharper across the board.
   descriptors compositionally rather than recalling training pairs, a free
   generalisation result the mismatched stack could not have shown.
 
+### 8.7 B9′/B10′ RESULT (2026-07-16; §8.6 statistic applied as frozen)
+
+Per-seed novel|seen median ranks: **105 / 108 / 93** (s80/s81/s82).
+
+- **B9′ = 105** (median-of-seeds). **P-d1′ = 137, frozen.** Old faithful
+  B9 ≈ 98 → the CN-1 held-out level is CONFIRMED on the fixed stack; the
+  tokenizer repair changed nothing the fingerprint mechanism owed it.
+- **B10′ (novel|seen) = std 7.94** across three VISIBLY different training
+  trajectories (s80 slow, s81/s82 hot; seen-cell metrics scatter across
+  seeds). Weaker than the old eerie 0.47 — which came from near-identical
+  trajectories — but 17× tighter than the same seeds' novel|novel spread
+  (std 136.8 at n=48), which is the within-run dissociation that carries the
+  claim: the address is data-determined; the association pathway and the
+  composition-shifted read are trajectory business.
+- Registered expectation (i): PARTIAL. s82 landed at 93 — direction held
+  (all seeds within ±12 of the band on a 790 scale) but "within a few ranks
+  of 105–108" was tighter than reality. Recorded as graded.
+- Registered expectation (ii): HELD at s82 (novel_comp top1 0.390 ≥
+  seen_comp 0.370; s81 0.455 ≥ 0.360). s80 is the counterexample (0.280 <
+  0.305) — so "compositional reading ≥ pair recall" stands at 2 of 3 seeds:
+  supported, not established.
+- Seen-cell addressing on the fixed stack, all seeds: top1 0.31–0.46,
+  median rank 1–5 of 790 — versus ~0.27–0.30 / rank ~60s on the mismatched
+  stack. The pointing path's substrate sensitivity is confirmed in triplicate.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe

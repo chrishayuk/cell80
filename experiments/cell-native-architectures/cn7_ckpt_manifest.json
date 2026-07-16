@@ -11,6 +11,12 @@
   "manifested": "2026-07-15T23:54:28+00:00",
   "sha256": "4e732555b4ad6b3a2bf17fe54aae50e84ca5d0da7c9a34888d3553c72118934f"
  },
+ "cn7_ckpt_fp_fingerprint_s82.pt": {
+  "bytes": 399906958,
+  "git_head": "5faaca6",
+  "manifested": "2026-07-16T06:49:16+00:00",
+  "sha256": "326b43a537de03ec0256bf2f3f808302727ab02c4f9aef5cc77bce15792b19a1"
+ },
  "cn7_fp_rebaseline_fingerprint_s80.json": {
   "bytes": 630,
   "git_head": "04daa8d",
@@ -22,5 +28,11 @@
   "git_head": "e741c6a",
   "manifested": "2026-07-15T23:54:28+00:00",
   "sha256": "6b3954a8097b7acfa66ba25f044fcb416e437b0f2da30f7c1fbb68f401c16740"
+ },
+ "cn7_fp_rebaseline_fingerprint_s82.json": {
+  "bytes": 623,
+  "git_head": "5faaca6",
+  "manifested": "2026-07-16T06:49:16+00:00",
+  "sha256": "931f9ab7f619c6944b3ac88310dadc58a04f2b9c485db126e333a966ff95ebc5"
  }
 }

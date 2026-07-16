@@ -1,0 +1,36 @@
+{
+ "B9_prime": 105,
+ "P_d1_prime_threshold": 137,
+ "B10_prime_novel_seen": {
+  "per_seed": {
+   "80": 105,
+   "81": 108,
+   "82": 93
+  },
+  "std": 7.94
+ },
+ "novel_novel_line": {
+  "per_seed": {
+   "80": 286,
+   "81": 71,
+   "82": 325
+  },
+  "std": 136.79,
+  "n_per_seed": 48
+ },
+ "seen_top1": {
+  "80": [
+   0.305,
+   0.28
+  ],
+  "81": [
+   0.36,
+   0.455
+  ],
+  "82": [
+   0.37,
+   0.39
+  ]
+ },
+ "statistic": "median over 3 seeds of novel_cell|seen_comp median rank (frozen \u00a78.6 before s82 printed)"
+}
