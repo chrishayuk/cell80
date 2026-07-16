@@ -1,0 +1,55 @@
+{
+ "tag": "r0_raw_v11",
+ "gen_tokens": 60,
+ "decode": "greedy, legality-masked",
+ "rows": [
+  {
+   "prompt": "Once upon a time, there was a little girl who",
+   "continuation": "loved to play outside. One day, she found a big, shiny rock in the grass. She was so excited to show her mom. Her mom said, \"That's a great idea! Let's go to the park!\" The little girl was so excited"
+  },
+  {
+   "prompt": "Tom and his dog ran to the",
+   "continuation": "park. They saw a big slide and a swing. They wanted to go on the slide. \"Let's go on the slide!\" Tom said. \"OK, but be careful. The slide is very high and fast.\" They r"
+  },
+  {
+   "prompt": "One sunny day, Lily found a shiny",
+   "continuation": "diamond on the ground. She picked it up and showed it to her mom. \"Look, Mommy! I found a diamond!\" she said. Her mom smiled and said, \"That's a pretty diamond, Lily. You"
+  },
+  {
+   "prompt": "The big red truck stopped in front of",
+   "continuation": "a big house. The truck was very big and had a long tail. The truck was very big and had a long tail. The truck was very strong and strong. The truck liked to go fast and make loud noises. One day, the truck saw a big truck."
+  },
+  {
+   "prompt": "Mia was sad because her",
+   "continuation": "mommy was busy in the kitchen. She had a big bag of food in her bag. Mia wanted to eat something yummy. She asked her mommy if she could have some. Her mommy said yes, but only if she ate something. Mia was sad"
+  },
+  {
+   "prompt": "In the garden, a small bird",
+   "continuation": "named Timmy. Timmy loved to play with his toys and eat cookies. One day, Timmy's mom asked him to clean up his toys. Timmy didn't want to clean up, but he knew he had to clean"
+  },
+  {
+   "prompt": "Ben looked up at the sky and saw",
+   "continuation": "a big, red cloud in the sky. He wanted to touch it, but he was scared. He tried to run away, but he could not. He tried to run, but he was too small. He was too small and too small. He was scared and sad"
+  },
+  {
+   "prompt": "The old cat liked to sleep on",
+   "continuation": "the porch. He had a big bed, a big bed, and a big bed. He liked to sleep all day and sleep. One day, he saw a big tree with a hole in it. He was curious and wanted to see what was inside. He ran to"
+  },
+  {
+   "prompt": "Every morning, Sam would count his",
+   "continuation": "toys on the floor. He was very happy and excited to count them. One day, he found a big box in the living room. He opened it and saw a big, shiny box. He was so excited to see what was inside. He opened the box and found"
+  },
+  {
+   "prompt": "Anna opened the box and inside was",
+   "continuation": "a big, shiny box. She opened it and saw a shiny red ball. She wanted to play with it. She ran to the box and opened it. Inside, she found a shiny red ball. She was very happy. She played with the ball all day."
+  },
+  {
+   "prompt": "It was raining, so the children",
+   "continuation": "were very excited. They were going to the beach and they were so excited. They packed their things and headed to the beach. They were so excited to go. They packed their bags and headed to the beach. They packed their bags and"
+  },
+  {
+   "prompt": "The little fish swam far away from",
+   "continuation": "the sea. It was a very special place. The fish was very happy. It had a lot of fun swimming in the sea. The little fish was very happy. The fish and the fish were friends. They played together every day. They were"
+  }
+ ]
+}
