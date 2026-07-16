@@ -1,4 +1,4 @@
-# CN-8: The Abstraction Threshold — surface diversity as the manipulated variable
+# CN-9: The Abstraction Threshold (renumbered from CN-8 — the number was already held by the frozen tape-experiment registration, 781ba85) — surface diversity as the manipulated variable
 
 **DRAFT v0.0 — NOT PINNED. Thresholds and predictions marked TO-PIN await Chris's
 review; nothing here is registered until this header changes and the pin is committed.**
@@ -19,7 +19,7 @@ exactly as far as its template inventory reaches, and frontier models differ by 
 (internet-scale surface diversity), not kind.
 
 On a synthetic-corpus base, surface entropy is not free — it is a manufactured, budgeted
-input. CN-8 makes it the manipulated variable and measures the missing constant: **the
+input. CN-9 makes it the manipulated variable and measures the missing constant: **the
 abstraction threshold at 115M** — the surface cardinality at which the cheapest fit flips
 from fill-the-slot to parse-the-meaning. Every prior programme treated the wall as local
 failure; this one measures its height. (Scope honesty: the constant is measured at 115M
