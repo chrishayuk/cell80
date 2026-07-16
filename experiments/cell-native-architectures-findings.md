@@ -1940,3 +1940,36 @@ The rung's own arc is the programme's thesis performed by the programme: the
 model that tried to hold everything in weights broke the delegation path it
 needed most, and the recovery was to freeze the parts that store and let the
 interface adapt.
+
+### CN-7 R1 addendum — 7.5, the probes, the replicates, and the loop closing (§8.13–8.17)
+
+The section above was written before the evening's second act; the graded record is
+prereg §8.13–8.17. In brief: **7.5's watch-number collapsed on cue** (injected spans
+11.0 → 0.40 nats — but on FRESH instances: within-distribution learning, not instance
+memorisation; prediction (a) wrong in the interesting direction). The **off-distribution
+probe returned the frozen cliff signature** — 0.75–1.00 exact in-range, 0.00 exact one
+digit past, on all six cells, cliff at the corpus boundary — while the **noise probe found
+everything robust** (σ ≤ 0.08): crammed ≠ fragile; redundant storage is noise-robust while
+containing zero algorithm. Corrected MDL operationalization: compression is what survives
+leaving the distribution. The **permutation-null yield** confirmed its registered
+prediction exactly (excess −0.002/+0.007): the sampled yield was entirely signing-by-
+chance. The frozen §8.11 rule fired: **option (iii); the tier boundary survives as a
+capability boundary for algorithms** (in-range surface learnable, worthless against cells).
+
+The P-d saga resolved as variance, not mechanism: the 208 kill-firing did NOT replicate
+(masked s82: 93), the §8.13 mask×FFN interaction died with it, and the final table —
+frozen-FFN {105,108,93}+{98} spread ≤15 vs plastic-FFN {93,208}+{108,159} spread 51–115 —
+says **FFN plasticity multiplies W_f-fit variance ~an order of magnitude, mask-irrelevant**.
+The ~100 held-out ceiling is the mode of every configuration tested (hypothesis registered:
+problem-intrinsic to the library's behavioural geometry). Single-seed P-d gates retired;
+§8.16's multi-seed W_f gate is necessary for any plastic-FFN recipe; §8.15's "cost mooted"
+line corrected in §8.16 (the frozen FFN's IN-tier cost is real — Tier A is a finite domain
+where in-range learning is the deliverable).
+
+Final scoreboard: nineteen graded registrations, eight wrong, every wrong one executed by
+an instrument registered before the belief existed — including two of the reviewer's own.
+And the day ended with **the broker loop running end-to-end for the first time**
+(`cn7_broker.py`): model parses prose, emits `<call> ⟨safe_div⟩ 157 16 </call>`, the cell
+answers 9 in microseconds, the model narrates the verified number — " 9 sweets. The
+children smiled." The masked model's greedy output leaves a literal hole where the answer
+belongs; the runtime fills it. That is the architecture, running.
