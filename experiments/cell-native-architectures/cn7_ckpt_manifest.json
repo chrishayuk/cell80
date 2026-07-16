@@ -11,6 +11,12 @@
   "manifested": "2026-07-16T15:39:34+00:00",
   "sha256": "45bf24155f0e4b689ea4e5cabebc3a4451dfe1afc29d08a75423b7d8e6642383"
  },
+ "cn7_ckpt_fp_fingerprint_midtrain_nomask_s81.pt": {
+  "bytes": 399909422,
+  "git_head": "f90e91d",
+  "manifested": "2026-07-16T21:21:16+00:00",
+  "sha256": "13e14ffccd2969957d38e5fdf2a06f8ab6f662dc7e2ff48e45678ee165237e42"
+ },
  "cn7_ckpt_fp_fingerprint_s80.pt": {
   "bytes": 399906958,
   "git_head": "04daa8d",
@@ -53,6 +59,12 @@
   "manifested": "2026-07-16T15:39:34+00:00",
   "sha256": "8e7aa4a0a22002acd6d7a1103b4303ba0b3e43ee0dd8e48746b8a7fe79b83e26"
  },
+ "cn7_fp_nomask_run.log": {
+  "bytes": 5111,
+  "git_head": "f90e91d",
+  "manifested": "2026-07-16T21:21:16+00:00",
+  "sha256": "867d454549315571429b240632b78a5b6d56fe96b672e47e38979f086cf8bd5b"
+ },
  "cn7_fp_rebaseline_fingerprint_mid_s81.json": {
   "bytes": 662,
   "git_head": "5707dc3",
@@ -64,6 +76,12 @@
   "git_head": "afd81b0",
   "manifested": "2026-07-16T15:39:34+00:00",
   "sha256": "c0f5507a2ddbc9618b5ccf35ed6407559c8f812bf8beffe7421cfdecb427a4d9"
+ },
+ "cn7_fp_rebaseline_fingerprint_midtrain_nomask_s81.json": {
+  "bytes": 676,
+  "git_head": "f90e91d",
+  "manifested": "2026-07-16T21:21:16+00:00",
+  "sha256": "9f0906ac5a6ad713be111e6e36df744bf46c2514a175c0143c776032e9ec85ea"
  },
  "cn7_fp_rebaseline_fingerprint_s80.json": {
   "bytes": 630,

@@ -1,0 +1,282 @@
+{
+ "ckpt": "cn7_ckpt_midtrain_nomask.pt",
+ "per_cell": [
+  {
+   "cell": "apply_delta_clamped",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 = 1 ; 10 1 = 1 ; 10 1 = 10 ; 10 10 = 10 ;"
+  },
+  {
+   "cell": "between_exclusive",
+   "stratum": "within",
+   "n_pairs": 3,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 1 = 1 ; 10 1 1 = 1 ; 10 1 1 = 1 ; 10 10 7"
+  },
+  {
+   "cell": "clamp_i16",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "1 1 = 1 ; 10 1 = 10 ; 10 1 = 10 ; 10 10 = 10 ;"
+  },
+  {
+   "cell": "crc16_step",
+   "stratum": "beyond",
+   "n_pairs": 3,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 100 ; 10 1 = 100 ; 10 10 = 10 ; 10 10 ="
+  },
+  {
+   "cell": "eq",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "1 10 = 1 ; 10 1 = 10 ; 10 10 = 10 ; 10 10 = 10"
+  },
+  {
+   "cell": "fnv1a_step",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 10 ; 10 1 = 10 ; 10 1 = 10 ; 10 10 = 10"
+  },
+  {
+   "cell": "geom_circle_circumference_approx",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 1 ; 10 1 = 1 ; 10 10 = 1 ; 10 10 = 1 ;"
+  },
+  {
+   "cell": "is_lt_i16",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 = 1 ; 10 1 = 1 ; 10 1 = 1 ; 10 10 = 1 ; 10"
+  },
+  {
+   "cell": "isqrt",
+   "stratum": "within",
+   "n_pairs": 5,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 = 0 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10"
+  },
+  {
+   "cell": "jacobi_symbol",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 = 1 ; 10 = 1 ; 10 = 1 ; 10 = 1 ; 10 = 1 ; 10"
+  },
+  {
+   "cell": "luhn_check",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 5,
+   "corr": 1.0,
+   "rank": 48,
+   "raw": "10 = 0 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10"
+  },
+  {
+   "cell": "mask_clear",
+   "stratum": "beyond",
+   "n_pairs": 3,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 10 ; 10 10 = 10 ; 10 10 = 10 ; 10 10 ="
+  },
+  {
+   "cell": "mask_has_all",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 3,
+   "corr": 0.75,
+   "rank": 35,
+   "raw": "10 10 = 1 ; 10 10 = 1 ; 10 1 = 1 ; 10 10 = 1 ;"
+  },
+  {
+   "cell": "mask_overlap_count",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 = 1 ; 10 = 1 ; 10 = 1 ; 10 = 1 ; 10 = 1 ; 10"
+  },
+  {
+   "cell": "median3",
+   "stratum": "within",
+   "n_pairs": 3,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 10 = 0 ; 10 1 1 = 0 ; 10 1 1 = 0 ; 10 10 1"
+  },
+  {
+   "cell": "mobius_function",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 1,
+   "corr": 0.2,
+   "rank": 119,
+   "raw": "10 = 1 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10 = 0 ; 10"
+  },
+  {
+   "cell": "norm2_sq",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 10 ; 10 1 = 1 ; 10 1 = 1 ; 10 10 = 10 ;"
+  },
+  {
+   "cell": "permille",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 = 1 ; 10 1 = 10 ; 10 10 = 10 ; 10 10 = 10"
+  },
+  {
+   "cell": "permille_to_byte",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 = 3 ; 10 = 3 ; 10 = 3 ; 10 = 3 ; 10 = 3 ; 10"
+  },
+  {
+   "cell": "pow_small",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 = 1 ; 10 1 = 1 ; 10 1 = 1 ; 10 10 = 10 ; 1"
+  },
+  {
+   "cell": "snap_down",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 4,
+   "corr": 1.0,
+   "rank": 20,
+   "raw": "10 1 = 10 ; 10 1 = 10 ; 10 1 = 10 ; 10 10 = 10"
+  },
+  {
+   "cell": "square",
+   "stratum": "within",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 1 = 1 ; 10 1 = 1 ; 10 1 = 1 ; 10 10 = 1 ; 10"
+  },
+  {
+   "cell": "swap_bytes",
+   "stratum": "beyond",
+   "n_pairs": 5,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 = 16 ; 10 = 16 ; 10 = 16 ; 10 = 16 ; 10 = 16"
+  },
+  {
+   "cell": "zscore_q8",
+   "stratum": "beyond",
+   "n_pairs": 4,
+   "good_pairs": 0,
+   "corr": 0.0,
+   "rank": 249,
+   "raw": "10 10 = 10 ; 10 10 = 10 ; 10 1 = 10 ; 10 10 = 1"
+  }
+ ],
+ "strata": {
+  "within": {
+   "cells": 9,
+   "pair_corr": [
+    0.114,
+    0.045,
+    0.26
+   ],
+   "pairs": "4/35",
+   "resolve@1": [
+    0.0,
+    0,
+    0.299,
+    "0/9"
+   ],
+   "resolve@5": [
+    0.0,
+    0,
+    0.299,
+    "0/9"
+   ],
+   "resolve@10": [
+    0.0,
+    0,
+    0.299,
+    "0/9"
+   ]
+  },
+  "beyond": {
+   "cells": 15,
+   "pair_corr": [
+    0.141,
+    0.076,
+    0.246
+   ],
+   "pairs": "9/64",
+   "resolve@1": [
+    0.0,
+    0,
+    0.204,
+    "0/15"
+   ],
+   "resolve@5": [
+    0.0,
+    0,
+    0.204,
+    "0/15"
+   ],
+   "resolve@10": [
+    0.0,
+    0,
+    0.204,
+    "0/15"
+   ]
+  }
+ },
+ "P-b": {
+  "value": 0.114,
+  "threshold": 0.83,
+  "pass": false
+ }
+}

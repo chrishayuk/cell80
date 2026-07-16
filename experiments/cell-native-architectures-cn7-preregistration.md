@@ -704,6 +704,48 @@ surgery.
   to representational similarity, and indifferent to everything else we
   varied."
 
+### 8.13 The no-mask fingerprint result overturns the mechanism as frozen (2026-07-16)
+
+**Dose-response expectation (§8.11): WRONG. No-mask P-d1′ = 108 — PASS, at
+the invariant level** (seen buckets best-yet: top1 0.415/0.475, rank 2/1;
+novel|novel 637, n=48 scatter as usual). Gradings cascade, recorded before
+any replicate runs:
+
+- §8.12's "~100 ceiling is a constant of the frozen FFN": **amended** — the
+  ceiling also survives full-FFN training WITH full loss. Damage table:
+  attn-only/masked 98 · full/no-mask 108 · full/masked 208. The invariant
+  survives everything tested EXCEPT masked-objective × FFN-training.
+- The banked abstract's "FFN-mediated" clause: **retracted as stated**. The
+  candidate replacement is stranger and sharper: enforcing the tool-boundary
+  (mask) while training the FFN is what breaks tool-addressing.
+- §8.10 branch (1) "substrate competition": **narrowed** — competition was
+  observed only under the masked objective. The no-mask arm occupies the
+  good corner (numeracy best: s1 0.048, beyond-tier 0.40; addressing 108;
+  P-a2 0.960 PASS ≈ masked arm's 0.965 → 7.5 prediction (b), the paraphrase
+  tax, graded WRONG; P-e PASS) — at the price of dissolving the boundary
+  itself. 7.5 prediction (c) HELD: P-b 0.114 FAIL, resolution 0/9 —
+  mode collapse is objective/decode-side, indifferent to what the weights
+  know.
+- **Interaction hypothesis, registered pre-replicate**: the masked arm's
+  11-nat squeeze is not a side effect but the damage vector — masking
+  beyond-tier values under FFN training teaches number-representations
+  anti-aligned with true function behaviour, and a behaviour→address
+  projection (W_f) cannot generalise into an anti-aligned geometry. The
+  no-mask arm learned the true functions; behaviourally-truthful
+  representations are W_f-compatible. Prediction: geometry damage tracks
+  the squeeze, not FFN change per se.
+- **Winner's-curse guard, launched before believing any of this**: single
+  seeds so far. Replicates: masked-full fp seed 82 (does 208 reproduce?)
+  and no-mask fp seed 82 (does 108 reproduce?). If the 208/108 contrast
+  survives both, the interaction claim stands; if it collapses, §8.10's
+  original reading returns and this section records a near-miss.
+- Policy note pending replicates: if the contrast is real, the R2
+  configuration space reopens — mask + FFN-frozen (boundary kept,
+  addressing kept, numeracy weak) vs no-mask + FFN-trained (everything
+  passes but the boundary is gone from the WEIGHTS, surviving only as
+  verification economics). That choice is philosophical as much as
+  empirical, and it is Chris's, not an instrument's.
+
 ---
 
 ## 9. v0.3 addition (2026-07-16, pre-midtrain, outcome-blind): CN-7.4n, the weight-noise probe

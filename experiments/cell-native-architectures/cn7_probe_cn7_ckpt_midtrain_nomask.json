@@ -1,0 +1,44 @@
+{
+ "ckpt": "cn7_ckpt_midtrain_nomask.pt",
+ "probe_seed": 982,
+ "results": {
+  "canonical": {
+   "correct": 193,
+   "n": 400,
+   "p": 0.4825,
+   "ci95": [
+    0.4339,
+    0.5314
+   ],
+   "per_op": {
+    "add": "47/86",
+    "min3": "27/42",
+    "mod": "32/81",
+    "mul": "5/47",
+    "sub": "30/92",
+    "succ": "52/52"
+   }
+  },
+  "narrative": {
+   "correct": 384,
+   "n": 400,
+   "p": 0.96,
+   "ci95": [
+    0.936,
+    0.9752
+   ],
+   "per_op": {
+    "add": "104/107",
+    "min3": "39/42",
+    "mul": "29/37",
+    "parity": "49/49",
+    "sub": "100/102",
+    "succ": "63/63"
+   }
+  }
+ },
+ "gate": {
+  "P-a1 (canonical >= 0.90)": false,
+  "P-a2 (narrative >= 0.80)": true
+ }
+}

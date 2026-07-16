@@ -1,0 +1,55 @@
+{
+ "tag": "cn7_ckpt_midtrain_nomask",
+ "gen_tokens": 60,
+ "decode": "greedy, legality-masked",
+ "rows": [
+  {
+   "prompt": "Once upon a time, there was a little girl who",
+   "continuation": "loved to play outside. She had a big, red ball that she loved to play with. One day, she was playing with her ball when she saw a big, scary dog. The dog was barking and running around. The little girl was scared and ran away. T"
+  },
+  {
+   "prompt": "Tom and his dog ran to the",
+   "continuation": "park. Tom had a big bag of apples. He liked to eat them. He liked to eat them. He liked to eat them. He liked to eat them. He liked to eat them. He liked to eat them. He liked them. He"
+  },
+  {
+   "prompt": "One sunny day, Lily found a shiny",
+   "continuation": "coin on the ground. She picked it up and showed it to her mom. \"Look, Mommy! I found a coin!\" she said. Her mom smiled and said, \"That's a very nice coin, Lily. But don"
+  },
+  {
+   "prompt": "The big red truck stopped in front of",
+   "continuation": "the town. It was very big and had a loud horn. The horn was loud and loud. It made a loud noise and made a loud noise. The people on the town were scared. They ran to the truck and asked for help. The truck"
+  },
+  {
+   "prompt": "Mia was sad because her",
+   "continuation": "mommy was in the kitchen. She had a big bag of vegetables in her bag. Mia was sad and didn't know what to do. Mia's mommy saw her and asked, \"What's wrong, Mia?\" M"
+  },
+  {
+   "prompt": "In the garden, a small bird",
+   "continuation": "named Tim. He lives in a big tree with many trees. Tim has a big tree with many leaves. He likes to play with his tree. One day, Tim saw a big, red apple on the ground. He wanted to eat it"
+  },
+  {
+   "prompt": "Ben looked up at the sky and saw",
+   "continuation": "the stars. He was so excited! He wanted to touch them and see them. He asked his mom if he could touch them. His mom said yes, but he had to be careful. Ben was a little scared, but he was also curious. He wanted"
+  },
+  {
+   "prompt": "The old cat liked to sleep on",
+   "continuation": "the couch. He had a big bed and a small bed. He liked to sleep and sleep with his toys. He did not like to sleep. He did not like to sleep. He did not like to sleep. He did not like to sleep. He"
+  },
+  {
+   "prompt": "Every morning, Sam would count his",
+   "continuation": "marbles to ten. He was very happy and he was very proud of himself. One day, Sam found a big, shiny stone. He was so excited and he wanted to show it to his friends. He ran to his friends and asked them to come over"
+  },
+  {
+   "prompt": "Anna opened the box and inside was",
+   "continuation": "a very special surprise. She opened it and saw a beautiful necklace. Anna was so excited and she wanted to show it to her friends. Anna ran to the house and asked her mom if she could have it. Her mom said yes and gave Anna a big"
+  },
+  {
+   "prompt": "It was raining, so the children",
+   "continuation": "were having lots of fun. They were having a great time playing in the rain. Suddenly, the sky became dark and the sky was dark. The children were scared. They ran to their houses, but they couldn'"
+  },
+  {
+   "prompt": "The little fish swam far away from",
+   "continuation": "home. He was very happy and excited to explore the world. One day, the little fish was walking through the woods when he saw a big, scary wolf. The wolf was very scared and he ran away. The little fish was so scared that he ran away. H"
+  }
+ ]
+}
