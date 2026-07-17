@@ -146,26 +146,99 @@ occurs in training) — and the peel arm *still* scores 0.000 one digit out of r
   maximum.** The arithmetic *content* of the tape extrapolates in both; the *length
   addressing* of the tape does not, in either.
 
-### 6.1 What this does to the thesis (sharpens, does not rescue)
+### 6.1 What this does to the thesis (corrected — the first draft of this section over-claimed)
 
-The pre-experiment framing was "the tape is where math happens." CN-8 forces a more
-precise statement: a self-generated tape carries the algorithm's **content** (single-digit
-facts, carry logic — and that content demonstrably extrapolates: CN-8 logged 1,600/1,600
-correct out-of-range columns; CN-8b keeps per-column arithmetic locally consistent even on
-mis-lengthed traces), **but addressing the tape — knowing it has five positions, not four,
-and stepping through them — is a network capability that itself does not extrapolate at
-this scale and PE.** A model's own scratchpad therefore inherits the network's positional
-ceiling. A *cell* does not: it reads the actual n-digit operand and returns a verified
-answer at any length. So the delegation argument comes out **stronger and more specific**:
-the weakness of the unverified tape is not only that a sampled carry can be wrong
-(CN-2's 1.6%) — it is that the tape cannot even be *laid out* past the length the network
-was trained to traverse. The verified external tape has no such limit. "Where math happens"
-splits cleanly: content can live on a self-tape; **length/position cannot, and that is
-exactly what cells supply.**
+An earlier draft of this section said the tape's arithmetic *content extrapolates* (citing
+1,600/1,600 correct out-of-range columns). **That claim is withdrawn as near-vacuous, and
+the correction is load-bearing.** A column operation is digit + digit + carry — an atom
+with no length axis. It is drawn from the same finite table (10×10×2) whether the problem
+is 4-digit or 40-digit, so it is *never* out of distribution at any operand length. "Correct
+out-of-range columns" is therefore not evidence of extrapolation; the columns were
+in-distribution by construction. By the same construction, **the entire OOD burden of
+length generalization concentrates in the addressing/traversal productions** — index-labeling
+(CN-8) and prefix-copy (CN-8b) — and those are exactly what failed, 400/400 then 200/200.
 
-Headline held pending B′ s81 (seed rule §8.15) and the B2 band; A-ex′ closes P1′/P3′.
-Nothing above is graded on one seed — but the s80 mechanism is unambiguous and the two
-independent grammars agreeing on the failure locus is itself a two-route result.
+The honest statement of what a scratchpad does here is one-sided: **it reduces length
+generalization to length-addressing, and length-addressing fails.** The tape extrapolates
+*nothing* OOD by itself at this scale. Its genuine contributions are two, and neither is
+capability:
+1. **Decomposition** — it turns an opaque `0.000` into a *localized* production failure
+   (the collapse happens at column 1's over-length prefix, not "somewhere in the arithmetic").
+2. **Legibility** — the specimen dumps in §8 exist *because* the tape exists; the failure
+   mechanism is readable off the trace.
+
+This makes the cells argument **cleaner, not louder**: the cell is not supplementing a tape
+that works OOD (it doesn't) — it **replaces the entire traversal**. And critically, the
+load-bearing reason to prefer a cell is **verification, not the tape's positional failure**.
+Verification never depended on the tape failing and survives either outcome of CN-8c
+(§6.2/the CN-8c registration): a cell returns a *checked* answer at any length; a
+self-generated tape returns a sampled one whether or not the addressing extrapolates. The
+positional-ceiling observation is a **secondary, scoped, and falsifiable** claim — see §6.2.
+
+### 6.2 Scope, the alternative reading, and the falsifier (registered before it hardens)
+
+**PE scope, welded on.** "Length-addressing is a network capability that does not
+extrapolate" is, on the present evidence, a fact about **RoPE (θ=10⁴) at 115M**, nothing
+more. The literature already contains the counterexample: Zhou et al. and the abacus-embedding
+line show trained scratchpads *do* length-generalize under position encodings designed for
+it, sometimes dramatically. So the unconditional phrasing is one v12 embedding choice away
+from falsification and must not be cited as established. The discriminator is registered as
+**CN-8c** (`cell-native-architectures-cn8c-preregistration.md`): the identical peel grammar,
+one PE intervention (randomized/abacus-style positions), both branches priced in advance —
+if the peel arm then extrapolates, the ceiling was a PE artifact and the "cells supply what
+the tape cannot lay out" prop falls (cells retreat to verification, their real ground); if
+it still collapses, "positional ceiling at this scale" becomes a two-PE result and earns
+the unconditional phrasing it currently only borrows.
+
+**The reading this section is NOT allowed to bury.** The rival interpretation, stated
+plainly: *scratchpads don't help with length generalization at all at this scale, and the
+"content vs addressing" split is post-hoc comfort — a way to keep a tape thesis alive after
+the tape failed the one test built to kill it.* §6.1's correction concedes most of this:
+the tape achieved nothing OOD. What survives the rival reading is only decomposition +
+legibility (diagnostic value, not capability) and verification (which was never a tape
+claim). If CN-8c collapses too, that is the honest headline, and the programme keeps only
+those two — which is enough for cells but is *not* "the tape is where math happens."
+
+**Meta-note, recorded while it is still today.** This is the second scope-retreat of the
+day (the diversity law → marshalling this afternoon; the tape claim → content-not-addressing
+tonight). Each is individually honest and mechanistically supported, and each moves toward
+the programme's prior commitment. The defense demanded of the diversity reformulation
+applies identically here: **the sharpened tape claim is not cited as established until CN-8c
+runs**, and the rival reading above is on the record, not managed.
+
+Headline (P2′ pass/fail) held pending B′ s81 (seed rule §8.15) and the B2 band; A-ex′
+closes P1′/P3′. The s80 mechanism is unambiguous, and two independent grammars agreeing on
+the failure locus is itself a two-route result — but no grade is stamped on one seed.
+
+## 8. The frame-projection phenomenon (the day's most-replicated finding)
+
+Across three formats with **zero shared machinery**, one behaviour recurs: given an input
+larger than the training frame, the model **projects the input onto the trained frame and
+computes correctly inside it** — a confident, well-formed answer to a smaller problem than
+the one it was asked.
+
+| Specimen | Format | Trained frame | Over-frame input | What the model did |
+|---|---|---|---|---|
+| Broker prompt 4 (CN-6/CN-7) | tool-call marshalling | 3-digit args | `12345` | emitted `safe_div(123, 123)` — truncated the operand to frame width |
+| CN-8 index grammar | answer-on-scratchpad | 4-digit operands | `32985` | wrote a 4-slot index line, dropping the `9`; computed the 4-digit sum correctly |
+| CN-8b peel grammar | state-rewrite scratchpad | 4-digit operands | `32985 + 37421` | emitted a 4-column trace (locally-consistent arithmetic), collapsing the 5-digit problem |
+
+Three independent surfaces, one mechanism. This is the most replicated single finding the
+programme owns, and it is plausibly **the mechanistic face of L8** (the frame/skeleton
+having finite trained cardinality). It is promoted here from a bullet buried in three
+findings docs; it should graduate to its own artifact.
+
+**The open mechanistic question, and why it needs the read-side.** Is the full over-frame
+operand *represented upstream* and discarded at emission, or *never encoded* past frame
+width? The CN-8b oracle-trace NLL of **0.751** (the correct 5-digit trace is unfamiliar,
+not impossible) hints the information is present and the collapse is a decode/addressing-time
+event, not an encoding-time truncation — but that is a hint, not a measurement. This is
+exactly a CN-10 probe target (LARQL/read-side on v11): probe whether the 5th digit is
+linearly recoverable from the residual stream at the emission position on a collapsed
+generation. If it is, frame-projection is an addressing failure over intact information —
+which tightens §6.1's "addressing, not content" split into a representational claim and is
+the strongest argument yet that the build-side and read-side halves of the programme need
+each other.
 
 ## 7. Chronology (protected, per the R1 writeup directive)
 
