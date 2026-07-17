@@ -85,6 +85,17 @@ Route (b) is the expected winner (v11's stack already exists; no quantisation
 confound); (a) is kept open because the server's constrained decoding is wanted
 for CN-2-style follow-ups.
 
+**Gate status 2026-07-17**: route (b) extraction machinery demonstrated —
+`cell-native-architectures/cn10_readout.py` (per-block hooks, logit-lens through
+the model's own norm + tied head, tokenizer identity asserted against SP vocab
+71,261, sha256 of the .model in the manifest), 10-prompt smoke on base v11 CPU,
+manifest `cn10_readout_smoke_raw_v11.json`. Instrument note from the smoke: the
+reference answer token must be the first *digit-bearing* piece — the leading SP
+space piece is trivially rank 1 and carries no signal; the harness conditions on
+gold tokens up to that piece so every checkpoint's lens reads the same prediction
+point. Still open before the pin: the cross-stack validation (reproduce one known
+LARQL reading on a model both stacks load) and the §4.1 probe-ladder machinery.
+
 ## 4. Measurement
 
 ### 4.1 Q1 — phase existence (base v11)
