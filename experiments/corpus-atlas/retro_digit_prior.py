@@ -28,6 +28,14 @@ right sign); number-initial rho = -0.77 all digits, -0.87 excluding '3'.
 The '3' residual is itself informative: 1,992 idiom-bound occurrences do
 not transfer to the post-'=' slot — the behavioral prior is frame-
 sensitive, not unigram.
+
+DESIGN RULING for CN-10 (settled by the '3' outlier): the behavioral prior
+(shuffled-rank control) stays the OPERATIVE delta-from-prior correction;
+the corpus count is its validating second route, not its replacement. The
+model's prior at the post-'=' position is conditioned on more context than
+any position-binned corpus count can capture — delta-from-corpus-prior
+would import exactly the residual the idiom exposes. Corpus count as
+receipt, shuffled rank as instrument.
 """
 
 import json

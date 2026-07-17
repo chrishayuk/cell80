@@ -117,10 +117,29 @@ rank 663; '1' owns the counting register 10/12/100). Conditioning on
 number-initial occurrences: **Spearman −0.77** (−0.87 excluding '3',
 whose 1,992 hits are the frame-bound "a 3 year old" idiom that evidently
 does not transfer to the post-`=` slot). Read: corpus enumeration and
-behavioral readout agree on what the digit prior *is*, the CN-10
-delta-from-prior correction can be corpus-grounded, and the '3' residual
-is a receipt-documented example of frame-sensitivity — the prior is not a
+behavioral readout agree on what the digit prior *is* — the two-routes
+rule crossing experiment boundaries — and the '3' residual is a
+receipt-documented example of frame-sensitivity: the prior is not a
 unigram table. Caveat: counts are tens-to-hundreds; ordering is coarse.
+
+**Design ruling for CN-10, settled by the '3' outlier:** the behavioral
+prior (shuffled-rank control) stays the *operative* delta-from-prior
+correction; the corpus count is its validating second route, not its
+replacement. The model's prior at the post-`=` position is conditioned on
+more context than any position-binned corpus count captures —
+delta-from-corpus-prior would import exactly the residual the idiom
+exposes. Corpus count as receipt, shuffled rank as instrument.
+
+**M3 dissociation (for cross-reference when DIV-0 findings are committed
+in-repo):** DIV-0's M3 read "What is 25 multiplied by 32?" as *more*
+familiar to the base than its lexical variant. The surface index shows why
+that reading was true and useless at once: coverage of the collapse-basin
+question is a 4-token opener (`What is `, count 4, story dialogue) —
+register-warm, coverage-dead after four tokens. Base-NLL integrates over
+the whole string and is fooled by the warm opener; longest-match-per-
+position sees the cliff exactly where it is. The atlas dissociates what M3
+conflated — the mechanical justification for the M3-retrodicts-nothing
+verdict.
 
 ## 1. Gate A1 — tokenizer identity is structural, not disciplinary
 
@@ -178,7 +197,12 @@ space** then re-encodes through the pinned tokenizer:
 - **Alignment requirement (in v1, not discovered mid-build)**: per-token
   novelty profiles live in SP-piece space, normalization decisions live in
   spaCy-token space — maintain char-offset alignment between the two
-  tokenizations.
+  tokenizations. Normalization re-tokenizes, so skeleton-index positions do
+  NOT align to surface-index positions for free; the alignment map is where
+  silent bugs will live. **Gate: the alignment map gets its own smoke of
+  the straddle/verbatim class** (known skeleton slice → surface positions
+  and back, boundary cases included) **before any two-distance number is
+  believed.**
 
 **The skeleton equivalence relation is a versioned choice, not a
 definition.** skeleton-v1 = (digits, proper names). Too coarse and the wall

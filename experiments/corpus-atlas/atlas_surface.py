@@ -21,6 +21,13 @@ Design notes, load-bearing:
   fingerprint stores the tokenizer sha256 and the query path refuses to
   score if the tokenizer file's current hash differs.
 
+USAGE RULE: score probe surfaces from their natural sequence start (full
+prompts — which DIV probes are anyway). SP decode->encode is not identity
+for slices starting mid-sequence, so a text-entry profile beginning
+mid-string undercounts match lengths (smoke1 failed on exactly this before
+switching to raw ids). Verbatim-training-text checks must query by raw
+token ids, never decode->re-encode.
+
 Build:  python3 atlas_surface.py build            (~minutes, CPU only)
 Query:  python3 atlas_surface.py query --text "Once upon a time"
 Smoke:  python3 atlas_surface.py smoke
