@@ -352,6 +352,20 @@ informed, not blind — the already-computed head frames are visibly short
 formulae ("N said ." 7,038×); the open quantity is the hapax share
 within the short-frame class, not the existence of a repeated head.
 
+**OUTCOME (same day, `length_conditioned_cut.json`): PREDICTION FAILED —
+falsifier branch fired.** ≤8-symbol frames (364,205 of them, 20.2% of
+sentence tokens): hapax share **0.8637** (predicted <0.5; falsifier
+≳0.8), occurrence p50 = 1 (predicted ≥2), DIV-1 level 8 at the **98.6th**
+percentile (predicted inside the body), 97.4% of short frames have
+exactly one filler tuple. The 9–16 and >16 bands are worse (hapax 0.963
+and 0.987). At sentence granularity the pretrain is singleton-dominated
+at every length. What this outcome does NOT test: the sub-sentential
+ledger — repeated constituents/n-grams shared ACROSS hapax sentences —
+which was named in the resolution hypothesis but is not measured by a
+length cut on whole-sentence frames. That is the one remaining live
+branch, registered separately below; if it also fails, the diversity law
+has a genuine problem at every scale.
+
 **Pinned reading for the DIV-1 spec (to fold into the R1.1-side doc
 before the arms exist):** DIV-1's top arm is not "very diverse" on an
 abstract scale — at 512 fillers per frame it is **super-corpus**,
