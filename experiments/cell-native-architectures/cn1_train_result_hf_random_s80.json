@@ -1,0 +1,37 @@
+{
+  "base": "SmolLM2-135M",
+  "arm": "random",
+  "steps": 8000,
+  "unfreeze_top": 16,
+  "final_train_acc": 1.0,
+  "buckets": {
+    "seen_cell|seen_comp": {
+      "top1": 1.0,
+      "top5": 1.0,
+      "median_rank": 0,
+      "frac_top79": 1.0,
+      "n": 200
+    },
+    "seen_cell|novel_comp": {
+      "top1": 1.0,
+      "top5": 1.0,
+      "median_rank": 0,
+      "frac_top79": 1.0,
+      "n": 200
+    },
+    "novel_cell|seen_comp": {
+      "top1": 0.0,
+      "top5": 0.0,
+      "median_rank": 404,
+      "frac_top79": 0.0,
+      "n": 200
+    },
+    "novel_cell|novel_comp": {
+      "top1": 0.0,
+      "top5": 0.0,
+      "median_rank": 462,
+      "frac_top79": 0.0,
+      "n": 48
+    }
+  }
+}

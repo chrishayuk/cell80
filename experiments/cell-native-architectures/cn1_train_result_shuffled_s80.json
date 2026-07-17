@@ -1,31 +1,31 @@
 {
-  "arm": "fingerprint",
+  "arm": "shuffled",
   "steps": 8000,
-  "unfreeze_top": 12,
-  "final_train_acc": 0.0813,
+  "unfreeze_top": 16,
+  "final_train_acc": 0.4234,
   "buckets": {
     "seen_cell|seen_comp": {
-      "top1": 0.065,
-      "top5": 0.235,
-      "median_rank": 63,
+      "top1": 0.475,
+      "top5": 0.63,
+      "median_rank": 2,
       "n": 200
     },
     "seen_cell|novel_comp": {
-      "top1": 0.08,
-      "top5": 0.235,
-      "median_rank": 84,
+      "top1": 0.4,
+      "top5": 0.59,
+      "median_rank": 2,
       "n": 200
     },
     "novel_cell|seen_comp": {
       "top1": 0.0,
       "top5": 0.0,
-      "median_rank": 59,
+      "median_rank": 566,
       "n": 200
     },
     "novel_cell|novel_comp": {
       "top1": 0.0,
       "top5": 0.0,
-      "median_rank": 176,
+      "median_rank": 292,
       "n": 48
     }
   }

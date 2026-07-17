@@ -29,3 +29,10 @@ z80-tests/zex/*.cim
 
 # video/production scripts (not part of the shipped project)
 /docs/scripts/
+
+# logs and stuff
+*.log
+*.pt
+*.pth
+*.venv*/
+*.npy

@@ -1,0 +1,37 @@
+{
+  "base": "SmolLM2-135M",
+  "arm": "fingerprint",
+  "steps": 8000,
+  "unfreeze_top": 16,
+  "final_train_acc": 0.4172,
+  "buckets": {
+    "seen_cell|seen_comp": {
+      "top1": 0.36,
+      "top5": 0.36,
+      "median_rank": 8,
+      "frac_top79": 0.88,
+      "n": 200
+    },
+    "seen_cell|novel_comp": {
+      "top1": 0.4,
+      "top5": 0.4,
+      "median_rank": 8,
+      "frac_top79": 0.94,
+      "n": 200
+    },
+    "novel_cell|seen_comp": {
+      "top1": 0.0,
+      "top5": 0.18,
+      "median_rank": 20,
+      "frac_top79": 0.7,
+      "n": 200
+    },
+    "novel_cell|novel_comp": {
+      "top1": 0.0,
+      "top5": 0.0,
+      "median_rank": 398,
+      "frac_top79": 0.25,
+      "n": 48
+    }
+  }
+}

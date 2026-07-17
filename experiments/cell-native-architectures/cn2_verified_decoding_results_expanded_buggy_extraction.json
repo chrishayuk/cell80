@@ -1,0 +1,592 @@
+{
+  "summary": {
+    "url": "http://localhost:8080",
+    "n_problems": 60,
+    "n_spans": 10,
+    "n_match": 9,
+    "n_mismatch": 1,
+    "n_escalated": 0,
+    "n_other": 0,
+    "agreement_rate": 0.9,
+    "wrong_number_rate": 0.1,
+    "final_answer_accuracy": 0.8
+  },
+  "rows": [
+    {
+      "question": "Sam has 12 apples. He buys 7 more, then gives 5 to his friend. How many apples does Sam have now?",
+      "final_expected": 14,
+      "final_stated": 14.0,
+      "final_correct": true,
+      "completion": "Sam starts with 12 apples.\n12 op 0 = 12\nHe buys 7 more apples.\n12 op 7 = 19\nHe gives 5 to his friend.\n19 op 5 = 14\nAnswer: 14",
+      "spans": []
+    },
+    {
+      "question": "A classroom has 8 rows of 6 desks each. How many desks are in the classroom?",
+      "final_expected": 48,
+      "final_stated": 48.0,
+      "final_correct": true,
+      "completion": "The number of rows is 8.\nThe number of desks in each row is 6.\nTo find the total number of desks, we multiply the number of rows by the number of desks in each row.\n8 op 6 = 48\nAnswer: 48",
+      "spans": []
+    },
+    {
+      "question": "Maria earns $15 per hour and works 6 hours. She then spends $40 on groceries. How much money does she have left?",
+      "final_expected": 50,
+      "final_stated": 50.0,
+      "final_correct": true,
+      "completion": "Maria's earnings = 15 op 6 = 90\nMaria spends on groceries = 40\nMaria's earnings = 15 op 6 = 90\nMaria's earnings - groceries = 90 op - 40 = 50\nAnswer: 50",
+      "spans": []
+    },
+    {
+      "question": "A baker makes 84 cookies and packs them into boxes of 12. How many boxes does he need?",
+      "final_expected": 7,
+      "final_stated": 7.0,
+      "final_correct": true,
+      "completion": "First, we need to find out how many cookies are in each box.\n12 op 1 = 12\n\nNext, we need to divide the total number of cookies by the number of cookies per box.\n84 op 12 = 7\n\nAnswer: 7",
+      "spans": []
+    },
+    {
+      "question": "There are 23 red marbles and 17 blue marbles in a jar. If 9 marbles are removed, how many marbles are left?",
+      "final_expected": 31,
+      "final_stated": 31.0,
+      "final_correct": true,
+      "completion": "Total marbles initially = 23 + 17 = 40\nNumber of marbles removed = 9\nNumber of marbles left = 40 - 9 = 31\nAnswer: 31",
+      "spans": [
+        {
+          "a": 23,
+          "op": "add",
+          "b": 17,
+          "c": 40,
+          "line": "Total marbles initially = 23 + 17 = 40",
+          "verdict": "match",
+          "cell80_answer": 40
+        },
+        {
+          "a": 40,
+          "op": "sub",
+          "b": 9,
+          "c": 31,
+          "line": "Number of marbles left = 40 - 9 = 31",
+          "verdict": "match",
+          "cell80_answer": 31
+        }
+      ]
+    },
+    {
+      "question": "A train travels 60 miles per hour for 3 hours, then 40 miles per hour for 2 hours. How many miles does it travel in total?",
+      "final_expected": 260,
+      "final_stated": 260.0,
+      "final_correct": true,
+      "completion": "First, calculate the distance traveled at 60 miles per hour for 3 hours.\n60 op 3 = 180\nSecond, calculate the distance traveled at 40 miles per hour for 2 hours.\n40 op 2 = 80\nThird, add the two distances together.\n180 op 80 = 260\n\nAnswer: 260",
+      "spans": []
+    },
+    {
+      "question": "Tom had 90 dollars. He spent 25 dollars on a book and then earned 15 dollars mowing a lawn. How much money does Tom have now?",
+      "final_expected": 80,
+      "final_stated": 80.0,
+      "final_correct": true,
+      "completion": "Tom started with 90 dollars.\n90 op 0 = 90\nHe spent 25 dollars on a book.\n90 op 25 = 65\nHe earned 15 dollars mowing a lawn.\n65 op 15 = 80\nAnswer: 80",
+      "spans": []
+    },
+    {
+      "question": "A garden has 9 rows with 8 plants in each row. If 5 plants die, how many plants are left?",
+      "final_expected": 67,
+      "final_stated": 67.0,
+      "final_correct": true,
+      "completion": "Total plants initially = 9 op 8 = 72\nPlants died = 5\nPlants left = 72 op - 5 = 67\nAnswer: 67",
+      "spans": []
+    },
+    {
+      "question": "Jenny read 18 pages on Monday and twice as many pages on Tuesday. How many pages did she read in total over the two days?",
+      "final_expected": 54,
+      "final_stated": 54.0,
+      "final_correct": true,
+      "completion": "First, we need to find out how many pages Jenny read on Tuesday.\nShe read twice as many pages on Tuesday as on Monday.\nMonday's pages = 18\nTuesday's pages = 2 * 18 = 36\nTotal pages read = Monday's pages + Tuesday's pages\nTotal pages read = 18 + 36 = 54\n\nAnswer: 54",
+      "spans": [
+        {
+          "a": 2,
+          "op": "mul",
+          "b": 18,
+          "c": 36,
+          "line": "Tuesday's pages = 2 * 18 = 36",
+          "verdict": "match",
+          "cell80_answer": 36
+        },
+        {
+          "a": 18,
+          "op": "add",
+          "b": 36,
+          "c": 54,
+          "line": "Total pages read = 18 + 36 = 54",
+          "verdict": "match",
+          "cell80_answer": 54
+        }
+      ]
+    },
+    {
+      "question": "A factory produces 144 toys and ships them in crates of 16. How many crates are needed?",
+      "final_expected": 9,
+      "final_stated": 9.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of crates needed.\nWe are given that the factory produces 144 toys and ships them in crates of 16.\nTo find the number of crates needed, we divide the total number of toys by the number of toys per crate.\n144 op 16 = 9\nTherefore, 9 crates are needed.\n\nAnswer: 9",
+      "spans": []
+    },
+    {
+      "question": "Liam has 50 dollars. He buys 3 notebooks at 6 dollars each. How much money does he have left?",
+      "final_expected": 32,
+      "final_stated": 32.0,
+      "final_correct": true,
+      "completion": "Liam's initial money = 50\nCost of each notebook = 6\nNumber of notebooks bought = 3\nTotal cost of notebooks = 3 * 6 = 18\nMoney left = 50 - 18 = 32\nAnswer: 32",
+      "spans": [
+        {
+          "a": 3,
+          "op": "mul",
+          "b": 6,
+          "c": 18,
+          "line": "Total cost of notebooks = 3 * 6 = 18",
+          "verdict": "match",
+          "cell80_answer": 18
+        },
+        {
+          "a": 50,
+          "op": "sub",
+          "b": 18,
+          "c": 32,
+          "line": "Money left = 50 - 18 = 32",
+          "verdict": "match",
+          "cell80_answer": 32
+        }
+      ]
+    },
+    {
+      "question": "A pool holds 500 liters. It is filled at 25 liters per minute. How many minutes does it take to fill?",
+      "final_expected": 20,
+      "final_stated": 20.0,
+      "final_correct": true,
+      "completion": "The pool holds 500 liters.\nThe filling rate is 25 liters per minute.\nLet the time taken to fill the pool be 't' minutes.\nThe total volume filled is given by the product of the filling rate and the time taken.\nSo, 25 op t = 500\n25 * t = 500\n25t = 500\nt = 500 / 25\nt = 20\nAnswer: 20",
+      "spans": []
+    },
+    {
+      "question": "There are 14 boys and 19 girls in a class. Each student gets 3 pencils. How many pencils are given out in total?",
+      "final_expected": 99,
+      "final_stated": 99.0,
+      "final_correct": true,
+      "completion": "First, find the total number of students in the class.\n14 op 19 = 33\n\nThere are 33 students in total.\nEach student gets 3 pencils.\nSo, the total number of pencils given out is 33 op 3 = 99\n\nAnswer: 99",
+      "spans": []
+    },
+    {
+      "question": "A shop had 120 shirts. It sold 45 in the morning and 38 in the afternoon. How many shirts are left?",
+      "final_expected": 37,
+      "final_stated": 37.0,
+      "final_correct": true,
+      "completion": "Total shirts initially = 120\nShirts sold in the morning = 45\nShirts sold in the afternoon = 38\nTotal shirts sold = 45 + 38 = 83\nShirts left = Total shirts initially - Total shirts sold\nShirts left = 120 - 83 = 37\nAnswer: 37",
+      "spans": [
+        {
+          "a": 45,
+          "op": "add",
+          "b": 38,
+          "c": 83,
+          "line": "Total shirts sold = 45 + 38 = 83",
+          "verdict": "match",
+          "cell80_answer": 83
+        },
+        {
+          "a": 120,
+          "op": "sub",
+          "b": 83,
+          "c": 37,
+          "line": "Shirts left = 120 - 83 = 37",
+          "verdict": "match",
+          "cell80_answer": 37
+        }
+      ]
+    },
+    {
+      "question": "Ana saves 12 dollars a week. After 5 weeks she spends 30 dollars on a gift. How much has she saved?",
+      "final_expected": 30,
+      "final_stated": 30.0,
+      "final_correct": true,
+      "completion": "Ana saves 12 dollars a week.\n1 op 5 = 60\nAna saves 60 dollars in 5 weeks.\nShe spends 30 dollars on a gift.\n30 op - 30 = 0\nShe has 0 dollars left after spending 30 dollars.\nShe saved 60 dollars and spent 30 dollars.\n60 op - 30 = 30\nShe has 30 dollars saved.\nAnswer: 30",
+      "spans": []
+    },
+    {
+      "question": "Carlos has 39 rows of 22 items in a warehouse. 245 items are sold, then 110 more are sold. How many items are left?",
+      "final_expected": 503,
+      "final_stated": 723.0,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n39 op 22 = 858\n\nNext, subtract the number of items sold in the first transaction.\n858 op 245 = 613\n\nThen, add the number of items sold in the second transaction.\n613 op 110 = 723\n\nFinally, calculate the number of items left.\n723 op 0 = 723\n\nAnswer: 723",
+      "spans": []
+    },
+    {
+      "question": "Ivy reads 465 pages on Monday, 332 pages on Tuesday, and 297 pages on Wednesday. Over the next 6 weeks, Jordan reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 6564,
+      "final_stated": 6564.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Ivy reads in three days.\n465 op + 332 = 797\n797 op + 297 = 1094\n\nThe total number of pages Ivy reads in three days is 1094.\nOver the next 6 weeks, Jordan reads that same three-day total every week.\nSo, the total number of pages read in one week is 1094.\nOver 6 weeks, the total number of pages read is 1094 op * 6 = 6564\n\nAnswer: 6564",
+      "spans": []
+    },
+    {
+      "question": "Ivy earns $28 per hour for the first 9 hours of a shift and $24 per hour for the next 5 hours. Ivy then pays $183 in expenses. How much money is left?",
+      "final_expected": 189,
+      "final_stated": 189.0,
+      "final_correct": true,
+      "completion": "First, calculate the earnings for the first 9 hours.\n9 op 28 = 252\n\nNext, calculate the earnings for the next 5 hours.\n5 op 24 = 120\n\nThen, calculate the total earnings.\n252 op 120 = 372\n\nNext, subtract the expenses from the total earnings.\n372 op 183 = 189\n\nAnswer: 189",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 1215 parts. 225 are defective and discarded. The rest are packed into cartons of 11 parts each. How many crates are needed?",
+      "final_expected": 90,
+      "final_stated": 90.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n1215 op - 225 = 990\n\nNext, we need to find the number of cartons needed.\n990 op 11 = 90\n\nAnswer: 90",
+      "spans": []
+    },
+    {
+      "question": "A school orders 33 boxes of 28 pencils each for one grade, and 21 boxes of 51 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1995,
+      "final_stated": 1995.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils ordered for the first grade.\n33 op 28 = 924\nNext, calculate the number of pencils ordered for the second grade.\n21 op 51 = 1071\nThen, calculate the total number of pencils ordered.\n924 op 1071 = 1995\n\nAnswer: 1995",
+      "spans": []
+    },
+    {
+      "question": "Wei has $736. Ivy buys 4 shirts at $31 each and 4 jackets at $73 each. How much money is left?",
+      "final_expected": 320,
+      "final_stated": -928.0,
+      "final_correct": false,
+      "completion": "First, calculate the cost of the shirts.\n4 op 31 = 124\n124 op 4 = 496\nNext, calculate the cost of the jackets.\n73 op 4 = 292\n292 op 4 = 1168\nNow, calculate the total cost of the shirts and jackets.\n496 op 1168 = 1664\nFinally, calculate the money left.\n736 op 1664 = -928\nAnswer: -928",
+      "spans": []
+    },
+    {
+      "question": "Carlos has 68 rows of 31 items in a warehouse. 359 items are sold, then 144 more are sold. How many items are left?",
+      "final_expected": 1605,
+      "final_stated": 2591.0,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items initially in the warehouse.\n68 op 31 = 2088\n\nNext, calculate the total number of items sold.\n359 op 144 = 503\n\nThen, calculate the total number of items sold.\n2088 op 503 = 2591\n\nFinally, calculate the number of items left.\n2591 op 31 = 2591\n\nAnswer: 2591",
+      "spans": []
+    },
+    {
+      "question": "Ivy reads 186 pages on Monday, 141 pages on Tuesday, and 251 pages on Wednesday. Over the next 4 weeks, Sofia reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 2312,
+      "final_stated": 2312.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Ivy reads in three days.\n186 op + 141 = 327\n327 op + 251 = 578\n\nThe total number of pages Ivy reads in three days is 578.\nSofia reads that same three-day total every week.\nSo, Sofia reads 578 pages per week.\nOver 4 weeks, Sofia reads 578 op 4 = 2312 pages.\n\nAnswer: 2312",
+      "spans": []
+    },
+    {
+      "question": "Omar earns $39 per hour for the first 7 hours of a shift and $40 per hour for the next 7 hours. Ivy then pays $226 in expenses. How much money is left?",
+      "final_expected": 327,
+      "final_stated": null,
+      "final_correct": false,
+      "completion": "Omar earns $39 per hour for the first 7 hours.\n39 op 7 = 273\nOmar earns $273 for the first 7 hours.\n\nOmar earns $40 per hour for the next 7 hours.\n40 op 7 = 280\nOmar earns $280 for the next 7 hours.\n\nTotal earnings for Omar = 273 + 280\n273 op 280 = 553\nOmar earns $553.\n\nIvy pays $226 in expenses.\n553 op 226 = 327\nOmar earns $327.\n\nIvy pays $226 in expenses.\n226 op 0 = 226\nIvy pays $226.\n\nTotal earnings of Omar = 553\nExpenses paid by Ivy = 226\nTotal money = 553 - 226\n553 op 226",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 650 parts. 380 are defective and discarded. The rest are packed into boxes of 9 parts each. How many bags are needed?",
+      "final_expected": 30,
+      "final_stated": 30.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n650 op -380 = 270\n\nNext, we need to find the number of bags needed.\n270 op 9 = 30\n\nAnswer: 30",
+      "spans": []
+    },
+    {
+      "question": "A school orders 28 boxes of 31 pencils each for one grade, and 11 boxes of 54 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1462,
+      "final_stated": 1462.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils ordered for the first grade.\n28 op 31 = 868\nNext, calculate the number of pencils ordered for the second grade.\n11 op 54 = 594\nThen, calculate the total number of pencils ordered.\n868 op 594 = 1462\nAnswer: 1462",
+      "spans": []
+    },
+    {
+      "question": "Deshawn has $636. Priya buys 7 shirts at $50 each and 6 jackets at $60 each. How much money is left?",
+      "final_expected": -74,
+      "final_stated": -74.0,
+      "final_correct": true,
+      "completion": "First, calculate the cost of the shirts:\n7 op 50 = 350\nSecond, calculate the cost of the jackets:\n6 op 60 = 360\nThird, calculate the total cost of the shirts and jackets:\n350 op 360 = 710\nFourth, calculate the money left after buying the shirts and jackets:\n636 op 710 = -74\nAnswer: -74",
+      "spans": []
+    },
+    {
+      "question": "Deshawn has 78 rows of 21 items in a warehouse. 69 items are sold, then 299 more are sold. How many items are left?",
+      "final_expected": 1270,
+      "final_stated": 1799.0,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n78 op 21 = 1638\n\nNext, subtract the number of items sold in the first transaction.\n1638 op 69 = 1569\n\nThen, add the number of items sold in the second transaction.\n1569 op 299 = 1868\n\nFinally, subtract the total number of items sold from the initial number of items.\n1868 op 69 = 1800 - 1 = 1799\n\nAnswer: 1799",
+      "spans": [
+        {
+          "a": 1800,
+          "op": "sub",
+          "b": 1,
+          "c": 1799,
+          "line": "1868 op 69 = 1800 - 1 = 1799",
+          "verdict": "match",
+          "cell80_answer": 1799
+        }
+      ]
+    },
+    {
+      "question": "Ivy reads 400 pages on Monday, 95 pages on Tuesday, and 83 pages on Wednesday. Over the next 6 weeks, Wei reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 3468,
+      "final_stated": 3468.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Ivy reads in three days.\n400 op 95 = 495\n495 op 83 = 578\nSo, Ivy reads a total of 578 pages in three days.\n\nNext, we need to find the total number of pages Wei reads in a week.\nWei reads the same three-day total every week, so Wei reads 578 pages per week.\n\nNow, we need to find the total number of pages Wei reads over 6 weeks.\n578 op 6 = 3468\n3468 op 0 = 3468\n\nTherefore, Wei reads 3468 pages over 6 weeks.\n\nAnswer: 3468",
+      "spans": []
+    },
+    {
+      "question": "Wei earns $42 per hour for the first 9 hours of a shift and $33 per hour for the next 7 hours. Ivy then pays $305 in expenses. How much money is left?",
+      "final_expected": 304,
+      "final_stated": 914.0,
+      "final_correct": false,
+      "completion": "Wei earns $42 per hour for the first 9 hours.\n9 op 42 = 378\nWei earns $378 for the first 9 hours.\n\nWei earns $33 per hour for the next 7 hours.\n7 op 33 = 231\nWei earns $231 for the next 7 hours.\n\nTotal earnings for Wei = 378 + 231\n378 op 231 = 609\n\nIvy pays $305 in expenses.\n609 op 305 = 914\n\nMoney left = 914\nAnswer: 914",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 449 parts. 53 are defective and discarded. The rest are packed into boxes of 9 parts each. How many bags are needed?",
+      "final_expected": 44,
+      "final_stated": 44.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n449 op -53 = 396\n\nNext, we need to divide the number of non-defective parts by the number of parts per box.\n396 op 9 = 44\n\nAnswer: 44",
+      "spans": []
+    },
+    {
+      "question": "A school orders 15 boxes of 38 pencils each for one grade, and 20 boxes of 30 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1170,
+      "final_stated": 1170.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils in the first grade order.\n15 op 38 = 570\nNext, calculate the number of pencils in the second grade order.\n20 op 30 = 600\nThen, calculate the total number of pencils ordered.\n570 op 600 = 1170\nAnswer: 1170",
+      "spans": []
+    },
+    {
+      "question": "Wei has $505. Ivy buys 4 shirts at $55 each and 5 jackets at $49 each. How much money is left?",
+      "final_expected": 40,
+      "final_stated": 390.0,
+      "final_correct": false,
+      "completion": "First, calculate the cost of the shirts:\n4 op 55 = 220\nSecond, calculate the cost of the jackets:\n5 op 49 = 245\nThird, calculate the total cost of the shirts and jackets:\n220 op 245 = 465\nFourth, calculate the money left:\n505 op 465 = 390\nAnswer: 390",
+      "spans": []
+    },
+    {
+      "question": "Omar has 42 rows of 35 items in a warehouse. 324 items are sold, then 181 more are sold. How many items are left?",
+      "final_expected": 965,
+      "final_stated": 1327.0,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n42 op 35 = 1470\nNext, subtract the number of items sold.\n1470 op 324 = 1146\nThen, add the number of items sold.\n1146 op 181 = 1327\nAnswer: 1327",
+      "spans": []
+    },
+    {
+      "question": "Nina reads 437 pages on Monday, 127 pages on Tuesday, and 207 pages on Wednesday. Over the next 4 weeks, Deshawn reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 3084,
+      "final_stated": 3084.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Nina reads in three days.\nMonday pages + Tuesday pages + Wednesday pages = Total pages read\n437 + 127 + 207 = 771\n\nSo, Nina reads a total of 771 pages in three days.\nDeshawn reads that same three-day total every week.\nTotal pages read per week = 771\n\nOver 4 weeks, Deshawn reads that same three-day total every week.\nTotal pages read over 4 weeks = 4 weeks * 771 pages/week\n4 op 771 = 3084\n\nAnswer: 3084",
+      "spans": [
+        {
+          "a": 127,
+          "op": "add",
+          "b": 207,
+          "c": 771,
+          "line": "437 + 127 + 207 = 771",
+          "verdict": "mismatch",
+          "cell80_answer": 334
+        }
+      ]
+    },
+    {
+      "question": "Deshawn earns $42 per hour for the first 8 hours of a shift and $55 per hour for the next 4 hours. Wei then pays $226 in expenses. How much money is left?",
+      "final_expected": 330,
+      "final_stated": 330.0,
+      "final_correct": true,
+      "completion": "Deshawn's earnings for the first 8 hours = 8 op 42 = 336\nDeshawn's earnings for the next 4 hours = 4 op 55 = 220\nTotal earnings = 336 op 220 = 556\nWei's expenses = 226\nMoney left = 556 op 226 = 330\nAnswer: 330",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 671 parts. 255 are defective and discarded. The rest are packed into bags of 13 parts each. How many crates are needed?",
+      "final_expected": 32,
+      "final_stated": 32.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n671 op - 255 = 416\n\nNext, we need to find the number of bags needed.\n416 op 13 = 32\n\nTherefore, 32 crates are needed.\n\nAnswer: 32",
+      "spans": []
+    },
+    {
+      "question": "A school orders 21 boxes of 39 pencils each for one grade, and 17 boxes of 41 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1516,
+      "final_stated": 1516.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils ordered for the first grade.\n21 op 39 = 819\n\nNext, calculate the number of pencils ordered for the second grade.\n17 op 41 = 697\n\nThen, calculate the total number of pencils ordered.\n819 op 697 = 1516\n\nAnswer: 1516",
+      "spans": []
+    },
+    {
+      "question": "Ivy has $1014. Priya buys 5 shirts at $48 each and 3 jackets at $64 each. How much money is left?",
+      "final_expected": 582,
+      "final_stated": 582.0,
+      "final_correct": true,
+      "completion": "First, calculate the cost of the shirts:\n5 op 48 = 240\nSecond, calculate the cost of the jackets:\n3 op 64 = 192\nThird, calculate the total cost of the shirts and jackets:\n240 op 192 = 432\nFourth, calculate the money left:\n1014 op 432 = 582\n\nAnswer: 582",
+      "spans": []
+    },
+    {
+      "question": "Omar has 81 rows of 14 items in a warehouse. 350 items are sold, then 247 more are sold. How many items are left?",
+      "final_expected": 537,
+      "final_stated": 537.0,
+      "final_correct": true,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n81 op 14 = 1134\n\nNext, calculate the total number of items sold.\n350 op 247 = 597\n\nThen, calculate the total number of items sold.\n350 op 247 = 597\n\nNext, calculate the total number of items sold.\n350 op 247 = 597\n\nNow, calculate the total number of items sold.\n350 op 247 = 597\n\nNow, calculate the total number of items sold.\n350 op 247 = 597\n\nNext, subtract the number of items sold from the initial number of items.\n1134 op 597 = 537\n\nAnswer: 537",
+      "spans": []
+    },
+    {
+      "question": "Priya reads 190 pages on Monday, 291 pages on Tuesday, and 101 pages on Wednesday. Over the next 4 weeks, Carlos reads that same three-day total every week. How many pages in total over those 4 weeks?",
+      "final_expected": 2328,
+      "final_stated": 2328.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Priya reads in three days.\n190 op + 291 op + 101 op = 582\n\nThe total number of pages Priya reads in three days is 582.\nOver the next 4 weeks, Carlos reads that same three-day total every week.\nSo, Carlos reads 582 pages per week.\nOver 4 weeks, Carlos reads 582 op * 4 = 2328\n\nThe total number of pages Carlos reads over 4 weeks is 2328.\n\nAnswer: 2328",
+      "spans": []
+    },
+    {
+      "question": "Sofia earns $37 per hour for the first 9 hours of a shift and $40 per hour for the next 4 hours. Ivy then pays $452 in expenses. How much money is left?",
+      "final_expected": 41,
+      "final_stated": 40.0,
+      "final_correct": false,
+      "completion": "Sofia's earnings for the first 9 hours = 9 op 37 = 333\nSofia's earnings for the next 4 hours = 4 op 40 = 160\nSofia's total earnings = 333 op 160 = 493\nIvy's expenses = 452\nSofia's money left = 493 op 452 = 40\nAnswer: 40",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 470 parts. 212 are defective and discarded. The rest are packed into boxes of 6 parts each. How many bags are needed?",
+      "final_expected": 43,
+      "final_stated": 43.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n470 op - 212 = 258\n\nNext, we need to find the number of bags needed.\n258 op 6 = 43\n\nAnswer: 43",
+      "spans": []
+    },
+    {
+      "question": "A school orders 12 boxes of 44 pencils each for one grade, and 20 boxes of 49 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1508,
+      "final_stated": 1508.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils in the first grade order.\n12 op 44 = 528\nNext, calculate the number of pencils in the second grade order.\n20 op 49 = 980\nThen, calculate the total number of pencils ordered.\n528 op 980 = 1508\nAnswer: 1508",
+      "spans": []
+    },
+    {
+      "question": "Deshawn has $1051. Nina buys 9 shirts at $20 each and 6 jackets at $59 each. How much money is left?",
+      "final_expected": 517,
+      "final_stated": 517.0,
+      "final_correct": true,
+      "completion": "First, calculate the cost of the shirts:\n9 op 20 = 180\nSecond, calculate the cost of the jackets:\n6 op 59 = 354\nThird, calculate the total cost of the shirts and jackets:\n180 op 354 = 534\nFourth, calculate the money left after buying the shirts and jackets:\n1051 op 534 = 517\nAnswer: 517",
+      "spans": []
+    },
+    {
+      "question": "Jordan has 70 rows of 17 items in a warehouse. 301 items are sold, then 100 more are sold. How many items are left?",
+      "final_expected": 789,
+      "final_stated": 989.0,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n70 op 17 = 1190\n\nThen, subtract the number of items sold in the first transaction.\n1190 op 301 = 889\n\nNext, add the number of items sold in the second transaction.\n889 op 100 = 989\n\nFinally, calculate the number of items left.\n989 op 0 = 989\n\nAnswer: 989",
+      "spans": []
+    },
+    {
+      "question": "Jordan reads 399 pages on Monday, 307 pages on Tuesday, and 64 pages on Wednesday. Over the next 8 weeks, Omar reads that same three-day total every week. How many pages in total over those 8 weeks?",
+      "final_expected": 6160,
+      "final_stated": 6160.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Jordan reads in three days.\n399 op + 307 = 706\n706 op + 64 = 770\nSo, Jordan reads a total of 770 pages in three days.\n\nNext, we need to find the three-day total that Omar reads each week.\nOmar reads the same three-day total every week.\nSo, Omar reads 770 pages per week.\n\nNow, we need to find the total number of weeks.\nThe number of weeks is 8.\n\nWe need to find the total number of pages Omar reads over those 8 weeks.\nTotal pages = 770 op 8 = 6160\n\nAnswer: 6160",
+      "spans": []
+    },
+    {
+      "question": "Omar earns $20 per hour for the first 9 hours of a shift and $38 per hour for the next 8 hours. Ivy then pays $175 in expenses. How much money is left?",
+      "final_expected": 309,
+      "final_stated": 309.0,
+      "final_correct": true,
+      "completion": "Omar earns $20 per hour for the first 9 hours.\n9 op 20 = 180\nOmar earns $180 for the first 9 hours.\n\nOmar earns $38 per hour for the next 8 hours.\n8 op 38 = 304\nOmar earns $304 for the next 8 hours.\n\nTotal earnings for Omar = 180 + 304\n180 op 304 = 484\nOmar earns $484.\n\nIvy pays $175 in expenses.\n175 op 484 = 659\nIvy pays $175.\n\nMoney left = Total earnings - Expenses\n484 op 175 = 309\nMoney left = 484 - 175\n484 op 175 = 309\nAnswer: 309",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 751 parts. 311 are defective and discarded. The rest are packed into crates of 11 parts each. How many cartons are needed?",
+      "final_expected": 40,
+      "final_stated": 40.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n751 op - 311 = 440\n\nNext, we need to find the number of cartons needed.\n440 op 11 = 40\n\nAnswer: 40",
+      "spans": []
+    },
+    {
+      "question": "A school orders 19 boxes of 32 pencils each for one grade, and 20 boxes of 53 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 1668,
+      "final_stated": 1668.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils ordered for the first grade.\n19 op 32 = 608\nNext, calculate the number of pencils ordered for the second grade.\n20 op 53 = 1060\nThen, calculate the total number of pencils ordered.\n608 op 1060 = 1668\nAnswer: 1668",
+      "spans": []
+    },
+    {
+      "question": "Wei has $1190. Omar buys 9 shirts at $39 each and 4 jackets at $42 each. How much money is left?",
+      "final_expected": 671,
+      "final_stated": 671.0,
+      "final_correct": true,
+      "completion": "First, calculate the cost of the shirts:\n9 op 39 = 351\nNext, calculate the cost of the jackets:\n4 op 42 = 168\nThen, calculate the total cost of the shirts and jackets:\n351 op 168 = 519\nNow, subtract the total cost from Wei's money:\n1190 op 519 = 671\n\nAnswer: 671",
+      "spans": []
+    },
+    {
+      "question": "Carlos has 24 rows of 29 items in a warehouse. 209 items are sold, then 268 more are sold. How many items are left?",
+      "final_expected": 219,
+      "final_stated": null,
+      "final_correct": false,
+      "completion": "First, calculate the total number of items initially in the warehouse.\n24 op 29 = 696\n\nNext, calculate the total number of items sold.\n209 op 0 = 209\n268 op 0 = 268\n209 op 268 = -59\n\nNext, calculate the total number of items sold.\n209 op 268 = -59\n\nNow, calculate the total number of items sold.\n209 op 268 = -59\n\nNow, calculate the total number of items sold.\n209 op 268 = -59\n\nCalculate the initial number of items.\n24 op 29 = 696\n\nCalculate the total number of items sold.\n209 op 268 = -59\n\nCalculate the initial number of items.\n24 op 29 = 696\n\nCalculate the total number of items sold.\n209",
+      "spans": []
+    },
+    {
+      "question": "Deshawn reads 323 pages on Monday, 155 pages on Tuesday, and 180 pages on Wednesday. Over the next 8 weeks, Omar reads that same three-day total every week. How many pages in total over those 8 weeks?",
+      "final_expected": 5264,
+      "final_stated": 5264.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages read in three days.\n323 op + 155 = 478\n478 op + 180 = 658\nSo, the total number of pages read in three days is 658.\n\nNext, we need to find the total number of pages read over 8 weeks.\nSince Omar reads the same three-day total every week, he reads 658 pages per week.\n658 op 8 = 5264\nTherefore, the total number of pages read over 8 weeks is 5264.\n\nAnswer: 5264",
+      "spans": []
+    },
+    {
+      "question": "Omar earns $31 per hour for the first 9 hours of a shift and $38 per hour for the next 7 hours. Ivy then pays $219 in expenses. How much money is left?",
+      "final_expected": 326,
+      "final_stated": 764.0,
+      "final_correct": false,
+      "completion": "Omar's earnings for the first 9 hours = 9 op 31 = 279\nOmar's earnings for the next 7 hours = 7 op 38 = 266\nTotal earnings of Omar = 279 op 266 = 545\nExpenses paid by Ivy = 219\nMoney left = 545 op 219 = 764\n\nAnswer: 764",
+      "spans": []
+    },
+    {
+      "question": "A factory makes 580 parts. 228 are defective and discarded. The rest are packed into pallets of 8 parts each. How many cartons are needed?",
+      "final_expected": 44,
+      "final_stated": 44.0,
+      "final_correct": true,
+      "completion": "First, we need to find the number of parts that are not defective.\n580 op - 228 = 352\nThe number of non-defective parts is 352.\n\nNext, we need to find how many pallets are needed.\n352 op 8 = 44\nThe number of pallets needed is 44.\n\nFinally, we need to find the number of cartons needed.\nSince each pallet contains 8 parts and we need 44 pallets, we need 44 cartons.\n44 op 1 = 44\nThe number of cartons needed is 44.\n\nAnswer: 44",
+      "spans": []
+    },
+    {
+      "question": "A school orders 30 boxes of 52 pencils each for one grade, and 21 boxes of 33 pencils each for another grade. How many pencils were ordered in total?",
+      "final_expected": 2253,
+      "final_stated": 2253.0,
+      "final_correct": true,
+      "completion": "First, calculate the number of pencils ordered for the first grade:\n30 op 52 = 1560\nNext, calculate the number of pencils ordered for the second grade:\n21 op 33 = 693\nThen, calculate the total number of pencils ordered:\n1560 op 693 = 2253\n\nAnswer: 2253",
+      "spans": []
+    },
+    {
+      "question": "Nina has $480. Ivy buys 8 shirts at $37 each and 6 jackets at $73 each. How much money is left?",
+      "final_expected": -254,
+      "final_stated": -254.0,
+      "final_correct": true,
+      "completion": "First, calculate the cost of the shirts:\n8 op 37 = 296\nSecond, calculate the cost of the jackets:\n6 op 73 = 438\nThird, calculate the total cost of the shirts and jackets:\n296 op 438 = 734\nFourth, calculate the money left:\n480 op 734 = -254\nSince the result is negative, it means Nina doesn't have enough money.\n\nAnswer: -254",
+      "spans": []
+    },
+    {
+      "question": "Wei has 39 rows of 39 items in a warehouse. 326 items are sold, then 275 more are sold. How many items are left?",
+      "final_expected": 920,
+      "final_stated": 920.0,
+      "final_correct": true,
+      "completion": "First, calculate the total number of items in the warehouse initially.\n39 rows * 39 items/row = 1521 items\n\nNext, calculate the total number of items sold.\n326 items sold + 275 items sold = 601 items sold\n\nThen, subtract the number of items sold from the initial number of items to find the number of items left.\n1521 items - 601 items = 920 items\n\nAnswer: 920",
+      "spans": []
+    },
+    {
+      "question": "Jordan reads 335 pages on Monday, 184 pages on Tuesday, and 182 pages on Wednesday. Over the next 6 weeks, Deshawn reads that same three-day total every week. How many pages in total over those 6 weeks?",
+      "final_expected": 4206,
+      "final_stated": 4206.0,
+      "final_correct": true,
+      "completion": "First, we need to find the total number of pages Jordan reads in three days.\n335 op + 184 = 519\n519 op + 182 = 701\nSo, Jordan reads a total of 701 pages in three days.\n\nNext, we need to find the three-day total for each week. Since Deshawn reads that same three-day total every week, Deshawn reads 701 pages per week.\n\nNow, we need to find the total number of pages Deshawn reads over 6 weeks.\n701 op 6 = 4206\n\nTherefore, Deshawn reads a total of 4206 pages over 6 weeks.\n\nAnswer: 4206",
+      "spans": []
+    },
+    {
+      "question": "Priya earns $39 per hour for the first 8 hours of a shift and $24 per hour for the next 7 hours. Deshawn then pays $99 in expenses. How much money is left?",
+      "final_expected": 381,
+      "final_stated": 381.0,
+      "final_correct": true,
+      "completion": "Priya's earnings for the first 8 hours = 8 op 39 = 312\nPriya's earnings for the next 7 hours = 7 op 24 = 168\nTotal earnings of Priya = 312 op 168 = 480\nDeshawn's expenses = 99\nMoney left = 480 op 99 = 381\n\nAnswer: 381",
+      "spans": []
+    }
+  ]
+}
