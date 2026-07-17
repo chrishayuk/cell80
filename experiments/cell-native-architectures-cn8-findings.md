@@ -25,18 +25,25 @@ identical across every arm).
 | Arm | B0 (in-range) | B1 (5-digit) | B2 (6-digit) | first-error at B1/B2 |
 |---|---|---|---|---|
 | B scratchpad s80 | **1.000** [0.981,1] | 0.000 | 0.000 | index: 200/200, both bands |
-| B scratchpad s81 | TBD | TBD | TBD | TBD |
+| B scratchpad s81 | **1.000** [0.981,1] | 0.000 | 0.000 | index: 200/200, both bands (oracle-trace NLL 0.95/2.31 vs s80's 0.97/2.45 — full replication) |
 | A-tok s80 (6M tok, 347k problems) | 0.970 | 0.000 | 0.000 | — (well-formed wrong answers) |
 | A-tok s81 | 0.965 | 0.000 | 0.000 | — |
 | A-ex s80 (identical 51k problems, 0.88M tok) | **0.425 — SANITY GATE FAIL** | 0.000 | 0.000 | — |
-| R0 raw v11 (both formats) | TBD | TBD | TBD | TBD |
+| R0 raw v11, answer format | 0.000 | 0.000 | 0.000 | format/truncation (never saw the format; gold-answer NLL ~6 flat — no cliff, no competence) |
+| R0 raw v11, trace format | TBD | TBD | TBD | TBD |
 
 Teacher-forced NLL (secondary, the P6 dissociation): the A arms show the C3 cliff
 signature on gold answers — 0.011 → 6.06 → 9.91 nats (s80), 0.013 → 4.64 → 8.61 (s81),
 0.252 → 5.64 → 8.03 (A-ex). The scratchpad arm's NLL on gold **oracle traces** at the same
-bands: 0.000 → 0.970 → 2.453. The answer-only model finds correct out-of-range answers
-~e⁻⁶–e⁻¹⁰ improbable; the scratchpad model finds correct out-of-range *procedures* merely
-unfamiliar.
+bands: 0.000 → 0.970 → 2.453 (s81: 0.950 → 2.307). The answer-only model finds correct
+out-of-range answers ~e⁻⁶–e⁻¹⁰ improbable; the scratchpad model finds correct
+out-of-range *procedures* merely unfamiliar.
+
+The raw floor sharpens this: untrained v11 assigns gold answers a flat ~6.0 nats at
+every band. Answer-only training pulls in-range NLL to ~0.01 and pushes B2 NLL to
+8.0–9.9 — **above the untrained floor**. The cliff is not a region training failed to
+reach; training actively mis-calibrates beyond the boundary (the §8.9/CN-7 11-nat
+squeeze family, reproduced here without any mask).
 
 ## 3. CN-8 graded verdicts (as frozen in §7 of the prereg)
 
