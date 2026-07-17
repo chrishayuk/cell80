@@ -1416,6 +1416,14 @@ consistency check, not a failing test (reload-crashes-where-fresh-doesn't; befor
 arm-vs-arm-signature and reload-vs-training-rank). Standing method for this lane: compute
 load-bearing numbers by two routes; a disagreement is the finding.
 
+**Companion rule (2026-07-17, after three same-day instances spanning three repos —
+whitelist-read-as-census, trained-subset-read-as-id-space, spaCy-skeleton-assumed-equivalent-to-
+frozen-normalizer; corpus-atlas gate A0 / equivalence audit):** no derived artifact enters a
+claim without its construction attached. An artifact whose construction is unrecorded gets
+silently promoted to ground truth by the next reader; all three instances were caught only by
+re-deriving the artifact from its source and diffing. Receipts, generalized from matches to
+instruments.
+
 ### Probe-richness sweep (model-free) — the confusions are genuinely distinct, not spuriously merged
 
 Tests whether the 20-probe fingerprint is too coarse to separate the model's ~0.44 confusions, or
