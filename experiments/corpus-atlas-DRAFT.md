@@ -60,16 +60,51 @@ knowledge-vocab seed text, not the pretrain. Step zero is therefore:
 This is the difference between "we can enumerate our pretraining" being a
 real capability and a claim with a soft foundation.
 
+**GATE VERDICT (2026-07-17): A0 CLOSED — PASS.** Artifacts in
+`corpus-atlas/` (`a0_dump_stream.py`, manifests; the ~96 MB `.u32` dumps
+stay untracked):
+
+- Phase 1: 16,000,000 tokens exactly (62,500 chunks, 60,191 stories),
+  sha256 `883b483c…bebbfb`. Phase 3: 8,000,000 exactly (31,250 chunks,
+  30,452 stories), sha256 `bd0dd555…adb3efd`. uint32-le, BOS id 2.
+- **Determinism**: two independent runs, per-phase sha256 identical;
+  manifests identical modulo run tag. Env pinned: Python 3.12.2,
+  `datasets` 3.2.0, `sentencepiece` 0.2.0, HF revision `f54c09fd…`,
+  dataset last modified 2024-08-12 — predating the v11 training run
+  (2026-04-11), so content drift since training is ruled out.
+- **Training-era identity** (`a0_mask_check.py`): replicating
+  `build_train_mask`'s construction (first 5,000 unshuffled stories +
+  SP specials + capitals list) reproduces `v11_train_mask.pt`
+  **bit-for-bit** (8,599 = 8,599, zero differing ids) — dataset order and
+  tokenizer id mapping verified against an artifact from the training
+  era, which run-to-run self-consistency alone cannot show.
+- **Census finding**: the stream exercises **17,158 distinct ids**
+  (phase 1: 15,758; phase 3: 13,207); the mask's 8,599 is a decode
+  *whitelist* (first-5k-stories vocabulary + capitals), not a trained-ids
+  census. Ids outside the mask are rare tails: median count 3, max 267,
+  0.22% of the stream. Any claim keyed to "trained ids" must say which of
+  the two sets it means.
+- Residual (disclosed, not blocking): the `datasets` version at training
+  time is unrecorded; 3.2.0's streaming order is proven stable and
+  mask-consistent with the training era, which bounds the risk to a
+  library-behavior change between that era's version and 3.2.0 that
+  somehow preserves the first-5k prefix order. No stronger check exists
+  without a training-time stream hash.
+
 ## 1. Gate A1 — tokenizer identity is structural, not disciplinary
 
 CN-1 was burned by exactly this (~30% spurious trained-row hits from encoding
 through the tiny-model tokenizer artifacts instead of the v11 SP model — see
 memory trail and cn1 findings). Therefore:
 
-- The index is built in the **v11 SP id space** (8,599 ids,
-  `15_v11_model/v11_tokenizer/v11.model`); the tokenizer file's sha256 is
-  baked into the index fingerprint, alongside `v11_train_mask.pt` as an
-  ancillary identity artifact.
+- The index is built in the **v11 SP id space**: the full 71,261-piece
+  `15_v11_model/v11_tokenizer/v11.model`, of which exactly **8,599 ids are
+  train-exercised** (`v11_train_mask.pt` — "8,599 ids" in earlier notes was
+  this subset, not the id space; the A1 assert caught the conflation on its
+  first run). The tokenizer file's sha256 is baked into the index
+  fingerprint, with the train mask as an ancillary identity artifact; each
+  phase dump records its distinct-id census for the mask cross-check.
+  Practical corollary: ids reach 71,260, so dumps are uint32, not uint16.
 - The scorer **refuses to return a distance** unless the probe was encoded
   through a tokenizer whose hash matches the index fingerprint — the same
   assert-and-hash move the CN-10 feasibility gate demonstrated.

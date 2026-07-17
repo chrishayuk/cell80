@@ -1,0 +1,125 @@
+{
+  "gate": "A0",
+  "tag": "run2",
+  "tokenizer": {
+    "path": "/Users/christopherhay/chris-source/chris-experiments/compilation/15_v11_model/v11_tokenizer/v11.model",
+    "sha256": "4ffbfc8713db306a4b155f54c828002492527046fa567a2ef35eeb277c1dc8e6",
+    "vocab_size": 71261,
+    "bos_id": 2
+  },
+  "dataset": {
+    "name": "roneneldan/TinyStories",
+    "split": "train",
+    "streaming": true,
+    "shuffle_buffer": 10000,
+    "hub": {
+      "sha": "f54c09fd23315a6f9c86f9dc80f725de7d8f9c64",
+      "last_modified": "2024-08-12 13:27:26+00:00"
+    }
+  },
+  "env": {
+    "python": "3.12.2",
+    "datasets": "3.2.0",
+    "sentencepiece": "0.2.0",
+    "byteorder": "little"
+  },
+  "max_seq": 256,
+  "phases": [
+    {
+      "phase": 1,
+      "seed": 42,
+      "max_tokens": 16000000,
+      "tokens_dumped": 16000000,
+      "chunks": 62500,
+      "stories_consumed": 60191,
+      "distinct_ids": 15758,
+      "dtype": "uint32-le",
+      "file": "v11_stream_phase1_run2.u32",
+      "sha256": "883b483c57baaaedbf6951b145b6e7c0907d85dd86ab81393882f5fef0bebbfb",
+      "first_16_ids": [
+        2,
+        22158,
+        598,
+        17134,
+        492,
+        11324,
+        472,
+        15,
+        14928,
+        480,
+        686,
+        13186,
+        598,
+        14416,
+        118,
+        105
+      ],
+      "last_16_ids": [
+        71260,
+        36631,
+        52,
+        71260,
+        467,
+        71260,
+        461,
+        71260,
+        29823,
+        71199,
+        71166,
+        457,
+        456,
+        50,
+        71260,
+        15081
+      ]
+    },
+    {
+      "phase": 3,
+      "seed": 43,
+      "max_tokens": 8000000,
+      "tokens_dumped": 8000000,
+      "chunks": 31250,
+      "stories_consumed": 30452,
+      "distinct_ids": 13207,
+      "dtype": "uint32-le",
+      "file": "v11_stream_phase3_run2.u32",
+      "sha256": "bd0dd555f3b29cd6aacfc0b26aa901ebbc395e73ec2daa8175a9f7791adb3efd",
+      "first_16_ids": [
+        2,
+        11184,
+        11320,
+        119,
+        11204,
+        488,
+        15,
+        11446,
+        12910,
+        118,
+        81,
+        22,
+        12170,
+        468,
+        11308,
+        119
+      ],
+      "last_16_ids": [
+        13188,
+        12250,
+        893,
+        89,
+        30,
+        857,
+        598,
+        17134,
+        118,
+        103,
+        653,
+        486,
+        16080,
+        466,
+        674,
+        118
+      ]
+    }
+  ]
+}
