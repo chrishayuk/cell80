@@ -1,0 +1,124 @@
+{
+ "v1": {
+  "occurrences": {
+   "frames": 1360050,
+   "hapax_share": 0.9398,
+   "quantiles": {
+    "p50": 1,
+    "p90": 1,
+    "p99": 5,
+    "max": 9019
+   },
+   "div1_levels_as_percentile": {
+    "1": 94.0,
+    "8": 99.5,
+    "64": 100.0,
+    "512": 100.0
+   }
+  },
+  "distinct_fillers": {
+   "frames": 1360050,
+   "hapax_share": 0.9866,
+   "quantiles": {
+    "p50": 1,
+    "p90": 1,
+    "p99": 2,
+    "max": 303
+   },
+   "div1_levels_as_percentile": {
+    "1": 98.7,
+    "8": 99.9,
+    "64": 100.0,
+    "512": 100.0
+   }
+  },
+  "head_frames": [
+   {
+    "skeleton": "once upon a time , there was a little girl named N .",
+    "count": 9019,
+    "distinct_fillers": 185
+   },
+   {
+    "skeleton": "\" N said .",
+    "count": 7038,
+    "distinct_fillers": 187
+   },
+   {
+    "skeleton": "\" N says .",
+    "count": 6595,
+    "distinct_fillers": 43
+   },
+   {
+    "skeleton": "the end .",
+    "count": 5810,
+    "distinct_fillers": 1
+   },
+   {
+    "skeleton": "\" N asked .",
+    "count": 3160,
+    "distinct_fillers": 214
+   },
+   {
+    "skeleton": "once upon a time , there was a little boy named N .",
+    "count": 3074,
+    "distinct_fillers": 62
+   },
+   {
+    "skeleton": "\" .",
+    "count": 1746,
+    "distinct_fillers": 1
+   },
+   {
+    "skeleton": "N and N are friends .",
+    "count": 1613,
+    "distinct_fillers": 61
+   },
+   {
+    "skeleton": "\" N asks .",
+    "count": 1512,
+    "distinct_fillers": 30
+   },
+   {
+    "skeleton": "once upon a time , there was a boy named N .",
+    "count": 1310,
+    "distinct_fillers": 50
+   }
+  ]
+ },
+ "m1": {
+  "occurrences": {
+   "frames": 1308777,
+   "hapax_share": 0.9396,
+   "quantiles": {
+    "p50": 1,
+    "p90": 1,
+    "p99": 5,
+    "max": 9034
+   },
+   "div1_levels_as_percentile": {
+    "1": 94.0,
+    "8": 99.5,
+    "64": 100.0,
+    "512": 100.0
+   }
+  },
+  "distinct_fillers": {
+   "frames": 1308777,
+   "hapax_share": 0.9858,
+   "quantiles": {
+    "p50": 1,
+    "p90": 1,
+    "p99": 2,
+    "max": 331
+   },
+   "div1_levels_as_percentile": {
+    "1": 98.6,
+    "8": 99.9,
+    "64": 100.0,
+    "512": 100.0
+   }
+  },
+  "name_lexicon_size": 3241
+ },
+ "reading": "div1_levels_as_percentile locates DIV-1's seeded frame-cardinality levels against the pretrain's own frame-diversity distribution; v1 counts are mild upper bounds (equivalence audit), m1 is the authority-holding cross-check"
+}

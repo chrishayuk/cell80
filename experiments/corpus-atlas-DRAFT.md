@@ -307,6 +307,39 @@ inventory. Any *claim* of over/under-representation requires its null —
 never read a raw frequency as signal without the baseline the generating
 mechanism implies.
 
+**HARVESTED (2026-07-17, `harvest_catalogue.py` → `harvest_summary.json`;
+the 290 MB catalogue jsonl stays untracked).** 1,360,050 distinct v1
+frames / 1,308,777 m1 frames over the 24M-token stream — the two
+renderers agree on the distribution to three decimals (hapax share
+0.9398 vs 0.9396, identical quantiles, head max 9,019 vs 9,034; the
++3.9% v1 frame count is the splits-never-merges signature and does not
+move the histogram). Two-routes, passed on the harvest itself.
+
+**The DIV-1 calibration answer:** the pretrain's frame-diversity
+distribution is extreme-Zipf — **94% of frames occur exactly once**
+(p50 = p90 = 1, p99 = 5); the head is a handful of formulae
+("once upon a time , there was a little girl named N ." 9,019× with 185
+distinct fillers; dialogue attribution; "the end ."). DIV-1's seeded
+levels land as percentiles: cardinality **1 = the pretrain's modal frame
+(94.0th)**, 8 = 99.5th, 64 and 512 = 100th; in distinct-filler terms 64
+is past the 99.9th percentile and **512 exceeds the pretrain's maximum
+(303 v1 / 331 m1)**. So the ladder spans typical-to-super-corpus — a
+good design property, but the reading changes: 64 is not "typical
+diversity," it is already head-of-distribution, and the pretrain's
+fluency is built overwhelmingly on hapax frames plus a tiny formulaic
+head with O(100) fillers. Caveat: full-sentence skeletons are the unit
+and long sentences are combinatorially near-unique; the sharper
+calibration is length-conditioned (frames of ≤ ~8 symbols, comparable to
+DIV-1 templates) — a cheap groupby over the catalogue, queued.
+
+**CN-8 band distances** (`cn8_band_distances.json`, committed before any
+grading verdict exists): pretrain-distance is FLAT across B0/B1/B2
+(surface max-match mean 2.7 → 2.65; skeleton 1/3 constant) — as designed,
+since the bands vary operand range, not register. The informative axis
+for the exact-vs-distance curve is distance to the MIDTRAIN corpus, which
+makes the §7 wall-checker shards the last missing piece for the P-m
+curve.
+
 ## 7. The train/eval wall
 
 FS-bank items are admitted only if skeleton-disjoint from the catalogue —
