@@ -119,11 +119,35 @@ length-scaling scaffold CN-8 could be blamed on (no labels, no indices, state-ba
 termination; the grammar audit proved every required production at 5–6 digits already
 occurs in training) — and the peel arm *still* scores 0.000 one digit out of range.
 
-| Arm | B0 | B1 (5-digit) | B2 (6-digit) | first-error at B1 | col-cond-correct B0/B1/B2 |
-|---|---|---|---|---|---|
-| B′ peel s80 | 1.000 [0.981,1] | **0.000** [0,0.019] | **0.000** [0,0.019] | peel-copy 200/200 (B2: peel-copy 190, loop-count 10) | 1.00 / 0.69 / 0.36 |
-| B′ peel s81 | TBD | TBD | TBD | TBD | TBD |
-| A-ex′ s80 (token-parity) | TBD | TBD | TBD | — | — |
+| Arm | B0 | B1 (5-digit) | B2 (6-digit) | first-error at B1 | col-cond B0/B1/B2 | oracle NLL B0/B1/B2 |
+|---|---|---|---|---|---|---|
+| B′ peel s80 | 1.000 [.981,1] | **0.000** [0,.019] | **0.000** | peel-copy 200/200 | 1.00 / 0.69 / 0.36 | 0.00 / 0.75 / 1.96 |
+| B′ peel s81 | 1.000 [.981,1] | **0.000** [0,.019] | **0.000** | peel-copy 200/200 | 1.00 / 0.74 / 0.43 | 0.00 / 0.80 / 2.14 |
+| A-ex′ s80 (token-parity, repaired) | **0.935** [.892,.962] | 0.000 | 0.000 | — | — | 0.05 / 5.46 / 8.45 |
+| A-tok s80 (inherited) | 0.970 | 0.000 | 0.000 | — | — | 0.01 / 6.06 / 9.91 |
+| A-tok s81 (inherited) | 0.965 | 0.000 | 0.000 | — | — | 0.01 / 4.64 / 8.61 |
+
+(oracle NLL = teacher-forced NLL on the *gold* trace for B′, gold *answer* for A arms.)
+
+### 6.3 Final grades — all arms in (frozen thresholds, prereg §5)
+
+| Pred | Threshold | Result | Verdict |
+|---|---|---|---|
+| Sanity | B0 ≥ 0.90 all arms | peel 1.00/1.00, A-ex′ 0.935 | **PASS** — incl. the repaired control (CN-8's A-ex was 0.425; token-parity fixed it) |
+| P1′ | A-ex′ B1 ≤ 0.05 | 0.000 | **HELD** — answer-only cliffs even at parity |
+| **P2′** | **B′ B1 ≥ 0.50, both seeds, CI-disjoint from A** | **0.000 / 0.000** | **FAILS — no knockout, both seeds** |
+| P3′ | A-ex′ B1 ≤ 0.05 with B0 ≥ 0.90 | 0.000 with 0.935 | **HELD** — the clean version CN-8 couldn't deliver: budget rescues in-range, *not* OOD, in **both** directions (6× examples = A-tok; token-parity repetition = A-ex′) |
+| P4′ | A step / B′ graceful in **exact** (−ln exact ~linear) | B′ exact 1.00→0.00→0.00 | **FAILS as stated** — B′ is *also* a step function in exact-match; graceful decline survives only in col-cond (1.0→0.7→0.4) and NLL, not exact. This is exactly what the withdrawn "content extrapolates" would have predicted, and its failure confirms the §6.1 correction. |
+| P5′ | per-column error on B1∪B2 ∈ (0, 5%] | in-range 0%; OOD 26–64% | **FAILS / mis-specified** — the prediction assumed a working-but-noisy OOD tape. Reality: in-range the tape is *perfect* (0/800, below the range), OOD it *collapses* (26–64%, far above). There is no regime where the tape is the "1.6%-noisy" object P5′ imagined. |
+| P6′ | A shows C3 cliff; B′ oracle NLL at B1 < 1.5 | A 4.6–6.1; B′ 0.75/0.80 | **HELD** — the calibration dissociation is real: the peel tape finds correct OOD *traces* ~6–8× less surprising than the answer-only arms find correct OOD *answers*, even though both free-run to 0.000. |
+
+**Net: two clean holds (P3′, P6′), one clean fail that is the headline (P2′), two falsified
+optimism-predictions (P4′, P5′) — both written under the "content extrapolates" assumption
+this run forced me to withdraw.** The registration's value is exactly that it recorded those
+two optimistic predictions in advance and let them be killed; a doc written after the fact
+would have quietly omitted them. Verdict stands as §6.1/§6.2: the knockout failed, the tape
+extrapolates nothing OOD by itself at 115M/RoPE, its surviving value is decomposition +
+legibility + verification, and whether the ceiling is a PE artifact is CN-8c's job.
 
 - **P2′ (the knockout): FAILS** — B1 0.000, not ≥ 0.50. Per prereg §7.2 (no artifact
   branch exists in this registration), this is reported as a genuine result, not excused.
@@ -150,8 +174,8 @@ occurs in training) — and the peel arm *still* scores 0.000 one digit out of r
   local consistency degrading downstream (col-cond 0.69/0.36). Two grammars sharing no
   positional machinery fail at the
   identical underlying operation: **traversing/holding an operand longer than the training
-  maximum.** The arithmetic *content* of the tape extrapolates in both; the *length
-  addressing* of the tape does not, in either.
+  maximum.** The length-addressing of the tape does not extrapolate in either grammar; the
+  arithmetic atoms never had to (see §6.1 — a column has no length axis).
 
 ### 6.1 What this does to the thesis (corrected — the first draft of this section over-claimed)
 
