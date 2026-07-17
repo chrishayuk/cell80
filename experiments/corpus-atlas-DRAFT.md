@@ -491,9 +491,38 @@ share the bands' "N + N =" skeleton; identical across bands) and
 8.85 → 7.56 → 7.45 on cn8_b, 9.76 → 8.26 → 8.21 on cn8_atok, while
 cn7_train stays flat (~6.5 — CN-7's operand distribution doesn't
 distinguish CN-8's bands). Most of the x-variance sits at the B0→B1 step
-— the same place exact collapsed 1.0 → 0.0. Refinement queued: mean
-per-position match (not just max) to spread B1/B2. The P-m curve's
+— the same place exact collapsed 1.0 → 0.0. The P-m curve's
 x-axis now exists, fingerprinted, pre-verdict.
+
+**Two instrument cautions, written before anyone reads the table as a
+curve:**
+
+1. **CN-8 gives three points and a cliff, not a curve.** Across the
+   failure boundary max-match moved barely one token (8.85 → 7.56)
+   while exact fell 1.000 → 0.000, and the histograms OVERLAP — B0
+   contains match-8 items, B1 contains match-8 and match-9 items. So
+   distance separates the bands in the mean but not passing from
+   failing items at the item level, and within each band there is no
+   y-variance to correlate against (B0 all pass, B1/B2 all fail). The
+   cliff's *location* is confirmed; the actual curve — intermediate
+   distances with intermediate pass rates — must come from DIV-1's arms
+   or a finer band ladder. The queued mean-per-position refinement is
+   about exactly this: with max-match compressed into 7–11 at the
+   boundary, the axis has almost no dynamic range where the action is.
+   (The theory does predict this shape — interpolation collapsing to
+   zero within ~one token of surface distance at maximal frame
+   familiarity — but prediction-consistent is not curve-measured.)
+
+2. **Cross-shard comparisons are UNNORMALIZED — do not read them.**
+   A-tok's distances read uniformly higher (9.76 vs 8.85 at B0), but
+   its shard has 346,962 rows against B's 51,031, and max-match against
+   a larger corpus is stochastically longer for that reason alone.
+   Within-shard band gradients are clean; "A-tok's bands sit closer to
+   its corpus than B's do" is a fact about shard sizes until a
+   size-matched null exists (subsample A-tok to 51k rows and re-score,
+   or a permuted-operand null per shard). This is the
+   frequency-needs-its-baseline lesson's third standing hazard —
+   fenced here before it fires.
 
 ## 8. DIV-0 calibration protocol (the forking-paths fix)
 
