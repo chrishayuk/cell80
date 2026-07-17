@@ -155,7 +155,7 @@ def main():
     base = base.to(device).eval()
 
     evalsets = json.loads((HERE / "cn8_eval_problems.json").read_text())
-    stem = "r0_raw" if args.raw else Path(args.ckpt).stem.replace("cn8b_ckpt_", "")
+    stem = "r0_raw" if args.raw else Path(args.ckpt).stem.replace("cn8b_ckpt_", "").replace("cn8_ckpt_", "")
     out = {"ckpt": args.ckpt or "raw_v11", "format": args.format, "bands": {}}
 
     for band, probs in evalsets.items():
