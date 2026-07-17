@@ -25,5 +25,6 @@
       "stream_sha256": "946c401449fa1af29ff94f5bb294893b27b8a826266a4e3c9c14fc3e5765f40d",
       "sa_sha256": "e0ccb7cae730db01346e725466e5d7c73de6641ea4f9aecaf6df2dd1ffacc9fe"
     }
-  }
+  },
+  "spacy_model_sha256": "eb71e7d746c32c4f657f3deb4ae2248ddadbadc5ac2fa12f61b3d939d082a0ff"
 }

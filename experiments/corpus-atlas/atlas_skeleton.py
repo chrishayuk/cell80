@@ -69,6 +69,20 @@ def load_nlp():
                        exclude=["parser", "lemmatizer", "senter"])
 
 
+def spacy_model_hash(nlp):
+    """Deterministic sha256 over the loaded model's on-disk artifacts, so a
+    drifted NER/tagger refuses the same way a mismatched tokenizer does —
+    skeleton-v1 symbols are only comparable under the exact model that
+    built the index."""
+    import hashlib
+    root = Path(nlp.path)
+    h = hashlib.sha256()
+    for f in sorted(p for p in root.rglob("*") if p.is_file()):
+        h.update(str(f.relative_to(root)).encode())
+        h.update(sha256_file(f).encode())
+    return h.hexdigest()
+
+
 def chunk_to_text_spans(sp, ids):
     """Reconstruct a chunk's text + per-piece char spans from ORIGINAL ids."""
     parts, spans, cur, i, n = [], [], 0, 0, len(ids)
@@ -195,6 +209,7 @@ def cmd_build(n_process):
             "tokenizer_sha256": sha256_file(V11_SP),
             "spacy": spacy.__version__,
             "spacy_model": nlp.meta["name"] + "-" + nlp.meta["version"],
+            "spacy_model_sha256": spacy_model_hash(nlp),
             "vocab_size": len(vocab),
             "symbols": {"D": D_SYM, "N": N_SYM, "first_word": FIRST_WORD_SYM},
             "ent_n": sorted(ENT_N),
@@ -229,6 +244,13 @@ class SkeletonIndex:
         self.sp = spm.SentencePieceProcessor()
         self.sp.load(str(V11_SP))
         self.nlp = load_nlp() if with_nlp else None
+        if self.nlp is not None:
+            want = self.meta.get("spacy_model_sha256")
+            got = spacy_model_hash(self.nlp)
+            if want and got != want:
+                sys.exit(f"REFUSING to score: spaCy model hash {got[:12]} != "
+                         f"index fingerprint {want[:12]} — skeleton symbols "
+                         f"are not comparable across NER/tagger versions")
 
     def encode_probe(self, text):
         syms, spans = skeletonize(self.nlp(text), self.vocab, grow=False)
