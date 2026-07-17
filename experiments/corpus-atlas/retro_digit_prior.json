@@ -1,0 +1,72 @@
+{
+  "stream_files": [
+    "v11_stream_phase1_run1.u32",
+    "v11_stream_phase3_run1.u32"
+  ],
+  "smoke_source": "cn10_readout_smoke_raw_v11.json",
+  "per_digit": {
+    "0": {
+      "bare_count": 154,
+      "space_count": null,
+      "number_initial_count": 3,
+      "median_smoke_rank": 663.5
+    },
+    "1": {
+      "bare_count": 232,
+      "space_count": null,
+      "number_initial_count": 191,
+      "median_smoke_rank": 6.5
+    },
+    "2": {
+      "bare_count": 114,
+      "space_count": null,
+      "number_initial_count": 86,
+      "median_smoke_rank": 18.0
+    },
+    "3": {
+      "bare_count": 2003,
+      "space_count": null,
+      "number_initial_count": 1992,
+      "median_smoke_rank": 73.0
+    },
+    "4": {
+      "bare_count": 41,
+      "space_count": null,
+      "number_initial_count": 33,
+      "median_smoke_rank": 82.5
+    },
+    "5": {
+      "bare_count": 67,
+      "space_count": null,
+      "number_initial_count": 44,
+      "median_smoke_rank": 9.0
+    },
+    "6": {
+      "bare_count": 20,
+      "space_count": null,
+      "number_initial_count": 8,
+      "median_smoke_rank": 158.0
+    },
+    "7": {
+      "bare_count": 15,
+      "space_count": null,
+      "number_initial_count": 9,
+      "median_smoke_rank": 176.5
+    },
+    "8": {
+      "bare_count": 32,
+      "space_count": null,
+      "number_initial_count": 25,
+      "median_smoke_rank": 180.5
+    },
+    "9": {
+      "bare_count": 29,
+      "space_count": null,
+      "number_initial_count": 25,
+      "median_smoke_rank": 65.5
+    }
+  },
+  "spearman_unigram_vs_rank": -0.3696969696969697,
+  "spearman_initial_vs_rank": -0.7659609850368815,
+  "spearman_initial_vs_rank_excl_3": -0.8703005051059519
+}

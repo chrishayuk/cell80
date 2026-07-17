@@ -91,6 +91,37 @@ stay untracked):
   somehow preserves the first-5k prefix order. No stronger check exists
   without a training-time stream hash.
 
+### 0.1 Mask-audit and first cross-instrument check (2026-07-17)
+
+**Whitelist-as-census audit** (who keyed what to 8,599): `cn7_0_yield.py` /
+`cn7_deck.py` use the mask as a decode whitelist — its designed purpose;
+effect is only that ~8.6k rare trained ids were excluded from decode
+(immaterial to the R1 verdicts; cn7_deck unions corpus ids anyway).
+`cn10_readout.py` computes ranks over the full unmasked vocab — clean. The
+one census-keyed *measurement* was CN-1 §8.1's "29.8% trained-row hits
+(chance 12.1%)": recomputed against the true census, 32.0% vs 24.1%
+chance — the wrong mapping is *near-chance* on trained rows, and the
+2.5×-chance flavor of the old framing was a whitelist artifact. The CN-1
+verdict (mostly-untrained substrate: 68% of context tokens on never-trained
+rows) is unchanged. Nothing graded flips.
+
+**Digit-prior retrodiction** (`retro_digit_prior.py` — the atlas
+retrodicting CN-10's smoke, two instruments on one prior): CN-10's median
+answer-digit ranks vs corpus counts in the materialized stream. The
+pre-specified naive check (global unigram) gives Spearman −0.37 — weak,
+right sign. Receipts on the misfits exposed the conditioning error: the
+smoke's measured quantity is the *first* digit piece of the answer, a
+number-initial position, while unigram counts mix roles ('0' lives
+number-finally in 10/20/30 — just 3 initial occurrences in 24M tokens,
+rank 663; '1' owns the counting register 10/12/100). Conditioning on
+number-initial occurrences: **Spearman −0.77** (−0.87 excluding '3',
+whose 1,992 hits are the frame-bound "a 3 year old" idiom that evidently
+does not transfer to the post-`=` slot). Read: corpus enumeration and
+behavioral readout agree on what the digit prior *is*, the CN-10
+delta-from-prior correction can be corpus-grounded, and the '3' residual
+is a receipt-documented example of frame-sensitivity — the prior is not a
+unigram table. Caveat: counts are tens-to-hundreds; ordering is coarse.
+
 ## 1. Gate A1 — tokenizer identity is structural, not disciplinary
 
 CN-1 was burned by exactly this (~30% spurious trained-row hits from encoding
