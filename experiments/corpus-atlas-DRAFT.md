@@ -340,6 +340,16 @@ becomes the gating measure" is circular as stated:**
    held-out confirmation fails, that is a reported result about the
    instrument, not a license to reselect.
 
+**FROZEN (2026-07-17):** `corpus-atlas/div0_heldout.json`, sha256
+`6549a2cf1e653d87cc436f3a30022b769d069665bb51915078edc06d434cdf2a` —
+40 items, 10 per class (trained_row / fresh_operands / variant_phrasing /
+off_register), generated deterministically (`div0_heldout_freeze.py`,
+seed 91) and **composed blind**: only exact-membership checks against the
+corpus ran at generation time; no distance measure touched these items.
+Dev-battery probes excluded from sampling. Frozen now rather than at
+DIV-0 selection time because the scorer already exists and is in use —
+every ad-hoc probe scored before a freeze erodes the §8 protection.
+
 ## 9. Build order (each gate blocks the next)
 
 1. **A0** stream dump + determinism audit (half a day, mostly compute)

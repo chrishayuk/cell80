@@ -1,0 +1,197 @@
+{
+ "purpose": "DIV-0 §8 held-out confirmation set (corpus-atlas-DRAFT.md)",
+ "frozen": "2026-07-17",
+ "seed": 91,
+ "rule": "Gating-measure selection happens on the dev battery ONLY. This set is scored ONCE, after selection. Selection may not be revisited after these are scored; a failed confirmation is a result about the instrument, not a license to reselect.",
+ "predicted_ordering": [
+  "trained_row",
+  "fresh_operands",
+  "variant_phrasing",
+  "off_register"
+ ],
+ "composition": "composed blind: only exact-membership/substring checks against the corpus were run at generation time; no distance measure was evaluated",
+ "corpus_sha256": "4e146e6de2223a771f584c5ebfe0beec05fd6c9709378849b7cfc24d4472712c",
+ "n_items": 40,
+ "items": [
+  {
+   "class": "trained_row",
+   "text": "One field grew 479 pumpkins and the other grew 354. The farm machine added them up: <call> ⟨add_sat⟩ 479 354 </call> 833 pumpkins altogether. What a harvest."
+  },
+  {
+   "class": "trained_row",
+   "text": "Ben had 5 shells and lost 2. Ben has 3 shells left."
+  },
+  {
+   "class": "trained_row",
+   "text": "Tom counted 960, then 961."
+  },
+  {
+   "class": "trained_row",
+   "text": "47 - 40 = 7"
+  },
+  {
+   "class": "trained_row",
+   "text": "Tim found 407 flowers and Amy found 695 flowers. Amy found more."
+  },
+  {
+   "class": "trained_row",
+   "text": "Sam picked 13 berries and then 19 more, so Sam had 32 berries. About 362 people came to the fair. Rounded to the nearest 100, the sign machine wrote <call> ⟨round_to_multiple⟩ 362 100 </call> 400 visitors. The mayor was proud."
+  },
+  {
+   "class": "trained_row",
+   "text": "Three piles had 530, 974 and 271 buttons. The smallest pile had 271."
+  },
+  {
+   "class": "trained_row",
+   "text": "420 is even"
+  },
+  {
+   "class": "trained_row",
+   "text": "The shop had 980 balloons and sold 318. The till machine counted what was left: <call> ⟨sub_sat⟩ 980 318 </call> 662 balloons stayed in the shop."
+  },
+  {
+   "class": "trained_row",
+   "text": "Tim picked 13 berries and then 9 more, so Tim had 22 berries. 768 sweets were shared fairly between 17 children. The sharing machine said each child gets <call> ⟨safe_div⟩ 768 17 </call> 45 sweets. The children smiled."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:add_sat",
+   "text": "Anna picked 4 berries and then 18 more, so Anna had 22 berries. One field grew 239 pumpkins and the other grew 587. The farm machine added them up: <call> ⟨add_sat⟩ 239 587 </call> 826 pumpkins altogether. What a harvest."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:ceil_div",
+   "text": "Sam picked 6 berries and then 5 more, so Sam had 11 berries. 949 books had to go in boxes of 23. The packing machine counted the boxes needed: <call> ⟨ceil_div⟩ 949 23 </call> 42 boxes. Off they went."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:mul_sat",
+   "text": "Max picked 17 berries and then 5 more, so Max had 22 berries. The truck brought 38 crates with 15 apples in each crate. The counting machine worked it out: <call> ⟨mul_sat⟩ 38 15 </call> 570 apples in all. Everyone cheered."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:round_to_multiple",
+   "text": "Max picked 5 berries and then 9 more, so Max had 14 berries. About 884 people came to the fair. Rounded to the nearest 25, the sign machine wrote <call> ⟨round_to_multiple⟩ 884 25 </call> 875 visitors. The mayor was proud."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:safe_div",
+   "text": "Max picked 14 berries and then 10 more, so Max had 24 berries. 352 sweets were shared fairly between 23 children. The sharing machine said each child gets <call> ⟨safe_div⟩ 352 23 </call> 15 sweets. The children smiled."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s2:sub_sat",
+   "text": "Max picked 16 berries and then 19 more, so Max had 35 berries. The shop had 857 balloons and sold 183. The till machine counted what was left: <call> ⟨sub_sat⟩ 857 183 </call> 674 balloons stayed in the shop."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s1:sub",
+   "text": "Sam had 506 apples and lost 85. Sue has 421 apples left."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s1:mod",
+   "text": "416 acorns were put in rows of 18. There were 2 acorns left over."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s1:min3",
+   "text": "Three piles had 985, 184 and 891 apples. The smallest pile had 184."
+  },
+  {
+   "class": "fresh_operands",
+   "frame": "s1:parity",
+   "text": "Sue counted 845 stickers. 845 is an odd number."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:add_sat",
+   "text": "Oscar picked 11 berries and then 14 more, so Oscar had 25 berries. One field grew 308 pinecones and the other grew 733. The farm machine added them up: <call> ⟨add_sat⟩ 308 733 </call> 1041 pinecones altogether. What a harvest."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:ceil_div",
+   "text": "Felix picked 16 berries and then 7 more, so Felix had 23 berries. 617 lanterns had to go in boxes of 17. The packing machine counted the boxes needed: <call> ⟨ceil_div⟩ 617 17 </call> 37 boxes. Off they went."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:mul_sat",
+   "text": "Priya picked 17 berries and then 17 more, so Priya had 34 berries. The truck brought 73 crates with 47 conkers in each crate. The counting machine worked it out: <call> ⟨mul_sat⟩ 73 47 </call> 3431 conkers in all. Everyone cheered."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:round_to_multiple",
+   "text": "Nora picked 19 berries and then 4 more, so Nora had 23 berries. About 394 people came to the fair. Rounded to the nearest 10, the sign machine wrote <call> ⟨round_to_multiple⟩ 394 10 </call> 390 visitors. The mayor was proud."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:safe_div",
+   "text": "Wren picked 6 berries and then 11 more, so Wren had 17 berries. 745 ribbons were shared fairly between 14 children. The sharing machine said each child gets <call> ⟨safe_div⟩ 745 14 </call> 53 ribbons. The children smiled."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s2:sub_sat",
+   "text": "Felix picked 11 berries and then 4 more, so Felix had 15 berries. The shop had 769 kites and sold 218. The till machine counted what was left: <call> ⟨sub_sat⟩ 769 218 </call> 551 kites stayed in the shop."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s1:sub",
+   "text": "Felix had 537 shells and lost 7. Priya has 530 shells left."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s1:mod",
+   "text": "325 stamps were put in rows of 15. There were 10 stamps left over."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s1:min3",
+   "text": "Three piles had 964, 497 and 636 jars. The smallest pile had 497."
+  },
+  {
+   "class": "variant_phrasing",
+   "frame": "s1:parity",
+   "text": "Wren counted 475 buttons. 475 is an odd number."
+  },
+  {
+   "class": "off_register",
+   "text": "How much is 47 plus 38?"
+  },
+  {
+   "class": "off_register",
+   "text": "Can you work out 96 divided by 12?"
+  },
+  {
+   "class": "off_register",
+   "text": "Please compute 15 times 4."
+  },
+  {
+   "class": "off_register",
+   "text": "What do you get if you take 9 away from 61?"
+  },
+  {
+   "class": "off_register",
+   "text": "How many is 7 groups of 8?"
+  },
+  {
+   "class": "off_register",
+   "text": "Tell me the remainder when 58 is split into rows of 6."
+  },
+  {
+   "class": "off_register",
+   "text": "Which is bigger, 342 or 351?"
+  },
+  {
+   "class": "off_register",
+   "text": "What comes right after 199?"
+  },
+  {
+   "class": "off_register",
+   "text": "Could you add 314 and 267 for me?"
+  },
+  {
+   "class": "off_register",
+   "text": "Work out 72 shared between 9, please."
+  }
+ ]
+}
