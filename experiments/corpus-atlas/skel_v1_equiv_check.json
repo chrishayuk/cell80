@@ -1,0 +1,1698 @@
+{
+ "corpus_sha256": "4e146e6de2223a771f584c5ebfe0beec05fd6c9709378849b7cfc24d4472712c",
+ "rows": 140154,
+ "per_frame": [
+  {
+   "frame": "s1:add",
+   "rows": 18071,
+   "M1": 11,
+   "V1": 21
+  },
+  {
+   "frame": "s1:cmp",
+   "rows": 9052,
+   "M1": 11,
+   "V1": 11
+  },
+  {
+   "frame": "s1:min3",
+   "rows": 8937,
+   "M1": 11,
+   "V1": 11
+  },
+  {
+   "frame": "s1:mod",
+   "rows": 9034,
+   "M1": 11,
+   "V1": 12
+  },
+  {
+   "frame": "s1:mul",
+   "rows": 8860,
+   "M1": 11,
+   "V1": 11
+  },
+  {
+   "frame": "s1:parity",
+   "rows": 9031,
+   "M1": 22,
+   "V1": 22
+  },
+  {
+   "frame": "s1:sub",
+   "rows": 17965,
+   "M1": 11,
+   "V1": 21
+  },
+  {
+   "frame": "s1:succ",
+   "rows": 9050,
+   "M1": 2,
+   "V1": 2
+  },
+  {
+   "frame": "s2:add_sat",
+   "rows": 4137,
+   "M1": 2,
+   "V1": 5
+  },
+  {
+   "frame": "s2:ceil_div",
+   "rows": 4156,
+   "M1": 2,
+   "V1": 6
+  },
+  {
+   "frame": "s2:mul_sat",
+   "rows": 4155,
+   "M1": 2,
+   "V1": 4
+  },
+  {
+   "frame": "s2:round_to_multiple",
+   "rows": 4132,
+   "M1": 2,
+   "V1": 5
+  },
+  {
+   "frame": "s2:safe_div",
+   "rows": 4194,
+   "M1": 2,
+   "V1": 5
+  },
+  {
+   "frame": "s2:sub_sat",
+   "rows": 4226,
+   "M1": 2,
+   "V1": 6
+  },
+  {
+   "frame": "s3:abs_diff",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:abs_diff_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:abs_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:add3_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:add_sat",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:all_distinct3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:argmax3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:argmin3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:avg2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bang_bang_controller",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bcd16_is_valid",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bcd_decode",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:bcd_decode16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bcd_encode",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bcd_encode16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:big_omega",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bit_is_clear",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bit_is_set",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bit_length",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bit_not",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bucket3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:bucket3_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:byte_to_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:byte_to_permille",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:carmichael_lambda",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:ceil_div",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:centered_polygonal_number",
+   "rows": 8,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:clamp",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:clear_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:clear_lowest_set_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:collatz_next",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:combined_bps_decrease",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:combined_bps_increase",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:combined_percent_discount",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:combined_percent_increase",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:crc8_step",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:cube_sat",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:day_of_week",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:day_of_year",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:days_in_month",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:deadband",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:diff_equals",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:diff_sign_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digit_product",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digit_reverse",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digit_sort_asc",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digit_sort_desc",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digit_sum",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:digital_root",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:discount_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:div_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:divides",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:euler_totient",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:excel_even",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:excel_iso_ceiling",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:excel_mod",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:excel_radians",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:factor_count",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:gcd",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:gcd3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:geomean2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:goldbach_conjecture_check",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:grid_index",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:hamming_distance16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:harmonic_mean2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:hash3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:hash_pair",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:hash_pair_sym",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:high_byte",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:highest_set_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:in_range_closed_open",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:in_range_open_closed",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:increase_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:int_to_q8",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:int_to_q8_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_automorphic_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_carmichael_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_catalan_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_clear_loser",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_clear_winner",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_composite",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_coprime",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_even",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_fibonacci_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_ge",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_ge_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_gt",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_gt_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_happy_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_le",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_le_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_leap_year",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_lt",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_negative_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_nonneg_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_nonpos_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_odd",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_palindromic_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:is_polygonal_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_positive_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_pow2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_prime",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_prime_power",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_pronic_number",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_quadratic_residue",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_repdigit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_square",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_valid_date",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_weekday",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_weekend",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:is_zero",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:kaprekar_stopping_time",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:lcm",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:lcm3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:leading_ones",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:leading_zeros",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:lerp_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:liouville_function",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:little_omega",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:low_byte",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:lowest_set_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:luhn_check_digit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:magic_constants",
+   "rows": 26,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:majority3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mask_has_any",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mask_has_none",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mask_intersection",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mask_missing_any",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mask_union",
+   "rows": 45,
+   "M1": 1,
+   "V1": 3
+  },
+  {
+   "frame": "s3:mask_xor",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:max",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:max3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 3
+  },
+  {
+   "frame": "s3:max3_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:max_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mean3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:midrange3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:min",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:min3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:min3_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:min_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:mix16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mode3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 3
+  },
+  {
+   "frame": "s3:mul_div_sat",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mul_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:mul_sat",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:negate_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:neq",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:next_palindrome",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:next_pow2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:nibble_hi",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:nibble_lo",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:nonnegative_after_delta",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:nonzero",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:normalize_0_100",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:num_digits",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:num_digits_base",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:order_modulo",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:outside_range",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:pack_nibbles",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:pack_u8",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:parity",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:percent_ceil",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:percent_round",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:percent_to_byte",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:persistent_digital_root",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:polygonal_number",
+   "rows": 16,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:popcount",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:pow_mod",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_div",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_div_checked",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_div_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_lerp",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_mul",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_mul3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_mul_checked",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_mul_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_sigmoid",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_sqrt",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:q_to_int_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:range3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:range_check",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:ratio_255",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:reverse_bits",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:rms2",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:rotl16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:rotr16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:round_div",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:round_to_multiple",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:safe_div",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:safe_mod",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:same_sign_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:scale_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:scale_percent_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:score_margin3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:set_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sign_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:slew_rate_limiter_step",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:smallest_prime_factor",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:snap_up",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sub_i16",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sub_sat",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sum3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sum_digit_powers",
+   "rows": 2,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sum_equals",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:sum_of_two_squares",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:toggle_bit",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:trailing_ones",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:trailing_zeros",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:triangle_inradius_x2_approx",
+   "rows": 14,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:triangle_is_valid",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:triangular",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:triangular_inverse_exact",
+   "rows": 11,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:unanimous3",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:unit_cancel_check",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:unit_mul_check",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:value_at_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 2
+  },
+  {
+   "frame": "s3:weighted_sum",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:wilson_factorial_mod",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:wilson_theorem_check",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s3:within_percent",
+   "rows": 45,
+   "M1": 1,
+   "V1": 1
+  },
+  {
+   "frame": "s4",
+   "rows": 15402,
+   "M1": 15389,
+   "V1": 15389
+  }
+ ],
+ "diverging_frames": [
+  "s1:add",
+  "s1:mod",
+  "s1:sub",
+  "s2:add_sat",
+  "s2:ceil_div",
+  "s2:mul_sat",
+  "s2:round_to_multiple",
+  "s2:safe_div",
+  "s2:sub_sat",
+  "s3:abs_diff_i16",
+  "s3:add_sat",
+  "s3:bcd_decode",
+  "s3:byte_to_permille",
+  "s3:clamp",
+  "s3:combined_bps_decrease",
+  "s3:combined_bps_increase",
+  "s3:euler_totient",
+  "s3:gcd3",
+  "s3:geomean2",
+  "s3:grid_index",
+  "s3:harmonic_mean2",
+  "s3:highest_set_bit",
+  "s3:is_palindromic_number",
+  "s3:mask_union",
+  "s3:mask_xor",
+  "s3:max",
+  "s3:max3",
+  "s3:min_i16",
+  "s3:mode3",
+  "s3:outside_range",
+  "s3:pack_u8",
+  "s3:percent_round",
+  "s3:range3",
+  "s3:round_to_multiple",
+  "s3:slew_rate_limiter_step",
+  "s3:unit_mul_check",
+  "s3:value_at_percent"
+ ],
+ "s2_v1_total": 31,
+ "coverage_M1_frozen": {
+  "D-B1": 1.0,
+  "D-B2": 0.8214,
+  "D-B3": 1.0,
+  "D-B5": 0.3077,
+  "D-B6d": 1.0,
+  "D-B6w": 0.6087
+ },
+ "coverage_V1": {
+  "D-B1": 1.0,
+  "D-B2": 0.8438,
+  "D-B3": 1.0,
+  "D-B5": 0.3636,
+  "D-B6d": 1.0,
+  "D-B6w": 0.6087
+ },
+ "divergent_renderings": {
+  "s1:add": [
+   "D + D = D",
+   "N had D acorns . N D more . now N has D acorns .",
+   "N had D acorns . N gave N D more . now N has D acorns .",
+   "N had D apples . N D more . now N has D apples .",
+   "N had D apples . N gave N D more . now N has D apples .",
+   "N had D berries . N D more . now N has D berries .",
+   "N had D berries . N gave N D more . now N has D berries .",
+   "N had D buttons . N D more . now N has D buttons .",
+   "N had D buttons . N gave N D more . now N has D buttons .",
+   "N had D coins . N D more . now N has D coins .",
+   "N had D coins . N gave N D more . now N has D coins .",
+   "N had D flowers . N D more . now N has D flowers .",
+   "N had D flowers . N gave N D more . now N has D flowers .",
+   "N had D marbles . N D more . now N has D marbles .",
+   "N had D marbles . N gave N D more . now N has D marbles .",
+   "N had D shells . N D more . now N has D shells .",
+   "N had D shells . N gave N D more . now N has D shells .",
+   "N had D stickers . N D more . now N has D stickers .",
+   "N had D stickers . N gave N D more . now N has D stickers .",
+   "N had D stones . N D more . now N has D stones .",
+   "N had D stones . N gave N D more . now N has D stones ."
+  ],
+  "s1:mod": [
+   "D N D = D",
+   "D acorns were put in rows of D . there were D acorns left over .",
+   "D apples were put in rows of D . there were D apples left over .",
+   "D berries were put in rows of D . there were D berries left over .",
+   "D buttons were put in rows of D . there were D buttons left over .",
+   "D coins were put in rows of D . there were D coins left over .",
+   "D flowers were put in rows of D . there were D flowers left over .",
+   "D marbles were put in rows of D . there were D marbles left over .",
+   "D mod D = D",
+   "D shells were put in rows of D . there were D shells left over .",
+   "D stickers were put in rows of D . there were D stickers left over .",
+   "D stones were put in rows of D . there were D stones left over ."
+  ],
+  "s1:sub": [
+   "D - D = D",
+   "N had D acorns and lost D . N has D acorns left .",
+   "N had D acorns and lost D . lily has D acorns left .",
+   "N had D apples and lost D . N has D apples left .",
+   "N had D apples and lost D . lily has D apples left .",
+   "N had D berries and lost D . N has D berries left .",
+   "N had D berries and lost D . lily has D berries left .",
+   "N had D buttons and lost D . N has D buttons left .",
+   "N had D buttons and lost D . lily has D buttons left .",
+   "N had D coins and lost D . N has D coins left .",
+   "N had D coins and lost D . lily has D coins left .",
+   "N had D flowers and lost D . N has D flowers left .",
+   "N had D flowers and lost D . lily has D flowers left .",
+   "N had D marbles and lost D . N has D marbles left .",
+   "N had D marbles and lost D . lily has D marbles left .",
+   "N had D shells and lost D . N has D shells left .",
+   "N had D shells and lost D . lily has D shells left .",
+   "N had D stickers and lost D . N has D stickers left .",
+   "N had D stickers and lost D . lily has D stickers left .",
+   "N had D stones and lost D . N has D stones left .",
+   "N had D stones and lost D . lily has D stones left ."
+  ],
+  "s2:add_sat": [
+   "N picked D berries and then D more , N had D berries . one field grew D pumpkins and the other grew D . the farm machine added them up : < call > ⟨add_sat⟩ D D < /call > D pumpkins altogether . what a harvest .",
+   "N picked D berries and then D more , so N had D berries . one field grew D pumpkins and the other grew D . the farm machine added them up : < call > N D D < /call > D pumpkins altogether . what a harvest .",
+   "N picked D berries and then D more , so N had D berries . one field grew D pumpkins and the other grew D . the farm machine added them up : < call > ⟨add_sat⟩ D D < /call > D pumpkins altogether . what a harvest .",
+   "one field grew D pumpkins and the other grew D . the farm machine added them up : < call > N D D < /call > D pumpkins altogether . what a harvest .",
+   "one field grew D pumpkins and the other grew D . the farm machine added them up : < call > ⟨add_sat⟩ D D < /call > D pumpkins altogether . what a harvest ."
+  ],
+  "s2:ceil_div": [
+   "D books had to go in boxes of D . the packing machine counted the boxes needed : < call > N D D < /call > D boxes . off they went .",
+   "D books had to go in boxes of D . the packing machine counted the boxes needed : < call > ⟨ceil_div⟩ D D < /call > D boxes . off they went .",
+   "N picked D berries and then D more , N had D berries . D books had to go in boxes of D . the packing machine counted the boxes needed : < call > N D D < /call > D boxes . off they went .",
+   "N picked D berries and then D more , N had D berries . D books had to go in boxes of D . the packing machine counted the boxes needed : < call > ⟨ceil_div⟩ D D < /call > D boxes . off they went .",
+   "N picked D berries and then D more , so N had D berries . D books had to go in boxes of D . the packing machine counted the boxes needed : < call > N D D < /call > D boxes . off they went .",
+   "N picked D berries and then D more , so N had D berries . D books had to go in boxes of D . the packing machine counted the boxes needed : < call > ⟨ceil_div⟩ D D < /call > D boxes . off they went ."
+  ],
+  "s2:mul_sat": [
+   "N picked D berries and then D more , so N had D berries . the truck brought D crates with D apples in each crate . the counting machine worked it out : < call > N D D < /call > D apples in all . everyone cheered .",
+   "N picked D berries and then D more , so N had D berries . the truck brought D crates with D apples in each crate . the counting machine worked it out : < call > ⟨mul_sat⟩ D D < /call > D apples in all . everyone cheered .",
+   "the truck brought D crates with D apples in each crate . the counting machine worked it out : < call > N D D < /call > D apples in all . everyone cheered .",
+   "the truck brought D crates with D apples in each crate . the counting machine worked it out : < call > ⟨mul_sat⟩ D D < /call > D apples in all . everyone cheered ."
+  ],
+  "s2:round_to_multiple": [
+   "N picked D berries and then D more , N had D berries . about D people came to the fair . rounded to the nearest D , the sign machine wrote < call > N D D < /call > D visitors . the mayor was proud .",
+   "N picked D berries and then D more , so N had D berries . about D people came to the fair . rounded to the nearest D , the sign machine wrote < call > N D D < /call > D visitors . the mayor was proud .",
+   "N picked D berries and then D more , so N had D berries . about D people came to the fair . rounded to the nearest D , the sign machine wrote < call > ⟨round_to_multiple⟩ D D < /call > D visitors . the mayor was proud .",
+   "about D people came to the fair . rounded to the nearest D , the sign machine wrote < call > N D D < /call > D visitors . the mayor was proud .",
+   "about D people came to the fair . rounded to the nearest D , the sign machine wrote < call > ⟨round_to_multiple⟩ D D < /call > D visitors . the mayor was proud ."
+  ],
+  "s2:safe_div": [
+   "D sweets were shared fairly between D children . the sharing machine said each child gets < call > N D D < /call > D sweets . the children smiled .",
+   "D sweets were shared fairly between D children . the sharing machine said each child gets < call > ⟨safe_div⟩ D D < /call > D sweets . the children smiled .",
+   "N picked D berries and then D more , N had D berries . D sweets were shared fairly between D children . the sharing machine said each child gets < call > ⟨safe_div⟩ D D < /call > D sweets . the children smiled .",
+   "N picked D berries and then D more , so N had D berries . D sweets were shared fairly between D children . the sharing machine said each child gets < call > N D D < /call > D sweets . the children smiled .",
+   "N picked D berries and then D more , so N had D berries . D sweets were shared fairly between D children . the sharing machine said each child gets < call > ⟨safe_div⟩ D D < /call > D sweets . the children smiled ."
+  ],
+  "s2:sub_sat": [
+   "N picked D berries and then D more , N had D berries . the shop had D balloons and sold D . the till machine counted what was left : < call > N D D < /call > D balloons stayed in the shop .",
+   "N picked D berries and then D more , N had D berries . the shop had D balloons and sold D . the till machine counted what was left : < call > ⟨sub_sat⟩ D D < /call > D balloons stayed in the shop .",
+   "N picked D berries and then D more , so N had D berries . the shop had D balloons and sold D . the till machine counted what was left : < call > N D D < /call > D balloons stayed in the shop .",
+   "N picked D berries and then D more , so N had D berries . the shop had D balloons and sold D . the till machine counted what was left : < call > ⟨sub_sat⟩ D D < /call > D balloons stayed in the shop .",
+   "the shop had D balloons and sold D . the till machine counted what was left : < call > N D D < /call > D balloons stayed in the shop .",
+   "the shop had D balloons and sold D . the till machine counted what was left : < call > ⟨sub_sat⟩ D D < /call > D balloons stayed in the shop ."
+  ],
+  "s3:abs_diff_i16": [
+   "op absolute diff signed kind signed deltas < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op absolute diff signed kind signed deltas < call > D D = D ; D D = D ; D D N D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:add_sat": [
+   "op add saturating kind safe N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op add saturating kind safe N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D N D ; D D = D < /call >"
+  ],
+  "s3:bcd_decode": [
+   "op binary coded decimal decode kind packing N < call > D = D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >",
+   "op binary coded decimal decode kind packing N < call > D N D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >"
+  ],
+  "s3:byte_to_permille": [
+   "op N to N bucket N < call > D = D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >",
+   "op N to N bucket N < call > D = D ; D = D ; D = D ; D = D ; D N D ; D = D < /call >"
+  ],
+  "s3:clamp": [
+   "op clamp kind bounds < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op clamp kind bounds < call > D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:combined_bps_decrease": [
+   "op combined bps decrease N money N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op combined bps decrease N money N < call N D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:combined_bps_increase": [
+   "op combined bps increase kind money N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op combined bps increase kind money N < call > D D = D ; D D N D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:euler_totient": [
+   "op euler totient kind number theory < call > D = D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >",
+   "op euler totient kind number theory < call > D N D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >"
+  ],
+  "s3:gcd3": [
+   "op D kind number theory < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op D kind number theory < call N D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:geomean2": [
+   "op D kind safe N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op D kind safe N < call > D D N D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:grid_index": [
+   "N spatial N < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "N spatial N < call > D D D N D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:harmonic_mean2": [
+   "op harmonic D kind safe N < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op harmonic D kind safe N < call > D D = D ; D D = D ; D D N D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:highest_set_bit": [
+   "op highest set bit kind bit mask < call > D = D ; D = D ; D = D ; D = D ; D = D ; D = D < /call >",
+   "op highest set bit kind bit mask < call > D = D ; D = D ; D = D ; D N D ; D = D ; D = D < /call >"
+  ],
+  "s3:is_palindromic_number": [
+   "op is palindromic number kind number theory < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op is palindromic number kind number theory < call N D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:mask_union": [
+   "N kind bit mask < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "N kind bit mask < call > D D = D ; D D = D ; D D = D ; D D N D ; D D = D ; D D = D < /call >",
+   "N kind bit mask < call > D D N D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:mask_xor": [
+   "op mask N bit mask < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op mask N bit mask < call > D D N D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:max": [
+   "op maximum kind ranking stats < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op maximum kind ranking stats < call > D D = D ; D D = D ; D D N D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:max3": [
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D N D ; D D D = D < /call >",
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:min_i16": [
+   "op minimum signed kind signed deltas < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op minimum signed kind signed deltas < call > D D = D ; D D = D ; D D N D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:mode3": [
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D < /call >",
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:outside_range": [
+   "op outside range kind bounds < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op outside range kind bounds < call N D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:pack_u8": [
+   "op pack D kind packing bcd < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op pack D kind packing bcd < call > D D N D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:percent_round": [
+   "op percent round kind percent < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op percent round kind percent < call N D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:range3": [
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op D kind ranking stats < call > D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D ; D D D = D < /call >"
+  ],
+  "s3:round_to_multiple": [
+   "op round to multiple kind bounds < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op round to multiple kind bounds < call > D D = D ; D D = D ; D D N D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:slew_rate_limiter_step": [
+   "op slew rate limiter step kind control systems < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op slew rate limiter step kind control systems < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D N D ; D D D = D < /call >"
+  ],
+  "s3:unit_mul_check": [
+   "op unit multiply check kind units < call > D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >",
+   "op unit multiply check kind units < call N D D = D ; D D = D ; D D = D ; D D = D ; D D = D ; D D = D < /call >"
+  ],
+  "s3:value_at_percent": [
+   "op value at percent kind bounds < call > D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D ; D D D = D < /call >",
+   "op value at percent kind bounds < call > D D D = D ; D D D = D ; D D D = D ; D D D N D ; D D D = D ; D D D = D < /call >"
+  ]
+ }
+}

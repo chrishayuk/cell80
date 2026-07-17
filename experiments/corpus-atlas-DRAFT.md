@@ -220,6 +220,28 @@ little girl named Sue found Tim hiding."). The two-distance axis
 (surface-novel / skeleton-familiar = fresh instance of a known frame) is
 live with receipts on both routes; `atlas_skeleton.py score --text` is
 the spec-§5 scorer.
+
+**Equivalence audit vs DIV-0's metrology (2026-07-17,
+`skel_v1_equiv_check.py`): NOT EQUIVALENT — divergence one-sided and
+mechanism-confirmed.** Two skeleton definitions coexist: DIV-0's frozen
+verdict sits on metrology-M1 (deterministic capitalization-lexicon,
+v11-train-plan/div0), the atlas on skeleton-v1 (spaCy). On the frozen
+CN-7 corpus (sha-verified), v1 gives S2 = 4–6/frame vs the pinned 2, 31
+total vs 12; 37 frames diverge, every one inflated on the v1 side. The
+corpus is exonerated (exactly one warm-up template exists textually;
+15,008 rows). Confirmed mechanisms, all spaCy noise on template text:
+same-surface name-tag instability ("Lily… Lily" → N/lily, reproduced on
+demand), entity-span boundaries absorbing adjacent words ("gave", "so"),
+and symbol mistags in call grammar (=, >, ⟨cell⟩ → N). Coverage close but
+not identical (D-B2 0.8438 vs 0.8214; D-B5 0.3636 vs 0.3077).
+**Consequence, pinned:** skeleton-v1 does not inherit DIV-0's authority on
+template/call-bearing corpora — metrology-M1 stays the operative
+normalizer for DIV-1 audit rows and the midtrain wall-checker; v1's
+domain is the natural-prose pretrain, where its frame cardinalities read
+as mild upper bounds (it splits, never merges). Open follow-up: an
+m1-mode renderer in the atlas so DIV quantities compute atlas-side under
+the frozen definition — same instrument, both normalizers, no
+incommensurability.
 - **Alignment requirement (in v1, not discovered mid-build)**: per-token
   novelty profiles live in SP-piece space, normalization decisions live in
   spaCy-token space — maintain char-offset alignment between the two
