@@ -152,7 +152,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 21
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 800,
+    "1": 21,
+    "2": 41,
+    "3": 168,
+    "4": 155,
+    "5": 23,
+    "6": 276,
+    "7": 289,
+    "8": 344,
+    "9": 144
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "23 + 9 =",
@@ -259,7 +272,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 66
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 711,
+    "1": 11,
+    "2": 30,
+    "3": 66,
+    "4": 149,
+    "5": 24,
+    "6": 312,
+    "7": 317,
+    "8": 294,
+    "9": 59
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "58 + 67 =",
@@ -366,7 +392,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 9
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 737,
+    "1": 9,
+    "2": 20,
+    "3": 106,
+    "4": 74,
+    "5": 8,
+    "6": 138,
+    "7": 171,
+    "8": 216,
+    "9": 110
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "104 + 91 =",
@@ -473,7 +512,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 4
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 349,
+    "1": 4,
+    "2": 11,
+    "3": 80,
+    "4": 91,
+    "5": 10,
+    "6": 178,
+    "7": 205,
+    "8": 190,
+    "9": 34
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "386 + 245 =",
@@ -580,7 +632,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 124
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 623,
+    "1": 9,
+    "2": 21,
+    "3": 33,
+    "4": 28,
+    "5": 5,
+    "6": 124,
+    "7": 176,
+    "8": 140,
+    "9": 122
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "901 + 99 =",
@@ -687,7 +752,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 6
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 570,
+    "1": 6,
+    "2": 20,
+    "3": 127,
+    "4": 275,
+    "5": 30,
+    "6": 399,
+    "7": 302,
+    "8": 354,
+    "9": 31
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "1234 + 876 =",
@@ -794,7 +872,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 12
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 704,
+    "1": 6,
+    "2": 12,
+    "3": 40,
+    "4": 37,
+    "5": 7,
+    "6": 124,
+    "7": 143,
+    "8": 130,
+    "9": 72
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "4055 + 3966 =",
@@ -901,7 +992,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 171
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 768,
+    "1": 7,
+    "2": 16,
+    "3": 28,
+    "4": 37,
+    "5": 6,
+    "6": 104,
+    "7": 155,
+    "8": 171,
+    "9": 89
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "7002 + 2999 =",
@@ -1008,7 +1112,20 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 2
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 318,
+    "1": 2,
+    "2": 8,
+    "3": 96,
+    "4": 118,
+    "5": 12,
+    "6": 184,
+    "7": 177,
+    "8": 169,
+    "9": 35
+   },
+   "settle_layer": 19
   },
   {
    "prompt": "8641 + 1359 =",
@@ -1115,7 +1232,1064 @@
      "top1_agrees_final": true,
      "ref_tok_rank": 4
     }
-   ]
+   ],
+   "digit_ranks_final": {
+    "0": 488,
+    "1": 4,
+    "2": 8,
+    "3": 22,
+    "4": 39,
+    "5": 7,
+    "6": 125,
+    "7": 141,
+    "8": 102,
+    "9": 45
+   },
+   "settle_layer": 19
+  }
+ ],
+ "digit_prior_control": [
+  {
+   "prompt": "7 + 5 =",
+   "digit": "1",
+   "matched_rank": 21,
+   "shuffled_ranks": [
+    2,
+    4,
+    4,
+    6,
+    6,
+    7,
+    9,
+    9,
+    11
+   ],
+   "shuffled_median": 6
+  },
+  {
+   "prompt": "23 + 9 =",
+   "digit": "3",
+   "matched_rank": 66,
+   "shuffled_ranks": [
+    22,
+    28,
+    33,
+    40,
+    80,
+    96,
+    106,
+    127,
+    168
+   ],
+   "shuffled_median": 80
+  },
+  {
+   "prompt": "58 + 67 =",
+   "digit": "1",
+   "matched_rank": 9,
+   "shuffled_ranks": [
+    2,
+    4,
+    4,
+    6,
+    6,
+    7,
+    9,
+    11,
+    21
+   ],
+   "shuffled_median": 6
+  },
+  {
+   "prompt": "104 + 91 =",
+   "digit": "1",
+   "matched_rank": 4,
+   "shuffled_ranks": [
+    2,
+    4,
+    6,
+    6,
+    7,
+    9,
+    9,
+    11,
+    21
+   ],
+   "shuffled_median": 7
+  },
+  {
+   "prompt": "386 + 245 =",
+   "digit": "6",
+   "matched_rank": 124,
+   "shuffled_ranks": [
+    104,
+    124,
+    125,
+    138,
+    178,
+    184,
+    276,
+    312,
+    399
+   ],
+   "shuffled_median": 178
+  },
+  {
+   "prompt": "901 + 99 =",
+   "digit": "1",
+   "matched_rank": 6,
+   "shuffled_ranks": [
+    2,
+    4,
+    4,
+    6,
+    7,
+    9,
+    9,
+    11,
+    21
+   ],
+   "shuffled_median": 7
+  },
+  {
+   "prompt": "1234 + 876 =",
+   "digit": "2",
+   "matched_rank": 12,
+   "shuffled_ranks": [
+    8,
+    8,
+    11,
+    16,
+    20,
+    20,
+    21,
+    30,
+    41
+   ],
+   "shuffled_median": 20
+  },
+  {
+   "prompt": "4055 + 3966 =",
+   "digit": "8",
+   "matched_rank": 171,
+   "shuffled_ranks": [
+    102,
+    130,
+    140,
+    169,
+    190,
+    216,
+    294,
+    344,
+    354
+   ],
+   "shuffled_median": 190
+  },
+  {
+   "prompt": "7002 + 2999 =",
+   "digit": "1",
+   "matched_rank": 2,
+   "shuffled_ranks": [
+    4,
+    4,
+    6,
+    6,
+    7,
+    9,
+    9,
+    11,
+    21
+   ],
+   "shuffled_median": 7
+  },
+  {
+   "prompt": "8641 + 1359 =",
+   "digit": "1",
+   "matched_rank": 4,
+   "shuffled_ranks": [
+    2,
+    4,
+    6,
+    6,
+    7,
+    9,
+    9,
+    11,
+    21
+   ],
+   "shuffled_median": 7
+  }
+ ],
+ "narrative_baseline": [
+  {
+   "ctx_tail": "thought it would be so much fun to",
+   "final_top1": "\u2581go",
+   "layers": [
+    {
+     "kl_to_final": 1.7103,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4716,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3916,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.6635,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.8044,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.7659,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.6894,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4802,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3558,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3431,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2757,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.0626,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.0572,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.0258,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.8273,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.5185,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.3075,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.1975,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1325,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 17
+  },
+  {
+   "ctx_tail": "countryside. She had her own farm",
+   "final_top1": "\u2581and",
+   "layers": [
+    {
+     "kl_to_final": 1.9532,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.6284,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4365,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2215,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.1071,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.996,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.1681,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2352,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3285,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.8077,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.9027,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.6263,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.7097,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2573,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3912,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.3223,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.4838,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.2409,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.0725,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 18
+  },
+  {
+   "ctx_tail": "Today he was playing with his scooter.",
+   "final_top1": "\u2581H",
+   "layers": [
+    {
+     "kl_to_final": 2.7773,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.9488,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4439,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.8215,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.9084,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.0283,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.9098,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.026,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.7049,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.8921,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.6105,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.4674,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1972,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2984,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.3072,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2271,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1327,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1433,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0667,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 11
+  },
+  {
+   "ctx_tail": "e loved to play with his toy car",
+   "final_top1": "s",
+   "layers": [
+    {
+     "kl_to_final": 0.5134,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1851,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1427,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1474,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1186,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2374,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.3754,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.7816,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.0329,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.6795,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.8115,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.2786,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.3561,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.5415,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.3635,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2043,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0551,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0348,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0086,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 0
+  },
+  {
+   "ctx_tail": "m. Every day, she fle",
+   "final_top1": "w",
+   "layers": [
+    {
+     "kl_to_final": 9.9008,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 9.7087,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 9.9571,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 10.1859,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 9.6699,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 8.1972,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 5.0693,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 4.0811,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 3.2569,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.5558,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.5447,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.7374,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.9076,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.7454,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.6846,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.565,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1966,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0588,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0002,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 6
+  },
+  {
+   "ctx_tail": "and loved to play outside in the sun",
+   "final_top1": ".",
+   "layers": [
+    {
+     "kl_to_final": 2.5483,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.9569,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.3355,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.5298,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.6295,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 3.135,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 3.1806,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.9534,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.7923,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 2.0409,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.7942,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.4705,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9173,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.5894,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2604,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1069,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0244,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0169,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0145,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 7
+  },
+  {
+   "ctx_tail": "and gave her a pink",
+   "final_top1": "\u2581doll",
+   "layers": [
+    {
+     "kl_to_final": 3.0779,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.5576,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.3927,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.3204,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.993,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.7519,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.5079,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4487,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2536,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2115,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.1341,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.8453,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.5069,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.4862,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.3167,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2712,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.2226,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1842,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0543,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 9
+  },
+  {
+   "ctx_tail": "them were selfish and wanted to dress nicely",
+   "final_top1": ".",
+   "layers": [
+    {
+     "kl_to_final": 1.9006,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.4732,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.1071,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9383,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9318,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.7261,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.6645,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9097,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.2397,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.0973,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.2033,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 1.1008,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.7496,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9843,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9874,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.9847,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.5227,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1247,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.059,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 0
+  },
+  {
+   "ctx_tail": "wanted to have fun. One day he",
+   "final_top1": "\u2581decided",
+   "layers": [
+    {
+     "kl_to_final": 4.165,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 3.8296,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 3.4422,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 3.4807,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 3.3898,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.8146,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.6171,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 2.0527,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.8507,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.4936,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.2152,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 1.0963,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.968,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.7361,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.6018,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.3119,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.1749,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.3348,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": 0.1395,
+     "top1_agrees_final": false
+    },
+    {
+     "kl_to_final": -0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 19
+  },
+  {
+   "ctx_tail": "three-years-old and loved ex",
+   "final_top1": "plo",
+   "layers": [
+    {
+     "kl_to_final": 0.0708,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0811,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0755,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0657,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0574,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0625,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0486,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0631,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0317,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0264,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0262,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0234,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.023,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0321,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0409,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1316,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.096,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.1785,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0333,
+     "top1_agrees_final": true
+    },
+    {
+     "kl_to_final": 0.0,
+     "top1_agrees_final": true
+    }
+   ],
+   "settle_layer": 0
   }
  ],
  "note": "feasibility-gate machinery run; no probes trained, no boundary criterion applied"

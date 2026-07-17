@@ -93,8 +93,14 @@ manifest `cn10_readout_smoke_raw_v11.json`. Instrument note from the smoke: the
 reference answer token must be the first *digit-bearing* piece — the leading SP
 space piece is trivially rank 1 and carries no signal; the harness conditions on
 gold tokens up to that piece so every checkpoint's lens reads the same prediction
-point. Still open before the pin: the cross-stack validation (reproduce one known
-LARQL reading on a model both stacks load) and the §4.1 probe-ladder machinery.
+point. Same-day addendum: the two §4.1 instrument-correction rows (digit-prior /
+operand-shuffle, narrative settle-depth baseline) were motivated by this smoke —
+the pre-fix space-piece reading was the seductive kind of wrong (rank 1
+everywhere, clean early settling), and the post-fix ranks turned out to track
+digit identity, not operands. Both controls are implemented in the same harness
+and their base-v11 smoke rows are in the manifest. Still open before the pin: the
+cross-stack validation (reproduce one known LARQL reading on a model both stacks
+load) and the §4.1 probe-ladder machinery.
 
 ## 4. Measurement
 
@@ -110,9 +116,31 @@ set (TO-PIN: construction; candidate = CN-9's frame-type bank):
   identity, operand *values* binned), (iii) answer features (result digits).
   Probes trained on band-B0 activations, tested held-out.
 
+**Two instrument-correction rows, adopted into the battery 2026-07-17 (smoke
+evidence below; thresholds still TO-PIN)**:
+
+- **Digit-prior row (the operand-shuffle control)**: every answer-token rank is
+  reported as its *delta from the digit prior* — the same digit's rank
+  distribution across operand-permuted prompts (computable from the full
+  ten-digit rank table per prompt; no extra forward passes). Raw rank is never
+  a headline quantity. Smoke evidence on base v11: rank is dominated by digit
+  identity, not operands — digit '1' ranks 2–21 on every prompt, '6' 104–399,
+  '8' 102–354; the matched (correct-operand) rank sits *inside* the shuffled
+  range on all 10 smoke prompts. Base v11's readout at this position is
+  consistent with pure register-statistics prior; an arm can therefore fake
+  "improved readout" by shifting its digit prior, and only the delta detects it.
+- **Narrative settle-depth baseline**: arithmetic settle depth (first layer from
+  which lens top-1 agrees with final thereafter) reads only relative to matched
+  TinyStories continuations under the same lens. Smoke evidence: the lens is NOT
+  globally late-settling — narrative positions settle heterogeneously (0–19,
+  median mid-stack) while the arithmetic digit position settles uniformly at
+  L19. The arithmetic-late observation is task-linked, not a lens artifact;
+  what it *means* stays ungraded until the criterion is pinned.
+
 **Boundary criterion — pinned before anyone looks (TO-PIN)**: candidate — the
 layer at which probe family (ii) first exceeds family (i) held-out accuracy,
-and the layer at which answer-token logit-lens rank first enters the top-K.
+and the layer at which answer-token logit-lens rank (prior-corrected, per the
+digit-prior row) first enters the top-K.
 "No boundary" verdict criteria pinned with equal precision (flat curves, no
 crossover): **an absent boundary at 115M/24M-pretrain-tokens is a scale-and-data
 null, not evidence against the read-side theory** — this is written down now so

@@ -77,6 +77,16 @@ def main():
     print(f"== CN-10 readout smoke [{tag}] on {args.device} | {n_layers} layers | "
           f"tokenizer {Path(SP_MODEL).name} ({sp.GetPieceSize()} pieces, identity OK) ==", flush=True)
 
+    def settle_depth(per_layer):
+        return next((i for i in range(n_layers)
+                     if all(pl["top1_agrees_final"] for pl in per_layer[i:])), n_layers)
+
+    digit_ids = {}
+    for d in "0123456789":
+        pid = sp.PieceToId(d)
+        assert pid != sp.unk_id(), f"digit piece '{d}' not in vocab"
+        digit_ids[d] = pid
+
     rows = []
     for a, b in SMOKE_PROBLEMS:
         prompt = f"{a} + {b} ="
@@ -98,19 +108,62 @@ def main():
             per_layer.append({"kl_to_final": round(kl, 4),
                               "top1_agrees_final": bool(int(lg.argmax()) == final_top1),
                               "ref_tok_rank": rank})
+        # digit-prior control: rank of EVERY digit piece at this position. The operand-shuffle
+        # row falls out of this table — the correct digit's rank under a permuted prompt is
+        # just its rank in that prompt's own distribution.
+        digit_ranks = {d: int((final > final[pid]).sum()) + 1 for d, pid in digit_ids.items()}
         rows.append({"prompt": prompt, "ref_next_token": sp.IdToPiece(ref_tok),
-                     "final_top1": sp.IdToPiece(final_top1), "layers": per_layer})
-        agree_from = next((i for i in range(n_layers)
-                           if all(pl["top1_agrees_final"] for pl in per_layer[i:])), n_layers)
+                     "final_top1": sp.IdToPiece(final_top1), "layers": per_layer,
+                     "digit_ranks_final": digit_ranks, "settle_layer": settle_depth(per_layer)})
         print(f"  {prompt:<14} ref '{rows[-1]['ref_next_token']}' rank@final "
-              f"{per_layer[-1]['ref_tok_rank']:>6} | top1==final from layer {agree_from:>2} | "
-              f"KL L0 {per_layer[0]['kl_to_final']:.2f} -> L{n_layers - 1} "
-              f"{per_layer[-1]['kl_to_final']:.2f}", flush=True)
+              f"{per_layer[-1]['ref_tok_rank']:>6} | top1==final from layer "
+              f"{rows[-1]['settle_layer']:>2} | KL L0 {per_layer[0]['kl_to_final']:.2f} -> "
+              f"L{n_layers - 1} {per_layer[-1]['kl_to_final']:.2f}", flush=True)
+
+    # --- operand-shuffle statistic (digit-prior vs operand-dependence) --------------------
+    print("  -- digit-prior control (matched rank vs same digit's rank in the other prompts) --",
+          flush=True)
+    shuffle_rows = []
+    for i, r in enumerate(rows):
+        d = r["ref_next_token"]
+        matched = r["digit_ranks_final"][d]
+        others = sorted(rows[j]["digit_ranks_final"][d] for j in range(len(rows)) if j != i)
+        med = others[len(others) // 2]
+        shuffle_rows.append({"prompt": r["prompt"], "digit": d, "matched_rank": matched,
+                             "shuffled_ranks": others, "shuffled_median": med})
+        print(f"  {r['prompt']:<14} '{d}': matched {matched:>4} | shuffled median {med:>4} "
+              f"(range {others[0]}-{others[-1]})", flush=True)
+
+    # --- narrative settling baseline (is late settling the lens, or the task?) ------------
+    import cn8_train
+    narr = cn8_train.tinystories_val()[:10]
+    narr_rows = []
+    for r in narr:
+        ctx = r["ids"][:24]
+        if len(r["ids"]) < 26:
+            continue
+        lens, final = layer_lens(base, torch.tensor([ctx], device=args.device))
+        logp_final = F.log_softmax(final, -1)
+        final_top1 = int(final.argmax())
+        per_layer = []
+        for lg in lens:
+            logp = F.log_softmax(lg, -1)
+            per_layer.append({"kl_to_final": round(float(F.kl_div(
+                logp_final, logp, reduction="sum", log_target=True)), 4),
+                "top1_agrees_final": bool(int(lg.argmax()) == final_top1)})
+        narr_rows.append({"ctx_tail": sp.decode(ctx[-8:]), "final_top1": sp.IdToPiece(final_top1),
+                          "layers": per_layer, "settle_layer": settle_depth(per_layer)})
+    arith_settles = sorted(r["settle_layer"] for r in rows)
+    narr_settles = sorted(r["settle_layer"] for r in narr_rows)
+    print(f"  -- settle-depth baseline: arithmetic {arith_settles} | "
+          f"narrative(TinyStories s4) {narr_settles} --", flush=True)
 
     manifest = {"tag": tag, "n_layers": n_layers, "tokenizer": SP_MODEL,
                 "tokenizer_pieces": sp.GetPieceSize(),
                 "tokenizer_sha256": hashlib.sha256(Path(SP_MODEL).read_bytes()).hexdigest(),
                 "smoke_problems": SMOKE_PROBLEMS, "rows": rows,
+                "digit_prior_control": shuffle_rows,
+                "narrative_baseline": narr_rows,
                 "note": "feasibility-gate machinery run; no probes trained, no boundary criterion applied"}
     out = HERE / f"cn10_readout_smoke_{tag}.json"
     out.write_text(json.dumps(manifest, indent=1))
