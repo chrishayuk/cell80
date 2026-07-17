@@ -119,11 +119,11 @@ length-scaling scaffold CN-8 could be blamed on (no labels, no indices, state-ba
 termination; the grammar audit proved every required production at 5–6 digits already
 occurs in training) — and the peel arm *still* scores 0.000 one digit out of range.
 
-| Arm | B0 | B1 (5-digit) | B2 | first-error at B1 |
-|---|---|---|---|---|
-| B′ peel s80 | 1.000 [0.981,1] | **0.000** [0,0.019] | TBD | peel-copy: 200/200 |
-| B′ peel s81 | TBD | TBD | TBD | TBD |
-| A-ex′ s80 (token-parity) | TBD | TBD | TBD | — |
+| Arm | B0 | B1 (5-digit) | B2 (6-digit) | first-error at B1 | col-cond-correct B0/B1/B2 |
+|---|---|---|---|---|---|
+| B′ peel s80 | 1.000 [0.981,1] | **0.000** [0,0.019] | **0.000** [0,0.019] | peel-copy 200/200 (B2: peel-copy 190, loop-count 10) | 1.00 / 0.69 / 0.36 |
+| B′ peel s81 | TBD | TBD | TBD | TBD | TBD |
+| A-ex′ s80 (token-parity) | TBD | TBD | TBD | — | — |
 
 - **P2′ (the knockout): FAILS** — B1 0.000, not ≥ 0.50. Per prereg §7.2 (no artifact
   branch exists in this registration), this is reported as a genuine result, not excused.
@@ -132,16 +132,23 @@ occurs in training) — and the peel arm *still* scores 0.000 one digit out of r
   is real but PE-fragile; this is the fragile side.)
 - **But the mechanism refines the claim rather than sinking it.** Oracle-trace NLL at B1 is
   **0.751** (vs the answer-only arms' 4.6–9.9): the correct over-length trace is *unfamiliar,
-  not impossible*. Free-running greedy, the model **collapses to a trained-length trace** —
-  it emits exactly 4 column lines for a 5-digit problem, with locally-consistent arithmetic
-  (each w = x+y+cin, carries propagate), and the first thing that breaks is rendering the
-  over-length remaining prefix (`peel-copy`, column 1, the longest-prefix column — precisely
-  the §3 registered residual, pre-graded genuine).
+  not impossible*. Free-running greedy, the model **collapses toward a trained-length trace**
+  and the **first** thing that breaks is always rendering the over-length remaining prefix
+  (`peel-copy`, column 1, the longest-prefix column — 200/200 first-errors, precisely the §3
+  registered residual, pre-graded genuine). Caveat, from the per-column number and stated so
+  it isn't over-read: the collapse is **not** a clean shorter-but-valid computation — local
+  self-consistency (fetch+table+carry+acc all holding against the model's own prior state)
+  is 1.00 in-range but **degrades to 0.69 at B1 and 0.36 at B2**. So addressing fails *first*
+  and unambiguously; downstream, the trace also degrades progressively (cascade from the
+  broken prefix, plus some genuine off-frame arithmetic breakage that the first-error metric
+  alone can't separate). The clean claim is "addressing initiates the failure," not
+  "arithmetic is untouched."
 - **Same failure as CN-8, relocated — which is the real result.** CN-8's index grammar
   subsampled the 5-digit operand into a 4-slot template and computed correctly on the
-  invented 4-digit problem (first-error: index). CN-8b's peel grammar collapses to a
-  4-column traversal and computes locally-consistent arithmetic on a mangled prefix
-  (first-error: peel-copy). Two grammars sharing no positional machinery fail at the
+  invented 4-digit problem (first-error: index). CN-8b's peel grammar collapses toward a
+  4-column traversal, first-error at the mangled over-length prefix (peel-copy), with
+  local consistency degrading downstream (col-cond 0.69/0.36). Two grammars sharing no
+  positional machinery fail at the
   identical underlying operation: **traversing/holding an operand longer than the training
   maximum.** The arithmetic *content* of the tape extrapolates in both; the *length
   addressing* of the tape does not, in either.
