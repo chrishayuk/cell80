@@ -400,14 +400,46 @@ resolution hypothesis — the ledger is *dominated* by heavily-repeated
 sub-frames at constituent scale — is not supported at the registered
 thresholds. What survives descriptively: a real but thin constituent
 ledger (56% of 4-gram mass at T≥8, exactly DIV-1's level-8), decaying
-fast with n. A fluent compiler emerged from this. Candidate
-reformulations (for the R1.1 side to weigh, not resolved here): the
-operative threshold is nearer 8 than 64; the ledger unit is smaller
-still (bigrams/typed slots); the diversity law governs
-marshalling-specific competence rather than fluency, and fluency's
-existence on thin diversity is not a counterexample to it. The atlas's
-job was to make this measurable; the numbers are now on the table with
-their registrations and receipts.
+fast with n. A fluent compiler emerged from this. Scoreboard note: the
+short-frame rescue was Chris's proposed resolution, registered at honest
+thresholds, and it missed — recorded under the same rules as every other
+miss in the programme.
+
+**Resolution adopted (Chris, same day) — the law's scope, not its
+thresholds:** of the three candidate reformulations, threshold-lowering
+and unit-shrinking are REJECTED — each retreat stays available after
+each miss, forever (the regress problem), and the day already spent its
+two registrations. The adopted reading: **the diversity law governs
+marshalling, not fluency** — and this is the law's correct original
+scope, not a retreat. The hapax finding is ordinary linguistic
+productivity wearing skeleton symbols: every LM learns fluent
+continuation from mostly-singleton sentences, because fluency is
+manifold interpolation, and the ledger's fast-decay structure
+(repetition at n=4, wasteland at n=8) is exactly the compositional
+regime that produces it — familiar short pieces, novel combinations,
+well-formed output. The law's actual evidence base was never fluency
+failures: all five walls (Rogue-1 train/test gap, KnnStore
+canonical→narrative collapse, cell80 retrieval misfires, GPT-OSS format
+brittleness, broker marshalling) are *binding* failures — a value that
+had to cross a format boundary and didn't. CN-7 already ran the
+dissociation uncontrolled: the S2 corpus at cardinality 2-per-frame
+produced perfectly fluent call-formatted text with broken operand
+binding. Fluency was cheap at diversity-2; marshalling was not. The
+overreach was stating the law about "the compiler" in general; today's
+ledger caught the overreach, not the law.
+
+**Dissociation prediction — TO REGISTER on the R1.1 side BEFORE any
+DIV-1 arm exists (wording pinned here for verbatim copy):** across the
+1/8/64/512 arms, marshalling (P-m) moves strongly with frame diversity
+while fluency (replay NLL, paraphrase slice) barely moves. Grading is
+three-way: dissociation → scoped law confirmed; fluency also improves
+materially with diversity → split law wrong; marshalling doesn't move
+either → whole law wrong. This makes the reformulation MORE falsifiable
+than the original, not less. The threshold-shopping guard applies with
+full force: the adopted reformulation gets its own registered falsifier
+before DIV-1 computes anything that could grade it, and this paragraph
+is the required disclosure that the other two candidates were considered
+and not chosen.
 
 **Pinned reading for the DIV-1 spec (to fold into the R1.1-side doc
 before the arms exist):** DIV-1's top arm is not "very diverse" on an
