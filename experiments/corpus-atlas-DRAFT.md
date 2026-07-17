@@ -366,6 +366,23 @@ length cut on whole-sentence frames. That is the one remaining live
 branch, registered separately below; if it also fails, the diversity law
 has a genuine problem at every scale.
 
+**REGISTERED PREDICTION 2 — the sub-sentential n-gram ledger (committed
+before computing; second registration after the first failed).** Unit:
+skeleton 4-grams (windows of 4 consecutive skeleton symbols within
+chunks, sentinel-excluded), measured TOKEN-WEIGHTED — the ledger
+question is not "how many distinct sub-frames exist" but "what fraction
+of the stream's sub-frame occurrences sit inside heavily-repeated
+types," because that is where equivalence-class evidence accumulates.
+Prediction (law-survives branch): coverage@64 — the fraction of 4-gram
+window occurrences whose type occurs ≥64 times — **exceeds 0.5**.
+Falsifier: coverage@64 **below 0.25** (then the model learned from
+singletons at every measured scale and the diversity law has a genuine
+problem). Between = indeterminate, disclosed as such. Secondary,
+mid-scale: 8-gram coverage@8 > 0.3 (falsifier < 0.15). Humility note:
+the first registration missed by putting the ledger at sentence scale;
+this one is the hypothesis's own named unit (constituents shared across
+hapax sentences), and if it fails there is no third branch waiting.
+
 **Pinned reading for the DIV-1 spec (to fold into the R1.1-side doc
 before the arms exist):** DIV-1's top arm is not "very diverse" on an
 abstract scale — at 512 fillers per frame it is **super-corpus**,
