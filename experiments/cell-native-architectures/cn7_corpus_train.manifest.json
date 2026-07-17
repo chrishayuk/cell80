@@ -1,0 +1,10 @@
+{
+  "file": "cn7_corpus_train.jsonl",
+  "sha256": "4e146e6de2223a771f584c5ebfe0beec05fd6c9709378849b7cfc24d4472712c",
+  "bytes": 98360277,
+  "rows": 140154,
+  "species_rows": {"s1": 90000, "s2": 25000, "s3": 9752, "s4": 15402},
+  "built": "2026-07-15",
+  "manifest_added": "2026-07-17",
+  "note": "R1 midtrain corpus (CN-7 prereg §3.2). File itself is untracked (98MB vs GitHub limits); this manifest is the provenance anchor referenced by v11-train-plan/div0/div0-findings.md. DIV-0 pinned D-B7 on this exact hash: S2 template cardinality 2/frame, 12 total."
+}
