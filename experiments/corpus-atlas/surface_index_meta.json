@@ -1,0 +1,21 @@
+{
+  "tokenizer_sha256": "4ffbfc8713db306a4b155f54c828002492527046fa567a2ef35eeb277c1dc8e6",
+  "chunk": 256,
+  "sentinel": 2147483648,
+  "phases": {
+    "1": {
+      "stream_file": "v11_stream_phase1_run1.u32",
+      "stream_sha256": "883b483c57baaaedbf6951b145b6e7c0907d85dd86ab81393882f5fef0bebbfb",
+      "symbols": 16062500,
+      "sa_file": "surface_sa_phase1.npy",
+      "sa_sha256": "a256ee46402010ff12ababfe2a6b457536684272c00f970f0dbe7e835048575d"
+    },
+    "3": {
+      "stream_file": "v11_stream_phase3_run1.u32",
+      "stream_sha256": "bd0dd555f3b29cd6aacfc0b26aa901ebbc395e73ec2daa8175a9f7791adb3efd",
+      "symbols": 8031250,
+      "sa_file": "surface_sa_phase3.npy",
+      "sa_sha256": "cb8a776a77dfddb4cb525e03280c5bbe7ba0db977e45fdc4e3d7b079d6abddc8"
+    }
+  }
+}

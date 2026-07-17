@@ -142,12 +142,30 @@ memory trail and cn1 findings). Therefore:
 
 ## 2. Level 1 — surface index
 
-Suffix automaton (or suffix array — at 24M tokens over an 8,599-symbol
-alphabet either is a few hundred MB and minutes to build) over each phase
-shard plus the merged stream. Queries: exact-substring seen?, count,
-longest-match-at-every-position (the per-token novelty profile — the
-infini-gram trick at lunch-break scale). Every hit resolves back to stream
-positions and decodes to the surrounding training text: **receipts**.
+Suffix **array** (numpy prefix-doubling), one per phase shard — a pure-
+Python suffix automaton at 24M symbols is a memory blowup for no query
+benefit. Queries: exact-substring seen?, count, longest-match-at-every-
+position (the per-token novelty profile — the infini-gram trick at
+lunch-break scale). Every hit resolves back to stream positions and
+decodes to the surrounding training text: **receipts**.
+
+Two semantics decisions, pinned: (a) **"seen" means within a 256-token
+training chunk** — the model never attended across chunk boundaries, so a
+sentinel between chunks makes straddling matches impossible; text flowing
+across a boundary in the source story was never seen as a sequence.
+(b) **Verbatim-training probes must be queried by raw token ids** — SP
+decode→encode is not identity for slices starting mid-sequence, so
+text-entry profiles undercount at mid-string starts (caveat, not defect).
+
+**BUILT (2026-07-17, `atlas_surface.py`)**: 16,062,500 + 8,031,250 symbols
+(with sentinels), ~3 min CPU, arrays untracked (~96 MB), fingerprint in
+`surface_index_meta.json` (tokenizer sha256 + stream sha256s; query path
+refuses a hash-mismatched tokenizer per §1). Smoke: verbatim in-chunk
+32/32 tokens count 1; boundary straddle capped at 16/32; novel
+interrogative probe maxes at 4 tokens ('What is ', 4 occurrences, receipts
+decode to story dialogue) — while 'Once upon a time, there was a little
+girl' matches full-length with **count 8,245**. The diagnostic axis
+(trained row ↔ novel frame) is live.
 
 ## 3. Level 2 — skeleton index
 
