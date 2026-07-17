@@ -332,6 +332,36 @@ and long sentences are combinatorially near-unique; the sharper
 calibration is length-conditioned (frames of ≤ ~8 symbols, comparable to
 DIV-1 templates) — a cheap groupby over the catalogue, queued.
 
+**REGISTERED PREDICTION — length-conditioned calibration cut (committed
+BEFORE the groupby runs; the computation is a one-liner away and this
+prediction is worthless afterward).** The 94%-hapax finding puts pressure
+on the diversity law: a fluent compiler trained overwhelmingly on
+singleton frames shouldn't exist under a naive reading of "surface
+diversity is the signal." The expected resolution: the diversity ledger
+lives at SHORT-frame granularity — hapax sentences share
+massively-repeated sub-frames, and that is where equivalence-class
+evidence accumulates. Prediction for frames of ≤8 skeleton symbols:
+hapax share **collapses below 0.5** (vs 0.94 overall), occurrence p50
+≥ 2, filler distributions turn heavy (a substantial short-frame body
+with distinct-filler counts in the tens-to-hundreds), and DIV-1's levels
+8 and 64 land INSIDE the short-frame body rather than at the 99.5th+
+percentile. Falsifier branch: short frames also mostly hapax (share
+≳ 0.8) → a fluent model trained on singletons at every scale, and the
+diversity law has a genuine problem. Disclosure: this prediction is
+informed, not blind — the already-computed head frames are visibly short
+formulae ("N said ." 7,038×); the open quantity is the hapax share
+within the short-frame class, not the existence of a repeated head.
+
+**Pinned reading for the DIV-1 spec (to fold into the R1.1-side doc
+before the arms exist):** DIV-1's top arm is not "very diverse" on an
+abstract scale — at 512 fillers per frame it is **super-corpus**,
+exceeding the pretrain's most diverse frame (303 v1 / 331 m1). Ergo: a
+knee at ≤64 sits inside the pretrain's natural range and says canonical
+competence is buyable at head-of-distribution diversity; a knee only
+near 512 says the marshalling compiler needs supervision beyond anything
+natural text provided — itself a strong claim about why the wall kept
+appearing.
+
 **CN-8 band distances** (`cn8_band_distances.json`, committed before any
 grading verdict exists): pretrain-distance is FLAT across B0/B1/B2
 (surface max-match mean 2.7 → 2.65; skeleton 1/3 constant) — as designed,
