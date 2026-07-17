@@ -1,0 +1,140 @@
+{
+ "note": "frozen CN-8 band prompts scored against the midtrain shards, committed before any grading verdict; the axis the P-m curve conditions on",
+ "bands": {
+  "B0": {
+   "n": 200,
+   "surface": {
+    "cn7_train": {
+     "surface_max_mean": 6.54,
+     "surface_max_hist": {
+      "7": 107,
+      "6": 93
+     }
+    },
+    "cn8_b": {
+     "surface_max_mean": 8.85,
+     "surface_max_hist": {
+      "8": 40,
+      "9": 124,
+      "10": 26,
+      "7": 9,
+      "11": 1
+     }
+    },
+    "cn8_atok": {
+     "surface_max_mean": 9.76,
+     "surface_max_hist": {
+      "10": 109,
+      "9": 71,
+      "11": 17,
+      "12": 3
+     }
+    },
+    "cn8_aex": {
+     "surface_max_mean": 8.85,
+     "surface_max_hist": {
+      "8": 40,
+      "9": 124,
+      "10": 26,
+      "7": 9,
+      "11": 1
+     }
+    }
+   },
+   "m1_skeleton_prefix_rows": {
+    "cn7_train": 8941,
+    "cn8_b": 51031,
+    "cn8_atok": 346962,
+    "cn8_aex": 51031
+   }
+  },
+  "B1": {
+   "n": 200,
+   "surface": {
+    "cn7_train": {
+     "surface_max_mean": 6.6,
+     "surface_max_hist": {
+      "6": 80,
+      "7": 120
+     }
+    },
+    "cn8_b": {
+     "surface_max_mean": 7.56,
+     "surface_max_hist": {
+      "8": 91,
+      "7": 99,
+      "9": 9,
+      "10": 1
+     }
+    },
+    "cn8_atok": {
+     "surface_max_mean": 8.26,
+     "surface_max_hist": {
+      "8": 147,
+      "10": 2,
+      "9": 49,
+      "7": 2
+     }
+    },
+    "cn8_aex": {
+     "surface_max_mean": 7.56,
+     "surface_max_hist": {
+      "8": 91,
+      "7": 99,
+      "9": 9,
+      "10": 1
+     }
+    }
+   },
+   "m1_skeleton_prefix_rows": {
+    "cn7_train": 8941,
+    "cn8_b": 51031,
+    "cn8_atok": 346962,
+    "cn8_aex": 51031
+   }
+  },
+  "B2": {
+   "n": 200,
+   "surface": {
+    "cn7_train": {
+     "surface_max_mean": 6.47,
+     "surface_max_hist": {
+      "6": 105,
+      "7": 95
+     }
+    },
+    "cn8_b": {
+     "surface_max_mean": 7.45,
+     "surface_max_hist": {
+      "7": 116,
+      "8": 78,
+      "9": 6
+     }
+    },
+    "cn8_atok": {
+     "surface_max_mean": 8.21,
+     "surface_max_hist": {
+      "8": 152,
+      "9": 41,
+      "10": 3,
+      "7": 4
+     }
+    },
+    "cn8_aex": {
+     "surface_max_mean": 7.45,
+     "surface_max_hist": {
+      "7": 116,
+      "8": 78,
+      "9": 6
+     }
+    }
+   },
+   "m1_skeleton_prefix_rows": {
+    "cn7_train": 8941,
+    "cn8_b": 51031,
+    "cn8_atok": 346962,
+    "cn8_aex": 51031
+   }
+  }
+ }
+}

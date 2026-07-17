@@ -474,6 +474,27 @@ requirements the conversation-side design missed:
   separately-fingerprinted shards. Without this, "disjoint from all
   training" is quietly false for every post-midtrain model.
 
+**BUILT (2026-07-17, `midtrain_shards.py`).** Four shards — cn7_train
+(140,154 rows / 7.7M symbols), cn8_b (51,031 / 6.05M), cn8_atok
+(346,962 / 6.35M), cn8_aex (51,031 / 0.93M) — row-sentinel suffix arrays,
+source sha256 verified at every load (a drifted corpus refuses like a
+drifted tokenizer). Template corpora are read at token-surface +
+metrology-M1 levels per the authority ruling; skeleton-v1 is not used
+here. `check --text` is the FS-bank admission machinery, standing ready.
+
+**CN-8 band distances on the midtrain axis**
+(`cn8_band_midtrain_distances.json`, committed before any grading verdict
+exists): the predicted two-distance signature, confirmed —
+**M1-skeleton-saturated** (all 51,031 B rows and all 346,962 A-tok rows
+share the bands' "N + N =" skeleton; identical across bands) and
+**surface-graded monotonically**: B0 → B1 → B2 max-match means
+8.85 → 7.56 → 7.45 on cn8_b, 9.76 → 8.26 → 8.21 on cn8_atok, while
+cn7_train stays flat (~6.5 — CN-7's operand distribution doesn't
+distinguish CN-8's bands). Most of the x-variance sits at the B0→B1 step
+— the same place exact collapsed 1.0 → 0.0. Refinement queued: mean
+per-position match (not just max) to spread B1/B2. The P-m curve's
+x-axis now exists, fingerprinted, pre-verdict.
+
 ## 8. DIV-0 calibration protocol (the forking-paths fix)
 
 The three distances must retrodict the known ordering of the existing

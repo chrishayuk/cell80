@@ -1,0 +1,33 @@
+{
+  "tokenizer_sha256": "4ffbfc8713db306a4b155f54c828002492527046fa567a2ef35eeb277c1dc8e6",
+  "shards": {
+    "cn7_train": {
+      "source": "/Users/christopherhay/chris-source/cell80/experiments/cell-native-architectures/cn7_corpus_train.jsonl",
+      "source_sha256": "4e146e6de2223a771f584c5ebfe0beec05fd6c9709378849b7cfc24d4472712c",
+      "rows": 140154,
+      "symbols": 7687482,
+      "sa_sha256": "99c0bf2407264e1428d6add8a52ed2b6f51315c343178e81e9cd80039275c422"
+    },
+    "cn8_b": {
+      "source": "/Users/christopherhay/chris-source/cell80/experiments/cell-native-architectures/cn8_corpus_b.jsonl",
+      "source_sha256": "f582eb612468ee591c02df8a0c475a253a38e0397fc71c34b1c847494873a8d9",
+      "rows": 51031,
+      "symbols": 6051035,
+      "sa_sha256": "2bac9c30a3b5b48fc898a8d5c3ef40684b3f0710c7e94c111bf51c28b761c4d5"
+    },
+    "cn8_atok": {
+      "source": "/Users/christopherhay/chris-source/cell80/experiments/cell-native-architectures/cn8_corpus_atok.jsonl",
+      "source_sha256": "6d1401f6d4e161e3401eb482a1bb78ed1723b24513a663b6c8a9505339a36206",
+      "rows": 346962,
+      "symbols": 6346971,
+      "sa_sha256": "5d1256a8a444d89bd456649424da55ce65143bef82873059ea2953a055fc6ea8"
+    },
+    "cn8_aex": {
+      "source": "/Users/christopherhay/chris-source/cell80/experiments/cell-native-architectures/cn8_corpus_aex.jsonl",
+      "source_sha256": "a7a52b74b0f836a4170fdb77ce4888f1b776808f822de858eb60aac4b604bef2",
+      "rows": 51031,
+      "symbols": 933531,
+      "sa_sha256": "858eba885e4f87a2508506ec2362da9f2716757a6294a474e2ca7361fea0f1e5"
+    }
+  }
+}
