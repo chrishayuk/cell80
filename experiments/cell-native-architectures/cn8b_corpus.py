@@ -28,6 +28,18 @@ SP_MODEL = "/Users/christopherhay/chris-source/chris-experiments/compilation/15_
 ATOK_TOKENS = 6_000_000
 
 
+def enc_ids(sp, text: str) -> list[int]:
+    """Canonical text->ids: encode each space-delimited word independently, so segmentation
+    can never depend on surrounding context (CN-7 §8.1 family; the grammar audit caught a
+    context-flipped ' w8' segmentation pre-training). Single canonical path shared by the
+    corpus builder, eval prompts, and TF-NLL."""
+    ids = []
+    for w in text.split(" "):
+        if w:
+            ids.extend(sp.encode(" " + w))
+    return ids
+
+
 # ---- generator route (Python int arithmetic) -------------------------------------------
 
 def peel_text(a: int, b: int) -> str:
@@ -131,7 +143,7 @@ def main():
         rows = []
         for a, b in probs:
             text = peel_text(a, b) if kind == "peel" else answer_text(a, b)
-            ids = sp.encode(text)
+            ids = enc_ids(sp, text)
             assert len(ids) <= 250, (a, b, len(ids))
             rows.append({"text": text, "ids": ids, "loss": [1] * len(ids), "meta": {"a": a, "b": b}})
         return rows
@@ -147,7 +159,7 @@ def main():
         arng.shuffle(order)
         for a, b in order:
             text = answer_text(a, b)
-            ids = sp.encode(text)
+            ids = enc_ids(sp, text)
             rows_aex.append({"text": text, "ids": ids, "loss": [1] * len(ids), "meta": {"a": a, "b": b}})
             tok += len(ids)
             if tok >= ATOK_TOKENS:
@@ -188,7 +200,7 @@ def main():
     for band, probs in evalsets.items():
         for a, b in probs:
             t = peel_text(a, b)
-            novel["pieces"] |= set(sp.encode(t)) - train_pieces
+            novel["pieces"] |= set(enc_ids(sp, t)) - train_pieces
             t3, pl, bd, nc = productions(t)
             novel["triples"] |= t3 - tr_triples
             novel["preflens"] |= pl - tr_preflens
@@ -210,7 +222,7 @@ def main():
     stats = {
         "b": {"rows": len(rows_b), "tokens": b_tokens},
         "aex": {"rows": len(rows_aex), "tokens": tok,
-                "epochs": round(tok / sum(len(sp.encode(answer_text(a, b))) for a, b in problems), 2)},
+                "epochs": round(tok / sum(len(enc_ids(sp, answer_text(a, b))) for a, b in problems), 2)},
         "_audit": {"two_route": "PASS", "cell_signed_instances": n_signed, "range": "PASS",
                    "identity": "PASS",
                    "grammar": {"novel_pieces": 0, "novel_triples": 0, "novel_bounds": 0,

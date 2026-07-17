@@ -163,7 +163,22 @@ P2′ fail ──► genuine hit to the tape claim (incl. the §3 residual readi
              NO artifact branch exists in this registration
 ```
 
-## 7. Commitments
+## 7. Amendments (pre-training)
+
+**A1 (2026-07-17, before any training; triggered by the §4.5 gate).** The
+grammar audit's first run FAILED: one B2 oracle trace required SP piece
+58 (bare `w`) — SentencePiece segmentation is context-dependent, and a
+neighboring-character difference flips ` w8` from `['▁w','8']` to
+`['▁','w','8']`, a sequence the training corpus never contains (the CN-7
+§8.1 "two encodings of the same text" family, caught at the gate this
+time). Fix, per the spine's "fix pipeline, do not train": a **canonical
+per-word encoder** (`enc_ids` — each space-delimited word encoded
+independently), used identically by the corpus builder, eval prompts,
+generation stop detection, and TF-NLL. Segmentation is now
+context-free by construction. No threshold moves; cn8b_eval carries its
+own generate/tf_nll rather than modifying CN-8's frozen instrument.
+
+## 8. Commitments
 
 1. Freeze-before-data: this document commits before any CN-8b row exists.
 2. The §3 residual's grading (genuine-not-artifact) cannot be revisited

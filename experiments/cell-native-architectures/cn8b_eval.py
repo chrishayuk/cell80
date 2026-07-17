@@ -16,12 +16,51 @@ import time
 from pathlib import Path
 
 import torch
+import torch.nn.functional as F
 
 import cn1_model
-from cn8b_corpus import peel_text, SP_MODEL
-from cn8_eval import wilson, carries, generate, tf_nll, grade_answer
+from cn8b_corpus import peel_text, enc_ids, SP_MODEL
+from cn8_eval import wilson, carries, grade_answer
 
 HERE = Path(__file__).resolve().parent
+MAX_SEQ = 256
+
+
+@torch.no_grad()
+def generate(model, sp, prompts, device, bs=32):
+    """cn8_eval.generate with the canonical per-word encoder (prereg amendment A1)."""
+    dot_id = enc_ids(sp, ".")[-1]
+    outs = []
+    for i in range(0, len(prompts), bs):
+        chunk = prompts[i:i + bs]
+        enc = [enc_ids(sp, p) for p in chunk]
+        plen = len(enc[0])
+        assert all(len(e) == plen for e in enc), "band prompts must be equal length"
+        ids = torch.tensor(enc, device=device)
+        finished = torch.zeros(len(chunk), dtype=torch.bool, device=device)
+        while ids.shape[1] < MAX_SEQ and not bool(finished.all()):
+            nxt = model(ids)[:, -1].argmax(-1)
+            nxt = torch.where(finished, torch.full_like(nxt, dot_id), nxt)
+            ids = torch.cat([ids, nxt[:, None]], 1)
+            finished |= nxt == dot_id
+        fin = finished.tolist()
+        for k in range(len(chunk)):
+            gen_ids = ids[k, plen:].tolist()
+            if dot_id in gen_ids:
+                gen_ids = gen_ids[:gen_ids.index(dot_id) + 1]
+            outs.append((sp.decode(gen_ids), not fin[k]))
+    return outs
+
+
+@torch.no_grad()
+def tf_nll(model, sp, prompt, cont, device):
+    p = enc_ids(sp, prompt)
+    f = p + enc_ids(sp, cont)
+    x = torch.tensor([f], device=device)
+    lg = model(x)[0]
+    k, n = len(p), len(f) - len(p)
+    tgt = x[0, k:k + n]
+    return float(F.cross_entropy(lg[k - 1:k - 1 + n], tgt, reduction="mean"))
 
 COL_RE = re.compile(r"^([0-9]+|-) ([0-9]+|-) (\d)\+(\d)\+(\d)=(\d{1,2}) w(\d) c(\d) a#(\d+)$")
 
@@ -148,10 +187,10 @@ def main():
         nlls = []
         for a, b in probs[:args.tf_n]:
             if args.format == "answer":
-                nlls.append(tf_nll(base, sp, f"{a} + {b} =", f" {a + b} .", device))
+                nlls.append(tf_nll(base, sp, f"{a} + {b} =", f"{a + b} .", device))
             else:
                 full = peel_text(a, b)
-                nlls.append(tf_nll(base, sp, f"{a} + {b} =", full[len(f"{a} + {b} ="):], device))
+                nlls.append(tf_nll(base, sp, f"{a} + {b} =", full[len(f"{a} + {b} = "):], device))
         row["tf_nll"] = round(sum(nlls) / len(nlls), 4)
         out["bands"][band] = row
         print(f"  {band}: exact {row['exact'][0]:.3f} [{row['exact'][1]:.3f},{row['exact'][2]:.3f}] "

@@ -1,0 +1,31 @@
+{
+ "b": {
+  "rows": 51031,
+  "tokens": 4981759
+ },
+ "aex": {
+  "rows": 346950,
+  "tokens": 6000015,
+  "epochs": 6.8
+ },
+ "_audit": {
+  "two_route": "PASS",
+  "cell_signed_instances": 51031,
+  "range": "PASS",
+  "identity": "PASS",
+  "grammar": {
+   "novel_pieces": 0,
+   "novel_triples": 0,
+   "novel_bounds": 0,
+   "residual_preflens": [
+    4,
+    5
+   ],
+   "residual_loops": [
+    5,
+    6
+   ],
+   "verdict": "PASS \u2014 nothing beyond the registered residual"
+  }
+ }
+}
