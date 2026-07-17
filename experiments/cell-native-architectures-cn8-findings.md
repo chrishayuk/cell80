@@ -114,13 +114,58 @@ scaffolding.
 
 ## 6. CN-8b readout (peel grammar)
 
-TBD — chain launched 2026-07-17 (B′ s80/s81 on the identical problem multiset, ~5.0M
-tokens each; A-ex′ s80 at 6.0M-token parity via repetition; A-tok arms inherited as
-measured per prereg §2). The registered stakes, restated so hindsight can't soften them:
-CN-8b has **no artifact branch**. If B′ extrapolates (B1 ≥ 0.50 both seeds, CIs disjoint
-from every A arm), the knockout stands. If B′ fails — including via the named peel-copy
-residual — the tape claim takes a genuine hit: the state-carry of the written algorithm
-failed to extrapolate one digit.
+**The registered knockout FAILED, and the failure is the finding.** CN-8b removed every
+length-scaling scaffold CN-8 could be blamed on (no labels, no indices, state-based
+termination; the grammar audit proved every required production at 5–6 digits already
+occurs in training) — and the peel arm *still* scores 0.000 one digit out of range.
+
+| Arm | B0 | B1 (5-digit) | B2 | first-error at B1 |
+|---|---|---|---|---|
+| B′ peel s80 | 1.000 [0.981,1] | **0.000** [0,0.019] | TBD | peel-copy: 200/200 |
+| B′ peel s81 | TBD | TBD | TBD | TBD |
+| A-ex′ s80 (token-parity) | TBD | TBD | TBD | — |
+
+- **P2′ (the knockout): FAILS** — B1 0.000, not ≥ 0.50. Per prereg §7.2 (no artifact
+  branch exists in this registration), this is reported as a genuine result, not excused.
+  The naive claim "a scratchpad rescues length extrapolation" is **falsified at 115M under
+  RoPE**. (Consistent with Zhou et al.'s "…But Not Robustly": scratchpad length-generalization
+  is real but PE-fragile; this is the fragile side.)
+- **But the mechanism refines the claim rather than sinking it.** Oracle-trace NLL at B1 is
+  **0.751** (vs the answer-only arms' 4.6–9.9): the correct over-length trace is *unfamiliar,
+  not impossible*. Free-running greedy, the model **collapses to a trained-length trace** —
+  it emits exactly 4 column lines for a 5-digit problem, with locally-consistent arithmetic
+  (each w = x+y+cin, carries propagate), and the first thing that breaks is rendering the
+  over-length remaining prefix (`peel-copy`, column 1, the longest-prefix column — precisely
+  the §3 registered residual, pre-graded genuine).
+- **Same failure as CN-8, relocated — which is the real result.** CN-8's index grammar
+  subsampled the 5-digit operand into a 4-slot template and computed correctly on the
+  invented 4-digit problem (first-error: index). CN-8b's peel grammar collapses to a
+  4-column traversal and computes locally-consistent arithmetic on a mangled prefix
+  (first-error: peel-copy). Two grammars sharing no positional machinery fail at the
+  identical underlying operation: **traversing/holding an operand longer than the training
+  maximum.** The arithmetic *content* of the tape extrapolates in both; the *length
+  addressing* of the tape does not, in either.
+
+### 6.1 What this does to the thesis (sharpens, does not rescue)
+
+The pre-experiment framing was "the tape is where math happens." CN-8 forces a more
+precise statement: a self-generated tape carries the algorithm's **content** (single-digit
+facts, carry logic — and that content demonstrably extrapolates: CN-8 logged 1,600/1,600
+correct out-of-range columns; CN-8b keeps per-column arithmetic locally consistent even on
+mis-lengthed traces), **but addressing the tape — knowing it has five positions, not four,
+and stepping through them — is a network capability that itself does not extrapolate at
+this scale and PE.** A model's own scratchpad therefore inherits the network's positional
+ceiling. A *cell* does not: it reads the actual n-digit operand and returns a verified
+answer at any length. So the delegation argument comes out **stronger and more specific**:
+the weakness of the unverified tape is not only that a sampled carry can be wrong
+(CN-2's 1.6%) — it is that the tape cannot even be *laid out* past the length the network
+was trained to traverse. The verified external tape has no such limit. "Where math happens"
+splits cleanly: content can live on a self-tape; **length/position cannot, and that is
+exactly what cells supply.**
+
+Headline held pending B′ s81 (seed rule §8.15) and the B2 band; A-ex′ closes P1′/P3′.
+Nothing above is graded on one seed — but the s80 mechanism is unambiguous and the two
+independent grammars agreeing on the failure locus is itself a two-route result.
 
 ## 7. Chronology (protected, per the R1 writeup directive)
 
