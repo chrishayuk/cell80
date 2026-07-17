@@ -401,9 +401,11 @@ sub-frames at constituent scale — is not supported at the registered
 thresholds. What survives descriptively: a real but thin constituent
 ledger (56% of 4-gram mass at T≥8, exactly DIV-1's level-8), decaying
 fast with n. A fluent compiler emerged from this. Scoreboard note: the
-short-frame rescue was Chris's proposed resolution, registered at honest
-thresholds, and it missed — recorded under the same rules as every other
-miss in the programme.
+short-frame rescue was Chris's proposed resolution — proposed chat-side,
+relayed by the session into the registration — registered at honest
+thresholds, and it missed; recorded under the same rules as every other
+miss in the programme, credited to its originator, not to the session
+that ran it.
 
 **Resolution adopted (Chris, same day) — the law's scope, not its
 thresholds:** of the three candidate reformulations, threshold-lowering
