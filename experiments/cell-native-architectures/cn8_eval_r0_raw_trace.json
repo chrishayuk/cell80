@@ -1,0 +1,81 @@
+{
+ "ckpt": "raw_v11",
+ "format": "trace",
+ "bands": {
+  "B0": {
+   "n": 200,
+   "exact": [
+    0.0,
+    0,
+    0.0188
+   ],
+   "exact_k": 0,
+   "truncated": 19,
+   "first_error": {
+    "index": 200
+   },
+   "by_carries": {
+    "0": "0/14",
+    "1": "0/48",
+    "2": "0/70",
+    "3": "0/56",
+    "4": "0/12"
+   },
+   "index_ok": 0.0,
+   "col_cond_correct": null,
+   "col_n": 0,
+   "tf_nll": 9.9652
+  },
+  "B1": {
+   "n": 200,
+   "exact": [
+    0.0,
+    0,
+    0.0188
+   ],
+   "exact_k": 0,
+   "truncated": 20,
+   "first_error": {
+    "index": 200
+   },
+   "by_carries": {
+    "0": "0/9",
+    "1": "0/23",
+    "2": "0/66",
+    "3": "0/60",
+    "4": "0/35",
+    "5": "0/7"
+   },
+   "index_ok": 0.0,
+   "col_cond_correct": null,
+   "col_n": 0,
+   "tf_nll": 9.8399
+  },
+  "B2": {
+   "n": 200,
+   "exact": [
+    0.0,
+    0,
+    0.0188
+   ],
+   "exact_k": 0,
+   "truncated": 41,
+   "first_error": {
+    "index": 200
+   },
+   "by_carries": {
+    "0": "0/6",
+    "1": "0/18",
+    "2": "0/36",
+    "3": "0/58",
+    "4": "0/56",
+    "5": "0/25",
+    "6": "0/1"
+   },
+   "index_ok": 0.0,
+   "col_cond_correct": null,
+   "col_n": 0,
+   "tf_nll": 9.5156
+  }
+ }
+}

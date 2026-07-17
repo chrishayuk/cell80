@@ -30,7 +30,7 @@ identical across every arm).
 | A-tok s81 | 0.965 | 0.000 | 0.000 | — |
 | A-ex s80 (identical 51k problems, 0.88M tok) | **0.425 — SANITY GATE FAIL** | 0.000 | 0.000 | — |
 | R0 raw v11, answer format | 0.000 | 0.000 | 0.000 | format/truncation (never saw the format; gold-answer NLL ~6 flat — no cliff, no competence) |
-| R0 raw v11, trace format | TBD | TBD | TBD | TBD |
+| R0 raw v11, trace format | 0.000 | 0.000 | 0.000 | index (oracle-trace NLL flat 9.5–10.0 all bands — the format is pure midtrain knowledge; the trained arms' 0.00 in-range NLL and 0.95–2.45 OOD sit far below this floor) |
 
 Teacher-forced NLL (secondary, the P6 dissociation): the A arms show the C3 cliff
 signature on gold answers — 0.011 → 6.06 → 9.91 nats (s80), 0.013 → 4.64 → 8.61 (s81),
