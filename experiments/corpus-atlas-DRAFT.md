@@ -383,6 +383,32 @@ the first registration missed by putting the ledger at sentence scale;
 this one is the hypothesis's own named unit (constituents shared across
 hapax sentences), and if it fails there is no third branch waiting.
 
+**OUTCOME (same day, `ngram_ledger.json`): primary INDETERMINATE,
+secondary FALSIFIED.** 4-gram coverage@64 = **0.3306** — inside the
+disclosed indeterminate band (0.25–0.5). 8-gram coverage@8 = **0.0909**
+— below the 0.15 falsifier line. Full curve (committed as data, not
+reselection): 4-grams: 18.1M windows, 5.7M types, type-hapax 0.736,
+coverage@8 = 0.559, @64 = 0.331, @512 = 0.154; 8-grams: 14.7M types,
+type-hapax 0.936, coverage@8 = 0.091. The structure is a fast decay of
+repetition mass with scale: majority-repeated at (n=4, T≥8), a third at
+(n=4, T≥64), near-nothing by clause scale, wasteland at sentence scale.
+Registered-prediction record for the day: registration 1 failed;
+registration 2 primary indeterminate, secondary falsified.
+
+**What the atlas hands the theory side:** the strong form of the
+resolution hypothesis — the ledger is *dominated* by heavily-repeated
+sub-frames at constituent scale — is not supported at the registered
+thresholds. What survives descriptively: a real but thin constituent
+ledger (56% of 4-gram mass at T≥8, exactly DIV-1's level-8), decaying
+fast with n. A fluent compiler emerged from this. Candidate
+reformulations (for the R1.1 side to weigh, not resolved here): the
+operative threshold is nearer 8 than 64; the ledger unit is smaller
+still (bigrams/typed slots); the diversity law governs
+marshalling-specific competence rather than fluency, and fluency's
+existence on thin diversity is not a counterexample to it. The atlas's
+job was to make this measurable; the numbers are now on the table with
+their registrations and receipts.
+
 **Pinned reading for the DIV-1 spec (to fold into the R1.1-side doc
 before the arms exist):** DIV-1's top arm is not "very diverse" on an
 abstract scale — at 512 fillers per frame it is **super-corpus**,
