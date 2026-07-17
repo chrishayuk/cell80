@@ -1,0 +1,29 @@
+{
+  "skeleton_version": "v1",
+  "tokenizer_sha256": "4ffbfc8713db306a4b155f54c828002492527046fa567a2ef35eeb277c1dc8e6",
+  "spacy": "3.8.14",
+  "spacy_model": "core_web_sm-3.8.0",
+  "vocab_size": 18456,
+  "symbols": {
+    "D": 0,
+    "N": 1,
+    "first_word": 2
+  },
+  "ent_n": [
+    "FAC",
+    "GPE",
+    "LOC",
+    "ORG",
+    "PERSON"
+  ],
+  "phases": {
+    "1": {
+      "stream_sha256": "e656132a5155f0c10798109ffc46a0ad76167da9abdf7827c5be3f1c9e9f3e0d",
+      "sa_sha256": "b0ef8890e2fa4fe3b4f8c26cbfcebd39c056d0be4482b7c1026675b5f4d86c15"
+    },
+    "3": {
+      "stream_sha256": "946c401449fa1af29ff94f5bb294893b27b8a826266a4e3c9c14fc3e5765f40d",
+      "sa_sha256": "e0ccb7cae730db01346e725466e5d7c73de6641ea4f9aecaf6df2dd1ffacc9fe"
+    }
+  }
+}

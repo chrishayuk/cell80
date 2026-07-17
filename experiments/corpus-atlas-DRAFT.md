@@ -189,11 +189,37 @@ girl' matches full-length with **count 8,245**. The diagnostic axis
 ## 3. Level 2 — skeleton index
 
 The identical index over a normalized copy. Normalization happens in **text
-space** then re-encodes through the pinned tokenizer:
+space**; the index is built over **word-level vocabulary ids** — a disclosed
+amendment to this draft's original "re-encode through the pinned tokenizer":
+any textual D/N marker either collides with real corpus text or encodes to
+unk through the SP model (collapsing the D/N distinction), and word-level
+ids are the natural space for frames ("N gave N D apples" = 5 symbols) and
+for the catalogue harvest.
 
-- digits → `D`, proper names → `N` (spaCy NER + PROPN over the decoded
-  stream; children's English, minutes of compute);
-- a POS/dependency-tagged rendering as a parallel shard.
+**skeleton-v1, pinned** (`atlas_skeleton.py`): spaCy en_core_web_sm tokens
+(tok2vec+tagger+attribute_ruler+ner; parser excluded); any digit-bearing
+token → `D`; PROPN or PERSON/GPE/LOC/ORG/FAC entity → `N` with contiguous
+runs collapsed (a multi-word name is one referent); all else lowercased
+word → vocab id. Chunk text is reconstructed from ORIGINAL pieces
+('▁'→space, control ids zero-width, byte-fallback runs decoded together as
+UTF-8) — never decode→re-encode. Probe-time OOV words map to a
+never-matching symbol: an unseen word is automatically a novelty frontier.
+A POS/dep-tagged rendering as a parallel shard stays open for a later
+skeleton version.
+
+**BUILT + ALIGNMENT GATE PASSED (2026-07-17)**: 12,297,160 + 6,154,160
+skeleton symbols, vocab 18,456 words; ~35 min in the pinned venv
+(`skeleton-requirements.txt` — system spaCy is binary-broken and the
+system python is owned by live training chains). Smoke: verbatim slice
+20/20 count 1 with receipt resolving to the source chunk; sentinel
+straddle capped 8/16; **alignment round-trip 100.0% of 500 random
+positions**; two-distance demo — "One day, a little girl named Zorblax
+found 7 shiny pebbles." scores surface max 6 vs skeleton max 9
+(`one day , a little girl named N found`, count 43, receipt: "One day, a
+little girl named Sue found Tim hiding."). The two-distance axis
+(surface-novel / skeleton-familiar = fresh instance of a known frame) is
+live with receipts on both routes; `atlas_skeleton.py score --text` is
+the spec-§5 scorer.
 - **Alignment requirement (in v1, not discovered mid-build)**: per-token
   novelty profiles live in SP-piece space, normalization decisions live in
   spaCy-token space — maintain char-offset alignment between the two

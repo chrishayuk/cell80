@@ -1,0 +1,13 @@
+# venv for the skeleton pipeline (atlas_skeleton.py) — the system python's
+# spaCy is binary-broken against its numpy, and the system python is owned
+# by live training chains; do not touch it.
+#
+#   python3 -m venv .venv-skeleton
+#   .venv-skeleton/bin/pip install -r skeleton-requirements.txt
+#   .venv-skeleton/bin/python -m spacy download en_core_web_sm
+#
+# First build 2026-07-17: spacy 3.8.14, numpy 2.5.1, en_core_web_sm 3.8.0.
+spacy>=3.8
+click        # spacy download needs it; not pulled in transitively
+numpy
+sentencepiece
