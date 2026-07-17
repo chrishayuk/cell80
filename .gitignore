@@ -30,9 +30,22 @@ z80-tests/zex/*.cim
 # video/production scripts (not part of the shipped project)
 /docs/scripts/
 
-# logs and stuff
-*.log
-*.pt
-*.pth
-*.venv*/
-*.npy
+# Experiment run products. Scripts put disposable data below their local
+# artifacts/ directory; removing those directories resets all generated state.
+/experiments/**/artifacts/
+
+# Legacy experiment outputs, kept ignored while older local runs are migrated.
+/experiments/**/*.log
+/experiments/**/*.pt
+/experiments/**/*.pth
+/experiments/**/*.npy
+/experiments/**/*.u32
+/experiments/**/.venv*/
+
+# Legacy locations for generated datasets/build products. Current scripts write
+# these below artifacts/, but keep stale invocations from re-adding large blobs.
+/experiments/cell-native-architectures/cn*_corpus_*.jsonl
+/experiments/cell-native-architectures/cn1_synth_fingerprints.jsonl
+/experiments/cell-native-architectures/v11-cells.vocab.bin
+/experiments/corpus-atlas/harvest_catalogue_*.jsonl
+/experiments/corpus-atlas/skeleton_vocab.json

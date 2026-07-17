@@ -27,6 +27,7 @@ from pathlib import Path
 
 from cn1_corpus import Oracle, describe
 from cn7_corpus import CALL_ID, CLOSE_ID, CELL_FIRST_ID, Enc, tier_a_instance
+from artifact_paths import dataset_input
 
 HERE = Path(__file__).resolve().parent
 
@@ -117,7 +118,7 @@ def main():
     desc_to_cell = {describe(n, r["pack"]): n for n, r in lib.items()}
     enc = Enc(cell_ids)
 
-    rows = [json.loads(l) for l in (HERE / "cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     need = sorted({"add_sat", "sub_sat", "mul_sat", "safe_mod", "is_lt", "is_even", "min3"}
                   | {n for n in lib if lib[n]["arity"] >= 1 and n not in held})
     oracle = Oracle(need)

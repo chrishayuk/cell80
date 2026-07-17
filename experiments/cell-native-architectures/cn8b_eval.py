@@ -21,6 +21,7 @@ import torch.nn.functional as F
 import cn1_model
 from cn8b_corpus import peel_text, enc_ids, SP_MODEL
 from cn8_eval import wilson, carries, grade_answer
+from artifact_paths import checkpoint_input
 
 HERE = Path(__file__).resolve().parent
 MAX_SEQ = 256
@@ -150,7 +151,7 @@ def main():
     from tiny_model_v11.loader import load_from_artifacts
     base, _ = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
     if args.ckpt:
-        ck = torch.load(HERE / args.ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
         base.load_state_dict(ck["state"])
     base = base.to(device).eval()
 

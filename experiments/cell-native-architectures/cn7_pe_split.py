@@ -20,6 +20,8 @@ import re
 import time
 from pathlib import Path
 
+from artifact_paths import checkpoint_input, dataset_input
+
 import torch
 import torch.nn.functional as F
 
@@ -80,7 +82,7 @@ def main():
     import sentencepiece as spm
     sp = spm.SentencePieceProcessor(model_file=SP_MODEL)
 
-    rows = [json.loads(l) for l in (HERE / "cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     val = [r for r in rows if r["species"] == "s4"][-500:]
 
     from tiny_model_v11.loader import load_from_artifacts
@@ -88,7 +90,7 @@ def main():
     for tag in ("raw", "mid"):
         base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
         if tag == "mid":
-            ck = torch.load(HERE / args.ckpt, map_location="cpu")
+            ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
             resize_embedding(base, ck["vocab"])
             base.load_state_dict(ck["state"])
             vocab = ck["vocab"]

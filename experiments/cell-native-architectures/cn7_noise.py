@@ -25,6 +25,8 @@ import random
 import time
 from pathlib import Path
 
+from artifact_paths import checkpoint_input, dataset_input
+
 import torch
 import torch.nn.functional as F
 
@@ -99,13 +101,13 @@ def main():
     r2, _ = role_rows_s2(rng, oracle, enc, 100)
     r3, _ = role_rows_s3(rng, oracle, enc, lib, train_cells, 1)
     rows = r1 + r2 + r3
-    corpus = [json.loads(l) for l in (HERE / "cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    corpus = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     val = [r for r in corpus if r["species"] == "s4"][-100:]
     print(f"  probe rows {len(rows)} | val rows {len(val)}", flush=True)
 
     from tiny_model_v11.loader import load_from_artifacts
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
-    ck = torch.load(HERE / args.ckpt, map_location="cpu")
+    ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
     resize_embedding(base, ck["vocab"])
     base.load_state_dict(ck["state"])
     clean = {k: v.clone() for k, v in base.state_dict().items()}

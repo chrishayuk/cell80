@@ -1,13 +1,16 @@
 #!/bin/sh
 # CN-8 training chain (prereg §3.4/§3.5): five arms, sequential on MPS.
 cd "$(dirname "$0")" || exit 1
+artifact_root="${CELL80_CELL_NATIVE_ARTIFACT_ROOT:-${CELL80_ARTIFACT_ROOT:-artifacts}}"
+log_dir="$artifact_root/logs"
+mkdir -p "$log_dir"
 
 run() {
   tag="$1"; corpus="$2"; seed="$3"; tokens="$4"
   echo "=== launching $tag ($(date)) ==="
   python3 cn8_train.py --corpus "$corpus" --tag "$tag" --seed "$seed" --tokens "$tokens" \
-    > "cn8_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
-  tail -2 "cn8_train_$tag.log"
+    > "$log_dir/cn8_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
+  tail -2 "$log_dir/cn8_train_$tag.log"
 }
 
 run b_s80    cn8_corpus_b.jsonl    80 6000000

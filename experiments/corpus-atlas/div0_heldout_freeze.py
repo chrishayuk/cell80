@@ -30,7 +30,10 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-CORPUS = HERE.parent / "cell-native-architectures" / "cn7_corpus_train.jsonl"
+CN_DIR = HERE.parent / "cell-native-architectures"
+CORPUS = CN_DIR / "artifacts" / "datasets" / "cn7_corpus_train.jsonl"
+if not CORPUS.exists():
+    CORPUS = CN_DIR / "cn7_corpus_train.jsonl"
 SEED = 91
 
 DEV_PROBES = [  # DIV-0 results.json probes — excluded from class 1

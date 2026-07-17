@@ -25,6 +25,7 @@ from pathlib import Path
 import torch
 
 import cn1_model_hf
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 
@@ -44,7 +45,7 @@ def main():
     cell_ids = sorted(id_to_name)
 
     m, tok, names, held, cfi, base_rows = cn1_model_hf.build_hf("fingerprint")
-    ck = torch.load(HERE / "cn1_ckpt_hf_fingerprint_s80.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input("cn1_ckpt_hf_fingerprint_s80.pt"), map_location="cpu")
     with torch.no_grad():
         m.base.get_input_embeddings().weight.copy_(ck["embed"])
     m.w_f.load_state_dict(ck["w_f"])
@@ -53,7 +54,7 @@ def main():
     m.eval()
     cell_ids_t = torch.tensor(cell_ids)
 
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     heldout = [r for r in ev if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp"][:200]
 
     rng = __import__("random").Random(0)

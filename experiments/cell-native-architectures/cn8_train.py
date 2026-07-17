@@ -20,6 +20,7 @@ import torch
 import torch.nn.functional as F
 
 import cn1_model
+from artifact_paths import checkpoint_output, dataset_input
 
 HERE = Path(__file__).resolve().parent
 PAD_ID = 0
@@ -50,7 +51,7 @@ def val_nll(model, val, device, bs=16):
 
 
 def tinystories_val():
-    rows = [json.loads(l) for l in (HERE / "cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     s4_idx = [i for i, r in enumerate(rows) if r["species"] == "s4"]
     val = [rows[i] for i in s4_idx[-500:]]
     assert all(i < SP_VOCAB for r in val for i in r["ids"]), "s4 val slice must be pure SP text"
@@ -75,7 +76,7 @@ def main():
     torch.manual_seed(args.seed)
     t0 = time.time()
 
-    ckpt_path = HERE / (f"cn8_ckpt_{args.tag}" + ("_smoke" if args.smoke else "") + ".pt")
+    ckpt_path = checkpoint_output(f"cn8_ckpt_{args.tag}" + ("_smoke" if args.smoke else "") + ".pt")
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
                          f"checkpoint is never overwritten. Rename or move it first.")
@@ -87,7 +88,7 @@ def main():
     print(f"== CN-8 train [{args.tag}] on {device} | corpus {args.corpus} | "
           f"trainable {sum(p.numel() for p in trainable):,} ==", flush=True)
 
-    train = [json.loads(l) for l in (HERE / args.corpus).read_text().splitlines() if l.strip()]
+    train = [json.loads(l) for l in dataset_input(args.corpus).read_text().splitlines() if l.strip()]
     if args.smoke:
         train = train[:400]
     val = tinystories_val()

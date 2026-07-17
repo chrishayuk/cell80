@@ -27,6 +27,7 @@ import torch
 import cn1_model
 from cn1_model import resize_embedding
 from cn7_corpus import SP_MODEL, CELL_FIRST_ID
+from artifact_paths import checkpoint_input, checkpoint_output, dataset_input
 
 HERE = Path(__file__).resolve().parent
 GEN_TOKENS = 60
@@ -49,7 +50,7 @@ DECK = [
 
 def decode_mask(vocab):
     """train_mask ∪ corpus ids ∪ appended tokens, cached."""
-    cache = HERE / "cn7_decode_mask.pt"
+    cache = checkpoint_output("cn7_decode_mask.pt")
     if cache.exists():
         m = torch.load(cache, map_location="cpu")
         if m.shape[0] == vocab:
@@ -60,7 +61,7 @@ def decode_mask(vocab):
     m[:tm.shape[0]] = tm
     m[71261:] = True  # <call>, </call>, cell tokens — all touched by the midtrain corpus
     seen = set()
-    for line in (HERE / "cn7_corpus_train.jsonl").open():
+    for line in dataset_input("cn7_corpus_train.jsonl").open():
         seen.update(json.loads(line)["ids"])
     m[sorted(i for i in seen if i < vocab)] = True
     torch.save(m, cache)
@@ -85,7 +86,7 @@ def main():
                           map_location="cpu")
         vocab = mask.shape[0]
     elif args.ckpt:
-        ck = torch.load(HERE / args.ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
         vocab = ck["vocab"]
         resize_embedding(base, vocab)
         base.load_state_dict(ck["state"])

@@ -25,6 +25,7 @@ import torch
 import torch.nn.functional as F
 
 import cn1_model
+from artifact_paths import dataset_input
 
 HERE = Path(__file__).resolve().parent
 
@@ -32,11 +33,11 @@ HERE = Path(__file__).resolve().parent
 def main():
     import v11
 
-    tok = v11.Tokenizer.from_file(str(HERE / "v11-cells.vocab.bin"))
+    tok = v11.Tokenizer.from_file(str(dataset_input("v11-cells.vocab.bin")))
     model, names, held = cn1_model.build("fingerprint")  # cpu, untrained
     model.eval()
 
-    rows = [json.loads(l) for l in (HERE / "cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     by_cell = defaultdict(list)
     for r in rows:
         by_cell[r["cell"]].append(r)

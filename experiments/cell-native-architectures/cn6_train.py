@@ -17,6 +17,8 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
+from artifact_paths import checkpoint_output, dataset_input
+
 HERE = Path(__file__).resolve().parent
 BASE = "HuggingFaceTB/SmolLM2-135M"
 
@@ -60,7 +62,7 @@ def main():
     trainable = [p for p in model.parameters() if p.requires_grad]
     print(f"== CN-6 {args.arm} on {device} | trainable {sum(p.numel() for p in trainable):,} ==", flush=True)
 
-    rows = [json.loads(l) for l in (HERE / f"cn6_corpus_train_{args.arm}{TAG}.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input(f"cn6_corpus_train_{args.arm}{TAG}.jsonl").read_text().splitlines() if l.strip()]
     if args.smoke:
         rows = rows[:800]
     data = []
@@ -103,7 +105,7 @@ def main():
                 break
 
     tag = "" if args.base == "HuggingFaceTB/SmolLM2-135M" else "_" + args.base.split("/")[-1].replace(".", "").lower()
-    ckpt = HERE / f"cn6_ckpt_{args.arm}{tag}.pt"
+    ckpt = checkpoint_output(f"cn6_ckpt_{args.arm}{tag}.pt")
     while ckpt.exists():  # never overwrite a result-bearing checkpoint (the input-max clobber, §8.3)
         ckpt = ckpt.with_name(ckpt.stem + "+.pt")
     torch.save({"arm": args.arm, "base_id": args.base, "input_max": args.input_max,

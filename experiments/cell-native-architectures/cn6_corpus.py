@@ -23,6 +23,7 @@ import random
 from pathlib import Path
 
 from cn1_corpus import Oracle, describe
+from artifact_paths import dataset_output
 
 HERE = Path(__file__).resolve().parent
 LIBRARY = HERE / "cn1_library.jsonl"
@@ -92,8 +93,8 @@ def main():
             made += 1
 
     rng.shuffle(train)
-    (HERE / f"cn6_corpus_train_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in train) + "\n")
-    (HERE / f"cn6_corpus_eval_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in evalr) + "\n")
+    dataset_output(f"cn6_corpus_train_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in train) + "\n")
+    dataset_output(f"cn6_corpus_eval_{args.arm}{TAG}.jsonl").write_text("\n".join(json.dumps(r) for r in evalr) + "\n")
     print(f"arm {args.arm}: train {len(train)} rows | held-out eval {len(evalr)} rows "
           f"({len({r['cell'] for r in evalr})} held cells)")
     print("sample:", train[0]["text"][:130])

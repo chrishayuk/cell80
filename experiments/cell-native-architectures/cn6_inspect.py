@@ -18,6 +18,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from cn6_eval import parse_spec
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
@@ -29,7 +30,7 @@ def main():
     ap.add_argument("--cells", nargs="*", default=None)
     args = ap.parse_args()
 
-    ck = torch.load(args.ckpt_hf, map_location="cpu")
+    ck = torch.load(checkpoint_input(args.ckpt_hf), map_location="cpu")
     arm = ck.get("arm", "generation")
     base_id = ck.get("base_id", "HuggingFaceTB/SmolLM2-135M")
     imax = ck.get("input_max", 1000)
@@ -43,7 +44,7 @@ def main():
     model.eval()
 
     lib = {json.loads(l)["name"]: json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()}
-    ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{arm}{etag}.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input(f"cn6_corpus_eval_{arm}{etag}.jsonl").read_text().splitlines() if l.strip()]
     ctx = {}
     for r in ev:
         ctx.setdefault(r["cell"], r["context"])

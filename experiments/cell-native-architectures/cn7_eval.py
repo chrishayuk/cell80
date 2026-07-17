@@ -31,6 +31,7 @@ import cn1_model
 from cn1_model import resize_embedding
 from cn7_corpus import CALL_ID, CLOSE_ID, Enc
 from cn7_deck import decode_mask
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
@@ -73,7 +74,7 @@ def main():
     strata = json.load(open(HERE / "cn7_frontier_classification.json"))["cells"]
     lib = {json.loads(l)["name"]: json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()}
     value = [n for n, r in lib.items() if r["arity"] >= 1]
-    ev = [json.loads(l) for l in (HERE / "cn6_corpus_eval_generation.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn6_corpus_eval_generation.jsonl").read_text().splitlines() if l.strip()]
     contexts = {}
     for r in ev:
         contexts.setdefault(r["cell"], r["context"])
@@ -91,7 +92,7 @@ def main():
 
     from tiny_model_v11.loader import load_from_artifacts
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
-    ck = torch.load(HERE / args.ckpt, map_location="cpu")
+    ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
     resize_embedding(base, ck["vocab"])
     base.load_state_dict(ck["state"])
     base = base.to(args.device).eval()

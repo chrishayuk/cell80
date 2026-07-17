@@ -31,6 +31,7 @@ from pathlib import Path
 import torch
 
 import cell80_py
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
@@ -154,7 +155,7 @@ def v11_ckpt_sampler(ckpt_name):
     tokmap = _json.load(open(HERE / "cn7_token_map.json"))
     enc = CN7Enc(tokmap["cells"])
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
-    ck = torch.load(HERE / ckpt_name, map_location="cpu")
+    ck = torch.load(checkpoint_input(ckpt_name), map_location="cpu")
     resize_embedding(base, ck["vocab"])
     base.load_state_dict(ck["state"])
     base.eval()
@@ -195,7 +196,7 @@ def main():
 
     lib = {json.loads(l)["name"]: json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()}
     strata = json.load(open(HERE / "cn7_frontier_classification.json"))["cells"]
-    ev = [json.loads(l) for l in (HERE / "cn6_corpus_eval_generation.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn6_corpus_eval_generation.jsonl").read_text().splitlines() if l.strip()]
     contexts = {}
     for r in ev:
         contexts.setdefault(r["cell"], r["context"])
@@ -208,7 +209,7 @@ def main():
         handles[n] = host.load(n)
 
     if args.ckpt_hf:
-        gen, tag = hf_sampler(HERE / args.ckpt_hf)
+        gen, tag = hf_sampler(checkpoint_input(args.ckpt_hf))
     elif args.ckpt_v11:
         gen, tag = v11_ckpt_sampler(args.ckpt_v11)
     elif args.v11:

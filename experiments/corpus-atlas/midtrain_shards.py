@@ -41,13 +41,24 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(Path.home() / "chris-source" / "v11-train-plan" / "div0"))
 from atlas_surface import SENTINEL, V11_SP, build_suffix_array, sha256_file  # noqa: E402
+from artifact_paths import index_input, index_output
 
 CN_DIR = HERE.parent / "cell-native-architectures"
+
+
+def cn_dataset(value):
+    path = Path(value)
+    artifact = CN_DIR / "artifacts" / "datasets" / path.name
+    if artifact.exists():
+        return artifact
+    return path if path.exists() else CN_DIR / path.name
+
+
 SHARDS = {
-    "cn7_train": CN_DIR / "cn7_corpus_train.jsonl",
-    "cn8_b": CN_DIR / "cn8_corpus_b.jsonl",
-    "cn8_atok": CN_DIR / "cn8_corpus_atok.jsonl",
-    "cn8_aex": CN_DIR / "cn8_corpus_aex.jsonl",
+    "cn7_train": cn_dataset("cn7_corpus_train.jsonl"),
+    "cn8_b": cn_dataset("cn8_corpus_b.jsonl"),
+    "cn8_atok": cn_dataset("cn8_corpus_atok.jsonl"),
+    "cn8_aex": cn_dataset("cn8_corpus_aex.jsonl"),
 }
 
 
@@ -69,13 +80,13 @@ def cmd_build():
     for name, src in SHARDS.items():
         stream, rows = load_shard_stream(src)
         print(f"[build] {name}: {rows:,} rows, {len(stream):,} symbols")
-        np.save(HERE / f"shard_{name}_stream.npy", stream)
+        np.save(index_output(f"shard_{name}_stream.npy"), stream)
         sa = build_suffix_array(stream)
-        np.save(HERE / f"shard_{name}_sa.npy", sa)
+        np.save(index_output(f"shard_{name}_sa.npy"), sa)
         meta["shards"][name] = {
-            "source": str(src), "source_sha256": sha256_file(src),
+            "source": src.name, "source_sha256": sha256_file(src),
             "rows": rows, "symbols": len(stream),
-            "sa_sha256": sha256_file(HERE / f"shard_{name}_sa.npy"),
+            "sa_sha256": sha256_file(index_input(f"shard_{name}_sa.npy")),
         }
     with open(HERE / "midtrain_shards_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
@@ -92,11 +103,11 @@ class Shards:
         if cur != self.meta["tokenizer_sha256"]:
             sys.exit("REFUSING: tokenizer hash mismatch with shard fingerprint")
         for name, info in self.meta["shards"].items():
-            if sha256_file(Path(info["source"])) != info["source_sha256"]:
+            if sha256_file(cn_dataset(info["source"])) != info["source_sha256"]:
                 sys.exit(f"REFUSING: shard source drifted since build: {name}")
-        self.stream = {n: np.load(HERE / f"shard_{n}_stream.npy")
+        self.stream = {n: np.load(index_input(f"shard_{n}_stream.npy"))
                         for n in SHARDS}
-        self.sa = {n: np.load(HERE / f"shard_{n}_sa.npy") for n in SHARDS}
+        self.sa = {n: np.load(index_input(f"shard_{n}_sa.npy")) for n in SHARDS}
         import sentencepiece as spm
         self.sp = spm.SentencePieceProcessor()
         self.sp.load(str(V11_SP))
@@ -109,7 +120,7 @@ class Shards:
         if name not in self._lex:
             from metrology import build_name_lexicon
             texts = (json.loads(l)["text"] for l in
-                      (Path(self.meta["shards"][name]["source"])).open()
+                      cn_dataset(self.meta["shards"][name]["source"]).open()
                       if l.strip())
             self._lex[name] = build_name_lexicon(texts)
         return self._lex[name]
@@ -121,7 +132,7 @@ class Shards:
         lex = self.lexicon(name)
         probe = self._norm_m1(probe_text, lex)
         n = 0
-        for l in Path(self.meta["shards"][name]["source"]).open():
+        for l in cn_dataset(self.meta["shards"][name]["source"]).open():
             if not l.strip():
                 continue
             row = self._norm_m1(json.loads(l)["text"], lex)

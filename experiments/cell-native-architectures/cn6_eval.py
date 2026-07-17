@@ -28,6 +28,7 @@ import re
 from pathlib import Path
 
 import cell80_py
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
@@ -131,7 +132,7 @@ def main():
     if args.ckpt_hf:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        ck = torch.load(args.ckpt_hf, map_location="cpu")
+        ck = torch.load(checkpoint_input(args.ckpt_hf), map_location="cpu")
         arm = ck.get("arm", args.arm)
         base_id = ck.get("base_id", "HuggingFaceTB/SmolLM2-135M")
         imax = ck.get("input_max", 1000)
@@ -145,7 +146,7 @@ def main():
         device = "cpu"  # generation on CPU dodges the MPSGraph LM-head bug (small n)
         model.to(device).eval()
         print(f"  base {base_id} | input-max {imax}", flush=True)
-        ev = [json.loads(l) for l in (HERE / f"cn6_corpus_eval_{arm}{etag}.jsonl").read_text().splitlines() if l.strip()]
+        ev = [json.loads(l) for l in dataset_input(f"cn6_corpus_eval_{arm}{etag}.jsonl").read_text().splitlines() if l.strip()]
 
         T = args.sample
         torch.manual_seed(args.seed)

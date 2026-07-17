@@ -49,6 +49,7 @@ from array import array
 from pathlib import Path
 
 import numpy as np
+from artifact_paths import index_input, index_output
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -167,7 +168,7 @@ def cmd_build(n_process):
 
     vocab = {}
     for phase, fname in PHASES.items():
-        ids = np.fromfile(HERE / fname, dtype=np.uint32).reshape(-1, CHUNK)
+        ids = np.fromfile(index_input(fname), dtype=np.uint32).reshape(-1, CHUNK)
         print(f"[build] phase {phase}: {len(ids):,} chunks -> text")
         recon = [chunk_to_text_spans(sp, row) for row in ids]
         texts = [t for t, _ in recon]
@@ -194,16 +195,16 @@ def cmd_build(n_process):
                       f"vocab {len(vocab):,}", flush=True)
 
         stream = np.frombuffer(skel, dtype=np.uint32)
-        np.save(HERE / f"skeleton_stream_phase{phase}.npy", stream)
-        np.save(HERE / f"skeleton_chunk_phase{phase}.npy",
+        np.save(index_output(f"skeleton_stream_phase{phase}.npy"), stream)
+        np.save(index_output(f"skeleton_chunk_phase{phase}.npy"),
                 np.frombuffer(chunk_of, dtype=np.uint32))
-        np.save(HERE / f"skeleton_pspan_phase{phase}.npy",
+        np.save(index_output(f"skeleton_pspan_phase{phase}.npy"),
                 np.frombuffer(pspan, dtype=np.uint16).reshape(-1, 2))
         print(f"[build] phase {phase}: suffix array over {len(stream):,} symbols")
         sa = build_suffix_array(stream)
-        np.save(HERE / f"skeleton_sa_phase{phase}.npy", sa)
+        np.save(index_output(f"skeleton_sa_phase{phase}.npy"), sa)
 
-    with open(HERE / "skeleton_vocab.json", "w") as f:
+    with open(index_output("skeleton_vocab.json"), "w") as f:
         json.dump(vocab, f)
     meta = {"skeleton_version": SKELETON_VERSION,
             "tokenizer_sha256": sha256_file(V11_SP),
@@ -214,8 +215,8 @@ def cmd_build(n_process):
             "symbols": {"D": D_SYM, "N": N_SYM, "first_word": FIRST_WORD_SYM},
             "ent_n": sorted(ENT_N),
             "phases": {str(p): {
-                "stream_sha256": sha256_file(HERE / f"skeleton_stream_phase{p}.npy"),
-                "sa_sha256": sha256_file(HERE / f"skeleton_sa_phase{p}.npy"),
+                "stream_sha256": sha256_file(index_input(f"skeleton_stream_phase{p}.npy")),
+                "sa_sha256": sha256_file(index_input(f"skeleton_sa_phase{p}.npy")),
             } for p in PHASES}}
     with open(HERE / "skeleton_index_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
@@ -231,15 +232,15 @@ class SkeletonIndex:
         cur = sha256_file(V11_SP)
         if cur != self.meta["tokenizer_sha256"]:
             sys.exit("REFUSING to score: tokenizer hash mismatch with index")
-        self.vocab = json.load(open(HERE / "skeleton_vocab.json"))
+        self.vocab = json.load(open(index_input("skeleton_vocab.json")))
         self.inv = {v: k for k, v in self.vocab.items()}
         self.inv[D_SYM], self.inv[N_SYM] = "D", "N"
         self.stream, self.sa, self.chunk_of, self.pspan = {}, {}, {}, {}
         for p in PHASES:
-            self.stream[p] = np.load(HERE / f"skeleton_stream_phase{p}.npy")
-            self.sa[p] = np.load(HERE / f"skeleton_sa_phase{p}.npy")
-            self.chunk_of[p] = np.load(HERE / f"skeleton_chunk_phase{p}.npy")
-            self.pspan[p] = np.load(HERE / f"skeleton_pspan_phase{p}.npy")
+            self.stream[p] = np.load(index_input(f"skeleton_stream_phase{p}.npy"))
+            self.sa[p] = np.load(index_input(f"skeleton_sa_phase{p}.npy"))
+            self.chunk_of[p] = np.load(index_input(f"skeleton_chunk_phase{p}.npy"))
+            self.pspan[p] = np.load(index_input(f"skeleton_pspan_phase{p}.npy"))
         import sentencepiece as spm
         self.sp = spm.SentencePieceProcessor()
         self.sp.load(str(V11_SP))
@@ -299,7 +300,7 @@ class SkeletonIndex:
         ci = int(self.chunk_of[phase][pos])
         p0 = int(self.pspan[phase][pos][0])
         p1 = int(self.pspan[phase][pos + length - 1][1])
-        ids = np.fromfile(HERE / PHASES[phase], dtype=np.uint32
+        ids = np.fromfile(index_input(PHASES[phase]), dtype=np.uint32
                            ).reshape(-1, CHUNK)[ci]
         a, b = max(0, p0 - ctx_pieces), min(CHUNK, p1 + ctx_pieces)
         return {"phase": phase, "chunk": ci, "pieces": [p0, p1],
@@ -361,7 +362,7 @@ def cmd_smoke():
     probe = [int(s) for s in stream[pos[10:30]]]
     length, lo, hi = idx.longest_match_at(p, probe, 0)
     rec = idx.receipt(p, lo, length) if length else {}
-    ids = np.fromfile(HERE / PHASES[p], dtype=np.uint32).reshape(-1, CHUNK)[1000]
+    ids = np.fromfile(index_input(PHASES[p]), dtype=np.uint32).reshape(-1, CHUNK)[1000]
     own = idx.sp.decode([int(t) for t in ids])
     ok_a = length == len(probe) and hi - lo >= 1 and (
         rec.get("chunk") == 1000 or rec.get("matched_original", "#") in own)
@@ -381,7 +382,7 @@ def cmd_smoke():
     rng = np.random.default_rng(90)
     cand = np.where((stream >= FIRST_WORD_SYM) & (stream != SENTINEL))[0]
     sample = rng.choice(cand, size=500, replace=False)
-    all_ids = np.fromfile(HERE / PHASES[p], dtype=np.uint32).reshape(-1, CHUNK)
+    all_ids = np.fromfile(index_input(PHASES[p]), dtype=np.uint32).reshape(-1, CHUNK)
     good = 0
     for s in sample:
         w = idx.inv[int(stream[s])]

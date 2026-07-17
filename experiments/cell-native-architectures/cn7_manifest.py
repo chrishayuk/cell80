@@ -24,8 +24,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from artifact_paths import checkpoint_input
+
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE / "cn7_ckpt_manifest.json"
+
+
+def manifest_path(name: str) -> Path:
+    return checkpoint_input(name) if Path(name).suffix in {".pt", ".pth"} else HERE / name
 
 
 def sha256(p: Path) -> str:
@@ -47,7 +53,7 @@ def main():
     if args.verify:
         bad = 0
         for name, e in sorted(manifest.items()):
-            p = HERE / name
+            p = manifest_path(name)
             if not p.exists():
                 print(f"  MISSING  {name}")
                 bad += 1
@@ -62,7 +68,7 @@ def main():
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=HERE,
                           capture_output=True, text=True).stdout.strip()
     for f in args.files:
-        p = HERE / f
+        p = manifest_path(f)
         if not p.exists():
             print(f"  skip (missing): {f}")
             continue

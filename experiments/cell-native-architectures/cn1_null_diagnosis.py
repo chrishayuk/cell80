@@ -17,6 +17,7 @@ from pathlib import Path
 
 import torch
 import cn1_model_hf
+from artifact_paths import checkpoint_input, dataset_input
 import cell80_py
 
 HERE = Path(__file__).resolve().parent
@@ -82,7 +83,7 @@ def main():
     id_to_name = {v: k[6:-1] for k, v in hf_map.items() if k.startswith("<cell:")}
     cell_ids = sorted(id_to_name)
     m, tok, _, _, _, _ = cn1_model_hf.build_hf("fingerprint")
-    ck = torch.load(HERE / "cn1_ckpt_hf_fingerprint_s80.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input("cn1_ckpt_hf_fingerprint_s80.pt"), map_location="cpu")
     with torch.no_grad():
         m.base.get_input_embeddings().weight.copy_(ck["embed"])
     m.w_f.load_state_dict(ck["w_f"])
@@ -90,7 +91,7 @@ def main():
         blk.load_state_dict(ck[f"block_{i}"])
     m.eval()
     cid = torch.tensor(cell_ids)
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     ho = [r for r in ev if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp"][:40]
     conf_ag, samepack, samearity, isstate, conf_null_matched = [], [], [], [], []
     with torch.no_grad():

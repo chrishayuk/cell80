@@ -24,6 +24,8 @@ import random
 import time
 from pathlib import Path
 
+from artifact_paths import checkpoint_input, dataset_input
+
 import torch
 import torch.nn.functional as F
 
@@ -38,7 +40,7 @@ def load_base(ckpt, vocab_from_map):
     from tiny_model_v11.loader import load_from_artifacts
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
     if ckpt:
-        ck = torch.load(HERE / ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(ckpt), map_location="cpu")
         resize_embedding(base, ck["vocab"])
         base.load_state_dict(ck["state"])
     else:
@@ -95,7 +97,7 @@ def main():
 
     tokmap = json.load(open(HERE / "cn7_token_map.json"))
     enc = SpEnc(tokmap["cells"])
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     buckets = {}
     for r in ev:
         buckets.setdefault((r["bucket_cell"], r["bucket_comp"]), []).append(r)

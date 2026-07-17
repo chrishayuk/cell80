@@ -55,7 +55,10 @@ sys.path.insert(0, str(Path.home() / "chris-source" / "v11-train-plan" / "div0")
 from atlas_skeleton import ENT_N, load_nlp  # noqa: E402
 from metrology import coverage, frame_of  # noqa: E402
 
-CORPUS = (HERE.parent / "cell-native-architectures" / "cn7_corpus_train.jsonl")
+CN_DIR = HERE.parent / "cell-native-architectures"
+CORPUS = CN_DIR / "artifacts" / "datasets" / "cn7_corpus_train.jsonl"
+if not CORPUS.exists():
+    CORPUS = CN_DIR / "cn7_corpus_train.jsonl"
 DIV0_RESULTS = (Path.home() / "chris-source" / "v11-train-plan" / "div0"
                 / "results.json")
 

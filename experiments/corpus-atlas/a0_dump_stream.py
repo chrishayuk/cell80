@@ -30,6 +30,8 @@ import sys
 from array import array
 from pathlib import Path
 
+from artifact_paths import index_output
+
 import sentencepiece as spm
 
 HERE = Path(__file__).resolve().parent
@@ -160,7 +162,7 @@ def main():
         "phases": [],
     }
     for spec in PHASES:
-        out_path = HERE / f"v11_stream_phase{spec['phase']}_{args.tag}.u32"
+        out_path = index_output(f"v11_stream_phase{spec['phase']}_{args.tag}.u32")
         manifest["phases"].append(
             dump_phase(sp, bos_id, spec["phase"], spec["seed"],
                         spec["max_tokens"], out_path))

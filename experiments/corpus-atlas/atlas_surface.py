@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from artifact_paths import index_input, index_output
 
 HERE = Path(__file__).resolve().parent
 V11_SP = (Path.home() / "chris-source" / "chris-experiments" / "compilation"
@@ -58,7 +59,7 @@ def sha256_file(path):
 
 
 def load_stream_with_sentinels(phase):
-    ids = np.fromfile(HERE / PHASES[phase], dtype=np.uint32)
+    ids = np.fromfile(index_input(PHASES[phase]), dtype=np.uint32)
     assert len(ids) % CHUNK == 0
     rows = ids.reshape(-1, CHUNK)
     with_sent = np.full((rows.shape[0], CHUNK + 1), SENTINEL, dtype=np.uint32)
@@ -105,7 +106,7 @@ class SurfaceIndex:
         self.sp = spm.SentencePieceProcessor()
         self.sp.load(str(V11_SP))
         self.text = {p: load_stream_with_sentinels(p) for p in PHASES}
-        self.sa = {p: np.load(HERE / f"surface_sa_phase{p}.npy") for p in PHASES}
+        self.sa = {p: np.load(index_input(f"surface_sa_phase{p}.npy")) for p in PHASES}
 
     def _narrow(self, phase, lo, hi, offset, token):
         """Narrow SA range [lo,hi) to suffixes whose `offset`-th symbol == token."""
@@ -196,10 +197,10 @@ def cmd_build():
         text = load_stream_with_sentinels(phase)
         print(f"[build] phase {phase}: suffix array over {len(text):,} symbols")
         sa = build_suffix_array(text)
-        out = HERE / f"surface_sa_phase{phase}.npy"
+        out = index_output(f"surface_sa_phase{phase}.npy")
         np.save(out, sa)
         meta["phases"][str(phase)] = {
-            "stream_file": fname, "stream_sha256": sha256_file(HERE / fname),
+            "stream_file": fname, "stream_sha256": sha256_file(index_input(fname)),
             "symbols": len(text), "sa_file": out.name,
             "sa_sha256": sha256_file(out),
         }

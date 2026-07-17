@@ -18,6 +18,8 @@ import random
 import statistics as st
 from pathlib import Path
 
+from artifact_paths import dataset_output
+
 HERE = Path(__file__).resolve().parent
 
 
@@ -66,7 +68,7 @@ def main():
     print(f"nearest-real agreement — SYNTH cells: median {st.median(synth_nn):.3f}  mean {st.mean(synth_nn):.3f}")
     print(f"  (want these CLOSE — density preserved; far apart => retune --p)")
 
-    out = HERE / "cn1_synth_fingerprints.jsonl"
+    out = dataset_output("cn1_synth_fingerprints.jsonl")
     with open(out, "w") as fh:
         for s in synth:
             fh.write(json.dumps(s) + "\n")

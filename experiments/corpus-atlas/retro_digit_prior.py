@@ -43,6 +43,7 @@ from pathlib import Path
 
 import numpy as np
 import sentencepiece as spm
+from artifact_paths import index_input
 
 HERE = Path(__file__).resolve().parent
 CN_DIR = HERE.parent / "cell-native-architectures"
@@ -74,7 +75,7 @@ def main():
 
     counts = np.zeros(71261, dtype=np.int64)
     for f in ["v11_stream_phase1_run1.u32", "v11_stream_phase3_run1.u32"]:
-        ids = np.fromfile(HERE / f, dtype=np.uint32)
+        ids = np.fromfile(index_input(f), dtype=np.uint32)
         counts += np.bincount(ids, minlength=71261)
 
     smoke = json.load(open(CN_DIR / "cn10_readout_smoke_raw_v11.json"))
@@ -88,7 +89,7 @@ def main():
         pid = sp.PieceToId("▁" + d)
         sp_ct[d] = int(counts[pid]) if pid != sp.unk_id() else None
 
-    ids = np.concatenate([np.fromfile(HERE / f, dtype=np.uint32)
+    ids = np.concatenate([np.fromfile(index_input(f), dtype=np.uint32)
                            for f in ["v11_stream_phase1_run1.u32",
                                      "v11_stream_phase3_run1.u32"]])
     pids = {d: sp.PieceToId(d) for d in digits}

@@ -1,5 +1,0 @@
-  canonical  193/400 = 0.482 [0.434,0.531]  {'add': '47/86', 'min3': '27/42', 'mod': '32/81', 'mul': '5/47', 'sub': '30/92', 'succ': '52/52'}
-  narrative  384/400 = 0.960 [0.936,0.975]  {'add': '104/107', 'min3': '39/42', 'mul': '29/37', 'parity': '49/49', 'sub': '100/102', 'succ': '63/63'}
-  P-a1 (canonical >= 0.90): FAIL
-  P-a2 (narrative >= 0.80): PASS
-wrote cn7_probe_cn7_ckpt_midtrain_nomask.json (478s)

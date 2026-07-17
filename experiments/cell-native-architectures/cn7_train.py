@@ -28,6 +28,7 @@ import torch.nn.functional as F
 import cn1_model
 from cn1_model import resize_embedding
 from cn7_corpus import CELL_FIRST_ID
+from artifact_paths import checkpoint_output, dataset_input
 
 HERE = Path(__file__).resolve().parent
 PAD_ID = 0
@@ -77,7 +78,7 @@ def main():
     stem = "cn7_ckpt_midtrain_attn" if args.attention_only else "cn7_ckpt_midtrain"
     if args.no_mask:
         stem += "_nomask"
-    ckpt_path = HERE / (stem + ("_smoke" if args.smoke else "") + ".pt")
+    ckpt_path = checkpoint_output(stem + ("_smoke" if args.smoke else "") + ".pt")
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
                          f"checkpoint is never overwritten (CN-6 §8.3 lesson). Rename or move it first.")
@@ -99,7 +100,7 @@ def main():
     print(f"== CN-7.2 midtrain ({arm}) on {device} | vocab {vocab} | "
           f"trainable {sum(p.numel() for p in trainable):,} ==", flush=True)
 
-    rows = [json.loads(l) for l in (HERE / "cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     s4_idx = [i for i, r in enumerate(rows) if r["species"] == "s4"]
     val_set = set(s4_idx[-500:])
     val = [rows[i] for i in sorted(val_set)]

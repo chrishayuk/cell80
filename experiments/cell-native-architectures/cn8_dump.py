@@ -16,6 +16,7 @@ import torch
 import cn1_model
 from cn8_corpus import SP_MODEL, trace_text
 from cn8_eval import generate
+from artifact_paths import checkpoint_input
 
 HERE = Path(__file__).resolve().parent
 
@@ -33,7 +34,7 @@ def main():
     sp = spm.SentencePieceProcessor(model_file=SP_MODEL)
     from tiny_model_v11.loader import load_from_artifacts
     base, _ = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
-    ck = torch.load(HERE / args.ckpt, map_location="cpu")
+    ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
     base.load_state_dict(ck["state"])
     base = base.to(device).eval()
 

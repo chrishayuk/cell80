@@ -30,6 +30,7 @@ import torch.nn.functional as F
 import cn1_model
 from cn1_model import CN1Model, resize_embedding, load_fingerprint_features
 from cn7_corpus import CALL_ID, CLOSE_ID, CELL_FIRST_ID, SP_MODEL
+from artifact_paths import checkpoint_input, checkpoint_output, dataset_input
 
 HERE = Path(__file__).resolve().parent
 PAD_ID = 0
@@ -62,7 +63,7 @@ def build(arm: str, cell_ids: dict, base_ckpt: str | None = None):
     vocab = CELL_FIRST_ID + len(cell_ids)
     resize_embedding(base, vocab)
     if base_ckpt:  # P-d re-run on the MIDTRAINED base (prereg CN-7.2): same protocol, new substrate
-        ck = torch.load(HERE / base_ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(base_ckpt), map_location="cpu")
         assert ck["vocab"] == vocab, "midtrain ckpt vocab mismatch"
         base.load_state_dict(ck["state"])
     feats, _, names, held = load_fingerprint_features(kind="fingerprint")
@@ -120,7 +121,7 @@ def main():
     t0 = time.time()
 
     mid = "_" + Path(args.base_ckpt).stem.replace("cn7_ckpt_", "") if args.base_ckpt else ""
-    ckpt_path = HERE / f"cn7_ckpt_fp_{args.arm}{mid}_s{args.seed}.pt"
+    ckpt_path = checkpoint_output(f"cn7_ckpt_fp_{args.arm}{mid}_s{args.seed}.pt")
     if ckpt_path.exists() and not args.smoke:
         raise SystemExit(f"REFUSING to run: {ckpt_path.name} already exists — a result-bearing "
                          f"checkpoint is never overwritten (CN-6 §8.3 lesson). Rename or move it first.")
@@ -133,7 +134,7 @@ def main():
     print(f"  trainable params: {sum(p.numel() for p in trainable if p.requires_grad):,}", flush=True)
 
     enc = SpEnc(cell_ids)
-    rows = [json.loads(l) for l in (HERE / "cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input("cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
     if args.smoke:
         rows = rows[:1500]
     data = []
@@ -189,7 +190,7 @@ def main():
     # eval: random-sampled buckets (seed 0 shuffle BEFORE cap — first-N bug stays dead)
     cell_ids_t = torch.tensor(sorted(cell_ids.values()), device=device)
     model.eval()
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     by_bucket = {}
     for r in ev:
         by_bucket.setdefault((r["bucket_cell"], r["bucket_comp"]), []).append(r)

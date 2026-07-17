@@ -22,6 +22,7 @@ from collections import Counter
 from pathlib import Path
 
 from cn1_corpus import Oracle
+from artifact_paths import dataset_input, dataset_output
 
 HERE = Path(__file__).resolve().parent
 SP_MODEL = "/Users/christopherhay/chris-source/chris-experiments/compilation/15_v11_model/v11_tokenizer/v11.model"
@@ -135,7 +136,7 @@ def main():
     import sentencepiece as spm
     sp = spm.SentencePieceProcessor(model_file=SP_MODEL)
 
-    cn8_rows = [json.loads(l) for l in (HERE / "cn8_corpus_b.jsonl").read_text().splitlines() if l.strip()]
+    cn8_rows = [json.loads(l) for l in dataset_input("cn8_corpus_b.jsonl").read_text().splitlines() if l.strip()]
     problems = [(r["meta"]["a"], r["meta"]["b"]) for r in cn8_rows]
     assert len(problems) == 51031, len(problems)
 
@@ -215,7 +216,7 @@ def main():
 
     for name, rows in [("b", rows_b), ("aex", rows_aex)]:
         random.Random(7).shuffle(rows)
-        with (HERE / f"cn8b_corpus_{name}.jsonl").open("w") as f:
+        with dataset_output(f"cn8b_corpus_{name}.jsonl").open("w") as f:
             for r in rows:
                 f.write(json.dumps(r) + "\n")
 

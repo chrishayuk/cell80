@@ -29,6 +29,7 @@ import torch.nn.functional as F
 
 import cn1_model
 from cn8_corpus import SP_MODEL
+from artifact_paths import checkpoint_input
 
 HERE = Path(__file__).resolve().parent
 SP_VOCAB = 71261
@@ -69,7 +70,7 @@ def main():
     base, cfg = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
     tag = "raw_v11"
     if args.ckpt:
-        ck = torch.load(HERE / args.ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
         base.load_state_dict(ck["state"])
         tag = Path(args.ckpt).stem.replace("cn8_ckpt_", "")
     base = base.to(args.device).eval()

@@ -19,9 +19,10 @@ import torch.nn.functional as F
 
 import cn1_model_hf
 import cn1_decode
+from artifact_paths import checkpoint_output, dataset_input
 
 HERE = Path(__file__).resolve().parent
-TRAIN = HERE / "cn1_corpus_train.jsonl"
+TRAIN = dataset_input("cn1_corpus_train.jsonl")
 BOS = 0  # SmolLM2 bos/eos
 
 
@@ -119,7 +120,7 @@ def main():
             if step >= args.steps:
                 break
 
-    ckpt = HERE / f"cn1_ckpt_hf_{args.arm}_s{args.seed}.pt"
+    ckpt = checkpoint_output(f"cn1_ckpt_hf_{args.arm}_s{args.seed}.pt")
     state = {"arm": args.arm, "seed": args.seed, "embed": model.base.get_input_embeddings().weight.detach().cpu()}
     if args.arm in ("fingerprint", "shuffled", "description"):
         state["w_f"] = model.w_f.state_dict()
@@ -138,7 +139,7 @@ def main():
     model = model.to(device)
     cell_ids_t = torch.tensor(cell_ids, device=device)
     model.eval()
-    eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    eval_rows = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     by_bucket = {}
     for r in eval_rows:
         by_bucket.setdefault((r["bucket_cell"], r["bucket_comp"]), []).append(r)

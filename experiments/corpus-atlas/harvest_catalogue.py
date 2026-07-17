@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path.home() / "chris-source" / "v11-train-plan" / "div0")
 from atlas_skeleton import (D_SYM, N_SYM, SkeletonIndex,  # noqa: E402
                              chunk_to_text_spans)
 from atlas_surface import CHUNK, PHASES, SENTINEL, V11_SP  # noqa: E402
+from artifact_paths import dataset_output, index_input
 
 CN_DIR = HERE.parent / "cell-native-architectures"
 DIV1_LEVELS = [1, 8, 64, 512]
@@ -74,7 +75,7 @@ def hist_summary(counts):
 def harvest_v1(idx):
     frames = {}  # tuple -> [count, filler-set, phase-counter, receipt]
     punct = {idx.vocab.get(p) for p in (".", "!", "?")} - {None}
-    all_ids = {p: np.fromfile(HERE / PHASES[p], dtype=np.uint32
+    all_ids = {p: np.fromfile(index_input(PHASES[p]), dtype=np.uint32
                                 ).reshape(-1, CHUNK) for p in PHASES}
     for p in PHASES:
         stream, chunk_of, pspan = idx.stream[p], idx.chunk_of[p], idx.pspan[p]
@@ -109,7 +110,7 @@ def harvest_m1(sp):
     from metrology import SENT_END, build_name_lexicon, norm_m1, tokens
     texts = []
     for p in PHASES:
-        ids = np.fromfile(HERE / PHASES[p], dtype=np.uint32).reshape(-1, CHUNK)
+        ids = np.fromfile(index_input(PHASES[p]), dtype=np.uint32).reshape(-1, CHUNK)
         texts.extend(chunk_to_text_spans(sp, row)[0] for row in ids)
     names = build_name_lexicon(texts)
     frames = Counter()
@@ -171,7 +172,7 @@ def main():
 
     inv = idx.inv
     top = sorted(v1.items(), key=lambda kv: -kv[1][0])[:10]
-    catalogue = HERE / "harvest_catalogue_v1.jsonl"
+    catalogue = dataset_output("harvest_catalogue_v1.jsonl")
     with open(catalogue, "w") as f:
         for frame, (count, fill, phases, receipt) in v1.items():
             f.write(json.dumps({

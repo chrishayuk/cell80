@@ -3,13 +3,17 @@
 # (new session via double-fork) because harness-tracked background tasks keep getting
 # reaped mid-run. Band lines append to the SAME logs the session monitors tail.
 cd "$(dirname "$0")" || exit 1
+artifact_root="${CELL80_CELL_NATIVE_ARTIFACT_ROOT:-${CELL80_ARTIFACT_ROOT:-artifacts}}"
+log_dir="$artifact_root/logs"
+checkpoint_dir="$artifact_root/checkpoints"
+mkdir -p "$log_dir" "$checkpoint_dir"
 
 {
   python3 cn8_eval.py --raw --format answer
   python3 cn8_eval.py --ckpt cn8_ckpt_b_s81.pt --format trace
   python3 cn8_eval.py --raw --format trace
   echo "ALL EVALS DONE"
-} >> cn8_eval_run.log 2>&1
+} >> "$log_dir/cn8_eval_run.log" 2>&1
 
 {
   for spec in "bp_s80 cn8b_corpus_b.jsonl 80 4981759" \
@@ -19,13 +23,13 @@ cd "$(dirname "$0")" || exit 1
     corpus=$(echo "$spec" | cut -d' ' -f2)
     seed=$(echo "$spec" | cut -d' ' -f3)
     tokens=$(echo "$spec" | cut -d' ' -f4)
-    if [ -f "cn8_ckpt_$tag.pt" ]; then
+    if [ -f "$checkpoint_dir/cn8_ckpt_$tag.pt" ]; then
       echo "=== $tag already trained, skipping ($(date)) ==="
     else
       echo "=== launching $tag ($(date)) ==="
       python3 cn8_train.py --corpus "$corpus" --tag "$tag" --seed "$seed" --tokens "$tokens" \
-        > "cn8b_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
-      tail -2 "cn8b_train_$tag.log"
+        > "$log_dir/cn8b_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
+      tail -2 "$log_dir/cn8b_train_$tag.log"
     fi
   done
   echo "=== training done, evals ($(date)) ==="
@@ -33,4 +37,4 @@ cd "$(dirname "$0")" || exit 1
   python3 cn8b_eval.py --ckpt cn8_ckpt_bp_s81.pt --format trace
   python3 cn8b_eval.py --ckpt cn8_ckpt_aexp_s80.pt --format answer
   echo "ALL CN8B DONE ($(date))"
-} >> cn8b_chain.log 2>&1
+} >> "$log_dir/cn8b_chain.log" 2>&1

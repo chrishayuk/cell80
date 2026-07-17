@@ -26,6 +26,7 @@ import torch
 import torch.nn.functional as F
 
 import cn1_model
+from artifact_paths import checkpoint_input, dataset_input
 import cn1_decode
 from cn1_train import load_tokenizer, PAD_ID
 
@@ -38,7 +39,7 @@ SEED = 81
 
 def build_frozen_transformer():
     model, names, held = cn1_model.build("fingerprint")
-    ck = torch.load(HERE / f"cn1_ckpt_fingerprint_s{SEED}.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input(f"cn1_ckpt_fingerprint_s{SEED}.pt"), map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
     for i, blk in enumerate(model.base.layers[-16:]):
@@ -121,8 +122,8 @@ def main():
     name_to_id = {k[len("<cell:"):-1]: v for k, v in tok_map.items() if k.startswith("<cell:")}
     id_to_name = {v: k for k, v in name_to_id.items()}
 
-    train_all = [json.loads(l) for l in (HERE / "cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
-    eval_all = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    train_all = [json.loads(l) for l in dataset_input("cn1_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    eval_all = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     heldout_rows = [r for r in eval_all if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp" and r["cell"] in held_val]
     random.Random(0).shuffle(heldout_rows)
     heldout_rows = heldout_rows[:200]

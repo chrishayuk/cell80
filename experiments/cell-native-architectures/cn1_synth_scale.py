@@ -27,6 +27,7 @@ from pathlib import Path
 
 import torch
 import cn1_model
+from artifact_paths import checkpoint_input, dataset_input
 from cn1_model import encode_fingerprint
 from cn1_train import load_tokenizer
 
@@ -41,7 +42,7 @@ def main():
     tok_map = json.loads((HERE / "cn1_cell_token_map.json").read_text())
     lib = [json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()]
     held = {h["name"] for h in json.loads((HERE / "cn1_axis_a_heldout.json").read_text())["held_out_cells"]}
-    synth = [json.loads(l) for l in (HERE / "cn1_synth_fingerprints.jsonl").read_text().splitlines() if l.strip()]
+    synth = [json.loads(l) for l in dataset_input("cn1_synth_fingerprints.jsonl").read_text().splitlines() if l.strip()]
 
     # all cells: real first (so N-subsets nest and always include the held-out real cells), then synth
     all_cells = lib + synth
@@ -49,7 +50,7 @@ def main():
 
     # model with the seed-81 trained transformer + W_f (FIXED)
     model, names, _ = cn1_model.build("fingerprint")
-    ck = torch.load(HERE / f"cn1_ckpt_fingerprint_s{SEED}.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input(f"cn1_ckpt_fingerprint_s{SEED}.pt"), map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
     model.w_f.load_state_dict(ck["w_f"])
@@ -65,7 +66,7 @@ def main():
         rows = model.w_f(feats)  # (n_all, dim)
     name_to_idx = {c["name"]: i for i, c in enumerate(all_cells)}
 
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     ho = [r for r in ev if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp" and lib_arity(lib, r["cell"]) >= 1]
     import random
     random.Random(0).shuffle(ho)

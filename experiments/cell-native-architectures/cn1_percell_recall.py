@@ -17,6 +17,7 @@ from pathlib import Path
 
 import torch
 import cn1_model
+from artifact_paths import checkpoint_input, dataset_input
 import cn1_decode
 
 HERE = Path(__file__).resolve().parent
@@ -27,11 +28,11 @@ def main():
     ap.add_argument("--seed", type=int, default=81)
     a = ap.parse_args()
     import v11
-    tok = v11.Tokenizer.from_file(str(HERE / "v11-cells.vocab.bin"))
+    tok = v11.Tokenizer.from_file(str(dataset_input("v11-cells.vocab.bin")))
     device = "mps" if torch.backends.mps.is_available() else "cpu"
 
     model, names, held = cn1_model.build("fingerprint")
-    ck = torch.load(HERE / f"cn1_ckpt_fingerprint_s{a.seed}.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input(f"cn1_ckpt_fingerprint_s{a.seed}.pt"), map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
     model.w_f.load_state_dict(ck["w_f"])
@@ -44,7 +45,7 @@ def main():
     lib = {json.loads(l)["name"]: json.loads(l) for l in (HERE / "cn1_library.jsonl").read_text().splitlines() if l.strip()}
     _, _, cell_ids, _ = cn1_decode.load_call_grammar()
     cid = torch.tensor(sorted(cell_ids), device=device)
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     ho = [r for r in ev if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp"]
 
     per_cell = defaultdict(list)

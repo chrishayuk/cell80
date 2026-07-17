@@ -15,6 +15,8 @@ import argparse
 import json
 from pathlib import Path
 
+from artifact_paths import checkpoint_input
+
 import torch
 
 import cell80_py
@@ -40,7 +42,7 @@ def main():
     inv = {v: k for k, v in tokmap["cells"].items()}
     from tiny_model_v11.loader import load_from_artifacts
     base, _ = load_from_artifacts(str(cn1_model.TINY_MODEL / "model" / "v11"), device="cpu")
-    ck = torch.load(HERE / args.ckpt, map_location="cpu")
+    ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
     resize_embedding(base, ck["vocab"])
     base.load_state_dict(ck["state"])
     base.eval()

@@ -27,6 +27,8 @@ import random
 import time
 from pathlib import Path
 
+from artifact_paths import checkpoint_input
+
 import torch
 import torch.nn.functional as F
 
@@ -140,7 +142,7 @@ def main():
         tag = "r0_raw_v11"
         resize_embedding(base, tokmap["vocab"])  # appended rows are xavier noise: the R0 floor
     else:
-        ck = torch.load(HERE / args.ckpt, map_location="cpu")
+        ck = torch.load(checkpoint_input(args.ckpt), map_location="cpu")
         resize_embedding(base, ck["vocab"])
         base.load_state_dict(ck["state"])
         tag = Path(args.ckpt).stem

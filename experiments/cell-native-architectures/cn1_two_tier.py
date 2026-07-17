@@ -27,6 +27,7 @@ from pathlib import Path
 import torch
 
 import cn1_model_hf
+from artifact_paths import checkpoint_input, dataset_input
 import cell80_py
 
 HERE = Path(__file__).resolve().parent
@@ -42,7 +43,7 @@ def main():
 
     # model (tier 1)
     m, tok, names, held, cfi, base_rows = cn1_model_hf.build_hf("fingerprint")
-    ck = torch.load(HERE / "cn1_ckpt_hf_fingerprint_s80.pt", map_location="cpu")
+    ck = torch.load(checkpoint_input("cn1_ckpt_hf_fingerprint_s80.pt"), map_location="cpu")
     with torch.no_grad():
         m.base.get_input_embeddings().weight.copy_(ck["embed"])
     m.w_f.load_state_dict(ck["w_f"])
@@ -91,7 +92,7 @@ def main():
                 matches.append(c)
         return matches  # includes true_cell; extra entries are exact behavioural duplicates
 
-    ev = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    ev = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     heldout = [r for r in ev if r["bucket_cell"] == "novel_cell" and r["bucket_comp"] == "seen_comp"]
     # one item per held-out cell is enough for the pipeline demo (dedup by cell), cap for speed
     seen_cells = {}

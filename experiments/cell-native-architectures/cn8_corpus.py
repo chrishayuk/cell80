@@ -30,6 +30,7 @@ from collections import Counter
 from pathlib import Path
 
 from cn1_corpus import Oracle
+from artifact_paths import dataset_output
 
 HERE = Path(__file__).resolve().parent
 SP_MODEL = "/Users/christopherhay/chris-source/chris-experiments/compilation/15_v11_model/v11_tokenizer/v11.model"
@@ -202,7 +203,7 @@ def main():
 
     for name, rows in [("b", rows_b), ("aex", rows_aex), ("atok", rows_atok)]:
         random.Random(7).shuffle(rows)
-        with (HERE / f"cn8_corpus_{name}.jsonl").open("w") as f:
+        with dataset_output(f"cn8_corpus_{name}.jsonl").open("w") as f:
             for r in rows:
                 f.write(json.dumps(r) + "\n")
     (HERE / "cn8_eval_problems.json").write_text(json.dumps(evalsets, indent=1))

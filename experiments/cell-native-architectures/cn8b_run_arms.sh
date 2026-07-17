@@ -2,15 +2,18 @@
 # CN-8b chain: wait for the CN-8 eval chain to release MPS, then train B' s80/s81 + A-ex' s80
 # (cn8_train.py reused verbatim per prereg §4), then run the CN-8b band evals.
 cd "$(dirname "$0")" || exit 1
+artifact_root="${CELL80_CELL_NATIVE_ARTIFACT_ROOT:-${CELL80_ARTIFACT_ROOT:-artifacts}}"
+log_dir="$artifact_root/logs"
+mkdir -p "$log_dir"
 
-until grep -q "ALL EVALS DONE" cn8_eval_run.log 2>/dev/null; do sleep 60; done
+until grep -q "ALL EVALS DONE" "$log_dir/cn8_eval_run.log" 2>/dev/null; do sleep 60; done
 
 run() {
   tag="$1"; corpus="$2"; seed="$3"; tokens="$4"
   echo "=== launching $tag ($(date)) ==="
   python3 cn8_train.py --corpus "$corpus" --tag "$tag" --seed "$seed" --tokens "$tokens" \
-    > "cn8b_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
-  tail -2 "cn8b_train_$tag.log"
+    > "$log_dir/cn8b_train_$tag.log" 2>&1 || echo "!!! FAILED: $tag"
+  tail -2 "$log_dir/cn8b_train_$tag.log"
 }
 
 run bp_s80   cn8b_corpus_b.jsonl   80 4981759

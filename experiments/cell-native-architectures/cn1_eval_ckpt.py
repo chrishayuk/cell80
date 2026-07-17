@@ -15,15 +15,16 @@ import torch
 
 import cn1_model
 import cn1_decode
+from artifact_paths import checkpoint_input, dataset_input
 
 HERE = Path(__file__).resolve().parent
 
 
 def reload_arm(arm, seed, device, unfreeze_top=12):
     model, names, held = cn1_model.build(arm)  # loads on cpu
-    ckpt_path = HERE / f"cn1_ckpt_{arm}_s{seed}.pt"
+    ckpt_path = checkpoint_input(f"cn1_ckpt_{arm}_s{seed}.pt")
     if not ckpt_path.exists():  # fall back to the pre-seed-suffix naming (first runs)
-        ckpt_path = HERE / f"cn1_ckpt_{arm}.pt"
+        ckpt_path = checkpoint_input(f"cn1_ckpt_{arm}.pt")
     ck = torch.load(ckpt_path, map_location="cpu")
     with torch.no_grad():
         model.base.embed.weight.copy_(ck["embed"])
@@ -82,10 +83,10 @@ def main():
 
     device = a.device or ("mps" if torch.backends.mps.is_available() else "cpu")
     print(f"eval device: {device}")
-    tok = v11.Tokenizer.from_file(str(HERE / "v11-cells.vocab.bin"))
+    tok = v11.Tokenizer.from_file(str(dataset_input("v11-cells.vocab.bin")))
     _, _, cell_ids, _ = cn1_decode.load_call_grammar()
     cell_ids_t = torch.tensor(sorted(cell_ids), device=device)
-    eval_rows = [json.loads(l) for l in (HERE / "cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
+    eval_rows = [json.loads(l) for l in dataset_input("cn1_corpus_eval.jsonl").read_text().splitlines() if l.strip()]
     buckets = {
         "seen_x_seen": ("seen_cell", "seen_comp"),
         "seen_x_novel": ("seen_cell", "novel_comp"),

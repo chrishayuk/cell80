@@ -41,6 +41,7 @@ from collections import defaultdict, Counter
 from pathlib import Path
 
 import cell80_py
+from artifact_paths import dataset_output
 
 HERE = Path(__file__).resolve().parent
 CELLS_DIR = HERE.parent.parent / "cell80" / "cells"
@@ -48,8 +49,8 @@ LIBRARY = HERE / "cn1_library.jsonl"
 AXIS_A = HERE / "cn1_axis_a_heldout.json"
 TOKEN_MAP = HERE / "cn1_cell_token_map.json"
 
-OUT_TRAIN = HERE / "cn1_corpus_train.jsonl"
-OUT_EVAL = HERE / "cn1_corpus_eval.jsonl"
+OUT_TRAIN = dataset_output("cn1_corpus_train.jsonl")
+OUT_EVAL = dataset_output("cn1_corpus_eval.jsonl")
 OUT_STATS = HERE / "cn1_corpus_stats.json"
 
 # Surface templates for a single "input(s) = output" demonstration (and the query line). Each

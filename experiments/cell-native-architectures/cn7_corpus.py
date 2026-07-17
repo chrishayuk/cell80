@@ -39,6 +39,7 @@ import re
 from pathlib import Path
 
 from cn1_corpus import Oracle, describe
+from artifact_paths import dataset_output
 
 HERE = Path(__file__).resolve().parent
 SP_MODEL = "/Users/christopherhay/chris-source/chris-experiments/compilation/15_v11_model/v11_tokenizer/v11.model"
@@ -326,7 +327,7 @@ def main():
     rows.extend(s4)
     rng.shuffle(rows)
 
-    out = HERE / "cn7_corpus_train.jsonl"
+    out = dataset_output("cn7_corpus_train.jsonl")
     with out.open("w") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")

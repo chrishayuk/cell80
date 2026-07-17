@@ -1,4 +1,0 @@
-  novel_cell|seen_comp   RSA 0.594/0.576  procrustes 0.683  CKA 0.756
-  seen_cell|seen_comp    RSA 0.581/0.562  procrustes 0.687  CKA 0.766
-  pooled                 RSA 0.587/0.570  procrustes 0.723  CKA 0.759
-wrote cn7_geometry_raw__cn7_ckpt_midtrain_attn.json (28s)
