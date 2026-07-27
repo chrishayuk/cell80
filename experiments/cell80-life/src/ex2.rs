@@ -92,6 +92,28 @@ pub struct StartingGenome2 {
     pub sense_move: u16,
 }
 
+/// Which mutation branches fire at birth. EX-6's factor
+/// (`deterministic-ecology-ex6-preregistration.md`); `Full` is the operator exactly as EX-2
+/// and EX-4 ran it, so every pre-EX-6 config keeps its `history_hash` byte-for-byte.
+///
+/// `NumericOnly` exists because the swap pools have grown with the library — ~89 promoters
+/// and ~43 movement cells at time of writing, against 8%-per-birth swap chance and a
+/// `pick_other_index` that always lands on a *different* member. Swap is therefore close to
+/// pure deleterious load, and that load grows every time the library does. Separating the
+/// numeric operator from it distinguishes "this world has no ratchet" from "this world's
+/// ratchet is swamped by mutational load" — different findings with different fixes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MutationMode {
+    /// Children clone their parents exactly — `mutate()` is skipped entirely, mirroring
+    /// `ex3::RunConfig3::mutation_enabled == false`. A flat floor: the genome cannot change.
+    Off,
+    /// Numeric jitter fires; all three swap branches are suppressed.
+    NumericOnly,
+    /// The operator as EX-2/EX-3/EX-4 ran it.
+    #[default]
+    Full,
+}
+
 pub struct RunConfig2DGenome {
     pub seed: u64,
     pub ticks: u32,
@@ -101,6 +123,10 @@ pub struct RunConfig2DGenome {
     pub food_density: f64,
     pub food_value: u16,
     pub regrow_ticks: u16,
+    /// EX-6's factor. `Full` reproduces every pre-EX-6 run bit-for-bit — the landed
+    /// EX-2/EX-4 replay tests are the check on that, and a hash change here means this field
+    /// was threaded wrong, not that the tests need updating.
+    pub mutation_mode: MutationMode,
 }
 
 pub struct RunOutput2DGenome {
@@ -508,16 +534,37 @@ fn run_impl(
                 let child_pos = world.neighbor_index(orgs[i].pos, 1, 0);
                 let id = next_id;
                 next_id += 1;
-                let child_genome = mutate(
-                    cfg.seed,
-                    tick,
-                    id,
-                    &orgs[i].genome,
-                    hungry_pool_len,
-                    repro_pool_len,
-                    sense_pool_len,
-                    overrides.and_then(|o| o.get(&id)),
-                );
+                // EX-6's mutation-mode factor. `Off` skips `mutate()` outright (ex3's own
+                // control does the same); `NumericOnly` folds the three swap-skip flags into
+                // whatever per-birth override EX-4 may already have supplied. Suppressing a
+                // branch cannot perturb any other branch's draw — every stream is a pure
+                // function of (seed, tick, child_id, stream) with no shared cursor — so the
+                // numeric fields see identical randomness in both mutating modes.
+                let per_id = overrides.and_then(|o| o.get(&id)).copied();
+                let child_genome = match cfg.mutation_mode {
+                    MutationMode::Off => orgs[i].genome.clone(),
+                    mode => {
+                        let effective = if mode == MutationMode::NumericOnly {
+                            let mut f = per_id.unwrap_or_default();
+                            f.skip_hungry_swap = true;
+                            f.skip_repro_swap = true;
+                            f.skip_sense_swap = true;
+                            Some(f)
+                        } else {
+                            per_id
+                        };
+                        mutate(
+                            cfg.seed,
+                            tick,
+                            id,
+                            &orgs[i].genome,
+                            hungry_pool_len,
+                            repro_pool_len,
+                            sense_pool_len,
+                            effective.as_ref(),
+                        )
+                    }
+                };
                 all_births.push(BirthEvent {
                     child_id: id,
                     parent_id: orgs[i].id,

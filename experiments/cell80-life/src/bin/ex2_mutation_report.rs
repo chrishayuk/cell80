@@ -27,7 +27,7 @@ mod macos {
     use std::time::Instant;
 
     use cell80_life::composition::{fingerprint_pool_member, grow_pool, ComposablePool};
-    use cell80_life::ex2::{self, GenePools, RunConfig2DGenome, StartingGenome2};
+    use cell80_life::ex2::{self, GenePools, MutationMode, RunConfig2DGenome, StartingGenome2};
     use cell80_life::genes::{CompiledGene, EngineKind};
     use cell80_life::load_starting_genome;
     use cell80_life::pools::discover_pools;
@@ -76,6 +76,7 @@ mod macos {
             food_density: 0.2,
             food_value: 40,
             regrow_ticks: 8,
+            mutation_mode: MutationMode::Full,
         };
 
         let t0 = Instant::now();
@@ -263,6 +264,7 @@ mod macos {
             food_density: 0.2,
             food_value: 40,
             regrow_ticks: 8,
+            mutation_mode: MutationMode::Full,
         };
 
         let control_out = ex2::run(EngineKind::Gpu, &adoption_cfg, &starting2, &control_genes);

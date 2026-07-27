@@ -24,7 +24,9 @@ mod macos {
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
 
-    use cell80_life::ex2::{self, FieldOverride, GenePools, RunConfig2DGenome, StartingGenome2};
+    use cell80_life::ex2::{
+        self, FieldOverride, GenePools, MutationMode, RunConfig2DGenome, StartingGenome2,
+    };
     use cell80_life::genes::EngineKind;
     use cell80_life::history::TickRecord2DGenome;
     use cell80_life::lineage::{
@@ -207,6 +209,7 @@ mod macos {
             food_density: 0.2,
             food_value: 40,
             regrow_ticks: 8,
+            mutation_mode: MutationMode::Full,
         };
 
         let mut chosen: Option<(u64, ex2::RunOutput2DGenome, Candidate)> = None;

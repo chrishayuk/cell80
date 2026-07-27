@@ -38,7 +38,9 @@ mod macos {
     use std::time::Instant;
 
     use cell80_life::composition::{fingerprint_pool_member, grow_pool, ComposablePool};
-    use cell80_life::ex2::{self, GenePools, Overrides, RunConfig2DGenome, StartingGenome2};
+    use cell80_life::ex2::{
+        self, GenePools, MutationMode, Overrides, RunConfig2DGenome, StartingGenome2,
+    };
     use cell80_life::genes::{CompiledGene, EngineKind};
     use cell80_life::history::BirthEvent;
     use cell80_life::lineage::Role;
@@ -132,6 +134,7 @@ mod macos {
             food_density: 0.2,
             food_value: 40,
             regrow_ticks: 8,
+            mutation_mode: MutationMode::Full,
         };
 
         println!(

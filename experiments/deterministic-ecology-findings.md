@@ -1174,3 +1174,156 @@ cargo clippy -p cell80-life --all-targets
 - Prototype the actual `CellHost`-by-body dispatch this would need to run a *whole tick's*
   decision sequence as one RV32 program — the natural next step toward the design doc's
   fuller "deploys to the RP2350" claim, once that upstream machinery lands.
+
+---
+
+## EX-6 — was the ecology seeded at a local optimum?
+
+Run 2026-07-27 against `deterministic-ecology-ex6-preregistration.md` (committed `1df3630`,
+before any run). **A follow-on, not part of the doc-17 programme** — EX-0…EX-5 were complete
+on 2026-07-12; this asks a question that only became visible when all nine substrate
+experiments were laid side by side.
+
+Code: `src/ex2.rs` (`MutationMode`), `src/bin/ex6_degraded_seed_report.rs`,
+`tests/ex6_cpu_replay.rs`.
+
+### Why it was run
+
+The verdicts across the substrate line split by *kind of claim*: checkable properties 4/4,
+targeted search 1/2, **untargeted emergence 0/3**. Reading EX-2 next to C1
+(`cell-superoptimization-findings.md`) suggested one explanation neither could see alone —
+C1 found the authored library near-optimal, EX-2 found the parent genome near-optimal. Same
+result in two domains: hand-curated starting points sit at a local optimum, and undirected
+recombination from them goes downhill. If so, the ecology never had anywhere to climb, and
+the 0/3 is a fact about the *starting point*, not the world.
+
+### Headline
+
+**The primary bar FAILED, and the registered second branch fired: this world has a ratchet,
+and the mutation operator as EX-2/EX-3 actually ran it hides it.**
+
+- **D2/full — the pre-registered primary — fails both conditions.** Mean decay below the
+  drift null's 95% lower bound in **2 of 5** seeds (bar: ≥4), mean recovery **0.331**
+  (bar: ≥0.50). P1, which predicted my own hypothesis would fail, is confirmed.
+- **D2/numeric-only clears both thresholds** — 4/5 seeds below null, recovery **0.505**.
+  Per the pre-registration: *"Numeric-only recovers but Full does not → the ratchet exists
+  and is swamped by deleterious swap load."* That is exactly the observed pattern, and P2
+  (numeric beats full) is confirmed, 0.505 vs 0.331.
+- The bar was written for **D2/full** and D2/full failed. Numeric's pass is the registered
+  secondary reading, not a rescue of the primary — recorded that way deliberately.
+
+### Receipts
+
+Flagship config (2000 ticks, 8 initial organisms, 32×32, food_density 0.2, food_value 40,
+regrow_ticks 8), seeds `0x5eed1234c31180ff + 0..4`, GPU engine. Pools as discovered:
+**89 promoters, 43 movement candidates.** `mean_dec` = mean `decay_amount` in the final
+living population; `null_lo` = 95% lower bound of the lineage-depth-matched clamped
+random-walk null (10,000 replicates, fixed seed); `below` = seeds under that bound.
+
+| rung | mode | extinct | mean_dec | null_mean | null_lo | below | recovery |
+|---|---|---|---|---|---|---|---|
+| D0 curated | off | 0 | 1.000 | 1.695 | 1.525 | 5/5 | — |
+| D0 curated | numeric | 0 | 1.012 | 1.517 | 1.376 | 5/5 | — |
+| D0 curated | full | 0 | 1.077 | 1.983 | 1.852 | 5/5 | — |
+| D1 decay=3 | off | 0 | 3.000 | 3.033 | 2.634 | 0/5 | 0.000 |
+| D1 decay=3 | numeric | 0 | 1.588 | 3.060 | 2.748 | 5/5 | 0.706 |
+| D1 decay=3 | full | 0 | 1.434 | 3.030 | 2.758 | 5/5 | 0.783 |
+| **D2 decay=6** | off | 0 | 6.000 | 5.391 | 4.744 | 0/5 | 0.000 |
+| **D2 decay=6** | **numeric** | 0 | **3.476** | 5.147 | 4.655 | **4/5** | **0.505** |
+| **D2 decay=6** | **full** | 0 | **4.343** | 5.432 | 4.920 | **2/5** | **0.331** |
+| D3 decay=6,thr=400 | off | 0 | 6.000 | 5.663 | 5.202 | 0/5 | 0.000 |
+| D3 decay=6,thr=400 | numeric | 0 | 5.121 | 5.643 | 5.254 | 3/5 | 0.176 |
+| D3 decay=6,thr=400 | full | 0 | 5.111 | 5.664 | 5.276 | 2/5 | 0.178 |
+| D4 argmin3 | all three | **5/5** | — | — | — | — | — |
+
+### What this shows
+
+**The `Off` control is exactly flat.** Mean decay lands on the rung's starting value to three
+decimals in every rung (3.000, 6.000, 6.000) with recovery 0.000. The harness is measuring
+what it claims; `tests/ex6_cpu_replay.rs::mutation_off_freezes_the_genome` asserts the same
+property directly on the birth log.
+
+**Selection demonstrably acts on `decay_amount` — D0 proves it.** This control was not
+pre-registered and emerged from the run: at the curated optimum the drift null says decay
+should *rise* to 1.5–2.0 through random walk, and the observed population holds at
+1.000–1.077, below the null in 5/5 seeds in all three modes. Selection is actively
+maintaining the optimum against upward mutational pressure. That is what makes D2's failure
+interpretable as "the climb is too weak" rather than "selection is blind to this field."
+
+**The ratchet is real.** D1 recovers 0.706–0.783 with 5/5 seeds below null; D2/numeric
+recovers 0.505 with 4/5. Seeded below the optimum, this world climbs back. The core of the
+local-optimum hypothesis is supported: the ecology was started with nowhere to go up.
+
+**The specimens are legible, which is the whole point of the substrate.** At D2/full seed 0,
+**58% of the surviving population carries `lcm3` — a number-theory cell — as its movement
+gene.** At D3/full seed 0, 40% carry `mask_has_all` as the reproduction promoter. At D0/full
+the modal reproduction promoter is the curated `is_ge` in only 29% of survivors, and the run
+logs **29,009 births against 28,719 starvations** — a futile churn cycle 50× the mutation-off
+baseline of 579 births. Swap mutation pushes populations onto nonsense role cells and the
+result is enormous birth/death turnover rather than adaptation.
+
+### What this does *not* show
+
+**"Swap load always hurts" is false, and D1 says so.** At D1, full mutation *beats*
+numeric-only (0.783 vs 0.706). The swap penalty appears only at D2 and below, where
+populations are small and stressed (14–22 survivors) rather than healthy (64–88 at D1). The
+honest statement is that swap load overwhelms selection *when the population is too small to
+purge it*, not that it is uniformly deleterious. This materially qualifies the clean
+"deleterious load" story the pre-registration expected, and it was the run that supplied the
+qualification, not the design.
+
+**D2/numeric's pass is thin.** 4 of 5 seeds and 0.505 against a 0.50 bar is a hair over the
+line. It should not be quoted as a robust effect without more seeds.
+
+**D4 is not testable at this degradation, as pre-registered.** All 5 seeds went extinct in
+all three modes — the whole population starts moving away from food and dies before selection
+has anything to act on. Per the extinction rule fixed before the run (>2 of 5 extinct →
+report as not testable), this is *not* evidence about ratchets. P3 predicted no recovery and
+P4 predicted extinction; both hold, and pre-registering P3 is what stops a D4 failure being
+retold later as a ratchet story.
+
+**This does not rescue EX-3.** A ratchet on one monotone scalar says nothing about whether
+predator and prey traits couple; EX-3's permutation-null refutation stands untouched.
+
+**Only one field was tested**, chosen precisely because it is the clean case (monotone,
+optimum at the bound of `DECAY_BOUNDS`, reachable in single steps). Nothing here transfers to
+the non-monotone fields, and D3 shows that adding a second deficit collapses recovery to
+~0.18 in both mutating modes.
+
+**The local-optimum reading remains post-hoc.** EX-6 tests a consequence of that story, not
+the story itself; "the curated genome sits at a local optimum" was never directly measured.
+
+### What it changes about the 0/3
+
+EX-2 and EX-3 both ran with the full operator against pools of this size, and EX-6 shows the
+full operator suppresses a recovery signal that is plainly present under numeric-only. That
+is a live confound for those results — **not** a reversal of them. It also ties the ecology
+to a project-level concern: the swap pool is discovered from the live library, so **every
+cell added to cell80 raises the mutational load in this world.** EX-2 and EX-3 ran against a
+smaller library than the 89/43 measured here.
+
+### Reproduce it
+
+```
+cargo run -p cell80-life --release --bin ex6_degraded_seed_report   # macOS, ~365s
+cargo test -p cell80-life --test ex6_cpu_replay                     # any platform
+```
+
+`MutationMode::Full` was verified byte-identical to the pre-EX-6 code by running the flagship
+config in a worktree at the parent commit and comparing: both give
+`hash=bddd7f6bb76eba22ea9a0a6a1bc0c0efb36ec06933d2cc2c5036e7774a9bb4b1`, final_pop 358,
+births 27,280, starved 26,930. The landed EX-2/EX-4 replay tests compare two runs *within*
+one binary, so they check determinism but would not have caught a behaviour change — the
+worktree comparison is what actually verifies the claim.
+
+### What would raise confidence further
+
+- More seeds at D2. The primary comparison rests on 5, and numeric-only clears the bar by
+  0.005.
+- A swap-rate sweep rather than a binary on/off, to find where load starts to dominate — the
+  D1/D2 reversal says the boundary is population-size-dependent and locating it would turn a
+  qualitative claim into a quantitative one.
+- Re-run EX-2's and EX-3's headline configs under `NumericOnly` to see whether either negative
+  result moves. That is the direct test of the confound named above, and it is cheap.
+- A milder D4 (a movement cell that is bad but not lethal) to get a categorical rung that
+  survives long enough to be testable.

@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use cell80_life::ex2::{self, GenePools, RunConfig2DGenome, StartingGenome2};
+use cell80_life::ex2::{self, GenePools, MutationMode, RunConfig2DGenome, StartingGenome2};
 use cell80_life::genes::EngineKind;
 use cell80_life::load_starting_genome;
 use cell80_life::pools::discover_pools;
@@ -30,6 +30,7 @@ fn run_config() -> RunConfig2DGenome {
         food_density: 0.2,
         food_value: 40,
         regrow_ticks: 8,
+        mutation_mode: MutationMode::Full,
     }
 }
 
