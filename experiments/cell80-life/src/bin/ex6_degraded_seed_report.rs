@@ -286,7 +286,185 @@ mod macos {
         }
     }
 
+    /// Spearman rank correlation for the EX-7 sweep. Rates are already in ascending order,
+    /// so their ranks are just their positions; only the recovery ranks need computing.
+    /// No tie correction — five distinct measured recoveries are expected, and an exact tie
+    /// would be visible in the printed table anyway.
+    fn spearman_rho(recoveries: &[f64]) -> f64 {
+        let n = recoveries.len();
+        if n < 3 {
+            return f64::NAN;
+        }
+        let mut idx: Vec<usize> = (0..n).collect();
+        idx.sort_by(|&a, &b| recoveries[a].partial_cmp(&recoveries[b]).unwrap());
+        let mut rank = vec![0f64; n];
+        for (r, &i) in idx.iter().enumerate() {
+            rank[i] = (r + 1) as f64;
+        }
+        let d2: f64 = (0..n)
+            .map(|i| {
+                let d = (i + 1) as f64 - rank[i];
+                d * d
+            })
+            .sum();
+        1.0 - 6.0 * d2 / (n as f64 * ((n * n) as f64 - 1.0))
+    }
+
+    /// EX-7 (`deterministic-ecology-ex7-preregistration.md`): sweep the swap rate to find
+    /// where mutational load starts to dominate, and to test whether EX-6's load mechanism
+    /// is dose-dependent at all. Rate 0 must reproduce EX-6's `NumericOnly` numbers — that
+    /// is the validity gate, checked before anything else is read.
+    pub fn sweep() {
+        let t_all = Instant::now();
+        let role_pools = discover_pools(&cells_dir());
+        println!(
+            "EX-7 swap-rate sweep. pools: {} promoters, {} movement",
+            role_pools.promoters.len(),
+            role_pools.movement.len()
+        );
+        let starting = load_starting_genome(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("genomes/grazer.json"),
+        );
+        let argmax_idx = role_pools.movement_index(&starting.genes.sense_move);
+        let curated_repro = role_pools.promoter_index(&starting.genes.repro_promoter);
+        let curated_hungry = role_pools.promoter_index(&starting.genes.hungry_promoter);
+        let genes = GenePools::load(
+            &cells_dir(),
+            &starting.genes.decay,
+            &starting.genes.eat,
+            &starting.genes.split,
+            &role_pools,
+        )
+        .expect("compiling gene pools");
+
+        const RATES: &[u64] = &[0, 1, 2, 4, 8];
+        let rungs: &[(&str, u16)] = &[("D1 decay=3", 3), ("D2 decay=6", 6)];
+
+        println!(
+            "\n{:<12} {:>5} {:>9} {:>9} {:>7} {:>8} {:>9} {:>9} {:>9}",
+            "rung",
+            "swap",
+            "mean_dec",
+            "null_lo",
+            "below",
+            "recov",
+            "births/su",
+            "curated%",
+            "argmax%"
+        );
+        println!("{}", "-".repeat(92));
+
+        for (rung_name, start_decay) in rungs {
+            let mut recoveries: Vec<f64> = Vec::new();
+            for &rate in RATES {
+                let starting2 = StartingGenome2 {
+                    initial_energy: starting.initial_energy,
+                    decay_amount: *start_decay,
+                    repro_threshold: starting.repro_threshold,
+                    repro_give_pct: starting.repro_give_pct,
+                    hungry_promoter: curated_hungry,
+                    repro_promoter: curated_repro,
+                    sense_move: argmax_idx,
+                };
+                let mut outs: Vec<Outcome> = Vec::new();
+                let mut curated_fracs: Vec<f64> = Vec::new();
+                for s in 0..SEEDS {
+                    let cfg = RunConfig2DGenome {
+                        seed: BASE_SEED.wrapping_add(s as u64),
+                        ticks: TICKS,
+                        initial_organisms: INITIAL_ORGANISMS,
+                        world_width: 32,
+                        world_height: 32,
+                        food_density: 0.2,
+                        food_value: 40,
+                        regrow_ticks: 8,
+                        // Rate 0 makes every swap branch a no-op, which is what NumericOnly
+                        // achieves by skipping it — `rng::chance` is a pure function with no
+                        // shared cursor, so the two are the same operator. Full is used here
+                        // so the *rate* is the only thing varying across the sweep.
+                        mutation_mode: MutationMode::Full,
+                        swap_mutate_pct: rate,
+                    };
+                    let out = ex2::run(EngineKind::Gpu, &cfg, &starting2, &genes);
+                    if let Some(t) = out.ticks.last() {
+                        if !t.organisms.is_empty() {
+                            let n = t.organisms.len() as f64;
+                            curated_fracs.push(
+                                t.organisms
+                                    .iter()
+                                    .filter(|o| {
+                                        o.repro_promoter == curated_repro
+                                            && o.hungry_promoter == curated_hungry
+                                            && o.sense_move == argmax_idx
+                                    })
+                                    .count() as f64
+                                    / n,
+                            );
+                        }
+                    }
+                    outs.push(analyse(&out, *start_decay, argmax_idx));
+                }
+                let live: Vec<&Outcome> = outs.iter().filter(|o| !o.extinct).collect();
+                let avg = |f: &dyn Fn(&Outcome) -> f64| -> f64 {
+                    if live.is_empty() {
+                        f64::NAN
+                    } else {
+                        live.iter().map(|o| f(o)).sum::<f64>() / live.len() as f64
+                    }
+                };
+                let recov = avg(&|o| o.recovery);
+                recoveries.push(recov);
+                let curated = if curated_fracs.is_empty() {
+                    f64::NAN
+                } else {
+                    curated_fracs.iter().sum::<f64>() / curated_fracs.len() as f64
+                };
+                println!(
+                    "{:<12} {:>4}% {:>9.3} {:>9.3} {:>4}/{:<2} {:>8.3} {:>9.1} {:>8.1}% {:>8.1}%",
+                    rung_name,
+                    rate,
+                    avg(&|o| o.mean_decay),
+                    avg(&|o| o.null_lo),
+                    live.iter().filter(|o| o.below_null).count(),
+                    live.len(),
+                    recov,
+                    avg(&|o| o.births as f64) / avg(&|o| o.survivors as f64).max(1.0),
+                    curated * 100.0,
+                    avg(&|o| o.argmax_frac) * 100.0,
+                );
+            }
+            let rho = spearman_rho(&recoveries);
+            let drop = recoveries[0] - recoveries[recoveries.len() - 1];
+            let crossover = RATES
+                .iter()
+                .zip(&recoveries)
+                .filter(|(_, &r)| r >= 0.50)
+                .map(|(&rate, _)| rate)
+                .max();
+            println!(
+                "  -> {rung_name}: Spearman rho(swap rate, recovery) = {rho:.3}; \
+                 recovery drop rate0 -> rate8 = {drop:.3}; \
+                 highest rate still reaching 0.50 = {}",
+                crossover
+                    .map(|r| format!("{r}%"))
+                    .unwrap_or_else(|| "none".into())
+            );
+            println!();
+        }
+
+        println!("total wall clock: {:.1}s", t_all.elapsed().as_secs_f64());
+        println!(
+            "\nValidity gate: rate 0 must reproduce EX-6's NumericOnly numbers \
+             (D2 recovery 0.505 at 4/5 below null; D1 0.706 at 5/5). \
+             Primary bar (D2): Spearman rho <= -0.9 AND drop >= 0.15."
+        );
+    }
+
     pub fn main() {
+        if std::env::args().any(|a| a == "--sweep") {
+            sweep();
+            return;
+        }
         let t_all = Instant::now();
         let role_pools = discover_pools(&cells_dir());
         println!(
@@ -381,6 +559,7 @@ mod macos {
                         food_value: 40,
                         regrow_ticks: 8,
                         mutation_mode: *mode,
+                        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
                     };
                     let out = ex2::run(EngineKind::Gpu, &cfg, &starting2, &genes);
                     outcomes.push(analyse(&out, rung.decay, argmax_idx));

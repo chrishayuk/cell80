@@ -59,10 +59,19 @@ pub struct RunConfig3 {
     pub food_density: f64,
     pub food_value: u16,
     pub regrow_ticks: u16,
-    /// The pre-registered control: skip `mutate()` entirely at birth (clone the parent's
-    /// genome verbatim) — isolates "more room" (world size/population ratio) from
-    /// "evolution" as the explanation for any population stability seen.
-    pub mutation_enabled: bool,
+    /// `Off` is the pre-registered control: skip `mutate()` entirely at birth (clone the
+    /// parent's genome verbatim) — isolates "more room" (world size/population ratio) from
+    /// "evolution" as the explanation for any population stability seen. It replaces the
+    /// original `mutation_enabled: bool` one-for-one (`true` → `Full`, `false` → `Off`),
+    /// verified byte-identical on the arms-race flagship config.
+    ///
+    /// `NumericOnly` is EX-6's addition: EX-6 found that the swap operator, against pools
+    /// this size, suppresses a recovery signal that is plainly present without it, which
+    /// makes swap load a live confound for EX-3's own null result. This field is what lets
+    /// that confound actually be tested rather than argued about.
+    pub mutation_mode: crate::ex2::MutationMode,
+    /// EX-7's factor — see `ex2::RunConfig2DGenome::swap_mutate_pct`.
+    pub swap_mutate_pct: u64,
     /// Ticks a predator must wait after a kill before it can attack again (0 disables the
     /// mechanic entirely). Checkpoint B: the mutation-off control replicated a 10/10-seed
     /// predator extinction at two otherwise fully robust configs — but the *same*
@@ -443,19 +452,32 @@ fn run_impl(
                 let child_pos = world.neighbor_index(orgs[i].pos, 1, 0);
                 let id = next_id;
                 next_id += 1;
-                let child_genome = if cfg.mutation_enabled {
-                    mutate(
-                        cfg.seed,
-                        tick,
-                        id,
-                        &orgs[i].genome,
-                        hungry_pool_len,
-                        repro_pool_len,
-                        sense_pool_len,
-                        overrides.and_then(|o| o.get(&id)),
-                    )
-                } else {
-                    orgs[i].genome.clone()
+                // Mirrors `ex2::run_impl`'s mode handling exactly — see `MutationMode`.
+                let per_id = overrides.and_then(|o| o.get(&id)).copied();
+                let child_genome = match cfg.mutation_mode {
+                    crate::ex2::MutationMode::Off => orgs[i].genome.clone(),
+                    mode => {
+                        let effective = if mode == crate::ex2::MutationMode::NumericOnly {
+                            let mut f = per_id.unwrap_or_default();
+                            f.skip_hungry_swap = true;
+                            f.skip_repro_swap = true;
+                            f.skip_sense_swap = true;
+                            Some(f)
+                        } else {
+                            per_id
+                        };
+                        mutate(
+                            cfg.seed,
+                            tick,
+                            id,
+                            &orgs[i].genome,
+                            hungry_pool_len,
+                            repro_pool_len,
+                            sense_pool_len,
+                            effective.as_ref(),
+                            cfg.swap_mutate_pct,
+                        )
+                    }
                 };
                 all_births.push(BirthEventEco {
                     child_id: id,

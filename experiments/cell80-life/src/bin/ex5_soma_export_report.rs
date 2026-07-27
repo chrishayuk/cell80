@@ -172,7 +172,8 @@ fn main() {
         food_density: 0.3,
         food_value: 40,
         regrow_ticks: 8,
-        mutation_enabled: true,
+        mutation_mode: cell80_life::ex2::MutationMode::Full,
+        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
         predator_satiation_ticks: 20,
     };
 

@@ -26,6 +26,7 @@ fn run_config(mode: MutationMode) -> RunConfig2DGenome {
         food_value: 40,
         regrow_ticks: 8,
         mutation_mode: mode,
+        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
     }
 }
 
@@ -139,4 +140,30 @@ fn numeric_only_suppresses_swaps_but_keeps_jitter() {
         jittered,
         "numeric jitter never fired — this mode would be indistinguishable from Off"
     );
+}
+
+/// EX-7's validity gate as a test rather than a one-off observation
+/// (`deterministic-ecology-ex7-preregistration.md`): `Full` at swap rate 0 and `NumericOnly`
+/// are the same operator expressed two ways. `rng::chance` is a pure function of
+/// `(seed, tick, child_id, stream)` compared against a threshold, with no shared cursor, so a
+/// threshold of 0 never fires and consumes nothing — exactly what skipping the branch does.
+///
+/// The whole EX-7 sweep is read against rate 0 as its anchor to EX-6's numbers, so if these
+/// two ever diverge, the sweep is measuring something other than the swap rate.
+#[test]
+fn swap_rate_zero_equals_numeric_only() {
+    let (_pools, starting2, genes) = setup();
+    let mut numeric_cfg = run_config(MutationMode::NumericOnly);
+    numeric_cfg.swap_mutate_pct = cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT;
+    let mut rate0_cfg = run_config(MutationMode::Full);
+    rate0_cfg.swap_mutate_pct = 0;
+
+    let a = ex2::run(EngineKind::CpuReference, &numeric_cfg, &starting2, &genes);
+    let b = ex2::run(EngineKind::CpuReference, &rate0_cfg, &starting2, &genes);
+    assert_eq!(
+        a.history_hash, b.history_hash,
+        "NumericOnly and Full@rate0 must be the same operator"
+    );
+    assert_eq!(a.births, b.births, "birth logs must match");
+    assert_eq!(a.final_population, b.final_population);
 }

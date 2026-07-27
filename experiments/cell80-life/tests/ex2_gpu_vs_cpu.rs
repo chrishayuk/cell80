@@ -31,6 +31,7 @@ fn run_config() -> RunConfig2DGenome {
         food_value: 40,
         regrow_ticks: 8,
         mutation_mode: MutationMode::Full,
+        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
     }
 }
 

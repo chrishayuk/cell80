@@ -37,7 +37,10 @@ const DECAY_BOUNDS: (i32, i32) = (1, 6);
 const THRESHOLD_BOUNDS: (i32, i32) = (50, 400);
 const GIVE_PCT_BOUNDS: (i32, i32) = (10, 90);
 const NUMERIC_MUTATE_PCT: u64 = 25;
-const SWAP_MUTATE_PCT: u64 = 8;
+/// The swap-branch firing rate as EX-2, EX-3 and EX-6 all ran it. EX-7 sweeps it
+/// (`deterministic-ecology-ex7-preregistration.md`); every pre-EX-7 config passes this value
+/// and is byte-identical as a result.
+pub const DEFAULT_SWAP_MUTATE_PCT: u64 = 8;
 
 /// The three fixed roles (population-shared, never mutated — no same-scale alternative
 /// cells exist for them, same reasoning `main.rs` established) plus the three swappable
@@ -127,6 +130,9 @@ pub struct RunConfig2DGenome {
     /// EX-2/EX-4 replay tests are the check on that, and a hash change here means this field
     /// was threaded wrong, not that the tests need updating.
     pub mutation_mode: MutationMode,
+    /// EX-7's factor: the swap-branch firing rate. `DEFAULT_SWAP_MUTATE_PCT` (8) is the
+    /// value every pre-EX-7 config used and is byte-identical to it.
+    pub swap_mutate_pct: u64,
 }
 
 pub struct RunOutput2DGenome {
@@ -206,6 +212,7 @@ pub(crate) fn mutate(
     repro_pool_len: u16,
     sense_pool_len: u16,
     override_: Option<&FieldOverride>,
+    swap_pct: u64,
 ) -> OrgGenome {
     let mut child = parent.clone();
     let ov = override_.copied().unwrap_or_default();
@@ -259,7 +266,7 @@ pub(crate) fn mutate(
             tick,
             child_id,
             rng::MUTATE_HUNGRY_SWAP_CHANCE_STREAM,
-            SWAP_MUTATE_PCT,
+            swap_pct,
         )
     {
         child.hungry_promoter = rng::pick_other_index(
@@ -278,7 +285,7 @@ pub(crate) fn mutate(
             tick,
             child_id,
             rng::MUTATE_REPRO_SWAP_CHANCE_STREAM,
-            SWAP_MUTATE_PCT,
+            swap_pct,
         )
     {
         child.repro_promoter = rng::pick_other_index(
@@ -297,7 +304,7 @@ pub(crate) fn mutate(
             tick,
             child_id,
             rng::MUTATE_SENSE_SWAP_CHANCE_STREAM,
-            SWAP_MUTATE_PCT,
+            swap_pct,
         )
     {
         child.sense_move = rng::pick_other_index(
@@ -562,6 +569,7 @@ fn run_impl(
                             repro_pool_len,
                             sense_pool_len,
                             effective.as_ref(),
+                            cfg.swap_mutate_pct,
                         )
                     }
                 };

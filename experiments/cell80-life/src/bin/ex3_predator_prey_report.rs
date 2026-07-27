@@ -191,7 +191,8 @@ mod macos {
                         food_density: c.density,
                         food_value: 40,
                         regrow_ticks: 8,
-                        mutation_enabled: true,
+                        mutation_mode: cell80_life::ex2::MutationMode::Full,
+                        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
                         predator_satiation_ticks: 0,
                     };
                     let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
@@ -234,8 +235,11 @@ mod macos {
                     "\n  -- world {}x{} grazers={} predators={} density={} --",
                     c.width, c.height, c.grazers, c.predators, c.density
                 );
-                for &mutation_enabled in &[true, false] {
-                    println!("\n    -- mutation_enabled={mutation_enabled} --");
+                for &mutation_mode in &[
+                    cell80_life::ex2::MutationMode::Full,
+                    cell80_life::ex2::MutationMode::Off,
+                ] {
+                    println!("\n    -- mutation_mode={mutation_mode:?} --");
                     for &seed in &seeds {
                         let cfg = RunConfig3 {
                             seed,
@@ -247,7 +251,8 @@ mod macos {
                             food_density: c.density,
                             food_value: 40,
                             regrow_ticks: 8,
-                            mutation_enabled,
+                            mutation_mode,
+                            swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
                             predator_satiation_ticks: 0,
                         };
                         let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
@@ -270,8 +275,11 @@ mod macos {
                 "\n  -- world {}x{} grazers={} predators={} density={} --",
                 c.width, c.height, c.grazers, c.predators, c.density
             );
-            for &mutation_enabled in &[true, false] {
-                println!("\n    -- mutation_enabled={mutation_enabled} --");
+            for &mutation_mode in &[
+                cell80_life::ex2::MutationMode::Full,
+                cell80_life::ex2::MutationMode::Off,
+            ] {
+                println!("\n    -- mutation_mode={mutation_mode:?} --");
                 for &seed in &seeds {
                     let cfg = RunConfig3 {
                         seed,
@@ -283,7 +291,8 @@ mod macos {
                         food_density: c.density,
                         food_value: 40,
                         regrow_ticks: 8,
-                        mutation_enabled,
+                        mutation_mode,
+                        swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
                         predator_satiation_ticks: 20,
                     };
                     let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);

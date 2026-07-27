@@ -99,7 +99,7 @@ mod macos {
         // The calibrated, satiation-mechanic-verified flagship config (part 1/2/3 of
         // ex3_predator_prey_report.rs): 10/10 seeds sustained coexistence here.
         let seeds = [42u64, 1, 2, 3, 999, 0x5eed_1234_c311_80ff];
-        let cfg_for = |seed: u64| RunConfig3 {
+        let cfg_for = |seed: u64, mode: cell80_life::ex2::MutationMode| RunConfig3 {
             seed,
             ticks: 10_000,
             initial_grazers: 60,
@@ -109,17 +109,74 @@ mod macos {
             food_density: 0.3,
             food_value: 40,
             regrow_ticks: 8,
-            mutation_enabled: true,
+            mutation_mode: mode,
+            swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
             predator_satiation_ticks: 20,
         };
 
-        for &seed in &seeds {
-            let cfg = cfg_for(seed);
+        // EX-6's confound test. EX-6 found the swap operator, against pools this size,
+        // suppresses a recovery signal that is plainly present under numeric-only mutation —
+        // so EX-3's own null result may have been measuring mutational load rather than the
+        // absence of coupling. `Full` reproduces the original run bit-for-bit (verified);
+        // `NumericOnly` is the new arm. If the arms race was real but swamped, it should show
+        // up here as a materially smaller p-value. If it does not, EX-3's refutation stands
+        // on its own and the confound is ruled out rather than argued away.
+        for (mode_name, mode) in [
+            ("full (original EX-3)", cell80_life::ex2::MutationMode::Full),
+            (
+                "numeric-only (EX-6 arm)",
+                cell80_life::ex2::MutationMode::NumericOnly,
+            ),
+        ] {
+            println!("\n\n######## mutation mode: {mode_name} ########");
+            let mut p_values: Vec<f64> = Vec::new();
+            let mut collapses = 0usize;
+            run_seeds(
+                &seeds,
+                &cfg_for,
+                mode,
+                &grazer,
+                &predator,
+                &genes,
+                &mut p_values,
+                &mut collapses,
+            );
+            println!("\n---- {mode_name} summary ----");
+            println!("  one-sided collapses: {collapses}/{}", seeds.len());
+            if p_values.is_empty() {
+                println!("  no analysable seeds");
+            } else {
+                let min = p_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let max = p_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+                let mean = p_values.iter().sum::<f64>() / p_values.len() as f64;
+                let sig = p_values.iter().filter(|&&p| p < 0.05).count();
+                println!(
+                    "  permutation p across {} analysable seeds: min {min:.4}, mean {mean:.4}, max {max:.4}; p<0.05 in {sig}/{}",
+                    p_values.len(),
+                    p_values.len()
+                );
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn run_seeds(
+        seeds: &[u64],
+        cfg_for: &dyn Fn(u64, cell80_life::ex2::MutationMode) -> RunConfig3,
+        mode: cell80_life::ex2::MutationMode,
+        grazer: &StartingGenome3,
+        predator: &StartingGenome3,
+        genes: &GenePools,
+        p_values: &mut Vec<f64>,
+        collapses: &mut usize,
+    ) {
+        for &seed in seeds {
+            let cfg = cfg_for(seed, mode);
             println!(
                 "\n== seed {seed:#x}: running flagship ({} ticks, GPU) ==",
                 cfg.ticks
             );
-            let out = ex3::run(EngineKind::Gpu, &cfg, &grazer, &predator, &genes);
+            let out = ex3::run(EngineKind::Gpu, &cfg, grazer, predator, genes);
             println!(
                 "  final: grazers={} predators={}  total_births={}  total_predation_kills={}",
                 out.final_grazers, out.final_predators, out.total_births, out.total_predation_kills
@@ -128,6 +185,7 @@ mod macos {
                 println!(
                     "  one-sided collapse this seed — skipping event analysis, trying next seed."
                 );
+                *collapses += 1;
                 continue;
             }
 
@@ -193,6 +251,7 @@ mod macos {
             println!(
                 "  permutation null check ({TRIALS} shuffles): P(run >= {observed_run} by chance alone) = {p:.4}"
             );
+            p_values.push(p);
         }
     }
 

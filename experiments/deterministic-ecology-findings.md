@@ -1302,6 +1302,19 @@ to a project-level concern: the swap pool is discovered from the live library, s
 cell added to cell80 raises the mutational load in this world.** EX-2 and EX-3 ran against a
 smaller library than the 89/43 measured here.
 
+> **[Corrected by EX-7, 2026-07-28 — see `## EX-7` below.]** The mechanism asserted in this
+> section, dose-dependent deleterious swap load, was tested by a swap-rate sweep and **failed
+> its pre-registered bar**: Spearman ρ(swap rate, D2 recovery) = −0.100 against a bar of
+> ≤ −0.9. The effect is a *threshold* — almost all of it lands between 0% and 1% swap — not a
+> dose. EX-6's headline (the ratchet exists; the full operator hides it at D2) is unaffected,
+> and was reproduced by EX-7's rate-0 and rate-8 anchors to three decimals.
+>
+> The library-growth implication above splits in two. Larger pools *do* monotonically reduce
+> role fidelity (EX-7 measures it: 100% → 45.9% across the rate sweep at D2). But that does
+> **not** translate into proportionally worse adaptation — at D2 the first 1% does essentially
+> all the damage, and at D1 more swapping actually *helps* (ρ = +0.800). Annotated rather than
+> rewritten, so the original claim and its correction both stay readable.
+
 ### Reproduce it
 
 ```
@@ -1327,3 +1340,144 @@ worktree comparison is what actually verifies the claim.
   result moves. That is the direct test of the confound named above, and it is cheap.
 - A milder D4 (a movement cell that is bad but not lethal) to get a categorical rung that
   survives long enough to be testable.
+
+---
+
+## EX-7 — where does mutational load start to dominate?
+
+Run 2026-07-28 against `deterministic-ecology-ex7-preregistration.md` (committed `cd4d661`,
+before any run). Direct extension of EX-6; same metric, same drift null, same config, same
+seeds, so every number is directly comparable.
+
+Code: `src/ex2.rs` / `src/ex3.rs` (`swap_mutate_pct`),
+`src/bin/ex6_degraded_seed_report.rs --sweep`, `tests/ex6_cpu_replay.rs`.
+
+### Headline
+
+**The primary bar FAILED, and the pre-registered consequence is that EX-6's stated mechanism
+is withdrawn. EX-6's headline result is untouched; its explanation was wrong.**
+
+EX-6 attributed the suppressed ratchet to dose-dependent deleterious swap load. If that were
+right, D2 recovery would fall smoothly as the swap rate rises. It does not:
+
+- **Spearman ρ(swap rate, recovery) at D2 = −0.100**, against a pre-registered bar of ≤ −0.9.
+- The rate-0 → rate-8 drop is 0.173, which does clear its ≥0.15 condition — but both
+  conditions were required, and the correlation is essentially zero.
+
+**The effect is a threshold, not a dose.** D2 recovery by swap rate: **0.505 → 0.234 → 0.210
+→ 0.263 → 0.331** for 0/1/2/4/8%. Almost the entire effect lands between 0% and 1%; adding
+eight times more swap after that does not make it worse, and mildly reverses it.
+
+### Validity gate — passed exactly
+
+Rate 0 reproduces EX-6's `NumericOnly` numbers to three decimals, and rate 8 reproduces EX-6's
+`Full`, on both rungs:
+
+| check | EX-7 | EX-6 |
+|---|---|---|
+| D2 rate 0 vs NumericOnly | 3.476 / 4.655 / 4-of-5 / 0.505 | 3.476 / 4.655 / 4-of-5 / 0.505 |
+| D1 rate 0 vs NumericOnly | 1.588 / 2.748 / 5-of-5 / 0.706 | 1.588 / 2.748 / 5-of-5 / 0.706 |
+| D2 rate 8 vs Full | 4.343 / 4.920 / 2-of-5 / 0.331 | 4.343 / 4.920 / 2-of-5 / 0.331 |
+| D1 rate 8 vs Full | 1.434 / 2.758 / 5-of-5 / 0.783 | 1.434 / 2.758 / 5-of-5 / 0.783 |
+
+That satisfies both halves of the gate at once: rate 0 ≡ `NumericOnly` (also asserted directly
+on `history_hash` by `tests/ex6_cpu_replay.rs::swap_rate_zero_equals_numeric_only`), and rate 8
+is byte-equivalent to the pre-EX-7 operator by construction rather than by a separate probe.
+
+### Receipts
+
+Flagship config, 5 seeds, GPU, 2 rungs × 5 rates × 5 seeds = 50 runs, 213s.
+
+| rung | swap | mean_dec | null_lo | below | recovery | births/survivor | curated roles | argmax3 |
+|---|---|---|---|---|---|---|---|---|
+| D1 decay=3 | 0% | 1.588 | 2.748 | 5/5 | 0.706 | 7.1 | 100.0% | 100.0% |
+| D1 decay=3 | 1% | 1.596 | 2.733 | 5/5 | 0.702 | 7.9 | 97.3% | 98.9% |
+| D1 decay=3 | 2% | 1.508 | 2.808 | 5/5 | 0.746 | 38.5 | 78.1% | 94.1% |
+| D1 decay=3 | 4% | 1.373 | 2.819 | 5/5 | 0.814 | 118.0 | 64.5% | 83.4% |
+| D1 decay=3 | 8% | 1.434 | 2.758 | 5/5 | 0.783 | 14.3 | 60.4% | 85.1% |
+| D2 decay=6 | 0% | 3.476 | 4.655 | 4/5 | 0.505 | 10.9 | 100.0% | 100.0% |
+| D2 decay=6 | 1% | 4.831 | 4.926 | 3/5 | 0.234 | 16.5 | 95.7% | 100.0% |
+| D2 decay=6 | 2% | 4.952 | 4.961 | 2/5 | 0.210 | 15.0 | 74.7% | 95.0% |
+| D2 decay=6 | 4% | 4.685 | 4.830 | 1/5 | 0.263 | 23.1 | 73.9% | 98.7% |
+| D2 decay=6 | 8% | 4.343 | 4.920 | 2/5 | 0.331 | 16.6 | 45.9% | 85.5% |
+
+**D1: ρ = +0.800, drop = −0.077** — recovery *rises* with swap rate.
+
+### The deliverable number
+
+**Highest swap rate at which D2 recovery still reaches 0.50: 0%.** Any swap at all, even 1%,
+puts it out of reach. At D1 the answer is 8% — recovery never falls below 0.50 anywhere in the
+tested range.
+
+### What this shows
+
+**EX-6's reversal is real, not seed noise.** This was the main reason to run a sweep. D1
+recovery rises monotonically-ish across five rates (0.706, 0.702, 0.746, 0.814, 0.783), ρ =
++0.800. EX-6 saw this at two points and could not tell it from noise; five points on the same
+seeds say it is a genuine sign difference between the rungs.
+
+**Swap rate *is* dose-dependent — just not on the thing EX-6 claimed.** Role fidelity falls
+monotonically with rate in both rungs (D1: 100 → 97.3 → 78.1 → 64.5 → 60.4%; D2: 100 → 95.7 →
+74.7 → 73.9 → 45.9%). So swaps do progressively push populations off the curated cells,
+exactly as EX-6 assumed. What does *not* follow is decay recovery. The load story was right
+about the load and wrong about the consequence.
+
+**Churn is not the mediator either.** P3 predicted births-per-survivor would rise
+superlinearly with swap rate. It does not: D1 goes 7.1, 7.9, 38.5, 118.0, 14.3 and D2 stays
+roughly flat at 10.9–23.1. Non-monotone in both rungs, with the D1 maximum at 4% rather than
+8%. Whatever suppresses D2's ratchet, it is not simply more birth/death turnover.
+
+### Predictions: 1 of 4
+
+- **P1 (D2 declines monotonically, ρ ≤ −0.9) — WRONG.** ρ = −0.100. This was the one
+  prediction in this line where I said I expected my own hypothesis to hold, and it did not.
+  Noted, because the 0/3 base rate apparently extends to mechanism stories too.
+- **P2 (D1 does not decline, ρ > −0.5) — CONFIRMED**, and more strongly than predicted:
+  ρ = +0.800.
+- **P3 (churn rises superlinearly) — WRONG.** Non-monotone in both rungs.
+- **P4 (crossover between 2% and 4%) — WRONG.** It is 0% at D2. Registered at low confidence
+  precisely so it could not be presented afterwards as expected.
+
+### What replaces the mechanism
+
+**Nothing yet, and that is the honest position.** The observed pattern — a cliff at the
+smallest nonzero swap rate at D2, the opposite sign at D1, monotone role-fidelity decay in
+both — is not explained by load, by churn, or by anything else measured here. One candidate is
+selection interference: once a population carries several role-cell variants, selection on
+`decay_amount` is partitioned across sub-populations and diluted, which would be
+threshold-like rather than dose-like and would bite hardest where populations are already
+small. **That is an untested hypothesis and is recorded as one** — having just had a
+confident mechanism falsified, the appropriate move is to name the candidate and register a
+test, not to install it as the new explanation.
+
+### What must be corrected elsewhere
+
+EX-6's findings section claims the mechanism is deleterious swap load and draws a
+library-growth implication from it: *"every cell added to cell80 raises the mutational load in
+this world."* After EX-7 that needs splitting in two:
+
+- **Supported:** larger pools reduce role fidelity — the population drifts off curated cells
+  more as the swap rate (and, by the same argument, pool size) rises.
+- **Not supported:** that this translates into proportionally worse adaptation. At D2 the
+  damage is done by the first 1%, and at D1 more swapping *helps*.
+
+The EX-6 section has been annotated in place rather than edited, so the original claim and its
+correction both stay readable.
+
+### Reproduce it
+
+```
+cargo run -p cell80-life --release --bin ex6_degraded_seed_report -- --sweep   # macOS, ~213s
+cargo test -p cell80-life --test ex6_cpu_replay                                # any platform
+```
+
+### What would raise confidence further
+
+- **Resolve the 0%–1% cliff.** Every interesting thing at D2 happens inside one interval that
+  was not sampled. Rates of 0.1/0.25/0.5/0.75% would show whether it is a true threshold or a
+  very steep slope.
+- **Test the selection-interference candidate directly**: hold the swap rate at 1% but vary
+  the *pool size* the swap can reach (2 cells vs 43). Interference predicts the damage tracks
+  variant count, not swap frequency; a load story predicts the opposite.
+- More seeds. Five seeds and a ρ over five points is thin for a correlation claim in either
+  direction.

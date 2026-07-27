@@ -77,6 +77,7 @@ mod macos {
             food_value: 40,
             regrow_ticks: 8,
             mutation_mode: MutationMode::Full,
+            swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
         };
 
         let t0 = Instant::now();
@@ -265,6 +266,7 @@ mod macos {
             food_value: 40,
             regrow_ticks: 8,
             mutation_mode: MutationMode::Full,
+            swap_mutate_pct: cell80_life::ex2::DEFAULT_SWAP_MUTATE_PCT,
         };
 
         let control_out = ex2::run(EngineKind::Gpu, &adoption_cfg, &starting2, &control_genes);
