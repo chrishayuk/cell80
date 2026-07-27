@@ -1314,6 +1314,14 @@ smaller library than the 89/43 measured here.
 > **not** translate into proportionally worse adaptation — at D2 the first 1% does essentially
 > all the damage, and at D1 more swapping actually *helps* (ρ = +0.800). Annotated rather than
 > rewritten, so the original claim and its correction both stay readable.
+>
+> **[Further corrected — see `## EX-3 confound re-test` below.]** The confound this paragraph
+> raises against EX-3 turned out **not to be testable by the numeric-only route at all**:
+> without swaps, predators go extinct in 6 of 6 seeds and there is no coexisting ecology to
+> detect an arms race in. That inverts the framing here — swap mutation is not deleterious
+> load in this world, it is the diversity generator the ecology *runs on*. EX-3's refutation
+> stands, neither rescued nor challenged. The testable version is the arms-race detector at
+> 1–2% swap rather than 0%.
 
 ### Reproduce it
 
@@ -1481,3 +1489,102 @@ cargo test -p cell80-life --test ex6_cpu_replay                                #
   variant count, not swap frequency; a load story predicts the opposite.
 - More seeds. Five seeds and a ρ over five points is thin for a correlation claim in either
   direction.
+
+---
+
+## EX-3 confound re-test — the numeric-only arm
+
+Run 2026-07-27/28, following EX-6's naming of swap load as a live confound for EX-3's null
+result. Code: `src/bin/ex3_arms_race_report.rs` (mutation-mode arm added; `Full` verified
+byte-identical to the original first).
+
+### Headline
+
+**The confound cannot be tested this way, and the reason is itself a finding: EX-3's
+predator/prey coexistence is entirely dependent on swap mutation. Remove swaps and predators
+go extinct in 6 of 6 seeds.** EX-3's refutation of the arms race therefore stands — neither
+rescued nor challenged by this route.
+
+### Receipts
+
+Arms-race flagship config (10,000 ticks, 60 grazers, 10 predators, 48×48, satiation 20), the
+same 6 seeds as the original EX-3 run, GPU.
+
+**`Full` — the original operator, reproducing EX-3:**
+
+| seed | grazers | predators | births | events | permutation p |
+|---|---|---|---|---|---|
+| 0x2a | 1402 | 599 | 5,430,955 | 50 | 0.8272 |
+| 0x1 | 1813 | 473 | 7,224,636 | 83 | 0.1459 |
+| 0x2 | 1622 | 536 | 7,781,910 | 68 | 0.6747 |
+| 0x3 | 1895 | 468 | 8,412,440 | 49 | 1.0000 |
+| 0x3e7 | 2217 | 471 | 11,183,248 | 54 | 0.1435 |
+| 0x5eed…80ff | 2274 | 462 | 7,899,030 | 53 | 0.8094 |
+
+0 one-sided collapses; p across 6 analysable seeds **min 0.1435, mean 0.6001, max 1.0000,
+p < 0.05 in 0/6**. That reproduces EX-3's published range (0.13–0.99) and re-confirms its
+verdict on a harness that has since been rebuilt around `MutationMode` — an end-to-end
+validation of the re-plumbing, not just of the arms-race claim.
+
+**`NumericOnly` — the EX-6 arm:**
+
+| seed | grazers | predators | births | kills |
+|---|---|---|---|---|
+| 0x2a | 6 | **0** | 2,085 | 1,330 |
+| 0x1 | **0** | **0** | 1,452 | 984 |
+| 0x2 | 26 | **0** | 1,563 | 817 |
+| 0x3 | **0** | **0** | 1,422 | 1,016 |
+| 0x3e7 | 4 | **0** | 1,375 | 936 |
+| 0x5eed…80ff | 9 | **0** | 1,839 | 1,120 |
+
+**6 of 6 one-sided collapses. No analysable seeds.** Predators are extinct everywhere; grazers
+are down to 0–26 from ~1400–2274. Total births fall from 5.4–11.2 *million* to ~1,400–2,100 —
+three to four orders of magnitude.
+
+### What this shows
+
+**There is no arms-race comparison to make.** The test required both species coexisting under
+both operators so their trait-change timelines could be compared against the permutation null.
+Under numeric-only there is no predator population at all, so there are no events, no
+timeline, and no p-value. The confound EX-6 raised is **not testable by this route** — which
+is a cleaner outcome than a marginal number would have been, but it is a failure to test, not
+a negative result about coupling.
+
+**EX-3's coexistence is swap-dependent, and that is new.** EX-3's own mutation-off control
+already showed 10/10-seed predator extinction, which was read at the time as "evolution is
+load-bearing for coexistence." This run splits that finding: **numeric mutation does not
+rescue predators either.** It is specifically role-cell swapping — organisms finding
+*different cells* for their promoter and movement roles — that sustains the predator
+population. Numeric jitter on thresholds is not enough.
+
+**It is a third correction to the swap-load story in a row.** EX-6 framed swaps as close to
+pure deleterious load. EX-7 falsified the dose relationship. This run shows swaps are not
+merely tolerable but *load-bearing*: the ecology EX-3 studied does not exist without them.
+Taken together the honest picture is that swap mutation is the diversity generator this world
+runs on, and its one demonstrated cost is a threshold-shaped suppression of the `decay_amount`
+ratchet at D2 specifically — not a general drag on adaptation.
+
+### What this does *not* show
+
+- **It does not vindicate EX-3's arms-race refutation against the confound.** It removes this
+  particular way of testing it. A real test would need to reduce swap load while keeping
+  coexistence alive — the EX-7 sweep suggests low-but-nonzero rates (1–2%) as the place to
+  look, since rate 0 is what kills the ecosystem.
+- **It says nothing about EX-2**, whose operators are the subject rather than a nuisance
+  parameter (recorded in EX-7's scope note).
+- **The two regimes are not otherwise comparable.** A world with 7 million births and one with
+  1,500 differ in far more than swap rate; nothing about the `Full` arm's dynamics can be
+  attributed to swaps alone on this evidence.
+
+### Reproduce it
+
+```
+cargo run -p cell80-life --release --bin ex3_arms_race_report   # macOS, ~4h (12 x 10k ticks)
+```
+
+### What would raise confidence further
+
+- **Run the arms-race detector at swap rates 1% and 2%** rather than 0%. That is the only
+  version of this confound test that can actually run, and EX-7 already built the rate knob.
+- Establish where between 0% and 8% coexistence becomes sustainable — the same unsampled
+  interval EX-7 flagged, now implicated in a second experiment.
