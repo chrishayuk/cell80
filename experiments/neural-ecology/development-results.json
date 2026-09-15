@@ -1,0 +1,176 @@
+{
+  "cohort": "development only; excluded from confirmatory inference",
+  "seeds": [
+    {
+      "seed": 1001,
+      "development": true,
+      "arms": {
+        "Frozen": {
+          "loss": 1.3841202771783074,
+          "accuracy": 0.2652,
+          "logp_sha256": "a82f77279e992b972c1893c887dd169bc8c1bb098ca368d255475fc6eb7f4d70",
+          "shuffled_loss": 1.3865127624074027
+        },
+        "Plastic": {
+          "loss": 1.3852979146489122,
+          "accuracy": 0.2554,
+          "logp_sha256": "e69b6014eb61c60c64b9669768988202f2603672255acdc3bbe4659dda8adb5c",
+          "shuffled_loss": 1.3866508521169991
+        },
+        "Yoked": {
+          "loss": 1.386391583807432,
+          "accuracy": 0.251,
+          "logp_sha256": "2fa872f52002524ce0edc68777a79af039b10549877dda3711a65379c6930164",
+          "shuffled_loss": 1.3864774905135027
+        },
+        "Memoryless": {
+          "loss": 1.3864756011651684,
+          "accuracy": 0.2511,
+          "logp_sha256": "22f86c327ebe6773b4e8835cd77b589c26aee7095a4e87fb7379973e0af97076"
+        }
+      },
+      "oracle_loss": 0.9328589390740106,
+      "oracle_accuracy": 0.7039,
+      "memoryless_reference": 1.3862943611198906,
+      "d_F": -0.001177637470604731,
+      "d_Y": 0.0010936691585199387,
+      "d_M": 0.000996446470978407,
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.3226158661217778e-05,
+          "clipping_fraction_gap": 1.629837910505083e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 1.7814629570065808e-05,
+          "clipping_fraction_gap": 1.3931427130797758e-05,
+          "pass": true
+        }
+      ],
+      "gates_per_seed": {
+        "G0_execution": true,
+        "G1_activity": false,
+        "G2_adaptation": true,
+        "G4_movement_audit": true,
+        "G5_persistence": true
+      }
+    },
+    {
+      "seed": 1002,
+      "development": true,
+      "arms": {
+        "Frozen": {
+          "loss": 1.3843475620439945,
+          "accuracy": 0.2955,
+          "logp_sha256": "b81c353a5e81ff69f73da22157b05da8abb8142ce3a4baf06c5768a029fd3d7a",
+          "shuffled_loss": 1.3867826539427617
+        },
+        "Plastic": {
+          "loss": 1.3852914038344413,
+          "accuracy": 0.2781,
+          "logp_sha256": "6d19231c4b7f7dbee0d63dc28c23bbd77eab9610fc54641e51ef3e99967cb438",
+          "shuffled_loss": 1.386697980876693
+        },
+        "Yoked": {
+          "loss": 1.3865377370783372,
+          "accuracy": 0.2472,
+          "logp_sha256": "50ab6fd349e31ab07012ceed2b2eb44c9af29b57071ec4aab2dbfed8dc804d13",
+          "shuffled_loss": 1.3866429901764108
+        },
+        "Memoryless": {
+          "loss": 1.3866441740217363,
+          "accuracy": 0.2472,
+          "logp_sha256": "a3eb121888e2085b392f120ae3b54bb47097744527208720e03323a9ebac257f"
+        }
+      },
+      "oracle_loss": 0.9610746362353125,
+      "oracle_accuracy": 0.6894,
+      "memoryless_reference": 1.3862943611198906,
+      "d_F": -0.0009438417904468199,
+      "d_Y": 0.0012463332438958918,
+      "d_M": 0.0010029572854493018,
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.601118890353121e-05,
+          "clipping_fraction_gap": 1.8387030812083704e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 1.811282882591573e-05,
+          "clipping_fraction_gap": 1.4227715402714836e-05,
+          "pass": true
+        }
+      ],
+      "gates_per_seed": {
+        "G0_execution": true,
+        "G1_activity": false,
+        "G2_adaptation": true,
+        "G4_movement_audit": true,
+        "G5_persistence": true
+      }
+    },
+    {
+      "seed": 1003,
+      "development": true,
+      "arms": {
+        "Frozen": {
+          "loss": 1.3841991390712134,
+          "accuracy": 0.2606,
+          "logp_sha256": "697e1fae92078fc5dcb74e268ca30c8597111c9f89ba06918a267cddf579dd9d",
+          "shuffled_loss": 1.3866580532413224
+        },
+        "Plastic": {
+          "loss": 1.385306250177043,
+          "accuracy": 0.2631,
+          "logp_sha256": "d695c21ccfcd821145b1c489c4fab819d9c55fb39524793279c9712429ea725c",
+          "shuffled_loss": 1.3864571202946046
+        },
+        "Yoked": {
+          "loss": 1.3864787844518145,
+          "accuracy": 0.2473,
+          "logp_sha256": "1668362f23cea044c2fe81ff2db3881c350b8af37d2150fe9f8ae7e8e0bf0a7b",
+          "shuffled_loss": 1.3865812555046553
+        },
+        "Memoryless": {
+          "loss": 1.3865788337979847,
+          "accuracy": 0.2473,
+          "logp_sha256": "48742f69d8c990f718fc971f63ba0edbea7e05e80cd4edcfee7a016e9680dccd"
+        }
+      },
+      "oracle_loss": 0.9406425796702319,
+      "oracle_accuracy": 0.6999,
+      "memoryless_reference": 1.3862943611198906,
+      "d_F": -0.0011071111058296168,
+      "d_Y": 0.0011725342747714862,
+      "d_M": 0.0009881109428475643,
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.4449637577073408e-05,
+          "clipping_fraction_gap": 1.721960340067552e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 1.7197428136818896e-05,
+          "clipping_fraction_gap": 1.3385099811302759e-05,
+          "pass": true
+        }
+      ],
+      "gates_per_seed": {
+        "G0_execution": true,
+        "G1_activity": false,
+        "G2_adaptation": true,
+        "G4_movement_audit": true,
+        "G5_persistence": true
+      }
+    }
+  ],
+  "model_parameters_changed": false,
+  "engineering_verification": "All three seeds passed reference/Cell80 CPU/Metal equality, Metal repeat, reset and persistent reconstruction, initial-weight restoration, disabled-adaptation identity, and frozen-probe replay identity.",
+  "observed_pattern": "All three seeds failed the registered activity regime. Plastic had higher test log loss than Frozen on all three. Evaluation has not started."
+}
