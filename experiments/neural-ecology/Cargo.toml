@@ -1,0 +1,26 @@
+[package]
+name = "ne0"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+cell80-core = { path = "../../cell80-core" }
+rustz80 = { path = "../../rustz80" }
+rustmsl = { path = "../../rustmsl" }
+syn = { version = "2", features = ["full"] }
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libloading = "0.9"
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+overflow-checks = true

@@ -1,0 +1,22 @@
+{
+  "utc": "2026-09-15T23:44:36.424020+00:00",
+  "fixture": {
+    "edge_cases": 196,
+    "fixture_hash": "c2adcbd0263104d7c1c8ebe57a9bfe4d500834edf5314134542a441b8cf48c92",
+    "metal_repeat_equal": true,
+    "node_cases": 504,
+    "node_source_hash": "d7addaebc1ae8df24f41717e513ba77d9dbb83c0358235f58eb39e14e63869d1",
+    "node_state_equal": true,
+    "plasticity_source_hash": "f096041ba55d25e4682cee0fccf1addfc9105ee37b4b19d23bb7789a0e4a2f4b",
+    "sextets_and_steps_equal": true
+  },
+  "rust_tests_passed": 8,
+  "python_tests_passed": 8,
+  "binary_sha256": "7a60018aded00560f7c0ec2575639b30a857225a67ef723b6b3453446fdbd7f6",
+  "commands": [
+    "cargo test --release --locked --manifest-path experiments/neural-ecology/Cargo.toml --offline",
+    "python3 -m unittest discover -s experiments/neural-ecology/tests -p 'test_*.py' -v",
+    "ne0 fixtures artifacts/logs/fixtures.json"
+  ],
+  "scope": "Engineering verification; confirmatory results require the separate committed implementation seal and ten evaluation seeds."
+}

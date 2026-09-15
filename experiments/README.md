@@ -26,3 +26,16 @@ Set `CELL80_ARTIFACT_ROOT` to place the current suite's artifacts elsewhere.
 `CELL80_CELL_NATIVE_ARTIFACT_ROOT` and `CELL80_CORPUS_ATLAS_ARTIFACT_ROOT` are
 suite-specific overrides. Typed subdirectories are still created below the
 selected root.
+
+## Neural ecology
+
+[NE-0 preregistration](neural-ecology-ne0-preregistration.md) specifies the first
+local-adaptation experiment: exact integer dynamics, temporal grammar, paired
+controls, reset semantics, and G0–G6 decision rules. The protocol is locally
+hash-sealed; the [implementation and run instructions](neural-ecology/README.md)
+include backend replay checks and the evaluation seal. Verify the document from
+the repository root with:
+
+```sh
+shasum -a 256 -c experiments/neural-ecology-ne0-preregistration.sha256
+```
