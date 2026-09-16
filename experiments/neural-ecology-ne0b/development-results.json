@@ -1,0 +1,4687 @@
+{
+  "development_only": true,
+  "complete": true,
+  "n_development_seeds": 3,
+  "prediction_scores_used": false,
+  "confirmatory_seeds_accessed": false,
+  "verdict": "VIABLE_DEVELOPMENT_CANDIDATE",
+  "selected_interval": 4096,
+  "viable_intervals": [
+    4096
+  ],
+  "frozen_cross_interval_replay": true,
+  "runs": [
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2183779296875,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.29397294921875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98883056640625,
+            "endpoint_fraction": 0.62689208984375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.7880859375,
+            "movement": [
+              {
+                "clipped": 71532925,
+                "net": 124752,
+                "realised": 170026710,
+                "realised_hist": [
+                  84950979,
+                  443573290,
+                  85075731
+                ],
+                "realised_nonzero": 170026710,
+                "requested": 241559635,
+                "requested_hist": [
+                  114619204,
+                  372040365,
+                  126940431
+                ],
+                "requested_nonzero": 241559635
+              },
+              {
+                "clipped": 19838142,
+                "net": 16842,
+                "realised": 66090044,
+                "realised_hist": [
+                  33036601,
+                  139509956,
+                  33053443
+                ],
+                "realised_nonzero": 66090044,
+                "requested": 85928186,
+                "requested_hist": [
+                  45647489,
+                  119671814,
+                  40280697
+                ],
+                "requested_nonzero": 85928186
+              }
+            ],
+            "persistent_hash": "9ae1387a01f96320a4452978f1936ba1747ad0c33058faa88cf0dfc28e51e599"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.44650322265625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98834228515625,
+            "endpoint_fraction": 0.62689208984375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.7867431640625,
+            "movement": [
+              {
+                "clipped": 71528697,
+                "net": 124752,
+                "realised": 170030938,
+                "realised_hist": [
+                  84953093,
+                  443569062,
+                  85077845
+                ],
+                "realised_nonzero": 170030938,
+                "requested": 241559635,
+                "requested_hist": [
+                  114619204,
+                  372040365,
+                  126940431
+                ],
+                "requested_nonzero": 241559635
+              },
+              {
+                "clipped": 19839430,
+                "net": 16842,
+                "realised": 66088756,
+                "realised_hist": [
+                  33035957,
+                  139511244,
+                  33052799
+                ],
+                "realised_nonzero": 66088756,
+                "requested": 85928186,
+                "requested_hist": [
+                  45647489,
+                  119671814,
+                  40280697
+                ],
+                "requested_nonzero": 85928186
+              }
+            ],
+            "persistent_hash": "ad125f068e0a612d2d1bca18a3317df8a3fb295e94d662308abf4685e57421a9"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "2513b82ed4b58a76c6fcd16c203047ce0fd7747358cb058642592b238767ab4a",
+        "interval": 1,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 142.380234834,
+        "seed": 3001,
+        "stream_hash": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+        "ticks": 50000,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 50000
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.218615625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2914748046875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98883056640625,
+            "endpoint_fraction": 0.62689208984375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.7880859375,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9ae1387a01f96320a4452978f1936ba1747ad0c33058faa88cf0dfc28e51e599"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4499466796875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98834228515625,
+            "endpoint_fraction": 0.62689208984375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.7867431640625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "ad125f068e0a612d2d1bca18a3317df8a3fb295e94d662308abf4685e57421a9"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "01e3b3fa831966c4c9cfe9aa638cd4b85fc5cc8cda83de1e2b406b7d1969d079",
+        "interval": 1,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.112691917,
+        "seed": 3001,
+        "stream_hash": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+        "ticks": 10256,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 1,
+      "seed": 3001,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.4866062904387437e-05,
+          "clipping_fraction_gap": 1.750292427787903e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 1.9488563209308804e-05,
+          "clipping_fraction_gap": 1.4989260916087321e-05,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.222642578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.28527744140625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9876708984375,
+            "endpoint_fraction": 0.60028076171875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.76812744140625,
+            "movement": [
+              {
+                "clipped": 70560478,
+                "net": 119051,
+                "realised": 167838761,
+                "realised_hist": [
+                  83859855,
+                  445061239,
+                  83978906
+                ],
+                "realised_nonzero": 167838761,
+                "requested": 238399239,
+                "requested_hist": [
+                  114271142,
+                  374500761,
+                  124128097
+                ],
+                "requested_nonzero": 238399239
+              },
+              {
+                "clipped": 17627989,
+                "net": 22020,
+                "realised": 64601610,
+                "realised_hist": [
+                  32289795,
+                  141698390,
+                  32311815
+                ],
+                "realised_nonzero": 64601610,
+                "requested": 82229599,
+                "requested_hist": [
+                  42205898,
+                  124070401,
+                  40023701
+                ],
+                "requested_nonzero": 82229599
+              }
+            ],
+            "persistent_hash": "4697290850946a99d8a11ec696f3c3d1f54d56beb021657a4a650b9e0b4e283a"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.43269326171875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98828125,
+            "endpoint_fraction": 0.60028076171875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.71356201171875,
+            "movement": [
+              {
+                "clipped": 70556758,
+                "net": 119051,
+                "realised": 167842481,
+                "realised_hist": [
+                  83861715,
+                  445057519,
+                  83980766
+                ],
+                "realised_nonzero": 167842481,
+                "requested": 238399239,
+                "requested_hist": [
+                  114271142,
+                  374500761,
+                  124128097
+                ],
+                "requested_nonzero": 238399239
+              },
+              {
+                "clipped": 17629121,
+                "net": 22020,
+                "realised": 64600478,
+                "realised_hist": [
+                  32289229,
+                  141699522,
+                  32311249
+                ],
+                "realised_nonzero": 64600478,
+                "requested": 82229599,
+                "requested_hist": [
+                  42205898,
+                  124070401,
+                  40023701
+                ],
+                "requested_nonzero": 82229599
+              }
+            ],
+            "persistent_hash": "878c519bcc1b3c707cdf7674968e9c652bfac1c8a03bfa72ef420f3db4fa4de9"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "7a59822961a7108a397d119180fde6dea87d07b32ab51092cf688b39f805c6b3",
+        "interval": 1,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 142.335907417,
+        "seed": 3002,
+        "stream_hash": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+        "ticks": 50000,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 50000
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22289375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.28557041015625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9876708984375,
+            "endpoint_fraction": 0.60028076171875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.76812744140625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "4697290850946a99d8a11ec696f3c3d1f54d56beb021657a4a650b9e0b4e283a"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.43599873046875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98828125,
+            "endpoint_fraction": 0.60028076171875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.71356201171875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "878c519bcc1b3c707cdf7674968e9c652bfac1c8a03bfa72ef420f3db4fa4de9"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "faaba6a57760ac9153f43387eab816f03fd86b423fd625f6066c6cd2393b1563",
+        "interval": 1,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.104323625,
+        "seed": 3002,
+        "stream_hash": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+        "ticks": 10256,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 1,
+      "seed": 3002,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.2163638060140447e-05,
+          "clipping_fraction_gap": 1.5604076655684196e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 1.7522783100916526e-05,
+          "clipping_fraction_gap": 1.3766332485704025e-05,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21775693359375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.295658203125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98681640625,
+            "endpoint_fraction": 0.58013916015625,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.68902587890625,
+            "movement": [
+              {
+                "clipped": 70022051,
+                "net": 125183,
+                "realised": 169977565,
+                "realised_hist": [
+                  84926191,
+                  441372435,
+                  85051374
+                ],
+                "realised_nonzero": 169977565,
+                "requested": 239999616,
+                "requested_hist": [
+                  113175235,
+                  371350384,
+                  126824381
+                ],
+                "requested_nonzero": 239999616
+              },
+              {
+                "clipped": 20041624,
+                "net": 14938,
+                "realised": 68677862,
+                "realised_hist": [
+                  34331462,
+                  139172138,
+                  34346400
+                ],
+                "realised_nonzero": 68677862,
+                "requested": 88719486,
+                "requested_hist": [
+                  47566118,
+                  119130514,
+                  41153368
+                ],
+                "requested_nonzero": 88719486
+              }
+            ],
+            "persistent_hash": "61c4a37b27bf3855b004a8a9aa6bfa21eefc28be56b7046ac9d4eeb1536b2957"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4444326171875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98553466796875,
+            "endpoint_fraction": 0.58013916015625,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.70086669921875,
+            "movement": [
+              {
+                "clipped": 70017145,
+                "net": 125183,
+                "realised": 169982471,
+                "realised_hist": [
+                  84928644,
+                  441367529,
+                  85053827
+                ],
+                "realised_nonzero": 169982471,
+                "requested": 239999616,
+                "requested_hist": [
+                  113175235,
+                  371350384,
+                  126824381
+                ],
+                "requested_nonzero": 239999616
+              },
+              {
+                "clipped": 20042208,
+                "net": 14938,
+                "realised": 68677278,
+                "realised_hist": [
+                  34331170,
+                  139172722,
+                  34346108
+                ],
+                "realised_nonzero": 68677278,
+                "requested": 88719486,
+                "requested_hist": [
+                  47566118,
+                  119130514,
+                  41153368
+                ],
+                "requested_nonzero": 88719486
+              }
+            ],
+            "persistent_hash": "7b19f22456b33d6f0124f8fb57abf97a2b24bb792087399f362104eac19c58e5"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "247609fb730ad6a92faa4d96983a2515693e960cc00cbfb0d97fe6e1d0e17e18",
+        "interval": 1,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 142.385051,
+        "seed": 3003,
+        "stream_hash": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+        "ticks": 50000,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 50000
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21728056640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.29198173828125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98681640625,
+            "endpoint_fraction": 0.58013916015625,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.68902587890625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "61c4a37b27bf3855b004a8a9aa6bfa21eefc28be56b7046ac9d4eeb1536b2957"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4455173828125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98553466796875,
+            "endpoint_fraction": 0.58013916015625,
+            "endpoint_pass": false,
+            "mean_absolute_change": 15.70086669921875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "7b19f22456b33d6f0124f8fb57abf97a2b24bb792087399f362104eac19c58e5"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "678d2400f8a8e55a72976fd4c5e381e0115139a6dcd6ab3987a1173765fa4a9c",
+        "interval": 1,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.111498917,
+        "seed": 3003,
+        "stream_hash": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+        "ticks": 10256,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 1,
+      "seed": 3003,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 2.886179952049291e-05,
+          "clipping_fraction_gap": 2.04416993733747e-05,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 8.503467973420606e-06,
+          "clipping_fraction_gap": 6.5825448988532376e-06,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2183779296875,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.30369169921875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9793701171875,
+            "endpoint_fraction": 0.38116455078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.48114013671875,
+            "movement": [
+              {
+                "clipped": 3929351,
+                "net": 121593,
+                "realised": 11151519,
+                "realised_hist": [
+                  5514963,
+                  602448481,
+                  5636556
+                ],
+                "realised_nonzero": 11151519,
+                "requested": 15080870,
+                "requested_hist": [
+                  7172992,
+                  598519130,
+                  7907878
+                ],
+                "requested_nonzero": 15080870
+              },
+              {
+                "clipped": 1175533,
+                "net": 20388,
+                "realised": 4242518,
+                "realised_hist": [
+                  2111065,
+                  201357482,
+                  2131453
+                ],
+                "realised_nonzero": 4242518,
+                "requested": 5418051,
+                "requested_hist": [
+                  2842337,
+                  200181949,
+                  2575714
+                ],
+                "requested_nonzero": 5418051
+              }
+            ],
+            "persistent_hash": "786a482c9f3e1a3df69013f07a2d6418b7c8976c587b760f04488d16dc21fd70"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4418681640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.980224609375,
+            "endpoint_fraction": 0.38116455078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.496826171875,
+            "movement": [
+              {
+                "clipped": 3925475,
+                "net": 121597,
+                "realised": 11155395,
+                "realised_hist": [
+                  5516899,
+                  602444605,
+                  5638496
+                ],
+                "realised_nonzero": 11155395,
+                "requested": 15080870,
+                "requested_hist": [
+                  7172992,
+                  598519130,
+                  7907878
+                ],
+                "requested_nonzero": 15080870
+              },
+              {
+                "clipped": 1176704,
+                "net": 20379,
+                "realised": 4241347,
+                "realised_hist": [
+                  2110484,
+                  201358653,
+                  2130863
+                ],
+                "realised_nonzero": 4241347,
+                "requested": 5418051,
+                "requested_hist": [
+                  2842337,
+                  200181949,
+                  2575714
+                ],
+                "requested_nonzero": 5418051
+              }
+            ],
+            "persistent_hash": "9505af6e2e0932f493fca860e18c86b07190d334f77320c65e152cde78f9cf0a"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "2513b82ed4b58a76c6fcd16c203047ce0fd7747358cb058642592b238767ab4a",
+        "interval": 16,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 99.518025708,
+        "seed": 3001,
+        "stream_hash": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+        "ticks": 50000,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 3125
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.218615625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.3009796875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9793701171875,
+            "endpoint_fraction": 0.38116455078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.48114013671875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "786a482c9f3e1a3df69013f07a2d6418b7c8976c587b760f04488d16dc21fd70"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.44180703125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.980224609375,
+            "endpoint_fraction": 0.38116455078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.496826171875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9505af6e2e0932f493fca860e18c86b07190d334f77320c65e152cde78f9cf0a"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "01e3b3fa831966c4c9cfe9aa638cd4b85fc5cc8cda83de1e2b406b7d1969d079",
+        "interval": 16,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 19.779777792,
+        "seed": 3001,
+        "stream_hash": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+        "ticks": 10256,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 16,
+      "seed": 3001,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0003474551999279272,
+          "clipping_fraction_gap": 0.00025701434996783235,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.0002760153286326658,
+          "clipping_fraction_gap": 0.0002161293793653818,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.222642578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.29649892578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9820556640625,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.64105224609375,
+            "movement": [
+              {
+                "clipped": 4028964,
+                "net": 121307,
+                "realised": 10802677,
+                "realised_hist": [
+                  5340685,
+                  602097323,
+                  5461992
+                ],
+                "realised_nonzero": 10802677,
+                "requested": 14831641,
+                "requested_hist": [
+                  7094266,
+                  598068359,
+                  7737375
+                ],
+                "requested_nonzero": 14831641
+              },
+              {
+                "clipped": 1121062,
+                "net": 25194,
+                "realised": 4011308,
+                "realised_hist": [
+                  1993057,
+                  202288692,
+                  2018251
+                ],
+                "realised_nonzero": 4011308,
+                "requested": 5132370,
+                "requested_hist": [
+                  2640442,
+                  201167630,
+                  2491928
+                ],
+                "requested_nonzero": 5132370
+              }
+            ],
+            "persistent_hash": "5c64613abb321a2421fd7f627b9bc30b976433718cedf946c2a137f57d0b58ac"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4330599609375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98138427734375,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.631103515625,
+            "movement": [
+              {
+                "clipped": 4025006,
+                "net": 121279,
+                "realised": 10806635,
+                "realised_hist": [
+                  5342678,
+                  602093365,
+                  5463957
+                ],
+                "realised_nonzero": 10806635,
+                "requested": 14831641,
+                "requested_hist": [
+                  7094266,
+                  598068359,
+                  7737375
+                ],
+                "requested_nonzero": 14831641
+              },
+              {
+                "clipped": 1121773,
+                "net": 25173,
+                "realised": 4010597,
+                "realised_hist": [
+                  1992712,
+                  202289403,
+                  2017885
+                ],
+                "realised_nonzero": 4010597,
+                "requested": 5132370,
+                "requested_hist": [
+                  2640442,
+                  201167630,
+                  2491928
+                ],
+                "requested_nonzero": 5132370
+              }
+            ],
+            "persistent_hash": "d97d0f9f61f1769982fe0164704087f3761132eb1bdb346e0947b2e6eccb04b7"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "7a59822961a7108a397d119180fde6dea87d07b32ab51092cf688b39f805c6b3",
+        "interval": 16,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 99.619500375,
+        "seed": 3002,
+        "stream_hash": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+        "ticks": 50000,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 3125
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22289375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2974400390625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9820556640625,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.64105224609375,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "5c64613abb321a2421fd7f627b9bc30b976433718cedf946c2a137f57d0b58ac"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.435308203125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.98138427734375,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.631103515625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "d97d0f9f61f1769982fe0164704087f3761132eb1bdb346e0947b2e6eccb04b7"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "faaba6a57760ac9153f43387eab816f03fd86b423fd625f6066c6cd2393b1563",
+        "interval": 16,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 19.781430833,
+        "seed": 3002,
+        "stream_hash": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+        "ticks": 10256,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 16,
+      "seed": 3002,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0003662564711401838,
+          "clipping_fraction_gap": 0.0002668619069191025,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.00017724891731076247,
+          "clipping_fraction_gap": 0.0001385324908375618,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21775693359375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.30492548828125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9810791015625,
+            "endpoint_fraction": 0.38995361328125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.400634765625,
+            "movement": [
+              {
+                "clipped": 3950448,
+                "net": 122863,
+                "realised": 11045755,
+                "realised_hist": [
+                  5461446,
+                  600304245,
+                  5584309
+                ],
+                "realised_nonzero": 11045755,
+                "requested": 14996203,
+                "requested_hist": [
+                  7067798,
+                  596353797,
+                  7928405
+                ],
+                "requested_nonzero": 14996203
+              },
+              {
+                "clipped": 1186634,
+                "net": 15029,
+                "realised": 4398049,
+                "realised_hist": [
+                  2191510,
+                  203451951,
+                  2206539
+                ],
+                "realised_nonzero": 4398049,
+                "requested": 5584683,
+                "requested_hist": [
+                  2984252,
+                  202265317,
+                  2600431
+                ],
+                "requested_nonzero": 5584683
+              }
+            ],
+            "persistent_hash": "5de2f080efb372ceaaff1e60a540fb0186d95ca857f595db1b8df51aa9f33485"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4447205078125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.982421875,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.48394775390625,
+            "movement": [
+              {
+                "clipped": 3946983,
+                "net": 122854,
+                "realised": 11049220,
+                "realised_hist": [
+                  5463183,
+                  600300780,
+                  5586037
+                ],
+                "realised_nonzero": 11049220,
+                "requested": 14996203,
+                "requested_hist": [
+                  7067798,
+                  596353797,
+                  7928405
+                ],
+                "requested_nonzero": 14996203
+              },
+              {
+                "clipped": 1187686,
+                "net": 15015,
+                "realised": 4396997,
+                "realised_hist": [
+                  2190991,
+                  203453003,
+                  2206006
+                ],
+                "realised_nonzero": 4396997,
+                "requested": 5584683,
+                "requested_hist": [
+                  2984252,
+                  202265317,
+                  2600431
+                ],
+                "requested_nonzero": 5584683
+              }
+            ],
+            "persistent_hash": "0eba086652a1734770231d19de1a953809ae019231ffd01f94ac7580494084ca"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "247609fb730ad6a92faa4d96983a2515693e960cc00cbfb0d97fe6e1d0e17e18",
+        "interval": 16,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 99.634960708,
+        "seed": 3003,
+        "stream_hash": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+        "ticks": 50000,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 3125
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21728056640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.30221591796875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9810791015625,
+            "endpoint_fraction": 0.38995361328125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.400634765625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "5de2f080efb372ceaaff1e60a540fb0186d95ca857f595db1b8df51aa9f33485"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.4442025390625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.982421875,
+            "endpoint_fraction": 0.3900146484375,
+            "endpoint_pass": false,
+            "mean_absolute_change": 14.48394775390625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "0eba086652a1734770231d19de1a953809ae019231ffd01f94ac7580494084ca"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "678d2400f8a8e55a72976fd4c5e381e0115139a6dcd6ab3987a1173765fa4a9c",
+        "interval": 16,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 19.778403417,
+        "seed": 3003,
+        "stream_hash": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+        "ticks": 10256,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 16,
+      "seed": 3003,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.00031359679687796967,
+          "clipping_fraction_gap": 0.0002310584886054401,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.00023919697120245817,
+          "clipping_fraction_gap": 0.00018837237494051529,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2183779296875,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.25289970703125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.96917724609375,
+            "endpoint_fraction": 0.26397705078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.20111083984375,
+            "movement": [
+              {
+                "clipped": 76631,
+                "net": 69861,
+                "realised": 767137,
+                "realised_hist": [
+                  348638,
+                  612832863,
+                  418499
+                ],
+                "realised_nonzero": 767137,
+                "requested": 843768,
+                "requested_hist": [
+                  403763,
+                  612756232,
+                  440005
+                ],
+                "requested_nonzero": 843768
+              },
+              {
+                "clipped": 29105,
+                "net": 11350,
+                "realised": 268704,
+                "realised_hist": [
+                  128677,
+                  205331296,
+                  140027
+                ],
+                "realised_nonzero": 268704,
+                "requested": 297809,
+                "requested_hist": [
+                  152606,
+                  205302191,
+                  145203
+                ],
+                "requested_nonzero": 297809
+              }
+            ],
+            "persistent_hash": "330b69d05504d23d10e9ba635451c2a14320737833a8bc499ef19605ec8798d3"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.34132763671875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9686279296875,
+            "endpoint_fraction": 0.2596435546875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.33453369140625,
+            "movement": [
+              {
+                "clipped": 73591,
+                "net": 68291,
+                "realised": 770177,
+                "realised_hist": [
+                  350943,
+                  612829823,
+                  419234
+                ],
+                "realised_nonzero": 770177,
+                "requested": 843768,
+                "requested_hist": [
+                  403763,
+                  612756232,
+                  440005
+                ],
+                "requested_nonzero": 843768
+              },
+              {
+                "clipped": 29539,
+                "net": 11450,
+                "realised": 268270,
+                "realised_hist": [
+                  128410,
+                  205331730,
+                  139860
+                ],
+                "realised_nonzero": 268270,
+                "requested": 297809,
+                "requested_hist": [
+                  152606,
+                  205302191,
+                  145203
+                ],
+                "requested_nonzero": 297809
+              }
+            ],
+            "persistent_hash": "6c564fd6680093d75a08eb2dd0d8866ed3b75aa65de8165685219cdea2a387fe"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "2513b82ed4b58a76c6fcd16c203047ce0fd7747358cb058642592b238767ab4a",
+        "interval": 256,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 96.3857185,
+        "seed": 3001,
+        "stream_hash": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+        "ticks": 50000,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 195
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.218615625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2564861328125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.96917724609375,
+            "endpoint_fraction": 0.26397705078125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.20111083984375,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "330b69d05504d23d10e9ba635451c2a14320737833a8bc499ef19605ec8798d3"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.3516375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.9686279296875,
+            "endpoint_fraction": 0.2596435546875,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.33453369140625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6c564fd6680093d75a08eb2dd0d8866ed3b75aa65de8165685219cdea2a387fe"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "01e3b3fa831966c4c9cfe9aa638cd4b85fc5cc8cda83de1e2b406b7d1969d079",
+        "interval": 256,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.199028584,
+        "seed": 3001,
+        "stream_hash": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+        "ticks": 10256,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 256,
+      "seed": 3001,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0039471446174061285,
+          "clipping_fraction_gap": 0.0036028861013927965,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.0016151601762534238,
+          "clipping_fraction_gap": 0.0014573098865380135,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.222642578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.25042236328125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.966796875,
+            "endpoint_fraction": 0.2520751953125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.23370361328125,
+            "movement": [
+              {
+                "clipped": 77621,
+                "net": 69607,
+                "realised": 777239,
+                "realised_hist": [
+                  353816,
+                  612122761,
+                  423423
+                ],
+                "realised_nonzero": 777239,
+                "requested": 854860,
+                "requested_hist": [
+                  408390,
+                  612045140,
+                  446470
+                ],
+                "requested_nonzero": 854860
+              },
+              {
+                "clipped": 26669,
+                "net": 10206,
+                "realised": 273128,
+                "realised_hist": [
+                  131461,
+                  206026872,
+                  141667
+                ],
+                "realised_nonzero": 273128,
+                "requested": 299797,
+                "requested_hist": [
+                  153321,
+                  206000203,
+                  146476
+                ],
+                "requested_nonzero": 299797
+              }
+            ],
+            "persistent_hash": "3b4890c24c44e337b293281af32e0a92cac092ffa0af6d6e80ad67f03cf43433"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.349716015625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.967529296875,
+            "endpoint_fraction": 0.2510986328125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.31939697265625,
+            "movement": [
+              {
+                "clipped": 75284,
+                "net": 68566,
+                "realised": 779576,
+                "realised_hist": [
+                  355505,
+                  612120424,
+                  424071
+                ],
+                "realised_nonzero": 779576,
+                "requested": 854860,
+                "requested_hist": [
+                  408390,
+                  612045140,
+                  446470
+                ],
+                "requested_nonzero": 854860
+              },
+              {
+                "clipped": 27224,
+                "net": 10387,
+                "realised": 272573,
+                "realised_hist": [
+                  131093,
+                  206027427,
+                  141480
+                ],
+                "realised_nonzero": 272573,
+                "requested": 299797,
+                "requested_hist": [
+                  153321,
+                  206000203,
+                  146476
+                ],
+                "requested_nonzero": 299797
+              }
+            ],
+            "persistent_hash": "be72d23637f257e04bc69695392d3c841cf2d70eb0efcd3c929fc7725b48139e"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "7a59822961a7108a397d119180fde6dea87d07b32ab51092cf688b39f805c6b3",
+        "interval": 256,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 96.391957667,
+        "seed": 3002,
+        "stream_hash": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+        "ticks": 50000,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 195
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22289375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2521349609375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.966796875,
+            "endpoint_fraction": 0.2520751953125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.23370361328125,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "3b4890c24c44e337b293281af32e0a92cac092ffa0af6d6e80ad67f03cf43433"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.357939453125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.967529296875,
+            "endpoint_fraction": 0.2510986328125,
+            "endpoint_pass": false,
+            "mean_absolute_change": 10.31939697265625,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "be72d23637f257e04bc69695392d3c841cf2d70eb0efcd3c929fc7725b48139e"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "faaba6a57760ac9153f43387eab816f03fd86b423fd625f6066c6cd2393b1563",
+        "interval": 256,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.196844208,
+        "seed": 3002,
+        "stream_hash": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+        "ticks": 10256,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 256,
+      "seed": 3002,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": false,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.002997783410469281,
+          "clipping_fraction_gap": 0.0027337809699833904,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.002032014293664509,
+          "clipping_fraction_gap": 0.0018512526809807972,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21775693359375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.26116611328125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.964599609375,
+            "endpoint_fraction": 0.20831298828125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 9.8243408203125,
+            "movement": [
+              {
+                "clipped": 64293,
+                "net": 73212,
+                "realised": 769560,
+                "realised_hist": [
+                  348174,
+                  610580440,
+                  421386
+                ],
+                "realised_nonzero": 769560,
+                "requested": 833853,
+                "requested_hist": [
+                  392927,
+                  610516147,
+                  440926
+                ],
+                "requested_nonzero": 833853
+              },
+              {
+                "clipped": 25191,
+                "net": 6738,
+                "realised": 282636,
+                "realised_hist": [
+                  137949,
+                  207567364,
+                  144687
+                ],
+                "realised_nonzero": 282636,
+                "requested": 307827,
+                "requested_hist": [
+                  159771,
+                  207542173,
+                  148056
+                ],
+                "requested_nonzero": 307827
+              }
+            ],
+            "persistent_hash": "79d916b723a5eb3de99f049e22190f9733c6308afa848c74d3635c7f54a26279"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.35282421875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.96533203125,
+            "endpoint_fraction": 0.20440673828125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 9.95135498046875,
+            "movement": [
+              {
+                "clipped": 61208,
+                "net": 72041,
+                "realised": 772645,
+                "realised_hist": [
+                  350302,
+                  610577355,
+                  422343
+                ],
+                "realised_nonzero": 772645,
+                "requested": 833853,
+                "requested_hist": [
+                  392927,
+                  610516147,
+                  440926
+                ],
+                "requested_nonzero": 833853
+              },
+              {
+                "clipped": 25917,
+                "net": 7026,
+                "realised": 281910,
+                "realised_hist": [
+                  137442,
+                  207568090,
+                  144468
+                ],
+                "realised_nonzero": 281910,
+                "requested": 307827,
+                "requested_hist": [
+                  159771,
+                  207542173,
+                  148056
+                ],
+                "requested_nonzero": 307827
+              }
+            ],
+            "persistent_hash": "f3f7a6557f39d28a97bca7e4d2207910555f38f37a86689cba0a5ba9a3b825c0"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "247609fb730ad6a92faa4d96983a2515693e960cc00cbfb0d97fe6e1d0e17e18",
+        "interval": 256,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 96.479753334,
+        "seed": 3003,
+        "stream_hash": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+        "ticks": 50000,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 195
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21728056640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.26304365234375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.964599609375,
+            "endpoint_fraction": 0.20831298828125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 9.8243408203125,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "79d916b723a5eb3de99f049e22190f9733c6308afa848c74d3635c7f54a26279"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": false,
+              "spike_fraction": 0.364180859375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.96533203125,
+            "endpoint_fraction": 0.20440673828125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 9.95135498046875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "f3f7a6557f39d28a97bca7e4d2207910555f38f37a86689cba0a5ba9a3b825c0"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "678d2400f8a8e55a72976fd4c5e381e0115139a6dcd6ab3987a1173765fa4a9c",
+        "interval": 256,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.202529708,
+        "seed": 3003,
+        "stream_hash": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+        "ticks": 10256,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 256,
+      "seed": 3003,
+      "checks": {
+        "execution": true,
+        "activity": false,
+        "endpoints": true,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.003992778054604637,
+          "clipping_fraction_gap": 0.0036996928715253147,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.002568674903409332,
+          "clipping_fraction_gap": 0.002358467580816495,
+          "pass": true
+        }
+      ],
+      "viable": false
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2183779296875,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  613600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  205600000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2247470703125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.83905029296875,
+            "endpoint_fraction": 0.04638671875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.87060546875,
+            "movement": [
+              {
+                "clipped": 959,
+                "net": 5197,
+                "realised": 49639,
+                "realised_hist": [
+                  22221,
+                  613550361,
+                  27418
+                ],
+                "realised_nonzero": 49639,
+                "requested": 50598,
+                "requested_hist": [
+                  23180,
+                  613549402,
+                  27418
+                ],
+                "requested_nonzero": 50598
+              },
+              {
+                "clipped": 304,
+                "net": 841,
+                "realised": 17817,
+                "realised_hist": [
+                  8488,
+                  205582183,
+                  9329
+                ],
+                "realised_nonzero": 17817,
+                "requested": 18121,
+                "requested_hist": [
+                  8792,
+                  205581879,
+                  9329
+                ],
+                "requested_nonzero": 18121
+              }
+            ],
+            "persistent_hash": "b2e6b93b99eb48953e619e3ae5bc7da75b9bc014e017b2622fe2a17bc00f20e3"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2260720703125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.83856201171875,
+            "endpoint_fraction": 0.045654296875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.870849609375,
+            "movement": [
+              {
+                "clipped": 881,
+                "net": 5119,
+                "realised": 49717,
+                "realised_hist": [
+                  22299,
+                  613550283,
+                  27418
+                ],
+                "realised_nonzero": 49717,
+                "requested": 50598,
+                "requested_hist": [
+                  23180,
+                  613549402,
+                  27418
+                ],
+                "requested_nonzero": 50598
+              },
+              {
+                "clipped": 380,
+                "net": 917,
+                "realised": 17741,
+                "realised_hist": [
+                  8412,
+                  205582259,
+                  9329
+                ],
+                "realised_nonzero": 17741,
+                "requested": 18121,
+                "requested_hist": [
+                  8792,
+                  205581879,
+                  9329
+                ],
+                "requested_nonzero": 18121
+              }
+            ],
+            "persistent_hash": "90326bd133e162880f403ce0cc822e36f8355825a14ada62c95f670d3c33ea0a"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "2513b82ed4b58a76c6fcd16c203047ce0fd7747358cb058642592b238767ab4a",
+        "interval": 4096,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 98.514834083,
+        "seed": 3001,
+        "stream_hash": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+        "ticks": 50000,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 12
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.218615625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "9eb3ac17945202b2becac7cef32841308250433e850cb263a6fa8ca8facbe643"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2275654296875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.83905029296875,
+            "endpoint_fraction": 0.04638671875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.87060546875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "b2e6b93b99eb48953e619e3ae5bc7da75b9bc014e017b2622fe2a17bc00f20e3"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22944892578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.83856201171875,
+            "endpoint_fraction": 0.045654296875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.870849609375,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125861632,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42172672,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "90326bd133e162880f403ce0cc822e36f8355825a14ada62c95f670d3c33ea0a"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "01e3b3fa831966c4c9cfe9aa638cd4b85fc5cc8cda83de1e2b406b7d1969d079",
+        "interval": 4096,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.343078917,
+        "seed": 3001,
+        "stream_hash": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+        "ticks": 10256,
+        "topology_hash": "3e5e50002626883af7eb4afb8849966c6064d8f9805d51cc149f07f5d232dd06",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 4096,
+      "seed": 3001,
+      "checks": {
+        "execution": true,
+        "activity": true,
+        "endpoints": true,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0015688798600076432,
+          "clipping_fraction_gap": 0.0015415629076248084,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.004265589044171297,
+          "clipping_fraction_gap": 0.004194029027095633,
+          "pass": true
+        }
+      ],
+      "viable": true
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.222642578125,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  612900000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  206300000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22651826171875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.81170654296875,
+            "endpoint_fraction": 0.0401611328125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.67156982421875,
+            "movement": [
+              {
+                "clipped": 850,
+                "net": 2177,
+                "realised": 47999,
+                "realised_hist": [
+                  22911,
+                  612852001,
+                  25088
+                ],
+                "realised_nonzero": 47999,
+                "requested": 48849,
+                "requested_hist": [
+                  23761,
+                  612851151,
+                  25088
+                ],
+                "requested_nonzero": 48849
+              },
+              {
+                "clipped": 393,
+                "net": -224,
+                "realised": 17276,
+                "realised_hist": [
+                  8750,
+                  206282724,
+                  8526
+                ],
+                "realised_nonzero": 17276,
+                "requested": 17669,
+                "requested_hist": [
+                  9143,
+                  206282331,
+                  8526
+                ],
+                "requested_nonzero": 17669
+              }
+            ],
+            "persistent_hash": "e2d65728567e8bfb5e8f8430120104dd9683639e294a5916feb02e13600111f7"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22672958984375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.8106689453125,
+            "endpoint_fraction": 0.04010009765625,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.6761474609375,
+            "movement": [
+              {
+                "clipped": 740,
+                "net": 2067,
+                "realised": 48109,
+                "realised_hist": [
+                  23021,
+                  612851891,
+                  25088
+                ],
+                "realised_nonzero": 48109,
+                "requested": 48849,
+                "requested_hist": [
+                  23761,
+                  612851151,
+                  25088
+                ],
+                "requested_nonzero": 48849
+              },
+              {
+                "clipped": 394,
+                "net": -223,
+                "realised": 17275,
+                "realised_hist": [
+                  8749,
+                  206282725,
+                  8526
+                ],
+                "realised_nonzero": 17275,
+                "requested": 17669,
+                "requested_hist": [
+                  9143,
+                  206282331,
+                  8526
+                ],
+                "requested_nonzero": 17669
+              }
+            ],
+            "persistent_hash": "974e1f5989d411882c66568501156b94c706f67a9a89a3f9104c5ca5c6de8065"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "7a59822961a7108a397d119180fde6dea87d07b32ab51092cf688b39f805c6b3",
+        "interval": 4096,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 98.522496375,
+        "seed": 3002,
+        "stream_hash": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+        "ticks": 50000,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 12
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22289375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "6ca060d35c20ec357226f185ee9aadba975f901e79c5983c3d5fa2c667516a17"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2273328125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.81170654296875,
+            "endpoint_fraction": 0.0401611328125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.67156982421875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "e2d65728567e8bfb5e8f8430120104dd9683639e294a5916feb02e13600111f7"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2275669921875,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.8106689453125,
+            "endpoint_fraction": 0.04010009765625,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.6761474609375,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125718048,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42316256,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "974e1f5989d411882c66568501156b94c706f67a9a89a3f9104c5ca5c6de8065"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "faaba6a57760ac9153f43387eab816f03fd86b423fd625f6066c6cd2393b1563",
+        "interval": 4096,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.346895209,
+        "seed": 3002,
+        "stream_hash": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+        "ticks": 10256,
+        "topology_hash": "8292842b28aac2fa55a278c548e2b35017ad9e5cd55f203c74351a6531c84038",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 4096,
+      "seed": 3002,
+      "checks": {
+        "execution": true,
+        "activity": true,
+        "endpoints": true,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0022864744642374607,
+          "clipping_fraction_gap": 0.0022518372945198456,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 5.788376939106274e-05,
+          "clipping_fraction_gap": 5.659629860207266e-05,
+          "pass": true
+        }
+      ],
+      "viable": true
+    },
+    {
+      "A": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21775693359375,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  611350000,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  207850000,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22276337890625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.779052734375,
+            "endpoint_fraction": 0.0340576171875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.41033935546875,
+            "movement": [
+              {
+                "clipped": 533,
+                "net": 3609,
+                "realised": 50059,
+                "realised_hist": [
+                  23225,
+                  611299941,
+                  26834
+                ],
+                "realised_nonzero": 50059,
+                "requested": 50592,
+                "requested_hist": [
+                  23758,
+                  611299408,
+                  26834
+                ],
+                "requested_nonzero": 50592
+              },
+              {
+                "clipped": 210,
+                "net": -58,
+                "realised": 18348,
+                "realised_hist": [
+                  9203,
+                  207831652,
+                  9145
+                ],
+                "realised_nonzero": 18348,
+                "requested": 18558,
+                "requested_hist": [
+                  9413,
+                  207831442,
+                  9145
+                ],
+                "requested_nonzero": 18558
+              }
+            ],
+            "persistent_hash": "93045fc6d949fc939d38b2c5e77853d6489fa3d41bbe49495eb065edc084efae"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2249240234375,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.77886962890625,
+            "endpoint_fraction": 0.03204345703125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.416748046875,
+            "movement": [
+              {
+                "clipped": 449,
+                "net": 3525,
+                "realised": 50143,
+                "realised_hist": [
+                  23309,
+                  611299857,
+                  26834
+                ],
+                "realised_nonzero": 50143,
+                "requested": 50592,
+                "requested_hist": [
+                  23758,
+                  611299408,
+                  26834
+                ],
+                "requested_nonzero": 50592
+              },
+              {
+                "clipped": 187,
+                "net": -81,
+                "realised": 18371,
+                "realised_hist": [
+                  9226,
+                  207831629,
+                  9145
+                ],
+                "realised_nonzero": 18371,
+                "requested": 18558,
+                "requested_hist": [
+                  9413,
+                  207831442,
+                  9145
+                ],
+                "requested_nonzero": 18558
+              }
+            ],
+            "persistent_hash": "a9403e32901fdd0e0110ec591f4337f23d2830f11199339ba68f0573f899192b"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "247609fb730ad6a92faa4d96983a2515693e960cc00cbfb0d97fe6e1d0e17e18",
+        "interval": 4096,
+        "phase": "A",
+        "reset_identity": true,
+        "seconds": 98.530269167,
+        "seed": 3003,
+        "stream_hash": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+        "ticks": 50000,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 12
+      },
+      "R": {
+        "arms": {
+          "Frozen": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.21728056640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": false,
+            "changed_fraction": 0.0,
+            "endpoint_fraction": 0.0,
+            "endpoint_pass": true,
+            "mean_absolute_change": 0.0,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "89f98451f28ee50e05d02d87e1b4ae00f58bb1c16f2e64858882f1e36ad2870c"
+          },
+          "Plastic": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.2234681640625,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.779052734375,
+            "endpoint_fraction": 0.0340576171875,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.41033935546875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "93045fc6d949fc939d38b2c5e77853d6489fa3d41bbe49495eb065edc084efae"
+          },
+          "Yoked": {
+            "activity": {
+              "active_unit_fraction": 1.0,
+              "pass": true,
+              "spike_fraction": 0.22634814453125,
+              "ticks": 10000
+            },
+            "adaptation_pass": true,
+            "changed_fraction": 0.77886962890625,
+            "endpoint_fraction": 0.03204345703125,
+            "endpoint_pass": true,
+            "mean_absolute_change": 1.416748046875,
+            "movement": [
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  125400112,
+                  0
+                ],
+                "requested_nonzero": 0
+              },
+              {
+                "clipped": 0,
+                "net": 0,
+                "realised": 0,
+                "realised_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "realised_nonzero": 0,
+                "requested": 0,
+                "requested_hist": [
+                  0,
+                  42634192,
+                  0
+                ],
+                "requested_nonzero": 0
+              }
+            ],
+            "persistent_hash": "a9403e32901fdd0e0110ec591f4337f23d2830f11199339ba68f0573f899192b"
+          }
+        },
+        "backend_agreement": true,
+        "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+        "frozen_history_hash": "678d2400f8a8e55a72976fd4c5e381e0115139a6dcd6ab3987a1173765fa4a9c",
+        "interval": 4096,
+        "phase": "R",
+        "reset_identity": true,
+        "seconds": 20.34343875,
+        "seed": 3003,
+        "stream_hash": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+        "ticks": 10256,
+        "topology_hash": "771034442e0d89a76beeb5df3717fcce5eb458fe84fd5fd4416f40d46c945bc2",
+        "update_opportunities": 0
+      },
+      "development_only": true,
+      "interval": 4096,
+      "seed": 3003,
+      "checks": {
+        "execution": true,
+        "activity": true,
+        "endpoints": true,
+        "adaptation": true,
+        "movement_match": true
+      },
+      "movement_audit": [
+        {
+          "sign": 1,
+          "realised_relative_gap": 0.0016752089025387391,
+          "clipping_fraction_gap": 0.0016603415559772305,
+          "pass": true
+        },
+        {
+          "sign": -1,
+          "realised_relative_gap": 0.0012519732186598443,
+          "clipping_fraction_gap": 0.0012393576894061866,
+          "pass": true
+        }
+      ],
+      "viable": true
+    }
+  ],
+  "seal_sha256": "1a65b6f599f69c21de63d5db8fd7b4cf04b65dba159caf1af5200c2b05ab4d5d",
+  "binary_sha256": "82d2e03ce355e6165ed1296ea219390bf1bd5140f652a6a115fa53afacde83eb",
+  "plan_sha256": "9634eb48f421dd6bc4235094f3ce36565dd35dbc6898278a928565657e919dec",
+  "artifact_hashes": {
+    "artifacts/seed-3001-k-1/A-010000.json": "6bc32d8863295e899385557166bd89dd9f98061d1f9b53f4eb4db57f7c882e7e",
+    "artifacts/seed-3001-k-1/A-020000.json": "92d448dd98588d5bc769a57ceeba47b529b4ae37ca3dd150c1d5a4e97d4f38c9",
+    "artifacts/seed-3001-k-1/A-030000.json": "716159d9a5639d8d754e829598927d09d27a1410eca6f25d93186c63aee6bd39",
+    "artifacts/seed-3001-k-1/A-040000.json": "1d5e86a3cc52b93a5baa24401ffe7649c85badb1f23ac991092c2ba011887db1",
+    "artifacts/seed-3001-k-1/A-050000.json": "8aa3c9309ac7347f49174bb9a0a26dd917ae56d0430e261337ee4d11df98ae16",
+    "artifacts/seed-3001-k-1/A-summary.json": "e9d1255eab51a3949bda3f6e318e6ab68923789f12b14456d0fe84cbf2d75c31",
+    "artifacts/seed-3001-k-1/A-symbols.u8": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+    "artifacts/seed-3001-k-1/A-ticks.jsonl": "25f5882d26267878f300ac0695a8474024e1551f3630a71ff3912e9a64baa718",
+    "artifacts/seed-3001-k-1/R-010000.json": "3523b26cd2b29be3a4b06c56b59c4859d4f9ec48a769b520c1211192a406b540",
+    "artifacts/seed-3001-k-1/R-010256.json": "89040021afb3858db179c077dde16e7b2d5d0a4df58d56f3bea809ea8221cc57",
+    "artifacts/seed-3001-k-1/R-summary.json": "89fd1991f17bd75796abff5dbdc4a5041640c4a3d8cb454d0d9db76f2ee8aa2a",
+    "artifacts/seed-3001-k-1/R-symbols.u8": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+    "artifacts/seed-3001-k-1/R-ticks.jsonl": "72b3b1b83f7b0c758b403784234645c87f9cf137c13c5ecec777224ea307a3a5",
+    "artifacts/seed-3001-k-1/initial.json": "405e127e37aaabf93d9faa0d579e984d90ae6e75f62680a2e47cbdb12dd7c11e",
+    "artifacts/seed-3001-k-1/persistent-A.json": "b457a4bc4ebe13af3bbb37032d19f4e728336a7d8c561c9ce937d4b9d751daa0",
+    "artifacts/seed-3001-k-1/result.json": "a77192caa35aab0ac5f671f646a7c4ae117d2f5a13fa8d5e5a9992f9b48d1a36",
+    "artifacts/seed-3001-k-1/started.json": "846eae767f5e472f305477ed64efa436f97107c068d896fc7f00983e0db48505",
+    "artifacts/seed-3002-k-1/A-010000.json": "840e0f44ff1688ae3dd2f968b6d30d9bc223835c6b735110e53bb9d3b3738ec0",
+    "artifacts/seed-3002-k-1/A-020000.json": "c7a97af50ff3863c72a2cba3c199207984cea04487ff56caddfcef8dfcf14830",
+    "artifacts/seed-3002-k-1/A-030000.json": "2188b1da6f2338eec6767facd5d274254c01402d61d125731b278d05674614e5",
+    "artifacts/seed-3002-k-1/A-040000.json": "b846aae35e0695bb0bed41c4658212077104e2b4a86174ec509aef434ef04a89",
+    "artifacts/seed-3002-k-1/A-050000.json": "327a0933ee655a7555925fb605c91ef142f5129adbbc7498b2465f44e238e6d5",
+    "artifacts/seed-3002-k-1/A-summary.json": "261946a9860e26c84c9a8987b97a52a95781d49d37b373a213b7430602e9a9c7",
+    "artifacts/seed-3002-k-1/A-symbols.u8": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+    "artifacts/seed-3002-k-1/A-ticks.jsonl": "8dd85a4efeb21dfefad9b7609f6ddda4a01cf9563e04cfebcc4fef23fdb0b6d0",
+    "artifacts/seed-3002-k-1/R-010000.json": "4c421026c89db4c8f3673f0b532a28421928c316d5b6cbe4f56c959654f2f9e5",
+    "artifacts/seed-3002-k-1/R-010256.json": "48d968e7e6dcf14144e42341467aa3e7a6410b741396e3167ecf7f90c44779bd",
+    "artifacts/seed-3002-k-1/R-summary.json": "f865434006d00b4dc10484e3c983f4e026a0b72d042e3fd7b2258a691d3f43a7",
+    "artifacts/seed-3002-k-1/R-symbols.u8": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+    "artifacts/seed-3002-k-1/R-ticks.jsonl": "471a412140da86384dbbc4d661e937a1d625548350b28bbc68abb5b71a91740f",
+    "artifacts/seed-3002-k-1/initial.json": "7642ea3b24e926b865bdeeba06f1bcdf9ba09b8d26b1b00fc450169d4a022d7f",
+    "artifacts/seed-3002-k-1/persistent-A.json": "aac2bcece9d676d5c8ee0b2c9968a0d6bbc2934da830b10fddc9884cb579a854",
+    "artifacts/seed-3002-k-1/result.json": "3cee440ef4d22c95d212ee5c726bf556cb71d2262fbe3f3871ff4bee3c6e03b7",
+    "artifacts/seed-3002-k-1/started.json": "79606dfa7d0a57633dc76608d4b60f22906c950f68c86d6ec0b159aef9da11ca",
+    "artifacts/seed-3003-k-1/A-010000.json": "276497a0175e8f23532b9bc738cb208bf13f1f0329acb7cf1e72540bfcc279a4",
+    "artifacts/seed-3003-k-1/A-020000.json": "8eac71efc2184765530eaa4499da4bbd627163b87c2e6dcc0c1daba51278529c",
+    "artifacts/seed-3003-k-1/A-030000.json": "35111201d3b54fb78c5391dfa26d6bf67c8f4f83f927b1c5d28b1f23e7b50693",
+    "artifacts/seed-3003-k-1/A-040000.json": "520605a7b058e18106e14070cad491574b95736607be2076705140b3ce386607",
+    "artifacts/seed-3003-k-1/A-050000.json": "fed0feb3c7315a94c4086b31a3f7caf8d0a32d366e469b1fc78b28014f2f6364",
+    "artifacts/seed-3003-k-1/A-summary.json": "e77f191c87ca609d25e9621af19ad9079bcdf5440be82585d70abbd91bc3575c",
+    "artifacts/seed-3003-k-1/A-symbols.u8": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+    "artifacts/seed-3003-k-1/A-ticks.jsonl": "92887737389750abf351411cb181ab4fdb1c0e399be377fc6a5232a4cc685ad0",
+    "artifacts/seed-3003-k-1/R-010000.json": "89d97d2d18b3fb7249b8505561ef9d54adad1c9b22e53fe39e5da36ead2129d0",
+    "artifacts/seed-3003-k-1/R-010256.json": "e00a19a0c28390cbe644beadb9d9b6fd094caf8feaabcaf707d39e5324c5bb2d",
+    "artifacts/seed-3003-k-1/R-summary.json": "ac096f75195a203070e2913d13c03106466f9446ab24510bdebb2c904505e9e3",
+    "artifacts/seed-3003-k-1/R-symbols.u8": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+    "artifacts/seed-3003-k-1/R-ticks.jsonl": "069e768eba061f2ace14d82458f190eb40e99701e469c6c75696a2b68448f379",
+    "artifacts/seed-3003-k-1/initial.json": "39d6640edd05f4c11318c089cdf9e5e609d584d2d46b567801fb433864eb73cb",
+    "artifacts/seed-3003-k-1/persistent-A.json": "eac8c259e77ddc2adc3fd3876c8da6f7bc156c87397e9f977a1fb4486604cfee",
+    "artifacts/seed-3003-k-1/result.json": "d85bfe06dd8027e5ea602929da2b0e1cf6146d25b129facf3800adfb73da488d",
+    "artifacts/seed-3003-k-1/started.json": "99ec3bffb46014a513c3850550f26d42ed8ee6829f577d64d5d49be24805dfdf",
+    "artifacts/seed-3001-k-16/A-010000.json": "331e26bd8b267a1f6965cd97941ae9da467eb6133708a6f8afb12e555896e3a0",
+    "artifacts/seed-3001-k-16/A-020000.json": "8ae77fba62237803ccc8123ea6e0ae8c4e069becf52c21e5e96d53676a7239f9",
+    "artifacts/seed-3001-k-16/A-030000.json": "f170e63df8dfcddcd0ab875c5384748cbec4bb3326325bf4e2a9f82e0bb12f5c",
+    "artifacts/seed-3001-k-16/A-040000.json": "7731544fd9f2237c81d58b33ced7978498a11b6a8e81d824132f8d868b93cdbe",
+    "artifacts/seed-3001-k-16/A-050000.json": "8de27e057f3c70c88ec250ae8d3154acdc678d1423b2882721d49c2be7f4ba32",
+    "artifacts/seed-3001-k-16/A-summary.json": "a9b8d1a2be585a30c1527cc48c1f827981ef5c8aee9903424a4ba608df48c81f",
+    "artifacts/seed-3001-k-16/A-symbols.u8": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+    "artifacts/seed-3001-k-16/A-ticks.jsonl": "1d903fb83057621b4b73cf77081c1b5a91bff97aaf23a7d2fdac1b1f19f95a12",
+    "artifacts/seed-3001-k-16/R-010000.json": "5e6fffb3e972747c162c7d208355549a8b28cbdf52f3607a7611d2894962fea3",
+    "artifacts/seed-3001-k-16/R-010256.json": "7fd57f38e2a936e74a4906c72b6fc097f580f9ef6177aa6bbab8d548868f1644",
+    "artifacts/seed-3001-k-16/R-summary.json": "aab0b89018522a70bae50d6125c9abcec76626cb53bca6cbed4a0b4f6e830cea",
+    "artifacts/seed-3001-k-16/R-symbols.u8": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+    "artifacts/seed-3001-k-16/R-ticks.jsonl": "82cbc24a83c26fce15ee48c2e4081122e5a98e4f0836cad5ead18e6350f7f632",
+    "artifacts/seed-3001-k-16/initial.json": "405e127e37aaabf93d9faa0d579e984d90ae6e75f62680a2e47cbdb12dd7c11e",
+    "artifacts/seed-3001-k-16/persistent-A.json": "6a1e3cb4f6debedfcc30527031b5cf04935d187f91dd086e73b4296c9d19469c",
+    "artifacts/seed-3001-k-16/result.json": "7ad9b22c90c08a48b36762db0d060d5faaf66ab62407a8c256757522ae702ca7",
+    "artifacts/seed-3001-k-16/started.json": "27cab662042dcad6b715e9175f03a35b06757caf362ab2e61f44ffe113b8729c",
+    "artifacts/seed-3002-k-16/A-010000.json": "e8fce2d79bbe7df3e24de8d134d32114390bd1756e01408c07ce2530866ed770",
+    "artifacts/seed-3002-k-16/A-020000.json": "dbc933590f75db4ee102e192fb2b841e6d00f4d48d867e08c31bc6b6536491d3",
+    "artifacts/seed-3002-k-16/A-030000.json": "ac5056153f448463918a73bcecf0b225284cc61e70a3c2b8a433432aa2fdbaff",
+    "artifacts/seed-3002-k-16/A-040000.json": "79f1e431ff2e5183c1b9c6edafc0c0c10dcffb1a50a244e6da505450fbd665f8",
+    "artifacts/seed-3002-k-16/A-050000.json": "7b3d14d80b435fa8e2e2ec40ebbe124c8abac4985d3d6242df00d8830660cf45",
+    "artifacts/seed-3002-k-16/A-summary.json": "421aa381a970aba893280d2f07de848b7ab3aded1c3338793a4b278ead96e38b",
+    "artifacts/seed-3002-k-16/A-symbols.u8": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+    "artifacts/seed-3002-k-16/A-ticks.jsonl": "7219c4fd89be420a6281ce8561ef21a4e9390191bb6b15ad3063886853e5d13f",
+    "artifacts/seed-3002-k-16/R-010000.json": "119ef9e513d9a8a52c76e89b2e3731d57ef864fe115eb4a42e1046229de1ed24",
+    "artifacts/seed-3002-k-16/R-010256.json": "584a90b192b323008b64cc4c859f4bb0670506bc823ced35c4b4c5cea3526c98",
+    "artifacts/seed-3002-k-16/R-summary.json": "1213498c55a57a04e5483d0a14ea055642e8f8c5783a75ed15e90b7b0d85f4a7",
+    "artifacts/seed-3002-k-16/R-symbols.u8": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+    "artifacts/seed-3002-k-16/R-ticks.jsonl": "604feca9d37f29f1bc92d81d4af270d6db20534835f2d85031d92dcc7f3ba20f",
+    "artifacts/seed-3002-k-16/initial.json": "7642ea3b24e926b865bdeeba06f1bcdf9ba09b8d26b1b00fc450169d4a022d7f",
+    "artifacts/seed-3002-k-16/persistent-A.json": "f87b5f3c9c1b35783e8bb9c018a3e73f741b79ac63cd4da60aa4dad96b481713",
+    "artifacts/seed-3002-k-16/result.json": "ea2f31704f5e0899e8c886f5858e48ca88ddc87450a85811d7f04a3579d5056b",
+    "artifacts/seed-3002-k-16/started.json": "cdd7ec09b5b8ba80502bcbb94ea6f653c15d941074b2c94c8d35be53aa20e0ee",
+    "artifacts/seed-3003-k-16/A-010000.json": "da3b403d97e0acb446ea8e814a9ce127b45115d503653d76f1027d667b73067d",
+    "artifacts/seed-3003-k-16/A-020000.json": "c6afdb058ea0a57ad27d5ab1c1eaf98616bf55277df77039d49176be56ab5fb6",
+    "artifacts/seed-3003-k-16/A-030000.json": "404134f3f5a704a6f069e1ded40a72606021bc528e33745ce685a239e4adef59",
+    "artifacts/seed-3003-k-16/A-040000.json": "061bf5fb911e4235509b1f2325dcb3ffa4253c35e08f6448a281ccec710b3024",
+    "artifacts/seed-3003-k-16/A-050000.json": "ba5b6c53a5988efffef2dbfd5ae0159e141558773d68b32d66986915542d0418",
+    "artifacts/seed-3003-k-16/A-summary.json": "e37431642789ef8bb6906f19d8ac74e09e35fd460ec382cb5f734d8f6a88bd1f",
+    "artifacts/seed-3003-k-16/A-symbols.u8": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+    "artifacts/seed-3003-k-16/A-ticks.jsonl": "2a08810c5f6b976045a43e44897bf1d7b5458f797868018f726ca2917c3d982d",
+    "artifacts/seed-3003-k-16/R-010000.json": "575a4a25350800acdf37811eed1a6f123505610af625bd388271d0de4ccc02bf",
+    "artifacts/seed-3003-k-16/R-010256.json": "e4119e409c167ec00a49fd7326b818b034451fbfb81409187c66a35106a61963",
+    "artifacts/seed-3003-k-16/R-summary.json": "588c2c70550cfd99f21b9ba6237f57bbad734fded648c4667f770be4b52abf9e",
+    "artifacts/seed-3003-k-16/R-symbols.u8": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+    "artifacts/seed-3003-k-16/R-ticks.jsonl": "2aaffca639cd209fdbc974caeb5b300bb84d4a5e3f182bda24ba646675af5d2e",
+    "artifacts/seed-3003-k-16/initial.json": "39d6640edd05f4c11318c089cdf9e5e609d584d2d46b567801fb433864eb73cb",
+    "artifacts/seed-3003-k-16/persistent-A.json": "8b581606c10210a079a26fef98be43daca9d3f0c5230df9be576e428f44420cf",
+    "artifacts/seed-3003-k-16/result.json": "0fa95fa7035dce91bc06650bc1a458f6480770d130218224145a4af48e132e41",
+    "artifacts/seed-3003-k-16/started.json": "75d8d641b7afc16558ceabe0bc57a64f0ff6ff5036adcebd6af0ef003fec6cb6",
+    "artifacts/seed-3001-k-256/A-010000.json": "dbddcaa26ea380741db2d6fb209bca06cff1c33d00f44b450426c67b023b6baf",
+    "artifacts/seed-3001-k-256/A-020000.json": "af3175ebf6ff8626aadcf7dc48a27a315e59034e410df318015f7ff1e931ac19",
+    "artifacts/seed-3001-k-256/A-030000.json": "c92fdc0055bfd124568f18114dca59185a078ab377c89e52f8ea4f2df8d99e9e",
+    "artifacts/seed-3001-k-256/A-040000.json": "6ee517716972004f27966821a905cd1223108af836b782615af5d4b0fbf4d676",
+    "artifacts/seed-3001-k-256/A-050000.json": "cd51dd26bcb5beb71fa8d6c0527a45063d1c07846ee8c73b8650c500d548689c",
+    "artifacts/seed-3001-k-256/A-summary.json": "00d7c88d32c947c5af85a8988b2df967c6987e4b03654168ca2b3fab5ca4fd19",
+    "artifacts/seed-3001-k-256/A-symbols.u8": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+    "artifacts/seed-3001-k-256/A-ticks.jsonl": "e4e1149621ffaef4d3c782edbf35900cd56f6cfcac591c31b2a3bb1e040eadc1",
+    "artifacts/seed-3001-k-256/R-010000.json": "00b458a5e5d99592f470748b36ac6ba9ec1c6e71a9eaf3302709416a69478306",
+    "artifacts/seed-3001-k-256/R-010256.json": "ffe178ab50dfa2c74cff26c2c30b555afabe7c93ae018f2ec3cdb12e2568ed69",
+    "artifacts/seed-3001-k-256/R-summary.json": "7bd46e49a1c708975109cc2e75b2afec83c221b94e357d40b1963c9d2c02dc75",
+    "artifacts/seed-3001-k-256/R-symbols.u8": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+    "artifacts/seed-3001-k-256/R-ticks.jsonl": "a2159669c9201b8b26fce703bedfe7126ae7c054638b1aa05d0af51b019ab931",
+    "artifacts/seed-3001-k-256/initial.json": "405e127e37aaabf93d9faa0d579e984d90ae6e75f62680a2e47cbdb12dd7c11e",
+    "artifacts/seed-3001-k-256/persistent-A.json": "4cd63bdfad91f9e8961f7619805b66a669a3c6d7b5c28b5a481a53dfb9993864",
+    "artifacts/seed-3001-k-256/result.json": "bb4293b0af2c6b2d0dc26d519181f2adfe3e32dda546350e1d4b9d7546d5737a",
+    "artifacts/seed-3001-k-256/started.json": "1a9af591e50b476358fe7ec56acda3f5e9103aae4d208651b74ba8eba84512d2",
+    "artifacts/seed-3002-k-256/A-010000.json": "4bafb45699d8fb1247a7dcf8557245005fad8e2b76a0947f7aff4d39469e2b5e",
+    "artifacts/seed-3002-k-256/A-020000.json": "1c2eecd78dd93f7d5a14f3185e4925d4e5d196dbf364dd71b9cfa5ed2d45565c",
+    "artifacts/seed-3002-k-256/A-030000.json": "80eb8de9a523ee8e567a1faf58c069f7dc70b318c4d60b16c03770846b501501",
+    "artifacts/seed-3002-k-256/A-040000.json": "b6d7c75c1eac4389b120080b8272eff9352c5589d581b12ec5f7b1078769f12f",
+    "artifacts/seed-3002-k-256/A-050000.json": "8482333b622a847f4c85fd695baa58dbd8511d107681c9a16630456935e8b591",
+    "artifacts/seed-3002-k-256/A-summary.json": "3b2631b106ddf657dae6ada15a890bdace9f51f5783fb5c38ff4ed52fae31415",
+    "artifacts/seed-3002-k-256/A-symbols.u8": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+    "artifacts/seed-3002-k-256/A-ticks.jsonl": "abc19af570660003dcb98589be3b88fc63b0f8cf1cf1393c45644574e6db853d",
+    "artifacts/seed-3002-k-256/R-010000.json": "3eb6dcce50af10d018e4c5ee977df1b005813e2f7102f9b3a2c5f01e0f03a728",
+    "artifacts/seed-3002-k-256/R-010256.json": "14825c1d6a649331fcdc58e0bf12b8ccff3c971eaacc907c6e0ab1b044072da0",
+    "artifacts/seed-3002-k-256/R-summary.json": "e8a5def55b2feb38a8b211854a825b58e6e28c3124fb51ebe336adf175055002",
+    "artifacts/seed-3002-k-256/R-symbols.u8": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+    "artifacts/seed-3002-k-256/R-ticks.jsonl": "ac7c933c66718702fc9febe5cce6668f66c6456de1cc4b0a863d71110448d328",
+    "artifacts/seed-3002-k-256/initial.json": "7642ea3b24e926b865bdeeba06f1bcdf9ba09b8d26b1b00fc450169d4a022d7f",
+    "artifacts/seed-3002-k-256/persistent-A.json": "75cae16047d8a3e9baeb335ad3ecb5a8254accb5cf1add84643c9c41b47b1510",
+    "artifacts/seed-3002-k-256/result.json": "a86f34926921082c3896de000e453ee656a555ff7ab067af7ea9faf59d671d35",
+    "artifacts/seed-3002-k-256/started.json": "8d2c7104ce3117185794883af625223b4866a10fd072e449c394d8b7d807e07e",
+    "artifacts/seed-3003-k-256/A-010000.json": "ce29d461f2fd4f94f906ef9de84a466c5f479f488e1210dc49f703689579571f",
+    "artifacts/seed-3003-k-256/A-020000.json": "1f4d7cb60b59c51bd696e9b8d7f9dc2d65b1d5210ddd86e540d280ef29526da2",
+    "artifacts/seed-3003-k-256/A-030000.json": "c164d7fee31eccb267028f725d6c032cb14cca801a33518f29e1ff788e2c209d",
+    "artifacts/seed-3003-k-256/A-040000.json": "7fd6f988a7ae8dbecde089cfe275b400dbd07da4f0e164a4d9a59ab943c5c8b5",
+    "artifacts/seed-3003-k-256/A-050000.json": "3cda7a3737a5f9c4ce79416cfdb971065c2fa38c0d77ec91f5b8ea067e413143",
+    "artifacts/seed-3003-k-256/A-summary.json": "1a785aa6c3fee25011f5b5812952930dcd4266adf0a85afc6a8fe239be763833",
+    "artifacts/seed-3003-k-256/A-symbols.u8": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+    "artifacts/seed-3003-k-256/A-ticks.jsonl": "e222951e88e3f96307bbd127e71a9973baae071cc2fe23119b81036ee3daddf2",
+    "artifacts/seed-3003-k-256/R-010000.json": "ed4030d37493c12d13aac068a847fa4e84febfa7f24224cabcf7406641df2118",
+    "artifacts/seed-3003-k-256/R-010256.json": "173bffda0c37d1c9e1962457969cb612eedb9a8a6b864b3df80b09501b33354f",
+    "artifacts/seed-3003-k-256/R-summary.json": "2b748a3a258c7a3c72b4ad66b120a89a413931823a082e583eba2aaced6f248b",
+    "artifacts/seed-3003-k-256/R-symbols.u8": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+    "artifacts/seed-3003-k-256/R-ticks.jsonl": "e365a1643f31acb9198f8d2dbfe399bee964cd4da3f30434f4f5e2dea8d7d13e",
+    "artifacts/seed-3003-k-256/initial.json": "39d6640edd05f4c11318c089cdf9e5e609d584d2d46b567801fb433864eb73cb",
+    "artifacts/seed-3003-k-256/persistent-A.json": "33def4740e610f93fdc1871c4899bb5831e17218c425b37750581e774890767d",
+    "artifacts/seed-3003-k-256/result.json": "38f749f0a5bf7fb699521cf8a4f7ca6e2f7d915fdcef7173e63c7620c18dcf6e",
+    "artifacts/seed-3003-k-256/started.json": "9042cb9e30690f5c7f04c742be82d084a14c67af1ae50c1b35eded3b0affcdce",
+    "artifacts/seed-3001-k-4096/A-010000.json": "bb0f92b470c47167d4bce700ad55ad890864b50c768455b411ff88e80a3b0ebe",
+    "artifacts/seed-3001-k-4096/A-020000.json": "2c30b989f911365cef255e9581d1e702d1817e781130d71f4d60aacd2383bf96",
+    "artifacts/seed-3001-k-4096/A-030000.json": "6006d4c9b1e1cf9d2bb95878186ee2ba4505b5c820ac28b804bdfbb56a3122c1",
+    "artifacts/seed-3001-k-4096/A-040000.json": "b8e3eb5633f2f765a73ec2779b0236d4b5843406d08a3ec6f5538acbd56a21b5",
+    "artifacts/seed-3001-k-4096/A-050000.json": "034ab300cfc75bd04e028fbda6cae7ee35624b72370ea4313969cfc886ee13c5",
+    "artifacts/seed-3001-k-4096/A-summary.json": "5c2cf6b3af1b1f3a9839c998b40ae23a488dd142bc203ceb924b67be75f14c14",
+    "artifacts/seed-3001-k-4096/A-symbols.u8": "ed8cda83f4f4acde19bb10787ce0e895cf8003e7d31403e393eee2ad50899cc7",
+    "artifacts/seed-3001-k-4096/A-ticks.jsonl": "f99b8d14e0c671c505a0dd58a241af4e91073455f17187667a86ab11a9552c93",
+    "artifacts/seed-3001-k-4096/R-010000.json": "de7e12c2c3494c306392f821fa54c21877b13d6c86ca693c640adec4a26dc0eb",
+    "artifacts/seed-3001-k-4096/R-010256.json": "bd66e839d8ea820a8467bbb17d624bd84004951f3426341f1e46559b263b0e02",
+    "artifacts/seed-3001-k-4096/R-summary.json": "87edcfece4ba67cff73604853211e37b7907af286e59cdf9ab54877cb7b151f0",
+    "artifacts/seed-3001-k-4096/R-symbols.u8": "b0b806da9e983d4cec517801c0033a49fc6e23fc0109d4e1a07b48940fac173c",
+    "artifacts/seed-3001-k-4096/R-ticks.jsonl": "3e01a51348dc6d70771958b9f07459f252237795e5e7b51a28dd51a04a9145bd",
+    "artifacts/seed-3001-k-4096/initial.json": "405e127e37aaabf93d9faa0d579e984d90ae6e75f62680a2e47cbdb12dd7c11e",
+    "artifacts/seed-3001-k-4096/persistent-A.json": "51273cf8c843bb7d7ddd76d7f771e7ceb62cba98acf8716dedd7b727f660af97",
+    "artifacts/seed-3001-k-4096/result.json": "d83ef9c92fe61cc2173b9b13765233fe5fd8afc4867a73237793db33bc98841d",
+    "artifacts/seed-3001-k-4096/started.json": "8295ff0e0d64491c9fab4925f8cd54ea964871d87a4a6a49a0725f7596862ccf",
+    "artifacts/seed-3002-k-4096/A-010000.json": "05976b3f52d66a133850e28ae8b24488dcb0ed505c163abb5d53bd98d3cac2a5",
+    "artifacts/seed-3002-k-4096/A-020000.json": "32916f46aecbef239f848b73ac67cee1fd486ad53498f44157feb32e8db11dbc",
+    "artifacts/seed-3002-k-4096/A-030000.json": "d39fc962556d80d33431395ff1629bf868f68a8a3748702ddafe8b7ce33601f9",
+    "artifacts/seed-3002-k-4096/A-040000.json": "ff7bee363ad30b88abff778c72a0445c2699b97c5a74e5f4d8e5d6b9a7f4a5b0",
+    "artifacts/seed-3002-k-4096/A-050000.json": "35bb290a7414153205680593f74833a8390660b5c0668a7755cfecfe8443ce8e",
+    "artifacts/seed-3002-k-4096/A-summary.json": "6eaaa231daad1db9edd749676a427b351da4f3e95daef9aae5a185255b1fd677",
+    "artifacts/seed-3002-k-4096/A-symbols.u8": "37fc8629107b5362c6c08d050c5a6230599ffb5a2b5b07c74147086a3e10c477",
+    "artifacts/seed-3002-k-4096/A-ticks.jsonl": "71907168783819ab3ef1f1f00cfcfc4d95288839967b0664fece900e5f62f2ab",
+    "artifacts/seed-3002-k-4096/R-010000.json": "ec458749e7e4704224f3f1183bac6b50ccb60df79392dce19b97dbf018d85d3e",
+    "artifacts/seed-3002-k-4096/R-010256.json": "45d28ed0f6ac35c913b9e623329603632142ab9b7044bf0fd13d8188acfb9e37",
+    "artifacts/seed-3002-k-4096/R-summary.json": "e75e661776b6243c32b18dccd4baf50b158d5a25ce034dabd91515e7d804f8fb",
+    "artifacts/seed-3002-k-4096/R-symbols.u8": "89a80de5fac2d329eb9a764df2c208e30584d5e758fd5c822bb42c36a1476e5f",
+    "artifacts/seed-3002-k-4096/R-ticks.jsonl": "6df77f41dea1cfb8c1c59be1a84c0ed94506c9c45c6863e0a9314b410f4d231b",
+    "artifacts/seed-3002-k-4096/initial.json": "7642ea3b24e926b865bdeeba06f1bcdf9ba09b8d26b1b00fc450169d4a022d7f",
+    "artifacts/seed-3002-k-4096/persistent-A.json": "950d16ce4f52e798899ee594e87f66346b8b888580b14aa2278d1e0a7af13f17",
+    "artifacts/seed-3002-k-4096/result.json": "cf12c4c851e048e8a9913f19c7c09a707026dcea1f28a128892b669369c733f0",
+    "artifacts/seed-3002-k-4096/started.json": "dd0242823b753c591c8d5703ffd0e477331bf4ebb4fcb3656738334e149d3f99",
+    "artifacts/seed-3003-k-4096/A-010000.json": "57ece5d51ea970a4b316137e7fec932c0c3232be34bac87ff934be14034703c6",
+    "artifacts/seed-3003-k-4096/A-020000.json": "5a5ca260cacbd989f5e92c53f05f059dfeff0eb5d48f13686b12be7a6e91cf52",
+    "artifacts/seed-3003-k-4096/A-030000.json": "33db7510984344ab68a64801ca4feef2d81599223f8fb4962425834c58e89381",
+    "artifacts/seed-3003-k-4096/A-040000.json": "5d90485a4696c45df174b7156157c42c111530d89bdd247187975005b3846565",
+    "artifacts/seed-3003-k-4096/A-050000.json": "bb950b3f5fce86478b6a7db517a1c26b2b2b14a99cbfffa2902e75c655470233",
+    "artifacts/seed-3003-k-4096/A-summary.json": "2f5e1324789ad250e2333f92ab4d2379183f04dc6ae1854046df1b1d55119500",
+    "artifacts/seed-3003-k-4096/A-symbols.u8": "c4024d6b1c4cacbbcef91e87d4ad21c09e60eceb85feaa6047ca962fc0b5f4a6",
+    "artifacts/seed-3003-k-4096/A-ticks.jsonl": "5432481841a3ea8009c021ff978715058b39c30c9606cfe62a24ca2e85a396d4",
+    "artifacts/seed-3003-k-4096/R-010000.json": "094df71b6e9c21333129612b2014ab9daec521daaf5751e54d54d172dd042d9e",
+    "artifacts/seed-3003-k-4096/R-010256.json": "42aacc3a4c801fa66d9673bbfc00f8bc010012227cd463e0e5075bd9fe7b5884",
+    "artifacts/seed-3003-k-4096/R-summary.json": "78d6e2d979e9c8cceb8afffbed0b5c25af8160e40e03231c33d8296532df3cc1",
+    "artifacts/seed-3003-k-4096/R-symbols.u8": "502550831e1bb50290100cb2f96ebb8cc5e413cad2174f5e7a93e5e91336dba1",
+    "artifacts/seed-3003-k-4096/R-ticks.jsonl": "2620f6dedaa7a0bd6da78c27bb759cfed5d656ae3a082fad6039bf11a7b5fbc8",
+    "artifacts/seed-3003-k-4096/initial.json": "39d6640edd05f4c11318c089cdf9e5e609d584d2d46b567801fb433864eb73cb",
+    "artifacts/seed-3003-k-4096/persistent-A.json": "7beef47f433ba216f7b4bd02c636541bd52f5f3130cecfa857fc8bbfa3092f06",
+    "artifacts/seed-3003-k-4096/result.json": "b1e288b1285699a2cd41913cfd2a884e5d875e08c8931a9758d0a927b74a051e",
+    "artifacts/seed-3003-k-4096/started.json": "87912f9d0e501d08dbab1cb468ca05ee8d1f521393736ae9160e62a0eb2470be"
+  },
+  "independent_audit": {
+    "pass": true,
+    "utc": "2026-09-16T22:36:36.495953+00:00",
+    "source_files_verified": 175,
+    "artifact_files_verified": 204,
+    "ticks_per_recurrent_arm": 723072,
+    "successful_processes": 12,
+    "journal_sha256": "c76c31de15cbaac56da925200899e11c176a49d3056a748896218d9db9a447c0",
+    "selection_recomputed_from_numeric_statistics": true,
+    "old_NE0_seal_unchanged": true
+  }
+}

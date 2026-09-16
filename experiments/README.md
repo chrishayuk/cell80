@@ -48,3 +48,8 @@ configuration. All results and gate outcomes are retained.
 application of the same plasticity rule can satisfy the operating-regime limits
 on new development seeds. Its fixed grid does not use prediction scores or
 constitute a new confirmatory learning experiment.
+
+The [completed NE-0b development findings](neural-ecology-ne0b/findings.md) select
+one update every 4,096 ticks as the only tested schedule meeting all operating
+criteria across three development seeds. Predictive learning remains untested
+for that candidate.

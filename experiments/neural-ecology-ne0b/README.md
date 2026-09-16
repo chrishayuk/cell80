@@ -5,6 +5,14 @@ sealed NE-0 cell rules and scheduler library. It screens update cadence for
 operating stability on new development seeds. There is no prediction probe,
 evaluation-seed mode, or acquisition claim in this study.
 
+## Completed development screen
+
+All twelve runs completed. **K=4096 was the only viable interval across all three
+development seeds.** It kept endpoint fractions around 3–5% while producing
+measurable persistent weight changes. See [findings](findings.md) and the
+[numerical report](development-results.json). This establishes eligibility for a
+learning experiment, not predictive acquisition or long-term stability.
+
 From the repository root:
 
 ```sh
