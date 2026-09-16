@@ -1,5 +1,5 @@
 {
-  "utc": "2026-09-15T23:44:36.424020+00:00",
+  "utc": "2026-09-16T07:02:02.649560+00:00",
   "fixture": {
     "edge_cases": 196,
     "fixture_hash": "c2adcbd0263104d7c1c8ebe57a9bfe4d500834edf5314134542a441b8cf48c92",
@@ -12,11 +12,12 @@
   },
   "rust_tests_passed": 8,
   "python_tests_passed": 8,
-  "binary_sha256": "7a60018aded00560f7c0ec2575639b30a857225a67ef723b6b3453446fdbd7f6",
+  "binary_sha256": "3745231d923db49990ca1971a01098290efa300104a4bdd55464ebb874b29ce3",
   "commands": [
     "cargo test --release --locked --manifest-path experiments/neural-ecology/Cargo.toml --offline",
     "python3 -m unittest discover -s experiments/neural-ecology/tests -p 'test_*.py' -v",
     "ne0 fixtures artifacts/logs/fixtures.json"
   ],
-  "scope": "Engineering verification; confirmatory results require the separate committed implementation seal and ten evaluation seeds."
+  "scope": "Engineering verification; confirmatory results require the separate committed implementation seal and ten evaluation seeds.",
+  "identical_cache_files_not_rewritten": true
 }

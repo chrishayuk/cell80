@@ -8,6 +8,16 @@ use std::{fs, path::Path, process::Command};
 
 pub const NODE_SOURCE: &str = include_str!("../cells/node.rs");
 pub const EDGE_SOURCE: &str = include_str!("../cells/plasticity.rs");
+
+fn write_cached(path: &Path, bytes: &[u8]) -> Result<()> {
+    if fs::read(path).ok().as_deref() == Some(bytes) {
+        return Ok(());
+    }
+    let temporary = path.with_extension(format!("{}.tmp", std::process::id()));
+    fs::write(&temporary, bytes)?;
+    fs::rename(temporary, path)?;
+    Ok(())
+}
 type BatchFn = unsafe extern "C" fn(*const u16, *mut u16, *const u8, u32, *const u8, *mut u8);
 
 // The generated CUDA-dialect code is executed as C++ on the CPU, using the same
@@ -131,10 +141,10 @@ impl Cell {
         let cuda = rustmsl::compile_library_cuda(&cells)?;
         let msl = rustmsl::compile_library(&cells)?;
         fs::create_dir_all(dir)?;
-        fs::write(dir.join(format!("{name}.metal")), &msl.source)?;
-        fs::write(
-            dir.join(format!("{name}.ir.txt")),
-            format!("{:#?}", lowered.funcs),
+        write_cached(&dir.join(format!("{name}.metal")), msl.source.as_bytes())?;
+        write_cached(
+            &dir.join(format!("{name}.ir.txt")),
+            format!("{:#?}", lowered.funcs).as_bytes(),
         )?;
         let native = Native::new(&cuda, dir, name)?;
         #[cfg(target_os = "macos")]

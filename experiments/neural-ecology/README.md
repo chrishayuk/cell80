@@ -66,7 +66,7 @@ benchmarks.
 After all development verification and source checks are complete:
 
 ```sh
-experiments/neural-ecology/target/release/ne0 experiment seal experiments/neural-ecology/artifacts --seal experiments/neural-ecology/implementation-seal.json
+experiments/neural-ecology/target/release/ne0 experiment seal experiments/neural-ecology/artifacts --seal experiments/neural-ecology/implementation-seal-v2.json
 ```
 
 The seal records the binary, protocol, source/dependency files, emitted kernels,
@@ -75,7 +75,7 @@ evaluation. The evaluation entry point verifies the committed seal and all
 recorded file hashes. It permits only seeds 2001–2010; the driver requires all ten.
 
 ```sh
-experiments/neural-ecology/target/release/ne0 experiment eval experiments/neural-ecology/artifacts --seal experiments/neural-ecology/implementation-seal.json
+experiments/neural-ecology/target/release/ne0 experiment eval experiments/neural-ecology/artifacts --seal experiments/neural-ecology/implementation-seal-v2.json
 ```
 
 A development activity failure is reported; parameters are not automatically
