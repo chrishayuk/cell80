@@ -39,3 +39,7 @@ the repository root with:
 ```sh
 shasum -a 256 -c experiments/neural-ecology-ne0-preregistration.sha256
 ```
+
+The [completed ten-seed findings](neural-ecology/findings.md) report passing
+execution and persistence checks but unmet learning criteria for the registered
+configuration. All results and gate outcomes are retained.

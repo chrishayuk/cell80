@@ -4,6 +4,15 @@ Implementation of the [sealed v1 protocol](../neural-ecology-ne0-preregistration
 This directory is a standalone Cargo workspace. It uses existing Cell80 compilation
 and execution APIs; it adds no recurrent primitive to `CellGraph`.
 
+## Completed evaluation
+
+The [ten-seed findings](findings.md) and [full numerical report](evaluation-results.json)
+record a valid negative result for the registered configuration. Execution,
+persistent adaptation and replay passed (G0/G2/G5); activity, acquisition,
+specificity and temporal-information criteria failed (G1/G3/G4/G6). Plastic's mean
+held-out loss was 1.385464, versus 1.384368 for Frozen (lower is better).
+All ten seeds are retained, with no evaluation-time tuning.
+
 ## What runs
 
 - `cells/node.rs`: bounded integrate-and-fire state update.
