@@ -53,3 +53,7 @@ The [completed NE-0b development findings](neural-ecology-ne0b/findings.md) sele
 one update every 4,096 ticks as the only tested schedule meeting all operating
 criteria across three development seeds. Predictive learning remains untested
 for that candidate.
+
+[NE-0c](neural-ecology-ne0c/README.md) preregisters the confirmatory learning test
+at K=4096 on fresh seeds 4001–4010. Primary post-reset prediction and a separate
+descriptive no-reset diagnostic use the original fixed probe and controls.
