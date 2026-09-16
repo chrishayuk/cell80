@@ -43,3 +43,8 @@ shasum -a 256 -c experiments/neural-ecology-ne0-preregistration.sha256
 The [completed ten-seed findings](neural-ecology/findings.md) report passing
 execution and persistence checks but unmet learning criteria for the registered
 configuration. All results and gate outcomes are retained.
+
+[NE-0b development](neural-ecology-ne0b/README.md) tests whether less frequent
+application of the same plasticity rule can satisfy the operating-regime limits
+on new development seeds. Its fixed grid does not use prediction scores or
+constitute a new confirmatory learning experiment.
