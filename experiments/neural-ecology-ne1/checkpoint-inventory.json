@@ -1,0 +1,758 @@
+{
+  "status": "verified_inventory_only_no_NE1_measurements",
+  "source_seal_sha256": "44289523cb533c7884f775161b5a152ae909235d8a84c60ace4fbe23b760bae1",
+  "source_binary_sha256": "19352b79e257682c2fffc2d11684562ebd5826c47d15f54e5ac705082e52d711",
+  "sealed_files_verified": 196,
+  "records": [
+    {
+      "seed": 4001,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4001/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "f28c7db268bb8e569929804ea12463bfbf0a74a758eb541264a9c47d80bbebda",
+      "original_sha256": "9bab5d8652aba8f16dc7ad8caad533b2fce2a8559ee426aef806bb7d343094a0",
+      "weights_sha256_le_u16": {
+        "Frozen": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Plastic": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Yoked": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4001,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4001/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "2ace27e098c15641140ad26261a6f093112bf128c9582d5318eb1e68526c47ef",
+      "original_sha256": "79d4f86cd4390bcd99cc9144dac3042011e016027bb8feb7c81db88eae10b437",
+      "weights_sha256_le_u16": {
+        "Frozen": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Plastic": "75f6d29c1df8e5e4dce5bf9397e191dcc34ff43ddc6eba55e93f7ab43b048d6c",
+        "Yoked": "661d356c793d0e4117594dcead015003454b7dc78964bdf282bb68ed64a77ddf"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4001,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4001/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "c8d2168d9933f02d43190efbd5c5db45b5394f868169b3fe6e3d3b665833673f",
+      "original_sha256": "1f3734a066afc8158a42eb7a972137039cf085714d14a2b80d5c89c42ae49237",
+      "weights_sha256_le_u16": {
+        "Frozen": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Plastic": "54d0542d4c87d77f27b4beafa839ad3ef7772ac4c51dbb86e7c811ea4e2cb8e0",
+        "Yoked": "59b3fee2aa714f7bd66701d8374f59037d41c4d97031f750c4a454283d2ec013"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4001,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4001/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "9a4ce25e59154374382b8dde887f8497b5267d77e0d1f5e5e1ea48e7b15713c8",
+      "original_sha256": "e97e317e73993a857227a0b00c285524c4576201e620604b27d98bb5e4709473",
+      "weights_sha256_le_u16": {
+        "Frozen": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Plastic": "0054848901cd5dea1f85a428a2a7e1498ddd7fc482140d80e9501759c84b4007",
+        "Yoked": "bc076387d88c35b664917ce840813f09ddab68134a6a201fcee0a1325ba38aef"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4001,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4001/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "3d23b247c0812aa09021c4b3c0c7bfc6a9d9ca5d8bda28612bb3a577067c27c7",
+      "original_sha256": "19084ebaca7ed039f444124b430ff0d2870021ff14bff492a07c7672a7958465",
+      "weights_sha256_le_u16": {
+        "Frozen": "c74e49d8c983fbd578bdd890d7680e86c9fb74851a5fe4e0556fccf779ad1ef5",
+        "Plastic": "265dc5ed84e4dadd72a3f1a66d914eb9569bc9d9c2b6a9fc027fa59e0c28bd1d",
+        "Yoked": "2d093a18c8f210d70f1bb1c6b2752ee2372f6732dd06da3e3014b78522d7d9cb"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4002,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4002/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "c6d552dc842572ca92b54491343bdbeb5fa975074329c683bed65f27e59f2d6b",
+      "original_sha256": "8b16c65c5576613e984d3fba7baf6ce28c8c86097388fca6fc9bdd4e2962a3ba",
+      "weights_sha256_le_u16": {
+        "Frozen": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Plastic": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Yoked": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4002,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4002/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "e429433a294250119bb3419f48e9a9d565dac88e17521cddb0a603901972113b",
+      "original_sha256": "053462582ccd241ce2858ce7bae59592dbec827a66bbc95a53c04af0120320db",
+      "weights_sha256_le_u16": {
+        "Frozen": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Plastic": "0f03ce67346ddfbc17c87a9affacc9b2acb72a0175fab0af4b81dc3c15b995d3",
+        "Yoked": "71a5e1f6056091091c9d3f459ae4ebbc97a75f2be8aca0c8d3809499403ad5e0"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4002,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4002/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "5691ae157323e417c90d3e8d44c207f43d13c2d342abf34174cb36bc8d9cc2ef",
+      "original_sha256": "e1cd51bf66c3836b1190d652398919927b15332ed8a1e91d84f500e1c94d5e52",
+      "weights_sha256_le_u16": {
+        "Frozen": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Plastic": "4fb8ac6568e4e86c19512f0376146dae6560755b88d2d17ec9664b4c3fc6d361",
+        "Yoked": "81e828ff27cdfd9f580c66c9298a42fcf458a15884c0f1932358fee5905effb6"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4002,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4002/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "5f4986b1bf09f5352ecb061e50d20b00730129a1d8df179ba62f83371b2ab369",
+      "original_sha256": "d72f0e98e852f2489c374d04abc5d12484f95f4e48c989ca0a1a37c7d482bf1b",
+      "weights_sha256_le_u16": {
+        "Frozen": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Plastic": "c2d0dfc64c9b111671586c62783b2773f6d36124032b00868521f95821c07177",
+        "Yoked": "b1672ca76b2fca4bc6bf14642a886e6759bcd3dc3671ce74fc4b02b45c114670"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4002,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4002/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "55173aad2ccdc334abc01f04be5ae9e5fb3dfb6ef3698398b4c97f82a2f2df3d",
+      "original_sha256": "0c72b5454edb6c2afaf4ae3fd01a5d43efeb2bb1672dd033da49b65bf5887470",
+      "weights_sha256_le_u16": {
+        "Frozen": "d2f30b8c9044950c55d43389bba9b9604892a44279d80ce68b9f87a7eec5b036",
+        "Plastic": "fd1b205a4f0f3971fe842be64c5676a79ad423082c3f4b2052a2c32c8174f0ff",
+        "Yoked": "16087730cf84660fcd8ae0e645f35c8d5b883c8c145d0ee839656ebf645e5918"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4003,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4003/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "cb74062470eab422be7856db8b044731362dd24d17ba8a014944c87e9be5a83f",
+      "original_sha256": "133fd1d56d7e4976187924e57c68a528f136cb4f6a1ece53ebe1880706f47c6b",
+      "weights_sha256_le_u16": {
+        "Frozen": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Plastic": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Yoked": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4003,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4003/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "dd30eec86c2c10110835e74d712458be3d7a4f4f3e958bfcba9d401123c1b5d7",
+      "original_sha256": "c4a4cf11168ca14800064cf04d25ef0e58a452c905e243ec36566fbeefc919da",
+      "weights_sha256_le_u16": {
+        "Frozen": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Plastic": "319a7f2d3a00991dd3a403952d8eb4a221561228524cee4ca1ea45a0e2624875",
+        "Yoked": "22439f35e1ebf456cb324d927fd2c58d176967859fa4fb8cef714d5035c78c48"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4003,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4003/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "5dcaf8c12bb969548abdcfaab48b9929abc3f405b675dc226c492175b35e5df6",
+      "original_sha256": "0cacce8bd84977adf70cfeb7ee504a8ba55cddfaff00e6f60b93b21e54282cb1",
+      "weights_sha256_le_u16": {
+        "Frozen": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Plastic": "22eb01049bc56aeb749e0dd75ef10937d1e9e568b04bb75bcdfa8c1093183366",
+        "Yoked": "8a021d449a87a9a1e6a80215e056398b47ff7cbbe701672fd732f26684fac732"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4003,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4003/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "9ff3f71651e48f03465b3491870b9d39c6e70e3ddf58958ea6d615cc89bbb168",
+      "original_sha256": "2e665940afc57999cabdb85c7debf7eafd70269876bb6bdbff77516a39310dd3",
+      "weights_sha256_le_u16": {
+        "Frozen": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Plastic": "7b3b496aa3828abcd55e4c645e159831c1cafc18a15fd5ffd174666d2bc01f30",
+        "Yoked": "6e5efa68686c8fe391fa305e7e758c2a17c0878fc3699960469a471f56024ed1"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4003,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4003/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "d862045ee9692de3150b890157d219c2281f93cd73194c5603c51297abfecc45",
+      "original_sha256": "66ee64a6eb6c503ca56e335cfa709c5a49531fa619bf8cf94af7d854bd3acc1b",
+      "weights_sha256_le_u16": {
+        "Frozen": "ba46f0ca4e77bf11a584c9b09db4113001537c21fdb44c968535b457f961c047",
+        "Plastic": "41c54a6f904aa85352a7dc6df3b7415f2fa61473f78923cfdc7a7ae50cc694d6",
+        "Yoked": "8d784dc30d52dd2b3f59d986e897811b7751090100bbd492e408a4b00899526c"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4004,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4004/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "138be1f5de8ab05f9d8acae676b117e1a295e39f0bc68485582ec20e542d6483",
+      "original_sha256": "2ae90376716de5b1d6ad5211ea1819ab62088caf2b9cead235b8320554a51c0a",
+      "weights_sha256_le_u16": {
+        "Frozen": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Plastic": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Yoked": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4004,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4004/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "03bd083cbb04e34d6a41d9aa8a1750d2daf071e2320270ae7e6cba5379580b3b",
+      "original_sha256": "7034ce68809224502558f8366da2da2a2b6a4fa4c9d1cecc4ecce21135a5f0ba",
+      "weights_sha256_le_u16": {
+        "Frozen": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Plastic": "23998fff631951e929630eb45681521264e35c5756863e68e01c18828f7b2cfc",
+        "Yoked": "05fb04ea0dcb1d98476f796e1aa06b6ec770667cc7ff535d84ce06b25dd7afbf"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4004,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4004/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "37c3e5cf074b40a692a46a14beffd65ab11355a0645b2597cf16c8614768784f",
+      "original_sha256": "4b3f8fd0b8f8aeb828694a0d5a2f781b3189ddba7f92ff99bbe54a5108cfa301",
+      "weights_sha256_le_u16": {
+        "Frozen": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Plastic": "8a5867d1a5916fbf089180d53247d48064145298dd82eca452b13fe039eb05f4",
+        "Yoked": "fc237d306c2d036f7b311a3f49895d1903a0daa5e208c5c89385a92eb483b46f"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4004,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4004/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "a03bcb04f884752f18ca9a48b9ad88335622353993a76f447192616b439a5743",
+      "original_sha256": "70234106dbf4dd9007f53d2628c45b8bab38f1f8f0da8164bbeaf0aeb37efa78",
+      "weights_sha256_le_u16": {
+        "Frozen": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Plastic": "d90b32b6320538a0f1ac24be81e5c2b25540f29de3991245f3a2bd41b38c6569",
+        "Yoked": "27449176b6be9c5623870fa527b4afc0e7effadb79813fc9966e1c31da7c4025"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4004,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4004/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "f547160b992e53ddcb39905ef841ffa8c95fd63ecc7ad8c4b65da318ee064a71",
+      "original_sha256": "f3e1646a65af3a0008af842371d55ee22cf278eef03dd472a0649efc8cd8610e",
+      "weights_sha256_le_u16": {
+        "Frozen": "2ba0e719a9b7bfa2996bdc3230c0cef73af85a51ab1cc8ecbd801b98868e2998",
+        "Plastic": "0b13f4eec3eec5f02badd52ad045ed6e91be3bf5d4bf7fdfdc14905d9d771c04",
+        "Yoked": "fff082f5be036ba0c51d722ba914f4251efc00f6173bebd2f0a27d823f94e01f"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4005,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4005/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "1965455437d5090fc6881b760d2609dd8c0a842376088fcb1795c895ffad11e7",
+      "original_sha256": "30e847ba3d8f38e3ebdb14badb54dadebdfa6d61df0801bdc29ffa46927d73d6",
+      "weights_sha256_le_u16": {
+        "Frozen": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Plastic": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Yoked": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4005,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4005/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "647b79606c388b9acaaedaab48c8b75201428501f654a8b9d9697b770e4f67bc",
+      "original_sha256": "86365e436208c8a7b50f205cc873a9568b09c482651900937735a79c27c45085",
+      "weights_sha256_le_u16": {
+        "Frozen": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Plastic": "dbdf2372488443d3d0d6b643dd5aec52da31864cae87d71ce32992758d92558f",
+        "Yoked": "f9f36fcfa9cf3774e969b93b14fa632ae07bd4e08b1ae062b3d702e4eb02aabe"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4005,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4005/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "935427c128ca3e4c73a5d5e4ac04be17475d3e0e6da13df08695ff69010adce4",
+      "original_sha256": "c9fc9dd5a1849b2b5bd5c3b52081f2a257aca6cb52885a16afa0605ab5844630",
+      "weights_sha256_le_u16": {
+        "Frozen": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Plastic": "2083740ef156ad2b1d950820f44ebf09aa23683b49252e27a0c049ee30747e18",
+        "Yoked": "62b60ee2255c5e6ac40a2cd42821c57516e04d58c03464958ea612d841fe7eaf"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4005,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4005/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "b4ef4ffba4a6e3f33265a1a35245d2ac2bab196ca55d802d84e4ba84850d39e2",
+      "original_sha256": "9059f28a9b077e88776276959034d16ae139ad6cf4499f487d7f1be40ae0e073",
+      "weights_sha256_le_u16": {
+        "Frozen": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Plastic": "ca4937f85e718698fddb0b228b2ad411b4bb6a7ae7eaa7417176843239ee463a",
+        "Yoked": "06fb870b2132d5737c6814af7e25e0449c17bd98a09ac71ec8e226449b23e65e"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4005,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4005/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "dd58849b4247b876476e5f2630f474cef7d18627c466abf09093380fdd22338f",
+      "original_sha256": "982d2144dcf035d539859b5bf90fcef82ef0639e30267c0280b8270b359c9ef0",
+      "weights_sha256_le_u16": {
+        "Frozen": "112fffcd77ae4dd2c69349aa78481fa233ab0792375d8ffc3c096397c95420ff",
+        "Plastic": "66081b3c9b090d07eaa96ef94d4d91fed9c6bbc5d04f61ac13b893473ef0fc3d",
+        "Yoked": "e48664d311388aa763232a685638036c6aaa3e10f0b696b6db08a004f4523a5a"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4006,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4006/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "86e5c7698fb2524730c4bddaa404c132fbe6d639c4198bdfc1a47c132137c6a6",
+      "original_sha256": "3cb4829f73ea3d13270eab854f7259649cfae9806903f07cf3b1077929223520",
+      "weights_sha256_le_u16": {
+        "Frozen": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Plastic": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Yoked": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4006,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4006/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "c7e55cf2e673957bde8a2ac7e7844a74e2325d33aa88d5818df10ca78af7aca9",
+      "original_sha256": "0bd70d27c106a4ea9055875aa527739d382e309bb8042142be094b0645bd1438",
+      "weights_sha256_le_u16": {
+        "Frozen": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Plastic": "52723aa35263f314e45f2bf6e4d8d29c25ca8cba907d9e745abbbd5badd384b0",
+        "Yoked": "c59217dcb1c5b665a62384c32c321b3f87908fda76a24ef801716bc39467f99b"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4006,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4006/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "54c6097306148754364d04888afea57b856aad2cb155f053cd06f5c7c041848b",
+      "original_sha256": "750d49c82d8c3afec4c62ad7f8f4e90fde66df772e5fab77140a3be0b2b4af57",
+      "weights_sha256_le_u16": {
+        "Frozen": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Plastic": "c696f8c6ffcc182c6a06530a5075755187d9c630b0c3e931e9da51f45e5c8bd6",
+        "Yoked": "570e40de9f8eb549e51cd07787f4b7f6d2b0402fe3a0d1f893648ea71b9551c0"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4006,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4006/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "fd94be9a12dc3f13b619ad756615f789cb11f9d1ee76cee57d98fc8c827a00ad",
+      "original_sha256": "8ce2c3e21f61759b87451fcb8add1d5ab5e8b92348b7ba96faec2e3d1c385974",
+      "weights_sha256_le_u16": {
+        "Frozen": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Plastic": "d381e464f84657bbee1540fb85ff94776fdc85fe25bb91cb31f920780bff8580",
+        "Yoked": "6b1959ad6c702efc615cf87b417918a4a2cabdc290633027e2e4a3f8c2e1c08d"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4006,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4006/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "bb894e65bc7e78511a986a92729c67dd1c83742fa5ec737f061231f4322ee1c4",
+      "original_sha256": "371a9d292cd36279968fd7e5bd95cd8b7a919dc969519ba70daa3574e1541b1f",
+      "weights_sha256_le_u16": {
+        "Frozen": "4b00127217b700abfe6c53e0ed7f42f524d5072392612a28002d54c9988a161c",
+        "Plastic": "7ac1cb649e708f36c3565097f0b403abfaf2110a0c728d51a7ec6dc4996e8dec",
+        "Yoked": "648cb4a148a4ba5b6fbe6bbda9ddb2da80a0393f7c80a9b8eb2494fa7cc5f986"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4007,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4007/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "793a2d1ae360bef608bf65406f2f7d92f386fb73a1b13708d24fbd6861b77d82",
+      "original_sha256": "998dc4904f8960d4604af7b4646c709b5b1d6d1c5871efd768c6b99571cb2b10",
+      "weights_sha256_le_u16": {
+        "Frozen": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Plastic": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Yoked": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4007,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4007/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "33130c466bc2809ed2d5a91030eadacc2f73d45f453348ce9fdceebd54cd3e5f",
+      "original_sha256": "ddf7aa42ffc270bc438b52e3c25e3b015a9e07d1ca7fef36b41841895b402229",
+      "weights_sha256_le_u16": {
+        "Frozen": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Plastic": "4be03e8570828e080ebf9814ced41b9b6ece149471ad49c24546fbec14f13582",
+        "Yoked": "115403e57774405493b1a336ba5c7046dc820e257d8344a204f576cba741c181"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4007,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4007/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "8cba4e9fddc47ea17e872f5534460a8104a79fbfd4e46b08439d5bb8a174ee00",
+      "original_sha256": "aa578dcd3ceae5ec60f0d5d2d562cbc5968a6bc1f03bdfb554ed75b5556e10f1",
+      "weights_sha256_le_u16": {
+        "Frozen": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Plastic": "efcf419950a11ce3fa1731de6f6c47805cb049aec07736578c438f9c4c3f24f6",
+        "Yoked": "46e406d41ac8c4d0a480a8ae9fbef44c6b0c216a8bea1d41385826571214e5cc"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4007,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4007/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "eeec87eb1751081c2636e9cf478ef50ea836d1d4f3f1e4a2851a00155f9d1fbe",
+      "original_sha256": "4e211deace731742a564be89abfcb2c92c40a2365085f42d5f4b5c178de6cda1",
+      "weights_sha256_le_u16": {
+        "Frozen": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Plastic": "8433bb894db6d5438ff3e8395527d869f9e775367c8d9664d849a0c1b1bb2a55",
+        "Yoked": "47302d921dd7d0dfd0156c9c4d59a27c7b7684184e104f0c3cbcf0322914971a"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4007,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4007/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "87eca08590a26fc28f6d135248f112ef9b88b3fd4fb903889405b7f77d344fc9",
+      "original_sha256": "3ddf5fb5c8c08b74ddf8b79958b3edb9d170876fa0113c9eaaef18e21f6aa2f0",
+      "weights_sha256_le_u16": {
+        "Frozen": "bf2088ae40eef120e9f5b64fb77bfdf0895eda3f5ca6bb510731080ce523bd9c",
+        "Plastic": "9e7c6a203736744c23288fe6435020788602415266babb09da579cba6e91d295",
+        "Yoked": "3d765c51c904c9b4e9850737d1f03b8ab1bf52df5611992a1259388d7f465931"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4008,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4008/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "2c83cededa9966a9d385c9386ca5a61f89adb7f074f6bb0a3f8789ff84bf73d7",
+      "original_sha256": "cc02f357b37099d7bdf1ffcd0e01bf1a10cc9d28395b4eff46edbdb1c89500a2",
+      "weights_sha256_le_u16": {
+        "Frozen": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Plastic": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Yoked": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4008,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4008/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "c25eb8ea774669e1ad58f980460b6c0aa830899b0e042a9ecc2e71d854be58df",
+      "original_sha256": "c05182174d98db56a8f4c01cc6e717603ce497eb4b11512c228138364eeec46d",
+      "weights_sha256_le_u16": {
+        "Frozen": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Plastic": "1c17e28dc3d38433de93cbd950221b472e965edcec4dd305ce45db36add2ae94",
+        "Yoked": "845e377279bd5c58fb8b87c07d22c675a874c3c3ad85a829a77cc8a970213169"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4008,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4008/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "d81b2b2c355741d05ac49546ef0b2d186bd28006f21c84a57c42fd1b55a36d99",
+      "original_sha256": "e62403a1acd5849cf74c7f037827c21a8b94049230e27876b7c509514b6cf37b",
+      "weights_sha256_le_u16": {
+        "Frozen": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Plastic": "a1ce431e4f2b2f1b94c91a251f5ac6534a49771dc45903e82ffadd3c88ac2c44",
+        "Yoked": "2d1691f48c706644648540fe11262a6db18cf3c87a49e8ffaa17760bfcbf8acd"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4008,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4008/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "66b38cdd133f879eaedfee530139730af03ed73ef4febec29a5f8bf8bc85d049",
+      "original_sha256": "9cf4e61f543a6416fcf832e15fe98b803358be6e9539f3d69386a6c0b36439e1",
+      "weights_sha256_le_u16": {
+        "Frozen": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Plastic": "a6c811ec0ce891e8827b2e8f2bad5ab4e42ed1df40dbd382dda5a3d52a9a6799",
+        "Yoked": "07d5cfd58be0587b95e3ff42fb90e932f1ab12d04ddae02bd8fc18369bee97c3"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4008,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4008/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "57746d11350d53d6a228cdc894747b4d5814b8f01678b9fc22e913b14d1e257c",
+      "original_sha256": "a1f6ccd67dd87cc8a5638b54d1b3047f6356fe2dd45661fd5a4683eaa85dc4e2",
+      "weights_sha256_le_u16": {
+        "Frozen": "1eb8da8ee1ba516f96c5a02fef383a39dbf5c741002975cc40c93fc196262a5b",
+        "Plastic": "f1433afd7785bf53b71a7e9ed72b955ba27de6ba2be393cc6a897ea5a447bd74",
+        "Yoked": "96458cf3dbedf634af0e14036417e5645566f1392da06fc1bc5be79a942e17e0"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4009,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4009/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "f2dbc46bc9e3f1b35e8583fa8f36388ab4a0f4c4bda2e3b78127e646e5a39cd6",
+      "original_sha256": "df41a55d15838951af986e715449e7168a51a0b393cbd48882c8bb2b85653e26",
+      "weights_sha256_le_u16": {
+        "Frozen": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Plastic": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Yoked": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4009,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4009/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "433a09559693e1f4408e5c819fd055ecf54cfe1d96d0039c40054e014b78555a",
+      "original_sha256": "57c28f5a252e79473741bfe4797c9e40ebd548a65a508312a091a48c84d974b0",
+      "weights_sha256_le_u16": {
+        "Frozen": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Plastic": "e5171e3b951a4814d4242e7d14dc251445b76cbc4804ee4e24ac7df94c0f0f7a",
+        "Yoked": "b25af319976bf557b353e87529b4f320a39b0e88eaf8945d352b2255f63fdddd"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4009,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4009/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "5138a27b5266ce2235a3458b36982aea220d394106bf28bc32f976ddc4be3eb8",
+      "original_sha256": "0314dec885e87ac1869a86c84ab73e4a1c23a62aade55aeb5a103febfdde811b",
+      "weights_sha256_le_u16": {
+        "Frozen": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Plastic": "4b727d645ea37de40195b8ebff1db75ac24d1605dbfdb00979cab317739c8838",
+        "Yoked": "68f3fc94716a12e08ff9d06cf1ed99fdbba8b3432ec64230a6855696f9c298b4"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4009,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4009/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "19f099c710fbe7ca8abdcdd1ac72941ca8730b20a51834aa42124c49b22ddbbb",
+      "original_sha256": "48ed12c530205c2322b97df1f5da750efe72991c83f1f60b1bee51604da77df3",
+      "weights_sha256_le_u16": {
+        "Frozen": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Plastic": "207c58fb35ecb1aa57873b4cdd919803dc4e7a73998e90e71e0ac2867ca4143c",
+        "Yoked": "a617d6b1932b7c50a2d93a4ae012a8982db1b0704b9e71df03c787e76cb197fb"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4009,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4009/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "3266c5409e320c0e17f91dd2f38324074622240f4327ee2ad79bad87db507d9d",
+      "original_sha256": "128392aa8ff2052e0f56871e5b45a347ed356c81e8428379c59a7924844d5970",
+      "weights_sha256_le_u16": {
+        "Frozen": "b76960af025cea7f4ada5c0d8373208ceb2c96d2aaff3d2a4f16d183fc018959",
+        "Plastic": "75b7a037146be47c4bdfbc5470696ee2cf55fa3f76e76ca93a1fe46e198bba1c",
+        "Yoked": "167d9cdb6f11869c4efd2ef7877e39e7cea1a794ef920d17f724a6a29badf930"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4010,
+      "requested_tick": 0,
+      "archived_tick": 1000,
+      "update_opportunities": 0,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4010/checkpoints/A-001000.json.gz",
+      "gzip_sha256": "10727dccdf078f0681225f94bba46de0ca8827db98e0f1ff27f5cc0541ac5971",
+      "original_sha256": "d8f6019b169bc9f3790bea8b3e07001f63133722427c799bce3ce0474755165a",
+      "weights_sha256_le_u16": {
+        "Frozen": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Plastic": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Yoked": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4010,
+      "requested_tick": 12500,
+      "archived_tick": 13000,
+      "update_opportunities": 3,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4010/checkpoints/A-013000.json.gz",
+      "gzip_sha256": "dc5a7ac75156ba2ee90a6a20b19276c273e8d4f3cc210eda851a1989514ceffa",
+      "original_sha256": "a2bfffd06cb2328431bfe4ce6710ea1f33382dacfea9244befe96c599a427aa1",
+      "weights_sha256_le_u16": {
+        "Frozen": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Plastic": "6ea634e31d0d945e6e49cbd9195090dbee6391c3a69f05e09bbcfa9467f682c9",
+        "Yoked": "b6319c43a28297f4132b21a0d5f2e11a6367a96ca63e11f15e3148c5dab90f35"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4010,
+      "requested_tick": 25000,
+      "archived_tick": 25000,
+      "update_opportunities": 6,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4010/checkpoints/A-025000.json.gz",
+      "gzip_sha256": "5852430ef7f6eb2153ed1a419216e4c12d7c75723797ebb5389ff25f24f6c868",
+      "original_sha256": "754d08afc8c574c8d71f9e2213fd360885069513febd989b699a274e4d17ad8e",
+      "weights_sha256_le_u16": {
+        "Frozen": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Plastic": "251e177e1afdd68992660ade04c9b92db1d4465fb3529beecf58f23ddfdbb9ff",
+        "Yoked": "b976e42ae1c11b97742d28f4ce0b23df0764062d968bc4e0a7d6f527b1bbd0fd"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4010,
+      "requested_tick": 37500,
+      "archived_tick": 38000,
+      "update_opportunities": 9,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4010/checkpoints/A-038000.json.gz",
+      "gzip_sha256": "c5b8608d9665a7449ae9f15478e0a3433c7e7d320e977f5c0294ef82e95013b0",
+      "original_sha256": "73ff2dfe15592c3a52235e44c61aa4e22630f5ffabb6fa20c90e238762751442",
+      "weights_sha256_le_u16": {
+        "Frozen": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Plastic": "bff28488f5f0168510f84243e796115d6dba872e46044e4af99b764481f958ab",
+        "Yoked": "339a5cf6f338f7626b27464b93bea5950a5597e13fa8e08b41dbbc27ee2e9905"
+      },
+      "use_archived_transient_state": false
+    },
+    {
+      "seed": 4010,
+      "requested_tick": 50000,
+      "archived_tick": 50000,
+      "update_opportunities": 12,
+      "path": "experiments/neural-ecology-ne0c/artifacts/eval-4010/checkpoints/A-050000.json.gz",
+      "gzip_sha256": "ecb14c9177772d5360d9c2a0e2f46e5278e5440f46f2502e37ad1ac0dcaf28b8",
+      "original_sha256": "8443a9e734fc5913c4c2e051fc3115b9f66ce22a8e7464f3b665983ff4cdab0e",
+      "weights_sha256_le_u16": {
+        "Frozen": "5de7bbd900897a1f2233f8115da1ec7101a0ba6522120f3e2f32b91d356b946c",
+        "Plastic": "55ad5a2bd8a00db827d89d964cb454ebc0f3bc232aef6548fc8920e80b2b3dfd",
+        "Yoked": "cfe11b2da77e43b870e87d750a9e312457bc26cbe9496644a60b0b86a62d5fdd"
+      },
+      "use_archived_transient_state": false
+    }
+  ]
+}

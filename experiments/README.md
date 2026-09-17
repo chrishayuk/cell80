@@ -63,3 +63,12 @@ registered learning criteria across all ten seeds. Activity, adaptation and repl
 checks pass, but Plastic does not improve on Frozen or Yoked by the registered
 criteria. All primary and secondary results, the mechanical audit, and recovery
 from a disk-space interruption are retained; the sealed implementation is unchanged.
+
+[NE-1 design](neural-ecology-ne1/README.md) proposes an exploratory mechanism
+study of the archived NE-0c systems: calibrated readouts, history decoding across
+five adaptation times, and separately specified parameter interventions. All 50
+required snapshots are verified; no NE-1 neural measurements have run. Findings
+on these previously observed seeds would require fresh-seed confirmation.
+The [NE-1a numerical specification](neural-ecology-ne1/measurement-spec.md) is
+frozen before measurements, including 4,500 neural score rows and explicit
+calibration/convergence failure rules. Implementation validation is still pending.

@@ -1,0 +1,41 @@
+{
+  "schema": "NE1a-measurement-specification-seal-v1",
+  "utc": "2026-09-17T21:44:47.435829+00:00",
+  "scope": "Numerical specification and checkpoint inventory only; not an implementation or execution seal",
+  "status": {
+    "neural_measurements_run": false,
+    "implementation_sealed": false,
+    "calibration_passed": false
+  },
+  "base_commit": "66a278c79b09bdee7c49eb58467b73ca5acee93e",
+  "measurement_spec_sha256": "823a331d9c94387863fe6b8a4921d194b022c560ed9545a510052b9674414dab",
+  "files": {
+    "experiments/neural-ecology-ne1/measurement-spec.md": "823a331d9c94387863fe6b8a4921d194b022c560ed9545a510052b9674414dab",
+    "experiments/neural-ecology-ne1/measurement-spec.sha256": "c7a1d6c06504ab90071173e60b98747e32544159b87da10479015c350a88d0f6",
+    "experiments/neural-ecology-ne1/requirements.txt": "f3d61c4db595187569b62249137bf14739ff62fcc81648fd85f3e952d6d1ac10",
+    "experiments/neural-ecology-ne1/inventory.py": "9301421267c3406fa78e686d92f0076174546faf43b85a1ab070d72d7306b52d",
+    "experiments/neural-ecology-ne1/checkpoint-inventory.json": "8f9140619b0d69884dd1bfd4dc0afdeaac53d10559e533a00ecfc0f5d875b6de"
+  },
+  "inherited": {
+    "NE0c_implementation_seal": "experiments/neural-ecology-ne0c/implementation-seal.json",
+    "NE0c_implementation_seal_sha256": "44289523cb533c7884f775161b5a152ae909235d8a84c60ace4fbe23b760bae1",
+    "NE0c_binary_sha256": "19352b79e257682c2fffc2d11684562ebd5826c47d15f54e5ac705082e52d711",
+    "NE0c_evaluation_results_sha256": "281f5d108f5abad790ea17eba8b4a23f727551684f159ac8e3802378ecf35dae",
+    "NE0c_sealed_files_verified": 196
+  },
+  "static_checks": {
+    "verified_archived_checkpoints": 50,
+    "readout_cells": 15,
+    "evaluation_neural_score_rows": 4500,
+    "evaluation_candidate_rows": 10650,
+    "evaluation_contrast_rows": 3000,
+    "evaluation_calibration_score_rows": 160,
+    "evaluation_calibration_candidate_rows": 800,
+    "development_neural_score_rows": 450
+  },
+  "next_required_seals": [
+    "implementation before development neural validation",
+    "validated implementation before evaluation streams",
+    "all-fit manifest before evaluation test streams"
+  ]
+}
