@@ -1,5 +1,16 @@
 # NE-0c: confirmatory learning at K=4096
 
+**Completed:** all ten evaluation seeds, primary and secondary branches, and the
+post-run audit. [Findings](findings.md): **criteria not met**. G0/G1/G2/G5 pass;
+G3/G4/G6 fail. Mean test log losses are Frozen **1.385166**, Plastic **1.385301**,
+Yoked **1.385406**. The uniform-reference contrast passes the consistency test
+but misses the minimum-effect threshold. No scientific tuning or seed exclusions.
+
+[Evaluation data and audit](evaluation-results.json) retain all paired scores,
+diagnostics and provenance. [Recovery history](recovery-history.md) documents a
+disk-space interruption, retained partial artifacts and exact-configuration
+completion. All 196 sealed files remain unchanged.
+
 The [preregistration](preregistration.md) fixes fresh evaluation seeds 4001–4010,
 the NE-0b-selected cadence, the unchanged NE-0 measurement procedure and G0–G6.
 Continuation from final-A transient state is a descriptive secondary branch;
@@ -47,3 +58,14 @@ never overwritten; any rerun needs a new retained attempt and explicit record.
 Raw outputs are ignored by Git; compact reports and provenance are tracked.
 Inherited archival verifies a decompression hash before replacing raw duplicate
 diagnostics and tick/checkpoint logs. Primary arrays/probes stay directly readable.
+
+The commands above document the original one-time execution. To verify the
+completed local artifacts without generating trajectories or refitting probes:
+
+```sh
+python3 experiments/neural-ecology-ne0c/audit.py
+```
+
+This post-run auditor writes `evaluation-results.json` from the preserved data.
+It and the retained recovery driver are outside the frozen scientific
+implementation; neither changes model, measurement or decision parameters.

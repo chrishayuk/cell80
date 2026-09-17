@@ -1,0 +1,36 @@
+{
+  "script_sha256": "db2981dfa664a14dddde410a70dc0667f1ebe50007053709830f0dda4d47d9d6",
+  "started_utc": "2026-09-17T07:43:47.700138+00:00",
+  "completed_secondary": [
+    4004,
+    4005,
+    4006
+  ],
+  "partial_replay_checks": [
+    {
+      "seed": 4004,
+      "complete_tick_lines": 8263,
+      "pass": true,
+      "preserved_log_sha256": "0aa5123bd58afe9489efb60c6e8c558ce530666fa0e5dcadf8e323a4fb152ad2"
+    },
+    {
+      "seed": 4005,
+      "complete_tick_lines": 4769,
+      "pass": true,
+      "preserved_log_sha256": "014890d9c20e3bdbb4ac92aa141f436c2a6d76370bbdb910300455f039cb7179"
+    },
+    {
+      "seed": 4006,
+      "complete_tick_lines": 3000,
+      "pass": true,
+      "preserved_log_sha256": "99090f6cbb1086163e8caa0ec736782e3cbd7053fb11ddd4a9ad196879403adb"
+    }
+  ],
+  "completed_remaining_seeds": [
+    4007,
+    4008,
+    4009,
+    4010
+  ],
+  "completed_utc": "2026-09-17T08:25:41.121442+00:00"
+}

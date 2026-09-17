@@ -52,8 +52,14 @@ constitute a new confirmatory learning experiment.
 The [completed NE-0b development findings](neural-ecology-ne0b/findings.md) select
 one update every 4,096 ticks as the only tested schedule meeting all operating
 criteria across three development seeds. Predictive learning remains untested
-for that candidate.
+in that development study.
 
 [NE-0c](neural-ecology-ne0c/README.md) preregisters the confirmatory learning test
 at K=4096 on fresh seeds 4001–4010. Primary post-reset prediction and a separate
 descriptive no-reset diagnostic use the original fixed probe and controls.
+
+The [completed NE-0c findings](neural-ecology-ne0c/findings.md) do not meet the
+registered learning criteria across all ten seeds. Activity, adaptation and replay
+checks pass, but Plastic does not improve on Frozen or Yoked by the registered
+criteria. All primary and secondary results, the mechanical audit, and recovery
+from a disk-space interruption are retained; the sealed implementation is unchanged.

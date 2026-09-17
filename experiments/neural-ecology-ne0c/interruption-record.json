@@ -1,0 +1,196 @@
+{
+  "utc": "2026-09-17T07:35:35.514099+00:00",
+  "cause": "Disk-space interruption; df initially reported 135 MiB available. Terminal error detail was truncated; ENOSPC is inferred, not directly captured.",
+  "free_bytes": 371302400,
+  "worker_check": "No surviving NE-0c workers in process list.",
+  "completed_primary_seeds": [
+    4001,
+    4002,
+    4003,
+    4004,
+    4005,
+    4006
+  ],
+  "preserved_partial_continuation": {
+    "4004": {
+      "checkpoints/B-001000.json": {
+        "bytes": 1233298,
+        "sha256": "338d4dae020fa734262eb9d7e82e1e784b3a4f5dd73e3b4b77af66c9471f3c3a"
+      },
+      "checkpoints/B-002000.json": {
+        "bytes": 1233395,
+        "sha256": "4e6d2a39ac2d37284ad63256deb5c3273d65d587df42ab3eb743a35080a580b0"
+      },
+      "checkpoints/B-003000.json": {
+        "bytes": 1233510,
+        "sha256": "e6cf91fea7581ff37905bc6d13f0f816b4f6c56c97460d6b87eb67191b26d6d6"
+      },
+      "checkpoints/B-004000.json": {
+        "bytes": 1233351,
+        "sha256": "9db3e8534ebacef4e36c9ee22a684d5fe53097e2114e81d1943f11a885a05e4f"
+      },
+      "checkpoints/B-005000.json": {
+        "bytes": 1233472,
+        "sha256": "1bcaccc8d292069e6f91c9fba3afd539ed3258dc8a981f81dcbe5f93f0265c2b"
+      },
+      "checkpoints/B-006000.json": {
+        "bytes": 1233197,
+        "sha256": "4613540b436543b3eb39064f165234b4f67ddc7a1b80d866ad0e8579d5b17fbb"
+      },
+      "checkpoints/B-007000.json": {
+        "bytes": 1233380,
+        "sha256": "da270d707904f3cb1d8c5c0a6a37f81e0a843d9971b3a1a8e97264ea6727d1e2"
+      },
+      "checkpoints/B-008000.json": {
+        "bytes": 1233389,
+        "sha256": "bb1728c1b9fd85272807ec78c108cd3b162bcace6919e2659f5284e35498a8e0"
+      },
+      "datasets/B-Frozen-q.u16": {
+        "bytes": 16416768,
+        "sha256": "c37ff5547adb03db21ad9ba48a7b59c2ebb452710a060da71763cd8e8f27edd5"
+      },
+      "datasets/B-Plastic-q.u16": {
+        "bytes": 16416768,
+        "sha256": "2bba08d85ae6af4987fe6ea7d2851380e72dbef35d5469df2e086b2868d2bd9d"
+      },
+      "datasets/B-Yoked-q.u16": {
+        "bytes": 16408576,
+        "sha256": "2b690d93f4c3c2bc3c934d6141b5d1e48fb773dd55ddb35129356ef811c65355"
+      },
+      "datasets/B-symbols.u8": {
+        "bytes": 10257,
+        "sha256": "4816cea925ee2719098a72d362a8aad16d980fdf7b0b4a9b24df65a1da1a4e63"
+      },
+      "logs/A-summary.json": {
+        "bytes": 4888,
+        "sha256": "24a525caad906e500fa7701ee0efed79d3c1342644b3fffa05b8ee43b28c7488"
+      },
+      "logs/B-ticks.jsonl": {
+        "bytes": 3328973,
+        "sha256": "0aa5123bd58afe9489efb60c6e8c558ce530666fa0e5dcadf8e323a4fb152ad2"
+      }
+    },
+    "4005": {
+      "checkpoints/B-001000.json": {
+        "bytes": 1233303,
+        "sha256": "c014ab34f8f78a2ededdaf8b9e152f2c8566a3817689e51954e4b8da63eb967e"
+      },
+      "checkpoints/B-002000.json": {
+        "bytes": 1233347,
+        "sha256": "5614daf0265d744e6981ced9482e2a3fa85899078b21feefbf33e4bba72b427f"
+      },
+      "checkpoints/B-003000.json": {
+        "bytes": 1233049,
+        "sha256": "9755c7504b1445c0fc95695b694a6f5a0f570cfecf91c57056c8715b6b60224c"
+      },
+      "checkpoints/B-004000.json": {
+        "bytes": 1233206,
+        "sha256": "a0feda9b2b6fc1e9c6161c929d956e22bb33d09ef8229c9a120a7d3fe14ca8fb"
+      },
+      "datasets/B-Frozen-q.u16": {
+        "bytes": 9256960,
+        "sha256": "f28bf97ec026972e8fd893c5d5d6102295ff001838512def167eda77f7bafb88"
+      },
+      "datasets/B-Plastic-q.u16": {
+        "bytes": 9265152,
+        "sha256": "db2a7fc3c765c62cbc09aa4d59f29490b5b7af5202e0faef0079640471e6a1d5"
+      },
+      "datasets/B-Yoked-q.u16": {
+        "bytes": 9256960,
+        "sha256": "bacce1643223f36a36ec8985ae91c90cf8e8659e6d2ee6e404129aa51730e957"
+      },
+      "datasets/B-symbols.u8": {
+        "bytes": 10257,
+        "sha256": "5273009858c2991706c015dfb62f1f2c4843a760594dbb3f449f4a4c738b9e29"
+      },
+      "logs/A-summary.json": {
+        "bytes": 4888,
+        "sha256": "8b16658112220e0ef650b8a9ba8f9c61c4ad547938f0be19ed0347cc4f9a0cf0"
+      },
+      "logs/B-ticks.jsonl": {
+        "bytes": 1921023,
+        "sha256": "014890d9c20e3bdbb4ac92aa141f436c2a6d76370bbdb910300455f039cb7179"
+      }
+    },
+    "4006": {
+      "checkpoints/B-001000.json": {
+        "bytes": 1233837,
+        "sha256": "6704c052636a87bc91b0066c11168342042b4f0c5ffa7284b440697f7efb2912"
+      },
+      "checkpoints/B-002000.json": {
+        "bytes": 1234113,
+        "sha256": "b25522f5e052c0ec709650ba7bbaee44bb69ce3e07a7bc74ff66653f430ca015"
+      },
+      "checkpoints/B-003000.json": {
+        "bytes": 942026,
+        "sha256": "46eef87d5c7477d03b0945ea455138067233b51d76bcb0647a776da825f952f1"
+      },
+      "datasets/B-Frozen-q.u16": {
+        "bytes": 5611520,
+        "sha256": "7ca8effd93e91bc698272a167700596a9f1010ca39e0984274f76d17e94cc4fe"
+      },
+      "datasets/B-Plastic-q.u16": {
+        "bytes": 5611520,
+        "sha256": "bb9cf6e7150fed4f8adf72c5b453d2227b4b8f75ebc5c2964ccd45328633adcc"
+      },
+      "datasets/B-Yoked-q.u16": {
+        "bytes": 5611520,
+        "sha256": "818d43461d2e901675f7a0e4f609583c5657e3a6c9b92fc74e97a1b18a6615c0"
+      },
+      "datasets/B-symbols.u8": {
+        "bytes": 10257,
+        "sha256": "6ba4f072b06a5856d9c2a5de15d7a5e9d3edba56ab92af548c1afc7c379fe788"
+      },
+      "logs/A-summary.json": {
+        "bytes": 4886,
+        "sha256": "0f53edf0c7923e149ea5b2c566623cc80959d46f0112b10f6b161707cef82254"
+      },
+      "logs/B-ticks.jsonl": {
+        "bytes": 1207890,
+        "sha256": "99090f6cbb1086163e8caa0ec736782e3cbd7053fb11ddd4a9ad196879403adb"
+      }
+    }
+  },
+  "attempts_sha256": "9d5c6f4cea0b0223271a6d4e0b7dc071bf77721b2bd9bda7e62d4cdfa6ee13af",
+  "unmatched_starts": [
+    {
+      "event": "start",
+      "argv": [
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/target/release/ne0c",
+        "phase",
+        "4007",
+        "A",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/artifacts/eval-4007",
+        "eval",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/implementation-seal.json"
+      ],
+      "utc": "2026-09-17T00:14:50.701060+00:00"
+    },
+    {
+      "event": "start",
+      "argv": [
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/target/release/ne0c",
+        "phase",
+        "4008",
+        "A",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/artifacts/eval-4008",
+        "eval",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/implementation-seal.json"
+      ],
+      "utc": "2026-09-17T00:14:50.701220+00:00"
+    },
+    {
+      "event": "start",
+      "argv": [
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/target/release/ne0c",
+        "phase",
+        "4009",
+        "A",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/artifacts/eval-4009",
+        "eval",
+        "/Users/christopherhay/chris-source/cell80/experiments/neural-ecology-ne0c/implementation-seal.json"
+      ],
+      "utc": "2026-09-17T00:14:50.701258+00:00"
+    }
+  ]
+}
