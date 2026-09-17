@@ -40,3 +40,27 @@ committed evaluation implementation seal.
 Exact duplicate arrays and model inputs can share a computation after equality
 checks. The full logical score/candidate matrix is retained, including invalid
 fits. NE-1b remains deferred until the full NE-1a matrix and audit are complete.
+
+## Evaluation scheduling wrapper (before evaluation)
+
+Development uses the sealed serial driver. A separately sealed evaluation wrapper
+can use eight independent single-BLAS-thread CPU workers, with one shared lock
+serializing GPU collection. The machine reports 16 logical CPUs and 128 GiB RAM.
+This wrapper changes scheduling only and calls the same per-seed functions.
+All ten fits/selections still complete before the global test manifest is written
+and any evaluation test stream is generated.
+
+Its isolated barrier test initially caught a legacy import-path collision:
+`import run` could select NE-0's driver after importing the inherited probe.
+The wrapper now loads NE-1's driver by its explicit file path. The barrier test
+passes without generating evaluation data. This additional wrapper and test are
+outside the development seal and must be included in the evaluation seal before
+use; the running development implementation is unchanged.
+
+A separate `audit_saved.py` was also added before development test scoring. It
+imports neither the fitting instrument nor the runner, and independently rebuilds
+fit normalization, lambda selection, test predictions, transported-model identity,
+paired contrasts and fitted baselines from saved arrays. Its two hand-calculated
+fixtures pass. It makes a same-environment numerical reproduction claim, not a
+cross-library claim. This audit and its tests will be included in the evaluation
+seal; they do not change the active development seal or any measurement.
