@@ -67,8 +67,11 @@ from a disk-space interruption are retained; the sealed implementation is unchan
 [NE-1 design](neural-ecology-ne1/README.md) proposes an exploratory mechanism
 study of the archived NE-0c systems: calibrated readouts, history decoding across
 five adaptation times, and separately specified parameter interventions. All 50
-required snapshots are verified; no NE-1 neural measurements have run. Findings
+required snapshots are verified. Findings
 on these previously observed seeds would require fresh-seed confirmation.
 The [NE-1a numerical specification](neural-ecology-ne1/measurement-spec.md) is
 frozen before measurements, including 4,500 neural score rows and explicit
-calibration/convergence failure rules. Implementation validation is still pending.
+calibration/convergence failure rules. All 16 synthetic controls and 700 inherited
+CPU/Metal fixtures pass. Development completed with 450/450 valid score rows,
+replay checks and an independent numerical audit. Evaluation requires its own
+committed execution seal.

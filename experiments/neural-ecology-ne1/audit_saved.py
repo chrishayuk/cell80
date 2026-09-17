@@ -82,6 +82,59 @@ def select(candidates):
     return max(eligible, key=lambda i: candidates[i]['lambda'])
 
 
+def audit_calibration(seed, root, saved, fit_symbols, symbols):
+    directory = BASE / 'artifacts/calibration-dev-3001-v1' if seed == 3001 else root / 'calibration'
+    fits = read(directory / 'fit-manifest.json')['fits'] if seed == 3001 else read(directory / 'fits.json')
+    by_name = {row['name']: row for row in saved['calibration']['rows']}
+    assert len(fits) == len(by_name) == 16
+    current = labels(symbols, 'current')
+    checked = 0
+    for record in fits:
+        out = directory / record['name']
+        row = by_name[record['name']]
+        fit = record['fit']
+        assert len(fit['candidates']) == 5
+        assert fit['selected_index'] == select(fit['candidates'])
+        if fit['selected_index'] is None:
+            assert not row['passed'] and row['loss'] is None
+            continue
+        candidate = fit['candidates'][fit['selected_index']]
+        assert digest(out / candidate['coefficient_file']) == candidate['coefficient_sha256']
+        assert digest(out / 'normalizer.npz') == record['normalizer_sha256']
+        with np.load(out / 'normalizer.npz', allow_pickle=False) as z:
+            norm = {key: z[key] for key in z.files}
+        arrays = []
+        for stream in (fit_symbols, symbols):
+            if record['kind'] == 'copy':
+                category = labels(stream, record['target'])
+            elif record['kind'] == 'joint':
+                category = labels(stream, 'lag1') * 4 + labels(stream, 'current')
+            else:
+                category = labels(stream, 'lag1')
+            raw = np.zeros((10000, record['width']))
+            raw[np.arange(10000), category] = 1
+            arrays.append(raw)
+        mean = arrays[0].mean(axis=0)
+        scale = np.sqrt(((arrays[0] - mean) ** 2).mean(axis=0))
+        np.testing.assert_array_equal(mean, norm['mu'])
+        np.testing.assert_array_equal(scale, norm['sigma'])
+        np.testing.assert_array_equal(scale <= 1e-12, norm['constant'])
+        with np.load(out / candidate['coefficient_file'], allow_pickle=False) as z:
+            lp = predict(normalize(arrays[1], norm), current, record['family'], record['target'], z['w'], z['b'])
+        actual = metrics(lp, labels(symbols, record['target']))
+        check_metrics(actual, row)
+        if record['kind'] == 'copy':
+            passed = actual['accuracy'] >= .999 and actual['loss'] <= .010
+        elif record['kind'] == 'additive':
+            passed = abs(actual['loss'] - np.log(4)) <= .010
+        else:
+            passed = actual['loss'] - saved['oracle_loss'] <= .010 and actual['accuracy'] >= .65
+        assert bool(passed) == row['passed']
+        checked += 1
+    assert saved['calibration']['pass_all'] == all(row['passed'] for row in by_name.values())
+    return checked
+
+
 def audit_seed(seed):
     root = BASE / 'artifacts' / f"{'dev' if seed == 3001 else 'eval'}-{seed}"
     saved = read(root / 'scores.json')
@@ -163,9 +216,11 @@ def audit_seed(seed):
     oracle = -np.log(np.where(labels(symbols, 'next') ==
                              (labels(symbols, 'lag1') + current) % 4, .7, .1)).mean()
     assert float(oracle) == saved['oracle_loss']
+    controls = audit_calibration(seed, root, saved, fit_symbols, symbols)
     return dict(seed=seed, passed=True, rows=450, invalid_rows=invalid,
                 unique_predictions=len(cache), normalization_checks=len(normalization_checks),
-                model_selection_checks=len(records), contrasts=300, baselines=4)
+                model_selection_checks=len(records), contrasts=300, baselines=4,
+                calibration_predictions=controls, calibration_candidates=80)
 
 
 def main():
@@ -179,7 +234,7 @@ def main():
         report['seeds'].append(result)
         print(json.dumps(result), flush=True)
     report['passed'] = True
-    report['scope'] = 'Independent saved-neural-prediction arithmetic, normalization, selection, identities, contrasts and baselines; same NumPy environment.'
+    report['scope'] = 'Independent saved-prediction arithmetic, normalization, selection, identities, contrasts, baselines and synthetic calibration; same NumPy environment.'
     (BASE / f'{args.stage}-independent-audit.json').write_text(json.dumps(report, indent=2) + '\n')
 
 

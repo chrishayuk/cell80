@@ -43,9 +43,9 @@ fits. NE-1b remains deferred until the full NE-1a matrix and audit are complete.
 
 ## Evaluation scheduling wrapper (before evaluation)
 
-Development uses the sealed serial driver. A separately sealed evaluation wrapper
-can use eight independent single-BLAS-thread CPU workers, with one shared lock
-serializing GPU collection. The machine reports 16 logical CPUs and 128 GiB RAM.
+Development uses the sealed serial driver. The initial evaluation wrapper used
+eight independent single-BLAS-thread CPU workers and a shared lock serializing
+GPU collection. The machine reports 16 logical CPUs and 128 GiB RAM.
 This wrapper changes scheduling only and calls the same per-seed functions.
 All ten fits/selections still complete before the global test manifest is written
 and any evaluation test stream is generated.
@@ -64,3 +64,33 @@ paired contrasts and fitted baselines from saved arrays. Its two hand-calculated
 fixtures pass. It makes a same-environment numerical reproduction claim, not a
 cross-library claim. This audit and its tests will be included in the evaluation
 seal; they do not change the active development seal or any measurement.
+
+Before evaluation, four isolated full-stream replays of the already measured
+development time-zero fit branch were run concurrently. Every feature/stream
+hash matched the original, with reference/CPU/Metal/repeated-Metal agreement,
+reset and weight integrity retained. Total wall time was 22.19 seconds; the
+records are in `scheduling-check.json` and `artifacts/scheduling-check-*`.
+Based solely on this scheduling check, the evaluation wrapper now uses ten
+single-BLAS-thread fitting workers (one per seed) and a four-slot GPU semaphore.
+This avoids a second batch of CPU fits and preserves isolated trajectories and
+the all-seeds fit/test barrier. Numerical settings and development code are
+unchanged. The scheduling check precedes evaluation data and the evaluation seal.
+The independent auditor also reconstructs all synthetic-control predictions and
+their acceptance gates from saved coefficients.
+
+## Completed development validation
+
+The unchanged development run completed all 450 logical test rows and 1,065
+logical candidate records. All score rows are valid; all 16 synthetic controls
+pass. The runner audit verified the fit barrier, saved trajectories, code seal,
+candidate selections and replayed predictions. The separate numerical auditor
+reproduced all 255 distinct neural prediction arrays, covering all 450 rows,
+checked 18 distinct fit normalizations and 135 model selections, and reproduced
+all 300 contrasts, four fitted baselines and 16 synthetic-control predictions.
+No solver retries, reader changes or development seed replacements occurred.
+
+`summarize.py` emits all 450 descriptive groups and 15 arm/time context rows for
+development. It requires completed results and the independent audit, retains
+invalid counts, and does not summarize incomplete groups over a selected subset.
+Feature moments are fit-only; activity is reported separately by stream. Weight
+movement is descriptive context, not a measure of predictive alignment.

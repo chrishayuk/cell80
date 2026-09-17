@@ -1,0 +1,26 @@
+{
+  "wall_seconds": 22.187753499951214,
+  "replays": [
+    {
+      "repeat": 1,
+      "seconds": 21.836207334,
+      "exact": true
+    },
+    {
+      "repeat": 2,
+      "seconds": 21.906461916,
+      "exact": true
+    },
+    {
+      "repeat": 3,
+      "seconds": 21.823645084,
+      "exact": true
+    },
+    {
+      "repeat": 4,
+      "seconds": 21.902971792,
+      "exact": true
+    }
+  ],
+  "scope": "Scheduling-only development replay; no new settings or evaluation data"
+}

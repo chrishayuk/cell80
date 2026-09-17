@@ -1,4 +1,4 @@
-"""Independent CPU workers, serialized GPU collection, global fit/test barrier.
+"""Independent CPU workers, bounded GPU collection, global fit/test barrier.
 
 This scheduling wrapper is sealed separately before evaluation. It calls the
 same per-seed primitives used by development, with no scientific parameter changes.
@@ -54,13 +54,13 @@ def main():
     assert development['complete'] and development['integrity_pass'] and development['calibration_pass']
     seeds=list(range(4001,4011))
     context=multiprocessing.get_context('spawn')
-    lock=context.Lock()
-    print(json.dumps(dict(stage='evaluation-fit',cpu_workers=8,gpu_workers=1,seeds=seeds)),flush=True)
-    with ProcessPoolExecutor(max_workers=8,mp_context=context,initializer=initialize_worker,initargs=(lock,)) as pool:
+    lock=context.BoundedSemaphore(4)
+    print(json.dumps(dict(stage='evaluation-fit',cpu_workers=10,gpu_workers=4,seeds=seeds)),flush=True)
+    with ProcessPoolExecutor(max_workers=10,mp_context=context,initializer=initialize_worker,initargs=(lock,)) as pool:
         assert list(pool.map(fit_seed,seeds))==seeds
     run.fit_manifest(seeds,sealpath)
     print(json.dumps(dict(stage='evaluation-test',fit_manifest_sha256=m.sha(p.ART/'evaluation_fit_manifest.json'))),flush=True)
-    with ProcessPoolExecutor(max_workers=8,mp_context=context,initializer=initialize_worker,initargs=(lock,)) as pool:
+    with ProcessPoolExecutor(max_workers=10,mp_context=context,initializer=initialize_worker,initargs=(lock,)) as pool:
         assert list(pool.map(test_seed,seeds))==seeds
     run.audit(seeds,sealpath)
 

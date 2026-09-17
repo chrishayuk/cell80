@@ -1,0 +1,815 @@
+{
+  "scope": "Descriptive context, not evidence of task alignment; fit moments only",
+  "rows": [
+    {
+      "seed": 3001,
+      "tick": 0,
+      "arm": "Frozen",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 0,
+      "arm": "Plastic",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 0,
+      "arm": "Yoked",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 12500,
+      "arm": "Frozen",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 12500,
+      "arm": "Plastic",
+      "changed_weights": 10297,
+      "weight_count": 16384,
+      "changed_fraction": 0.62847900390625,
+      "mean_absolute_weight_change": 0.7833251953125,
+      "signed_mean_weight_change": 0.0386962890625,
+      "endpoint_fraction": 0.0245361328125,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.7393431640625,
+          "mean_of_node_standard_deviations": 20.50509855336182,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22040390624999998,
+          "mean_of_node_standard_deviations": 0.4100275755589943,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22040390624999998,
+          "mean_of_node_standard_deviations": 0.4100275755589943,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 196.243644921875,
+          "mean_of_node_standard_deviations": 32.41631895293413,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "e00f2cbde3e5ee4bccfb82b344d630501b7c8a3be2d2aa21cbb9bd9949d111ec",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22040390625,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22121162109375,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2199763671875,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 12500,
+      "arm": "Yoked",
+      "changed_weights": 10294,
+      "weight_count": 16384,
+      "changed_fraction": 0.6282958984375,
+      "mean_absolute_weight_change": 0.78387451171875,
+      "signed_mean_weight_change": 0.03814697265625,
+      "endpoint_fraction": 0.0230712890625,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.7677205078125,
+          "mean_of_node_standard_deviations": 20.514516515679567,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22028769531249998,
+          "mean_of_node_standard_deviations": 0.41012681649360744,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22028769531249998,
+          "mean_of_node_standard_deviations": 0.41012681649360744,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 196.43075078125003,
+          "mean_of_node_standard_deviations": 32.535392122165774,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "6ee8a23185909b6aee1ca11e05aebfaba898ef25924dcbd96e70e6da1a836dbc",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2202876953125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22101953125,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21961982421875,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 25000,
+      "arm": "Frozen",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 25000,
+      "arm": "Plastic",
+      "changed_weights": 12021,
+      "weight_count": 16384,
+      "changed_fraction": 0.73370361328125,
+      "mean_absolute_weight_change": 1.1484375,
+      "signed_mean_weight_change": 0.0723876953125,
+      "endpoint_fraction": 0.03363037109375,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.67620849609375,
+          "mean_of_node_standard_deviations": 20.49464655600164,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22057294921874998,
+          "mean_of_node_standard_deviations": 0.4099420501800036,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22057294921874998,
+          "mean_of_node_standard_deviations": 0.4099420501800036,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 196.1013095703125,
+          "mean_of_node_standard_deviations": 32.237467435402316,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "3fb31997759515d169549cbb1ae10f7c3c88187847feb5a898f36ad6a9461076",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22057294921875,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22110029296875,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.219903125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 25000,
+      "arm": "Yoked",
+      "changed_weights": 12026,
+      "weight_count": 16384,
+      "changed_fraction": 0.7340087890625,
+      "mean_absolute_weight_change": 1.149169921875,
+      "signed_mean_weight_change": 0.0711669921875,
+      "endpoint_fraction": 0.033447265625,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.716639746093747,
+          "mean_of_node_standard_deviations": 20.492674487515266,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22043945312500002,
+          "mean_of_node_standard_deviations": 0.4101462685502379,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22043945312500002,
+          "mean_of_node_standard_deviations": 0.4101462685502379,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 196.40480166015624,
+          "mean_of_node_standard_deviations": 32.50114139179358,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "63d052a2815f3cc62ad55d475a9b94ad283cc0a712b537da1ff184513f726d46",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.220439453125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22106787109375,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21984326171875,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 37500,
+      "arm": "Frozen",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 37500,
+      "arm": "Plastic",
+      "changed_weights": 12974,
+      "weight_count": 16384,
+      "changed_fraction": 0.7918701171875,
+      "mean_absolute_weight_change": 1.4857177734375,
+      "signed_mean_weight_change": 0.224853515625,
+      "endpoint_fraction": 0.03521728515625,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.5528755859375,
+          "mean_of_node_standard_deviations": 20.47946237870246,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22306640625000002,
+          "mean_of_node_standard_deviations": 0.4111976660240334,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22306640625000002,
+          "mean_of_node_standard_deviations": 0.4111976660240334,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 196.93989306640626,
+          "mean_of_node_standard_deviations": 31.698858160305047,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "eea58f39985c54b4591eb02fb253218468988bc3afe3bbc91d7b217a54944eb5",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22306640625,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22375693359375,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22248740234375,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 37500,
+      "arm": "Yoked",
+      "changed_weights": 12976,
+      "weight_count": 16384,
+      "changed_fraction": 0.7919921875,
+      "mean_absolute_weight_change": 1.48553466796875,
+      "signed_mean_weight_change": 0.22503662109375,
+      "endpoint_fraction": 0.0361328125,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.57742685546875,
+          "mean_of_node_standard_deviations": 20.511067914206105,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2241779296875,
+          "mean_of_node_standard_deviations": 0.4124836177328104,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2241779296875,
+          "mean_of_node_standard_deviations": 0.4124836177328104,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 198.33851552734376,
+          "mean_of_node_standard_deviations": 31.74528178147795,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "3111742b6843ae56599a7815d6d6e6d25f4718635d519e90c9898c8fdd5fd665",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2241779296875,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22477939453125,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.223605859375,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 50000,
+      "arm": "Frozen",
+      "changed_weights": 0,
+      "weight_count": 16384,
+      "changed_fraction": 0.0,
+      "mean_absolute_weight_change": 0.0,
+      "signed_mean_weight_change": 0.0,
+      "endpoint_fraction": 0.0,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.823651269531247,
+          "mean_of_node_standard_deviations": 20.507898288126242,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.2187408203125,
+          "mean_of_node_standard_deviations": 0.4092193180275038,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 195.6787046875,
+          "mean_of_node_standard_deviations": 32.84574916188435,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "0757f83d7262b8f7ca1931b8c47eb8fb8eddf9fa1882d6e814b91e2be8d146b6",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2187408203125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2193619140625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.21815361328125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 50000,
+      "arm": "Plastic",
+      "changed_weights": 13747,
+      "weight_count": 16384,
+      "changed_fraction": 0.83905029296875,
+      "mean_absolute_weight_change": 1.87060546875,
+      "signed_mean_weight_change": 0.3685302734375,
+      "endpoint_fraction": 0.04638671875,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.350503906249997,
+          "mean_of_node_standard_deviations": 20.4608223105272,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22748144531250003,
+          "mean_of_node_standard_deviations": 0.4135920657817847,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22748144531250003,
+          "mean_of_node_standard_deviations": 0.4135920657817847,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 198.73932607421875,
+          "mean_of_node_standard_deviations": 30.7038557906503,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "1dac8f353b44505a2d65a20dd46ad9b82b6925f186305526109af823c723ded5",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2274814453125,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2282208984375,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.22703720703125,
+          "ticks": 10000
+        }
+      }
+    },
+    {
+      "seed": 3001,
+      "tick": 50000,
+      "arm": "Yoked",
+      "changed_weights": 13739,
+      "weight_count": 16384,
+      "changed_fraction": 0.83856201171875,
+      "mean_absolute_weight_change": 1.870849609375,
+      "signed_mean_weight_change": 0.368408203125,
+      "endpoint_fraction": 0.045654296875,
+      "fit_feature_moments": {
+        "v": {
+          "mean_of_node_means": 16.38228974609375,
+          "mean_of_node_standard_deviations": 20.52885207094009,
+          "constant_nodes": 0
+        },
+        "r": {
+          "mean_of_node_means": 0.22949101562500002,
+          "mean_of_node_standard_deviations": 0.41577668829787306,
+          "constant_nodes": 0
+        },
+        "s": {
+          "mean_of_node_means": 0.22949101562500002,
+          "mean_of_node_standard_deviations": 0.41577668829787306,
+          "constant_nodes": 0
+        },
+        "q": {
+          "mean_of_node_means": 201.03644521484375,
+          "mean_of_node_standard_deviations": 30.678399555274964,
+          "constant_nodes": 0
+        }
+      },
+      "normalization_sha256": "46cf2defee892251f4b2031c06fb908881cc602eefea280487e5200b69cbb6f1",
+      "activity": {
+        "fit": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.229491015625,
+          "ticks": 10000
+        },
+        "validation": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2300625,
+          "ticks": 10000
+        },
+        "test": {
+          "active_unit_fraction": 1.0,
+          "pass": true,
+          "spike_fraction": 0.2290974609375,
+          "ticks": 10000
+        }
+      }
+    }
+  ]
+}

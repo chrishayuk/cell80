@@ -1,13 +1,21 @@
 # NE-1: where is temporal information, and what does adaptation change?
 
-**NE-1a measurement specification frozen, 2026-09-17. No NE-1 neural measurements
-have been run. NE-1b remains a design draft.**
+**NE-1a measurement specification frozen, 2026-09-17. Development validation is
+complete: 450/450 valid score rows and both audits pass. Evaluation has not yet
+begun. NE-1b remains a design draft.**
 
 The authoritative [measurement specification](measurement-spec.md) fixes every
 readout, numerical choice, calibration gate, failure policy and output dimension.
 Its SHA-256 is recorded in `measurement-spec.sha256` and the
-[specification seal](measurement-seal.json). This is a specification freeze;
-implementation, calibration and execution seals are still required before runs.
+[specification seal](measurement-seal.json). The instrument and runner are now
+implemented: all 16 synthetic controls and 700 inherited CPU/Metal fixtures pass.
+The [development seal](development-seal.json) freezes the code and dependencies
+before development trajectories. See [implementation history](implementation-history.md)
+for phase barriers and engineering corrections. The [development results](development-results.json)
+and [independent audit](development-independent-audit.json) cover the complete
+matrix; [tables](development-tables.csv) and [context](development-context.json)
+retain all reader groups and activity/weight diagnostics. Evaluation requires a
+separately committed execution seal.
 
 NE-0c produced a valid negative result for its registered learning criteria.
 NE-1 investigates that result, using the existing Frozen, Plastic and Yoked
