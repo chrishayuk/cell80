@@ -1,0 +1,16 @@
+[package]
+name = "ne1"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+ne0c = { path = "../neural-ecology-ne0c" }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+overflow-checks = true

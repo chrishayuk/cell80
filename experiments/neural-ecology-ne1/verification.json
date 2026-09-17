@@ -1,0 +1,18 @@
+{
+  "python_tests_passed": 8,
+  "fixture": {
+    "edge_cases": 196,
+    "fixture_hash": "c2adcbd0263104d7c1c8ebe57a9bfe4d500834edf5314134542a441b8cf48c92",
+    "metal_repeat_equal": true,
+    "node_cases": 504,
+    "node_source_hash": "d7addaebc1ae8df24f41717e513ba77d9dbb83c0358235f58eb39e14e63869d1",
+    "node_state_equal": true,
+    "plasticity_source_hash": "f096041ba55d25e4682cee0fccf1addfc9105ee37b4b19d23bb7789a0e4a2f4b",
+    "sextets_and_steps_equal": true
+  },
+  "synthetic_calibration_passed": true,
+  "synthetic_controls": 16,
+  "candidate_fits": 80,
+  "neural_measurements_run": false,
+  "scope": "Pre-development instrument and primitive validation"
+}
