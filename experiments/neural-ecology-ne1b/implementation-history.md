@@ -51,3 +51,15 @@ separation. The scientific specification, selector, neuron evaluator, numerical
 instrument, calibration evidence and binary are unchanged. Development is
 restarted from zero under a new committed implementation seal; no v1 trajectories
 are reused as completed validation evidence.
+
+## Development completed and independently audited
+
+Under commit `1d5ec61`, all 284 development rows were valid. All 690 distinct
+candidates passed, covering 710 logical candidate records. The independent audit
+reconstructed all predictions, models, selections and 624 contrasts; all 20
+identity predictions matched NE-1a. Every one of the 1,390 sealed files remained
+unchanged. See `development-validation.md` for the complete gate inventory.
+
+The reporting-only `report.py` was added during development to export complete
+tables after a passing audit. It does not enter simulation or fitting; it will
+also be included in the evaluation code seal. No scientific parameters changed.

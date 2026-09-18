@@ -1,0 +1,21 @@
+{
+  "stage": "development",
+  "passed": true,
+  "seeds": [
+    {
+      "seed": 3001,
+      "passed": true,
+      "subsets": 70,
+      "rows": 284,
+      "valid_rows": 284,
+      "unique_predictions": 276,
+      "models": 138,
+      "candidate_checks": 690,
+      "contrasts": 624,
+      "calibration": 2,
+      "identity_predictions": 20
+    }
+  ],
+  "auditor_sha256": "70b28cf225849ae6ea7091c5a6432f11217dd0858d919b2c2e0c6d042fefbd76",
+  "scope": "Independent saved-array normalization, candidate objectives/gradients, selection, prediction, reversion, calibration and contrast reconstruction; same numerical environment"
+}
