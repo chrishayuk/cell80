@@ -64,14 +64,16 @@ checks pass, but Plastic does not improve on Frozen or Yoked by the registered
 criteria. All primary and secondary results, the mechanical audit, and recovery
 from a disk-space interruption are retained; the sealed implementation is unchanged.
 
-[NE-1 design](neural-ecology-ne1/README.md) proposes an exploratory mechanism
-study of the archived NE-0c systems: calibrated readouts, history decoding across
-five adaptation times, and separately specified parameter interventions. All 50
-required snapshots are verified. Findings
-on these previously observed seeds would require fresh-seed confirmation.
+[NE-1](neural-ecology-ne1/README.md) measures the archived NE-0c systems with
+calibrated readouts and history decoding across five adaptation times. All 50
+required snapshots are verified. Findings on these previously observed seeds
+remain exploratory and require fresh-seed confirmation for a selected mechanism.
 The [NE-1a numerical specification](neural-ecology-ne1/measurement-spec.md) is
 frozen before measurements, including 4,500 neural score rows and explicit
 calibration/convergence failure rules. All 16 synthetic controls and 700 inherited
-CPU/Metal fixtures pass. Development completed with 450/450 valid score rows,
-replay checks and an independent numerical audit. Evaluation requires its own
-committed execution seal.
+CPU/Metal fixtures pass. [NE-1a completed](neural-ecology-ne1/findings.md) with
+4,500/4,500 valid neural rows, all 160 calibration controls passing, and both
+audits passing. Frozen already supports strong history decoding. Plasticity
+changes reader alignment and improves some refitted readers, but does not give
+a uniform next-symbol advantage over Frozen. NE-0c's verdict is unchanged;
+NE-1b interventions remain unexecuted and require a separate frozen specification.

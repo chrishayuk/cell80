@@ -1,8 +1,20 @@
 # NE-1: where is temporal information, and what does adaptation change?
 
-**NE-1a measurement specification frozen, 2026-09-17. Development validation is
-complete: 450/450 valid score rows and both audits pass. Evaluation has not yet
-begun. NE-1b remains a design draft.**
+**NE-1a completed, 2026-09-18: 4,500/4,500 valid neural score rows, 160/160
+calibration controls passing, and both audits passing. NE-1b remains a design draft.**
+
+The [findings](findings.md) show that Frozen already contains strongly readable
+history: full-state global decoding of the symbol two steps back is 99.093%
+accurate. Full-state conditioned next-symbol loss is 0.986067 nats, compared with
+1.384691 for the original reader and a sampled oracle of 0.937899. Plasticity
+improves some refitted readers, with much of the gain shared by Yoked; full-state
+next-symbol prediction does not improve over Frozen at the endpoint. Transported
+readers worsen while refitted readers recover, demonstrating reader mismatch.
+
+See the [complete evaluation matrix](evaluation-results.json),
+[450-group summary](evaluation-tables.csv), [activity/weight context](evaluation-context.json)
+and [independent numerical audit](evaluation-independent-audit.json). This is an
+exploratory measurement result on reused seeds, not a revised NE-0c learning verdict.
 
 The authoritative [measurement specification](measurement-spec.md) fixes every
 readout, numerical choice, calibration gate, failure policy and output dimension.
@@ -14,8 +26,10 @@ before development trajectories. See [implementation history](implementation-his
 for phase barriers and engineering corrections. The [development results](development-results.json)
 and [independent audit](development-independent-audit.json) cover the complete
 matrix; [tables](development-tables.csv) and [context](development-context.json)
-retain all reader groups and activity/weight diagnostics. Evaluation requires a
-separately committed execution seal.
+retain all reader groups and activity/weight diagnostics. The
+[evaluation seal](evaluation-seal.json), committed at `349a16d` before evaluation
+streams, freezes 418 files and the measurement binary. Ten single-threaded fitting
+workers shared four GPU trajectory slots; every fit preceded the global test barrier.
 
 NE-0c produced a valid negative result for its registered learning criteria.
 NE-1 investigates that result, using the existing Frozen, Plastic and Yoked
@@ -226,9 +240,11 @@ the complete NE-1a matrix.
 | Calibrated Frozen approaches sampled oracle | Little room for predictive improvement under that instrument | Learning on other tasks or distributions |
 | Plastic mainly changes activity; task readouts do not improve | Adaptation is not aligned with this measured task | Necessity or superiority of reward/error modulation |
 
-At present Frozen is far from the full-history oracle under NE-0c's probe.
-“The reservoir already contains nearly all available predictive information” is
-a hypothesis to test with calibrated instruments, not the current finding.
+Frozen remains far from the full-history oracle under NE-0c's original probe.
+The completed NE-1a measurements show substantially better decoding with other
+instruments, including strong history decoding before adaptation. They do not
+measure total information content or establish a uniform plasticity advantage;
+the [findings](findings.md) give the complete comparisons and limits.
 
 ## Execution boundary and artifacts
 

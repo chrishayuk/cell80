@@ -94,3 +94,33 @@ development. It requires completed results and the independent audit, retains
 invalid counts, and does not summarize incomplete groups over a selected subset.
 Feature moments are fit-only; activity is reported separately by stream. Weight
 movement is descriptive context, not a measure of predictive alignment.
+
+The initial CSV export used the writer's default CRLF line endings, which failed
+the repository whitespace check. Before the evaluation seal, the reporting writer
+was set to LF and the development CSV was regenerated. No numerical value changed.
+
+## Completed evaluation
+
+Development evidence was committed at `7b57762`; the evaluation seal was committed
+at `349a16d` before any evaluation stream. Evaluation completed under that unchanged
+seal: 150 trajectory commands, 150 successful exits, no retries, no replacement
+seeds, 4,500 valid neural rows and all 160 calibration controls passing. All ten
+seeds' neural and synthetic fits preceded the global hashed test barrier.
+
+The runner audit and separate numerical audit both passed. The latter reproduced
+2,550 distinct neural prediction arrays covering the full 4,500-row matrix,
+checked 180 fit normalizations and 1,350 unique model selections, and reproduced
+all 3,000 paired contrasts, 40 baselines and 160 synthetic-control predictions.
+The original 196 sealed files and the 418-file evaluation seal remain unchanged.
+
+Interpretation began after both audits completed. `plot_results.py` was added
+as post-measurement reporting code, with a guard requiring the complete results
+and independent audit. It plots every next-symbol reader, checkpoint and reader
+policy, and was rendered and visually checked. It changes no measurement or
+selection. The complete tables contain no incomplete groups. See `findings.md`
+for the bounded exploratory interpretation; no NE-1b intervention was executed.
+
+The final commit check caught trailing whitespace emitted by Matplotlib's SVG
+exporter. The reporting exporter now strips line-end whitespace. The existing
+SVG was normalized and its parsed geometry/attributes were verified unchanged;
+the PNG and all numerical artifacts were unchanged.
