@@ -63,3 +63,21 @@ unchanged. See `development-validation.md` for the complete gate inventory.
 The reporting-only `report.py` was added during development to export complete
 tables after a passing audit. It does not enter simulation or fitting; it will
 also be included in the evaluation code seal. No scientific parameters changed.
+
+## Evaluation completed and independently audited
+
+The evaluation seal was committed as `62da53a` before any evaluation intervention
+trajectories. All 6,900 distinct candidate fits were valid (7,100 logical records).
+The global fit manifest preceded every evaluation test trajectory. All ten test
+streams completed; all 2,840 score rows and 6,240 per-seed contrasts were retained.
+All 1,394 sealed files were unchanged and all 20 linked calibration controls passed.
+
+The independent auditor reconstructed all 700 endpoint subsets, 1,380 models,
+6,900 candidates, 2,760 distinct model/feature predictions, 2,840 score rows,
+6,240 contrasts, and 200 identity predictions. It passed before tables were
+exported or scientific outcomes interpreted. No evaluation-stage retries,
+numerical changes, or restarts occurred. User status requests did not stop the run.
+
+`findings.md` records the bounded exploratory interpretation. `plot_findings.py`
+was added only after audit to draw the saved descriptive means; it does not enter
+simulation, fitting, selection, or testing. Earlier sealed documents remain intact.

@@ -76,9 +76,11 @@ CPU/Metal fixtures pass. [NE-1a completed](neural-ecology-ne1/findings.md) with
 audits passing. Frozen already supports strong history decoding. Plasticity
 changes reader alignment and improves some refitted readers, but does not give
 a uniform next-symbol advantage over Frozen. NE-0c's verdict is unchanged;
-[NE-1b](neural-ecology-ne1b/README.md) now has a separate frozen intervention
-specification and verified weights-only selection inventory. It targets q/global
-two-step history and q/conditioned next-symbol decoding, with both refitted and
-zero-time transported readers. Top-movement reversions have separate count- and
-movement-matched random controls. The planned evaluation matrix has 2,840 score
-rows; intervention neural measurements remain unexecuted.
+[NE-1b completed](neural-ecology-ne1b/findings.md) its frozen causal-reversion
+matrix with 2,840 valid rows and a passing independent audit. Weight reversions
+improve the original transported readers but worsen refitted accessibility on the
+two selected q-based tasks; Yoked shows the same qualitative pattern. Top-movement
+reversions generally exceed count-matched effects and resemble movement-matched
+effects, whose high edge overlap limits identity-specific conclusions. All 1,394
+sealed files remain unchanged. These reused-seed findings are exploratory and do
+not establish endogenous learning or a uniform Plastic-specific advantage.

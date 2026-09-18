@@ -1,0 +1,21 @@
+{
+  "schema": "NE1b-post-audit-artifacts-v1",
+  "created_utc": "2026-09-18T19:50:35.619177+00:00",
+  "scope": "Post-audit publication artifact hashes; does not replace or alter prospective seals",
+  "specification_commit": "b6ec99f",
+  "evaluation_seal_commit": "62da53a",
+  "evaluation_code_seal_sha256": "f761860433a74ec5e2294eade346999a57e8a0fc217213f63629ca0fd8ede4e1",
+  "fit_manifest_sha256": "8169ed139bd273fdffbc1d94cc613c40fa714eb0531656457fe7e8e228a732b1",
+  "files": {
+    "evaluation-results.json": "14e59aac1d9b684cc9a70977f289922e17a600c98d9991bf3c069e3d0506b1ba",
+    "evaluation-independent-audit.json": "c94548b2ef1e412028c09a2580c6a42870b2a8cf30d3766a64af453c5c98d82a",
+    "evaluation-scores.csv": "77d8666fb1b00fe0219f6f9020820d5ea998885e24338ed725a0562eca6dd023",
+    "evaluation-tables.json": "385eae84cfe3031f02cdb39d74b03a62627f9e4cdbd420d27491e6a42fa86f53",
+    "evaluation-seal.json": "f761860433a74ec5e2294eade346999a57e8a0fc217213f63629ca0fd8ede4e1",
+    "findings.md": "a506130b1076bcbc8885f1e133b713c9ce83e986c93c1e7048b68aa2420c7f1d",
+    "plot_findings.py": "65efc9e877fcb460abc87f096d9246e2354eaa04ce3073316998b95f207c5541",
+    "dose-effects.png": "ead7069909b2297001222ff28613fa5f8fb8fd9edf9a2d1339f3afec5fca0e37",
+    "dose-effects.svg": "7b0924340aa770b381c0fa02fd9dcfecc2410b747d0c5290db019d52c91e6035",
+    "implementation-history.md": "7407cc612313123367fe6136d006ad530ad13f11e893dd8186552c99607e532a"
+  }
+}
