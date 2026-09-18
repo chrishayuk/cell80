@@ -1,0 +1,38 @@
+{
+  "schema": "NE1b-intervention-specification-seal-v1",
+  "utc": "2026-09-18T11:08:44.653559+00:00",
+  "scope": "Specification and weights-only selection inventory; no implementation seal or intervention results",
+  "status": {
+    "intervention_neural_measurements_run": false,
+    "implementation_sealed": false,
+    "development_intervention_validation_passed": false
+  },
+  "base_commit": "7907c3c0f5f1b7eb904ebe7e2d82d10167fcdcc1",
+  "files": {
+    "experiments/neural-ecology-ne1b/README.md": "f3914176128302663ddbce57752a066fcaced4a28cb7eaa54818afc187ab1926",
+    "experiments/neural-ecology-ne1b/intervention-spec.md": "82af5adfe1dbb695886126922f8dbf97cf7a4adccff60aae3dea90668ebd3aeb",
+    "experiments/neural-ecology-ne1b/select_interventions.py": "1546b17cf7bcf58d2ebf4b92ef1bbadf7650f5ea7e2655a52302a872a6c2d445",
+    "experiments/neural-ecology-ne1b/selection-inventory.json": "3f3622ad1b33300233f97dfbe5aabcc4e39b3950047fc533e7daac1ab8042c32",
+    "experiments/neural-ecology-ne1b/tests/test_selections.py": "473aefa80246e557cdca1c0c1a16c4e1113b8e27c94171fb57bb80779459903e",
+    "experiments/neural-ecology-ne1b/intervention-spec.sha256": "3982ac8b02b569cf96c34eb15cdb494e40562d482825c15df25f81d5fa6289ab"
+  },
+  "inherited": {
+    "ne1a_evaluation_seal_sha256": "a7de65b5180ce6a6a730b2aca53e7ee4826a873514f9aea262c7309821c280ef",
+    "ne1a_results_sha256": "3d7daca017b3b1c178acfde02ef88b7b577317ac72d9de65e18beca306166bff",
+    "ne1a_independent_audit_sha256": "1bad5ab1530de6f7b16cec0adb87cd7ead8f0547e6078f6f61d18a219b81fb5b",
+    "sealed_files_verified": 418,
+    "imported_files_pinned": 934
+  },
+  "static_checks": {
+    "selector_tests_passed": 5,
+    "logical_endpoint_subsets": 770,
+    "evaluation_systems": 710,
+    "evaluation_score_rows": 2840,
+    "evaluation_candidate_rows": 7100
+  },
+  "next_required_seals": [
+    "implementation before development intervention validation",
+    "validated implementation before evaluation trajectories",
+    "all evaluation fits before intervention test trajectories"
+  ]
+}
