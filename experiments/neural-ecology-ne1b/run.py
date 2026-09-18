@@ -31,6 +31,7 @@ def sha(path): return m.sha(Path(path))
 def relative(path): return str(Path(path).relative_to(REPO))
 def cohort(seed): return 'dev' if seed == 3001 else 'eval'
 def root(seed): return ART / f'{cohort(seed)}-{seed}'
+def attempt_log(seed): return ART / 'attempts' / f'{cohort(seed)}-{seed}.jsonl'
 def oldroot(seed): return OLD / f'artifacts/{cohort(seed)}-{seed}'
 def stageof(seed): return 'development' if seed == 3001 else 'evaluation'
 def sha_bytes(data): return hashlib.sha256(data).hexdigest()
@@ -235,7 +236,7 @@ def collect_job(job):
     try:
         if not (out/'summary.json').exists():
             if out.exists(): raise ValueError('incomplete attempt; explicit logged recovery required')
-            command([BIN,'measure',root(seed)/'systems.json',split,out,BASE/f'{stage}-seal.json'],root(seed)/'attempts.jsonl')
+            command([BIN,'measure',root(seed)/'systems.json',split,out,BASE/f'{stage}-seal.json'],attempt_log(seed))
         check_trajectory(seed,split)
         return True
     except Exception as error:

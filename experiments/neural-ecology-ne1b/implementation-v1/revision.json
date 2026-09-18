@@ -1,0 +1,11 @@
+{
+  "utc": "2026-09-18T11:47:59.117689+00:00",
+  "status": "stopped_before_test_for_implementation_bug",
+  "reason": "Pre-test fit manifest would include a per-seed attempts log later appended by test collection.",
+  "old_commit": "619d95b",
+  "old_seal_sha256": "d3d078585545f439e7b09db8c57fcea671e46196e1f9352e0fe108e2e248ab96",
+  "partial_artifacts": "experiments/neural-ecology-ne1b/artifacts/development-attempt-v1",
+  "test_trajectories_generated": false,
+  "scientific_specification_changed": false,
+  "planned_fix": "Place command logs outside each sealed seed directory; preserve all v1 artifacts and reseal before restarting development."
+}

@@ -7,6 +7,11 @@ run=importlib.util.module_from_spec(spec);spec.loader.exec_module(run)
 
 
 class Runner(unittest.TestCase):
+    def test_command_log_cannot_mutate_sealed_seed_manifest(self):
+        for seed in (3001,4001,4010):
+            self.assertFalse(run.attempt_log(seed).is_relative_to(run.root(seed)))
+            self.assertTrue(run.attempt_log(seed).is_relative_to(run.ART))
+
     def test_label_indexing_after_current_input(self):
         values=run.np.arange(10257)
         self.assertEqual(run.m.labels(values,'lag2')[0],254)

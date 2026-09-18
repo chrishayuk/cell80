@@ -35,3 +35,19 @@ selection, test metrics, calibration, identity predictions and every contrast.
 `development-seal.json` pins code, compiled binary, dependencies, inherited
 artifacts and calibration evidence. Its commit precedes development trajectories.
 Development must complete and pass its independent audit before evaluation sealing.
+
+## Development bookkeeping revision — before test or evaluation
+
+The initial development attempt was stopped before fitting/test after static
+review found that the pre-test manifest would include a per-seed command log
+which test execution would later append to. No scientific outcomes motivated
+the change. Partial fit/validation trajectories and console output are retained
+under `artifacts/development-attempt-v1/`; the original runner and seal are also
+preserved in `implementation-v1/` and commit `619d95b`.
+
+The correction places command logs in `artifacts/attempts/`, outside the seed
+directories covered by the fit manifest. A regression test enforces that path
+separation. The scientific specification, selector, neuron evaluator, numerical
+instrument, calibration evidence and binary are unchanged. Development is
+restarted from zero under a new committed implementation seal; no v1 trajectories
+are reused as completed validation evidence.
