@@ -5,7 +5,7 @@
 
 use cell80::{
     Cartridge, CartridgeOpts, CellConfig, CellHost, CellProgram, DivByZero, Fact, ImportPolicy,
-    Runner, DEFAULT_CYCLES,
+    Runner, SearchVerdict, DEFAULT_CYCLES,
 };
 
 fn mul_cart() -> Cartridge {
@@ -861,4 +861,50 @@ fn search_scored_exposes_the_margin() {
     let hits = host.search_scored("sum of two numbers", 3);
     assert!(!hits.is_empty());
     assert!(hits.windows(2).all(|w| w[0].0 >= w[1].0), "sorted by score");
+}
+
+#[test]
+fn confident_search_selects_or_abstains_without_dropping_candidates() {
+    let twin = |id: &str| {
+        Cartridge::compile(
+            "fn run(a: u16, b: u16) -> u16 { a + b }",
+            CellConfig::sandboxed(),
+            CartridgeOpts {
+                id: Some(id.into()),
+                summary: "combine a pair of values".into(),
+                tags: vec!["pair".into(), "combine".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap()
+    };
+    let mut host = CellHost::new();
+    host.add(twin("x"));
+    host.add(twin("y"));
+
+    // Identical retrieval text creates an honest zero-margin tie. The candidates remain
+    // available for inspection/escalation, but no top result is selected.
+    let tied = host.search_confident("combine a pair of values", 2, 0.07);
+    assert_eq!(tied.verdict, SearchVerdict::LowMargin);
+    assert!(tied.abstained() && tied.selected().is_none());
+    assert_eq!(tied.candidates.len(), 2);
+    assert!(tied.margin.abs() < 1e-6);
+
+    // The threshold is an explicit policy input. The exact same ranking clears at zero,
+    // demonstrating that the gate changes selection, never candidate generation.
+    let open = host.search_confident("combine a pair of values", 2, 0.0);
+    assert_eq!(open.verdict, SearchVerdict::Confident);
+    assert_eq!(open.selected().map(|m| m.id.as_str()), Some("x"));
+
+    let none = host.search_confident("zzzzzzzz", 2, 0.0);
+    assert_eq!(none.verdict, SearchVerdict::NoMatch);
+    assert!(none.candidates.is_empty() && none.selected().is_none());
+
+    // Direct Rust callers also fail closed on malformed policy; bindings reject it earlier.
+    assert!(host
+        .search_confident("combine a pair of values", 2, -1.0)
+        .abstained());
+    assert!(host
+        .search_confident("combine a pair of values", 2, f32::NAN)
+        .abstained());
 }

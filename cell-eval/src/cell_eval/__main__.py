@@ -109,6 +109,34 @@ def _cmd_adoption(args) -> int:
     return 0
 
 
+def _cmd_adoption_ab(args) -> int:
+    from .adoption_ab import run_adoption_ab
+
+    try:
+        report = run_adoption_ab(
+            dataset=args.dataset,
+            library_dir=args.library,
+            model=args.model,
+            progress=lambda done, total, result: print(
+                f"[{done}/{total}] {result.arm} {result.task_id}: "
+                f"{'correct' if result.correct else 'wrong'}",
+                file=sys.stderr,
+                flush=True,
+            ),
+        )
+    except (ValueError, RuntimeError) as e:
+        print(f"cell-eval adoption-ab: {e}", file=sys.stderr)
+        return 2
+    payload = report.as_dict()
+    if args.out:
+        pathlib.Path(args.out).write_text(json.dumps(payload, indent=2) + "\n")
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(json.dumps({k: payload[k] for k in ("model", "arms", "hybrid_minus_lexical")}, indent=2))
+    return 0
+
+
 def _cmd_tiers(args) -> int:
     from .tiers import calibrate, run_tiers
     from .report import render_tiers
@@ -287,6 +315,16 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
     a.add_argument("--json", action="store_true")
     a.set_defaults(func=_cmd_adoption)
+
+    ab = sub.add_parser(
+        "adoption-ab",
+        help="held-out live-agent A/B: calibrated lexical fallback vs hybrid retrieval",
+    )
+    ab.add_argument("--dataset", default="adoption_ab_heldout")
+    ab.add_argument("--model", default=None, help="model name (or set CELL_EVAL_MODEL)")
+    ab.add_argument("--out", default=None, help="write the full JSON report to this path")
+    ab.add_argument("--json", action="store_true")
+    ab.set_defaults(func=_cmd_adoption_ab)
 
     t = sub.add_parser(
         "tiers",

@@ -19,7 +19,12 @@ def test_dispatch_search_inspect_run_and_trace():
 
     s = dispatch(lib, "cell_search", {"query": "greatest common divisor", "limit": 3}, trace)
     assert any(r["id"] == "gcd" for r in s["results"])
+    assert {"selected", "confidence"} <= s.keys()
     assert trace.searched == ["greatest common divisor"]
+    assert trace.search_decisions[0]["method"] in {
+        "hybrid_margin",
+        "lexical_fallback",
+    }
 
     i = dispatch(lib, "cell_inspect", {"id": "gcd"}, trace)
     assert i["signature"] == "run(a: u16, b: u16) -> u16"

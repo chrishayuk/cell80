@@ -45,12 +45,25 @@ def build_server() -> ChukMCPServer:
         "`examples` (same forms as cell_route_by_example, plus {..., expect: {field: int}} "
         "to match post-run state fields) to fuse behaviour into the ranking — use this "
         "when confusable cells share a description: it tells min from max where text "
-        "can't, without dropping text-relevant results.",
+        "can't, without dropping text-relevant results. The response separates candidate "
+        "generation (`results`) from selection: text search blends lexical, cached semantic, "
+        "and signature-aware evidence, then `selected` is null and "
+        "confidence.abstained=true when the calibrated final margin is too small. In that "
+        "case inspect the candidates, "
+        "provide examples, or escalate instead of running results[0] as though it were "
+        "certain.",
     )
-    def cell_search(query: str, limit: int = 10, examples: list[dict] | None = None) -> dict:
+    def cell_search(
+        query: str,
+        limit: int = 10,
+        examples: list[dict] | None = None,
+        min_margin: float | None = None,
+    ) -> dict:
         try:
-            return {"results": lib.search(query, limit, examples)}
-        except (KeyError, TypeError, ValueError):
+            return lib.search_decision(query, limit, examples, min_margin)
+        except (KeyError, TypeError, ValueError) as e:
+            if "min_margin" in str(e):
+                return {"error": str(e)}
             return {
                 "error": "each example needs {in: [ints], out: int} or "
                 "{fields: {name: int}, out: int, expect: {name: int}} (out/expect optional, "

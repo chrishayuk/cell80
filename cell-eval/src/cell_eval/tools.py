@@ -9,6 +9,7 @@ the eval can measure adoption (did the model actually execute a cell, or just ta
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 from cell80_mcp.library import CellLibrary
@@ -21,7 +22,9 @@ TOOLS = [
             "name": "cell_search",
             "description": (
                 "Search the library of tiny verified tools ('cells') by natural-language "
-                "query. Returns ranked candidates with id, summary, tags and typed signature."
+                "query. `results` contains ranked candidates, but only `selected` is cleared "
+                "for automatic execution. If `selected` is null, inspect candidates and use "
+                "their signatures to resolve the ambiguity; do not blindly run results[0]."
             ),
             "parameters": {
                 "type": "object",
@@ -171,6 +174,7 @@ class ToolTrace:
     """Records what the model did with the tools during one episode."""
 
     searched: list[str] = field(default_factory=list)  # queries
+    search_decisions: list[dict] = field(default_factory=list)
     inspected: list[str] = field(default_factory=list)  # ids
     cells_run: list[str] = field(default_factory=list)  # ids actually executed
     run_results: list[int] = field(default_factory=list)  # results returned by cell_run
@@ -185,7 +189,23 @@ def dispatch(lib: CellLibrary, name: str, args: dict, trace: ToolTrace) -> dict:
         if name == "cell_search":
             q = args["query"]
             trace.searched.append(q)
-            return {"results": lib.search(q, int(args.get("limit", 5)))}
+            started = time.perf_counter()
+            decision = lib.search_decision(q, int(args.get("limit", 5)))
+            confidence = decision.get("confidence", {})
+            selected = decision.get("selected")
+            results = decision.get("results", [])
+            trace.search_decisions.append(
+                {
+                    "query": q,
+                    "selected": selected.get("id") if selected else None,
+                    "top": results[0].get("id") if results else None,
+                    "status": confidence.get("status"),
+                    "abstained": bool(confidence.get("abstained")),
+                    "method": confidence.get("method"),
+                    "latency_ms": (time.perf_counter() - started) * 1000.0,
+                }
+            )
+            return decision
         if name == "cell_inspect":
             trace.inspected.append(args["id"])
             m = lib.inspect(args["id"])

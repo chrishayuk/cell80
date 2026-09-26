@@ -3,6 +3,8 @@
 import os
 import pathlib
 
+import pytest
+
 # The seed library by default, overridable via CELL_LIBRARY (e.g. a committed-cells
 # snapshot while a concurrent session has in-flight cells in the working tree).
 # CELLS must be the dir the library actually loads, or the count assertions drift.
@@ -22,7 +24,9 @@ def _handlers():
 
 def test_tool_bodies_cover_all_four_verbs():
     h = _handlers()
-    assert any(r["id"] == "gcd" for r in h["cell_search"]("greatest common divisor", 3)["results"])
+    search = h["cell_search"]("greatest common divisor", 3)
+    assert any(r["id"] == "gcd" for r in search["results"])
+    assert {"selected", "confidence"} <= search.keys()
     # route by behaviour: (3,7)→3 / (10,3)→3 surfaces min and excludes its sibling max (which
     # can't match); a malformed example is reported as data, not raised.
     routed = h["cell_route_by_example"]([{"in": [3, 7], "out": 3}, {"in": [10, 3], "out": 3}])
@@ -255,3 +259,43 @@ def test_cell_search_fuses_examples_into_the_ranking():
     assert fused[0]["id"] == "smag_add", [r["id"] for r in fused[:3]]
     # Malformed examples are reported as data, not raised.
     assert "error" in h["cell_search"]("anything", 5, [{"bad": 1}])
+
+
+def test_cell_search_abstains_on_ambiguous_text_but_preserves_candidates():
+    h = _handlers()
+    ambiguous = h["cell_search"]("pick one of two numbers", 5)
+    assert ambiguous["confidence"]["status"] == "low_margin"
+    assert ambiguous["confidence"]["abstained"] is True
+    assert ambiguous["selected"] is None
+    assert ambiguous["results"], "abstention must preserve candidates for escalation"
+
+    missing = h["cell_search"]("zzzzzzzz", 5)
+    assert missing["confidence"]["status"] == "no_match"
+    assert missing["selected"] is None and missing["results"] == []
+
+    # A caller may override the calibrated policy explicitly; zero opens every positive
+    # margin, while invalid thresholds are rejected as data at the MCP boundary.
+    open_gate = h["cell_search"]("pick one of two numbers", 5, min_margin=0.0)
+    assert open_gate["selected"] == open_gate["results"][0]
+    assert open_gate["confidence"]["abstained"] is False
+    assert "error" in h["cell_search"]("anything", 5, min_margin=-1.0)
+
+    evidence = h["cell_search"](
+        "pick one of two numbers",
+        5,
+        [{"in": [3, 7], "out": 3}, {"in": [9, 4], "out": 4}],
+    )
+    assert evidence["confidence"]["method"] == "behaviour_fused"
+    assert evidence["selected"] == evidence["results"][0]
+
+    # The hybrid rung needs the optional embedding model already in the local cache (search
+    # never downloads). Without it the response must say so, not silently mislabel itself.
+    hybrid = h["cell_search"]("index of the smallest of three", 5)
+    if hybrid["confidence"]["method"] == "lexical_fallback":
+        assert hybrid["confidence"]["fallback_reason"]
+        pytest.skip(f"hybrid model not cached: {hybrid['confidence']['fallback_reason']}")
+    assert {r["id"] for r in hybrid["results"][:2]} == {"argmin3", "min3"}
+    assert hybrid["confidence"]["method"] == "hybrid_margin"
+    assert hybrid["confidence"]["ranking"] == "tfidf_embedding"
+    assert hybrid["confidence"]["status"] == "low_margin"
+    assert hybrid["selected"] is None

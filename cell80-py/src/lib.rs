@@ -9,7 +9,7 @@
 #![allow(clippy::useless_conversion)]
 use cell80::{
     Cartridge, CartridgeOpts, CellConfig, CellGraph, CellHost as RsHost, FieldExample, Halt,
-    Manifest,
+    Manifest, DEFAULT_SEARCH_MARGIN,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -161,6 +161,44 @@ impl CellHost {
             list.append((s, brief(py, m)?))?;
         }
         Ok(list)
+    }
+
+    /// Confidence-gated lexical search.  `results` always carries the candidate list for
+    /// escalation, while `selected` is `None` unless top-1 clears the calibrated margin.
+    #[pyo3(signature = (query, limit=10, min_margin=DEFAULT_SEARCH_MARGIN))]
+    fn search_confident<'py>(
+        &self,
+        py: Python<'py>,
+        query: &str,
+        limit: usize,
+        min_margin: f32,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        if !min_margin.is_finite() || min_margin < 0.0 {
+            return Err(PyValueError::new_err(
+                "min_margin must be a finite non-negative number",
+            ));
+        }
+        let decision = self.host.search_confident(query, limit, min_margin);
+        let out = PyDict::new_bound(py);
+        let results = PyList::empty_bound(py);
+        for (_, m) in &decision.candidates {
+            results.append(brief(py, m)?)?;
+        }
+        out.set_item("results", results)?;
+        match decision.selected() {
+            Some(m) => out.set_item("selected", brief(py, m)?)?,
+            None => out.set_item("selected", py.None())?,
+        }
+        let confidence = PyDict::new_bound(py);
+        confidence.set_item("method", "tfidf_margin")?;
+        confidence.set_item("status", decision.verdict.as_str())?;
+        confidence.set_item("abstained", decision.abstained())?;
+        confidence.set_item("threshold", decision.min_margin)?;
+        confidence.set_item("margin", decision.margin)?;
+        confidence.set_item("top_score", decision.top_score)?;
+        confidence.set_item("runner_up_score", decision.runner_up_score)?;
+        out.set_item("confidence", confidence)?;
+        Ok(out)
     }
 
     /// Discover by **behaviour**: rank the catalog by how many `(inputs, expected_output)`

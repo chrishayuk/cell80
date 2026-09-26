@@ -25,7 +25,7 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 
 | tool | what it does |
 |------|--------------|
-| `cell_search(query, limit=10, examples=None)` | rank the library by relevance → brief manifests. Optional I/O `examples` fuse **behaviour** into the ranking (behaviour first, text breaks ties) — the same-shape-sibling separator: text can't tell `min` from `max`, `{in:[3,7], out:3}` can. State-cell form adds `expect` for post-run fields |
+| `cell_search(query, limit=10, examples=None, min_margin=None)` | rank the library by relevance → brief manifests. With the `smart` extra and a locally cached model, catalog-wide ranking blends lexical (0.75), semantic (0.25), and signature-aware reciprocal-rank evidence; `selected` is null below the calibrated 0.18 final-score margin. Without that optional model it explicitly reports `lexical_fallback` and uses the calibrated 0.07 lexical gate. Optional I/O `examples` fuse **behaviour** into the ranking (behaviour first, text breaks ties) — the same-shape-sibling separator: text can't tell `min` from `max`, `{in:[3,7], out:3}` can. State-cell form adds `expect` for post-run fields |
 | `cell_route_by_example(examples)` | pure behavioural discovery: the cells that actually reproduce `{in:[…], out:n}` / `{fields:{…}, out:n}` on the VM — no text at all |
 | `cell_inspect(id)` | full manifest: typed signature (params/ret/state), abi, hash |
 | `cell_list()` | every cell (brief) |
@@ -39,9 +39,12 @@ no policy, so a socket daemon or another transport could wrap the same bodies.
 ```bash
 maturin build -m ../cell80_py/Cargo.toml      # build the PyO3 binding wheel
 pip install ../cell80_py/target/wheels/cell80_py-*.whl
-pip install -e .
+pip install -e '.[smart]'   # omit [smart] for dependency-free lexical fallback
 CELL_LIBRARY=../cell80/cells CELL_STDIO=1 cell80-mcp   # MCP over stdio
 ```
 
 `CELL_LIBRARY` selects the cell directory (default `cell80/cells`); without `CELL_STDIO`
-it listens on HTTP (`CELL_HOST`/`CELL_PORT`).
+it listens on HTTP (`CELL_HOST`/`CELL_PORT`). `CELL_RETRIEVAL_MODEL` selects a locally
+cached model (default `minishlab/potion-retrieval-32M`); set it to `off` to force the
+lexical fallback. Search never downloads a model implicitly; populate the model cache
+explicitly before starting the server or point the variable at a local model directory.

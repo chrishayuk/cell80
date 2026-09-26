@@ -9,6 +9,18 @@ output of the corresponding `cell-eval` subcommand at a recorded point:
 - `tier-calibration.json` — the ladder Item-1 margin-gate calibration on the seed
   library: the full θ curve per split and the chosen operating point (θ = 0.14,
   adversarial floor 0.75, potion embedder).
+- `live-search-calibration.json` — calibration for the **live MCP hybrid gate**. On the
+  current 794-cell / 1,732-query set, catalog-wide `0.75·TF-IDF + 0.25·embedding` plus a
+  `0.20/(type-led rank + 1)` signature bonus lifts ungated direct/paraphrase top-1
+  without degrading adversarial top-1. θ = 0.18 is the smallest hundredth preserving
+  conservative precision floors on every split (0.95 direct / 0.82 paraphrase / 0.75
+  adversarial). The dependency-free fallback retains its θ = 0.07 calibration.
+- `live-agent-retrieval-ab-granite4.1-3b.json` — the held-out end-to-end check behind the
+  retrieval calibration: 21 unseen prompts, two interleaved arms, fixed agent/model/prompt.
+  Final-answer accuracy tied at 0.619. Hybrid improved expected-cell adoption by one task,
+  reduced wrong-route tasks by one, and recovered one more abstention, but selection
+  precision tied at 4/6 and search added 23.42 ms. This is evidence **not to promote yet**;
+  the recorded residue points to width/family sibling collapse and argument handling.
 - `embed-bakeoff.json` — seven tier-2 embedders through the same gate + floor
   (potion / granite / nomic / embeddinggemma / qwen3-0.6b / mxbai / arctic2):
   nomic-embed-text is the recommended default (best answered-coverage per ms,

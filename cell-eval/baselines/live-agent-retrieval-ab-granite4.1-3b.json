@@ -1,0 +1,56 @@
+{
+  "date": "2026-07-17",
+  "eval": "adoption_ab",
+  "model": "granite4.1:3b",
+  "dataset": "cell-eval/datasets/adoption_ab_heldout.jsonl",
+  "dataset_sha256": "9b26d8f9c3ea0c3742c9ff5008d4ffe280150a3cf2ed501d800456db7afcc41d",
+  "tasks_per_arm": 21,
+  "leakage_collisions": [],
+  "retrieval_methods": {
+    "lexical": "lexical_fallback",
+    "hybrid": "hybrid_margin"
+  },
+  "arms": {
+    "lexical": {
+      "correct": 0.619,
+      "adoption": 0.9048,
+      "expected_cell_adoption": 0.5238,
+      "wrong_run_tasks": 10,
+      "wrong_runs": 12,
+      "selected_decisions": 6,
+      "correct_selected_decisions": 4,
+      "selection_precision": 0.6667,
+      "abstained_tasks": 14,
+      "abstention_recovered": 6,
+      "abstention_recovery_rate": 0.4286,
+      "abstention_wrong_run_tasks": 8,
+      "mean_search_ms": 8.295,
+      "mean_episode_ms": 2235.99,
+      "errors": 0
+    },
+    "hybrid": {
+      "correct": 0.619,
+      "adoption": 0.9524,
+      "expected_cell_adoption": 0.5714,
+      "wrong_run_tasks": 9,
+      "wrong_runs": 12,
+      "selected_decisions": 6,
+      "correct_selected_decisions": 4,
+      "selection_precision": 0.6667,
+      "abstained_tasks": 14,
+      "abstention_recovered": 7,
+      "abstention_recovery_rate": 0.5,
+      "abstention_wrong_run_tasks": 6,
+      "mean_search_ms": 31.715,
+      "mean_episode_ms": 2421.904,
+      "errors": 0
+    }
+  },
+  "paired_outcomes": {
+    "hybrid_only_correct": ["ab-saturate"],
+    "lexical_only_correct": ["ab-ceil-div"],
+    "hybrid_only_expected_cell": ["ab-popcount", "ab-tolerance"],
+    "lexical_only_expected_cell": ["ab-lcm"]
+  },
+  "conclusion": "Hybrid did not improve held-out final-answer accuracy in this run. It produced one more expected-cell adoption, one fewer wrong-route task, one more abstention recovery, and two fewer wrong-run-after-abstention tasks, at 23.42 ms additional mean search latency. Selection precision was tied at 4/6. Do not promote from this single-model result; the dominant failures are confusable width/family siblings and agent argument handling."
+}

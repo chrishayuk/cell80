@@ -9,6 +9,58 @@
 use super::*;
 use std::collections::HashMap;
 
+/// The live lexical search gate's calibrated raw-cosine margin.  This is deliberately
+/// separate from `cell-eval`'s `0.14` tier-2 operating point: that threshold applies to a
+/// blended embedding score, while [`CellHost::search_confident`] gates the unmodified
+/// [`CellHost::search_scored`] TF-IDF cosine.  Calibration over the 794-cell / 1,732-query
+/// retrieval set is recorded in `cell-eval/baselines/live-search-calibration.json`.
+pub const DEFAULT_SEARCH_MARGIN: f32 = 0.07;
+
+/// Why a confidence-gated text search did or did not select a top result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchVerdict {
+    /// The top result clears the configured top-1/top-2 margin.
+    Confident,
+    /// Candidates exist, but the leading margin is too small to choose safely.
+    LowMargin,
+    /// No candidate has positive lexical similarity to the query.
+    NoMatch,
+}
+
+impl SearchVerdict {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SearchVerdict::Confident => "confident",
+            SearchVerdict::LowMargin => "low_margin",
+            SearchVerdict::NoMatch => "no_match",
+        }
+    }
+}
+
+/// A text retrieval decision that separates *candidate generation* from *selection*.
+/// Candidates are always preserved for inspection or a more expensive escalation rung;
+/// [`selected`](Self::selected) is `None` unless the calibrated margin gate clears.
+pub struct SearchDecision<'a> {
+    pub candidates: Vec<(f32, &'a Manifest)>,
+    pub top_score: Option<f32>,
+    pub runner_up_score: Option<f32>,
+    pub margin: f32,
+    pub min_margin: f32,
+    pub verdict: SearchVerdict,
+}
+
+impl<'a> SearchDecision<'a> {
+    pub fn abstained(&self) -> bool {
+        self.verdict != SearchVerdict::Confident
+    }
+
+    pub fn selected(&self) -> Option<&'a Manifest> {
+        (!self.abstained())
+            .then(|| self.candidates.first().map(|(_, m)| *m))
+            .flatten()
+    }
+}
+
 /// A loaded cell: a warm runner plus the entry to invoke on it, and (for a state cell) the
 /// `(field, address)` map that lets it be driven by name.
 pub(crate) struct Loaded {
@@ -193,6 +245,64 @@ impl CellHost {
         hits.into_iter()
             .filter_map(|(s, id)| self.catalog.get(&id).map(|c| (s, &c.manifest)))
             .collect()
+    }
+
+    /// Search with an explicit abstention contract.  The score and margin are the raw
+    /// TF-IDF cosine from [`search_scored`](Self::search_scored), so a calibrated threshold
+    /// remains stable: top-1 is selected only when `top_score - runner_up_score >=
+    /// min_margin`.  A single positive candidate uses its score as the margin; zero lexical
+    /// matches is always [`SearchVerdict::NoMatch`].
+    ///
+    /// `candidates` remains populated on a low-margin abstention.  The caller can therefore
+    /// inspect them, attach behavioural examples, or hand the short list to the next rung
+    /// without pretending the first item was a confident answer.
+    pub fn search_confident(
+        &self,
+        query: &str,
+        limit: usize,
+        min_margin: f32,
+    ) -> SearchDecision<'_> {
+        if limit == 0 {
+            return SearchDecision {
+                candidates: Vec::new(),
+                top_score: None,
+                runner_up_score: None,
+                margin: 0.0,
+                min_margin,
+                verdict: SearchVerdict::NoMatch,
+            };
+        }
+
+        // Fetch one hidden runner-up even when the caller only wants one visible candidate:
+        // confidence needs a competitor, while response size remains caller-controlled.
+        let mut candidates = self.search_scored(query, limit.max(2));
+        let top_score = candidates.first().map(|(score, _)| *score);
+        let runner_up_score = candidates.get(1).map(|(score, _)| *score);
+        let margin = match (top_score, runner_up_score) {
+            (Some(top), Some(second)) => top - second,
+            (Some(top), None) => top,
+            (None, _) => 0.0,
+        };
+        let verdict = if top_score.is_none() {
+            SearchVerdict::NoMatch
+        } else if !min_margin.is_finite() || min_margin < 0.0 {
+            // Invalid policy must fail closed. Language bindings reject it with a named
+            // error; direct Rust callers still cannot accidentally open the gate.
+            SearchVerdict::LowMargin
+        } else if margin >= min_margin {
+            SearchVerdict::Confident
+        } else {
+            SearchVerdict::LowMargin
+        };
+        candidates.truncate(limit);
+        SearchDecision {
+            candidates,
+            top_score,
+            runner_up_score,
+            margin,
+            min_margin,
+            verdict,
+        }
     }
 
     /// Discover **by behaviour**: rank the catalog by how many `(inputs, expected_output)`

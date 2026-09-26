@@ -142,6 +142,21 @@ Config (env or flags):
 
 > Use a tool-calling-capable model — the agent loop needs OpenAI-style function calling.
 
+### Held-out lexical vs hybrid A/B
+
+`adoption-ab` runs the same fixed agent prompt and model over two interleaved arms. The
+lexical arm forces `CELL_RETRIEVAL_MODEL=off`; the hybrid arm uses the cached static model.
+Its separate dataset is exact-normalized against both retrieval calibration prompts and
+the earlier adoption tasks before a run is allowed.
+
+```bash
+cell-eval adoption-ab --model granite4.1:3b --json
+```
+
+The report includes answer correctness, cell adoption, expected-cell adoption, wrong runs,
+abstention recovery, search latency, and episode latency. The agent sees `results` but is
+explicitly told only `selected` is approved for automatic execution.
+
 Dataset: [`datasets/tasks.jsonl`](datasets/tasks.jsonl) — `{prompt, expected, cell}` per
 line; prompts are phrased as a user would ask, so this measures retrieval **and** adoption
 together. Three signals per task:

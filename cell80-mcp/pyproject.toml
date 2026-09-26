@@ -13,6 +13,9 @@ dependencies = [
     "cell80-py",
 ]
 
+[project.optional-dependencies]
+smart = ["model2vec>=0.8,<0.9"]
+
 [project.scripts]
 cell80-mcp = "cell80_mcp.agent:main"
 

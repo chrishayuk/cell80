@@ -1,0 +1,50 @@
+{
+  "date": "2026-07-17",
+  "index": "catalog-wide TF-IDF + static embedding + TypeLedIndex reciprocal-rank fusion",
+  "library_cells": 794,
+  "dataset": "cell-eval/datasets/retrieval.jsonl",
+  "dataset_sha256": "57b12468b1e78f1728b5f149dcfc8adf53c0e15e70efb279604f9ee583f6be33",
+  "queries": 1732,
+  "model": "minishlab/potion-retrieval-32M",
+  "formula": "0.75 * tfidf + 0.25 * embedding_cosine + 0.20 / (type_led_rank + 1), with type-led top 50",
+  "calibration_rule": "choose the smallest 0.01 final-score margin preserving precision-on-answered floors of 0.95 direct, 0.82 paraphrase, and 0.75 adversarial",
+  "precision_floors": {"direct": 0.95, "paraphrase": 0.82, "adversarial": 0.75},
+  "chosen_margin": 0.18,
+  "splits": {
+    "direct": {
+      "queries": 805,
+      "ungated_correct": 668,
+      "ungated_p1": 0.829814,
+      "answered": 451,
+      "answered_correct": 432,
+      "answer_rate": 0.560248,
+      "precision_on_answered": 0.957871
+    },
+    "paraphrase": {
+      "queries": 754,
+      "ungated_correct": 320,
+      "ungated_p1": 0.424403,
+      "answered": 152,
+      "answered_correct": 125,
+      "answer_rate": 0.201592,
+      "precision_on_answered": 0.822368
+    },
+    "adversarial": {
+      "queries": 173,
+      "ungated_correct": 98,
+      "ungated_p1": 0.566474,
+      "answered": 55,
+      "answered_correct": 44,
+      "answer_rate": 0.317919,
+      "precision_on_answered": 0.8
+    }
+  },
+  "lexical_fallback": {
+    "chosen_margin": 0.07,
+    "rule": "raw TF-IDF margin plus raw/type-led top-1 agreement",
+    "direct": {"answer_rate": 0.563975, "precision_on_answered": 0.951542},
+    "paraphrase": {"answer_rate": 0.19496, "precision_on_answered": 0.823129},
+    "adversarial": {"answer_rate": 0.32948, "precision_on_answered": 0.754386}
+  },
+  "note": "Manifest embeddings are cached once; each query embeds once and scores the catalog. Recalibrate after library, model, formula, or retrieval-dataset changes."
+}

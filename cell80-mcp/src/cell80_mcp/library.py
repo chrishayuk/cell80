@@ -9,9 +9,18 @@ tool + args and the host keeps it warm across calls.
 from __future__ import annotations
 
 import json
+import math
+import os
 import pathlib
 
 import cell80_py
+
+from .retrieval import (
+    DEFAULT_HYBRID_MARGIN,
+    DEFAULT_LEXICAL_MARGIN,
+    DEFAULT_MODEL,
+    HybridRetriever,
+)
 
 
 def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str], bool]:
@@ -42,7 +51,9 @@ def _parse_header(src: str) -> tuple[str, list[str], str | None, list[str], bool
 class CellLibrary:
     """A warm host over a directory of cells."""
 
-    def __init__(self, directory: str):
+    def __init__(
+        self, directory: str, *, embedder=None, retrieval_model: str | None = None
+    ):
         self.directory = directory
         self.host = cell80_py.CellHost()
         # Memoization on: repeated identical runs become hash lookups, and the
@@ -51,6 +62,16 @@ class CellLibrary:
         self._handles: dict[str, int] = {}
         self._ids: list[str] = []
         self._load(pathlib.Path(directory))
+        self._retriever = HybridRetriever(
+            self.host,
+            self.list,
+            model=(
+                retrieval_model
+                if retrieval_model is not None
+                else os.environ.get("CELL_RETRIEVAL_MODEL", DEFAULT_MODEL)
+            ),
+            embedder=embedder,
+        )
 
     def _load(self, d: pathlib.Path) -> None:
         if not d.is_dir():
@@ -66,6 +87,7 @@ class CellLibrary:
                 self._ids.append(f.stem)
             elif f.suffix == ".cell":
                 self.host.add_cell(f.read_bytes())
+                self._ids.append(f.stem)
 
     # ── discover ────────────────────────────────────────────────────────────
     def search(
@@ -94,7 +116,116 @@ class CellLibrary:
         pairs = [(list(e["in"]), int(e["out"])) for e in examples]
         return list(self.host.search_with_examples(query, pairs, limit))
 
-    def route(self, examples: list[tuple[list[int], int]], limit: int = 10) -> list[dict]:
+    def search_decision(
+        self,
+        query: str,
+        limit: int = 10,
+        examples: list[dict] | None = None,
+        min_margin: float | None = None,
+    ) -> dict:
+        """Search with a machine-readable selection/abstention decision.
+
+        Text-only requests use a cached catalog-wide embedding rerank, followed
+        by a calibrated margin gate. Candidate manifests stay in ``results`` on abstention.
+        If the optional local embedding model is unavailable, the response visibly falls
+        back to the calibrated lexical/type-led decision. Requests carrying examples keep
+        the stronger fused behavioural ranking.
+        """
+        if min_margin is not None and (
+            not isinstance(min_margin, (int, float))
+            or not math.isfinite(min_margin)
+            or min_margin < 0
+        ):
+            raise ValueError("min_margin must be a finite non-negative number")
+        if not examples:
+            ranked = self._retriever.rank(query, limit)
+            if ranked is not None:
+                threshold = (
+                    DEFAULT_HYBRID_MARGIN if min_margin is None else float(min_margin)
+                )
+                results = [item["manifest"] for item in ranked]
+                top_score = ranked[0]["score"] if ranked else None
+                runner_score = ranked[1]["score"] if len(ranked) > 1 else None
+                margin = (
+                    top_score - runner_score
+                    if runner_score is not None
+                    else (top_score if top_score is not None else 0.0)
+                )
+                selected = results[0] if results and margin >= threshold else None
+                status = (
+                    "no_match"
+                    if not results
+                    else "confident"
+                    if selected
+                    else "low_margin"
+                )
+                return {
+                    "results": results,
+                    "selected": selected,
+                    "confidence": {
+                        "method": "hybrid_margin",
+                        "ranking": "tfidf_embedding",
+                        "model": self._retriever.model,
+                        "alpha": self._retriever.alpha,
+                        "type_bonus": self._retriever.type_bonus,
+                        "type_rank_k": self._retriever.type_rank_k,
+                        "catalog_size": self._retriever.catalog_size,
+                        "status": status,
+                        "abstained": selected is None,
+                        "threshold": threshold,
+                        "margin": margin,
+                        "top_score": top_score,
+                        "runner_up_score": runner_score,
+                    },
+                }
+
+            lexical_margin = (
+                DEFAULT_LEXICAL_MARGIN if min_margin is None else float(min_margin)
+            )
+            decision = dict(self.host.search_confident(query, limit, lexical_margin))
+            # Keep the established live TypeLedIndex ordering. The confidence score stays
+            # raw TF-IDF because that is the calibrated magnitude; if its top choice and the
+            # live re-rank disagree, abstain instead of attaching one ranking's confidence to
+            # another ranking's winner.
+            results = self.search(query, limit)
+            raw_selected = decision["selected"]
+            live_top = results[0] if results else None
+            confidence = decision["confidence"]
+            confidence["method"] = "lexical_fallback"
+            confidence["ranking"] = "type_led"
+            confidence["fallback_reason"] = self._retriever.unavailable_reason
+            if (
+                not confidence["abstained"]
+                and raw_selected is not None
+                and live_top is not None
+                and raw_selected["id"] != live_top["id"]
+            ):
+                confidence["status"] = "rank_disagreement"
+                confidence["abstained"] = True
+                confidence["raw_top"] = raw_selected["id"]
+            decision["results"] = results
+            decision["selected"] = None if confidence["abstained"] else live_top
+            return decision
+
+        results = self.search(query, limit, examples)
+        selected = results[0] if results else None
+        return {
+            "results": results,
+            "selected": selected,
+            "confidence": {
+                "method": "behaviour_fused",
+                "status": "evidence_ranked" if selected else "no_match",
+                "abstained": selected is None,
+                "threshold": None,
+                "margin": None,
+                "top_score": None,
+                "runner_up_score": None,
+            },
+        }
+
+    def route(
+        self, examples: list[tuple[list[int], int]], limit: int = 10
+    ) -> list[dict]:
         """Discover by behaviour: rank cells by how many (inputs, expected_output)
         examples they reproduce on the VM — the phrasing-independent signal that tells
         confusable siblings (min vs max) apart where their descriptions can't."""

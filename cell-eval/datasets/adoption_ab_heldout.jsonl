@@ -1,0 +1,24 @@
+# Held-out live-agent A/B tasks. These prompts are exact-normalized against both
+# retrieval.jsonl (the ranker calibration set) and tasks.jsonl (the prior adoption set).
+# One line: {id, prompt, expected, cell}. Numeric answers are verified by the named cell.
+{"id":"ab-gcd","prompt":"Two gear counts are 391 and 299. What is their largest shared integer factor?","expected":23,"cell":"gcd"}
+{"id":"ab-gap","prompt":"Two sensor readings are 913 and 287. Report the non-negative gap between them.","expected":626,"cell":"abs_diff"}
+{"id":"ab-clamp","prompt":"A controller accepts readings from 12 through 64. If it receives 87, what value should it emit?","expected":64,"cell":"clamp"}
+{"id":"ab-min","prompt":"Choose the lower bid from 418 and 273, returning the bid itself.","expected":273,"cell":"min"}
+{"id":"ab-max3","prompt":"Which measurement is the peak among 144, 233, and 89?","expected":233,"cell":"max3"}
+{"id":"ab-median3","prompt":"After ordering 41, 9, and 27, which value sits in the centre?","expected":27,"cell":"median3"}
+{"id":"ab-ceil-div","prompt":"A crate holds 12 parts. How many crates are required for all 137 parts?","expected":12,"cell":"ceil_div"}
+{"id":"ab-mod","prompt":"A repeating counter has a cycle length of 64. Where does count 987 land inside the cycle?","expected":27,"cell":"safe_mod"}
+{"id":"ab-prime","prompt":"Does 211 have no positive divisors other than one and itself? Return 1 if so, otherwise 0.","expected":1,"cell":"is_prime"}
+{"id":"ab-isqrt","prompt":"Find the largest whole number whose square does not exceed 200.","expected":14,"cell":"isqrt"}
+{"id":"ab-divisors","prompt":"How many positive integer divisors does 72 possess?","expected":12,"cell":"factor_count"}
+{"id":"ab-popcount","prompt":"Count the one-valued binary digits in hexadecimal F0F0.","expected":8,"cell":"popcount"}
+{"id":"ab-snap","prompt":"Floor timestamp 987 to the start of its 64-unit block.","expected":960,"cell":"snap_down"}
+{"id":"ab-tolerance","prompt":"A target is 440 and the observed value is 462. Is the observation no more than 6 percent away? Return 1 or 0.","expected":1,"cell":"within_percent"}
+{"id":"ab-grid","prompt":"Using only horizontal and vertical moves, how long is the route from (12,5) to (3,19)?","expected":23,"cell":"manhattan"}
+{"id":"ab-score","prompt":"Combine feature readings 8, 11, and 5 using fixed coefficients one, two, and three respectively.","expected":45,"cell":"weighted_sum"}
+{"id":"ab-percent","prompt":"Out of 148 inspected items, 37 failed. What whole-number percentage failed?","expected":25,"cell":"percent"}
+{"id":"ab-saturate","prompt":"Add 65000 and 1000, but pin any overflow to the largest unsigned 16-bit value.","expected":65535,"cell":"add_sat"}
+{"id":"ab-toggle","prompt":"Invert flag bit 5 in the value 9 and return the resulting value.","expected":41,"cell":"toggle_bit"}
+{"id":"ab-range","prompt":"Is 512 inside the inclusive permitted interval from 100 to 500? Return 1 for yes and 0 for no.","expected":0,"cell":"range_check"}
+{"id":"ab-lcm","prompt":"Find the smallest positive quantity evenly divisible by both 14 and 20.","expected":140,"cell":"lcm"}
