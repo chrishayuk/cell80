@@ -69,6 +69,11 @@ def main():
     ap.add_argument("--val-every", type=int, default=2000)
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--device", default=None)
+    ap.add_argument("--corpus", default="cn7_corpus_train.jsonl",
+                     help="dataset_input() name/path of the corpus jsonl to train on")
+    ap.add_argument("--tag", default="", help="extra checkpoint-stem suffix, e.g. --tag mathonly "
+                     "-> cn7_ckpt_midtrain_mathonly.pt, so alt-corpus runs don't collide with the "
+                     "mixed CN-7 checkpoint names")
     args = ap.parse_args()
     device = args.device or ("mps" if torch.backends.mps.is_available() else "cpu")
     rng = random.Random(args.seed)
@@ -76,6 +81,8 @@ def main():
     t0 = time.time()
 
     stem = "cn7_ckpt_midtrain_attn" if args.attention_only else "cn7_ckpt_midtrain"
+    if args.tag:
+        stem += f"_{args.tag}"
     if args.no_mask:
         stem += "_nomask"
     ckpt_path = checkpoint_output(stem + ("_smoke" if args.smoke else "") + ".pt")
@@ -100,7 +107,7 @@ def main():
     print(f"== CN-7.2 midtrain ({arm}) on {device} | vocab {vocab} | "
           f"trainable {sum(p.numel() for p in trainable):,} ==", flush=True)
 
-    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input(args.corpus).read_text().splitlines() if l.strip()]
     s4_idx = [i for i, r in enumerate(rows) if r["species"] == "s4"]
     val_set = set(s4_idx[-500:])
     val = [rows[i] for i in sorted(val_set)]

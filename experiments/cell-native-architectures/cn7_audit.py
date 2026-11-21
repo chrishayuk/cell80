@@ -20,6 +20,7 @@ Run: python3 cn7_audit.py
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -105,6 +106,11 @@ def sign_s1(kind, m, oracle):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--corpus", default="cn7_corpus_train.jsonl",
+                     help="dataset_input() name/path of the corpus jsonl to audit")
+    cli = ap.parse_args()
+
     for cell, args, want in TIER_VECTORS:
         got = tier_a_instance(cell, args)
         assert got == want, f"tier spec vector failed: {cell}{args} -> {got}, want {want}"
@@ -118,7 +124,7 @@ def main():
     desc_to_cell = {describe(n, r["pack"]): n for n, r in lib.items()}
     enc = Enc(cell_ids)
 
-    rows = [json.loads(l) for l in dataset_input("cn7_corpus_train.jsonl").read_text().splitlines() if l.strip()]
+    rows = [json.loads(l) for l in dataset_input(cli.corpus).read_text().splitlines() if l.strip()]
     need = sorted({"add_sat", "sub_sat", "mul_sat", "safe_mod", "is_lt", "is_even", "min3"}
                   | {n for n in lib if lib[n]["arity"] >= 1 and n not in held})
     oracle = Oracle(need)

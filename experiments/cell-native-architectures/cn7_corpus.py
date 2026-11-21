@@ -284,6 +284,10 @@ def main():
     ap.add_argument("--s3-per-cell", type=int, default=45)
     ap.add_argument("--replay-frac", type=float, default=0.45)
     ap.add_argument("--seed", type=int, default=80)
+    ap.add_argument("--out-stem", default="cn7_corpus_train",
+                     help="dataset_output() jsonl stem; also names the stats file when non-default "
+                          "(so a math-only or other alt-species build doesn't clobber the mixed "
+                          "CN-7 corpus's cn7_corpus_train.jsonl/cn7_corpus_stats.json)")
     args = ap.parse_args()
     rng = random.Random(args.seed)
 
@@ -327,7 +331,7 @@ def main():
     rows.extend(s4)
     rng.shuffle(rows)
 
-    out = dataset_output("cn7_corpus_train.jsonl")
+    out = dataset_output(f"{args.out_stem}.jsonl")
     with out.open("w") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
@@ -342,7 +346,8 @@ def main():
     stats["_total"] = {"rows": len(rows), "tokens": task_tokens + s4_tok,
                        "replay_frac": s4_tok / (task_tokens + s4_tok),
                        "seed": args.seed, "s3_cells": len(train_cells)}
-    (HERE / "cn7_corpus_stats.json").write_text(json.dumps(stats, indent=1))
+    stats_name = "cn7_corpus_stats.json" if args.out_stem == "cn7_corpus_train" else f"{args.out_stem}_stats.json"
+    (HERE / stats_name).write_text(json.dumps(stats, indent=1))
     print(json.dumps(stats, indent=1))
     print(f"wrote {out.name} ({len(rows)} rows)")
 
